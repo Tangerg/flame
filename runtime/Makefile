@@ -23,7 +23,7 @@ FLAME_HOME ?= $(HOME)/.flame
 DB        := $(FLAME_HOME)/flame.db
 
 .DEFAULT_GOAL := help
-.PHONY: help build check-standalone start stop restart status health logs run clean reset-db fresh
+.PHONY: help build start stop restart status health logs run clean reset-db fresh
 
 help: ## List targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sort | \
@@ -32,12 +32,6 @@ help: ## List targets
 build: ## Compile the dev binary (./flame)
 	go build -o $(BIN) $(PKG)
 	@echo "[make] built ./$(BIN)"
-
-check-standalone: ## Verify the declared module graph without go.work
-	GOWORK=off go mod tidy -diff
-	GOWORK=off go build ./...
-	GOWORK=off go vet ./...
-	GOWORK=off go test -count=1 ./...
 
 start: ## Launch the server in the background (loads ./config/config.yaml)
 	@if [ -f $(PID) ] && kill -0 $$(cat $(PID)) 2>/dev/null; then \

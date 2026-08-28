@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/textread"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/scope/tools/textread"
 )
 
 // FileBrowser adapts local filesystem browsing and content search to the workspace
