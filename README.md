@@ -34,9 +34,9 @@ wails3 dev
 Run the Go verification matrix from the repository root:
 
 ```sh
-go test ./runtime/... ./runtime/localruntime/... ./desktop/...
-go vet ./runtime/... ./runtime/localruntime/... ./desktop/...
-go build ./runtime/... ./runtime/localruntime/... ./desktop/...
+go test ./runtime/... ./runtime/localruntime/... ./desktop
+go vet ./runtime/... ./runtime/localruntime/... ./desktop
+go build ./runtime/... ./runtime/localruntime/... ./desktop
 ```
 
 Build the native production application from `desktop/` with:
