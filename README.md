@@ -12,8 +12,9 @@ lifecycle.
 | `runtime/` | Domain model, application use cases, adapters, SQLite persistence, protocol, and Runtime executable |
 | `runtime/localruntime/` | Strict local Runtime-to-Desktop deployment handoff |
 | `desktop/` | Wails v3 shell and React/TypeScript desktop client |
+| `cli/` | Cobra command surface, one-shot client, and interactive oolong TUI |
 
-The root `go.work` is the single local workspace for all three Go modules. Flame-owned
+The root `go.work` is the single local workspace for all four Go modules. Flame-owned
 module paths live under `github.com/Tangerg/flame`; reusable agent and provider libraries
 remain versioned dependencies from `github.com/Tangerg/scope`.
 
@@ -34,9 +35,9 @@ wails3 dev
 Run the Go verification matrix from the repository root:
 
 ```sh
-go test ./runtime/... ./runtime/localruntime/... ./desktop
-go vet ./runtime/... ./runtime/localruntime/... ./desktop
-go build ./runtime/... ./runtime/localruntime/... ./desktop
+go test ./runtime/... ./runtime/localruntime/... ./desktop ./cli/...
+go vet ./runtime/... ./runtime/localruntime/... ./desktop ./cli/...
+go build ./runtime/... ./runtime/localruntime/... ./desktop ./cli/...
 ```
 
 Build the native production application from `desktop/` with:

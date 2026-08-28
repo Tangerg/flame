@@ -1,12 +1,13 @@
 # CLAUDE.md — Flame monorepo context
 
 Flame is a Wails v3 desktop agent application backed by the Flame Runtime Protocol.
-This repository is the canonical owner of the application and contains three Go
+This repository is the canonical owner of the application and contains four Go
 modules joined by the root `go.work`:
 
 - `runtime`: application backend, protocol, domain model, persistence, and executable;
 - `runtime/localruntime`: strict local deployment handoff shared by Runtime and Desktop;
 - `desktop`: Wails shell and React/TypeScript client.
+- `cli`: Cobra command surface and oolong terminal client over the embedded Runtime.
 
 The modules consume released `github.com/Tangerg/scope/...` libraries as external
 dependencies. Flame-owned code must use `github.com/Tangerg/flame/...` module paths
