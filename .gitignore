@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+desktop/.cache/
+desktop/.task/
+desktop/build/bin/
+runtime/cmd/contractgen/contractgen

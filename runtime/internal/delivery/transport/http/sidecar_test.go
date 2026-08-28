@@ -1,0 +1,219 @@
+package http_test
+
+import (
+	"context"
+	"encoding/json"
+	netHTTP "net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+func newProbeServer(t *testing.T, probes ...flamehttp.HealthProbe) *httptest.Server {
+	t.Helper()
+	srv, err := flamehttp.NewServer(flamehttp.Config{
+		Endpoint: newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+		Addr:     ":0",
+		ServerInfo: protocol.ServerInfo{
+			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
+			DefaultWorkspace: protocol.WorkspaceRef{Path: "/secret/project"}, Home: "/secret/home",
+		},
+		ProtocolVersion: testProtocolVersion,
+		HealthProbes:    probes,
+	})
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	return httptest.NewServer(srv.Handler())
+}
+
+func TestInfoIsMinimalAndTyped(t *testing.T) {
+	ts := newProbeServer(t)
+	defer ts.Close()
+
+	resp, err := netHTTP.Get(ts.URL + "/v2/info")
+	if err != nil {
+		t.Fatalf("get info: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var body struct {
+		ProtocolVersion string `json:"protocolVersion"`
+		Server          struct {
+			Name       string `json:"name"`
+			Version    string `json:"version"`
+			InstanceID string `json:"instanceId"`
+		} `json:"server"`
+		Transport string `json:"transport"`
+		Endpoints struct {
+			RPC       string `json:"rpc"`
+			Info      string `json:"info"`
+			Liveness  string `json:"liveness"`
+			Readiness string `json:"readiness"`
+		} `json:"endpoints"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.ProtocolVersion != testProtocolVersion {
+		t.Fatalf("protocolVersion = %q", body.ProtocolVersion)
+	}
+	if body.Server.Name != "flame-test" || body.Server.Version != "0.0.0" || body.Server.InstanceID != testRuntimeInstanceID {
+		t.Fatalf("server = %+v", body.Server)
+	}
+	if body.Transport != "http" {
+		t.Fatalf("transport = %q", body.Transport)
+	}
+	if body.Endpoints.RPC != "/v2/rpc" || body.Endpoints.Liveness != "/v2/health/live" || body.Endpoints.Readiness != "/v2/health/ready" {
+		t.Fatalf("endpoints = %+v", body.Endpoints)
+	}
+}
+
+func TestInfoDoesNotExposeRuntimePathsOrCapabilities(t *testing.T) {
+	ts := newProbeServer(t)
+	defer ts.Close()
+
+	resp, err := netHTTP.Get(ts.URL + "/v2/info")
+	if err != nil {
+		t.Fatalf("get info: %v", err)
+	}
+	defer resp.Body.Close()
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	for _, field := range []string{"serverInfo", "capabilities", "agentDocs", "cwd", "home"} {
+		if _, ok := body[field]; ok {
+			t.Fatalf("sensitive field %q present in info: %+v", field, body)
+		}
+	}
+}
+
+func TestLivenessDoesNotCallReadinessProbes(t *testing.T) {
+	var calls atomic.Int32
+	ts := newProbeServer(t, flamehttp.HealthProbe{
+		Name: "storage",
+		Probe: func(context.Context) flamehttp.HealthCheck {
+			calls.Add(1)
+			return flamehttp.HealthCheck{Status: flamehttp.HealthUnhealthy}
+		},
+	})
+	defer ts.Close()
+
+	resp, err := netHTTP.Get(ts.URL + "/v2/health/live")
+	if err != nil {
+		t.Fatalf("get liveness: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != netHTTP.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("readiness probe calls = %d", calls.Load())
+	}
+	var body struct {
+		InstanceID string `json:"instanceId"`
+		Status     string `json:"status"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Status != "ok" || body.InstanceID != testRuntimeInstanceID {
+		t.Fatalf("liveness = %+v", body)
+	}
+}
+
+func TestReadinessReportsWorstProbe(t *testing.T) {
+	ts := newProbeServer(t,
+		flamehttp.HealthProbe{Name: "runtime", Probe: func(context.Context) flamehttp.HealthCheck {
+			return flamehttp.HealthCheck{Status: flamehttp.HealthOK}
+		}},
+		flamehttp.HealthProbe{Name: "storage", Probe: func(context.Context) flamehttp.HealthCheck {
+			return flamehttp.HealthCheck{Status: flamehttp.HealthUnhealthy}
+		}},
+	)
+	defer ts.Close()
+
+	resp, err := netHTTP.Get(ts.URL + "/v2/health/ready")
+	if err != nil {
+		t.Fatalf("get readiness: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != netHTTP.StatusServiceUnavailable {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var body struct {
+		InstanceID string            `json:"instanceId"`
+		Status     string            `json:"status"`
+		Checks     map[string]string `json:"checks"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.InstanceID != testRuntimeInstanceID || body.Status != "unhealthy" || body.Checks["runtime"] != "ok" || body.Checks["storage"] != "unhealthy" {
+		t.Fatalf("readiness = %+v", body)
+	}
+}
+
+func TestReadinessContainsProbePanic(t *testing.T) {
+	ts := newProbeServer(t, flamehttp.HealthProbe{
+		Name: "panic",
+		Probe: func(context.Context) flamehttp.HealthCheck {
+			panic("boom")
+		},
+	})
+	defer ts.Close()
+
+	resp, err := netHTTP.Get(ts.URL + "/v2/health/ready")
+	if err != nil {
+		t.Fatalf("get readiness: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != netHTTP.StatusServiceUnavailable {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}
+
+func TestNewServerRequiresRuntimeInstanceIdentity(t *testing.T) {
+	_, err := flamehttp.NewServer(flamehttp.Config{
+		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+		Addr:            ":0",
+		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0"},
+		ProtocolVersion: testProtocolVersion,
+	})
+	if err == nil {
+		t.Fatal("NewServer accepted a binding without Runtime instance identity")
+	}
+}
+
+func TestNewServerRejectsAmbiguousHealthProbes(t *testing.T) {
+	base := flamehttp.Config{
+		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+		Addr:            ":0",
+		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
+		ProtocolVersion: testProtocolVersion,
+	}
+	tests := []struct {
+		name   string
+		probes []flamehttp.HealthProbe
+	}{
+		{name: "missing function", probes: []flamehttp.HealthProbe{{Name: "storage"}}},
+		{name: "duplicate name", probes: []flamehttp.HealthProbe{
+			{Name: "storage", Probe: func(context.Context) flamehttp.HealthCheck { return flamehttp.HealthCheck{} }},
+			{Name: "storage", Probe: func(context.Context) flamehttp.HealthCheck { return flamehttp.HealthCheck{} }},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := base
+			cfg.HealthProbes = tt.probes
+			if _, err := flamehttp.NewServer(cfg); err == nil {
+				t.Fatal("NewServer accepted ambiguous health probes")
+			}
+		})
+	}
+}

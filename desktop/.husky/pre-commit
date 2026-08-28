@@ -1,0 +1,5 @@
+# Runs from the Flame repository root (this is where husky's dispatcher lives).
+# lint-staged config lives next to the JS code in desktop/frontend/package.json,
+# so cd in before invoking — that's the directory it resolves globs +
+# binary paths against.
+cd desktop/frontend && npx lint-staged
