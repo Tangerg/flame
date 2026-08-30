@@ -82,6 +82,8 @@ The process lazily opens at most one embedded Runtime and fully closes it before
 
 The CLI can share a compatible Runtime data directory with another process because Runtime already owns that storage contract. CLI code does not add a second global lock, heartbeat, leader election, or compatibility reader.
 
+Portable Session exports cross the Runtime/filesystem boundary as one immutable `sessiontransfer.Document`. The Document owns format, UTF-8/JSON validity, canonical body, and the 64 MiB complete encoded limit; adapters may reject a file before reading it but cannot publish or import a larger second representation. Filesystem publication writes the exact Document bytes, so the write path cannot create an artifact that the next CLI process rejects by construction.
+
 ## Terminal model
 
 The terminal application owns one explicit state tree. Domain state changes before rendering; render functions are pure projections of that state and terminal dimensions.
