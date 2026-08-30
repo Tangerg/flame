@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, Icon, ProviderIcon, TextField } from "@/ui";
 import {
   type ProviderConfiguration,
@@ -18,6 +18,10 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const test = useTestProvider();
   const [draft, setDraft] = useState(() => ProviderCredentialsDraft.initial(p));
   const [saving, setSaving] = useState(false);
+  // `saving` lags a render, so it cannot be the re-entrancy guard: a second click
+  // landing before the button re-renders disabled would open a second write whose
+  // response then overwrites the first one's draft. Same latch the workspace rows use.
+  const savingLatch = useRef(false);
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
 
@@ -28,6 +32,8 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const valid = draft.valid(p);
 
   const onSave = async () => {
+    if (savingLatch.current) return;
+    savingLatch.current = true;
     setSaving(true);
     reset();
     try {
@@ -37,11 +43,14 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       if (providerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
     } finally {
+      savingLatch.current = false;
       setSaving(false);
     }
   };
 
   const onClearKey = async () => {
+    if (savingLatch.current) return;
+    savingLatch.current = true;
     setSaving(true);
     reset();
     try {
@@ -51,6 +60,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       if (providerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
     } finally {
+      savingLatch.current = false;
       setSaving(false);
     }
   };

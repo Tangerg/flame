@@ -1,0 +1,15 @@
+{
+  "id": "item_12",
+  "runId": "run_01",
+  "status": "completed",
+  "type": "toolCall",
+  "startedAt": "2026-07-07T10:00:03Z",
+  "finishedAt": "2026-07-07T10:00:04Z",
+  "durationMillis": 1200,
+  "safetyClass": "safe",
+  "tool": {
+    "name": "read",
+    "arguments": { "path": "internal/config/config.go", "limit": 200 },
+    "result": "package config\n\ntype Config struct{}\n"
+  }
+}

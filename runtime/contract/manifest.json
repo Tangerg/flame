@@ -7485,6 +7485,14 @@
       "shape": "Item"
     },
     {
+      "file": "item.agentMessage.json",
+      "shape": "Item"
+    },
+    {
+      "file": "item.toolCall.json",
+      "shape": "Item"
+    },
+    {
       "file": "item.reasoning.json",
       "shape": "Item"
     },

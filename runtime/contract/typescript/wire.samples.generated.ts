@@ -20,6 +20,8 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
   { file: "item.completed.json", shape: "RunEvent" },
   { file: "plan.updated.json", shape: "RunEvent" },
   { file: "item.userMessage.json", shape: "Item" },
+  { file: "item.agentMessage.json", shape: "Item" },
+  { file: "item.toolCall.json", shape: "Item" },
   { file: "item.reasoning.json", shape: "Item" },
   { file: "item.question.json", shape: "Item" },
   { file: "item.compaction.json", shape: "Item" },

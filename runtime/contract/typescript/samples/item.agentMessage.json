@@ -1,0 +1,9 @@
+{
+  "id": "item_15",
+  "runId": "run_01",
+  "status": "completed",
+  "createdAt": "2026-07-07T10:00:05Z",
+  "type": "agentMessage",
+  "phase": "finalAnswer",
+  "content": [{ "type": "text", "text": "The config is already valid." }]
+}

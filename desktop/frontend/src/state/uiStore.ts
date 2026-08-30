@@ -25,11 +25,18 @@ export type { CustomTheme, UiState } from "./uiPreferences";
 // `flame.ui` entry (manual edit, downgrade leaving a future-shape blob,
 // browser extension tampering) falls back to defaults instead of
 // crashing the boot.
+// These are read back as colours, not as opaque strings: the accent is decomposed
+// into OKLCH to derive the neutral family. `parseInt(hex, 16)` does not reject a
+// non-hex value, it reads whatever prefix parses — "blue" comes back as a finite
+// garbage colour and every derived surface paints black. Rejecting it here is what
+// makes a corrupted payload fall back to the defaults instead of to a black UI.
+const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
 const uiPersistSchema = z.object({
   theme: z.string(),
   visualStyle: z.string(),
-  accent: z.string(),
-  customTheme: z.object({ bg: z.string(), fg: z.string() }),
+  accent: HEX_COLOUR,
+  customTheme: z.object({ bg: HEX_COLOUR, fg: HEX_COLOUR }),
   contrast: z.number(),
   accentTint: z.enum(ACCENT_TINTS),
   uiFont: z.string(),

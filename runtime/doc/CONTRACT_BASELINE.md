@@ -233,7 +233,7 @@ Run session-change notifier以实际`sessionRunObserver` registration集合拥�
 
 | 制品 | SHA-256 |
 |---|---|
-| `contract/manifest.json` | `1608acd010d32cd6966a5b2d492ff54270b6d8787e401b46f7fad49299a9060d` |
+| `contract/manifest.json` | `10dd28bfc19312bfed0dc39a58bb25ae6fc4b42b8cf82143ffd744982e22b06f` |
 | `contract/openrpc.json` | `f73da812bbe749158344e838692bc1ae2fc2bf108423fdfef16eed5b53b35401` |
 | `contract/schema.json` | `02cb972c0d9db91a523f9acd7fa71e55f8decf8488b3ecf837e25d57c99706f8` |
 | `contract/go-api.json` | `f94730147cad2b1b24cc3b30a06c5833e597eafaff457b637ff5598c48fdfec8` |

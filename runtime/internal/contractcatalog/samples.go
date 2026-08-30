@@ -46,6 +46,8 @@ func Samples() []Sample {
 
 		// §4.3 Item union (bare) + ContentBlock.
 		{"item.userMessage.json", reflect.TypeFor[protocol.Item]()},
+		{"item.agentMessage.json", reflect.TypeFor[protocol.Item]()},
+		{"item.toolCall.json", reflect.TypeFor[protocol.Item]()},
 		{"item.reasoning.json", reflect.TypeFor[protocol.Item]()},
 		{"item.question.json", reflect.TypeFor[protocol.Item]()},
 		{"item.compaction.json", reflect.TypeFor[protocol.Item]()},
