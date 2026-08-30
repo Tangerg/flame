@@ -31,7 +31,7 @@ export function AgentSeamRail({
       container={(rail) => rail.closest<HTMLElement>(".agent-shell")}
       property={SIDEBAR_WIDTH_PROPERTY}
       read={readSidebarWidth}
-      minWidth={SIDEBAR_MIN_WIDTH_PX}
+      minWidth={sidebarMinWidth}
       maxWidth={maxSidebarWidth}
       onCommit={onCommit}
       resizingAttribute="data-resizing"
@@ -40,6 +40,10 @@ export function AgentSeamRail({
 }
 
 export const SIDEBAR_WIDTH_PROPERTY = "--sidebar-width";
+
+function sidebarMinWidth(): number {
+  return SIDEBAR_MIN_WIDTH_PX;
+}
 
 function readSidebarWidth(shell: HTMLElement): number {
   const value = Number.parseFloat(getComputedStyle(shell).getPropertyValue(SIDEBAR_WIDTH_PROPERTY));

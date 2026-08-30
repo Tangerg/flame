@@ -1,31 +1,32 @@
-// Window-shell geometry — the numbers the drawer is sized by.
+// Window-shell geometry — the numbers the drawer and the flank are sized by.
 //
 // Lives here rather than beside the shell components because both the view layer
 // (which clamps a live drag) and the preference store (which persists the
-// settled width) need them, and `state` must not import `ui`.
+// settled value) need them, and `state` must not import `ui`.
 
 export const SIDEBAR_MIN_WIDTH_PX = 240;
 export const SIDEBAR_DEFAULT_WIDTH_PX = 275;
 const SIDEBAR_MAX_WIDTH_PX = 520;
 const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 
-export const DOCK_MIN_WIDTH_PX = 420;
-/** ONE width for every workspace view, so switching tabs does not make both reading columns
- *  jump. Sized for diffs and terminals, not for a list of names: at ~336 a unified diff has
- *  around 22 characters of code per line after its gutters.
- *
- *  A CEILING, not a promise — `maxDockWidth` still takes it to half the row when narrow. */
-export const DOCK_DEFAULT_WIDTH_PX = 640;
+/** Floor the flank may never cross, whatever the row can spare. */
+export const DOCK_MIN_WIDTH_PX = 320;
+/** Reserved for the conversation before the flank may claim anything. */
+export const DOCK_SAFE_AREA_PX = 352;
+/** Preferred measure once the row is wide enough to grant it. */
+export const DOCK_PREFERRED_WIDTH_PX = 640;
+/** Below this the preferred measure yields to the conversation's own share. */
+const DOCK_PREFERRED_SAFE_AREA_PX = 500;
+/** A flank sized against the window's height reads as a document, not a strip. */
+const DOCK_ASPECT_RATIO = 16 / 10;
 
-/** Floor for the chat column beside an open dock. The transcript, composer and
- *  blocking HITL controls use the same readable minimum as the main plane. */
-export const CHAT_MIN_WIDTH_PX = 640;
-
-/** Whether both real columns can coexist. Below this boundary the dock must
- *  fold through its existing navigation owner instead of compressing either
- *  column below its operable minimum. */
+/**
+ * Whether both work surfaces can coexist. The flank folds through its existing
+ * navigation owner below this, rather than compressing either column past the
+ * point where it can still be worked in.
+ */
 export function canPresentDock(rowWidth: number): boolean {
-  return rowWidth >= CHAT_MIN_WIDTH_PX + DOCK_MIN_WIDTH_PX;
+  return rowWidth >= DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX;
 }
 
 export function clampSidebarWidth(width: number, shellWidth: number): number {
@@ -42,23 +43,70 @@ export function maxSidebarWidth(shellWidth: number): number {
   );
 }
 
-/** Same shape as the drawer's clamp — the dock is a px-wide resizable column,
- *  not a fraction, so both edges of the card are sized by one mental model. */
+/**
+ * Widest the flank may be drawn at this row width.
+ *
+ * The conversation's safe area is subtracted first, and the floor wins when the
+ * row cannot even grant that — a row too narrow for both is already folded, and
+ * a max below the floor would otherwise invert the range.
+ */
+export function maxDockWidth(rowWidth: number): number {
+  return Math.max(DOCK_MIN_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX);
+}
+
+/** Narrowest the flank may be drawn at this row width. Collapses onto the max
+ *  when the row cannot grant the floor, so the range never inverts. */
+export function minDockWidth(rowWidth: number): number {
+  return Math.min(DOCK_MIN_WIDTH_PX, maxDockWidth(rowWidth));
+}
+
 export function clampDockWidth(width: number, rowWidth: number): number {
   const max = maxDockWidth(rowWidth);
-  return Math.round(Math.min(max, Math.max(DOCK_MIN_WIDTH_PX, width)));
+  return Math.round(Math.max(minDockWidth(rowWidth), Math.min(width, max)));
+}
+
+function clamp01(ratio: number): number {
+  return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 1;
 }
 
 /**
- * Largest dock width that preserves both halves of the split.
+ * A STORED RATIO, not a stored width.
  *
- * The dock may never consume more than half the row, even when the conversation
- * floor would allow it. Keeping that rule here (rather than only in CSS) means
- * the rendered width, persisted value, pointer clamp, and ARIA range all speak
- * the same geometry.
+ * The flank's px measure is the row's business and changes with every window
+ * resize; what the person chose is where they put it inside the range that row
+ * allows. Keeping the ratio is what lets the same preference read correctly on
+ * a laptop and on a 32-inch display, and what lets CSS re-derive the width on
+ * resize with no React render at all.
  */
-export function maxDockWidth(rowWidth: number): number {
-  return Math.round(
-    Math.max(DOCK_MIN_WIDTH_PX, Math.min(rowWidth / 2, rowWidth - CHAT_MIN_WIDTH_PX)),
+export function dockWidthFromRatio(ratio: number, rowWidth: number): number {
+  const min = minDockWidth(rowWidth);
+  const max = maxDockWidth(rowWidth);
+  return Math.round(min + clamp01(ratio) * (max - min));
+}
+
+export function dockRatioFromWidth(width: number, rowWidth: number): number {
+  const min = minDockWidth(rowWidth);
+  const max = maxDockWidth(rowWidth);
+  if (max <= min) return 1;
+  return clamp01((clampDockWidth(width, rowWidth) - min) / (max - min));
+}
+
+/**
+ * Where an unconfigured flank opens.
+ *
+ * Three claims, and the widest that all of them allow wins: the floor, a
+ * measure proportioned to the window's own height, and the preferred width.
+ * The height term is what stops a tall narrow window opening a flank that
+ * reaches nearly to the top of the conversation.
+ */
+export function defaultDockWidth(rowWidth: number, shellHeight: number): number {
+  return Math.max(
+    DOCK_MIN_WIDTH_PX,
+    Math.min(shellHeight * DOCK_ASPECT_RATIO, rowWidth - DOCK_PREFERRED_SAFE_AREA_PX),
+    Math.min(DOCK_PREFERRED_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX),
   );
+}
+
+export function defaultDockRatio(rowWidth: number, shellHeight: number): number {
+  return dockRatioFromWidth(defaultDockWidth(rowWidth, shellHeight), rowWidth);
 }

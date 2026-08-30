@@ -1,6 +1,7 @@
 import {
   workspaceNavigation,
   type WorkspaceColumnWidth,
+  type WorkspaceOptionalColumnWidth,
   type WorkspaceDockSnapshot,
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
@@ -52,7 +53,7 @@ export function useSidebarWidth(): WorkspaceColumnWidth {
   return workspaceNavigation().useSidebarWidth();
 }
 
-export function useDockWidth(): WorkspaceColumnWidth {
+export function useDockWidth(): WorkspaceOptionalColumnWidth {
   return workspaceNavigation().useDockWidth();
 }
 

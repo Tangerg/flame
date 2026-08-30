@@ -11,7 +11,7 @@ function Harness({
 }: {
   edge?: "start" | "end";
   value?: number;
-  onCommit: (width: number) => void;
+  onCommit: (width: number, containerWidth: number) => void;
 }) {
   return (
     <div data-testid="container">
@@ -22,7 +22,7 @@ function Harness({
         container={(handle) => handle.parentElement}
         property={PROPERTY}
         read={(container) => Number.parseFloat(container.style.getPropertyValue(PROPERTY)) || value}
-        minWidth={240}
+        minWidth={() => 240}
         maxWidth={() => 800}
         onCommit={onCommit}
         resizingAttribute="data-resizing"
@@ -61,7 +61,7 @@ describe("ResizeHandle", () => {
     expect(onCommit).not.toHaveBeenCalled();
 
     fireEvent(window, new MouseEvent("pointerup"));
-    expect(onCommit).toHaveBeenCalledExactlyOnceWith(400);
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(400, expect.any(Number));
     expect(screen.getByTestId("container").hasAttribute("data-resizing")).toBe(false);
   });
 
@@ -83,14 +83,14 @@ describe("ResizeHandle", () => {
     fireEvent.keyDown(screen.getByRole("separator", { name: "Resize panel" }), {
       key: "ArrowRight",
     });
-    expect(onCommit).toHaveBeenLastCalledWith(328);
+    expect(onCommit).toHaveBeenLastCalledWith(328, expect.any(Number));
     unmount();
 
     render(<Harness edge="start" onCommit={onCommit} />);
     fireEvent.keyDown(screen.getByRole("separator", { name: "Resize panel" }), {
       key: "ArrowRight",
     });
-    expect(onCommit).toHaveBeenLastCalledWith(312);
+    expect(onCommit).toHaveBeenLastCalledWith(312, expect.any(Number));
   });
 
   it("takes a coarse step with Shift and jumps to the range ends", () => {
@@ -99,11 +99,11 @@ describe("ResizeHandle", () => {
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.keyDown(handle, { key: "ArrowRight", shiftKey: true });
-    expect(onCommit).toHaveBeenLastCalledWith(344);
+    expect(onCommit).toHaveBeenLastCalledWith(344, expect.any(Number));
     fireEvent.keyDown(handle, { key: "Home" });
-    expect(onCommit).toHaveBeenLastCalledWith(240);
+    expect(onCommit).toHaveBeenLastCalledWith(240, expect.any(Number));
     fireEvent.keyDown(handle, { key: "End" });
-    expect(onCommit).toHaveBeenLastCalledWith(800);
+    expect(onCommit).toHaveBeenLastCalledWith(800, expect.any(Number));
   });
 
   // Key repeat holds the mark, so the pane must not animate between steps; releasing the

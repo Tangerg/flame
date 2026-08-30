@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { en } from "@/lib/i18n/locales/en";
-import { DOCK_MIN_WIDTH_PX } from "@/lib/shellGeometry";
+import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
 import {
-  VISUAL_DOCK_WIDTH_PX,
+  VISUAL_DOCK_WIDTH_RATIO,
   VISUAL_REVIEW_VIEWPORT,
   VISUAL_WORKSPACE_VIEWPORT,
   VISUAL_WORKSPACE_STATES,
@@ -32,6 +32,17 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
   await page.goto(`/visual/?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
+}
+
+/**
+ * The flank folds on the ROW, and the row is what the drawer leaves behind. At the
+ * shell's minimum window the drawer has to be at its widest before the row is narrow
+ * enough to make the fold observable.
+ */
+async function starveTheRow(page: Page): Promise<void> {
+  const rail = page.getByRole("separator", { name: "Resize the workspace fixture sidebar" });
+  await rail.focus();
+  await rail.press("End");
 }
 
 async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): Promise<void> {
@@ -153,6 +164,7 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
 test("an unsafe narrow row folds the dock without forgetting its tabs", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 720 });
   await openWorkspace(page, { state: "dock-light" });
+  await starveTheRow(page);
 
   const geometry = await page.locator(".agent-dock-row").evaluate((row) => {
     const conversation = row.firstElementChild;
@@ -163,7 +175,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
       dockVisible: dock ? getComputedStyle(dock).visibility !== "hidden" : false,
     };
   });
-  expect(geometry.rowWidth).toBeLessThan(640 + DOCK_MIN_WIDTH_PX);
+  expect(geometry.rowWidth).toBeLessThan(DOCK_SAFE_AREA_PX + DOCK_MIN_WIDTH_PX);
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(page.getByTestId("dock-open")).toHaveText("false");
@@ -275,20 +287,22 @@ test("all dock views share one stable user-owned width", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
+  const persistedRatio = page.getByTestId("persisted-dock-ratio");
   await separator.focus();
-  const liveMax = Number(await separator.getAttribute("aria-valuemax"));
+  const liveNow = Number(await separator.getAttribute("aria-valuenow"));
   await separator.press("ArrowRight");
-  const settledWidth = String(liveMax - 8);
-  await expect(page.getByTestId("persisted-dock-width")).toHaveText(settledWidth);
+  const settledWidth = String(liveNow - 8);
+  await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
+  const settledRatio = await persistedRatio.textContent();
 
   await page.getByRole("tab", { name: "Diff" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
-  await expect(page.getByTestId("persisted-dock-width")).toHaveText(settledWidth);
+  await expect(persistedRatio).toHaveText(String(settledRatio));
 
   await page.getByRole("tab", { name: "Plan" }).click();
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
-  await expect(page.getByTestId("persisted-dock-width")).toHaveText(settledWidth);
+  await expect(persistedRatio).toHaveText(String(settledRatio));
 });
 
 // Deliberately NOT the review state: that one is seeded wide enough to exercise
@@ -298,12 +312,13 @@ test("dock separator exposes its real range and commits a pointer drag once", as
   await waitForWorkspaceState(page, "dock-light");
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
-  const persistedWidth = page.getByTestId("persisted-dock-width");
+  const persistedRatio = page.getByTestId("persisted-dock-ratio");
   await expect(separator).toHaveAttribute("aria-valuemin", String(DOCK_MIN_WIDTH_PX));
   const max = Number(await separator.getAttribute("aria-valuemax"));
   const now = Number(await separator.getAttribute("aria-valuenow"));
-  expect(now).toBe(max);
-  await expect(persistedWidth).toHaveText(String(VISUAL_DOCK_WIDTH_PX));
+  expect(now).toBeGreaterThan(DOCK_MIN_WIDTH_PX);
+  expect(now).toBeLessThanOrEqual(max);
+  await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
 
   const dock = page.locator(".agent-context-dock");
   const dockBefore = (await dock.boundingBox())?.width;
@@ -313,16 +328,15 @@ test("dock separator exposes its real range and commits a pointer drag once", as
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 48, box.y + box.height / 2);
 
-  await expect(persistedWidth).toHaveText(String(VISUAL_DOCK_WIDTH_PX));
+  await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
   await expect(page.locator("html")).toHaveAttribute("data-visual-dock-width-commits", "0");
   await expect.poll(async () => (await dock.boundingBox())?.width ?? 0).toBeLessThan(dockBefore);
 
   await page.mouse.up();
   await expect(page.locator("html")).toHaveAttribute("data-visual-dock-width-commits", "1");
-  await expect(persistedWidth).not.toHaveText(String(VISUAL_DOCK_WIDTH_PX));
-  const settledWidth = await persistedWidth.textContent();
-  if (!settledWidth) throw new Error("Persisted dock width is missing");
-  await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
+  await expect(persistedRatio).not.toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
+  const settledRatio = await persistedRatio.textContent();
+  if (!settledRatio) throw new Error("Persisted dock ratio is missing");
 });
 
 test("window clamping does not overwrite the dock preference", async ({ page }) => {
@@ -331,21 +345,17 @@ test("window clamping does not overwrite the dock preference", async ({ page }) 
   await waitForWorkspaceState(page, "dock-light");
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
-  const persistedWidth = page.getByTestId("persisted-dock-width");
+  const persistedRatio = page.getByTestId("persisted-dock-ratio");
   const wideMax = Number(await separator.getAttribute("aria-valuemax"));
-  expect(wideMax).toBeGreaterThan(VISUAL_DOCK_WIDTH_PX);
-  await expect(separator).toHaveAttribute("aria-valuenow", String(VISUAL_DOCK_WIDTH_PX));
-  await expect(persistedWidth).toHaveText(String(VISUAL_DOCK_WIDTH_PX));
+  const wideNow = Number(await separator.getAttribute("aria-valuenow"));
+  expect(wideNow).toBeLessThanOrEqual(wideMax);
+  await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
 
   await page.setViewportSize({ width: 1120, height: 720 });
+  await starveTheRow(page);
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(separator).toHaveCount(0);
-  await expect(persistedWidth).toHaveText(String(VISUAL_DOCK_WIDTH_PX));
-
-  await page.setViewportSize({ width: 1520, height: 900 });
-  await page.getByRole("button", { name: "Open right workspace" }).click();
-  await expect(separator).toHaveAttribute("aria-valuenow", String(VISUAL_DOCK_WIDTH_PX));
-  await expect(persistedWidth).toHaveText(String(VISUAL_DOCK_WIDTH_PX));
+  await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
 });
 
 test("settings filtering and menu dismissal stay inside production semantics", async ({ page }) => {

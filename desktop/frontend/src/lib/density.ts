@@ -18,12 +18,11 @@ const SCALE: Readonly<Record<UiDensity, number>> = {
 
 /** Comfortable-mode base values, in px. Every mode is these times its scale. */
 const BASE_PX = {
-  /* Derived, not chosen: a row is one line of chrome type plus its inset, which
-     is `14px * 1.5 + 2 * 4px` — 29, rounded to the even 30 so a centred hairline
-     never lands on a half pixel. All three desktop references compute the same
-     number; extra height would add air with no content role and make a full index
-     read like a short, artificially spaced list. */
-  rowHeight: 30,
+  /* Codex's own nav-row measure: one line of base type at its 1.5 leading plus a
+     5px inset either side. Our chrome type is a step smaller, so the row carries
+     slightly more air than the arithmetic alone would give it — which is the
+     point, since the label is not what sets a row's touch target. */
+  rowHeight: 34,
   /* The gap between a row's glyph and its label. Same 8px the reference gives it,
      and the same 8px the row's own inset already uses — one number for "the
      distance between two things inside a row" rather than a second, slightly

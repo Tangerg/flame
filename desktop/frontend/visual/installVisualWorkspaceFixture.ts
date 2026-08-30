@@ -52,8 +52,8 @@ import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
 import { installVisualAgentFixture } from "./installVisualAgentFixture";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import {
-  VISUAL_DOCK_WIDTH_PX,
-  VISUAL_REVIEW_DOCK_WIDTH_PX,
+  VISUAL_DOCK_WIDTH_RATIO,
+  VISUAL_REVIEW_DOCK_WIDTH_RATIO,
   type VisualWorkspaceState,
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
@@ -491,7 +491,8 @@ export async function installVisualWorkspaceFixture(
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
     // Only the review view splits, and only above a width the others never need.
-    dockWidth: state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_PX : VISUAL_DOCK_WIDTH_PX,
+    dockWidthRatio:
+      state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO,
   });
 
   // The palettes and the visual style come from the agent installer above — this
@@ -520,7 +521,7 @@ export async function installVisualWorkspaceFixture(
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
   useUiStore.subscribe((next, previous) => {
-    if (next.dockWidth === previous.dockWidth) return;
+    if (next.dockWidthRatio === previous.dockWidthRatio) return;
     root.dataset.visualDockWidthCommits = String(
       Number(root.dataset.visualDockWidthCommits ?? "0") + 1,
     );

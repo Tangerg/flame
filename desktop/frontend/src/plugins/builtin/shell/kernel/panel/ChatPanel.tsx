@@ -45,7 +45,7 @@ import { HeaderDiffStat } from "./HeaderDiffStat";
 import { ViewPlacementProvider } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { WorkspaceViewBody } from "./WorkspaceViewBody";
 import { useT } from "@/lib/i18n";
-import { canPresentDock } from "@/lib/shellGeometry";
+import { canPresentDock, defaultDockRatio } from "@/lib/shellGeometry";
 
 function viewIcon(name: string | undefined): IconName | undefined {
   return name as IconName | undefined;
@@ -123,7 +123,7 @@ export function ChatPanel({ onSend }: Props) {
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
-  const { width: dockWidth } = useDockWidth();
+  const { width: dockWidthRatio, setWidth: setDockWidthRatio } = useDockWidth();
   const { isLoading } = useAgentSessions();
   const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
@@ -145,12 +145,15 @@ export function ChatPanel({ onSend }: Props) {
       const available = canPresentDock(row.clientWidth);
       setDockAvailable((current) => (current === available ? current : available));
       if (!available && dockOpen) collapseWorkspaceDock();
+      if (dockWidthRatio === null && row.clientWidth > 0) {
+        setDockWidthRatio(defaultDockRatio(row.clientWidth, window.innerHeight));
+      }
     };
     reconcile();
     const observer = new ResizeObserver(reconcile);
     observer.observe(row);
     return () => observer.disconnect();
-  }, [dockOpen, shellVisible]);
+  }, [dockOpen, shellVisible, dockWidthRatio, setDockWidthRatio]);
 
   if (!shellVisible) return null;
 
@@ -198,7 +201,7 @@ export function ChatPanel({ onSend }: Props) {
           ref={dockRowRef}
           className="agent-dock-row flex min-h-0 flex-1"
           data-dock={dockOpen ? "open" : "collapsed"}
-          style={dockWidthRow(dockWidth)}
+          style={dockWidthRow(dockWidthRatio ?? 1)}
         >
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             <AgentSurfaceHeader windowCorner>

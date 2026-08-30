@@ -10,16 +10,25 @@ const RESIZE_KEYS = ["ArrowLeft", "ArrowRight", "Home", "End"];
 
 export interface ResizeHandleProps extends Omit<
   SeparatorPrimitiveProps,
-  "orientation" | "role" | "tabIndex" | "onPointerDown" | "onKeyDown" | "onKeyUp" | "onBlur"
+  | "orientation"
+  | "role"
+  | "tabIndex"
+  | "onPointerDown"
+  | "onKeyDown"
+  | "onKeyUp"
+  | "onBlur"
+  | "aria-valuenow"
 > {
   edge: "start" | "end";
+  /** Re-measures the reported range when the stored preference changes. */
   value: number;
   container: (handle: HTMLElement) => HTMLElement | null;
   property: string;
   read: (container: HTMLElement) => number;
-  minWidth: number;
+  minWidth: (containerWidth: number) => number;
   maxWidth: (containerWidth: number) => number;
-  onCommit: (width: number) => void;
+  formatProperty?: (width: number, containerWidth: number) => string;
+  onCommit: (width: number, containerWidth: number) => void;
   resizingAttribute?: string;
 }
 
@@ -31,6 +40,7 @@ export function ResizeHandle({
   read,
   minWidth,
   maxWidth,
+  formatProperty = defaultFormatProperty,
   onCommit,
   resizingAttribute,
   ...props
@@ -39,9 +49,25 @@ export function ResizeHandle({
   const listenersRef = useRef<{ move: (event: PointerEvent) => void; up: () => void } | null>(null);
   const markedRef = useRef<HTMLElement | null>(null);
 
-  const paneRef = useRef({ container, property, read, minWidth, maxWidth, onCommit });
+  const paneRef = useRef({
+    container,
+    property,
+    read,
+    minWidth,
+    maxWidth,
+    formatProperty,
+    onCommit,
+  });
   useEffect(() => {
-    paneRef.current = { container, property, read, minWidth, maxWidth, onCommit };
+    paneRef.current = {
+      container,
+      property,
+      read,
+      minWidth,
+      maxWidth,
+      formatProperty,
+      onCommit,
+    };
   });
 
   const detach = useCallback(() => {
@@ -74,9 +100,11 @@ export function ResizeHandle({
     if (!handle || !element) return;
     const sync = () => {
       const pane = paneRef.current;
+      const min = pane.minWidth(element.clientWidth);
       const max = pane.maxWidth(element.clientWidth);
+      handle.setAttribute("aria-valuemin", String(min));
       handle.setAttribute("aria-valuemax", String(max));
-      handle.setAttribute("aria-valuenow", String(clampWidth(value, pane.minWidth, max)));
+      handle.setAttribute("aria-valuenow", String(clampWidth(pane.read(element), min, max)));
     };
     sync();
     const observer = new ResizeObserver(sync);
@@ -101,13 +129,18 @@ export function ResizeHandle({
         const pane = paneRef.current;
         const delta = edge === "end" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
         if (delta !== 0) moved = true;
-        width = clampWidth(startWidth + delta, pane.minWidth, pane.maxWidth(element.clientWidth));
-        element.style.setProperty(pane.property, `${width}px`);
+        const containerWidth = element.clientWidth;
+        width = clampWidth(
+          startWidth + delta,
+          pane.minWidth(containerWidth),
+          pane.maxWidth(containerWidth),
+        );
+        element.style.setProperty(pane.property, pane.formatProperty(width, containerWidth));
         handle.setAttribute("aria-valuenow", String(width));
       };
       const up = () => {
         detach();
-        if (moved) paneRef.current.onCommit(width);
+        if (moved) paneRef.current.onCommit(width, element.clientWidth);
       };
 
       mark(element);
@@ -128,21 +161,24 @@ export function ResizeHandle({
       if (!handle || !element) return;
       event.preventDefault();
 
-      const max = pane.maxWidth(element.clientWidth);
+      const containerWidth = element.clientWidth;
+      const min = pane.minWidth(containerWidth);
+      const max = pane.maxWidth(containerWidth);
       const step = event.shiftKey ? COARSE_STEP_PX : STEP_PX;
       const grows = event.key === (edge === "end" ? "ArrowRight" : "ArrowLeft");
       const next =
         event.key === "Home"
-          ? pane.minWidth
+          ? min
           : event.key === "End"
             ? max
-            : clampWidth(pane.read(element) + (grows ? step : -step), pane.minWidth, max);
+            : clampWidth(pane.read(element) + (grows ? step : -step), min, max);
 
       mark(element);
-      element.style.setProperty(pane.property, `${next}px`);
+      element.style.setProperty(pane.property, pane.formatProperty(next, containerWidth));
+      handle.setAttribute("aria-valuemin", String(min));
       handle.setAttribute("aria-valuemax", String(max));
       handle.setAttribute("aria-valuenow", String(next));
-      pane.onCommit(next);
+      pane.onCommit(next, containerWidth);
     },
     [edge, mark],
   );
@@ -158,14 +194,16 @@ export function ResizeHandle({
       ref={handleRef}
       orientation="vertical"
       tabIndex={0}
-      aria-valuemin={minWidth}
-      aria-valuenow={Math.round(value)}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
       onKeyUp={releaseKeyboard}
       onBlur={releaseKeyboard}
     />
   );
+}
+
+function defaultFormatProperty(width: number): string {
+  return `${width}px`;
 }
 
 function clampWidth(width: number, minWidth: number, maxWidth: number): number {

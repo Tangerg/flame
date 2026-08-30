@@ -11,7 +11,7 @@
  * and wide enough to become unavailable at 1120 so they can prove the preference
  * is not overwritten when the whole dock folds.
  */
-export const VISUAL_DOCK_WIDTH_PX = 576;
+export const VISUAL_DOCK_WIDTH_RATIO = 0.5;
 
 /** The smallest canonical fixture viewport that preserves both seeded columns. */
 export const VISUAL_WORKSPACE_VIEWPORT = { width: 1472, height: 900 } as const;
@@ -25,7 +25,7 @@ export const VISUAL_WORKSPACE_VIEWPORT = { width: 1472, height: 900 } as const;
  * side-by-side geometry — a whole track, its seam, and its filter strip — was
  * covered by nothing. This is the narrowest dock at which that geometry exists.
  */
-export const VISUAL_REVIEW_DOCK_WIDTH_PX = 760;
+export const VISUAL_REVIEW_DOCK_WIDTH_RATIO = 0.36;
 
 /** The viewport the review golden needs for `maxDockWidth` to allow the width above. */
 export const VISUAL_REVIEW_VIEWPORT = { width: 1800, height: 1000 } as const;

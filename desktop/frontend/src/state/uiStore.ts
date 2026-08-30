@@ -12,7 +12,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_UI_DENSITY, UI_DENSITY_MODES, type UiDensity } from "@/lib/density";
 import type { ColorThemeId, VisualStyleId } from "@/lib/appearance";
 import { discardOlderVersions } from "@/lib/persistedStore";
-import { DOCK_DEFAULT_WIDTH_PX, SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
+import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 // Direct registry import — going through the SDK barrel pulls in
 // host.ts which imports this file, creating a TDZ cycle under Vitest.
 // Same reason the extension-point reads below import from the deep
@@ -42,7 +42,7 @@ const uiPersistSchema = z.object({
   streamReveal: z.enum(["smooth", "typewriter"]),
   sidebarCollapsed: z.boolean(),
   sidebarWidth: z.number(),
-  dockWidth: z.number(),
+  dockWidthRatio: z.number().min(0).max(1).nullable(),
   completionSound: z.boolean(),
 });
 
@@ -70,7 +70,7 @@ interface UiActions {
   setStreamReveal: (mode: "smooth" | "typewriter") => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
-  setDockWidth: (width: number) => void;
+  setDockWidthRatio: (ratio: number | null) => void;
   setCompletionSound: (on: boolean) => void;
 }
 
@@ -93,7 +93,7 @@ export const useUiStore = create<UiState & UiActions>()(
       streamReveal: "smooth",
       sidebarCollapsed: false,
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
-      dockWidth: DOCK_DEFAULT_WIDTH_PX,
+      dockWidthRatio: null,
       completionSound: false,
 
       setTheme: (theme) => set({ theme }),
@@ -112,13 +112,13 @@ export const useUiStore = create<UiState & UiActions>()(
       setStreamReveal: (streamReveal) => set({ streamReveal }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
-      setDockWidth: (dockWidth) => set({ dockWidth }),
+      setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
       setCompletionSound: (completionSound) => set({ completionSound }),
     }),
     {
       name: "flame.ui",
       storage: createJSONStorage(() => localStorage),
-      version: 11,
+      version: 12,
       migrate: discardOlderVersions,
       merge: (persisted, current) => {
         if (persisted === undefined) return current;

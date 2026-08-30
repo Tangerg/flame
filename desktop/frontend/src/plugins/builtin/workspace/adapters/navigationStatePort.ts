@@ -54,10 +54,10 @@ export function installWorkspaceNavigationPort(): () => void {
       setWidth: useUiStore((state) => state.setSidebarWidth),
     }),
     useDockWidth: () => {
-      const setDockWidth = useUiStore((state) => state.setDockWidth);
+      const setDockWidthRatio = useUiStore((state) => state.setDockWidthRatio);
       return {
-        width: useUiStore((state) => state.dockWidth),
-        setWidth: setDockWidth,
+        width: useUiStore((state) => state.dockWidthRatio),
+        setWidth: setDockWidthRatio,
       };
     },
     selectChat,

@@ -56,7 +56,7 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
 function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
   const dock = useWorkspaceDock();
   const activeMainViewId = useActiveWorkspaceViewId();
-  const dockWidth = useDockWidth().width;
+  const dockWidthRatio = useDockWidth().width;
 
   return (
     <>
@@ -75,8 +75,8 @@ function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
       <output className="sr-only" data-testid="active-main-view">
         {activeMainViewId ?? ""}
       </output>
-      <output className="sr-only" data-testid="persisted-dock-width">
-        {dockWidth}
+      <output className="sr-only" data-testid="persisted-dock-ratio">
+        {dockWidthRatio}
       </output>
     </>
   );

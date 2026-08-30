@@ -17,6 +17,12 @@ export interface WorkspaceColumnWidth {
   setWidth: (width: number) => void;
 }
 
+/** A column whose measure is derived from the window until the person moves it. */
+export interface WorkspaceOptionalColumnWidth {
+  width: number | null;
+  setWidth: (width: number) => void;
+}
+
 export interface WorkspaceDockSnapshot {
   open: boolean;
   viewIds: string[];
@@ -35,7 +41,7 @@ export interface WorkspaceNavigationPort {
   useToggleTool(): (id: string) => void;
   useSidebarDrawer(): { collapsed: boolean; toggle: () => void };
   useSidebarWidth(): WorkspaceColumnWidth;
-  useDockWidth(): WorkspaceColumnWidth;
+  useDockWidth(): WorkspaceOptionalColumnWidth;
   selectChat(): void;
   openView(id: string): void;
   openViewInDock(id: string): void;
