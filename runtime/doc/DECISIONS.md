@@ -806,3 +806,10 @@
 - 背景：Run title maintenance 已从请求取消中分离，但 Host shutdown 过去与 Goal/MCP/Run component 同时取消 maintenance task group。真实 DeepSeek one-shot 完成并成功输出后会立即关闭 embedded Runtime，已接纳的标题任务因此必然被取消；冷读新 Session 的 title 仍为空。等待 Approval/Question 的 parked Run 又被 `Finalizer` 整体提前返回，导致 CLI 虽明确提示用同一 Session 交互续接，Session 列表却长期没有可识别标题。让 CLI 轮询标题、把标题改为同步 Run 结果或无限等待 provider，都会制造第二 lifecycle owner或放大退出延迟。
 - 决策：Workspace checkpoint 只属于 terminal Run 文件边界，parked Run 必须跳过；Session title 只依赖 opening user text 与 first-writer Session policy，因此 terminal 与 parked 两种 Run 边界都可以异步接纳。Host 先停止并加入可能产生 Run 边界维护的 component；producer 全部收束后，Application `taskgroup` 对当前已接纳任务提供不关闭、不取消的 `Drain`，Host 最多等待五秒，再无条件 `Cancel`/`Wait`。`Drain` 只在 owner 已证明没有新 producer 后使用；普通 `Close` 仍是立即拒绝新任务并取消现有任务的强制边界。caller-local shutdown deadline、唯一 owner generation 与 terminal resource Sequence 不变。
 - 后果：真实 DeepSeek one-shot 无论完成还是等待 Question，都能在进程退出前持久化 Session title；相同可执行文件跨进程冷读仍保留 waiting Run、Question 与 executor checkpoint。parked Run 不制造可回滚文件快照，维护任务也不延迟 Run terminal/waiting 事件；卡住或慢于五秒的 provider 仍被取消。没有 CLI polling、sleep、标题 fallback 双写、后台 daemon、配置旋钮或新公共 API。
+
+## ADR-RT-113：Artifact 内嵌外部 DTO 必须证明解码不丢语义
+
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal Artifact Delivery codec、测试与文档，公共 Artifact v27 shape、Protocol、SQLite、Desktop、Agent Framework 与 CLI 合同不变。
+- 背景：`SessionArtifact.Messages` 用 `json.RawMessage` 隔离公共 Protocol 与 Scope `chat.Message`，因此外层 strict request decoder 无法检查嵌套字段。Scope 的自校验 JSON codec 会拒绝非法 role/part 组合，却按 Go 默认行为忽略未知结构字段；反例在 message 或 part 加入未来字段后仍导入成功，重新导出时该字段消失。一个唯一当前版本的归档因而可能声称成功迁移，同时静默缩减历史语义。
+- 决策：Delivery 在 typed `chat.Message` decode/validate 后重新编码，并把输入与输出分别按 RFC canonical JSON 规范化后比较；不相等即以 `invalid_params` 拒绝。canonical 比较忽略对象键顺序、空白和等价数字表达，同时保留 `metadata.Map` 与 Tool details 明确拥有的开放 JSON；只有外部 codec 丢弃、默认或重写的值被拒绝。Runtime 不复制 Scope Message/Part/Media/Tool DTO，不建立反射 schema walker，也不修改外部 module。
+- 后果：Artifact v27 的 message 子文档与其余 versioned shape 一样 fail closed，未知字段不能穿过 RawMessage 后消失；Runtime 自己导出的文档继续完整 round-trip，开放 extension data 保真。没有新 artifact version、兼容 reader、字段 allowlist、第二 message codec 或跨模块改动。
