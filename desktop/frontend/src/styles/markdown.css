@@ -213,9 +213,19 @@
 
 .md-table-container {
   --md-table-gutter: var(--density-column-gutter);
+  --md-table-bleed: calc(100% + 2 * var(--md-table-gutter));
   position: relative;
-  width: calc(100% + 2 * var(--md-table-gutter));
-  margin: 0 calc(var(--md-table-gutter) * -1);
+  width: var(--md-table-bleed);
+  margin-inline: calc((100% - var(--md-table-bleed)) / 2);
+}
+
+@container (min-width: 1152px) {
+  .md-table-container {
+    --md-table-bleed: min(
+      var(--content-max-wide),
+      max(calc(100% + 2 * var(--md-table-gutter)), calc(100cqi - 2 * var(--reading-rail-width)))
+    );
+  }
 }
 @media (min-width: 640px) {
   .md-table-container {

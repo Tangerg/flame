@@ -527,6 +527,7 @@
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
 
   --content-max: 768px;
+  --content-max-wide: 896px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--density-column-gutter-wide));
   --reading-rail-width: 176px;
 }
