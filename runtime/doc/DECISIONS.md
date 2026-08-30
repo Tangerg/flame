@@ -813,3 +813,10 @@
 - 背景：`SessionArtifact.Messages` 用 `json.RawMessage` 隔离公共 Protocol 与 Scope `chat.Message`，因此外层 strict request decoder 无法检查嵌套字段。Scope 的自校验 JSON codec 会拒绝非法 role/part 组合，却按 Go 默认行为忽略未知结构字段；反例在 message 或 part 加入未来字段后仍导入成功，重新导出时该字段消失。一个唯一当前版本的归档因而可能声称成功迁移，同时静默缩减历史语义。
 - 决策：Delivery 在 typed `chat.Message` decode/validate 后重新编码，并把输入与输出分别按 RFC canonical JSON 规范化后比较；不相等即以 `invalid_params` 拒绝。canonical 比较忽略对象键顺序、空白和等价数字表达，同时保留 `metadata.Map` 与 Tool details 明确拥有的开放 JSON；只有外部 codec 丢弃、默认或重写的值被拒绝。Runtime 不复制 Scope Message/Part/Media/Tool DTO，不建立反射 schema walker，也不修改外部 module。
 - 后果：Artifact v27 的 message 子文档与其余 versioned shape 一样 fail closed，未知字段不能穿过 RawMessage 后消失；Runtime 自己导出的文档继续完整 round-trip，开放 extension data 保真。没有新 artifact version、兼容 reader、字段 allowlist、第二 message codec 或跨模块改动。
+
+## ADR-RT-114：Plan 当前值与历史边界必须共用闭合持久 codec
+
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal SQLite Plan codec、测试与文档，公共 Protocol、Artifact、SQLite schema epoch、Desktop、Agent Framework 与 CLI 合同不变。
+- 背景：当前 SQLite epoch 已严格恢复 Goal budget、Run capabilities、Interrupt、Transcript 与 checkpoint，但 `session_plans.steps` 仍用宽松 `json.Unmarshal`。反例先由正常 Store 提交 Plan，再让同一当前 epoch 行多出一个 step 字段；旧 reader 静默丢弃该字段并把删减后的 Plan 注入每次主模型调用。`plan_boundaries` 复制相同 JSON，若另建规则又会让 current 与 rollback/fork history 对同一值产生不同解释。
+- 决策：唯一 `decodePlanSteps` 在 Domain `ValidateSteps` 前先执行 closed-field、single-document JSON 校验；`State` 与 `Boundary` 继续共用该 reader。未知字段、尾随值、非法 status/description 与多 in-progress 状态都在返回 Plan 前 fail closed。保留现有具体 `planStepRow` 和 Plan aggregate，不引入通用 repository、serializer 或 codec registry。
+- 后果：损坏或来自其他 shape 的 Plan 不能以“部分可读”继续影响 Goal、model context、rollback 或 fork；当前值和历史边界仍只有一个语义 owner。没有 schema bump、兼容 reader、自动修复、第二 Plan DTO 或额外 package。

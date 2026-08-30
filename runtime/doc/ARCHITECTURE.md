@@ -514,6 +514,7 @@ Runtime Toolset 负责产品工具清单、schema、执行 capability、安全�
 ## 10. 持久化与恢复
 
 - 当前开发阶段只有一个 SQLite shape；schema 变化直接提升 epoch，不双读、不迁移旧 shape；
+- 当前 epoch 内嵌的 aggregate JSON 同样只有一个闭合 shape：reader 必须拒绝未知字段、尾随值和非法领域状态，不能因表结构已通过 epoch 校验就用宽松 JSON 恢复。当前值与 Run boundary 等历史投影必须复用同一 decoder，避免同一持久事实出现两套解释。
 - Session workspace 只以非空 `sessions.workspace_path` 保存；strict reader 必须重新构造 Domain `Workspace`，相对或 lexical-unclean row fail closed，旧 `cwd` 列和空默认值不存在；
 - Store 保存 Application aggregate，不保存 live Engine、Dispatcher、context、goroutine 或 SDK object；
 - root Process tree 是 executor snapshot 的不可拆分恢复单位；
