@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { Button, ConfirmDialog } from "@/ui";
+import { Button, ConfirmDialog, GlyphSwap, Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useGoalMaterial } from "../application/goalReadModel";
@@ -52,7 +52,10 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         className="gap-1.5 px-2 text-ui-sm text-fg-soft hover:bg-hover hover:text-fg"
         onClick={() => owner.deactivate(sessionId)}
       >
-        <GoalGlyph className="size-[var(--icon-sm)] shrink-0 opacity-70" />
+        <GlyphSwap
+          rest={<GoalGlyph className="size-[var(--icon-sm)] shrink-0 opacity-70" />}
+          hover={<Icon name="x" size="sm" className="shrink-0" />}
+        />
         <span>{t("goal.mode.label")}</span>
       </Button>
       <ConfirmDialog

@@ -198,15 +198,25 @@
     transform var(--icon-swap-dur) var(--icon-swap-ease);
   will-change: opacity, filter, transform;
 }
+/* The swap is a HOVER AFFORDANCE, so the control's own :hover / :focus-visible drives it and
+   React never renders for it. It used to be component state set from onPointerEnter, which
+   re-rendered the glyph on every hover — and a glyph that rebuilds its DOM mid-press loses
+   the click, because the browser fires none when its mousedown target has been detached. */
 /* prettier-ignore */
-.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
-.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+.t-icon-swap .t-icon[data-glyph="rest"] {
   opacity: 1; filter: blur(0); transform: scale(1);
 }
 /* prettier-ignore */
-.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
-.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+.t-icon-swap .t-icon[data-glyph="hover"] {
   opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+}
+/* prettier-ignore */
+:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="rest"] {
+  opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+}
+/* prettier-ignore */
+:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="hover"] {
+  opacity: 1; filter: blur(0); transform: scale(1);
 }
 /* prettier-ignore */
 @media (prefers-reduced-motion: reduce) {

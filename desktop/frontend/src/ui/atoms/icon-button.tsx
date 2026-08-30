@@ -1,8 +1,8 @@
 import type { IconSize } from "@/lib/iconScale";
 import { cn } from "@/lib/classNames";
 import { Icon, type IconName } from "@/ui/icons";
-import { useState } from "react";
 import { Button, type ButtonProps } from "./button";
+import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
 interface IconButtonProps extends Omit<ButtonProps, "children" | "variant" | "size"> {
@@ -29,34 +29,13 @@ export function IconButton({
   badge,
   className,
   title,
-  onPointerEnter,
-  onPointerLeave,
-  onFocus,
-  onBlur,
   ...props
 }: IconButtonProps) {
-  const [showHoverIcon, setShowHoverIcon] = useState(false);
   return (
     <Tooltip label={title}>
       <Button
         {...props}
         aria-label={props["aria-label"] ?? title}
-        onPointerEnter={(event) => {
-          setShowHoverIcon(true);
-          onPointerEnter?.(event);
-        }}
-        onPointerLeave={(event) => {
-          setShowHoverIcon(false);
-          onPointerLeave?.(event);
-        }}
-        onFocus={(event) => {
-          setShowHoverIcon(true);
-          onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setShowHoverIcon(false);
-          onBlur?.(event);
-        }}
         variant="ghost"
         size={BOX[size]}
         data-active={active ? "" : undefined}
@@ -67,14 +46,10 @@ export function IconButton({
         )}
       >
         {hoverIcon ? (
-          <span className="t-icon-swap" data-state={showHoverIcon ? "b" : "a"}>
-            <span className="t-icon" data-icon="a">
-              <Icon name={icon} size={iconSize} />
-            </span>
-            <span className="t-icon" data-icon="b">
-              <Icon name={hoverIcon} size={iconSize} />
-            </span>
-          </span>
+          <GlyphSwap
+            rest={<Icon name={icon} size={iconSize} />}
+            hover={<Icon name={hoverIcon} size={iconSize} />}
+          />
         ) : (
           <Icon name={icon} size={iconSize} />
         )}

@@ -481,16 +481,25 @@ test("dock close control reveals its contextual glyph on hover and focus", async
   await openWorkspace(page, { state: "dock-light" });
 
   const hide = page.getByRole("button", { name: "Collapse right workspace" });
-  const swap = hide.locator(".t-icon-swap");
-  await expect(swap).toHaveAttribute("data-state", "a");
+  // Asserted on what is SEEN rather than on a state attribute: the swap is CSS, so there is
+  // no React state left to read, and opacity is what the person actually gets.
+  const rest = hide.locator('.t-icon-swap .t-icon[data-glyph="rest"]');
+  const hover = hide.locator('.t-icon-swap .t-icon[data-glyph="hover"]');
+  const opacityOf = (target: typeof rest) =>
+    target.evaluate((node) => getComputedStyle(node).opacity);
+
+  await expect.poll(() => opacityOf(rest)).toBe("1");
+  await expect.poll(() => opacityOf(hover)).toBe("0");
 
   await hide.hover();
-  await expect(swap).toHaveAttribute("data-state", "b");
+  await expect.poll(() => opacityOf(hover)).toBe("1");
+  await expect.poll(() => opacityOf(rest)).toBe("0");
+
   await page.mouse.move(0, 0);
-  await expect(swap).toHaveAttribute("data-state", "a");
+  await expect.poll(() => opacityOf(rest)).toBe("1");
 
   await hide.focus();
-  await expect(swap).toHaveAttribute("data-state", "b");
+  await expect.poll(() => opacityOf(hover)).toBe("1");
 });
 
 test("plugin notifications use the production toast and dismiss automatically", async ({

@@ -16,6 +16,7 @@ export { Divider } from "./divider";
 export { EmptyState } from "./empty-state";
 export { ExternalLink } from "./external-link";
 export { FloatingSurface } from "./floating-surface";
+export { GlyphSwap } from "./glyph-swap";
 export { IconButton } from "./icon-button";
 export { HiddenFileInput } from "./hidden-file-input";
 export { Kbd } from "./kbd";
