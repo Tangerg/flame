@@ -1073,14 +1073,14 @@ export const en: Record<string, string> = {
   "rpcError.provider_error": "The model provider didn't respond — try again.",
   "rpcError.agent_stuck":
     "The agent stopped making progress — try rephrasing or narrowing the task.",
+  "rpcError.denied_by_user": "You declined this action.",
+  "rpcError.tool_failed": "A tool failed while running — check the timeline for what it reported.",
+  "rpcError.tool_canceled": "The tool call was canceled before it finished.",
+  "rpcError.child_run_canceled": "A delegated run was canceled.",
   "rpcError.internal_error":
     "Something broke inside the runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.run_lost":
     "The run's process is gone — it ended before a result was saved. Start it again.",
-  "rpcError.no_language_server":
-    "No language server for this file type — code intelligence isn't available here.",
-  "rpcError.is_a_directory": "That path is a directory — pick a file to read.",
-  "rpcError.file_too_large": "File is too large to read whole — request a line range instead.",
   "rpcError.mcp_authorization_required": "This server needs you to sign in before it can be used.",
   "rpcError.mcp_authorization_failed": "Sign-in didn't complete. Try again.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",

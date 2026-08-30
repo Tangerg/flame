@@ -1038,14 +1038,14 @@ export const ja: Record<string, string> = {
     "モデルプロバイダから応答がありませんでした — もう一度お試しください。",
   "rpcError.agent_stuck":
     "エージェントの進行が止まりました — 表現を変えるか、タスクを絞ってください。",
+  "rpcError.denied_by_user": "この操作を拒否しました。",
+  "rpcError.tool_failed": "ツールの実行に失敗しました。タイムラインで内容を確認してください。",
+  "rpcError.tool_canceled": "ツール呼び出しが完了前にキャンセルされました。",
+  "rpcError.child_run_canceled": "委任された実行がキャンセルされました。",
   "rpcError.internal_error":
     "ランタイム内部でエラーが発生しました — 再試行し、繰り返す場合は診断を確認してください。",
   "rpcError.run_lost":
     "この実行のプロセスが失われました — 結果が保存される前に終了しました。もう一度実行してください。",
-  "rpcError.no_language_server":
-    "このファイル形式に対応する言語サーバーがありません — ここではコードインテリジェンスを使えません。",
-  "rpcError.is_a_directory": "そのパスはディレクトリです — 読み込むファイルを選んでください。",
-  "rpcError.file_too_large": "ファイルが大きすぎて全体を読めません — 行範囲を指定してください。",
   "rpcError.mcp_authorization_required": "このサーバーは使う前にサインインが必要です。",
   "rpcError.mcp_authorization_failed": "サインインが完了しませんでした。もう一度お試しください。",
   "rpcError.mcp_authorization_attempt_not_found":

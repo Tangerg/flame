@@ -1055,15 +1055,15 @@ export const de: Record<string, string> = {
   "rpcError.provider_error": "Der Modellanbieter hat nicht geantwortet — versuche es erneut.",
   "rpcError.agent_stuck":
     "Der Agent kommt nicht weiter — formuliere um oder grenze die Aufgabe ein.",
+  "rpcError.denied_by_user": "Du hast diese Aktion abgelehnt.",
+  "rpcError.tool_failed":
+    "Ein Tool ist bei der Ausführung fehlgeschlagen — sieh in der Zeitleiste nach, was es gemeldet hat.",
+  "rpcError.tool_canceled": "Der Tool-Aufruf wurde vor dem Ende abgebrochen.",
+  "rpcError.child_run_canceled": "Ein delegierter Lauf wurde abgebrochen.",
   "rpcError.internal_error":
     "In der Runtime ist etwas schiefgelaufen — versuche es erneut und sieh in die Diagnose, falls es bleibt.",
   "rpcError.run_lost":
     "Der Prozess dieses Runs ist weg — er endete, bevor ein Ergebnis gespeichert wurde. Starte ihn neu.",
-  "rpcError.no_language_server":
-    "Kein Language-Server für diesen Dateityp — Code-Intelligenz ist hier nicht verfügbar.",
-  "rpcError.is_a_directory": "Dieser Pfad ist ein Verzeichnis — wähle eine Datei zum Lesen.",
-  "rpcError.file_too_large":
-    "Die Datei ist zu groß, um sie ganz zu lesen — fordere einen Zeilenbereich an.",
   "rpcError.mcp_authorization_required":
     "Dieser Server verlangt eine Anmeldung, bevor er nutzbar ist.",
   "rpcError.mcp_authorization_failed":

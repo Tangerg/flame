@@ -7,7 +7,7 @@ import { errorDetail, errorType, RPC_METHOD_NOT_FOUND, RpcError, RpcTransportErr
 import type { ProblemData } from "@/rpc";
 import { t } from "./i18n";
 
-const MAPPED_TYPES: readonly string[] = [
+export const MAPPED_TYPES: readonly string[] = [
   "session_busy",
   "session_has_active_run",
   "run_not_root",
@@ -29,13 +29,17 @@ const MAPPED_TYPES: readonly string[] = [
   "provider_rejected",
   "provider_error",
   "agent_stuck",
+  // How a run most often ends short of completing: the person declined the action, or a
+  // tool or delegated run stopped. Ordinary outcomes, not protocol faults — without copy
+  // the banner calls the most self-explanatory cause there is "an unknown error".
+  "denied_by_user",
+  "tool_failed",
+  "tool_canceled",
+  "child_run_canceled",
   // Carry no per-occurrence detail — an internal error must not put its internals on the
   // wire — so the words are ours to supply.
   "internal_error",
   "run_lost",
-  "no_language_server",
-  "is_a_directory",
-  "file_too_large",
   // Inline status verdicts: they ride a result rather than failing the call, and the
   // runtime sends the symbol ALONE.
   "mcp_authorization_required",

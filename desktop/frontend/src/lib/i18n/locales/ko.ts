@@ -1025,14 +1025,14 @@ export const ko: Record<string, string> = {
   "rpcError.provider_rejected": "모델 제공자가 요청을 잘못된 것으로 거부했습니다.",
   "rpcError.provider_error": "모델 제공자가 응답하지 않았습니다 — 다시 시도하세요.",
   "rpcError.agent_stuck": "에이전트가 진전을 멈췄습니다 — 표현을 바꾸거나 작업 범위를 좁혀 보세요.",
+  "rpcError.denied_by_user": "이 작업을 거부했습니다.",
+  "rpcError.tool_failed": "도구 실행에 실패했습니다. 타임라인에서 보고 내용을 확인하세요.",
+  "rpcError.tool_canceled": "도구 호출이 완료되기 전에 취소되었습니다.",
+  "rpcError.child_run_canceled": "위임된 실행이 취소되었습니다.",
   "rpcError.internal_error":
     "런타임 내부에서 오류가 발생했습니다 — 다시 시도하고, 계속되면 진단을 확인하세요.",
   "rpcError.run_lost":
     "이 실행의 프로세스가 사라졌습니다 — 결과가 저장되기 전에 종료됐습니다. 다시 실행하세요.",
-  "rpcError.no_language_server":
-    "이 파일 형식에는 언어 서버가 없습니다 — 여기서는 코드 인텔리전스를 쓸 수 없습니다.",
-  "rpcError.is_a_directory": "해당 경로는 디렉터리입니다 — 읽을 파일을 선택하세요.",
-  "rpcError.file_too_large": "파일이 너무 커서 전체를 읽을 수 없습니다 — 줄 범위를 지정하세요.",
   "rpcError.mcp_authorization_required": "이 서버는 사용하기 전에 로그인이 필요합니다.",
   "rpcError.mcp_authorization_failed": "로그인이 완료되지 않았습니다. 다시 시도하세요.",
   "rpcError.mcp_authorization_attempt_not_found":

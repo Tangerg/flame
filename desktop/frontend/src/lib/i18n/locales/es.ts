@@ -1045,15 +1045,15 @@ export const es: Record<string, string> = {
   "rpcError.provider_rejected": "El proveedor del modelo rechazó la petición por inválida.",
   "rpcError.provider_error": "El proveedor del modelo no respondió — inténtalo de nuevo.",
   "rpcError.agent_stuck": "El agente dejó de avanzar — reformula o acota la tarea.",
+  "rpcError.denied_by_user": "Rechazaste esta acción.",
+  "rpcError.tool_failed":
+    "Una herramienta falló durante la ejecución: revisa la línea de tiempo para ver qué informó.",
+  "rpcError.tool_canceled": "La llamada a la herramienta se canceló antes de terminar.",
+  "rpcError.child_run_canceled": "Se canceló una ejecución delegada.",
   "rpcError.internal_error":
     "Algo falló dentro del runtime — reintenta y revisa los diagnósticos si se repite.",
   "rpcError.run_lost":
     "El proceso de esta ejecución desapareció — terminó antes de guardar un resultado. Vuelve a lanzarla.",
-  "rpcError.no_language_server":
-    "No hay servidor de lenguaje para este tipo de archivo — aquí no hay inteligencia de código.",
-  "rpcError.is_a_directory": "Esa ruta es un directorio — elige un archivo para leer.",
-  "rpcError.file_too_large":
-    "El archivo es demasiado grande para leerlo entero — pide un rango de líneas.",
   "rpcError.mcp_authorization_required":
     "Este servidor requiere que inicies sesión antes de usarlo.",
   "rpcError.mcp_authorization_failed": "No se completó el inicio de sesión. Inténtalo de nuevo.",

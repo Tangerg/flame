@@ -1053,15 +1053,15 @@ export const fr: Record<string, string> = {
   "rpcError.provider_rejected": "Le fournisseur de modèle a rejeté la requête comme invalide.",
   "rpcError.provider_error": "Le fournisseur de modèle n'a pas répondu — réessaie.",
   "rpcError.agent_stuck": "L'agent n'avance plus — reformule ou restreins la tâche.",
+  "rpcError.denied_by_user": "Vous avez refusé cette action.",
+  "rpcError.tool_failed":
+    "Un outil a échoué pendant son exécution — consultez la chronologie pour voir ce qu'il a signalé.",
+  "rpcError.tool_canceled": "L'appel de l'outil a été annulé avant la fin.",
+  "rpcError.child_run_canceled": "Une exécution déléguée a été annulée.",
   "rpcError.internal_error":
     "Quelque chose a cassé dans le runtime — réessaie, et regarde les diagnostics si ça persiste.",
   "rpcError.run_lost":
     "Le processus de ce run a disparu — il s'est terminé avant qu'un résultat soit enregistré. Relance-le.",
-  "rpcError.no_language_server":
-    "Aucun serveur de langage pour ce type de fichier — l'intelligence de code n'est pas disponible ici.",
-  "rpcError.is_a_directory": "Ce chemin est un répertoire — choisis un fichier à lire.",
-  "rpcError.file_too_large":
-    "Le fichier est trop gros pour être lu en entier — demande une plage de lignes.",
   "rpcError.mcp_authorization_required":
     "Ce serveur demande une connexion avant de pouvoir servir.",
   "rpcError.mcp_authorization_failed": "La connexion n'a pas abouti. Réessaie.",
