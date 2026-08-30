@@ -177,7 +177,7 @@ func (p PendingResume) MarshalJSON() ([]byte, error) {
 
 func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 	var wire pendingResumeJSON
-	if err := json.Unmarshal(encoded, &wire); err != nil {
+	if err := decodeStateJSON(encoded, &wire); err != nil {
 		return err
 	}
 	decoded := PendingResume{

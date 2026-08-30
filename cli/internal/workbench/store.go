@@ -3,6 +3,7 @@
 package workbench
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -520,13 +521,28 @@ func (s *Store) load(name string, value any) error {
 		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
 	}
 	var raw envelope[json.RawMessage]
-	if err := json.Unmarshal(body, &raw); err != nil {
+	if err := decodeStateJSON(body, &raw); err != nil {
 		return fmt.Errorf("decode workbench state %q: %w", name, err)
 	}
 	if raw.Version != formatVersion {
 		return fmt.Errorf("unsupported workbench format %d", raw.Version)
 	}
-	if err := json.Unmarshal(raw.Value, value); err != nil {
+	if err := decodeStateJSON(raw.Value, value); err != nil {
+		return fmt.Errorf("decode workbench state %q value: %w", name, err)
+	}
+	return nil
+}
+
+func decodeStateJSON(encoded []byte, value any) error {
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(value); err != nil {
+		return err
+	}
+	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("unexpected trailing JSON value")
+		}
 		return err
 	}
 	return nil

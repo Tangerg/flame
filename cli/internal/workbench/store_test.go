@@ -723,6 +723,33 @@ func TestStoreRejectsTrailingAndOversizedStateSnapshots(t *testing.T) {
 	}
 }
 
+func TestStoreRejectsUnknownStateFields(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "envelope",
+			body: `{"version":1,"value":[],"future":true}`,
+		},
+		{
+			name: "value",
+			body: `{"version":1,"value":[{"path":"/tmp/workspace","lastOpened":"2026-08-31T00:00:00Z","future":true}]}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, "workspaces.json"), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("workbench snapshot with an unknown field was accepted")
+			}
+		})
+	}
+}
+
 func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})
