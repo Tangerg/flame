@@ -72,6 +72,7 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     icon: "tool",
     type: "streamableHttp",
     enabled: true,
+    handshakeTimeout: { type: "unbounded" },
     ...overrides,
   };
 }

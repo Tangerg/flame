@@ -21,6 +21,11 @@ import (
 // integration boundary.
 type Capabilities struct{}
 
+const (
+	providerProbePrompt      = "ping"
+	minimumProbeOutputTokens = int64(1)
+)
+
 func (Capabilities) Supported() []modelsapp.ProviderMetadata {
 	supported := llm.SupportedProviders()
 	out := make([]modelsapp.ProviderMetadata, 0, len(supported))
@@ -31,11 +36,11 @@ func (Capabilities) Supported() []modelsapp.ProviderMetadata {
 }
 
 func (Capabilities) Metadata(id string) (modelsapp.ProviderMetadata, bool) {
-	value := llm.Provider(id)
-	if !value.IsSupported() {
+	profile, found := llm.LookupProvider(llm.Provider(id))
+	if !found {
 		return modelsapp.ProviderMetadata{}, false
 	}
-	return providerMetadata(value), true
+	return providerMetadata(profile), true
 }
 
 func (Capabilities) Models(providerID string) []modelsapp.Model {
@@ -56,26 +61,50 @@ func (Capabilities) LookupModel(providerID, modelID string) (modelsapp.Model, bo
 }
 
 func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
-	providerID := llm.Provider(entry.ID)
-	if providerID.ProbeModels() {
+	providerID := llm.Provider(entry.ID())
+	profile, found := llm.LookupProvider(providerID)
+	if !found {
+		return fmt.Errorf("modelcatalog: provider %q is unsupported", entry.ID())
+	}
+	if profile.DiscoversModelsAtEndpoint() {
 		models, err := remoteModelIDs(ctx, entry)
 		if err != nil {
 			return err
 		}
 		if len(models) == 0 {
-			return fmt.Errorf("modelcatalog: provider %q advertised no models", entry.ID)
+			return fmt.Errorf("modelcatalog: provider %q advertised no models", entry.ID())
 		}
 		return nil
 	}
-	client, err := llm.BuildClient(llm.ClientSpec{
-		Provider: providerID, Model: providerID.DefaultModel(), APIKey: entry.APIKey, BaseURL: entry.BaseURL,
-	})
+	defaultModel, hasDefault := profile.DefaultChatModel()
+	if !hasDefault {
+		return fmt.Errorf("modelcatalog: provider %q has no probe model", entry.ID())
+	}
+	apiKey, configured := entry.APIKey()
+	if !configured {
+		return fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
+	}
+	credential, err := llm.NewAPIKeyCredential(apiKey.Reveal())
 	if err != nil {
 		return err
 	}
-	maxTokens := int64(1)
+	spec, err := llm.NewClientSpec(providerID, defaultModel, credential)
+	if err != nil {
+		return err
+	}
+	if baseURL, present := entry.BaseURL(); present {
+		spec, err = spec.WithBaseURL(baseURL.String())
+		if err != nil {
+			return err
+		}
+	}
+	client, err := llm.BuildClient(spec)
+	if err != nil {
+		return err
+	}
+	maxTokens := minimumProbeOutputTokens
 	_, err = client.Call(ctx, &chat.Request{
-		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("ping"))}, Options: chat.Options{MaxTokens: &maxTokens},
+		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart(providerProbePrompt))}, Options: chat.Options{MaxTokens: &maxTokens},
 	})
 	return err
 }
@@ -85,28 +114,70 @@ func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]
 }
 
 func remoteModelIDs(ctx context.Context, entry provider.Provider) ([]string, error) {
-	value := llm.Provider(entry.ID)
-	baseURL := entry.BaseURL
-	if baseURL == "" {
-		baseURL = value.DefaultBaseURL()
+	profile, found := llm.LookupProvider(llm.Provider(entry.ID()))
+	if !found {
+		return nil, fmt.Errorf("modelcatalog: provider %q is unsupported", entry.ID())
 	}
-	if baseURL == "" {
+	configuredBaseURL, hasConfiguredBaseURL := entry.BaseURL()
+	baseURL, hasBaseURL := profile.DefaultEndpoint()
+	if hasConfiguredBaseURL {
+		baseURL = configuredBaseURL.String()
+		hasBaseURL = true
+	}
+	if !hasBaseURL {
 		return nil, nil
 	}
-	return llm.ListRemoteModels(ctx, baseURL, entry.APIKey)
+	apiKey := ""
+	if configuredKey, configured := entry.APIKey(); configured {
+		apiKey = configuredKey.Reveal()
+	} else if profile.RequiresAPIKey() {
+		return nil, fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
+	}
+	return llm.ListRemoteModels(ctx, baseURL, apiKey)
 }
 
-func providerMetadata(value llm.Provider) modelsapp.ProviderMetadata {
-	return modelsapp.ProviderMetadata{
-		ID: string(value), RequiresBaseURL: value.RequiresBaseURL(), EmbeddingCapable: value.EmbeddingCapable(),
-		DefaultEmbeddingModel: value.DefaultEmbeddingModel(), ProbeModels: value.ProbeModels(),
+func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
+	endpoint := modelsapp.ProviderEndpointOptional
+	if value.RequiresConfiguredEndpoint() {
+		endpoint = modelsapp.ProviderEndpointRequired
 	}
+	modelSource := modelsapp.ProviderModelsBundled
+	if value.DiscoversModelsAtEndpoint() {
+		modelSource = modelsapp.ProviderModelsEndpoint
+	}
+	embedding := modelsapp.NoEmbeddingCapability()
+	if value.SupportsEmbeddings() {
+		if defaultModel, present := value.DefaultEmbeddingModel(); present {
+			var err error
+			embedding, err = modelsapp.EmbeddingCapabilityWithDefault(defaultModel)
+			if err != nil {
+				panic(fmt.Sprintf("modelcatalog: invalid embedding default for %q: %v", value.ID(), err))
+			}
+		} else {
+			embedding = modelsapp.EmbeddingCapabilityWithoutDefault()
+		}
+	}
+	authentication := modelsapp.ProviderAPIKeyOptional
+	if value.RequiresAPIKey() {
+		authentication = modelsapp.ProviderAPIKeyRequired
+	}
+	metadata, err := modelsapp.NewProviderMetadata(string(value.ID()), authentication, endpoint, modelSource, embedding)
+	if err != nil {
+		panic(fmt.Sprintf("modelcatalog: invalid provider metadata for %q: %v", value.ID(), err))
+	}
+	return metadata
 }
 
 func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
+	tokenLimits, err := catalogTokenLimits(entry)
+	if err != nil {
+		// The bundled catalog is static reference data, not user input. An invalid
+		// envelope is a broken application dependency and must fail loudly instead
+		// of publishing invented or partially discarded capability facts.
+		panic(fmt.Sprintf("modelcatalog: invalid bundled limits for %q/%q: %v", providerID, entry.ID, err))
+	}
 	details := &modelsapp.Details{
-		DisplayName: entry.DisplayName, ContextWindow: int(entry.Limits.ContextWindow), MaxInputTokens: int(entry.Limits.MaxInputTokens),
-		MaxOutputTokens: int(entry.Limits.MaxOutputTokens), KnowledgeCutoff: entry.KnowledgeCutoff, Deprecated: entry.Deprecated,
+		DisplayName: entry.DisplayName, TokenLimits: tokenLimits, KnowledgeCutoff: entry.KnowledgeCutoff, Deprecated: entry.Deprecated,
 		Reasoning: entry.Reasoning.Supported, ReasoningLevels: slices.Clone(entry.Reasoning.Levels), ReasoningDefault: entry.Reasoning.DefaultLevel,
 		Multimodal: entry.Modalities.AcceptsInput(catalog.ModalityImage), InputModalities: catalogModalities(entry.Modalities.Input),
 		OutputModalities: catalogModalities(entry.Modalities.Output), ToolUse: entry.ToolCall, StructuredOutput: entry.StructuredOutput,
@@ -118,7 +189,11 @@ func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
 			CacheReadPerMillion: primary.CacheReadPer1M, CacheWritePerMillion: primary.CacheWritePer1M,
 		}
 	}
-	return modelsapp.Model{ID: entry.ID, Provider: providerID, Details: details}
+	model, err := modelsapp.NewModel(providerID, entry.ID, details)
+	if err != nil {
+		panic(fmt.Sprintf("modelcatalog: invalid bundled model %q/%q: %v", providerID, entry.ID, err))
+	}
+	return model
 }
 
 func catalogModalities(values []catalog.Modality) []string {

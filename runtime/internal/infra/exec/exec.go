@@ -19,8 +19,10 @@ package exec
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"slices"
@@ -34,15 +36,19 @@ import (
 
 // maxBuffer caps a background shell's retained output; once exceeded the
 // oldest bytes are dropped (a poll that fell behind is told output was lost).
-const maxBuffer = 256 * 1024
+const (
+	maxBuffer        = 256 * 1024
+	processWaitDelay = time.Second
+)
 
 // Shells owns background shell commands and lets callers poll their output or
 // stop them. The process handles and output buffers live here. The zero value is
 // not usable; build one with [NewShells].
 type Shells struct {
 	mu        sync.Mutex
-	nextID    int
-	shells    map[string]*Shell
+	epoch     string
+	nextID    uint64
+	shells    map[shellID]*Shell
 	closed    bool
 	closeOnce sync.Once
 	closeErr  error
@@ -62,14 +68,50 @@ var (
 	ErrShellsClosed = errors.New("exec: shells closed")
 	// ErrShellNotFound reports a command addressed outside this owner's shell set.
 	ErrShellNotFound = errors.New("exec: shell not found")
+	// ErrShellIdentityExhausted reports that one process-local Shells owner has
+	// consumed every addressable sequence value.
+	ErrShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
 )
+
+const (
+	shellIDPrefix     = "bg_"
+	shellIDEpochBytes = 26
+	shellIDSeparator  = "_"
+)
+
+type shellID struct{ value string }
+
+func newShellID(epoch string, sequence uint64) shellID {
+	return shellID{value: shellIDPrefix + epoch + shellIDSeparator + strconv.FormatUint(sequence, 10)}
+}
+
+func parseShellID(raw string) (shellID, bool) {
+	rest, found := strings.CutPrefix(raw, shellIDPrefix)
+	if !found || len(rest) <= shellIDEpochBytes || rest[shellIDEpochBytes:shellIDEpochBytes+1] != shellIDSeparator {
+		return shellID{}, false
+	}
+	epoch := rest[:shellIDEpochBytes]
+	for index := range len(epoch) {
+		if character := epoch[index]; !((character >= 'A' && character <= 'Z') || (character >= '2' && character <= '7')) {
+			return shellID{}, false
+		}
+	}
+	sequenceText := rest[shellIDEpochBytes+1:]
+	sequence, err := strconv.ParseUint(sequenceText, 10, 64)
+	if err != nil || sequence == 0 || strconv.FormatUint(sequence, 10) != sequenceText {
+		return shellID{}, false
+	}
+	return shellID{value: raw}, true
+}
+
+func (s shellID) String() string { return s.value }
 
 // NewShells creates an empty background-shell set. confiner is the OS jail (nil
 // when the host has no backend); alwaysJail confines every command (the global
 // sandbox.shell opt-in). An isolated-session command is jailed even when
 // alwaysJail is false.
 func NewShells(confiner *sandbox.Confiner, alwaysJail bool) *Shells {
-	return &Shells{shells: map[string]*Shell{}, confiner: confiner, alwaysJail: alwaysJail}
+	return &Shells{epoch: rand.Text(), shells: map[shellID]*Shell{}, confiner: confiner, alwaysJail: alwaysJail}
 }
 
 // command returns the program, args, and environment to spawn for a shell
@@ -100,7 +142,7 @@ type Shell struct {
 	cmd       *exec.Cmd
 	process   *shellProcessOwner
 	started   time.Time
-	id        string        // the owner-map key, mirrored here for RunningForSession
+	id        shellID       // the owner-map key, mirrored here for RunningForSession
 	sessionID string        // session that launched it; scopes RunningForSession
 	command   string        // the shell command, for a session's live-state readout
 	done      chan struct{} // closed once the process finishes
@@ -126,17 +168,20 @@ type Shell struct {
 // It is detached from the tool-call's cancellation so it outlives the Run —
 // via context.WithoutCancel(ctx), which drops cancellation but KEEPS ctx's
 // values, so the launching Run's trace span still propagates (full-link)
-// rather than being severed by a bare context.Background(). A positive timeout
-// hard-kills the command when it elapses (0 = no hard timeout; the command
-// runs until it exits or is killed).
-func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout time.Duration, isolated bool) (string, error) {
+// rather than being severed by a bare context.Background(). An enabled timeout
+// hard-kills the command when it elapses; a disabled [Timeout] lets it run until
+// it exits or is killed.
+func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout Timeout, isolated bool) (string, error) {
+	if err := timeout.Validate(); err != nil {
+		return "", err
+	}
 	base := context.WithoutCancel(ctx)
 	var (
 		runCtx context.Context
 		cancel context.CancelFunc
 	)
-	if timeout > 0 {
-		runCtx, cancel = context.WithTimeout(base, timeout)
+	if duration, enabled := timeout.Duration(); enabled {
+		runCtx, cancel = context.WithTimeout(base, duration)
 	} else {
 		runCtx, cancel = context.WithCancel(base)
 	}
@@ -153,7 +198,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	// On kill/timeout, force-close the pipes shortly after so the Wait goroutine
 	// (and thus Done) returns promptly even when a child the shell spawned still
 	// holds them — otherwise Wait blocks until that child exits.
-	cmd.WaitDelay = time.Second
+	cmd.WaitDelay = processWaitDelay
 	process := newShellProcessOwner(cmd)
 	sh := &Shell{
 		cancel: cancel, cmd: cmd, process: process, started: time.Now(),
@@ -168,8 +213,13 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		cancel()
 		return "", ErrShellsClosed
 	}
+	if s.nextID == math.MaxUint64 {
+		s.mu.Unlock()
+		cancel()
+		return "", ErrShellIdentityExhausted
+	}
 	s.nextID++
-	id := "bg_" + strconv.Itoa(s.nextID)
+	id := newShellID(s.epoch, s.nextID)
 	sh.id = id
 	// Start while holding the owner lock so shutdown cannot observe a Shell
 	// whose exec.Cmd is only partly initialized. Once the shell is published,
@@ -180,7 +230,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		sh.finish("start failed: "+startErr.Error(), -1, false, nil)
 		s.shells[id] = sh
 		s.mu.Unlock()
-		return id, nil
+		return id.String(), nil
 	}
 	s.shells[id] = sh
 	s.mu.Unlock()
@@ -206,14 +256,18 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		}
 		sh.finish(info, code, killed, cleanupErr)
 	}()
-	return id, nil
+	return id.String(), nil
 }
 
 // Get returns the shell with id and whether it exists.
 func (s *Shells) Get(id string) (*Shell, bool) {
+	identity, valid := parseShellID(id)
+	if !valid {
+		return nil, false
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sh, ok := s.shells[id]
+	sh, ok := s.shells[identity]
 	return sh, ok
 }
 
@@ -245,7 +299,7 @@ func (s *Shells) RunningForSession(sessionID string) []RunningShell {
 		if finished {
 			continue
 		}
-		out = append(out, RunningShell{ID: sh.id, Command: sh.command})
+		out = append(out, RunningShell{ID: sh.id.String(), Command: sh.command})
 	}
 	slices.SortFunc(out, func(a, b RunningShell) int { return strings.Compare(a.ID, b.ID) })
 	return out
@@ -277,8 +331,12 @@ func (s *Shells) Kill(id string) (running bool, err error) {
 // window, so a finished command isn't left behind as a phantom background job.
 // Killing instead would cancel the already-exited process context needlessly.
 func (s *Shells) Remove(id string) {
+	identity, valid := parseShellID(id)
+	if !valid {
+		return
+	}
 	s.mu.Lock()
-	delete(s.shells, id)
+	delete(s.shells, identity)
 	s.mu.Unlock()
 }
 
@@ -290,13 +348,15 @@ func (s *Shells) KillAll() error {
 		s.mu.Lock()
 		s.closed = true
 		shells := s.shells
-		s.shells = map[string]*Shell{}
+		s.shells = map[shellID]*Shell{}
 		s.mu.Unlock()
-		ids := make([]string, 0, len(shells))
+		ids := make([]shellID, 0, len(shells))
 		for id := range shells {
 			ids = append(ids, id)
 		}
-		slices.Sort(ids)
+		slices.SortFunc(ids, func(left, right shellID) int {
+			return strings.Compare(left.String(), right.String())
+		})
 		var errs []error
 		for _, id := range ids {
 			sh := shells[id]

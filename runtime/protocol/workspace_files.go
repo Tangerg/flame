@@ -9,7 +9,7 @@ type WorkspaceQuery struct {
 type GetFileHeadRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`
-	Lines     int          `json:"lines,omitempty"`
+	Lines     *int         `json:"lines,omitempty"`
 }
 
 // GrepRequest — workspace.files.search body. Query is a Go/RE2-compatible
@@ -21,7 +21,7 @@ type GrepRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Query     string       `json:"query"`
 	Path      string       `json:"path,omitempty"`
-	Limit     int          `json:"limit,omitempty"`
+	Limit     *int         `json:"limit,omitempty"`
 }
 
 // ListFilesRequest — workspace.files.list body (API.md §7.5). Lists files under
@@ -45,9 +45,9 @@ type ListFilesRequest struct {
 type ReadFileRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`
-	StartLine int          `json:"startLine,omitempty"`
-	EndLine   int          `json:"endLine,omitempty"`
-	MaxBytes  int          `json:"maxBytes,omitempty"`
+	StartLine *int         `json:"startLine,omitempty"`
+	EndLine   *int         `json:"endLine,omitempty"`
+	MaxBytes  *int         `json:"maxBytes,omitempty"`
 }
 
 // FileContent is the workspace.files.read result (API.md §7.5). TotalLines is the

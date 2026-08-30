@@ -244,9 +244,9 @@ func (a *app) deleteSchedule(id string) {
 	}
 }
 
-func (a *app) reportScheduleMutation(message string, presentation sessionContextEpoch) {
+func (a *app) reportScheduleMutation(message string, presentation *sessionContextLease) {
 	a.message(message)
-	if presentation == a.sessionContext {
+	if a.sessionContext.current(presentation) {
 		a.ShowSchedules()
 	}
 }

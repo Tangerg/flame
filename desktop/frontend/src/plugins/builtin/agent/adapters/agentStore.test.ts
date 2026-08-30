@@ -106,11 +106,12 @@ function seedInterrupt(kind: "approval" | "question", itemId: string): void {
 }
 const started = (i: Item): StreamEvent => ({ type: "item.started", item: i });
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
-const applyCompletedItems = (items: Item[]): void =>
+const applyCompletedItems = (items: Item[]): void => {
   useAgentStore.getState().applyRunEvents(
     SID,
     items.map((value) => fold(completed(value))),
   );
+};
 
 const runRef = (partial: Partial<RunRef> = {}): RunRef => ({
   id: "run_1",
@@ -401,7 +402,7 @@ describe("agentStore authoritative refresh", () => {
     owner.retireProjectionGeneration([SID]);
 
     const retired = useAgentStore.getState().sessions[SID]!;
-    expect(retired.viewEpoch).toBe(previous.viewEpoch + 1);
+    expect(retired.viewEpoch).toBe(previous.viewEpoch + 1n);
     expect(owner.commit(SID, token, EMPTY_AGENT_SESSION_VIEW)).toBe(false);
     owner.dispose();
   });
@@ -429,7 +430,7 @@ describe("agentStore authoritative refresh", () => {
 
     const refreshed = useAgentStore.getState().sessions[SID]!;
     expect(refreshed.view).toBe(visible);
-    expect(refreshed.viewEpoch).toBe(entry.viewEpoch + 1);
+    expect(refreshed.viewEpoch).toBe(entry.viewEpoch + 1n);
     expect(token.generation).toBe(refreshed.viewEpoch);
     expect(store.commitViewRefresh(SID, token, EMPTY_AGENT_SESSION_VIEW)).toBe(true);
   });
@@ -538,6 +539,43 @@ describe("agentStore.resolveInterrupt", () => {
 });
 
 describe("agentStore never resurrects a dropped session", () => {
+  it("advances a remounted projection beyond the number safe-integer boundary", () => {
+    const store = useAgentStore.getState();
+    const exhaustedNumberIdentity = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    useAgentStore.setState({ projectionGenerationSequence: exhaustedNumberIdentity });
+    store.dropSession(SID);
+    store.ensureSession(SID);
+
+    expect(useAgentStore.getState().sessions[SID]!.viewEpoch).toBe(exhaustedNumberIdentity + 1n);
+  });
+
+  it("advances refresh, material, and authority identities beyond the safe-integer boundary", () => {
+    const store = useAgentStore.getState();
+    store.dropSession(SID);
+    store.ensureSession(SID);
+    const boundary = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    useAgentStore.setState((state) => ({
+      sessions: {
+        ...state.sessions,
+        [SID]: {
+          ...state.sessions[SID]!,
+          refreshSequence: boundary,
+          viewRevision: boundary,
+          authoritativeRevision: boundary,
+        },
+      },
+    }));
+
+    const token = useAgentStore.getState().beginViewRefresh(SID, false)!;
+    expect(token.requestSequence).toBe(boundary + 1n);
+    expect(useAgentStore.getState().commitViewRefresh(SID, token, EMPTY_AGENT_SESSION_VIEW)).toBe(
+      true,
+    );
+    const committed = useAgentStore.getState().sessions[SID]!;
+    expect(committed.viewRevision).toBe(boundary + 1n);
+    expect(committed.authoritativeRevision).toBe(boundary + 1n);
+  });
+
   it("does not reuse a retired projection generation when the same Session is remounted", () => {
     const store = useAgentStore.getState();
     store.ensureSession(SID);
@@ -569,9 +607,10 @@ describe("agentStore never resurrects a dropped session", () => {
   // entry (prune won't fire again for an id no longer in openSessionIds → leak).
   it("applyRunEvents on an absent session is a no-op (no ghost entry)", () => {
     useAgentStore.getState().dropSession("ses_ghost");
-    useAgentStore
+    const applied = useAgentStore
       .getState()
       .applyRunEvents("ses_ghost", [runStarted("run_x", "ses_ghost")].map(fold));
+    expect(applied).toBe(false);
     expect(useAgentStore.getState().sessions["ses_ghost"]).toBeUndefined();
   });
 

@@ -18,7 +18,7 @@ import (
 // the component task group with connecting → settled status published for the
 // status observers, so the initiating request does not abort it while shutdown
 // still can.
-func (c *Coordinator) ReconnectServer(ctx context.Context, name string) error {
+func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ServerName) error {
 	return c.startConnection(ctx, name, func(ctx context.Context) error {
 		return c.connectionControl.Reconnect(ctx, name)
 	})
@@ -36,14 +36,14 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name string) error {
 // Returns [errConnectionUnavailable] when the coordinator lacks a required
 // connection dependency, [ErrUnknownServer] or [ErrServerDisabled] when
 // durable state refuses the command, or [errClosed] during shutdown.
-func (c *Coordinator) startConnection(ctx context.Context, name string, dial func(context.Context) error) error {
+func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.ServerName, dial func(context.Context) error) error {
 	if _, err := c.connectionTarget(ctx, name); err != nil {
 		return err
 	}
 	return c.dispatchConnection(ctx, name, dial, true, nil, nil)
 }
 
-func (c *Coordinator) connectionTarget(ctx context.Context, name string) (mcpserver.Server, error) {
+func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
 	if c.registry == nil || c.statusReader == nil || c.connectionControl == nil {
 		return mcpserver.Server{}, errConnectionUnavailable
 	}
@@ -86,7 +86,7 @@ const (
 // group is shutting down.
 func (c *Coordinator) dispatchConnection(
 	ctx context.Context,
-	name string,
+	name mcpserver.ServerName,
 	connect func(context.Context) error,
 	publishConnecting bool,
 	start <-chan struct{},
@@ -97,84 +97,18 @@ func (c *Coordinator) dispatchConnection(
 		return errClosed
 	}
 	dialCtx, operation := c.replaceDial(ownerCtx, name)
-	if !c.tasks.StartLinked(dialCtx, func(ctx context.Context) {
-		outcome := connectionCanceled
-		if completed != nil {
-			defer func() { completed(outcome) }()
-		}
-		defer releaseOwner()
-		defer c.clearDial(name, operation)
-		if start != nil {
-			select {
-			case <-start:
-			case <-ctx.Done():
-				return
-			}
-		}
-		if err := ctx.Err(); err != nil {
-			return
-		}
-		c.mutationMu.Lock()
-		srv, ok, err := c.registry.Get(ctx, name)
-		if err != nil {
-			c.mutationMu.Unlock()
-			recordConnectionError(ctx, fmt.Errorf("mcp: read MCP server %q before connection: %w", name, err))
-			outcome = connectionFailed
-			return
-		}
-		if !ok || !srv.Enabled {
-			c.mutationMu.Unlock()
-			return
-		}
-		if !c.currentDial(name, operation) {
-			c.mutationMu.Unlock()
-			return
-		}
-		var connecting statusEvent
-		if publishConnecting {
-			connecting = c.prepareStatus(ServerStatus{
-				Name:  name,
-				Known: true,
-				State: mcpserver.ConnectionConnecting,
-			})
-		}
-		c.mutationMu.Unlock()
-		c.publishStatus(connecting)
-
-		// Interactive OAuth may wait minutes for a human. The connection command
-		// owns per-server generation and cancellation, so no application-wide
-		// mutation lock is held while dialing. A configure/remove can supersede it
-		// immediately; stale completion cannot swap itself back in.
-		connectionErr := connect(ctx)
-		if connectionErr != nil && ctx.Err() == nil {
-			recordConnectionError(ctx, fmt.Errorf("mcp: connect MCP server %q: %w", name, connectionErr))
-		}
-		if ctx.Err() != nil {
-			return
-		}
-
-		status := c.liveStatus(name)
-		c.mutationMu.Lock()
-		srv, ok, err = c.registry.Get(ctx, name)
-		if err != nil {
-			c.mutationMu.Unlock()
-			recordConnectionError(ctx, fmt.Errorf("mcp: read MCP server %q after connection: %w", name, err))
-			outcome = connectionFailed
-			return
-		}
-		if !ok || !srv.Enabled || !c.currentDial(name, operation) {
-			c.mutationMu.Unlock()
-			return
-		}
-		settled := c.prepareStatus(status)
-		c.mutationMu.Unlock()
-		c.publishStatus(settled)
-		if connectionErr != nil || status.State != mcpserver.ConnectionConnected {
-			outcome = connectionFailed
-			return
-		}
-		outcome = connectionSucceeded
-	}) {
+	command := connectionDispatch{
+		coordinator:       c,
+		name:              name,
+		connect:           connect,
+		publishConnecting: publishConnecting,
+		start:             start,
+		completed:         completed,
+		operation:         operation,
+		releaseOwner:      releaseOwner,
+		outcome:           connectionCanceled,
+	}
+	if !c.tasks.StartLinked(dialCtx, command.run) {
 		operation.cancel()
 		c.clearDial(name, operation)
 		releaseOwner()
@@ -183,11 +117,133 @@ func (c *Coordinator) dispatchConnection(
 	return nil
 }
 
+type connectionDispatch struct {
+	coordinator       *Coordinator
+	name              mcpserver.ServerName
+	connect           func(context.Context) error
+	publishConnecting bool
+	start             <-chan struct{}
+	completed         func(connectionOutcome)
+	operation         *activeDial
+	releaseOwner      func()
+	outcome           connectionOutcome
+}
+
+func (command *connectionDispatch) run(ctx context.Context) {
+	if command.completed != nil {
+		defer func() { command.completed(command.outcome) }()
+	}
+	defer command.releaseOwner()
+	defer command.coordinator.clearDial(command.name, command.operation)
+	if !command.awaitStart(ctx) || ctx.Err() != nil {
+		return
+	}
+	connecting, current, err := command.prepareConnecting(ctx)
+	if err != nil {
+		command.fail(ctx, err)
+		return
+	}
+	if !current {
+		return
+	}
+	command.coordinator.publishStatus(connecting)
+
+	// Interactive OAuth may wait minutes for a human. The connection command
+	// owns per-server generation and cancellation, so no application-wide
+	// mutation lock is held while dialing. A configure/remove can supersede it
+	// immediately; stale completion cannot swap itself back in.
+	connectionErr := command.connect(ctx)
+	if connectionErr != nil && ctx.Err() == nil {
+		recordConnectionError(ctx, fmt.Errorf("mcp: connect MCP server %q: %w", command.name, connectionErr))
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	status := command.coordinator.liveStatus(command.name)
+	settled, current, err := command.prepareSettled(ctx, status)
+	if err != nil {
+		command.fail(ctx, err)
+		return
+	}
+	if !current {
+		return
+	}
+	command.coordinator.publishStatus(settled)
+	if connectionErr != nil || status.State != mcpserver.ConnectionConnected {
+		command.outcome = connectionFailed
+		return
+	}
+	command.outcome = connectionSucceeded
+}
+
+func (command *connectionDispatch) awaitStart(ctx context.Context) bool {
+	if command.start == nil {
+		return true
+	}
+	select {
+	case <-command.start:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (command *connectionDispatch) prepareConnecting(ctx context.Context) (*statusEvent, bool, error) {
+	coordinator := command.coordinator
+	coordinator.mutationMu.Lock()
+	defer coordinator.mutationMu.Unlock()
+	srv, ok, err := coordinator.registry.Get(ctx, command.name)
+	if err != nil {
+		return nil, false, fmt.Errorf(
+			"mcp: read MCP server %q before connection: %w",
+			command.name,
+			err,
+		)
+	}
+	if !ok || !srv.Enabled || !coordinator.currentDial(command.name, command.operation) {
+		return nil, false, nil
+	}
+	if !command.publishConnecting {
+		return nil, true, nil
+	}
+	return coordinator.prepareStatus(ServerStatus{
+		Name:  command.name,
+		Known: true,
+		State: mcpserver.ConnectionConnecting,
+	}), true, nil
+}
+
+func (command *connectionDispatch) prepareSettled(
+	ctx context.Context,
+	status ServerStatus,
+) (*statusEvent, bool, error) {
+	coordinator := command.coordinator
+	coordinator.mutationMu.Lock()
+	defer coordinator.mutationMu.Unlock()
+	srv, ok, err := coordinator.registry.Get(ctx, command.name)
+	if err != nil {
+		return nil, false, fmt.Errorf(
+			"mcp: read MCP server %q after connection: %w",
+			command.name,
+			err,
+		)
+	}
+	if !ok || !srv.Enabled || !coordinator.currentDial(command.name, command.operation) {
+		return nil, false, nil
+	}
+	return coordinator.prepareStatus(status), true, nil
+}
+
+func (command *connectionDispatch) fail(ctx context.Context, err error) {
+	recordConnectionError(ctx, err)
+	command.outcome = connectionFailed
+}
+
 // replaceDial gives each server exactly one current connection operation.
 // A registry mutation, reconnect, or authorization attempt supersedes the previous dial by
 // canceling its context; connection commands must honor ctx while dialing and
 // reject a stale completion through their per-server generation check.
-func (c *Coordinator) replaceDial(ctx context.Context, name string) (context.Context, *activeDial) {
+func (c *Coordinator) replaceDial(ctx context.Context, name mcpserver.ServerName) (context.Context, *activeDial) {
 	dialCtx, cancel := context.WithCancel(ctx)
 	dial := &activeDial{cancel: cancel}
 	c.dialMu.Lock()
@@ -199,7 +255,7 @@ func (c *Coordinator) replaceDial(ctx context.Context, name string) (context.Con
 	return dialCtx, dial
 }
 
-func (c *Coordinator) cancelDial(name string) {
+func (c *Coordinator) cancelDial(name mcpserver.ServerName) {
 	c.dialMu.Lock()
 	if dial := c.dials[name]; dial != nil {
 		dial.cancel()
@@ -208,7 +264,7 @@ func (c *Coordinator) cancelDial(name string) {
 	c.dialMu.Unlock()
 }
 
-func (c *Coordinator) clearDial(name string, dial *activeDial) {
+func (c *Coordinator) clearDial(name mcpserver.ServerName, dial *activeDial) {
 	c.dialMu.Lock()
 	if c.dials[name] == dial {
 		delete(c.dials, name)
@@ -216,7 +272,7 @@ func (c *Coordinator) clearDial(name string, dial *activeDial) {
 	c.dialMu.Unlock()
 }
 
-func (c *Coordinator) currentDial(name string, dial *activeDial) bool {
+func (c *Coordinator) currentDial(name mcpserver.ServerName, dial *activeDial) bool {
 	c.dialMu.Lock()
 	defer c.dialMu.Unlock()
 	return c.dials[name] == dial
@@ -229,43 +285,55 @@ func recordConnectionError(ctx context.Context, err error) {
 }
 
 type statusEvent struct {
-	sequence uint64
-	status   ServerStatus
+	status ServerStatus
+	next   *statusEvent
+	ready  bool
 }
 
 type statusQueue struct {
 	mu       sync.Mutex
-	next     uint64
-	pending  map[uint64]ServerStatus
+	head     *statusEvent
+	tail     *statusEvent
 	draining bool
 	sink     func(ServerStatus)
 }
 
 func newStatusQueue(sink func(ServerStatus)) *statusQueue {
-	return &statusQueue{
-		next:    1,
-		pending: make(map[uint64]ServerStatus),
-		sink:    sink,
-	}
+	return &statusQueue{sink: sink}
 }
 
-// prepareStatus is called while mutationMu is held. The sequence lets
-// lock-free callback publication retain the exact mutation order.
-func (c *Coordinator) prepareStatus(status ServerStatus) statusEvent {
-	c.statusSequence++
-	return statusEvent{sequence: c.statusSequence, status: status}
+// prepareStatus is called while mutationMu is held. Queue registration captures
+// that exact mutation order before callback publication becomes lock-free.
+func (c *Coordinator) prepareStatus(status ServerStatus) *statusEvent {
+	return c.statusQueue.prepare(status)
 }
 
-func (c *Coordinator) publishStatus(event statusEvent) {
+func (c *Coordinator) publishStatus(event *statusEvent) {
 	c.statusQueue.publish(event)
 }
 
-func (s *statusQueue) publish(event statusEvent) {
-	if s == nil || s.sink == nil || event.sequence == 0 {
+func (s *statusQueue) prepare(status ServerStatus) *statusEvent {
+	event := &statusEvent{status: status}
+	if s == nil || s.sink == nil {
+		return event
+	}
+	s.mu.Lock()
+	if s.tail == nil {
+		s.head = event
+	} else {
+		s.tail.next = event
+	}
+	s.tail = event
+	s.mu.Unlock()
+	return event
+}
+
+func (s *statusQueue) publish(event *statusEvent) {
+	if s == nil || s.sink == nil || event == nil {
 		return
 	}
 	s.mu.Lock()
-	s.pending[event.sequence] = event.status
+	event.ready = true
 	if s.draining {
 		s.mu.Unlock()
 		return
@@ -275,15 +343,18 @@ func (s *statusQueue) publish(event statusEvent) {
 
 	for {
 		s.mu.Lock()
-		status, ok := s.pending[s.next]
-		if !ok {
+		event := s.head
+		if event == nil || !event.ready {
 			s.draining = false
 			s.mu.Unlock()
 			return
 		}
-		delete(s.pending, s.next)
-		s.next++
+		s.head = event.next
+		event.next = nil
+		if s.head == nil {
+			s.tail = nil
+		}
 		s.mu.Unlock()
-		s.sink(status)
+		s.sink(event.status)
 	}
 }

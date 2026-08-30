@@ -44,7 +44,7 @@ func TestDefaultCORSOriginsAuthorizeShippedDesktopClients(t *testing.T) {
 			if err != nil {
 				t.Fatalf("preflight: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if got := resp.Header.Get("Access-Control-Allow-Origin"); got != origin {
 				t.Fatalf("Allow-Origin = %q, want %q", got, origin)
 			}
@@ -95,7 +95,7 @@ func TestAuthGateMissingToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
@@ -119,7 +119,7 @@ func TestAuthGate401HasChallenge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
@@ -141,7 +141,7 @@ func TestAuthGateWrongToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
@@ -162,7 +162,7 @@ func TestAuthGateCorrectToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, body = %s", resp.StatusCode, raw)
@@ -181,7 +181,7 @@ func TestAuthGateBypassesSidecars(t *testing.T) {
 		if err != nil {
 			t.Fatalf("get %s: %v", path, err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != netHTTP.StatusOK {
 			t.Fatalf("%s status = %d, want 200", path, resp.StatusCode)
 		}
@@ -204,7 +204,7 @@ func TestCORSPreflight(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < netHTTP.StatusOK || resp.StatusCode >= 300 {
 		t.Fatalf("status = %d, want 2xx", resp.StatusCode)
 	}
@@ -234,7 +234,7 @@ func TestCORSAllowedOriginOnPost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "http://app" {
 		t.Fatalf("Allow-Origin = %q, want http://app", got)
 	}
@@ -265,7 +265,7 @@ func TestCORSDisallowedOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("Allow-Origin = %q, want empty for disallowed origin", got)
 	}

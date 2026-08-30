@@ -43,7 +43,7 @@ Core terminal interactions are available from both the keyboard and mouse:
 - `/sessions` opens a paginated center with current-session preview, favorites, rename, delete, and load-more actions; `/timeline` jumps among retained runs or forks at a selected root run, and `/fork [title]` forks the complete session with an optional title. `/workspace [directory]` resolves an explicit directory through the runtime before creating a session, while `/workspace` merges runtime-known and recent workspaces.
 - `/changes`, `/diff [path]`, `/preview <path>`, `/grep <query>`, `/browse [path]`, `/read <path>`, and `/workspaces` consume the runtime's authoritative workspace APIs and open results in the searchable Reader. The header's `ΔN` indicator is refreshed from `files.changed`; sequence gaps and reconnects trigger a full changes read instead of trusting event payloads as state.
 - `/tools` audits the runtime's direct read-only diagnostic catalog and JSON schemas. `/tool-invoke <name> [json-object]` resolves an exact or unique name, confines the call to the admitted workspace, rejects non-safe catalog entries at the protocol boundary, and renders canonical JSON in the Reader.
-- `/usage [positive-days|all]`, `/roles`, `/utility`, and `/embedding` expose runtime accounting and auxiliary model roles; omitting the usage window selects all time. `/providers`, `/provider-test`, and `/provider-config` provide masked diagnostics and explicit endpoint/key changes; credentials are write-only and never enter command history or terminal frames.
+- `/usage [positive-days|all]` and `/roles` expose runtime accounting and auxiliary model roles; omitting the usage window explicitly selects all time, while recent windows require positive days. `/utility <provider/model|inherit>` and `/embedding <provider/model|off>` keep inherited utility and disabled embedding as separate explicit states. `/providers`, `/provider-test`, and `/provider-config` provide masked diagnostics and explicit endpoint/key changes; credentials are write-only and never enter command history or terminal frames.
 - `/goal`, `/goal-start`, `/goal-stop`, and `/goal-resume` expose the autonomous-session lifecycle, budget, usage, model, and stop reason. An open goal Reader refreshes from `goals.changed` without treating event payloads as authoritative state.
 - `/skills`, `/skill-library`, and `/skill-proposals` expose workspace discovery, managed lifecycle, and full proposal instructions. Archive/restore and confirmed approve/reject operations bind decisions to the proposal's complete immutable revision; `skills.changed` refreshes an open Skill Reader.
 - `/mcp`, `/mcp-tools [server]`, `/mcp-create`, `/mcp-edit`, `/mcp-probe`, `/mcp-delete`, `/mcp-reconnect`, and `/mcp-auth` expose MCP server lifecycle, tool schemas, health checks, reconnection, and browser authorization. Configuration uses a bounded general/connection/policy wizard that shows only the selected transport, preserves back navigation, and wipes every secret projection on exit. Connection credentials remain write-only, authorization polling is cancellable, and `mcp.changed` refreshes only the open MCP projection.
@@ -53,7 +53,7 @@ Core terminal interactions are available from both the keyboard and mouse:
 - `/agent-docs` shows the applicable AGENTS.md hierarchy. `/recipes` audits parameterized prompt sources, while `/recipe <name> [arguments]` expands `$ARGUMENTS` and `$1` through `$9` into a resize-safe multiline review before using the same send-or-queue path as an authored prompt.
 - `/hooks` audits global and project lifecycle hooks, including their exact shell command or declarative injection, source, matcher, timeout, active state, and project trust root. `/hooks-trust` and `/hooks-revoke` re-read that root, require explicit confirmation, and refetch the authoritative catalog after mutation; `hooks.changed` refreshes the open catalog after external edits.
 - `/feedback <positive|negative> [note]` records a quality signal against the latest durable assistant item when one exists, otherwise its run or session, without coupling feedback persistence to the conversation aggregate.
-- Prompt history, per-session drafts, recent workspaces, and `/stash` entries are durable CLI-local authoring state. `/stashes`, `/stash-apply`, and `/stash-delete` manage saved prompts; `Ctrl+E` or `/editor` performs a lossless round trip through `FLAME_EDITOR`, `VISUAL`, or `EDITOR`.
+- Prompt history, per-session drafts, recent workspaces, and `/stash` entries are durable CLI-local authoring state. Production construction requires an explicit absolute state root; process-memory construction is a separate mode used by state-less adapters and tests, never an empty-path fallback. History, stash, and workspace retention use validated positive capacities, with only an absent override selecting the named default. `/stashes`, `/stash-apply`, and `/stash-delete` manage saved prompts; `Ctrl+E` or `/editor` performs a lossless round trip through `FLAME_EDITOR`, `VISUAL`, or `EDITOR`.
 - `/copy-last` copies the latest durable assistant response. `/export markdown [filename]` and `/export json [filename]` publish the runtime's native session document with conflict-safe naming; `/import <artifact.json>` validates, confirms, imports, and opens a portable session.
 - `/rollback <run-id|all> [history|files|both]` previews the authoritative root-run boundary, requires explicit confirmation, rejects a session that changed after the preview, and restores the earliest dropped text to the composer. `/steer <instruction>` targets the exact run segment currently on screen and is distinct from a queued follow-up.
 - Completion, failure, approval, and question attention signals update the terminal title and desktop notification only while the terminal is unfocused; the marker clears when the user returns.
@@ -101,6 +101,20 @@ Architecture tests prevent the domain from importing Cobra, Viper, oolong, rende
 - honor context cancellation for every operation and stream.
 
 `main.go` is the composition root. It installs a lazy process-level owner; command help and static completion do not open databases or model clients. Protocol DTOs, request metadata, replay options, inline media, tool-result JSON, capability negotiation, and structured runtime errors are all confined to the adapter. The command tree, TUI, renderers, attachment handling, and extension system depend only on the CLI projection.
+
+Durable mutation replay is represented once in `internal/commandreplay`: a Runtime publishes one indivisible store capability, each journal records an explicit protected or unprotected guard, and a policy evaluates store ownership and the exact retention deadline at the real I/O boundary. Start, resume, cancel, steer, session deletion, and rollback do not reconstruct replay safety from empty strings or zero durations.
+
+An unprotected guard authorizes only the first attempt of a fresh command. If that acknowledgement is uncertain, or the process restarts with the journal still present, the CLI refuses to replay unless the current Runtime advertises the same protected replay store and the original deadline has not arrived.
+
+Run allowances are explicit even when unlimited. The durable Workbench stores the complete unlimited/limited policy as a strict union, so a queued limited Run cannot lose token, step, or cost caps across process restart; missing or legacy empty policy records fail closed.
+
+Run tree identity is explicit too: root lineage and validated child lineage are separate domain values. Runtime projection owns the wire mapping, so a missing child field or an uninitialized lineage cannot silently move a subagent into the root timeline.
+
+Queued prompts also use a non-zero stable identity distinct from their durable runtime command identity. Dispatch reservation, drawer selection, and editing presence are explicit states; the local identity allocator fails before mutation instead of wrapping during an extreme long-running session.
+
+Opaque catalog cursors are bounded transport values, not an invitation to an unbounded client walk. Full schedule and workspace reads each own a finite page-request capacity; oversized, cyclic, and capacity-exhausting continuations fail the whole read. Cycle detection retains fixed-size fingerprints rather than Runtime-controlled cursor strings, so a damaged Runtime cannot multiply cursor size by traversal length in CLI memory.
+
+Session search and workspace selection are native `sessions.list` predicates bound into the Runtime's cursor identity. The CLI sends one bounded page request and consumes the authoritative filtered page; it does not walk the unfiltered catalog one Session and one RPC at a time or maintain a second title/workspace matcher.
 
 [`RUNTIME_API_COVERAGE.md`](RUNTIME_API_COVERAGE.md) inventories all 88 exported embedded methods and records the production surface and acceptance evidence required before each bounded context is marked complete. A reflection-based contract test fails whenever that public method set drifts, so a new backend API cannot remain silently unreviewed.
 
@@ -176,7 +190,7 @@ Each configured plugin directory, or one of its immediate child directories, may
 }
 ```
 
-The entry must be a regular executable inside its canonical plugin directory. Absolute paths, unsafe segments, backslash-separated paths, and symlink escapes are rejected. Manifests reject unknown fields and duplicate command spellings. A command's `arguments` mode is `none`, `optional`, or `required` (omission means `none`). A plugin can declare at most 128 commands, 16 aliases per command, and a timeout from 1 through 60 seconds.
+The entry must be a regular executable inside its canonical plugin directory. Absolute paths, unsafe segments, backslash-separated paths, and symlink escapes are rejected. Manifests reject unknown fields and duplicate command spellings. A command's `arguments` mode is `none`, `optional`, or `required` (omission means `none`). A plugin can declare at most 128 commands, 16 aliases per command, and a timeout from 1 through 60 seconds; omitting `timeoutSeconds` uses the named 10-second default, while an explicit zero is invalid.
 
 Commands use one JSON request on stdin and one JSON response on stdout:
 
@@ -192,7 +206,7 @@ The host caps each output stream at 1 MiB, request JSON at 128 KiB, arguments at
 
 ## Development
 
-The TUI is pinned to the published oolong `v0.12.0` modules. Keep the module set on one release to avoid mixing component contracts.
+The TUI is pinned to the published oolong `v0.16.0` modules. Keep the module set on one release to avoid mixing component contracts.
 
 ```sh
 go mod tidy

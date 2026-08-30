@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"math"
 	"sync"
 )
 
@@ -45,7 +46,16 @@ const (
 
 type operationLease struct {
 	slot operationSlot
-	id   uint64
+	id   operationLeaseID
+}
+
+type operationLeaseID uint64
+
+func (id operationLeaseID) successor() (operationLeaseID, bool) {
+	if id == operationLeaseID(math.MaxUint64) {
+		return 0, false
+	}
+	return id + 1, true
 }
 
 type operationScope uint8
@@ -65,7 +75,7 @@ type operationPolicy struct {
 }
 
 type ownedOperation struct {
-	id     uint64
+	id     operationLeaseID
 	policy operationPolicy
 	cancel context.CancelFunc
 }
@@ -78,7 +88,7 @@ type operationOwner struct {
 	cancel context.CancelFunc
 
 	mu     sync.Mutex
-	next   uint64
+	next   operationLeaseID
 	active map[operationSlot]ownedOperation
 	closed bool
 	wg     sync.WaitGroup
@@ -127,6 +137,11 @@ func (o *operationOwner) goWithPolicy(
 		o.mu.Unlock()
 		return false
 	}
+	next, available := o.next.successor()
+	if !available {
+		o.mu.Unlock()
+		return false
+	}
 	if previous, exists := o.active[slot]; exists {
 		if !replace {
 			o.mu.Unlock()
@@ -135,8 +150,8 @@ func (o *operationOwner) goWithPolicy(
 		previous.cancel()
 	}
 	ctx, cancel := context.WithCancel(o.ctx)
-	o.next++
-	lease := operationLease{slot: slot, id: o.next}
+	o.next = next
+	lease := operationLease{slot: slot, id: next}
 	o.active[slot] = ownedOperation{id: lease.id, policy: policy, cancel: cancel}
 	o.wg.Go(func() {
 		defer o.release(lease, cancel)

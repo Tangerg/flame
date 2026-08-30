@@ -36,7 +36,7 @@ describe("mcpServerDraft", () => {
       args: ["-y", "@modelcontextprotocol/server-git"],
       env: { TOKEN: "a=b", EMPTY_KEY: "" },
       dir: "/repo",
-      timeoutSeconds: 30,
+      handshakeTimeout: { type: "bounded", seconds: 30 },
       disabledTools: ["danger"],
       autoApproveTools: ["status"],
     });
@@ -52,6 +52,7 @@ describe("mcpServerDraft", () => {
       icon: "tool",
       type: "streamableHttp",
       enabled: false,
+      handshakeTimeout: { type: "unbounded" },
       url: "https://example.com/mcp",
       authorizationMasked: "********",
     };
@@ -67,7 +68,7 @@ describe("mcpServerDraft", () => {
         url: " https://example.com/mcp ",
         authorization: editRetainedValue("   "),
         headers: editRetainedValue("X-Trace=abc=123\nBare\n"),
-        timeoutSec: "0",
+        timeoutSec: "",
         disabledTools: [],
         autoApproveTools: [],
       },
@@ -82,7 +83,7 @@ describe("mcpServerDraft", () => {
       headers: { "X-Trace": "abc=123", Bare: "" },
     });
     expect(input.authorization).toBeUndefined();
-    expect(input.timeoutSeconds).toBeUndefined();
+    expect(input.handshakeTimeout).toEqual({ type: "unbounded" });
     expect(input.disabledTools).toBeUndefined();
     expect(input.autoApproveTools).toBeUndefined();
   });
@@ -101,7 +102,7 @@ describe("mcpServerDraft", () => {
       args: ["server.js", "--root", "/repo"],
       envMasked: { A: "********", B: "********" },
       headersMasked: { "X-Env": "********" },
-      timeoutSeconds: 15,
+      handshakeTimeout: { type: "bounded", seconds: 15 },
       disabledTools: ["delete"],
       autoApproveTools: ["read"],
     });
@@ -130,6 +131,7 @@ describe("mcpServerDraft", () => {
       icon: "tool",
       type: "streamableHttp",
       enabled: true,
+      handshakeTimeout: { type: "unbounded" },
       url: "https://old.example/mcp",
       authorizationMasked: "********",
     };
@@ -160,6 +162,7 @@ describe("mcpServerDraft", () => {
       icon: "tool",
       type: "streamableHttp",
       enabled: true,
+      handshakeTimeout: { type: "unbounded" },
       url: "https://old.example/mcp",
       headersMasked: { "X-API-Key": "********" },
     };
@@ -187,6 +190,7 @@ describe("mcpServerDraft", () => {
       icon: "folder",
       type: "stdio",
       enabled: true,
+      handshakeTimeout: { type: "unbounded" },
       command: "node",
       args: ["server.js"],
       dir: "/repo",
@@ -214,6 +218,15 @@ describe("mcpServerDraft", () => {
     const base = initialMCPServerDraft();
 
     expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx" })).toBe(true);
+    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "0" })).toBe(
+      false,
+    );
+    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "1.5" })).toBe(
+      false,
+    );
+    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "15" })).toBe(
+      true,
+    );
     expect(isMCPServerDraftValid({ ...base, name: "git", command: "" })).toBe(false);
     expect(
       isMCPServerDraftValid({

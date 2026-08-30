@@ -51,14 +51,13 @@ type toolBlock struct {
 	presentation ToolPresentation
 	expanded     bool
 	body         []headless.Block
-	nextObserver uint64
-	observers    map[uint64]func(readerDocument)
+	observers    readerDocumentObservers
 }
 
 var (
-	_ headless.Block    = (*toolBlock)(nil)
-	_ headless.Copyable = (*toolBlock)(nil)
-	_ mutableToolBlock  = (*toolBlock)(nil)
+	_ headless.Block         = (*toolBlock)(nil)
+	_ headless.TextProjector = (*toolBlock)(nil)
+	_ mutableToolBlock       = (*toolBlock)(nil)
 )
 
 func newToolBlock(p BlockPresentation, block agent.Block) *toolBlock {
@@ -170,7 +169,7 @@ func (t *toolBlock) Rows(width int) []text.Row {
 		bodyWidth := max(width-toolContentInset, 1)
 		for _, block := range t.body {
 			height := block.Measure(bodyWidth)
-			if copyable, ok := block.(headless.Copyable); ok {
+			if copyable, ok := block.(headless.TextProjector); ok {
 				copied := copyable.Rows(bodyWidth)
 				for i := range min(len(copied), height) {
 					copied[i].Offset += toolContentInset
@@ -235,23 +234,14 @@ func (t *toolBlock) rebuild() {
 	}
 	t.presentation = presentation
 	t.body = renderToolSections(BlockPresentation{Theme: t.theme, Glyphs: t.glyphs, Syntax: t.syntax}, presentation.Sections, true)
-	for _, observer := range t.observers {
-		observer(t.readerDocument())
-	}
+	t.observers.notify(t.readerDocument())
 }
 
 func (t *toolBlock) Observe(observer func(readerDocument)) func() {
 	if t == nil || observer == nil {
 		return func() {}
 	}
-	if t.observers == nil {
-		t.observers = make(map[uint64]func(readerDocument))
-	}
-	t.nextObserver++
-	id := t.nextObserver
-	t.observers[id] = observer
-	observer(t.readerDocument())
-	return func() { delete(t.observers, id) }
+	return t.observers.observe(observer, t.readerDocument())
 }
 
 func (t *toolBlock) readerDocument() readerDocument {
@@ -272,8 +262,9 @@ func renderToolSections(p BlockPresentation, sections []ToolSection, truncate bo
 		switch section.Style {
 		case toolSectionDiff:
 			if hunks := parseUnifiedDiff(value); len(hunks) > 0 {
-				change := kit.NewDiff(p.Theme, p.Glyphs, hunks)
-				change.ShowNumbers(true)
+				change := kit.NewDiff(kit.DiffConfig{
+					Theme: p.Theme, Glyphs: p.Glyphs, Hunks: hunks, Numbers: true,
+				})
 				blocks = append(blocks, change)
 			} else {
 				blocks = append(blocks, kit.NewCode(p.Syntax.Lines("diff", value)))

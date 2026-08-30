@@ -5,7 +5,19 @@ import {
   validateNotificationParams,
   validateWire,
 } from "@flame/runtime-contract/validate";
-import { runEventReliability } from "@flame/runtime-contract/wire";
+import {
+  MAXIMUM_EXACT_JSON_INTEGER,
+  MAXIMUM_MODEL_IDENTITY_CHARACTERS,
+  MAXIMUM_PAGINATION_CURSOR_CHARACTERS,
+  MAXIMUM_PROVIDER_IDENTITY_CHARACTERS,
+  MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS,
+  MAXIMUM_RUNTIME_EVENT_SEQUENCE,
+  MAXIMUM_RUN_EVENT_ID_CHARACTERS,
+  RUN_EVENT_ID_PREFIX,
+  runEventIsReplayable,
+  runEventReliability,
+  SESSION_ARTIFACT_VERSION,
+} from "@flame/runtime-contract/wire";
 
 // One case per rule the compiler translates, because each rule takes its own code
 // path out of the schema tree: a type keyword, `required`, a closed `enum`, a value
@@ -30,6 +42,53 @@ const session = {
   updatedAt: "2026-07-07T10:05:00Z",
   revision: 3,
 };
+
+describe("model identity wire constraints", () => {
+  it("rejects control, whitespace, and overlong identities by Unicode code point", () => {
+    const start = {
+      sessionId: "ses_01",
+      input: [{ type: "text", text: "go" }],
+      provider: "openai",
+      model: "gpt-5",
+    };
+    expect(validateWire("StartRunRequest", { ...start, provider: "open ai" })).toContainEqual({
+      path: "StartRunRequest.provider",
+      detail: expect.stringContaining("expected to match"),
+    });
+    expect(
+      validateWire("StartRunRequest", {
+        ...start,
+        provider: "提".repeat(MAXIMUM_PROVIDER_IDENTITY_CHARACTERS),
+        model: "模".repeat(MAXIMUM_MODEL_IDENTITY_CHARACTERS),
+        reasoningEffort: "强".repeat(MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS),
+      }),
+    ).toEqual([]);
+    expect(
+      validateWire("StartRunRequest", {
+        ...start,
+        model: "m".repeat(MAXIMUM_MODEL_IDENTITY_CHARACTERS + 1),
+      }),
+    ).toContainEqual({
+      path: "StartRunRequest.model",
+      detail: `expected at most ${MAXIMUM_MODEL_IDENTITY_CHARACTERS} character(s)`,
+    });
+    expect(
+      validateWire("ModelCapabilities", { reasoning: true, reasoningLevels: ["high\n"] }),
+    ).toContainEqual({
+      path: "ModelCapabilities.reasoningLevels[0]",
+      detail: expect.stringContaining("expected to match"),
+    });
+    expect(validateWire("Usage", { byModel: { "bad model": {} } })).toContainEqual({
+      path: 'Usage.byModel["bad model"]',
+      detail: expect.stringContaining("expected to match"),
+    });
+    const overlongModel = "m".repeat(MAXIMUM_MODEL_IDENTITY_CHARACTERS + 1);
+    expect(validateWire("ArtifactUsage", { byModel: { [overlongModel]: {} } })).toContainEqual({
+      path: `ArtifactUsage.byModel[${JSON.stringify(overlongModel)}]`,
+      detail: `expected at most ${MAXIMUM_MODEL_IDENTITY_CHARACTERS} character(s)`,
+    });
+  });
+});
 
 const artifactSession = {
   id: "ses_01",
@@ -57,10 +116,41 @@ describe("the generated wire checks", () => {
     expect(runEventReliability("segment.finished")).toBe("authoritative");
     expect(runEventReliability("item.delta")).toBe("ephemeral");
     expect(runEventReliability("future.event")).toBeUndefined();
+    expect(runEventIsReplayable("segment.finished")).toBe(true);
+    expect(runEventIsReplayable("item.delta")).toBe(false);
+    expect(runEventIsReplayable("future.event")).toBeUndefined();
   });
 
   it("accepts a well-formed frame", () => {
     expect(validateWire("Session", session)).toEqual([]);
+  });
+
+  it("requires at least one real segment-progress fact", () => {
+    expect(validateWire("RunProgress", {})).toEqual([
+      { path: "RunProgress", detail: "matches no permitted alternative" },
+      { path: "RunProgress.step", detail: "is required" },
+    ]);
+    expect(validateWire("RunProgress", { activity: "Calling model" })).toEqual([]);
+    expect(
+      validateWire("RunProgress", {
+        step: 0,
+        contextTokens: 0,
+        usage: { inputTokens: 0 },
+      }),
+    ).toEqual([]);
+  });
+
+  it("distinguishes an unwritten Plan from a committed empty replacement", () => {
+    expect(validateWire("Plan", { sessionId: "ses_1" })).toEqual([]);
+    expect(
+      validateWire("Plan", {
+        sessionId: "ses_1",
+        state: { revision: 1, steps: [], updatedAt: "2026-08-29T00:00:00Z" },
+      }),
+    ).toEqual([]);
+    expect(
+      validateWire("StreamEvent", { type: "plan.updated", plan: { sessionId: "ses_1" } }),
+    ).toContainEqual({ path: "StreamEvent.plan.state", detail: "is required" });
   });
 
   it("binds every method result to its registered wire shape", () => {
@@ -205,8 +295,86 @@ describe("the generated wire checks", () => {
   });
 
   it("enforces generated request bounds", () => {
-    expect(validateWire("PageQuery", { limit: -1 })).toEqual([
-      { path: "PageQuery.limit", detail: "expected at least 0" },
+    expect(validateWire("PageQuery", { limit: 0 })).toEqual([
+      { path: "PageQuery.limit", detail: "expected at least 1" },
+    ]);
+    expect(
+      validateWire("PageQuery", {
+        cursor: "x".repeat(MAXIMUM_PAGINATION_CURSOR_CHARACTERS + 1),
+      }),
+    ).toEqual([
+      {
+        path: "PageQuery.cursor",
+        detail: `expected at most ${MAXIMUM_PAGINATION_CURSOR_CHARACTERS} character(s)`,
+      },
+    ]);
+    expect(
+      validateWire("ListSessionsRequest", {
+        cursor: "x".repeat(MAXIMUM_PAGINATION_CURSOR_CHARACTERS + 1),
+      }),
+    ).toEqual([
+      {
+        path: "ListSessionsRequest.cursor",
+        detail: `expected at most ${MAXIMUM_PAGINATION_CURSOR_CHARACTERS} character(s)`,
+      },
+    ]);
+    expect(
+      validateMethodResult("sessions.list", {
+        data: [],
+        nextCursor: "x".repeat(MAXIMUM_PAGINATION_CURSOR_CHARACTERS + 1),
+      }),
+    ).toEqual([
+      {
+        path: "sessions.list.result.nextCursor",
+        detail: `expected at most ${MAXIMUM_PAGINATION_CURSOR_CHARACTERS} character(s)`,
+      },
+    ]);
+    expect(validateWire("ListSessionsRequest", { search: "x".repeat(1025) })).toEqual([
+      { path: "ListSessionsRequest.search", detail: "expected at most 1024 character(s)" },
+    ]);
+    expect(
+      validateWire("SubscribeRunResponse", {
+        runId: "run_01",
+        segmentId: "seg_01",
+        headEventId: RUN_EVENT_ID_PREFIX + "x".repeat(MAXIMUM_RUN_EVENT_ID_CHARACTERS),
+      }),
+    ).toEqual([
+      {
+        path: "SubscribeRunResponse.headEventId",
+        detail: `expected at most ${MAXIMUM_RUN_EVENT_ID_CHARACTERS} character(s)`,
+      },
+    ]);
+    expect(
+      validateWire("RunEvent", {
+        runId: "run_01",
+        segmentId: "seg_01",
+        eventId: "opaque",
+        timestamp: "2026-08-29T00:00:00Z",
+        event: { type: "segment.progress", progress: { activity: "Working" } },
+      }),
+    ).toContainEqual({ path: "RunEvent.eventId", detail: "expected to match ^evt_" });
+    expect(
+      validateWire("SubscribeRunResponse", {
+        runId: "run_01",
+        segmentId: "seg_01",
+        headEventId: "opaque",
+      }),
+    ).toContainEqual({
+      path: "SubscribeRunResponse.headEventId",
+      detail: "expected to match ^evt_",
+    });
+    expect(
+      validateWire("SubscribeRunResponse", {
+        runId: "run_01",
+        segmentId: "seg_01",
+        headEventId: "",
+      }),
+    ).toContainEqual({
+      path: "SubscribeRunResponse.headEventId",
+      detail: "expected to match ^evt_",
+    });
+    expect(validateWire("UsageSummaryRequest", { sinceDays: 0 })).toEqual([
+      { path: "UsageSummaryRequest.sinceDays", detail: "expected at least 1" },
     ]);
     expect(validateWire("GenerationParams", { temperature: 2.1 })).toEqual([
       { path: "GenerationParams.temperature", detail: "expected at most 2" },
@@ -214,6 +382,42 @@ describe("the generated wire checks", () => {
     expect(validateWire("GenerationParams", { topP: 1.1 })).toEqual([
       { path: "GenerationParams.topP", detail: "expected at most 1" },
     ]);
+    expect(
+      validateWire("RuntimeEvent", {
+        type: "skills.changed",
+        sequence: MAXIMUM_RUNTIME_EVENT_SEQUENCE + 1,
+      }),
+    ).toContainEqual({
+      path: "RuntimeEvent.sequence",
+      detail: `expected at most ${MAXIMUM_RUNTIME_EVENT_SEQUENCE}`,
+    });
+
+    expect(
+      validateWire("UpdateSessionRequest", {
+        sessionId: "ses_01",
+        expectedRevision: MAXIMUM_EXACT_JSON_INTEGER + 1,
+      }),
+    ).toContainEqual({
+      path: "UpdateSessionRequest.expectedRevision",
+      detail: `expected at most ${MAXIMUM_EXACT_JSON_INTEGER}`,
+    });
+    expect(
+      validateWire("UpdateScheduleRequest", {
+        id: "sch_01",
+        expectedRevision: MAXIMUM_EXACT_JSON_INTEGER + 1,
+      }),
+    ).toContainEqual({
+      path: "UpdateScheduleRequest.expectedRevision",
+      detail: `expected at most ${MAXIMUM_EXACT_JSON_INTEGER}`,
+    });
+    expect(
+      validateMethodResult("sessions.list", {
+        data: [{ ...session, revision: MAXIMUM_EXACT_JSON_INTEGER + 1 }],
+      }),
+    ).toContainEqual({
+      path: "sessions.list.result.data[0].revision",
+      detail: `expected at most ${MAXIMUM_EXACT_JSON_INTEGER}`,
+    });
 
     const boundaryReason = "😀".repeat(1024);
     expect(validateWire("CancelRunRequest", { runId: "run_01", reason: boundaryReason })).toEqual(
@@ -265,7 +469,7 @@ describe("the generated wire checks", () => {
   // one that reads `minLength` with no type keyword beside it.
   it("states a constraint on a field of a shared shape", () => {
     const artifact = {
-      version: 24,
+      version: SESSION_ARTIFACT_VERSION,
       session: artifactSession,
       items: [],
       messages: [],
@@ -293,6 +497,50 @@ describe("the generated wire checks", () => {
       { path: "ContentBlock", detail: "matches no permitted variant" },
       { path: "ContentBlock.mime", detail: "must not be present here" },
     ]);
+  });
+
+  it("narrows Item status by variant and stream lifecycle", () => {
+    const userItem = {
+      type: "userMessage",
+      id: "item_user",
+      runId: "run_01",
+      createdAt: "2026-08-29T11:00:00Z",
+      content: [{ type: "text", text: "hello" }],
+    };
+    expect(validateWire("Item", { ...userItem, status: "completed" })).toEqual([]);
+    expect(validateWire("Item", { ...userItem, status: "running" })).toContainEqual({
+      path: "Item.status",
+      detail: 'expected one of "completed"',
+    });
+
+    const runningAgent = {
+      type: "agentMessage",
+      id: "item_agent",
+      runId: "run_01",
+      createdAt: "2026-08-29T11:00:00Z",
+      status: "running",
+    };
+    expect(validateWire("StreamEvent", { type: "item.started", item: runningAgent })).toEqual([]);
+    expect(
+      validateWire("StreamEvent", { type: "item.completed", item: runningAgent }),
+    ).toContainEqual({
+      path: "StreamEvent.item.status",
+      detail: 'expected one of "completed", "incomplete"',
+    });
+
+    expect(
+      validateWire("ArtifactItem", {
+        type: "toolCall",
+        id: "item_tool",
+        runId: "run_01",
+        startedAt: "2026-08-29T11:00:00Z",
+        status: "running",
+        tool: { name: "shell", arguments: { command: "pwd" } },
+      }),
+    ).toContainEqual({
+      path: "ArtifactItem.status",
+      detail: 'expected one of "completed", "incomplete"',
+    });
   });
 
   it("keeps cancel root and child results closed and distinct", () => {

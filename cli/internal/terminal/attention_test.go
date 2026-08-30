@@ -55,7 +55,7 @@ type attentionTestHost struct {
 
 func newAttentionTestHost(t *testing.T) *attentionTestHost {
 	return &attentionTestHost{
-		Host:          programtest.New(t, 96, 28),
+		Host:          programtest.New(t, programtest.Config{Width: 96, Height: 28}),
 		titles:        make(chan string, 32),
 		notifications: make(chan string, 32),
 	}

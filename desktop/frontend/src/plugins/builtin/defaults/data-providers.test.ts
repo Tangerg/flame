@@ -305,14 +305,22 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
     });
   });
 
-  it("models: queries enabled providers only and maps their catalogs", async () => {
+  it("models: queries configured providers, including optional-auth endpoints", async () => {
     const { value, requests } = await runProvider<SelectableModel[]>("models", [
       [
         "providers.list",
         {
           data: [
-            { id: "openai", apiKeyMasked: "sk****42" },
-            { id: "disabled", apiKeyMasked: "" },
+            {
+              id: "disabled",
+              configured: false,
+              credentialRequirement: "apiKeyRequired",
+            },
+            {
+              id: "ollama",
+              configured: true,
+              credentialRequirement: "apiKeyOptional",
+            },
           ],
         },
       ],
@@ -321,12 +329,14 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
         {
           data: [
             {
-              id: "gpt-test",
-              provider: "openai",
-              displayName: "GPT Test",
-              contextWindow: 258_000,
-              maxInputTokens: 250_000,
-              maxOutputTokens: 32_000,
+              id: "llama-test",
+              provider: "ollama",
+              displayName: "Llama Test",
+              tokenLimits: {
+                contextWindow: 258_000,
+                maxInputTokens: 250_000,
+                maxOutputTokens: 32_000,
+              },
               capabilities: {
                 reasoning: true,
                 reasoningLevels: ["low", "medium", "high"],
@@ -345,17 +355,19 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
 
     expect(requests).toEqual([
       { method: "providers.list", params: {} },
-      { method: "models.list", params: { provider: "openai" } },
+      { method: "models.list", params: { provider: "ollama" } },
     ]);
     expect(value).toHaveLength(1);
     expect(value[0]).toBeInstanceOf(SelectableModel);
     expect(value[0]).toMatchObject({
-      id: "gpt-test",
-      provider: "openai",
-      label: "GPT Test",
-      contextWindow: 258_000,
-      maxInputTokens: 250_000,
-      maxOutputTokens: 32_000,
+      id: "llama-test",
+      provider: "ollama",
+      label: "Llama Test",
+      tokenLimits: {
+        contextWindow: 258_000,
+        maxInputTokens: 250_000,
+        maxOutputTokens: 32_000,
+      },
       reasoning: true,
       reasoningLevels: ["low", "medium", "high"],
       reasoningDefaultLevel: "medium",
@@ -383,7 +395,14 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       const providersRequest = await waitForRequest(retiredTransport, "providers.list");
       setContainer({ client: () => successorClient });
       respondSuccess(retiredTransport, providersRequest.id, {
-        data: [{ id: "openai", apiKeyMasked: "sk****42" }],
+        data: [
+          {
+            id: "openai",
+            configured: true,
+            credentialRequirement: "apiKeyRequired",
+            credential: { masked: "sk****42", source: "stored" },
+          },
+        ],
       });
 
       await vi.waitFor(() => {
@@ -434,7 +453,14 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
     const pending = fetcher();
     const providersRequest = await waitForRequest(transport, "providers.list");
     respondSuccess(transport, providersRequest.id, {
-      data: [{ id: "openai", apiKeyMasked: "sk****42" }],
+      data: [
+        {
+          id: "openai",
+          configured: true,
+          credentialRequirement: "apiKeyRequired",
+          credential: { masked: "sk****42", source: "stored" },
+        },
+      ],
     });
     const modelsRequest = await waitForRequest(transport, "models.list");
     transport.inject({

@@ -27,7 +27,7 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 			_, err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
 				Name: "vendor.trace",
 				Present: func(presentation BlockPresentation, event agent.CustomEvent) []headless.Block {
-					return []headless.Block{&kit.Message{Theme: presentation.Theme, Speaker: "trace", Body: string(event.PayloadJSON)}}
+					return []headless.Block{&kit.Entry{Theme: presentation.Theme, Label: "trace", Body: string(event.PayloadJSON)}}
 				},
 			}, extensions.Contribution{})
 			return err
@@ -161,7 +161,7 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 func TestTranscriptNavigationUsesRetainedBlockAndSearchCoordinates(t *testing.T) {
 	view := testTranscriptView(t)
 	for _, body := range []string{"discarded needle", "retained middle", "retained needle"} {
-		view.Append(&kit.Message{Theme: view.theme, Speaker: "test", Body: body})
+		view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: body})
 	}
 	view.retain = 2
 	drawRoot(t, view, 48, 6)
@@ -205,7 +205,7 @@ func TestTranscriptNavigationUsesRetainedBlockAndSearchCoordinates(t *testing.T)
 func TestStreamingSearchRefreshPreservesTheCurrentMatch(t *testing.T) {
 	view := testTranscriptView(t)
 	for _, body := range []string{"needle one", "needle two", "needle three"} {
-		view.Append(&kit.Message{Theme: view.theme, Speaker: "test", Body: body})
+		view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: body})
 	}
 	drawRoot(t, view, 48, 8)
 	view.Find("needle")
@@ -220,7 +220,7 @@ func TestStreamingSearchRefreshPreservesTheCurrentMatch(t *testing.T) {
 	}
 	want := view.searchCursor
 
-	view.Append(&kit.Message{Theme: view.theme, Speaker: "test", Body: "streamed tail without the query"})
+	view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: "streamed tail without the query"})
 	acceptSearchResult(t, view)
 	if view.current != 2 || !view.searchCursor.present || view.searchCursor.blockID != want.blockID ||
 		view.searchCursor.rowOffset != want.rowOffset || view.searchCursor.column != want.column {
@@ -238,7 +238,7 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, body := range []string{"needle one", "needle two", "needle three"} {
-		view.Append(&kit.Message{Theme: view.theme, Speaker: "test", Body: body})
+		view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: body})
 	}
 	drawRoot(t, view, 48, 8)
 	view.Find("needle")
@@ -259,43 +259,30 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 	}
 }
 
-func TestTranscriptReordersIndexedAssistantDeltas(t *testing.T) {
+func TestTranscriptAppendsAssistantDeltasInEventOrder(t *testing.T) {
 	view := testTranscriptView(t)
 	started := agent.Block{ID: "answer", Kind: agent.BlockAssistant}
 	if err := view.Apply(agent.BlockStarted{Block: started}, nil); err != nil {
 		t.Fatal(err)
 	}
-	second, first := 1, 0
-	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: "second block", ContentIndex: &second}, nil); err != nil {
+	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: "first block"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: "first block", ContentIndex: &first}, nil); err != nil {
+	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: " second block"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	drawn := drawRoot(t, view, 48, 8)
 	firstAt, secondAt := strings.Index(drawn, "first block"), strings.Index(drawn, "second block")
 	if firstAt < 0 || secondAt < 0 || firstAt >= secondAt {
-		t.Fatalf("indexed assistant rendering =\n%s", drawn)
+		t.Fatalf("ordered assistant rendering =\n%s", drawn)
 	}
 
-	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: " tail", ContentIndex: &first}, nil); err != nil {
+	if err := view.Apply(agent.BlockDelta{BlockID: started.ID, Text: " tail"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	drawn = drawRoot(t, view, 48, 8)
-	if !strings.Contains(drawn, "first block tail") || strings.Count(drawn, "second block") != 1 {
-		t.Fatalf("replaced indexed assistant rendering =\n%s", drawn)
-	}
-}
-
-func TestTranscriptRejectsContentIndicesOutsideAssistantBlocks(t *testing.T) {
-	view := testTranscriptView(t)
-	block := agent.Block{ID: "reasoning", Kind: agent.BlockReasoning}
-	if err := view.Apply(agent.BlockStarted{Block: block}, nil); err != nil {
-		t.Fatal(err)
-	}
-	index := 0
-	if err := view.Apply(agent.BlockDelta{BlockID: block.ID, Text: "invalid", ContentIndex: &index}, nil); err == nil {
-		t.Fatal("transcript accepted indexed reasoning delta")
+	if !strings.Contains(drawn, "second block tail") || strings.Count(drawn, "second block") != 1 {
+		t.Fatalf("appended assistant rendering =\n%s", drawn)
 	}
 }
 
@@ -550,9 +537,13 @@ func TestChildCompletionSettlesOnlyThatRunsCollidingBlockIdentity(t *testing.T) 
 	started := func(runID string) agent.BlockStarted {
 		return agent.BlockStarted{Block: agent.Block{ID: blockID, RunID: runID, Kind: agent.BlockAssistant, Status: agent.BlockStatusRunning}}
 	}
-	apply(rootID, agent.SegmentStarted{Run: agent.Run{ID: rootID}})
+	apply(rootID, agent.SegmentStarted{Run: agent.Run{ID: rootID, Lineage: agent.RootRunLineage()}})
+	lineage, err := agent.NewChildRunLineage(childID, "spawn", rootID, rootID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	apply(childID, agent.SegmentStarted{Run: agent.Run{
-		ID: childID, Lineage: agent.RunLineage{SpawnedByBlockID: "spawn", ParentRunID: rootID, RootRunID: rootID},
+		ID: childID, Lineage: lineage,
 	}})
 	apply(rootID, started(rootID))
 	apply(rootID, agent.BlockDelta{BlockID: blockID, Text: "root partial"})
@@ -722,6 +713,17 @@ func TestToolClickRejectsAFrameFromBeforeTranscriptReset(t *testing.T) {
 	}
 }
 
+func TestTranscriptResetNeverReactivatesAStaleFrameAtEpochExhaustion(t *testing.T) {
+	view := testTranscriptView(t)
+	stale := transcriptBlockPresentation{lease: view.contentLease}
+
+	view.Reset()
+
+	if view.contentLease.current(stale.lease) || stale.lease.current(stale.lease) {
+		t.Fatal("resetting the last transcript epoch reactivated a stale frame")
+	}
+}
+
 func TestDraggingFromAToolHeaderCopiesWithoutToggling(t *testing.T) {
 	clipboard := new(recordingClipboard)
 	view := newTranscriptView(kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
@@ -809,7 +811,7 @@ func TestCompletingALiveToolPreservesItsExpandedState(t *testing.T) {
 	view := testTranscriptView(t)
 	tool := appendTestTool(view, "tool", "running")
 	tracked := trackedTool{id: view.toolViews[0].id, block: tool}
-	view.tools["tool"] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
+	view.tools[transcriptBlockKey("", "tool")] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
 	tool.ToggleExpanded()
 
 	completed := agent.ToolCall{Kind: agent.ToolShell, Command: "echo tool", Output: "complete", Status: agent.ToolOK}
@@ -899,7 +901,7 @@ func TestDiscardExcessRetainsABoundedInteractiveWindow(t *testing.T) {
 	view.retain = 2
 	appendTestTool(view, "discarded", "OLD_DETAIL")
 	for _, body := range []string{"second", "third", "fourth", "fifth"} {
-		view.Append(&kit.Message{Theme: view.theme, Speaker: "flame", Body: body})
+		view.Append(&kit.Entry{Theme: view.theme, Label: "flame", Body: body})
 	}
 	root := headless.NewRoot(view)
 	root.Draw(grid.NewSurface(48, 10).View())
@@ -966,7 +968,7 @@ type selectedToolViewport struct {
 func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID headless.BlockID) selectedToolViewport {
 	t.Helper()
 	for index := range 16 {
-		view.Append(&kit.Message{Theme: view.theme, Speaker: "flame", Body: fmt.Sprintf("later block %d", index)})
+		view.Append(&kit.Entry{Theme: view.theme, Label: "flame", Body: fmt.Sprintf("later block %d", index)})
 	}
 	root := headless.NewRoot(view)
 	surface := grid.NewSurface(48, testTranscriptWindowRows)
@@ -1009,6 +1011,6 @@ func beginTestTool(view *transcriptView, call agent.ToolCall) *toolBlock {
 	blockID := view.place(block, false)
 	tracked := trackedTool{id: blockID, block: block}
 	view.toolViews = append(view.toolViews, trackedToolView{id: blockID, block: block})
-	view.tools["tool"] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
+	view.tools[transcriptBlockKey("", "tool")] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
 	return block
 }

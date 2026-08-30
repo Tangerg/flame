@@ -9,6 +9,21 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
+func TestToolGroupObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
+	oldCalls, replacementCalls := 0, 0
+	group := &toolGroupBlock{}
+	unsubscribeOld := group.Observe(func(readerDocument) { oldCalls++ })
+	unsubscribeReplacement := group.Observe(func(readerDocument) { replacementCalls++ })
+	unsubscribeReplacement()
+	unsubscribeReplacement()
+	group.observers.notify(readerDocument{})
+
+	if oldCalls != 2 || replacementCalls != 1 {
+		t.Fatalf("group observer calls after replacement retirement = old %d replacement %d", oldCalls, replacementCalls)
+	}
+	unsubscribeOld()
+}
+
 func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *testing.T) {
 	view := testTranscriptView(t)
 	read := resourceTool(view, agent.ToolRead, "read · main.go", "package main")
@@ -62,10 +77,6 @@ func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) 
 	tracked := trackedTool{id: group.id, block: tool}
 	key := transcriptBlockKey("run-1", "read")
 	view.tools[key] = liveTool{runID: "run-1", blocks: []trackedTool{tracked}, group: group}
-	index := 0
-	if err := view.deltaTool(key, agent.BlockDelta{BlockID: "read", Text: "invalid", ContentIndex: &index}); err == nil {
-		t.Fatal("transcript accepted an indexed tool-output delta")
-	}
 	if err := view.deltaTool(key, agent.BlockDelta{BlockID: "read", Text: "package live\n"}); err != nil {
 		t.Fatal(err)
 	}

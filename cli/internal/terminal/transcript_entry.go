@@ -24,8 +24,8 @@ type transcriptEntry struct {
 }
 
 var (
-	_ headless.Block    = (*transcriptEntry)(nil)
-	_ headless.Copyable = (*transcriptEntry)(nil)
+	_ headless.Block         = (*transcriptEntry)(nil)
+	_ headless.TextProjector = (*transcriptEntry)(nil)
 )
 
 func newTranscriptEntry(theme kit.Theme, glyphs kit.Glyphs, content headless.Block) *transcriptEntry {
@@ -72,7 +72,7 @@ func (t *transcriptEntry) Rows(width int) []text.Row {
 	}
 	height := t.Measure(width)
 	rows := make([]text.Row, height)
-	copyable, ok := t.content.(headless.Copyable)
+	copyable, ok := t.content.(headless.TextProjector)
 	if !ok {
 		return rows
 	}

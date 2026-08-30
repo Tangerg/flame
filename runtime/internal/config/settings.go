@@ -99,13 +99,9 @@ type Settings struct {
 	// when set it replaces them wholesale.
 	LSPServers []LSPServer
 
-	// ToolResultOffloadThreshold is the byte size above which a single tool
-	// result is offloaded out of the conversation and replaced by a head+tail
-	// placeholder the model reads back via read_tool_result. Defaults to
-	// [DefaultToolResultOffloadThreshold] (enabled); set `toolResultOffload.threshold: 0`
-	// (or any non-positive value) in config.yaml / FLAME_TOOLRESULTOFFLOAD_THRESHOLD
-	// to disable eviction.
-	ToolResultOffloadThreshold int
+	// ToolResultOffload controls whether oversized Tool results leave a bounded
+	// preview in context and the exact positive byte threshold for that policy.
+	ToolResultOffload ToolResultOffloadSettings
 
 	// SandboxShell opts the shell tool family into per-command OS isolation:
 	// each command runs in an in-place jail rooted at its cwd (workspace-write
@@ -125,8 +121,15 @@ type Settings struct {
 	Server Server
 }
 
+// ToolResultOffloadSettings separates feature enablement from the positive
+// eviction threshold, so numeric zero is never an undocumented off switch.
+type ToolResultOffloadSettings struct {
+	Enabled   bool
+	Threshold int
+}
+
 // DefaultToolResultOffloadThreshold is the default byte size above which a
-// single tool result is offloaded (see [Settings.ToolResultOffloadThreshold]).
+// single tool result is offloaded (see [Settings.ToolResultOffload]).
 // ~50k bytes (≈ characters for ASCII tool output) is well past a normal result
 // yet small enough that one giant file read or command dump stops re-inflating
 // every later request.

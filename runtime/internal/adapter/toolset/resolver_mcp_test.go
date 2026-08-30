@@ -42,7 +42,7 @@ func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 		{name: "no disabled tools", disabled: map[mcpserver.ToolRef]bool{}, want: []string{"files_read", "files_write"}},
 		{
 			name:     "policy update hides tool",
-			disabled: map[mcpserver.ToolRef]bool{{Server: "files", Tool: "write"}: true},
+			disabled: map[mcpserver.ToolRef]bool{{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}: true},
 			want:     []string{"files_read"},
 		},
 		{name: "later policy restores tool", disabled: map[mcpserver.ToolRef]bool{}, want: []string{"files_read", "files_write"}},
@@ -69,8 +69,8 @@ func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 }
 
 func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
-	disabledRef := mcpserver.ToolRef{Server: "a_b", Tool: "c"}
-	liveRef := mcpserver.ToolRef{Server: "a", Tool: "b_c"}
+	disabledRef := mcpserver.ToolRef{Server: testMCPServerName("a_b"), Tool: testRemoteToolName("c")}
+	liveRef := mcpserver.ToolRef{Server: testMCPServerName("a"), Tool: testRemoteToolName("b_c")}
 	disabledName := mcpserver.ToolName(disabledRef.Server, disabledRef.Tool)
 	liveName := mcpserver.ToolName(liveRef.Server, liveRef.Tool)
 	if disabledName != liveName {
@@ -79,7 +79,7 @@ func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
 
 	resolver := &Resolver{mcpToolDisabled: func(ref mcpserver.ToolRef) bool { return ref == disabledRef }}
 	resolver.SetMCPTools([]toolcontract.Tool{mcpToolStub{
-		name: liveName, server: liveRef.Server, remote: liveRef.Tool,
+		name: liveName, server: liveRef.Server.String(), remote: liveRef.Tool.String(),
 	}})
 
 	got := resolver.mcpTools()

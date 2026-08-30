@@ -6,7 +6,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 )
+
+const testExecutorBuildID = identityfixture.BuildID
 
 func mustCheckpointSelection(provider, model string) modelref.Selection {
 	selection, err := modelref.New(provider, model)
@@ -20,7 +23,7 @@ func testExecutorCheckpoint() ExecutorCheckpoint {
 	return ExecutorCheckpoint{
 		RootMemberID:   "member_root",
 		Payload:        []byte(`{"root":"member_root"}`),
-		BuildID:        "build",
+		BuildID:        testExecutorBuildID,
 		Scope:          ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: mustCheckpointSelection("openai", "model"),
 	}

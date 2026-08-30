@@ -51,11 +51,10 @@ func (r *Runtime) ListRuns(ctx context.Context, query agent.RunQuery) (agent.Run
 	if err != nil {
 		return agent.RunPage{}, err
 	}
-	limit := query.Limit
-	if limit <= 0 {
-		limit = defaultPageSize
+	limit, err := query.PageSize.Rows()
+	if err != nil {
+		return agent.RunPage{}, fmt.Errorf("mock: %w", err)
 	}
-	limit = min(limit, maxPageSize)
 	end := min(offset+limit, len(items))
 	page := agent.RunPage{Items: slices.Clone(items[offset:end])}
 	if end < len(items) {

@@ -13,6 +13,7 @@ import (
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/hooks"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -70,8 +71,8 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	if w == nil {
 		return nil, errors.New("agentexec: working-context composer is nil")
 	}
-	if strings.TrimSpace(input.SessionID) == "" || input.SessionID != strings.TrimSpace(input.SessionID) {
-		return nil, errors.New("agentexec: working context requires a Session ID without surrounding whitespace")
+	if _, err := resourceid.ParseSession(input.SessionID); err != nil {
+		return nil, fmt.Errorf("agentexec: working context: %w", err)
 	}
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {
 		return nil, errors.New("agentexec: working context requires a CWD without surrounding whitespace")
@@ -370,7 +371,7 @@ func (w *WorkingContextComposer) recallMessage(
 		}
 		body.WriteString(content)
 		body.WriteByte('\n')
-		sources = append(sources, contextSourceRecalledMemory.source(item.ID))
+		sources = append(sources, contextSourceRecalledMemory.source(item.ID.String()))
 		injected++
 		used += cost
 	}

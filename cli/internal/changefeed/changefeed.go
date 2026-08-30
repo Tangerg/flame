@@ -245,25 +245,33 @@ func (s Subscription) ValidateEvent(event Event) error {
 	if err := event.Validate(); err != nil {
 		return err
 	}
-	if event.Type != Resync {
-		topic := Topic(event.Type)
-		if !slices.Contains(s.Topics, topic) {
-			return fmt.Errorf("change event topic %q is outside the subscription", topic)
-		}
-		if topic == FilesChanged && event.WatchID != "" {
-			watchIndex := slices.IndexFunc(s.Watches, func(watch Watch) bool {
-				return watch.ID == event.WatchID
-			})
-			if watchIndex < 0 {
-				return fmt.Errorf("file change watch %q is outside the subscription", event.WatchID)
-			}
-			if event.Workspace != "" && event.Workspace != s.Watches[watchIndex].Workspace {
-				return fmt.Errorf("file change watch %q names another workspace", event.WatchID)
-			}
-		}
+	if event.Type == Resync {
+		return s.validateResyncScope(event)
+	}
+	return s.validateChangeScope(event)
+}
+
+func (s Subscription) validateChangeScope(event Event) error {
+	topic := Topic(event.Type)
+	if !slices.Contains(s.Topics, topic) {
+		return fmt.Errorf("change event topic %q is outside the subscription", topic)
+	}
+	if topic != FilesChanged || event.WatchID == "" {
 		return nil
 	}
+	watchIndex := slices.IndexFunc(s.Watches, func(watch Watch) bool {
+		return watch.ID == event.WatchID
+	})
+	if watchIndex < 0 {
+		return fmt.Errorf("file change watch %q is outside the subscription", event.WatchID)
+	}
+	if event.Workspace != "" && event.Workspace != s.Watches[watchIndex].Workspace {
+		return fmt.Errorf("file change watch %q names another workspace", event.WatchID)
+	}
+	return nil
+}
 
+func (s Subscription) validateResyncScope(event Event) error {
 	for _, topic := range event.Topics {
 		if !slices.Contains(s.Topics, topic) {
 			return fmt.Errorf("resync topic %q is outside the subscription", topic)

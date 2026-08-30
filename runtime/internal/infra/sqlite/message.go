@@ -39,7 +39,7 @@ func (m *MessageStore) Read(ctx context.Context, conversationID string) ([]chat.
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]chat.Message, 0)
 	for rows.Next() {

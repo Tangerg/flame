@@ -9,15 +9,46 @@ import (
 	"testing"
 	"time"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
+	policy, err := newInteractionExecutionPolicy(InteractionExecutorConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if policy.defaultMaxModelCalls != defaultInteractionModelCalls ||
+		policy.deltaBufferCapacity != defaultInteractionDeltaBuffer ||
+		policy.maxConcurrentToolCalls != defaultInteractionConcurrentToolCalls ||
+		policy.unknownEffectPollInterval != defaultUnknownEffectPollInterval ||
+		policy.statePollInterval != defaultInteractionStatePoll {
+		t.Fatalf("default Interaction execution policy = %+v", policy)
+	}
+
+	zeroUint := uint32(0)
+	zeroInt := 0
+	zeroDuration := time.Duration(0)
+	for name, config := range map[string]InteractionExecutorConfig{
+		"model calls":      {DefaultMaxModelCalls: &zeroUint},
+		"delta buffer":     {DeltaBufferCapacity: &zeroInt},
+		"Tool concurrency": {MaxConcurrentToolCalls: &zeroInt},
+		"unknown poll":     {UnknownEffectPollInterval: &zeroDuration},
+		"state poll":       {StatePollInterval: &zeroDuration},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := newInteractionExecutionPolicy(config); err == nil {
+				t.Fatal("present zero was treated as an omitted execution policy value")
+			}
+		})
+	}
+}
 
 func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -27,8 +58,7 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 		t.Fatal(err)
 	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		DefaultClient:          client,
-		DefaultSelection:       testDefaultSelection(),
+		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
 		BuildID:                interactionTestBuildID,
@@ -38,22 +68,15 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	}
 }
 
-func TestInteractionExecutorRequiresExactDefaultIdentity(t *testing.T) {
-	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		return interactionTextResponse("unused"), nil
-	}), chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		DefaultClient:          client,
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
 		BuildID:                interactionTestBuildID,
 	})
 	if err == nil || executor != nil {
-		t.Fatalf("NewInteractionExecutor without default selection = (%v, %v), want nil executor and non-nil error", executor, err)
+		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
 	}
 }
 
@@ -80,6 +103,29 @@ func TestInteractionExecutorRejectsOutputAboveSelectedModelLimit(t *testing.T) {
 	}
 }
 
+func TestInteractionExecutorRequiresExactRootModelSelection(t *testing.T) {
+	executor := newTestInteractionExecutorWithLifetime(
+		t,
+		t.Context(),
+		chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			return interactionTextResponse("unused"), nil
+		}),
+	)
+	start := interactionTestStart()
+	start.ModelSelection = modelref.Selection{}
+	if err := executor.ValidateRootStart(start); err == nil {
+		t.Fatal("Interaction executor accepted a root without an exact model selection")
+	}
+}
+
+func TestInteractionCheckpointRejectsInvalidModelCallIdentity(t *testing.T) {
+	if _, err := decodeInteractionCallCounts([]interactionModelCallsWire{{
+		Model: "model\x00shadow", Calls: 1,
+	}}); err == nil {
+		t.Fatal("Interaction checkpoint accepted a non-printing model identity")
+	}
+}
+
 func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelection(t *testing.T) {
 	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
@@ -87,11 +133,11 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 	if err != nil {
 		t.Fatal(err)
 	}
-	var resolved modelref.Selection
+	var resolved []modelref.Selection
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime: t.Context(), DefaultSelection: testDefaultSelection(),
+		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (*chatclient.Client, error) {
-			resolved = selection
+			resolved = append(resolved, selection)
 			return client, nil
 		}),
 		ImplementationIdentity: "interaction-executor-test-build",
@@ -101,9 +147,21 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 	if err != nil {
 		t.Fatal(err)
 	}
+	if executor.buildID.String() != interactionTestBuildID ||
+		executor.implementationIdentity.String() != "interaction-executor-test-build" ||
+		executor.configurationIdentity.String() != "interaction-executor-test-config" {
+		t.Fatal("Interaction executor did not retain its parsed deployment identities")
+	}
+	if executor.config.BuildID != "" || executor.config.ImplementationIdentity != "" ||
+		executor.config.ConfigurationIdentity != "" {
+		t.Fatal("Interaction executor retained duplicate raw identity configuration")
+	}
 	got, err := executor.resolveClient(t.Context(), testDefaultSelection())
-	if err != nil || got != client || resolved != testDefaultSelection() {
-		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, %#v)", got, err, resolved, client, testDefaultSelection())
+	if err != nil || got != client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
+		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got, err, resolved, client, testDefaultSelection())
+	}
+	if _, err := executor.resolveClient(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
+		t.Fatalf("second exact-default resolution = (%v, %#v), want a fresh resolver call", err, resolved)
 	}
 	if _, err := executor.resolveClient(t.Context(), modelref.Selection{}); err == nil {
 		t.Fatal("resolve implicit selection succeeded, want exact-selection error")
@@ -117,6 +175,12 @@ func (i interactionChatResolverFunc) ResolveChat(
 	selection modelref.Selection,
 ) (*chatclient.Client, error) {
 	return i(ctx, selection)
+}
+
+func staticInteractionChatResolver(client *chatclient.Client) InteractionChatResolver {
+	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (*chatclient.Client, error) {
+		return client, nil
+	})
 }
 
 func TestInteractionExecutorRunsRootFromCompleteWorkingContext(t *testing.T) {
@@ -333,9 +397,10 @@ func newTestInteractionExecutorWithLifetime(
 		t.Fatal(err)
 	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime:      lifetime,
-		DefaultClient: client, DefaultSelection: testDefaultSelection(), ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity: "interaction-executor-test-config", DefaultMaxModelCalls: 4,
+		Lifetime:               lifetime,
+		ChatResolver:           staticInteractionChatResolver(client),
+		ImplementationIdentity: "interaction-executor-test-build",
+		ConfigurationIdentity:  "interaction-executor-test-config", DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
 	})
 	if err != nil {

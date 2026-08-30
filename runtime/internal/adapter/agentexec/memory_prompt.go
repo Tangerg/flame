@@ -48,7 +48,7 @@ func newPinnedMemoryPrompt(items []agentmemory.Item, maxTokens int) pinnedMemory
 			prompt.WriteByte('\n')
 		}
 		prompt.WriteString(content)
-		sources = append(sources, contextSourcePinnedMemory.source(item.ID))
+		sources = append(sources, contextSourcePinnedMemory.source(item.ID.String()))
 		used += cost
 	}
 	return pinnedMemoryPrompt{text: prompt.String(), sources: sources}

@@ -3,18 +3,18 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/scope/core/chatclient"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/modelclient"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/scope/core/chatclient"
 )
 
 // modelEnvironment is the composition-time graph shared by interactive model
 // execution, utility-model work, and embedding-backed search. Its live role
 // states let configuration changes take effect without rebuilding the Host.
 type modelEnvironment struct {
-	chatResolver       *modelclient.ChatResolver
+	chatResolver       ChatResolver
 	utilityRoleState   *models.RoleState
 	utilityClient      func(context.Context) *chatclient.Client
 	embeddingRoleState *models.RoleState
@@ -23,8 +23,8 @@ type modelEnvironment struct {
 	agentMemorySearch  *agentmemoryapp.Searcher
 }
 
-func buildModelEnvironment(ctx context.Context, cfg Config) (modelEnvironment, error) {
-	chatResolver := modelclient.NewChatResolver(cfg.ProviderRegistry)
+func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
+	chatResolver := cfg.ChatResolver
 	utilityRole, err := loadUtilityRole(ctx, cfg.UtilityRoleStore)
 	if err != nil {
 		return modelEnvironment{}, err
@@ -42,7 +42,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config) (modelEnvironment, e
 	environment := modelEnvironment{
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
-		utilityClient:      chatResolver.UtilityClient(cfg.ChatClient, utilityRoleState),
+		utilityClient:      modelclient.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState),
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 		liveEmbedder:       liveEmbedder,

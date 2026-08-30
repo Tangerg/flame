@@ -1,8 +1,8 @@
 // Run-event stream lifecycle (API.md §5 / §10). The headline guarantees:
 //   - the stream ends on the ROOT SEGMENT's `segment.finished` (no separate
 //     "closed" method in v2);
-//   - a single root-segment stream carries the whole run tree (subagent runs
-//     are admitted via spawnedByItemId, keyed on their distinct runIds);
+//   - a single response stream carries the whole run tree, including a child
+//     tail whose lineage frames precede a reattach cursor;
 //   - the root segment id is bound from the call response, AFTER the eager
 //     subscription (so head events under streamable HTTP aren't dropped);
 //   - the client subscription is torn down on BOTH natural completion and
@@ -12,6 +12,8 @@ import type { NotificationObserver, RpcClient, StreamEndHandler } from "./client
 import { describe, expect, it } from "vitest";
 import type { RunEvent, RuntimeEvent } from "@flame/runtime-contract/wire";
 import {
+  MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS,
+  MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   RUN_EVENT_METHOD,
   RUNTIME_EVENT_METHOD,
   streamRunEvents,
@@ -95,12 +97,12 @@ function rootStarted(): RunEvent {
   });
 }
 
-describe("streamRunEvents — tree membership (bound)", () => {
+describe("streamRunEvents — response ownership (bound)", () => {
   it("yields tree events and ends on the root-segment segment.finished, no leaked subscriber", async () => {
     const { client, emit, activeCount } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
 
     const collected: string[] = [];
     const consume = (async () => {
@@ -108,12 +110,13 @@ describe("streamRunEvents — tree membership (bound)", () => {
     })();
 
     await Promise.resolve();
-    // Foreign segment (different segmentId AND runId) — dropped.
+    // A different HTTP response may carry another run at the same time.
     emit(
       evt("run_other", "seg_other", "evt_x", {
         type: "segment.started",
         run: { id: "run_other", sessionId: "s" } as never,
       }),
+      "rpc_other",
     );
     emit(
       evt("run_root", "seg_root", "evt_1", {
@@ -130,7 +133,7 @@ describe("streamRunEvents — tree membership (bound)", () => {
     );
     await consume;
 
-    expect(collected).toEqual(["item.started", "segment.finished"]); // foreign dropped; finish closes
+    expect(collected).toEqual(["item.started", "segment.finished"]);
     expect(activeCount()).toBe(0);
   });
 
@@ -138,7 +141,7 @@ describe("streamRunEvents — tree membership (bound)", () => {
     const { client, emit, activeCount } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
 
     emit(
       evt("run_root", "seg_root", "evt_finish", {
@@ -160,30 +163,19 @@ describe("streamRunEvents — tree membership (bound)", () => {
     expect(collected).toEqual(["segment.finished"]);
   });
 
-  it("admits a subagent run spawned by an item seen on the tree", async () => {
+  it("keeps child events when a reattach begins after the child's start event", async () => {
     const { client, emit } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
     const collected: RunEvent[] = [];
     const consume = (async () => {
       for await (const ev of stream.events) collected.push(ev);
     })();
 
     await Promise.resolve();
-    emit(
-      evt("run_root", "seg_root", "evt_1", {
-        type: "item.started",
-        item: { id: "item_tool", type: "toolCall" } as never,
-      }),
-    );
-    // The subagent runs on its OWN segment (seg_child) with its OWN runId.
-    emit(
-      evt("run_child", "seg_child", "evt_2", {
-        type: "segment.started",
-        run: { id: "run_child", sessionId: "s", spawnedByItemId: "item_tool" } as never,
-      }),
-    );
+    // The cursor already passed the spawning Item and child segment.started.
+    // Request-response ownership must still carry the child's remaining tail.
     emit(
       evt("run_child", "seg_child", "evt_3", {
         type: "item.started",
@@ -207,20 +199,14 @@ describe("streamRunEvents — tree membership (bound)", () => {
     );
     await consume;
 
-    expect(collected.map((e) => e.runId)).toEqual([
-      "run_root",
-      "run_child",
-      "run_child",
-      "run_child",
-      "run_root",
-    ]);
+    expect(collected.map((e) => e.runId)).toEqual(["run_child", "run_child", "run_root"]);
   });
 
   it("drops a re-delivered eventId (replay/overlap dedupe, §9.2)", async () => {
     const { client, emit } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
     const collected: string[] = [];
     const consume = (async () => {
       for await (const ev of stream.events) collected.push(ev.eventId);
@@ -245,11 +231,156 @@ describe("streamRunEvents — tree membership (bound)", () => {
     expect(collected).toEqual(["evt_1", "evt_2"]);
   });
 
+  it("retains only the advertised replay window without charging live previews", async () => {
+    const { client, emit } = fakeClient();
+    const stream = streamRunEvents(client, {
+      replayLimits: { scope: "runtimeInstanceRootSegment", maxEvents: 2, maxBytes: 1_024 },
+    });
+    stream.bindRequest("rpc_run");
+    stream.bind("seg_root");
+    const collected: string[] = [];
+    const consume = (async () => {
+      for await (const ev of stream.events) collected.push(ev.eventId);
+    })();
+
+    await Promise.resolve();
+    const first = evt("run_root", "seg_root", "evt_1", {
+      type: "item.started",
+      item: { id: "item_1", type: "agentMessage" } as never,
+    });
+    emit(first);
+    for (const eventId of ["evt_preview_1", "evt_preview_2", "evt_preview_3"]) {
+      emit(
+        evt("run_root", "seg_root", eventId, {
+          type: "item.delta",
+          itemId: "item_1",
+          delta: { type: "content", text: "preview" },
+        }),
+      );
+    }
+    emit(first); // previews did not evict the retained replayable event
+    emit(
+      evt("run_root", "seg_root", "evt_2", {
+        type: "item.started",
+        item: { id: "item_2", type: "agentMessage" } as never,
+      }),
+    );
+    emit(
+      evt("run_root", "seg_root", "evt_3", {
+        type: "item.started",
+        item: { id: "item_3", type: "agentMessage" } as never,
+      }),
+    );
+    emit(first); // the Runtime can no longer replay evt_1 once two newer facts exist
+    emit(
+      evt("run_root", "seg_root", "evt_4", {
+        type: "segment.finished",
+        outcome: { type: "completed" },
+        metrics: { steps: 0, activeDurationMillis: 0 },
+      }),
+    );
+    await consume;
+
+    expect(collected).toEqual([
+      "evt_1",
+      "evt_preview_1",
+      "evt_preview_2",
+      "evt_preview_3",
+      "evt_2",
+      "evt_3",
+      "evt_1",
+      "evt_4",
+    ]);
+  });
+
+  it("evicts replay identities that exceed the advertised byte budget", async () => {
+    const { client, emit } = fakeClient();
+    const stream = streamRunEvents(client, {
+      replayLimits: { scope: "runtimeInstanceRootSegment", maxEvents: 100, maxBytes: 10 },
+    });
+    stream.bindRequest("rpc_run");
+    stream.bind("seg_root");
+    const collected: string[] = [];
+    const consume = (async () => {
+      for await (const ev of stream.events) collected.push(ev.eventId);
+    })();
+
+    await Promise.resolve();
+    const first = evt("run_root", "seg_root", "evt_1111", {
+      type: "item.started",
+      item: { id: "item_1", type: "agentMessage" } as never,
+    });
+    emit(first);
+    emit(
+      evt("run_root", "seg_root", "evt_2222", {
+        type: "item.started",
+        item: { id: "item_2", type: "agentMessage" } as never,
+      }),
+    );
+    emit(first);
+    emit(
+      evt("run_root", "seg_root", "evt_done", {
+        type: "segment.finished",
+        outcome: { type: "completed" },
+        metrics: { steps: 0, activeDurationMillis: 0 },
+      }),
+    );
+    await consume;
+
+    expect(collected).toEqual(["evt_1111", "evt_2222", "evt_1111", "evt_done"]);
+  });
+
+  it("bounds an unread live-preview burst and fails rather than dropping the next fact", async () => {
+    const { client, emit, activeCount } = fakeClient();
+    const replayEvents = 1;
+    const stream = streamRunEvents(client, {
+      replayLimits: {
+        scope: "runtimeInstanceRootSegment",
+        maxEvents: replayEvents,
+        maxBytes: 1_024,
+      },
+    });
+    stream.bindRequest("rpc_run");
+    stream.bind("seg_root");
+    const inboxCapacity = replayEvents + MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS;
+
+    for (let index = 0; index <= inboxCapacity; index++) {
+      emit(
+        evt("run_root", "seg_root", `evt_preview_${index}`, {
+          type: "item.delta",
+          itemId: "item_1",
+          delta: { type: "content", text: String(index) },
+        }),
+      );
+    }
+
+    // Saturated previews are disposable; the stream remains attached until an
+    // authoritative fact cannot be accepted. That fact must trigger observable
+    // recovery instead of being silently omitted from the projection.
+    expect(stream.requestSignal.aborted).toBe(false);
+    emit(
+      evt("run_root", "seg_root", "evt_fact", {
+        type: "item.started",
+        item: { id: "item_1", type: "agentMessage" } as never,
+      }),
+    );
+    expect(stream.requestSignal.aborted).toBe(true);
+    expect(activeCount()).toBe(0);
+
+    const iterator = stream.events[Symbol.asyncIterator]();
+    for (let index = 0; index < inboxCapacity; index++) {
+      await expect(iterator.next()).resolves.toMatchObject({ done: false });
+    }
+    await expect(iterator.next()).rejects.toThrow(
+      "run event consumer exceeded its bounded inbox before an authoritative event",
+    );
+  });
+
   it("unsubscribes on early break", async () => {
     const { client, emit, activeCount } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
     const collected: string[] = [];
     const consume = (async () => {
       for await (const ev of stream.events) {
@@ -274,7 +405,7 @@ describe("streamRunEvents — tree membership (bound)", () => {
     const { client, emit, emitDown, activeCount } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
     const collected: string[] = [];
     const consume = (async () => {
       for await (const ev of stream.events) collected.push(ev.event.type);
@@ -307,7 +438,7 @@ describe("streamRunEvents — tree membership (bound)", () => {
     // The HTTP reader can deliver response + immediate EOS before the
     // Promise continuation binds the returned run and segment IDs.
     emitDown();
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
 
     await expect(next).resolves.toMatchObject({ done: true });
     expect(activeCount()).toBe(0);
@@ -317,7 +448,7 @@ describe("streamRunEvents — tree membership (bound)", () => {
     const { client, emit, emitDown } = fakeClient();
     const stream = streamRunEvents(client);
     stream.bindRequest("rpc_run");
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
     const collected: string[] = [];
     const consume = (async () => {
       for await (const ev of stream.events) collected.push(ev.event.type);
@@ -345,6 +476,17 @@ describe("streamRunEvents — tree membership (bound)", () => {
 });
 
 describe("streamRunEvents — deferred bind lifecycle", () => {
+  it("rejects malformed replay budgets before registering transport listeners", () => {
+    const { client, activeCount } = fakeClient();
+
+    expect(() =>
+      streamRunEvents(client, {
+        replayLimits: { scope: "runtimeInstanceRootSegment", maxEvents: 0, maxBytes: 1 },
+      }),
+    ).toThrow("run replay event capacity must be a positive safe integer");
+    expect(activeCount()).toBe(0);
+  });
+
   it("subscribes to run events and transport stream-end events on creation", () => {
     const { client, activeCount } = fakeClient();
     streamRunEvents(client);
@@ -364,14 +506,14 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
 
   it("short-circuits + cleans up on an already-aborted signal", async () => {
     const { client, activeCount } = fakeClient();
-    const stream = streamRunEvents(client, AbortSignal.abort());
+    const stream = streamRunEvents(client, { signal: AbortSignal.abort() });
     const collected: unknown[] = [];
     for await (const ev of stream.events) collected.push(ev);
     expect(collected).toEqual([]);
     expect(activeCount()).toBe(0);
   });
 
-  it("buffers events before bind, then replays through the tree filter", async () => {
+  it("buffers events before bind, then replays them in response order", async () => {
     const { client, emit } = fakeClient();
     const { events, bind, bindRequest } = streamRunEvents(client);
     bindRequest("rpc_run");
@@ -389,7 +531,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
         item: { id: "item_1", type: "agentMessage" } as never,
       }),
     );
-    bind("run_root", "seg_root");
+    bind("seg_root");
     emit(
       evt("run_root", "seg_root", "evt_3", {
         type: "segment.finished",
@@ -415,7 +557,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
     );
-    stream.bind("run_root", "seg_root");
+    stream.bind("seg_root");
 
     expect(activeCount()).toBe(0);
     expect(stream.requestSignal.aborted).toBe(true);
@@ -427,6 +569,29 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
 });
 
 describe("streamRuntimeEvents — response-stream ownership", () => {
+  it("ends an unread invalidation generation instead of growing a second event log", async () => {
+    const { client, emitRuntime, activeCount } = fakeClient();
+    const stream = streamRuntimeEvents(client);
+    stream.bindRequest("rpc_runtime");
+
+    for (let sequence = 1; sequence <= MAXIMUM_BUFFERED_RUNTIME_EVENTS + 1; sequence++) {
+      emitRuntime(
+        { type: "sessions.changed", sequence, sessionIds: [`session_${sequence}`] },
+        "rpc_runtime",
+      );
+    }
+
+    expect(stream.requestSignal.aborted).toBe(true);
+    expect(activeCount()).toBe(0);
+    const iterator = stream.events[Symbol.asyncIterator]();
+    for (let index = 0; index < MAXIMUM_BUFFERED_RUNTIME_EVENTS; index++) {
+      await expect(iterator.next()).resolves.toMatchObject({ done: false });
+    }
+    await expect(iterator.next()).rejects.toThrow(
+      "runtime event consumer exceeded its bounded inbox",
+    );
+  });
+
   it("releases transport listeners on clean stream end without a consumer", async () => {
     const { client, emitDown, activeCount } = fakeClient();
     const stream = streamRuntimeEvents(client);

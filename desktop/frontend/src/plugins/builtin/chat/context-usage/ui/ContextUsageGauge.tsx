@@ -19,7 +19,7 @@ export function ContextUsageGauge() {
   );
   const readout = contextUsageReadout(
     currentRun.contextTokens ?? undefined,
-    servedModel?.contextWindow,
+    servedModel?.tokenLimits?.contextWindow,
   );
   if (!readout) return null;
 

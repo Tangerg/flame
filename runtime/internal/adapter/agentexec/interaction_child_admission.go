@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	agent "github.com/Tangerg/scope/agent"
 )
 
 func (i *interactionSession) admitProcess(
@@ -62,7 +62,7 @@ func (i *interactionSession) admitProcess(
 	}
 	parent := i.executorMember(managed.parentRelation)
 	started := runs.ToolCallStarted{
-		CallID: managed.callID, ModelCallSequence: managed.modelCallSequence,
+		CallID: managed.callID.String(), ModelCallSequence: managed.modelCallSequence,
 		ToolCallIndex: managed.toolCallIndex, SourceCallID: managed.call.ID,
 		ToolName: managed.call.Name, Arguments: managed.arguments.Canonical(),
 		Activity: "Delegating " + managed.input.Summary, SafetyClass: tool.SafetyClassExec,

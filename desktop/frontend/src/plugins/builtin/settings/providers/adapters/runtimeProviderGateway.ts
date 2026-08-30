@@ -1,8 +1,8 @@
 import { getContainer } from "@/main/container";
 import { describeProblem, rpcErrorText } from "@/lib/rpcErrors";
 import type { FlameClient, Provider, ProviderConfigChange } from "@/rpc";
-import type { ProviderGateway } from "../application/ports/providerGateway";
-import type { ProviderConfiguration } from "../application/providerModels";
+import type { ProviderGateway, ProviderSettingChange } from "../application/ports/providerGateway";
+import { ProviderConfiguration } from "../application/providerModels";
 import { ProviderMutationOwner } from "../application/providerMutationOwner";
 
 function runtimeProviderGateway(client: FlameClient): ProviderGateway {
@@ -37,20 +37,21 @@ function runtimeProviderGateway(client: FlameClient): ProviderGateway {
 }
 
 function providerConfiguration(provider: Provider): ProviderConfiguration {
-  return {
+  return ProviderConfiguration.restore({
     id: provider.id,
-    baseUrl: provider.baseUrl ?? "",
-    apiKeyMasked: provider.apiKeyMasked,
-    keySource: provider.keySource,
+    baseUrl: provider.baseUrl,
+    credential: provider.credential,
+    configured: provider.configured,
+    credentialRequirement: provider.credentialRequirement,
     requiresBaseUrl: provider.requiresBaseUrl,
     embeddingCapable: provider.embeddingCapable,
     defaultEmbeddingModel: provider.defaultEmbeddingModel,
-  };
+  });
 }
 
-function toWireChange(value: string | null | undefined): ProviderConfigChange | undefined {
-  if (value === undefined) return undefined;
-  return value === null ? { type: "clear" } : { type: "set", value };
+function toWireChange(change: ProviderSettingChange | undefined): ProviderConfigChange | undefined {
+  if (change === undefined) return undefined;
+  return change.type === "clear" ? { type: "clear" } : { type: "set", value: change.value };
 }
 
 export function installProviderGateway() {

@@ -20,13 +20,15 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
+	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	otelslog "github.com/Tangerg/scope/otel/slog"
 )
 
 const (
 	// scopeName names the slog→OTel logs bridge's instrumentation scope.
-	scopeName           = "flame"
-	logLevelEnvironment = "FLAME_LOG_LEVEL"
+	scopeName               = productidentity.Name
+	logLevelEnvironment     = "FLAME_LOG_LEVEL"
+	providerShutdownTimeout = 5 * time.Second
 )
 
 // Shutdown releases the configured telemetry providers.
@@ -100,7 +102,7 @@ func Configure(serviceVersion string) Shutdown {
 	))
 
 	return func(ctx context.Context) error {
-		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(ctx, providerShutdownTimeout)
 		defer cancel()
 		return errors.Join(
 			tp.Shutdown(shutdownCtx),

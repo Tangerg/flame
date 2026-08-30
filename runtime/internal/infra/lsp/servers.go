@@ -11,6 +11,7 @@
 package lsp
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -41,8 +42,8 @@ type Servers struct {
 	launch   clientLauncher
 
 	mu       sync.Mutex
-	clients  map[string]*client      // key: root + "\x00" + server name
-	starting map[string]*clientStart // one component-owned launch per key
+	clients  map[serverClientKey]*client
+	starting map[serverClientKey]*clientStart // one component-owned launch per key
 	closed   bool
 
 	closeOnce sync.Once
@@ -73,12 +74,24 @@ func NewServers(lifetime context.Context, specs []ServerSpec) (*Servers, error) 
 		lifetime: lifetime,
 		table:    newServerTable(specs),
 		launch:   startClient,
-		clients:  map[string]*client{},
-		starting: map[string]*clientStart{},
+		clients:  map[serverClientKey]*client{},
+		starting: map[serverClientKey]*clientStart{},
 	}, nil
 }
 
-func clientKey(root, name string) string { return root + "\x00" + name }
+type serverClientKey struct {
+	root string
+	name string
+}
+
+func clientKey(root, name string) serverClientKey { return serverClientKey{root: root, name: name} }
+
+func compareServerClientKeys(left, right serverClientKey) int {
+	if compared := cmp.Compare(left.root, right.root); compared != 0 {
+		return compared
+	}
+	return cmp.Compare(left.name, right.name)
+}
 
 // clientForFile resolves the server for abs's extension and returns its
 // connection for root, starting it if needed.
@@ -129,7 +142,8 @@ func (s *Servers) clientFor(ctx context.Context, root string, spec ServerSpec) (
 
 func (s *Servers) launchClient(
 	ctx context.Context,
-	key, root string,
+	key serverClientKey,
+	root string,
 	spec ServerSpec,
 	pending *clientStart,
 	launch clientLauncher,
@@ -330,20 +344,20 @@ func (s *Servers) Close() error {
 		s.starting = nil
 		s.mu.Unlock()
 
-		startKeys := make([]string, 0, len(starting))
+		startKeys := make([]serverClientKey, 0, len(starting))
 		for key := range starting {
 			startKeys = append(startKeys, key)
 		}
-		slices.Sort(startKeys)
+		slices.SortFunc(startKeys, compareServerClientKeys)
 		for _, key := range startKeys {
 			starting[key].cancel()
 		}
 
-		clientKeys := make([]string, 0, len(clients))
+		clientKeys := make([]serverClientKey, 0, len(clients))
 		for key := range clients {
 			clientKeys = append(clientKeys, key)
 		}
-		slices.Sort(clientKeys)
+		slices.SortFunc(clientKeys, compareServerClientKeys)
 		var errs []error
 		for _, key := range clientKeys {
 			if err := clients[key].close(); err != nil {

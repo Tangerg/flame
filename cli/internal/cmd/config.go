@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -24,15 +26,31 @@ type flagBinding struct {
 var settingFlagBindings = [...]flagBinding{
 	{key: "provider", flag: "provider"},
 	{key: "model", flag: "model"},
-	{key: "run.max-total-tokens", flag: "max-total-tokens"},
-	{key: "run.max-steps", flag: "max-steps"},
-	{key: "run.max-budget-usd", flag: "max-budget-usd"},
 	{key: "ui.mouse", flag: "mouse"},
 	{key: "ui.notifications", flag: "notifications"},
 	{key: "ui.tool-details", flag: "tool-details"},
 	{key: "ui.transcript-retain", flag: "transcript-retain"},
 	{key: "ui.reconnect-attempts", flag: "reconnect-attempts"},
 	{key: "plugins.directories", flag: "plugin-dir"},
+}
+
+type runLimitFlagKind uint8
+
+const (
+	runLimitTokens runLimitFlagKind = iota + 1
+	runLimitSteps
+	runLimitBudget
+)
+
+type runLimitFlagBinding struct {
+	key, flag string
+	kind      runLimitFlagKind
+}
+
+var runLimitFlagBindings = [...]runLimitFlagBinding{
+	{key: "run.max-total-tokens", flag: "max-total-tokens", kind: runLimitTokens},
+	{key: "run.max-steps", flag: "max-steps", kind: runLimitSteps},
+	{key: "run.max-budget-usd", flag: "max-budget-usd", kind: runLimitBudget},
 }
 
 func configureRoot(v *viper.Viper, root *cobra.Command) {
@@ -46,9 +64,9 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	flags.String("config", "", "Configuration file (default: ./.flame.yaml or the user config directory)")
 	flags.String("provider", defaults.Provider, "Provider used for new runs (must be paired with --model)")
 	flags.String("model", defaults.Model, "Model used for new runs (must be paired with --provider)")
-	flags.Int64("max-total-tokens", defaults.Run.MaxTotalTokens, "Maximum cumulative tokens per run (0 means uncapped)")
-	flags.Int("max-steps", defaults.Run.MaxSteps, "Maximum steps per run (0 means uncapped)")
-	flags.Float64("max-budget-usd", defaults.Run.MaxBudgetUSD, "Maximum run cost in USD (0 means uncapped)")
+	flags.String("max-total-tokens", "", "Maximum cumulative tokens per run (strictly positive; omit for unlimited)")
+	flags.String("max-steps", "", "Maximum steps per run (strictly positive; omit for unlimited)")
+	flags.String("max-budget-usd", "", "Maximum run cost in USD (strictly positive; omit for unlimited)")
 	flags.Bool("mouse", defaults.UI.Mouse, "Enable mouse input in the terminal UI")
 	flags.Bool("notifications", defaults.UI.Notifications, "Enable terminal completion notifications")
 	flags.Bool("tool-details", defaults.UI.ToolDetails, "Expand tool output and diffs by default")
@@ -60,9 +78,6 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 func setDefaults(v *viper.Viper, defaults settings.Config) {
 	v.SetDefault("provider", defaults.Provider)
 	v.SetDefault("model", defaults.Model)
-	v.SetDefault("run.max-total-tokens", defaults.Run.MaxTotalTokens)
-	v.SetDefault("run.max-steps", defaults.Run.MaxSteps)
-	v.SetDefault("run.max-budget-usd", defaults.Run.MaxBudgetUSD)
 	v.SetDefault("approval.remember", defaults.Approval.Remember)
 	v.SetDefault("ui.mouse", defaults.UI.Mouse)
 	v.SetDefault("ui.notifications", defaults.UI.Notifications)
@@ -93,8 +108,47 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 	if bindSettingFlagsErr := bindSettingFlags(v, cmd); bindSettingFlagsErr != nil {
 		return bindSettingFlagsErr
 	}
+	if applyRunLimitFlagsErr := applyRunLimitFlags(v, cmd); applyRunLimitFlagsErr != nil {
+		return applyRunLimitFlagsErr
+	}
 	_, err = readSettings(v)
 	return err
+}
+
+func applyRunLimitFlags(v *viper.Viper, cmd *cobra.Command) error {
+	for _, binding := range runLimitFlagBindings {
+		flag := cmd.Flags().Lookup(binding.flag)
+		if flag == nil || !flag.Changed {
+			continue
+		}
+		raw, err := cmd.Flags().GetString(binding.flag)
+		if err != nil {
+			return fmt.Errorf("read --%s: %w", binding.flag, err)
+		}
+		switch binding.kind {
+		case runLimitTokens:
+			value, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || value <= 0 {
+				return fmt.Errorf("--%s must be a positive integer", binding.flag)
+			}
+			v.Set(binding.key, value)
+		case runLimitSteps:
+			value, err := strconv.ParseInt(raw, 10, strconv.IntSize)
+			if err != nil || value <= 0 {
+				return fmt.Errorf("--%s must be a positive integer", binding.flag)
+			}
+			v.Set(binding.key, int(value))
+		case runLimitBudget:
+			value, err := strconv.ParseFloat(raw, 64)
+			if err != nil || value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+				return fmt.Errorf("--%s must be a finite positive number", binding.flag)
+			}
+			v.Set(binding.key, value)
+		default:
+			return fmt.Errorf("--%s has an unknown run-limit type", binding.flag)
+		}
+	}
+	return nil
 }
 
 func selectConfigSource(v *viper.Viper, explicitPath string) error {

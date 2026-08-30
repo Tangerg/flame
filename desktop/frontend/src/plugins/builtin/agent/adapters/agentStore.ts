@@ -32,18 +32,18 @@ interface SessionEntry {
    *  batcher stamps its queue with the epoch it saw at enqueue time and
    *  drops the batch if it changed — a flush scheduled before the replacement
    *  must not append the old run's tail events into the rebuilt view. */
-  viewEpoch: number;
+  viewEpoch: bigint;
   /** Changes after every material projection write. Authoritative refreshes
    *  compare this revision before replacing the view, so a fetch started
    *  before a user action or live event cannot overwrite it. */
-  viewRevision: number;
+  viewRevision: bigint;
   /** Changes only when a durable authoritative projection commits. Command
    * recovery uses this boundary instead of mistaking a live event or local
    * optimistic write for proof of remote mutation settlement. */
-  authoritativeRevision: number;
+  authoritativeRevision: bigint;
   /** Latest refresh request for this session. A newer read supersedes an older
    *  in-flight read even while the material view itself is unchanged. */
-  refreshSequence: number;
+  refreshSequence: bigint;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
   resume: ResumeRunAction | null;
@@ -56,7 +56,7 @@ interface AgentStore {
   /** Monotonic high-water mark for every mounted projection generation in this
    * renderer. Session material may be pruned, but its retired identity must
    * never become available to a later remount of the same Session. */
-  projectionGenerationSequence: number;
+  projectionGenerationSequence: bigint;
 
   /**
    * Fold a batch of {event, runId} into the named session's view state with a
@@ -64,11 +64,12 @@ interface AgentStore {
    * burst of streaming item.delta events produces one React commit per frame
    * instead of one per delta.
    */
-  applyRunEvents: (sessionId: string, events: RunEvent[]) => void;
+  /** True when the complete batch was folded against the mounted Session. */
+  applyRunEvents: (sessionId: string, events: RunEvent[]) => boolean;
   applyRunSnapshot: (sessionId: string, run: RunRef) => void;
   commitCancelResponse: (
     sessionId: string,
-    expected: { viewEpoch: number; viewRevision: number },
+    expected: { viewEpoch: bigint; viewRevision: bigint },
     response: CancelRunResponse,
   ) => boolean;
   appendLocalMessage: (sessionId: string, message: Message) => void;
@@ -129,12 +130,18 @@ interface AgentStore {
   ) => void;
 }
 
-const emptyEntry = (viewEpoch: number): SessionEntry => ({
+const initialProjectionCounter = 0n;
+
+function advanceProjectionCounter(current: bigint): bigint {
+  return current + 1n;
+}
+
+const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   view: EMPTY_AGENT_SESSION_VIEW,
   viewEpoch,
-  viewRevision: 0,
-  authoritativeRevision: 0,
-  refreshSequence: 0,
+  viewRevision: initialProjectionCounter,
+  authoritativeRevision: initialProjectionCounter,
+  refreshSequence: initialProjectionCounter,
   stop: null,
   send: null,
   resume: null,
@@ -169,7 +176,7 @@ function patchView(
   if (view === prev.view) return sessions;
   return patchSession(sessions, sessionId, {
     view,
-    viewRevision: prev.viewRevision + 1,
+    viewRevision: advanceProjectionCounter(prev.viewRevision),
   });
 }
 
@@ -184,22 +191,26 @@ function patchSessionState(
 
 export const useAgentStore = create<AgentStore>((set) => ({
   sessions: {},
-  projectionGenerationSequence: 0,
-  applyRunEvents: (sessionId, events) =>
+  projectionGenerationSequence: initialProjectionCounter,
+  applyRunEvents: (sessionId, events) => {
+    let applied = false;
     set((state) => {
       if (events.length === 0) return state;
       const prev = state.sessions[sessionId];
       if (!prev) return state; // session torn down — drop the late batch
       let view = prev.view;
       for (const event of events) view = reduceAgentEvent(view, runtimeAgentEvent(event));
+      applied = true;
       if (view === prev.view) return state;
       return {
         sessions: patchSession(state.sessions, sessionId, {
           view,
-          viewRevision: prev.viewRevision + 1,
+          viewRevision: advanceProjectionCounter(prev.viewRevision),
         }),
       };
-    }),
+    });
+    return applied;
+  },
   applyRunSnapshot: (sessionId, run) =>
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) =>
@@ -238,7 +249,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   ensureSession: (sessionId) =>
     set((state) => {
       if (state.sessions[sessionId]) return state;
-      const viewEpoch = state.projectionGenerationSequence + 1;
+      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
       return {
         sessions: { ...state.sessions, [sessionId]: emptyEntry(viewEpoch) },
         projectionGenerationSequence: viewEpoch,
@@ -249,9 +260,9 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((state) => {
       const entry = state.sessions[sessionId];
       if (!entry) return state;
-      const requestSequence = entry.refreshSequence + 1;
+      const requestSequence = advanceProjectionCounter(entry.refreshSequence);
       const viewEpoch = invalidateQueuedRunEvents
-        ? state.projectionGenerationSequence + 1
+        ? advanceProjectionCounter(state.projectionGenerationSequence)
         : entry.viewEpoch;
       token = {
         generation: viewEpoch,
@@ -284,21 +295,21 @@ export const useAgentStore = create<AgentStore>((set) => ({
       committed = true;
       return patchSessionState(state, sessionId, {
         view,
-        viewRevision: entry.viewRevision + 1,
-        authoritativeRevision: entry.authoritativeRevision + 1,
+        viewRevision: advanceProjectionCounter(entry.viewRevision),
+        authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
       });
     });
     return committed;
   },
   retireProjectionGeneration: (sessionIds) =>
     set((state) => {
-      const viewEpoch = state.projectionGenerationSequence + 1;
+      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
       let sessions = state.sessions;
       for (const sessionId of new Set(sessionIds)) {
         const entry = sessions[sessionId];
         if (!entry) continue;
         sessions = patchSession(sessions, sessionId, {
-          refreshSequence: entry.refreshSequence + 1,
+          refreshSequence: advanceProjectionCounter(entry.refreshSequence),
           viewEpoch,
         });
       }
@@ -308,7 +319,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     }),
   replaceServerScope: (sessionIds) =>
     set((state) => {
-      const viewEpoch = state.projectionGenerationSequence + 1;
+      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
       let sessions = state.sessions;
       for (const sessionId of new Set(sessionIds)) {
         const entry = sessions[sessionId];
@@ -316,9 +327,9 @@ export const useAgentStore = create<AgentStore>((set) => ({
         sessions = patchSession(sessions, sessionId, {
           view: EMPTY_AGENT_SESSION_VIEW,
           viewEpoch,
-          viewRevision: entry.viewRevision + 1,
-          authoritativeRevision: 0,
-          refreshSequence: entry.refreshSequence + 1,
+          viewRevision: advanceProjectionCounter(entry.viewRevision),
+          authoritativeRevision: initialProjectionCounter,
+          refreshSequence: advanceProjectionCounter(entry.refreshSequence),
         });
       }
       return sessions === state.sessions

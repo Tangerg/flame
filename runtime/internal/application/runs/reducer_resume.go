@@ -15,7 +15,7 @@ import (
 
 type resumeBinding struct {
 	callItems map[string]resumableItem
-	toolItems map[string]resumableItem
+	toolItems map[resumeToolKey]resumableItem
 	byName    map[string]resumableItem
 	drained   []DrainedTool
 	committed map[string]CommittedTool
@@ -48,7 +48,7 @@ type resumeBindingBuilder struct {
 func newResumeBindingBuilder(resolutions map[string]ToolApprovalResolution) *resumeBindingBuilder {
 	return &resumeBindingBuilder{approvalResolutions: resolutions, binding: resumeBinding{
 		callItems: make(map[string]resumableItem),
-		toolItems: make(map[string]resumableItem),
+		toolItems: make(map[resumeToolKey]resumableItem),
 		byName:    make(map[string]resumableItem),
 		committed: make(map[string]CommittedTool),
 		consumed:  make(map[string]struct{}),
@@ -140,27 +140,38 @@ func (r *resumeBindingBuilder) build() *resumeBinding {
 	return binding
 }
 
-func resumeKey(toolName, arguments string) string { return toolName + "\x00" + arguments }
+type resumeToolKey struct {
+	name      string
+	arguments string
+}
+
+func resumeKey(toolName, arguments string) resumeToolKey {
+	return resumeToolKey{name: toolName, arguments: arguments}
+}
 
 func argumentIdentity(arguments tool.Arguments) string { return arguments.Canonical() }
 
-func (r *reducer) reuseOrCreateToolItem(callID, toolName string, arguments tool.Arguments) (resumableItem, bool) {
+func (r *reducer) reuseOrCreateToolItem(callID, toolName string, arguments tool.Arguments) (resumableItem, bool, error) {
 	if r.resume != nil {
 		if item, ok := r.resume.callItems[callID]; callID != "" && ok {
 			r.resume.consumeToolItem(item.id)
-			return item, true
+			return item, true, nil
 		}
 		key := resumeKey(toolName, argumentIdentity(arguments))
 		if item, ok := r.resume.toolItems[key]; ok {
 			r.resume.consumeToolItem(item.id)
-			return item, true
+			return item, true, nil
 		}
 		if item, ok := r.resume.byName[toolName]; ok && item.id != "" {
 			r.resume.consumeToolItem(item.id)
-			return item, true
+			return item, true, nil
 		}
 	}
-	return resumableItem{id: r.nextItemID(), occurredAt: r.now()}, false
+	id, err := r.nextItemID()
+	if err != nil {
+		return resumableItem{}, false, err
+	}
+	return resumableItem{id: id, occurredAt: r.now()}, false, nil
 }
 
 func (r *resumeBinding) consumeToolItem(id string) {
@@ -169,7 +180,7 @@ func (r *resumeBinding) consumeToolItem(id string) {
 	}
 	r.consumed[id] = struct{}{}
 	maps.DeleteFunc(r.callItems, func(_ string, candidate resumableItem) bool { return candidate.id == id })
-	maps.DeleteFunc(r.toolItems, func(_ string, candidate resumableItem) bool { return candidate.id == id })
+	maps.DeleteFunc(r.toolItems, func(_ resumeToolKey, candidate resumableItem) bool { return candidate.id == id })
 	maps.DeleteFunc(r.byName, func(_ string, candidate resumableItem) bool { return candidate.id == id })
 }
 
@@ -177,11 +188,16 @@ func (r *resumeBinding) approvalDecision(itemID string) approval.Decision {
 	if r == nil || itemID == "" {
 		return ""
 	}
-	for _, items := range []map[string]resumableItem{r.callItems, r.toolItems, r.byName} {
+	for _, items := range []map[string]resumableItem{r.callItems, r.byName} {
 		for _, item := range items {
 			if item.id == itemID {
 				return item.approvalDecision
 			}
+		}
+	}
+	for _, item := range r.toolItems {
+		if item.id == itemID {
+			return item.approvalDecision
 		}
 	}
 	return ""

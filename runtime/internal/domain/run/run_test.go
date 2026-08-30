@@ -2,12 +2,31 @@ package run
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
+
+func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
+	valid := Draft{RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1", CreatedAt: time.Unix(1, 0)}
+	for name, mutate := range map[string]func(*Draft){
+		"run control":       func(draft *Draft) { draft.RunID = "run_\n1" },
+		"session control":   func(draft *Draft) { draft.SessionID = "session_\t1" },
+		"segment oversized": func(draft *Draft) { draft.SegmentID = strings.Repeat("s", resourceidentity.MaximumCharacters+1) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			draft := valid
+			mutate(&draft)
+			if _, err := Admit(draft); err == nil {
+				t.Fatalf("invalid draft was accepted: %+v", draft)
+			}
+		})
+	}
+}
 
 func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()

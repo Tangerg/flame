@@ -5,6 +5,22 @@ import (
 	"testing"
 )
 
+func TestConversationFailureRemainsVisibleWhenDerivedIdentityCollides(t *testing.T) {
+	conversation := NewConversation()
+	if err := conversation.put(Block{
+		ID: "failure:2", Kind: BlockError, Status: BlockStatusIncomplete, Text: "earlier failure",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	conversation.Failed(errors.New("latest failure"))
+
+	blocks := conversation.Blocks()
+	if len(blocks) != 2 || blocks[1].Text != "latest failure" || blocks[1].ID == blocks[0].ID {
+		t.Fatalf("failure blocks = %+v, want a distinct visible latest failure", blocks)
+	}
+}
+
 func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	conversation := NewConversation()
 	started := RunEvent{EventID: "opaque:start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: runningRun("seg_1")}}
@@ -70,7 +86,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}
 }
 
-func TestConversationOrdersIndexedAssistantDeltasAndRejectsIndicesElsewhere(t *testing.T) {
+func TestConversationAppendsTextDeltasInEventOrder(t *testing.T) {
 	conversation := NewConversation()
 	run := runningRun("seg_1")
 	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
@@ -82,23 +98,11 @@ func TestConversationOrdersIndexedAssistantDeltasAndRejectsIndicesElsewhere(t *t
 		apply(t, conversation, RunEvent{EventID: "start-" + block.ID, RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: block}})
 	}
 
-	second, first := 1, 0
-	apply(t, conversation, RunEvent{EventID: "answer-second", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockDelta{BlockID: "answer", Text: "second", ContentIndex: &second}})
-	apply(t, conversation, RunEvent{EventID: "answer-first", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockDelta{BlockID: "answer", Text: "first", ContentIndex: &first}})
-	apply(t, conversation, RunEvent{EventID: "answer-first-tail", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockDelta{BlockID: "answer", Text: " tail", ContentIndex: &first}})
+	apply(t, conversation, RunEvent{EventID: "answer-first", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockDelta{BlockID: "answer", Text: "first"}})
+	apply(t, conversation, RunEvent{EventID: "answer-second", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockDelta{BlockID: "answer", Text: " second"}})
 	blocks := conversation.Blocks()
-	if blocks[0].Text != "first tail\n\nsecond" {
+	if blocks[0].Text != "first second" {
 		t.Fatalf("assistant text = %q", blocks[0].Text)
-	}
-
-	for _, blockID := range []string{"reasoning", "tool"} {
-		_, err := conversation.ApplyRunEvent(RunEvent{
-			EventID: "invalid-" + blockID, RunID: run.ID, SegmentID: run.ActiveSegmentID,
-			Event: BlockDelta{BlockID: blockID, Text: "invalid", ContentIndex: &first},
-		})
-		if !errors.Is(err, ErrInvalidTransition) {
-			t.Fatalf("%s indexed delta error = %v", blockID, err)
-		}
 	}
 
 	apply(t, conversation, RunEvent{EventID: "answer-complete", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockCompleted{Block: Block{
@@ -187,14 +191,20 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 
 	child := runningRun("seg_child")
 	child.ID = "run_child"
-	child.Lineage = RunLineage{SpawnedByBlockID: delegate.ID, ParentRunID: root.ID, RootRunID: root.ID}
+	child.Lineage = testChildRunLineage(t, child.ID, delegate.ID, root.ID, root.ID)
 	apply(t, conversation, treeEvent("open-child", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: child}))
+	if got := conversation.RunningDescendants(); got != 1 {
+		t.Fatalf("running descendants after child start = %d, want 1", got)
+	}
 	childAnswer := Block{ID: "child-answer", RunID: child.ID, Status: BlockStatusRunning, Kind: BlockAssistant}
 	apply(t, conversation, treeEvent("child-answer-start", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: childAnswer}))
 	apply(t, conversation, treeEvent("child-answer-delta", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockDelta{BlockID: childAnswer.ID, Text: "inspection"}))
 	childAnswer.Status, childAnswer.Text = BlockStatusCompleted, "inspection complete"
 	apply(t, conversation, treeEvent("child-answer-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockCompleted{Block: childAnswer}))
 	apply(t, conversation, treeEvent("child-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
+	if got := conversation.RunningDescendants(); got != 0 {
+		t.Fatalf("running descendants after child finish = %d, want 0", got)
+	}
 	if conversation.Phase() != ConversationRunning || conversation.RunID() != root.ID {
 		t.Fatalf("child terminal ended root conversation: phase=%v run=%s", conversation.Phase(), conversation.RunID())
 	}
@@ -222,7 +232,7 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, conversation, treeEvent("delegate-start", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: delegate}))
 	child := runningRun("seg_child_1")
 	child.ID = "run_child"
-	child.Lineage = RunLineage{SpawnedByBlockID: delegate.ID, ParentRunID: root.ID, RootRunID: root.ID}
+	child.Lineage = testChildRunLineage(t, child.ID, delegate.ID, root.ID, root.ID)
 	apply(t, conversation, treeEvent("child-start-1", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: child}))
 	approval := Approval{
 		RunID: child.ID, ItemID: "child-approval", Title: "Inspect generated output",
@@ -275,7 +285,7 @@ func TestConversationTreatsEventIDAsOpaqueIdentity(t *testing.T) {
 		t.Fatalf("identical replay = %+v, %v", accepted, err)
 	}
 	conflict := event
-	conflict.Event = SegmentStarted{Run: Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1", Provider: "mock", Model: "other"}}
+	conflict.Event = SegmentStarted{Run: testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1", Provider: "mock", Model: "other"})}
 	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("conflict error = %v", err)
 	}
@@ -317,7 +327,7 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 		ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool,
 		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
 	}}})
-	if err := conversation.SettleRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}}); err != nil {
+	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}})); err != nil {
 		t.Fatal(err)
 	}
 	block := conversation.Blocks()[0]
@@ -328,8 +338,8 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 
 func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	conversation := NewConversation()
-	snapshot := attachedReconciliationSnapshot()
-	plan := snapshot.Plan
+	snapshot := attachedReconciliationSnapshot(t)
+	plan := snapshot.Plan.Items()
 	stream := SegmentStream{RunID: "run_1", SegmentID: "seg_1", HeadEventID: "head", Events: func(func(RunEvent, error) bool) {}}
 	if err := conversation.RestoreAttachedSnapshot(snapshot, stream); err != nil {
 		t.Fatal(err)
@@ -339,8 +349,8 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 		{EventID: "overlap-start", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockAssistant}}},
 		{EventID: "overlap-delta", RunID: "run_1", SegmentID: "seg_1", Event: BlockDelta{BlockID: "same", Text: "duplicate preview"}},
 		{EventID: "overlap-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: snapshot.Transcript[1]}},
-		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: PlanChanged{Revision: 1, Items: []PlanItem{{Title: "older", Status: PlanPending}}}},
-		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: PlanChanged{Revision: 2, Items: plan}},
+		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []PlanItem{{Title: "older", Status: PlanPending}})},
+		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, plan)},
 	}
 	for _, event := range ignored {
 		accepted, err := conversation.ApplyRunEvent(event)
@@ -351,7 +361,7 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 			t.Fatalf("overlap %s was folded twice", event.EventID)
 		}
 	}
-	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: PlanChanged{Revision: 2, Items: []PlanItem{{Title: "different", Status: PlanActive}}}}
+	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []PlanItem{{Title: "different", Status: PlanActive}})}
 	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("same-revision plan conflict = %v", err)
 	}
@@ -375,25 +385,25 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	completedTool.Status = ToolOK
 	apply(t, conversation, RunEvent{EventID: "live-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "live", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedTool}}})
 	apply(t, conversation, RunEvent{EventID: "missing-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "missing", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "authoritative"}}})
-	apply(t, conversation, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: PlanChanged{Revision: 3, Items: []PlanItem{{Title: "done", Status: PlanDone}}}})
-	if conversation.PlanRevision() != 3 || conversation.Checkpoint() != "new-plan" {
-		t.Fatalf("reconciled state = plan revision %d, checkpoint %q", conversation.PlanRevision(), conversation.Checkpoint())
+	apply(t, conversation, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "done", Status: PlanDone}})})
+	if conversation.Plan() == nil || conversation.Plan().Revision() != 3 || conversation.Checkpoint() != "new-plan" {
+		t.Fatalf("reconciled state = plan %+v, checkpoint %q", conversation.Plan(), conversation.Checkpoint())
 	}
 }
 
-func attachedReconciliationSnapshot() SessionSnapshot {
+func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 	return SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
+		Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Transcript: []Block{
 			{ID: "same", RunID: "run_old", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "old"},
 			{ID: "same", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "current"},
 			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
 		},
 		Runs: []Run{
-			{ID: "run_old", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"},
+			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
+			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"}),
 		},
-		Plan: []PlanItem{{Title: "inspect", Status: PlanActive}}, PlanRevision: 2,
+		Plan: testPlan(t, 2, []PlanItem{{Title: "inspect", Status: PlanActive}}),
 	}
 }
 
@@ -409,7 +419,7 @@ func TestConversationRejectsOrphanPreviewOutsideColdTail(t *testing.T) {
 }
 
 func runningRun(segmentID string) Run {
-	return Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: RunStatusRunning, ActiveSegmentID: segmentID}
+	return testRootRun(Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: RunStatusRunning, ActiveSegmentID: segmentID})
 }
 
 func apply(t *testing.T, conversation *Conversation, event RunEvent) {
@@ -420,5 +430,13 @@ func apply(t *testing.T, conversation *Conversation, event RunEvent) {
 	}
 	if !accepted.Applied {
 		t.Fatal("event was not applied")
+	}
+}
+
+func TestBlockIdentityKeyPreservesFieldBoundaries(t *testing.T) {
+	left := (BlockIdentity{RunID: "a", BlockID: "bc"}).Key()
+	right := (BlockIdentity{RunID: "ab", BlockID: "c"}).Key()
+	if left == right {
+		t.Fatal("different block identity fields produced the same terminal key")
 	}
 }

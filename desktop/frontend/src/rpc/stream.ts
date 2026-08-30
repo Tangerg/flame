@@ -6,85 +6,115 @@
 // "run closed" method — the terminal signal is a `segment.finished`
 // StreamEvent for the ROOT SEGMENT, delivered inside the same stream.
 //
-// A single stream is rooted on ONE segment (the segment `runs.start` /
-// `runs.resume` / `runs.subscribe` opened, identified by SegmentId — a Run
-// keeps a stable RunId across HITL resume, but each resume opens a fresh
-// segment). That root segment stream carries the WHOLE run tree: the root
-// segment's own events PLUS every descendant subagent run's events (§5.4).
-// The root is keyed on segmentId; subagents are admitted by runId (they keep
-// distinct RunIds) when a `segment.started` carries a `spawnedByItemId` whose
-// owning item we've already seen on this tree. The stream ends when the ROOT
-// SEGMENT's `segment.finished` arrives (a subagent's has a different segmentId).
+// A single response stream is rooted on ONE segment (the segment `runs.start` /
+// `runs.resume` / `runs.subscribe` opened). The transport stamps every message
+// with the request id of the HTTP response that carried it, so that response is
+// the one membership authority for the whole run tree. Reconstructing membership
+// from earlier `segment.started` events fails when a reattach begins after those
+// events. The stream ends only when the ROOT SEGMENT's `segment.finished` arrives.
 
 import { createPushPullChannel, type PushPullChannel } from "./channel";
 import type { RpcClient } from "./client";
 import type { RpcId } from "./types";
-import type { RunEvent, RuntimeEvent } from "@flame/runtime-contract/wire";
+import {
+  runEventIsReplayable,
+  type RunEvent,
+  type RunReplayLimits,
+  type RuntimeEvent,
+} from "@flame/runtime-contract/wire";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import { NOTIFICATIONS_RUN_EVENT, NOTIFICATIONS_RUNTIME_EVENT } from "@flame/runtime-contract/wire";
+import { RpcConnectionError } from "./errors";
 
 export const RUN_EVENT_METHOD = NOTIFICATIONS_RUN_EVENT;
 export const RUNTIME_EVENT_METHOD = NOTIFICATIONS_RUNTIME_EVENT;
 
 // ---------------------------------------------------------------------------
-// Run-tree membership tracker
+// Bound run-response projection
 // ---------------------------------------------------------------------------
-//
-// Decides, for a given root segment stream, whether an inbound RunEvent
-// belongs to this tree, and whether it's the terminal root-segment finish.
 
-class RunTree {
-  // Subagent runIds admitted onto this tree PLUS the root run's own runId
-  // (learned from the root-segment segment.started). The root's OWN events are
-  // matched by segmentId, not by this set; the set exists so descendants can be
-  // admitted and then matched by their own runId.
-  private readonly runs = new Set<string>();
-  private readonly itemOwner = new Map<string, string>(); // itemId → owning runId
-  // Event ids already delivered on this stream. §9.2 requires the client to
-  // dedupe on replay/overlap (a residual live stream + a runs.subscribe
-  // replay window would otherwise double-append every item.delta). The
-  // contract only guarantees eventId is MONOTONIC, not lexicographically
-  // comparable, so we track a per-stream seen-set (freed with the stream).
-  private readonly seenEventIds = new Set<string>();
+interface RunReplayBudget {
+  maxEvents: number;
+  maxBytes: number;
+}
 
-  constructor(
-    rootRunId: string,
-    private readonly rootSegmentId: string,
-  ) {
-    this.runs.add(rootRunId);
+class RunReplayMemory {
+  private readonly delivered = new Map<string, number>();
+  private readonly encoder = new TextEncoder();
+  private readonly maxEvents: number;
+  private readonly maxBytes: number;
+  private retainedBytes = 0;
+
+  constructor(budget: RunReplayBudget) {
+    this.maxEvents = budget.maxEvents;
+    this.maxBytes = budget.maxBytes;
+    for (const [name, value] of [
+      ["event", budget.maxEvents],
+      ["byte", budget.maxBytes],
+    ] as const) {
+      if (!Number.isSafeInteger(value) || value <= 0) {
+        throw new RangeError(`run replay ${name} capacity must be a positive safe integer`);
+      }
+    }
   }
 
-  /** True if this event id was already delivered on this stream (replay /
-   *  overlapping-subscription duplicate). Marks it seen otherwise. */
-  alreadySeen(eventId: string): boolean {
-    if (this.seenEventIds.has(eventId)) return true;
-    this.seenEventIds.add(eventId);
+  /** Remember replay identities within the negotiated or local safety window. */
+  alreadyDelivered(eventId: string): boolean {
+    if (this.delivered.has(eventId)) return true;
+    const bytes = this.encoder.encode(eventId).byteLength;
+    this.delivered.set(eventId, bytes);
+    this.retainedBytes += bytes;
+    while (this.delivered.size > this.maxEvents || this.retainedBytes > this.maxBytes) {
+      const oldest = this.delivered.keys().next();
+      if (oldest.done) break;
+      const oldestBytes = this.delivered.get(oldest.value);
+      this.delivered.delete(oldest.value);
+      this.retainedBytes -= oldestBytes ?? 0;
+    }
     return false;
   }
+}
 
-  /** An event belongs to this tree if it's on the root segment or on an
-   *  admitted subagent run. */
-  private belongs(ev: RunEvent): boolean {
-    return ev.segmentId === this.rootSegmentId || this.runs.has(ev.runId);
-  }
+/** Live previews have no replay identity and may arrive indefinitely. This is
+ * the Desktop SDK's own short-burst allowance above the Runtime's advertised
+ * authoritative replay count; saturation drops only previews. */
+export const MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS = 256;
 
-  /** Update tree membership from an event; return true if it belongs here. */
-  admit(ev: RunEvent): boolean {
-    const event = ev.event;
-    if (event.type === "segment.started") {
-      if (ev.segmentId === this.rootSegmentId) {
-        // Root-segment segment.started — learn the root runId for stream termination.
-        this.runs.add(event.run.id);
-      } else {
-        // A subagent segment.started — admit it iff its spawning item is on the tree.
-        const spawnedBy = event.run.spawnedByItemId;
-        if (spawnedBy && this.itemOwner.has(spawnedBy)) this.runs.add(event.run.id);
-      }
-    } else if (event.type === "item.started" || event.type === "item.completed") {
-      if (this.belongs(ev)) this.itemOwner.set(event.item.id, ev.runId);
+/** Low-level SDK consumers may intentionally omit discovery. That cannot turn
+ * absence of a negotiated replay promise into infinite client retention: these
+ * are local safety envelopes, and overflow remains observable/recoverable. */
+const MAXIMUM_UNNEGOTIATED_REPLAY_IDENTITIES = 2_048;
+const MAXIMUM_UNNEGOTIATED_REPLAY_ID_BYTES = 16 * 1024 * 1024;
+
+type RunEventAdmission = "accepted" | "duplicate" | "ephemeralDropped" | "authoritativeOverflow";
+
+class RunEventInbox {
+  readonly channel: PushPullChannel<RunEvent>;
+  private readonly replayMemory: RunReplayMemory;
+
+  constructor(limits?: RunReplayLimits) {
+    const replayBudget: RunReplayBudget = limits ?? {
+      maxEvents: MAXIMUM_UNNEGOTIATED_REPLAY_IDENTITIES,
+      maxBytes: MAXIMUM_UNNEGOTIATED_REPLAY_ID_BYTES,
+    };
+    this.replayMemory = new RunReplayMemory(replayBudget);
+    const capacity = replayBudget.maxEvents + MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS;
+    if (!Number.isSafeInteger(capacity)) {
+      throw new RangeError("run event inbox capacity must be a positive safe integer");
     }
-    return this.belongs(ev);
+    this.channel = createPushPullChannel<RunEvent>({ capacity });
   }
+
+  admit(event: RunEvent): RunEventAdmission {
+    const replayable = runEventIsReplayable(event.event.type) === true;
+    if (replayable && this.replayMemory.alreadyDelivered(event.eventId)) return "duplicate";
+    if (this.channel.tryPush(event)) return "accepted";
+    return replayable ? "authoritativeOverflow" : "ephemeralDropped";
+  }
+}
+
+class BoundRunResponse {
+  constructor(private readonly rootSegmentId: string) {}
 
   /** True once the ROOT SEGMENT has finished — ends the stream. A subagent's
    *  segment.finished carries a different segmentId, so it never closes the tree. */
@@ -212,18 +242,6 @@ function createStreamLifetime(parent?: AbortSignal): StreamLifetime {
 // Run-event streams
 // ---------------------------------------------------------------------------
 
-/** Push an event into the stream if it belongs to the tree; report root finish. */
-function feedRunEvent(tree: RunTree, channel: PushPullChannel<RunEvent>, ev: RunEvent): boolean {
-  // Membership FIRST, dedupe second: eventId is only monotonic/unique within
-  // THIS root run stream — a foreign run's event may carry an equal id and
-  // must not poison the seen-set (admit's bookkeeping is idempotent, so a
-  // re-delivered duplicate passing through it is harmless).
-  if (!tree.admit(ev)) return false;
-  if (tree.alreadySeen(ev.eventId)) return false;
-  channel.push(ev);
-  return tree.isRootFinish(ev);
-}
-
 /** A run-event stream plus its teardown. `dispose` exists for the case where
  *  the stream's owning call FAILS before anyone iterates `events` — without
  *  it the subscription (and, for the deferred variant, its grow-forever
@@ -235,38 +253,62 @@ export interface RunEventStream {
   dispose: () => void;
 }
 
+export interface RunEventStreamOptions {
+  signal?: AbortSignal;
+  /** Exact retention window advertised by `capabilities.limits.runReplay`.
+   *  When discovery is unavailable, the SDK applies a bounded local safety
+   *  envelope without claiming a replay promise the Runtime never advertised. */
+  replayLimits?: RunReplayLimits;
+}
+
 /**
- * Subscribe to run events BEFORE the root run / segment ids are known, then bind once
+ * Subscribe to run events BEFORE the root segment id is known, then bind once
  * `runs.start` / `runs.resume` / `runs.subscribe` returns. Under streamable
  * HTTP the call's response and its event frames arrive on one ordered stream
  * (TRANSPORT.md §6.4), so the head events land right after the response —
  * subscribing only after the response resolves races and drops them. So we
  * subscribe immediately, bind the transport-owned request id before send, buffer
- * that response stream's events until `bind(runId, segmentId)` supplies the
- * runtime-assigned root identity, then replay the buffer through the tree filter.
+ * that response stream's events until `bind(segmentId)` supplies the
+ * runtime-assigned terminal identity, then replay the buffer in response order.
  * (Every stream-opening method returns its root segmentId, so this is the single
  * run-event stream builder — a Run's runId is stable, but the segment being
  * streamed is only known from the response.)
  */
 export function streamRunEvents(
   client: RpcClient,
-  signal?: AbortSignal,
+  options: RunEventStreamOptions = {},
 ): RunEventStream & {
   bindRequest: (requestRpcId: RpcId) => void;
-  bind: (rootRunId: string, rootSegmentId: string) => void;
+  bind: (rootSegmentId: string) => void;
 } {
-  const lifetime = createStreamLifetime(signal);
-  const channel = createPushPullChannel<RunEvent>();
-  const buffer: RunEvent[] = [];
+  const lifetime = createStreamLifetime(options.signal);
+  // Validate and snapshot advertised budgets before transport registrations
+  // exist; a malformed SDK capability cannot leave a half-open stream behind.
+  const inbox = new RunEventInbox(options.replayLimits);
+  const channel = inbox.channel;
+  // A root finish is the final event in its response stream. Until the ack
+  // supplies the root identity, retaining the latest finished segment is
+  // therefore sufficient and cannot grow with a wide subagent tree.
+  let latestFinishedBeforeBind: string | undefined;
   let ownerRequestRpcId: RpcId | undefined;
-  let tree: RunTree | null = null;
+  let response: BoundRunResponse | null = null;
   const lifecycle = createStreamLifecycle(channel, lifetime);
 
   const unsubEvents = client.subscribe(RUN_EVENT_METHOD, {
     next(event, requestRpcId) {
       if (channel.closed || requestRpcId !== ownerRequestRpcId) return;
-      if (tree === null) buffer.push(event);
-      else if (feedRunEvent(tree, channel, event)) lifecycle.close();
+      const admission = inbox.admit(event);
+      if (admission === "authoritativeOverflow") {
+        lifecycle.fail(
+          new RpcConnectionError(
+            "run event consumer exceeded its bounded inbox before an authoritative event",
+          ),
+        );
+        return;
+      }
+      if (admission !== "accepted" || event.event.type !== "segment.finished") return;
+      if (response === null) latestFinishedBeforeBind = event.segmentId;
+      else if (response.isRootFinish(event)) lifecycle.close();
     },
     error: (error, requestRpcId) => {
       if (requestRpcId !== undefined && requestRpcId !== ownerRequestRpcId) return;
@@ -279,16 +321,11 @@ export function streamRunEvents(
     else lifecycle.close();
   });
 
-  const bind = (rootRunId: string, rootSegmentId: string): void => {
-    if (tree !== null) return;
-    tree = new RunTree(rootRunId, rootSegmentId);
-    for (const ev of buffer) {
-      if (feedRunEvent(tree, channel, ev)) {
-        lifecycle.close();
-        break;
-      }
-    }
-    buffer.length = 0;
+  const bind = (rootSegmentId: string): void => {
+    if (response !== null) return;
+    response = new BoundRunResponse(rootSegmentId);
+    if (latestFinishedBeforeBind === rootSegmentId) lifecycle.close();
+    latestFinishedBeforeBind = undefined;
   };
 
   lifecycle.bind(() => {
@@ -324,18 +361,27 @@ export interface RuntimeEventStream {
   dispose: () => void;
 }
 
+/** Connection-scoped invalidations are deliberately compact; sustained lag is
+ * recovered by ending this generation and resubscribing with an explicit
+ * resync, never by retaining an unbounded second invalidation log. */
+export const MAXIMUM_BUFFERED_RUNTIME_EVENTS = 64;
+
 export function streamRuntimeEvents(
   client: RpcClient,
   signal?: AbortSignal,
 ): RuntimeEventStream & { bindRequest: (requestRpcId: RpcId) => void } {
   const lifetime = createStreamLifetime(signal);
-  const channel = createPushPullChannel<RuntimeEvent>();
+  const channel = createPushPullChannel<RuntimeEvent>({
+    capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
+  });
   let ownerRequestRpcId: RpcId | undefined;
   const lifecycle = createStreamLifecycle(channel, lifetime);
   const unsubEvents = client.subscribe(RUNTIME_EVENT_METHOD, {
     next(params, requestRpcId) {
       if (channel.closed || requestRpcId !== ownerRequestRpcId) return;
-      channel.push(params.event);
+      if (!channel.tryPush(params.event)) {
+        lifecycle.fail(new RpcConnectionError("runtime event consumer exceeded its bounded inbox"));
+      }
     },
     error: (error, requestRpcId) => {
       if (requestRpcId !== undefined && requestRpcId !== ownerRequestRpcId) return;

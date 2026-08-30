@@ -1,6 +1,10 @@
 import { describeProblem } from "@/lib/rpcErrors";
 import type { MCPServer } from "@/rpc";
 import { mcpServerIcon, type MCPServerSettings } from "../application/mcpServerQueries";
+import {
+  boundedMCPHandshakeTimeout,
+  UNBOUNDED_MCP_HANDSHAKE,
+} from "../application/mcpHandshakeTimeout";
 
 export function mcpServerSettings(server: MCPServer): MCPServerSettings {
   const connection = server.connection;
@@ -24,7 +28,10 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
     args: connection.type === "stdio" ? connection.args : undefined,
     envMasked: connection.type === "stdio" ? connection.envMasked : undefined,
     dir: connection.type === "stdio" ? connection.dir : undefined,
-    timeoutSeconds: server.timeoutSeconds,
+    handshakeTimeout:
+      server.handshakeTimeout.type === "bounded"
+        ? boundedMCPHandshakeTimeout(server.handshakeTimeout.seconds)
+        : UNBOUNDED_MCP_HANDSHAKE,
     disabledTools: server.disabledTools,
     autoApproveTools: server.autoApproveTools,
     toolCount: status.type === "connected" ? status.toolCount : undefined,

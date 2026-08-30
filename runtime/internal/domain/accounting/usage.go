@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 // Totals is the cumulative token and cost fact reported for one scope. CostUSD
@@ -115,8 +116,8 @@ func (u Usage) Validate() error {
 	}
 	slices.Sort(models)
 	for _, model := range models {
-		if strings.TrimSpace(model) == "" || model != strings.TrimSpace(model) {
-			return errors.New("accounting: model identity is required without surrounding whitespace")
+		if _, err := modelref.NewModelIdentity(model); err != nil {
+			return fmt.Errorf("accounting: model identity: %w", err)
 		}
 		if err := u.ByModel[model].Validate(); err != nil {
 			return fmt.Errorf("accounting: model %q: %w", model, err)
@@ -249,8 +250,8 @@ func checkedAddInt64(left, right int64) (int64, bool) {
 func (s Snapshot) Validate() error {
 	var previous string
 	for index, model := range s.Models {
-		if strings.TrimSpace(model.Model) == "" || model.Model != strings.TrimSpace(model.Model) {
-			return fmt.Errorf("accounting snapshot: models[%d] has invalid model", index)
+		if _, err := modelref.NewModelIdentity(model.Model); err != nil {
+			return fmt.Errorf("accounting snapshot: models[%d]: %w", index, err)
 		}
 		if index > 0 && model.Model <= previous {
 			return errors.New("accounting snapshot: models must be unique and sorted by model ID")
@@ -297,6 +298,9 @@ func (s Snapshot) ValidateAdvanceFrom(previous Snapshot) error {
 
 // Validate checks one model's token and cost counters.
 func (m ModelUsage) Validate() error {
+	if _, err := modelref.NewModelIdentity(m.Model); err != nil {
+		return fmt.Errorf("model usage: %w", err)
+	}
 	u := m.TokenUsage
 	if u.PromptTokens < 0 || u.CompletionTokens < 0 || u.ReasoningTokens < 0 ||
 		u.CacheReadTokens < 0 || u.CacheWriteTokens < 0 {

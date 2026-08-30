@@ -33,7 +33,7 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 }
 
 // Server returns one unified server resource.
-func (c *Coordinator) Server(ctx context.Context, name string) (Server, error) {
+func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Server, error) {
 	if c.registry == nil {
 		return Server{}, errors.New("mcp: MCP registry is unavailable")
 	}
@@ -51,7 +51,7 @@ func (c *Coordinator) Server(ctx context.Context, name string) (Server, error) {
 	return serverView(server, nil), nil
 }
 
-func (c *Coordinator) statusesByName() map[string]ServerStatus {
+func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
 	statuses := c.liveStatusesByName()
 	c.statusMu.Lock()
 	defer c.statusMu.Unlock()
@@ -73,8 +73,8 @@ func (c *Coordinator) statusesByName() map[string]ServerStatus {
 // transition overlay. Connection settlement must use this source: reading the
 // public model there would merely observe the synthetic connecting state that
 // the same operation published before dialing.
-func (c *Coordinator) liveStatusesByName() map[string]ServerStatus {
-	statuses := make(map[string]ServerStatus)
+func (c *Coordinator) liveStatusesByName() map[mcpserver.ServerName]ServerStatus {
+	statuses := make(map[mcpserver.ServerName]ServerStatus)
 	if c.statusReader == nil {
 		return statuses
 	}
@@ -85,7 +85,7 @@ func (c *Coordinator) liveStatusesByName() map[string]ServerStatus {
 	return statuses
 }
 
-func (c *Coordinator) liveStatus(name string) ServerStatus {
+func (c *Coordinator) liveStatus(name mcpserver.ServerName) ServerStatus {
 	if status, ok := c.liveStatusesByName()[name]; ok {
 		return status
 	}
@@ -93,7 +93,7 @@ func (c *Coordinator) liveStatus(name string) ServerStatus {
 }
 
 // ServerStatus resolves one safe live status notification read model.
-func (c *Coordinator) ServerStatus(_ context.Context, name string) ServerStatus {
+func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ServerName) ServerStatus {
 	if status, ok := c.statusesByName()[name]; ok {
 		return status
 	}
@@ -117,7 +117,7 @@ func (c *Coordinator) acceptStatus(status ServerStatus) {
 		c.statusOverrides[status.Name] = cloneServerStatus(status)
 	}
 	c.statusMu.Unlock()
-	c.invalidations.Notify(invalidation.ForMCP(status.Name))
+	c.invalidations.Notify(invalidation.ForMCP(status.Name.String()))
 }
 
 func cloneServerStatus(status ServerStatus) ServerStatus {

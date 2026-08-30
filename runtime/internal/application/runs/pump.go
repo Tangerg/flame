@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"iter"
 	"slices"
-	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -312,7 +311,7 @@ func (s *segmentPump) handleAuthoritativeFact(
 		// An out-of-order concurrent result is valid speculative reducer state but
 		// has no canonical durable prefix yet. Keep its receipt pending until an
 		// earlier result can commit the whole prefix atomically.
-		if ref := speculative.tools[toolEnd.CallID]; ref != nil && ref.end != nil {
+		if ref, _ := speculative.tools.get(toolEnd.CallID); ref != nil && ref.end != nil {
 			route.reducer = speculative
 			result.deferred = true
 			return result, nil
@@ -406,8 +405,7 @@ func (s *segmentPump) handleUnknownEffects(
 	if err != nil {
 		return fmt.Errorf("runs: reduce unknown Effect loss: %w", err)
 	}
-	retry := time.NewTicker(100 * time.Millisecond)
-	defer retry.Stop()
+	retry := unknownEffectCommitRetry{}
 	for {
 		publication, publishErr := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
 		if publishErr == nil {
@@ -417,10 +415,8 @@ func (s *segmentPump) handleUnknownEffects(
 			return nil
 		}
 		trace.SpanFromContext(s.ctx).RecordError(fmt.Errorf("runs: retry unknown Effect loss: %w", publishErr))
-		select {
-		case <-retry.C:
-		case <-s.ownerCtx.Done():
-			return errors.Join(publishErr, s.ownerCtx.Err())
+		if waitErr := retry.wait(s.ownerCtx); waitErr != nil {
+			return errors.Join(publishErr, waitErr)
 		}
 	}
 }
@@ -656,7 +652,10 @@ func (s *segmentPump) finishBoundary() {
 	}
 	// Closing the journal is the externally observable completion boundary. The
 	// synchronous maintenance fence and admission claim must be gone first.
-	s.owner.hub.close()
+	if err := s.owner.hub.close(); err != nil {
+		s.owner.completionErr = fmt.Errorf("runs: close replay journal: %w", err)
+		recordRunCleanupError(s.ownerCtx, s.owner.completionErr)
+	}
 	s.coordinator.segments.remove(s.spec.RunID, s.spec.SegmentID)
 }
 

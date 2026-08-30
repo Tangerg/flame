@@ -67,6 +67,9 @@ func TestRunRejectsOutOfRangeLimit(t *testing.T) {
 	if _, err := tl.Call(t.Context(), `{"query":"deploy","limit":21}`); err == nil {
 		t.Fatal("expected an error for limit above 20")
 	}
+	if _, err := tl.Call(t.Context(), `{"query":"deploy","limit":0}`); err == nil {
+		t.Fatal("expected an error for numeric default sentinel")
+	}
 }
 
 func TestRunEmptyQueryErrors(t *testing.T) {
@@ -80,13 +83,17 @@ func TestRunEmptyQueryErrors(t *testing.T) {
 }
 
 func TestRunNoHits(t *testing.T) {
-	tl, err := NewConversationSearch(&conversationSearchStub{})
+	stub := &conversationSearchStub{}
+	tl, err := NewConversationSearch(stub)
 	if err != nil {
 		t.Fatal(err)
 	}
 	out, err := tl.Call(t.Context(), `{"query":"nothing"}`)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got := stub.gotLimit; got != conversationSearchDefaultLimit {
+		t.Fatalf("default limit = %d, want %d", got, conversationSearchDefaultLimit)
 	}
 	if !strings.Contains(out, "No earlier conversation matched") {
 		t.Fatalf("unexpected empty-result text: %q", out)

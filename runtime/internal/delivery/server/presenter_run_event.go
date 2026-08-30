@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"strconv"
+	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -44,32 +45,44 @@ func presentRunEvent(event runs.RunEvent) protocol.StreamEvent {
 // presentPlan publishes what a root Run changed. The stream and plan.get go through
 // one shape, so live following and cold recovery cannot disagree about the Plan.
 func presentPlan(event runs.PlanSnapshot) protocol.Plan {
-	steps := make([]protocol.PlanStep, 0, len(event.Steps))
-	for index, step := range event.Steps {
-		steps = append(steps, protocol.PlanStep{
+	state := presentPlanState(event.Revision, event.UpdatedAt, event.Steps)
+	return protocol.Plan{SessionID: event.SessionID, State: &state}
+}
+
+func presentPlanState(revision uint64, updatedAt time.Time, steps []plan.Step) protocol.PlanState {
+	return protocol.PlanState{
+		Revision: revision, Steps: presentPlanStepList(steps), UpdatedAt: updatedAt,
+	}
+}
+
+func presentPlanStepList(steps []plan.Step) []protocol.PlanStep {
+	presented := make([]protocol.PlanStep, 0, len(steps))
+	for index, step := range steps {
+		presented = append(presented, protocol.PlanStep{
 			ID: strconv.Itoa(index), Description: step.Description, Status: presentPlanStatus(step.Status),
 		})
 	}
-	return protocol.Plan{
-		SessionID: event.SessionID, Revision: event.Revision,
-		Steps: steps, UpdatedAt: event.UpdatedAt,
-	}
+	return presented
 }
 
 // presentStoredPlan is the same projection read cold. It goes through the run-event
 // shape so the two cannot describe the list differently: one presenter, one answer.
-func presentStoredPlan(sessionID string, state plan.State) protocol.Plan {
-	return presentPlan(runs.PlanSnapshot{
-		SessionID: sessionID, Revision: state.Revision(), UpdatedAt: state.UpdatedAt(),
-		Steps: state.Steps(),
-	})
+func presentStoredPlan(sessionID string, current plan.Current) protocol.Plan {
+	out := protocol.Plan{SessionID: sessionID}
+	state, committed := current.State()
+	if !committed {
+		return out
+	}
+	presented := presentPlanState(state.Revision(), state.UpdatedAt(), state.Steps())
+	out.State = &presented
+	return out
 }
 
 // presentPlanSteps is the list a portable archive carries: the same items as
 // the live projection, through the same presenter, with none of the revision or
 // timestamp the archive deliberately leaves behind.
 func presentPlanSteps(steps []plan.Step) []protocol.PlanStep {
-	return presentPlan(runs.PlanSnapshot{Steps: steps}).Steps
+	return presentPlanStepList(steps)
 }
 
 func presentPlanStatus(status plan.Status) protocol.PlanStatus {

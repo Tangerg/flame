@@ -2,7 +2,7 @@
  *  narrow on purpose: this predicate must not grow into a second reading of the
  *  provider list. */
 export interface ProviderCredentialSummary {
-  apiKeyMasked: string;
+  configured: boolean;
 }
 
 /**
@@ -13,5 +13,5 @@ export interface ProviderCredentialSummary {
  * every cold start of a fully configured app.
  */
 export function needsProviderSetup(providers: ProviderCredentialSummary[] | undefined): boolean {
-  return providers !== undefined && !providers.some((provider) => provider.apiKeyMasked !== "");
+  return providers !== undefined && !providers.some((provider) => provider.configured);
 }

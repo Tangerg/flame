@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -41,6 +42,11 @@ type ForkBoundary struct {
 // must itself be terminal; an implicit whole-conversation fork stops at the
 // latest terminal run.
 func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) (ForkBoundary, error) {
+	if fromRunID != "" {
+		if _, err := resourceid.ParseRun(fromRunID); err != nil {
+			return ForkBoundary{}, fmt.Errorf("sessions: fork boundary: %w", err)
+		}
+	}
 	ordered := slices.Clone(runs)
 	slices.SortStableFunc(ordered, func(a, b run.Run) int {
 		return a.CreatedAt().Compare(b.CreatedAt())
@@ -111,6 +117,9 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 // (§8.1). The application resolves the boundary and commits the branch through
 // its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
+	if _, err := resourceid.ParseSession(spec.ParentID); err != nil {
+		return session.Session{}, fmt.Errorf("sessions: fork: %w", err)
+	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)
 	if err != nil {
 		return session.Session{}, err

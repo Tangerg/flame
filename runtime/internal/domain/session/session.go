@@ -7,15 +7,17 @@ package session
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
 
 // IDPrefix is the type prefix assigned when a Runtime generates a Session ID.
-const IDPrefix = "ses_"
+const IDPrefix = resourceidentity.SessionPrefix
 
 var (
 	// ErrNotFound reports that no Session exists for an addressed identity.
@@ -86,7 +88,7 @@ type Session struct {
 	updatedAt time.Time
 	favorite  bool
 	isolated  bool
-	revision  uint64
+	revision  exactint.Counter
 }
 
 // New starts a root Session from caller-admitted values at revision one.
@@ -105,13 +107,17 @@ func New(draft Draft) (Session, error) {
 // Restore reconstructs a Session from its complete technical representation
 // while rechecking every aggregate invariant.
 func Restore(snapshot Snapshot) (Session, error) {
+	revision, err := exactint.Restore(snapshot.Revision)
+	if err != nil {
+		return Session{}, fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+	}
 	value := Session{
 		id: snapshot.ID, title: snapshot.Title, workspace: snapshot.Workspace,
 		selection: snapshot.Selection, parentID: snapshot.ParentID,
 		startedAt: canonicalTime(snapshot.StartedAt),
 		updatedAt: canonicalTime(snapshot.UpdatedAt),
 		favorite:  snapshot.Favorite, isolated: snapshot.Isolated,
-		revision: snapshot.Revision,
+		revision: revision,
 	}
 	if err := value.Validate(); err != nil {
 		return Session{}, err
@@ -127,7 +133,7 @@ func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed 
 	if err := s.Validate(); err != nil {
 		return Session{}, false, fmt.Errorf("%w: current state: %v", ErrInvalid, err)
 	}
-	if patch.ExpectedRevision != 0 && patch.ExpectedRevision != s.revision {
+	if patch.ExpectedRevision != 0 && patch.ExpectedRevision != s.revision.Value() {
 		return Session{}, false, ErrRevisionConflict
 	}
 	if patch.Empty() {
@@ -176,7 +182,7 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 	if strings.TrimSpace(s.title) != "" {
 		return s, false, nil
 	}
-	return s.Apply(Patch{Title: &title, ExpectedRevision: s.revision}, updatedAt)
+	return s.Apply(Patch{Title: &title, ExpectedRevision: s.revision.Value()}, updatedAt)
 }
 
 // Fork derives a new child Session. It inherits the admitted workspace and
@@ -246,18 +252,19 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 	if updatedAt.Before(previous.updatedAt) || updatedAt.Before(s.startedAt) {
 		return fmt.Errorf("%w: update time precedes Session history", ErrInvalid)
 	}
-	if previous.revision == math.MaxUint64 {
-		return fmt.Errorf("%w: revision overflow", ErrInvalid)
+	revision, err := previous.revision.Next()
+	if err != nil {
+		return fmt.Errorf("%w: revision: %v", ErrInvalid, err)
 	}
-	s.revision = previous.revision + 1
+	s.revision = revision
 	s.updatedAt = updatedAt
 	return s.Validate()
 }
 
 // Validate verifies identity, lineage, admitted values, time, and revision.
 func (s Session) Validate() error {
-	if err := validateRequiredText("id", s.id); err != nil {
-		return err
+	if _, err := resourceid.ParseSession(s.id); err != nil {
+		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
 	}
 	if err := s.workspace.Validate(); err != nil {
 		return err
@@ -271,7 +278,12 @@ func (s Session) Validate() error {
 	if !s.selection.Configured() {
 		return fmt.Errorf("%w: model selection is required", ErrInvalid)
 	}
-	if s.parentID != strings.TrimSpace(s.parentID) || s.parentID == s.id {
+	if s.parentID != "" {
+		if _, err := resourceid.ParseSession(s.parentID); err != nil {
+			return fmt.Errorf("%w: parent id: %v", ErrInvalid, err)
+		}
+	}
+	if s.parentID == s.id {
 		return fmt.Errorf("%w: invalid parent identity", ErrInvalid)
 	}
 	if s.startedAt.IsZero() || s.updatedAt.IsZero() {
@@ -280,7 +292,7 @@ func (s Session) Validate() error {
 	if s.updatedAt.Before(s.startedAt) {
 		return fmt.Errorf("%w: update time precedes start time", ErrInvalid)
 	}
-	if s.revision == 0 {
+	if s.revision.IsZero() {
 		return fmt.Errorf("%w: revision must be positive", ErrInvalid)
 	}
 	return nil
@@ -291,7 +303,7 @@ func (s Session) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id, Title: s.title, Workspace: s.workspace, Selection: s.selection,
 		ParentID: s.parentID, StartedAt: s.startedAt, UpdatedAt: s.updatedAt,
-		Favorite: s.favorite, Isolated: s.isolated, Revision: s.revision,
+		Favorite: s.favorite, Isolated: s.isolated, Revision: s.revision.Value(),
 	}
 }
 
@@ -323,20 +335,13 @@ func (s Session) Favorite() bool { return s.favorite }
 func (s Session) Isolated() bool { return s.isolated }
 
 // Revision returns the monotonic aggregate revision.
-func (s Session) Revision() uint64 { return s.revision }
+func (s Session) Revision() uint64 { return s.revision.Value() }
 
 func (s Session) sameValue(other Session) bool {
 	return s.id == other.id && s.title == other.title && s.workspace == other.workspace &&
 		s.selection == other.selection && s.parentID == other.parentID &&
 		s.startedAt.Equal(other.startedAt) && s.favorite == other.favorite &&
 		s.isolated == other.isolated
-}
-
-func validateRequiredText(name, value string) error {
-	if strings.TrimSpace(value) == "" || value != strings.TrimSpace(value) {
-		return fmt.Errorf("%w: %s is required without surrounding whitespace", ErrInvalid, name)
-	}
-	return nil
 }
 
 func canonicalTime(value time.Time) time.Time {

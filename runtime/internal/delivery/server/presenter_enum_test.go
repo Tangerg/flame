@@ -3,7 +3,6 @@ package server
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -19,7 +18,7 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 	mustPanic(t, func() {
 		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: transcript.QuestionFieldKind("invalid")}}})
 	})
-	mustPanic(t, func() { presentDelta(runs.ItemDelta{Kind: runs.ItemDeltaKind("invalid")}) })
+	mustPanic(t, func() { presentDelta(nil) })
 	mustPanic(t, func() { presentRun(runfixture.MustRestore(run.Snapshot{State: run.State("invalid")})) })
 	mustPanic(t, func() { presentOutcome(runfixture.MustRestore(run.Snapshot{State: run.Running})) })
 	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })

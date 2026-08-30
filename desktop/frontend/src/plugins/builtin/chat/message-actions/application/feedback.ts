@@ -32,7 +32,7 @@ class MessageFeedbackAggregate {
   readonly #publish: () => void;
   #accepted: MessageFeedbackRating | undefined;
   #selected: MessageFeedbackRating | undefined;
-  #latestRevision = 0;
+  #latestLease: object = {};
   #latestResult: Promise<MessageFeedbackRating> | null = null;
   #tail = Promise.resolve();
 
@@ -58,11 +58,11 @@ class MessageFeedbackAggregate {
       return this.#latestResult ?? Promise.resolve(rating);
     }
 
-    const revision = ++this.#latestRevision;
+    const lease = (this.#latestLease = {});
     this.#selected = rating;
     this.#publish();
 
-    const result = this.#cohort.settle(this.#tail).then(() => this.#execute(revision, rating));
+    const result = this.#cohort.settle(this.#tail).then(() => this.#execute(lease, rating));
     const settlement = result.then(
       () => undefined,
       () => undefined,
@@ -75,7 +75,7 @@ class MessageFeedbackAggregate {
     return result;
   }
 
-  async #execute(revision: number, rating: MessageFeedbackRating): Promise<MessageFeedbackRating> {
+  async #execute(lease: object, rating: MessageFeedbackRating): Promise<MessageFeedbackRating> {
     try {
       await this.#cohort.settle(
         this.#gateway.createMessageFeedback({ target: this.#target, rating }),
@@ -84,7 +84,7 @@ class MessageFeedbackAggregate {
       this.#accepted = rating;
       return rating;
     } catch (error) {
-      if (!this.#cohort.retired && revision === this.#latestRevision) {
+      if (!this.#cohort.retired && lease === this.#latestLease) {
         this.#selected = this.#accepted;
         this.#publish();
       }

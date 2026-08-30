@@ -4,7 +4,7 @@ package mcpserver
 // registrations. It is immutable after construction and safe for concurrent
 // readers.
 type ToolPolicy struct {
-	enabled      map[string]struct{}
+	enabled      map[ServerName]struct{}
 	disabled     map[ToolRef]struct{}
 	autoApproved map[ToolRef]struct{}
 }
@@ -17,20 +17,23 @@ func NewToolPolicy(servers []Server) ToolPolicy {
 			continue
 		}
 		if policy.enabled == nil {
-			policy.enabled = map[string]struct{}{}
+			policy.enabled = map[ServerName]struct{}{}
 		}
 		policy.enabled[server.Name] = struct{}{}
-		for _, tool := range server.DisabledTools {
-			if policy.disabled == nil {
-				policy.disabled = map[ToolRef]struct{}{}
+		for _, rule := range server.ToolPolicy.Rules() {
+			ref := ToolRef{Server: server.Name, Tool: rule.Tool}
+			switch rule.Decision {
+			case ToolDisabled:
+				if policy.disabled == nil {
+					policy.disabled = map[ToolRef]struct{}{}
+				}
+				policy.disabled[ref] = struct{}{}
+			case ToolAutoApproved:
+				if policy.autoApproved == nil {
+					policy.autoApproved = map[ToolRef]struct{}{}
+				}
+				policy.autoApproved[ref] = struct{}{}
 			}
-			policy.disabled[ToolRef{Server: server.Name, Tool: tool}] = struct{}{}
-		}
-		for _, tool := range server.AutoApproveTools {
-			if policy.autoApproved == nil {
-				policy.autoApproved = map[ToolRef]struct{}{}
-			}
-			policy.autoApproved[ToolRef{Server: server.Name, Tool: tool}] = struct{}{}
 		}
 	}
 	return policy

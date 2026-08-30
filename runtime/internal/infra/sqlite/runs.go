@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	sqlite3 "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"
 
@@ -18,11 +19,25 @@ import (
 // idx_runs_session_active keys on non-terminal root rows, so a Session holds at
 // most one non-terminal Run tree while any number of its descendant rows may be
 // active. The fine [run.Outcome] is stored separately in runs.outcome.
+type runState string
+
 const (
-	runStateRunning  = "running"
-	runStateWaiting  = "waiting"
-	runStateTerminal = "terminal"
+	runStateRunning  runState = "running"
+	runStateWaiting  runState = "waiting"
+	runStateTerminal runState = "terminal"
 )
+
+func parseRunState(raw string) (runState, error) {
+	state := runState(raw)
+	switch state {
+	case runStateRunning, runStateWaiting, runStateTerminal:
+		return state, nil
+	default:
+		return "", fmt.Errorf("sqlite: unknown Run state %q", raw)
+	}
+}
+
+func (r runState) databaseValue() string { return string(r) }
 
 // RunStore is the SQLite-backed Run table: one row per root or child Run,
 // holding its durable projection. Its immutable lineage columns identify the
@@ -60,6 +75,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		return fmt.Errorf("sqlite: admit run %q: %w", draft.RunID, err)
 	}
 	now := admitted.CreatedAt().UnixNano()
+	maxTotalTokens, maxSteps, maxBudgetUSD := runLimitColumnValues(admitted.Limits())
 	// This is the capability set's only writer, here and in Restore. Suspend,
 	// resume, and finish deliberately do not name the column: the value cannot change
 	// after admission, and the way to guarantee that is to have nothing able to
@@ -86,10 +102,10 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			admitted.ID(), admitted.SessionID(),
 			lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-			runStateRunning, admitted.ActiveSegmentID(),
+			runStateRunning.databaseValue(), admitted.ActiveSegmentID(),
 			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
 			admitted.GoalIncarnationID(),
-			admitted.Limits().MaxTotalTokens, admitted.Limits().MaxSteps, admitted.Limits().MaxBudgetUSD, capabilities,
+			maxTotalTokens, maxSteps, maxBudgetUSD, capabilities,
 			rundomain.UnknownMessageMark, now, now)
 		// Two constraints can reject this INSERT and they mean opposite things: the
 		// primary key says the id is spoken for, the partial index says the Session
@@ -154,6 +170,14 @@ func (r *RunStore) validateChildPlacement(
 	if err != nil {
 		return fmt.Errorf("sqlite: %s child run %q: validate tree: %w", operation, runID, err)
 	}
+	parentRunState, err := parseRunState(parentState)
+	if err != nil {
+		return fmt.Errorf("sqlite: %s child run %q: parent: %w", operation, runID, err)
+	}
+	rootRunState, err := parseRunState(rootState)
+	if err != nil {
+		return fmt.Errorf("sqlite: %s child run %q: root: %w", operation, runID, err)
+	}
 	parentTreeRoot := parentRoot
 	if parentTreeRoot == "" {
 		parentTreeRoot = parentRunID
@@ -193,14 +217,14 @@ func (r *RunStore) validateChildPlacement(
 			parentTreeRoot,
 			rootRunID,
 		)
-	case requireOpen && parentState == runStateTerminal:
+	case requireOpen && parentRunState == runStateTerminal:
 		return fmt.Errorf(
 			"sqlite: %s child run %q: parent %q is terminal",
 			operation,
 			runID,
 			parentRunID,
 		)
-	case requireOpen && rootState == runStateTerminal:
+	case requireOpen && rootRunState == runStateTerminal:
 		return fmt.Errorf(
 			"sqlite: %s child run %q: root %q is terminal",
 			operation,
@@ -226,7 +250,7 @@ func (r *RunStore) SuspendBarrier(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
 		return err
@@ -257,7 +281,7 @@ func (r *RunStore) suspend(
 		if !found || current.SessionID() != value.SessionID() {
 			return errors.New("sqlite: suspend run: active run not found")
 		}
-		if commit.commitID != "" && current.ActiveSegmentID() != commit.segmentID {
+		if !commit.commitID.IsZero() && current.ActiveSegmentID() != commit.segmentID {
 			return fmt.Errorf(
 				"sqlite: suspend run: active Segment is %q, want %q",
 				current.ActiveSegmentID(), commit.segmentID,
@@ -282,9 +306,9 @@ func (r *RunStore) suspend(
 			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 			        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`,
-			coarseState(next.State()), commit.segmentID, commit.commitID,
+			coarseState(next.State()).databaseValue(), commit.segmentID, commit.commitID.String(),
 			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), runUpdatedAt(value),
-			value.SessionID(), value.ID(), coarseState(current.State()))
+			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue())
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run: %w", err)
 		}
@@ -326,8 +350,8 @@ func (r *RunStore) Resume(
 		res, err := conn(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '', updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`,
-			coarseState(next.State()), next.ActiveSegmentID(), next.UpdatedAt().UnixNano(),
-			sessionID, draft.RunID, coarseState(current.State()))
+			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UnixNano(),
+			sessionID, draft.RunID, coarseState(current.State()).databaseValue())
 		if err != nil {
 			return fmt.Errorf("sqlite: resume run: %w", err)
 		}
@@ -347,8 +371,8 @@ func (r *RunStore) Resume(
 // transaction-bound connection before any projection write; a replacement,
 // park, or terminal transition therefore rejects the complete stale write-set.
 func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error {
-	if sessionID == "" || runID == "" || segmentID == "" {
-		return errors.New("sqlite: require active Run Segment needs session, Run, and Segment identity")
+	if err := validateRunCoordinates("require active Run Segment", sessionID, runID, segmentID); err != nil {
+		return err
 	}
 	var state, activeSegmentID string
 	err := conn(ctx, r.db).QueryRowContext(ctx,
@@ -364,7 +388,11 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, s
 	if err != nil {
 		return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
 	}
-	if state != runStateRunning || activeSegmentID != segmentID {
+	storedState, err := parseRunState(state)
+	if err != nil {
+		return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
+	}
+	if storedState != runStateRunning || activeSegmentID != segmentID {
 		return fmt.Errorf(
 			"sqlite: Run %q is %s in Segment %q, want running Segment %q",
 			runID,
@@ -389,8 +417,8 @@ func (r *RunStore) UpdateProgress(
 	contextTokens int64,
 	updatedAt time.Time,
 ) error {
-	if sessionID == "" || runID == "" || segmentID == "" {
-		return errors.New("sqlite: update Run progress requires session, Run, and segment identity")
+	if err := validateRunCoordinates("update Run progress", sessionID, runID, segmentID); err != nil {
+		return err
 	}
 	if updatedAt.IsZero() {
 		return errors.New("sqlite: update Run progress requires an update time")
@@ -436,7 +464,7 @@ func (r *RunStore) UpdateProgress(
 			updatedAt.UTC().UnixNano(),
 			sessionID,
 			runID,
-			runStateRunning,
+			runStateRunning.databaseValue(),
 			segmentID,
 		)
 		if err != nil {
@@ -467,7 +495,7 @@ func (r *RunStore) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return err
@@ -476,10 +504,10 @@ func (r *RunStore) RecordRunCommit(
 		`UPDATE runs SET commit_segment_id = ?, commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
 		segmentID,
-		commitID,
+		commitID.String(),
 		sessionID,
 		runID,
-		runStateRunning,
+		runStateRunning.databaseValue(),
 		segmentID,
 	)
 	if err != nil {
@@ -502,7 +530,7 @@ func (r *RunStore) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 		return err
@@ -510,10 +538,10 @@ func (r *RunStore) RecordWaitingRunCommit(
 	result, err := conn(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET commit_segment_id = '', commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ''`,
-		commitID,
+		commitID.String(),
 		sessionID,
 		runID,
-		runStateWaiting,
+		runStateWaiting.databaseValue(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: record waiting Run commit %q: %w", commitID, err)
@@ -535,7 +563,7 @@ func (r *RunStore) TerminalizeEvent(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
 		return err
@@ -545,7 +573,7 @@ func (r *RunStore) TerminalizeEvent(
 
 type runCommitIdentity struct {
 	segmentID string
-	commitID  string
+	commitID  commitidentity.ID
 }
 
 func (r *RunStore) terminalize(
@@ -581,7 +609,7 @@ func (r *RunStore) RunCommitCommitted(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) (bool, error) {
 	if segmentID == "" {
 		if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
@@ -600,11 +628,11 @@ func (r *RunStore) RunCommitCommitted(
 		sessionID,
 		runID,
 		segmentID,
-		commitID,
-		runStateRunning,
+		commitID.String(),
+		runStateRunning.databaseValue(),
 		segmentID,
-		runStateWaiting,
-		runStateTerminal,
+		runStateWaiting.databaseValue(),
+		runStateTerminal.databaseValue(),
 	).Scan(&found)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: verify Run commit %q: %w", commitID, err)
@@ -612,35 +640,38 @@ func (r *RunStore) RunCommitCommitted(
 	return found == 1, nil
 }
 
-func validateRunCommitIdentity(sessionID, runID, segmentID, commitID string) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "session", value: sessionID},
-		{name: "Run", value: runID},
-		{name: "Segment", value: segmentID},
-		{name: "commit", value: commitID},
-	} {
-		if strings.TrimSpace(identity.value) == "" || identity.value != strings.TrimSpace(identity.value) {
-			return fmt.Errorf("sqlite: Run commit %s ID is required without surrounding whitespace", identity.name)
-		}
+func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID commitidentity.ID) error {
+	if err := validateRunCoordinates("verify Run commit", sessionID, runID, segmentID); err != nil {
+		return err
+	}
+	if err := commitID.Validate(); err != nil {
+		return fmt.Errorf("sqlite: verify Run commit: %w", err)
 	}
 	return nil
 }
 
-func validateWaitingRunCommitIdentity(sessionID, runID, commitID string) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "session", value: sessionID},
-		{name: "Run", value: runID},
-		{name: "commit", value: commitID},
-	} {
-		if strings.TrimSpace(identity.value) == "" || identity.value != strings.TrimSpace(identity.value) {
-			return fmt.Errorf("sqlite: waiting Run commit %s ID is required without surrounding whitespace", identity.name)
-		}
+func validateRunCoordinates(operation, sessionID, runID, segmentID string) error {
+	if err := validateSessionResource(operation, sessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource(operation, runID); err != nil {
+		return err
+	}
+	if err := validateSegmentResource(operation, segmentID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateWaitingRunCommitIdentity(sessionID, runID string, commitID commitidentity.ID) error {
+	if err := validateSessionResource("verify waiting Run commit", sessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("verify waiting Run commit", runID); err != nil {
+		return err
+	}
+	if err := commitID.Validate(); err != nil {
+		return fmt.Errorf("sqlite: verify waiting Run commit: %w", err)
 	}
 	return nil
 }
@@ -671,7 +702,7 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, expected, replacement 
 	result, err := conn(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET message_mark = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark = ?`,
-		replacement.MessageMark(), expected.SessionID(), expected.ID(), runStateTerminal, expected.MessageMark(),
+		replacement.MessageMark(), expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), expected.MessageMark(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
@@ -737,7 +768,7 @@ func (r *RunStore) finish(
 		if !found || current.SessionID() != value.SessionID() {
 			return fmt.Errorf("sqlite: %s run: active run not found", op)
 		}
-		if commit.commitID != "" && current.ActiveSegmentID() != commit.segmentID {
+		if !commit.commitID.IsZero() && current.ActiveSegmentID() != commit.segmentID {
 			return fmt.Errorf(
 				"sqlite: %s run: active Segment is %q, want %q",
 				op,
@@ -766,13 +797,13 @@ func (r *RunStore) finish(
 			   usage = ?, context_tokens = ?, problem = ?, message_mark = ?, finished_at = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`
 		args := []any{
-			coarseState(next.State()), commit.segmentID, commit.commitID,
+			coarseState(next.State()).databaseValue(), commit.segmentID, commit.commitID.String(),
 			outcome.String(), value.Detail(), metrics.steps, metrics.durationNs,
 			metrics.usage, next.ContextTokens(), encodedFailure,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
-			runUpdatedAt(value), value.SessionID(), value.ID(), coarseState(current.State()),
+			runUpdatedAt(value), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}
-		if commit.commitID != "" {
+		if !commit.commitID.IsZero() {
 			query += ` AND active_segment_id = ?`
 			args = append(args, commit.segmentID)
 		}
@@ -849,6 +880,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	outcome, _ := value.Outcome()
 	selection := value.ModelSelection()
 	limits := value.Limits()
+	maxTotalTokens, maxSteps, maxBudgetUSD := runLimitColumnValues(limits)
 	_, err = conn(ctx, r.db).ExecContext(ctx,
 		`INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
@@ -859,11 +891,11 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-		coarseState(value.State()), outcome.String(),
+		coarseState(value.State()).databaseValue(), outcome.String(),
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
 		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure,
-		limits.MaxTotalTokens, limits.MaxSteps, limits.MaxBudgetUSD, capabilities, value.MessageMark(),
+		maxTotalTokens, maxSteps, maxBudgetUSD, capabilities, value.MessageMark(),
 		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), runUpdatedAt(value))
 	if isPrimaryKeyViolation(err) {
 		// A Run id belongs to one Session for its whole lifetime. An import that
@@ -882,6 +914,9 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 // row before terminalizing the Run in the same transaction; the proposed
 // aggregate transition remains the authority for whether the write is legal.
 func (r *RunStore) runForTransition(ctx context.Context, runID string) (rundomain.Run, bool, error) {
+	if err := validateRunResource("read Run for transition", runID); err != nil {
+		return rundomain.Run{}, false, err
+	}
 	row := conn(ctx, r.db).QueryRowContext(ctx,
 		`SELECT `+runColumns+`
 		 FROM runs AS r
@@ -913,6 +948,12 @@ func (r *RunStore) runForTransition(ctx context.Context, runID string) (rundomai
 // shape assembled from a subset of the same columns would be a second answer to
 // "what is this Run".
 func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.Status, includeDescendants bool, beforeStartedAt int64, beforeRunID string, limit int) ([]rundomain.Run, error) {
+	if err := validateOptionalSessionResource("page Runs", sessionID); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalRunResource("page Runs anchor", beforeRunID); err != nil {
+		return nil, err
+	}
 	query := `SELECT ` + runColumns + `
 		 FROM runs AS r
 		 ` + runReadJoins
@@ -950,7 +991,7 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page runs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []rundomain.Run
 	for rows.Next() {
@@ -971,6 +1012,9 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 // supply the session too would mean it has to know where the Run lives before it
 // can ask what the Run is.
 func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, error) {
+	if err := validateRunResource("read Run", runID); err != nil {
+		return rundomain.Run{}, false, err
+	}
 	row := conn(ctx, r.db).QueryRowContext(ctx,
 		`SELECT `+runColumns+`
 		 FROM runs AS r
@@ -991,6 +1035,9 @@ func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, 
 // application/domain code validates the complete topology and derives canonical
 // subtree order.
 func (r *RunStore) Tree(ctx context.Context, runID string) ([]rundomain.Run, error) {
+	if err := validateRunResource("read Run tree", runID); err != nil {
+		return nil, err
+	}
 	rows, err := conn(ctx, r.db).QueryContext(ctx,
 		`WITH target AS (
 		    SELECT CASE WHEN root_run_id = '' THEN run_id ELSE root_run_id END AS tree_root_id
@@ -1007,7 +1054,7 @@ func (r *RunStore) Tree(ctx context.Context, runID string) ([]rundomain.Run, err
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read tree containing run %q: %w", runID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var runs []rundomain.Run
 	for rows.Next() {
@@ -1032,6 +1079,9 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]ru
 	}
 	args := make([]any, 0, len(runIDs))
 	for _, id := range runIDs {
+		if err := validateRunResource("read Runs with ancestors", id); err != nil {
+			return nil, err
+		}
 		args = append(args, id)
 	}
 	rows, err := conn(ctx, r.db).QueryContext(ctx,
@@ -1052,7 +1102,7 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]ru
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read runs with ancestors: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []rundomain.Run
 	for rows.Next() {
@@ -1077,7 +1127,7 @@ func stateColumns(statuses []rundomain.Status) ([]any, error) {
 		if !status.Valid() {
 			return nil, fmt.Errorf("unknown run status %q", status)
 		}
-		out = append(out, stateColumn(status))
+		out = append(out, stateColumn(status).databaseValue())
 	}
 	return out, nil
 }
@@ -1112,6 +1162,9 @@ const runReadJoins = `LEFT JOIN runs AS tree_root
 // aggregate: its lifecycle position, the facts it accrued, and — while parked —
 // the interrupts it is waiting on.
 func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.Run, error) {
+	if err := validateSessionResource("list Session Runs", sessionID); err != nil {
+		return nil, err
+	}
 	rows, err := conn(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`
 		 FROM runs AS r
@@ -1120,7 +1173,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list runs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []rundomain.Run
 	for rows.Next() {
@@ -1141,7 +1194,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.
 // filtering on [rundomain.StatusWaiting] cannot disagree about which value that
 // is — the partial unique index keys on non-terminal, so every terminal State
 // collapses to the one 'terminal' value (the fine reason lives in runs.outcome).
-func coarseState(s rundomain.State) string {
+func coarseState(s rundomain.State) runState {
 	return stateColumn(s.Status())
 }
 
@@ -1149,7 +1202,7 @@ func coarseState(s rundomain.State) string {
 // explicit table rather than [rundomain.Status.String]: these three strings are
 // on disk and inside the partial unique index's predicate, so a Go rename must not
 // be able to rewrite them.
-func stateColumn(status rundomain.Status) string {
+func stateColumn(status rundomain.Status) runState {
 	switch status {
 	case rundomain.StatusWaiting:
 		return runStateWaiting
@@ -1164,8 +1217,11 @@ func stateColumn(status rundomain.Status) string {
 // wholesale frees the session's admission slot by ceasing to exist, so there is
 // nothing left to terminalize.
 func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
-	if sessionID == "" || runID == "" {
-		return errors.New("sqlite: delete run requires sessionId + runId")
+	if err := validateSessionResource("delete Run", sessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("delete Run", runID); err != nil {
+		return err
 	}
 	if _, err := conn(ctx, r.db).ExecContext(ctx,
 		`DELETE FROM runs WHERE run_id = ? AND session_id = ?`, runID, sessionID,
@@ -1181,6 +1237,9 @@ func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
 // (not terminalization) keeps the runs table from accumulating dead rows for
 // sessions that no longer exist. Joins the caller's transaction via the context.
 func (r *RunStore) DeleteForSession(ctx context.Context, sessionID string) error {
+	if err := validateSessionResource("delete Session Runs", sessionID); err != nil {
+		return err
+	}
 	_, err := conn(ctx, r.db).ExecContext(ctx,
 		`DELETE FROM runs WHERE session_id = ?`, sessionID)
 	if err != nil {

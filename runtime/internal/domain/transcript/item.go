@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 )
@@ -22,17 +23,14 @@ type ItemIdentity struct {
 
 // Validate reports whether the identity is complete and canonical.
 func (i ItemIdentity) Validate() error {
-	for _, field := range []struct {
-		name  string
-		value string
-	}{
-		{name: "Session ID", value: i.SessionID},
-		{name: "Run ID", value: i.RunID},
-		{name: "Item ID", value: i.ItemID},
-	} {
-		if strings.TrimSpace(field.value) == "" || field.value != strings.TrimSpace(field.value) {
-			return fmt.Errorf("transcript: %s is required without surrounding whitespace", field.name)
-		}
+	if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+		return fmt.Errorf("transcript: %w", err)
+	}
+	if _, err := resourceid.ParseRun(i.RunID); err != nil {
+		return fmt.Errorf("transcript: %w", err)
+	}
+	if _, err := resourceid.ParseItem(i.ItemID); err != nil {
+		return fmt.Errorf("transcript: %w", err)
 	}
 	if i.OccurredAt.IsZero() {
 		return errors.New("transcript: occurrence time is required")
@@ -352,6 +350,15 @@ func (i Item) Validate() error {
 	case Compaction:
 		if i.status != ItemCompleted {
 			return errors.New("transcript: compaction must be complete")
+		}
+		if strings.TrimSpace(i.summary) == "" {
+			return errors.New("transcript: compaction summary is required")
+		}
+		if i.summary != strings.TrimSpace(i.summary) {
+			return errors.New("transcript: compaction summary is not canonical")
+		}
+		if i.droppedMessages < 0 {
+			return errors.New("transcript: compaction dropped-message count is negative")
 		}
 	default:
 		return fmt.Errorf("transcript: unknown Item kind %q", i.kind)

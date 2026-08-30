@@ -36,7 +36,7 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 				a.message("/" + command.Name + " unavailable: " + item.availability.Reason)
 				return
 			}
-			if command.Takes {
+			if a.commands.arguments(command.Name).TakesInput() {
 				a.composer.Editor().SetText("/" + command.Name + " ")
 				a.composer.Editor().Focus(true)
 				a.scheduleDraftPersistence()

@@ -1096,8 +1096,8 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     stop: null,
     // Cost is at 90% while runs is at 35%: the collapsed row must report the axis
     // that will stop the loop first, not the largest number on screen. Steps is
-    // uncapped, which the expanded view states instead of drawing a full bar.
-    budget: { maxRuns: 20, maxCostUsd: 5, maxSteps: 0 },
+    // uncapped, so that limit is absent instead of encoded as a sentinel zero.
+    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 7, costUsd: 4.5, steps: 31 },
     provider: "openai",
     model: "gpt-5",
@@ -1110,7 +1110,7 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     objective: "Get the desktop suite green on Linux",
     status: "paused",
     stop: { code: "costBudgetReached", detail: "" },
-    budget: { maxRuns: 20, maxCostUsd: 5, maxSteps: 0 },
+    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 12, costUsd: 5, steps: 58 },
     provider: "openai",
     model: "gpt-5",

@@ -9,6 +9,10 @@ import (
 )
 
 func TestConfigFromServerMapsEachSupportedTransport(t *testing.T) {
+	timeout, err := mcpserver.NewHandshakeTimeout(time.Second)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
 	tests := []struct {
 		name string
 		in   mcpserver.Server
@@ -17,18 +21,18 @@ func TestConfigFromServerMapsEachSupportedTransport(t *testing.T) {
 		{
 			name: "streamable http",
 			in: mcpserver.Server{
-				Name: "remote", Transport: mcpserver.TransportStreamableHTTP,
+				Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
 				URL: "https://mcp.example/tools", Authorization: "Bearer token",
-				Headers: map[string]string{"X-Trace": "enabled"}, Timeout: time.Second,
+				Headers: map[string]string{"X-Trace": "enabled"}, HandshakeTimeout: timeout,
 			},
 			want: mcp.TransportHTTP,
 		},
 		{
 			name: "stdio",
 			in: mcpserver.Server{
-				Name: "local", Transport: mcpserver.TransportStdio,
+				Name: testMCPServerName("local"), Transport: mcpserver.TransportStdio,
 				Command: "mcp-server", Args: []string{"--stdio"},
-				Env: map[string]string{"B": "two", "A": "one"}, Dir: "/tmp", Timeout: time.Second,
+				Env: map[string]string{"B": "two", "A": "one"}, Dir: "/tmp", HandshakeTimeout: timeout,
 			},
 			want: mcp.TransportStdio,
 		},
@@ -52,7 +56,7 @@ func TestConfigFromServerMapsEachSupportedTransport(t *testing.T) {
 
 func TestConfigFromServerRejectsInvalidDomainValue(t *testing.T) {
 	_, err := configFromServer(mcpserver.Server{
-		Name: "broken", Transport: mcpserver.Transport("websocket"), URL: "https://mcp.example",
+		Name: testMCPServerName("broken"), Transport: mcpserver.Transport("websocket"), URL: "https://mcp.example",
 	})
 	if err == nil {
 		t.Fatal("configFromServer error = nil, want invalid transport")

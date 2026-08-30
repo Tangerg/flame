@@ -29,14 +29,27 @@ func savePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessio
 	if err != nil {
 		t.Fatalf("read current Plan: %v", err)
 	}
-	replacement, err := current.Replace(steps, time.Unix(int64(current.Revision()+1), 0).UTC())
+	updatedAt := time.Unix(1, 0).UTC()
+	if committed, ok := current.State(); ok {
+		updatedAt = committed.UpdatedAt().Add(time.Second)
+	}
+	replacement, err := current.Replace(steps, updatedAt)
 	if err != nil {
 		t.Fatalf("decide Plan replacement: %v", err)
 	}
-	if err := store.Save(ctx, sessionID, current.Revision(), replacement); err != nil {
+	if err := store.Save(ctx, sessionID, current.Version(), replacement); err != nil {
 		t.Fatalf("save Plan replacement: %v", err)
 	}
 	return replacement
+}
+
+func committedPlan(t testing.TB, current plan.Current) plan.State {
+	t.Helper()
+	state, committed := current.State()
+	if !committed {
+		t.Fatal("Plan is unwritten")
+	}
+	return state
 }
 
 func TestPlanStore_RoundTrip(t *testing.T) {
@@ -245,15 +258,17 @@ func TestPlanIsOwnedByItsSession(t *testing.T) {
 	}
 	aSteps := a.Steps()
 	bSteps := b.Steps()
+	aState := committedPlan(t, a)
+	bState := committedPlan(t, b)
 	if len(aSteps) != 1 || aSteps[0].Description != "mine" {
 		t.Fatalf("session a's list = %+v, want only its own item", aSteps)
 	}
 	if len(bSteps) != 1 || bSteps[0].Description != "theirs" {
 		t.Fatalf("session b's list = %+v, want only its own item", bSteps)
 	}
-	if a.Revision() != b.Revision() {
+	if aState.Revision() != bState.Revision() {
 		t.Fatalf("revisions = %d and %d; each session counts its own writes, so one write each is the same number",
-			a.Revision(), b.Revision())
+			aState.Revision(), bState.Revision())
 	}
 
 	// Writing in b again must not move a at all.
@@ -263,7 +278,8 @@ func TestPlanIsOwnedByItsSession(t *testing.T) {
 		t.Fatalf("re-read a: %v", err)
 	}
 	unmovedSteps := unmoved.Steps()
-	if unmoved.Revision() != a.Revision() || len(unmovedSteps) != 1 || unmovedSteps[0].Description != "mine" {
+	unmovedState := committedPlan(t, unmoved)
+	if unmovedState.Revision() != aState.Revision() || len(unmovedSteps) != 1 || unmovedSteps[0].Description != "mine" {
 		t.Fatalf("session a moved to %+v because session b was written", unmoved)
 	}
 
@@ -273,11 +289,12 @@ func TestPlanIsOwnedByItsSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read restored a: %v", err)
 	}
-	if restored.Revision() <= a.Revision() {
-		t.Fatalf("restored revision = %d, want greater than the %d it replaced", restored.Revision(), a.Revision())
+	restoredState := committedPlan(t, restored)
+	if restoredState.Revision() <= aState.Revision() {
+		t.Fatalf("restored revision = %d, want greater than the %d it replaced", restoredState.Revision(), aState.Revision())
 	}
-	if !restored.UpdatedAt().After(a.UpdatedAt()) && !restored.UpdatedAt().Equal(a.UpdatedAt()) {
-		t.Fatalf("restored updatedAt = %s, want no earlier than %s", restored.UpdatedAt(), a.UpdatedAt())
+	if !restoredState.UpdatedAt().After(aState.UpdatedAt()) && !restoredState.UpdatedAt().Equal(aState.UpdatedAt()) {
+		t.Fatalf("restored updatedAt = %s, want no earlier than %s", restoredState.UpdatedAt(), aState.UpdatedAt())
 	}
 }
 
@@ -290,7 +307,11 @@ func TestPlanStoreRejectsStaleReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	savePlan(t, ctx, store, "ses_A", []plan.Step{{Description: "winner", Status: plan.StatusInProgress}})
-	if saveErr := store.Save(ctx, "ses_A", first.Revision(), stale); !errors.Is(saveErr, plan.ErrRevisionConflict) {
+	firstCurrent, err := plan.CurrentOf(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saveErr := store.Save(ctx, "ses_A", firstCurrent.Version(), stale); !errors.Is(saveErr, plan.ErrRevisionConflict) {
 		t.Fatalf("stale Save error = %v, want ErrRevisionConflict", saveErr)
 	}
 	current, err := store.State(ctx, "ses_A")

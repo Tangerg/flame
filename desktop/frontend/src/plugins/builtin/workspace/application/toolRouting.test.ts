@@ -48,7 +48,7 @@ describe("openWorkspaceViewForTool", () => {
     expect(navigator().get().view).toBeNull();
     expect(useContextDockStore.getState().fileFocus).toMatchObject({
       path: "src/app.ts",
-      revision: 1,
+      revision: 1n,
     });
   });
 
@@ -56,7 +56,7 @@ describe("openWorkspaceViewForTool", () => {
     useContextDockStore.getState().focusFile("src/old.ts");
     openWorkspaceViewForTool(toolCall({ id: "t3", name: "apply_patch", fn: "apply_patch" }));
     expect(navigator().get().dock).toBe("diff");
-    expect(useContextDockStore.getState().fileFocus).toMatchObject({ path: "", revision: 2 });
+    expect(useContextDockStore.getState().fileFocus).toMatchObject({ path: "", revision: 2n });
   });
 
   it("promotes no view for inline-only categories", () => {

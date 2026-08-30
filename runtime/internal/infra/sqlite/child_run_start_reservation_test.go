@@ -76,6 +76,17 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 	if err := store.Reserve(t.Context(), changed); !errors.Is(err, storage.ErrChildRunStartReservationConflict) {
 		t.Fatalf("changed replay = %v, want conflict", err)
 	}
+	if _, err := store.Conclude(
+		t.Context(), record, storage.ChildRunStartConclusion("unknown"),
+	); err == nil {
+		t.Fatal("unknown conclusion succeeded")
+	}
+	if _, err := db.ExecContext(t.Context(),
+		`UPDATE child_run_start_reservations SET state = ? WHERE member_id = ?`,
+		"corrupt", record.MemberID,
+	); err == nil {
+		t.Fatal("SQLite accepted a corrupt child Run start state")
+	}
 }
 
 func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {

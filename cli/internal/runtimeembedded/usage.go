@@ -48,9 +48,14 @@ func (r *Runtime) SessionUsage(ctx context.Context, sessionID string) (usage.Ses
 	return report, nil
 }
 
-func (r *Runtime) Summary(ctx context.Context, sinceDays int) (usage.Summary, error) {
-	if sinceDays < 0 {
-		return usage.Summary{}, errors.New("usage summary: since days is negative")
+func (r *Runtime) Summary(ctx context.Context, period usage.SummaryPeriod) (usage.Summary, error) {
+	days, recent, err := period.Days()
+	if err != nil {
+		return usage.Summary{}, err
+	}
+	var sinceDays *int
+	if recent {
+		sinceDays = protocolPositiveInt(days)
 	}
 	result, err := r.usage.GetUsageSummary(ctx, protocol.UsageSummaryRequest{SinceDays: sinceDays}, r.callOptions())
 	if err != nil {
@@ -60,7 +65,7 @@ func (r *Runtime) Summary(ctx context.Context, sinceDays int) (usage.Summary, er
 		return usage.Summary{}, runtimeContractViolation("usage summary returned nil")
 	}
 	summary := usage.Summary{
-		SinceDays: sinceDays, Total: projectUsageTotals(result.Total),
+		Period: period, Total: projectUsageTotals(result.Total),
 		ByProvider: projectUsageBuckets(result.ByProvider),
 		ByModel:    projectUsageBuckets(result.ByModel),
 		ByDay:      projectUsageBuckets(result.ByDay),

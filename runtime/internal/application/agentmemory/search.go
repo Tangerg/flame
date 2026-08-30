@@ -49,27 +49,48 @@ func (s *Searcher) Search(ctx context.Context, project, query string, topK int) 
 	if err != nil || len(items) == 0 {
 		return nil, err
 	}
-	if s.resolveEmbedder == nil {
+	semantic, ok := s.resolveSemanticQuery(ctx, query)
+	if !ok {
 		return domain.Rank(query, nil, items, topK), nil
+	}
+	s.refreshEmbeddings(ctx, semantic, items)
+	return domain.Rank(query, semantic.queryVector, items, topK), nil
+}
+
+type semanticQuery struct {
+	embedder    Embedder
+	space       string
+	queryVector []float32
+}
+
+func (s *Searcher) resolveSemanticQuery(ctx context.Context, query string) (semanticQuery, bool) {
+	if s.resolveEmbedder == nil {
+		return semanticQuery{}, false
 	}
 	embedder, err := s.resolveEmbedder(ctx)
 	if err != nil || embedder == nil {
-		return domain.Rank(query, nil, items, topK), nil
+		return semanticQuery{}, false
 	}
 	space := embedder.ID()
 	if space == "" {
-		return domain.Rank(query, nil, items, topK), nil
+		return semanticQuery{}, false
 	}
 	queryVectors, err := embedder.Embed(ctx, []string{query})
 	if err != nil || len(queryVectors) != 1 || !usableVector(queryVectors[0], 0) {
-		return domain.Rank(query, nil, items, topK), nil
+		return semanticQuery{}, false
 	}
-	queryVector := queryVectors[0]
+	return semanticQuery{
+		embedder:    embedder,
+		space:       space,
+		queryVector: queryVectors[0],
+	}, true
+}
 
+func (s *Searcher) refreshEmbeddings(ctx context.Context, semantic semanticQuery, items []domain.Item) {
 	stale := make([]int, 0, len(items))
 	texts := make([]string, 0, len(items))
 	for index := range items {
-		if items[index].EmbeddingSpace == space && usableVector(items[index].Embedding, len(queryVector)) {
+		if items[index].EmbeddingSpace == semantic.space && usableVector(items[index].Embedding, len(semantic.queryVector)) {
 			continue
 		}
 		items[index].EmbeddingSpace = ""
@@ -77,35 +98,45 @@ func (s *Searcher) Search(ctx context.Context, project, query string, topK int) 
 		stale = append(stale, index)
 		texts = append(texts, items[index].Content)
 	}
-	if len(stale) != 0 {
-		vectors, embedErr := embedder.Embed(ctx, texts)
-		if embedErr == nil && len(vectors) == len(stale) {
-			updates := make([]domain.EmbeddingUpdate, 0, len(stale))
-			for offset, index := range stale {
-				if !usableVector(vectors[offset], len(queryVector)) {
-					updates = nil
-					break
-				}
-				update, updateErr := domain.NewEmbeddingUpdate(items[index], space, vectors[offset])
-				if updateErr != nil {
-					updates = nil
-					break
-				}
-				updates = append(updates, update)
-			}
-			if len(updates) == len(stale) {
-				for offset, index := range stale {
-					items[index].EmbeddingSpace = updates[offset].Space
-					items[index].Embedding = updates[offset].Vector
-				}
-				// The cache is derived state: the current request already owns exact
-				// vectors, so a failed or losing conditional write must not turn a
-				// useful search into an application failure.
-				_ = s.store.SetEmbeddings(ctx, updates)
-			}
-		}
+	if len(stale) == 0 {
+		return
 	}
-	return domain.Rank(query, queryVector, items, topK), nil
+	vectors, err := semantic.embedder.Embed(ctx, texts)
+	if err != nil || len(vectors) != len(stale) {
+		return
+	}
+	updates, ok := buildEmbeddingUpdates(items, stale, semantic, vectors)
+	if !ok {
+		return
+	}
+	for offset, index := range stale {
+		items[index].EmbeddingSpace = updates[offset].Space
+		items[index].Embedding = updates[offset].Vector
+	}
+	// The cache is derived state: the current request already owns exact
+	// vectors, so a failed or losing conditional write must not turn a useful
+	// search into an application failure.
+	_ = s.store.SetEmbeddings(ctx, updates)
+}
+
+func buildEmbeddingUpdates(
+	items []domain.Item,
+	stale []int,
+	semantic semanticQuery,
+	vectors [][]float32,
+) ([]domain.EmbeddingUpdate, bool) {
+	updates := make([]domain.EmbeddingUpdate, 0, len(stale))
+	for offset, index := range stale {
+		if !usableVector(vectors[offset], len(semantic.queryVector)) {
+			return nil, false
+		}
+		update, err := domain.NewEmbeddingUpdate(items[index], semantic.space, vectors[offset])
+		if err != nil {
+			return nil, false
+		}
+		updates = append(updates, update)
+	}
+	return updates, true
 }
 
 func usableVector(vector []float32, dimension int) bool {

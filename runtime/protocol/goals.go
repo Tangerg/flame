@@ -16,7 +16,7 @@ type Goal struct {
 	Provider        string      `json:"provider,omitempty"`
 	Model           string      `json:"model,omitempty"`
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
-	Budget          GoalBudget  `json:"budget"`
+	Budget          *GoalBudget `json:"budget,omitempty"`
 	Used            GoalUsage   `json:"used"`
 	CreatedAt       time.Time   `json:"createdAt"`
 	UpdatedAt       time.Time   `json:"updatedAt"`
@@ -58,11 +58,13 @@ const (
 	GoalReasonBlockedByModel         GoalReasonCode = "blockedByModel"
 )
 
-// GoalBudget is the opt-in cross-Run cap. A zero field is unbounded on that axis.
+// GoalBudget is a bounded cross-Run spending policy. Every present field is a
+// strictly positive cap and at least one field must be present. An omitted
+// Goal.budget or StartGoalRequest.budget is the only unbounded representation.
 type GoalBudget struct {
-	MaxRuns    int     `json:"maxRuns,omitempty"`
-	MaxCostUSD float64 `json:"maxCostUsd,omitempty"`
-	MaxSteps   int     `json:"maxSteps,omitempty"`
+	MaxRuns    *int     `json:"maxRuns,omitempty"`
+	MaxCostUSD *float64 `json:"maxCostUsd,omitempty"`
+	MaxSteps   *int     `json:"maxSteps,omitempty"`
 }
 
 // GoalUsage is what the loop has spent so far.
@@ -74,12 +76,12 @@ type GoalUsage struct {
 
 // StartGoalRequest — goals.start body.
 type StartGoalRequest struct {
-	SessionID       string     `json:"sessionId"`
-	Objective       string     `json:"objective"`
-	Provider        string     `json:"provider,omitempty"`
-	Model           string     `json:"model,omitempty"`
-	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
-	Budget          GoalBudget `json:"budget,omitzero"`
+	SessionID       string      `json:"sessionId"`
+	Objective       string      `json:"objective"`
+	Provider        string      `json:"provider,omitempty"`
+	Model           string      `json:"model,omitempty"`
+	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
+	Budget          *GoalBudget `json:"budget,omitempty"`
 }
 
 // UpdateGoalRequest — goals.update body. Updating the objective preserves the

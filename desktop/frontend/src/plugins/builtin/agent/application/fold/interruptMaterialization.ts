@@ -44,10 +44,10 @@ export function materializeInterrupt(
       status: "requires-action",
       itemId: interrupt.itemId,
       runId: resumeRunId,
-      toolName: tool?.name,
-      command: tool ? commandString(tool) : "",
+      toolName: tool.name,
+      command: commandString(tool),
       reason: interrupt.payload.reason ?? "",
-      args: tool ? editableArgs(tool) : undefined,
+      args: editableArgs(tool),
       rememberable: interrupt.payload.rememberable ?? false,
     };
     const withBlock = appendToTurn(

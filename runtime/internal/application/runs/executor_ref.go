@@ -3,7 +3,9 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // ErrInvalidExecutorRef reports an incomplete or cross-session executor
@@ -20,11 +22,14 @@ type ExecutorRef struct {
 // ValidateFor checks that the executor returned a complete identity bound to
 // the admitted session.
 func (e ExecutorRef) ValidateFor(sessionID string) error {
-	if strings.TrimSpace(e.SessionID) == "" || strings.TrimSpace(e.SessionID) != e.SessionID {
-		return fmt.Errorf("%w: session ID must be non-empty without surrounding whitespace", ErrInvalidExecutorRef)
+	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
 	}
-	if strings.TrimSpace(e.ExecutorID) == "" || strings.TrimSpace(e.ExecutorID) != e.ExecutorID {
-		return fmt.Errorf("%w: executor ID must be non-empty without surrounding whitespace", ErrInvalidExecutorRef)
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("%w: admitted %v", ErrInvalidExecutorRef, err)
+	}
+	if _, err := executoridentity.ParseExecutor(e.ExecutorID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
 	}
 	if e.SessionID != sessionID {
 		return fmt.Errorf("%w: executor session %q does not match admitted session %q", ErrInvalidExecutorRef, e.SessionID, sessionID)

@@ -31,8 +31,9 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		t.Fatal(canonicalErr)
 	}
 	knowledge := &stubKnowledgeStore{home: "user rule", cwd: "workspace rule"}
+	pinnedMemoryID := testAgentMemoryItemID(t, '1')
 	memory := provenanceMemoryReader{items: []agentmemory.Item{{
-		ID: "memory:pinned", Content: "remember this", Pinned: true,
+		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
 	}}}
 	composer := NewWorkingContextComposer(WorkingContextConfig{
 		Knowledge:   knowledge,
@@ -62,7 +63,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	if !slices.Equal(gotKinds, wantKinds) {
 		t.Fatalf("source kinds=%v, want %v", gotKinds, wantKinds)
 	}
-	if provenance.Sources[2].Reference != "memory:pinned" ||
+	if provenance.Sources[2].Reference != pinnedMemoryID.String() ||
 		provenance.Sources[2].Purpose != contextPurposeData ||
 		provenance.Sources[4].Reference != canonicalDocument {
 		t.Fatalf("provenance=%+v", provenance)
@@ -96,10 +97,11 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 		{Event: domainhooks.SessionStart, Inject: "session context"},
 		{Event: domainhooks.UserPromptSubmit, Inject: "turn context"},
 	}
+	recalledMemoryID := testAgentMemoryItemID(t, '2')
 	composer := NewWorkingContextComposer(WorkingContextConfig{
 		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
-			items: []agentmemory.Item{{ID: "memory:recalled", Content: "recalled fact"}},
+			items: []agentmemory.Item{{ID: recalledMemoryID, Content: "recalled fact"}},
 		},
 	})
 	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
@@ -128,7 +130,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	}
 	recalled := decodeContextProvenance(t, messages[1].Metadata)
 	if len(recalled.Sources) != 1 || recalled.Sources[0].Kind != contextSourceRecalledMemory ||
-		recalled.Sources[0].Reference != "memory:recalled" ||
+		recalled.Sources[0].Reference != recalledMemoryID.String() ||
 		recalled.Sources[0].Purpose != contextPurposeData {
 		t.Fatalf("recall provenance=%+v", recalled)
 	}

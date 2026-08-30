@@ -17,22 +17,25 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 	if err != nil {
 		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
 	}
+	lineage, err := projectRunLineage(value)
+	if err != nil {
+		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
+	}
 	projected := agent.Run{
 		ID: value.ID, SessionID: value.SessionID, Provider: value.Provider, Model: value.Model,
-		Lineage: agent.RunLineage{
-			SpawnedByBlockID: value.SpawnedByItemID,
-			ParentRunID:      value.ParentRunID,
-			RootRunID:        value.RootRunID,
-		},
-		Status: agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
+		Lineage: lineage,
+		Status:  agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
-		Usage: projectUsage(value.Metrics), Contract: &contract,
+		Limits: agent.UnlimitedRunLimits(), Usage: projectUsage(value.Metrics), Contract: &contract,
 	}
 	if value.Limits != nil {
-		projected.Limits = agent.RunLimits{
+		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{
 			MaxTotalTokens: value.Limits.MaxTotalTokens,
 			MaxSteps:       value.Limits.MaxSteps,
 			MaxBudgetUSD:   value.Limits.MaxBudgetUSD,
+		})
+		if err != nil {
+			return agent.Run{}, fmt.Errorf("runtime run %s limits: %w", value.ID, err)
 		}
 	}
 	if value.Outcome != nil {
@@ -46,6 +49,13 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		return agent.Run{}, fmt.Errorf("runtime run %s: %w", value.ID, err)
 	}
 	return projected, nil
+}
+
+func projectRunLineage(value protocol.RunRef) (agent.RunLineage, error) {
+	if value.SpawnedByItemID == "" && value.ParentRunID == "" && value.RootRunID == "" {
+		return agent.RootRunLineage(), nil
+	}
+	return agent.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
 func projectRunContract(profile protocol.RunProtocolProfile) (agent.RunContract, error) {
@@ -164,12 +174,15 @@ func projectRuntimeProblem(problem *protocol.ProblemData) *failure.Problem {
 	return projected
 }
 
-func projectPlan(plan *protocol.Plan) ([]agent.PlanItem, uint64, error) {
+func projectPlan(plan *protocol.Plan) (*agent.Plan, error) {
 	if plan == nil {
-		return nil, 0, errors.New("plan projection is nil")
+		return nil, errors.New("plan projection is nil")
 	}
-	items := make([]agent.PlanItem, 0, len(plan.Steps))
-	for _, value := range plan.Steps {
+	if plan.State == nil {
+		return nil, nil
+	}
+	items := make([]agent.PlanItem, 0, len(plan.State.Steps))
+	for _, value := range plan.State.Steps {
 		var status agent.PlanStatus
 		switch value.Status {
 		case protocol.PlanStatusPending:
@@ -179,19 +192,15 @@ func projectPlan(plan *protocol.Plan) ([]agent.PlanItem, uint64, error) {
 		case protocol.PlanStatusCompleted:
 			status = agent.PlanDone
 		default:
-			return nil, 0, fmt.Errorf("plan item %s has unsupported status %q", value.ID, value.Status)
+			return nil, fmt.Errorf("plan item %s has unsupported status %q", value.ID, value.Status)
 		}
 		items = append(items, agent.PlanItem{Title: value.Description, Status: status})
 	}
-	if plan.Revision == 0 && len(items) != 0 {
-		return nil, 0, errors.New("unwritten runtime plan contains items")
+	projected, err := agent.NewPlan(plan.State.Revision, items)
+	if err != nil {
+		return nil, err
 	}
-	if plan.Revision != 0 {
-		if err := agent.ValidateEvent(agent.PlanChanged{Revision: plan.Revision, Items: items}); err != nil {
-			return nil, 0, err
-		}
-	}
-	return items, plan.Revision, nil
+	return &projected, nil
 }
 
 func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {

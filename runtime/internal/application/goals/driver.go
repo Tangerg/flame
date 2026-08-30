@@ -138,6 +138,36 @@ type Driver struct {
 	closed    atomic.Bool
 }
 
+type goalCommandLease struct {
+	lease DriveLease
+}
+
+func (g *goalCommandLease) acquire(driver *Driver, sessionID string) error {
+	if g.lease != nil {
+		return nil
+	}
+	lease, acquired := driver.tryDriveLease(sessionID)
+	if !acquired {
+		return ErrGoalOwned
+	}
+	g.lease = lease
+	return nil
+}
+
+func (g *goalCommandLease) release() {
+	if g.lease == nil {
+		return
+	}
+	g.lease.Release()
+	g.lease = nil
+}
+
+func (g *goalCommandLease) transfer() DriveLease {
+	lease := g.lease
+	g.lease = nil
+	return lease
+}
+
 // NewDriver builds a Driver sharing one session lifecycle
 // coordinator with the sessions use case.
 func NewDriver(
@@ -200,12 +230,12 @@ func (d *Driver) Start(
 	if admissionErr := d.runs.AdmitSelection(selection); admissionErr != nil {
 		return goal.Goal{}, admissionErr
 	}
-	existing, ok, err := d.goals.Get(ctx, sessionID)
+	existing, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	if ok && existing.Status == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID); ensureDriveLockedErr != nil {
+	if ok && existing.Status() == goal.StatusActive {
+		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID()); ensureDriveLockedErr != nil {
 			return goal.Goal{}, ensureDriveLockedErr
 		}
 		return goal.Goal{}, ErrGoalActive
@@ -216,17 +246,21 @@ func (d *Driver) Start(
 	// A terminating drive may have committed its final accounting after the
 	// first read. Re-read after the ownership boundary so the replacement CAS
 	// is based on the complete prior incarnation, never a pre-quiesce snapshot.
-	existing, ok, err = d.goals.Get(ctx, sessionID)
+	existing, ok, err = loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	if ok && existing.Status == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID); ensureDriveLockedErr != nil {
+	if ok && existing.Status() == goal.StatusActive {
+		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID()); ensureDriveLockedErr != nil {
 			return goal.Goal{}, ensureDriveLockedErr
 		}
 		return goal.Goal{}, ErrGoalActive
 	}
-	var expected goal.Version
+	unwritten, err := goal.Unwritten(sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	expected := unwritten.Version()
 	if ok {
 		expected = existing.Version()
 	}
@@ -247,7 +281,7 @@ func (d *Driver) Start(
 		driveLease.Release()
 		return goal.Goal{}, ErrGoalConflict
 	}
-	if err := d.launchLocked(ctx, sessionID, g.IncarnationID, driveLease); err != nil {
+	if err := d.launchLocked(ctx, sessionID, g.IncarnationID(), driveLease); err != nil {
 		panic("goals: command crossed the shutdown admission boundary")
 	}
 	return g, nil
@@ -266,18 +300,18 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
 	}
-	g, ok, err := d.goals.Get(ctx, sessionID)
+	g, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	if !ok {
 		return goal.Goal{}, ErrNoGoal
 	}
-	if missing := g.Capabilities.MissingFrom(caller); !missing.IsEmpty() {
+	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
 		return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
 	}
-	if g.Status == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID); ensureDriveLockedErr != nil {
+	if g.Status() == goal.StatusActive {
+		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
 			return goal.Goal{}, ensureDriveLockedErr
 		}
 		return g, nil
@@ -285,31 +319,33 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
 		return goal.Goal{}, quiesceDriveErr
 	}
-	g, ok, err = d.goals.Get(ctx, sessionID)
+	g, ok, err = loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	if !ok {
 		return goal.Goal{}, ErrNoGoal
 	}
-	if missing := g.Capabilities.MissingFrom(caller); !missing.IsEmpty() {
+	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
 		return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
 	}
-	if g.Status == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID); ensureDriveLockedErr != nil {
+	if g.Status() == goal.StatusActive {
+		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
 			return goal.Goal{}, ensureDriveLockedErr
 		}
 		return g, nil
 	}
 	expected := g.Version()
-	if resumeErr := g.Resume(d.now()); resumeErr != nil {
+	replacement, resumeErr := g.Resume(d.now())
+	if resumeErr != nil {
 		return goal.Goal{}, resumeErr
 	}
 	driveLease, ok := d.tryDriveLease(sessionID)
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
-	g, applied, err := d.goals.Save(ctx, g, expected)
+	var applied bool
+	g, applied, err = d.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		driveLease.Release()
 		return goal.Goal{}, err
@@ -318,7 +354,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		driveLease.Release()
 		return goal.Goal{}, ErrGoalConflict
 	}
-	if err := d.launchLocked(ctx, sessionID, g.IncarnationID, driveLease); err != nil {
+	if err := d.launchLocked(ctx, sessionID, g.IncarnationID(), driveLease); err != nil {
 		panic("goals: command crossed the shutdown admission boundary")
 	}
 	return g, nil
@@ -336,11 +372,11 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
 	}
-	initial, initiallyPresent, err := d.goals.Get(ctx, sessionID)
+	initial, initiallyPresent, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	wasActive := initiallyPresent && initial.Status == goal.StatusActive
+	wasActive := initiallyPresent && initial.Status() == goal.StatusActive
 	drive := d.mutations.quiesce(sessionID)
 	var foreignLease DriveLease
 	if wasActive && drive == nil {
@@ -359,19 +395,22 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 		}
 		d.mutations.forget(sessionID, drive)
 	}
-	current, ok, err := d.goals.Get(ctx, sessionID)
+	current, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
 	if !ok {
 		return goal.Goal{}, errors.Join(ErrNoGoal, quiesceErr)
 	}
-	if !wasActive && current.Status != goal.StatusActive {
+	if !wasActive && current.Status() != goal.StatusActive {
 		return current, quiesceErr
 	}
 	expected := current.Version()
-	current.Pause(goal.ReasonStoppedByUser, "", d.now())
-	saved, applied, err := d.goals.Save(ctx, current, expected)
+	replacement, transitionErr := current.Stop(d.now())
+	if transitionErr != nil {
+		return goal.Goal{}, errors.Join(transitionErr, quiesceErr)
+	}
+	saved, applied, err := d.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
@@ -399,98 +438,95 @@ func (d *Driver) UpdateObjective(
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
 	}
-	initial, present, err := d.goals.Get(ctx, sessionID)
+	initial, err := d.editableGoal(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	wasActive := initial.Status() == goal.StatusActive
+	if wasActive {
+		if missing := initial.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
+			return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
+		}
+	}
+
+	commandLease := new(goalCommandLease)
+	defer commandLease.release()
+	quiesceErr, err := d.quiesceObjectiveUpdate(ctx, sessionID, wasActive, commandLease)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+
+	current, err := d.editableGoal(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, errors.Join(err, quiesceErr)
+	}
+	expected := current.Version()
+	incarnationID, updatedAt := d.newIncarnation(), d.now()
+	var replacement goal.Goal
+	if wasActive && current.Status() == goal.StatusPaused {
+		replacement, err = current.ReviseObjectiveAndResume(objective, incarnationID, updatedAt)
+	} else {
+		replacement, err = current.ReviseObjective(objective, incarnationID, updatedAt)
+	}
+	if err != nil {
+		return goal.Goal{}, errors.Join(err, quiesceErr)
+	}
+
+	if replacement.Status() == goal.StatusActive {
+		if err := commandLease.acquire(d, sessionID); err != nil {
+			return goal.Goal{}, errors.Join(err, quiesceErr)
+		}
+	}
+	saved, applied, err := d.goals.Save(ctx, replacement, expected)
+	if err != nil {
+		return goal.Goal{}, errors.Join(err, quiesceErr)
+	}
+	if !applied {
+		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
+	}
+	if saved.Status() == goal.StatusActive {
+		if err := d.launchLocked(ctx, sessionID, saved.IncarnationID(), commandLease.transfer()); err != nil {
+			panic("goals: command crossed the shutdown admission boundary")
+		}
+	}
+	return saved, quiesceErr
+}
+
+func (d *Driver) editableGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
+	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	if !present {
 		return goal.Goal{}, ErrNoGoal
 	}
-	if initial.Status == goal.StatusComplete {
+	if current.Status() == goal.StatusComplete {
 		return goal.Goal{}, goal.ErrNotEditable
 	}
-	wasActive := initial.Status == goal.StatusActive
-	if wasActive {
-		if missing := initial.Capabilities.MissingFrom(caller); !missing.IsEmpty() {
-			return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
-		}
-	}
+	return current, nil
+}
 
+func (d *Driver) quiesceObjectiveUpdate(
+	ctx context.Context,
+	sessionID string,
+	wasActive bool,
+	commandLease *goalCommandLease,
+) (error, error) {
 	drive := d.mutations.quiesce(sessionID)
-	var commandLease DriveLease
 	if wasActive && drive == nil {
-		var acquired bool
-		commandLease, acquired = d.tryDriveLease(sessionID)
-		if !acquired {
-			return goal.Goal{}, ErrGoalOwned
-		}
-		defer func() {
-			if commandLease != nil {
-				commandLease.Release()
-			}
-		}()
-	}
-	var quiesceErr error
-	if drive != nil {
-		quiesceErr = drive.await(ctx)
-		if !drive.completed() {
-			return goal.Goal{}, quiesceErr
-		}
-		d.mutations.forget(sessionID, drive)
-	}
-
-	current, present, err := d.goals.Get(ctx, sessionID)
-	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
-	}
-	if !present {
-		return goal.Goal{}, errors.Join(ErrNoGoal, quiesceErr)
-	}
-	if current.Status == goal.StatusComplete {
-		return goal.Goal{}, errors.Join(goal.ErrNotEditable, quiesceErr)
-	}
-	expected := current.Version()
-	if reviseObjectiveErr := current.ReviseObjective(objective, d.newIncarnation(), d.now()); reviseObjectiveErr != nil {
-		return goal.Goal{}, errors.Join(reviseObjectiveErr, quiesceErr)
-	}
-	if wasActive && current.Status == goal.StatusPaused {
-		if resumeErr := current.Resume(d.now()); resumeErr != nil {
-			return goal.Goal{}, errors.Join(resumeErr, quiesceErr)
+		if err := commandLease.acquire(d, sessionID); err != nil {
+			return nil, err
 		}
 	}
-
-	if current.Status == goal.StatusActive && commandLease == nil {
-		var acquired bool
-		commandLease, acquired = d.tryDriveLease(sessionID)
-		if !acquired {
-			return goal.Goal{}, errors.Join(ErrGoalOwned, quiesceErr)
-		}
+	if drive == nil {
+		return nil, nil
 	}
-	saved, applied, err := d.goals.Save(ctx, current, expected)
-	if err != nil {
-		if commandLease != nil {
-			commandLease.Release()
-			commandLease = nil
-		}
-		return goal.Goal{}, errors.Join(err, quiesceErr)
+	quiesceErr := drive.await(ctx)
+	if !drive.completed() {
+		return nil, quiesceErr
 	}
-	if !applied {
-		if commandLease != nil {
-			commandLease.Release()
-			commandLease = nil
-		}
-		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
-	}
-	if saved.Status == goal.StatusActive {
-		if err := d.launchLocked(ctx, sessionID, saved.IncarnationID, commandLease); err != nil {
-			panic("goals: command crossed the shutdown admission boundary")
-		}
-		commandLease = nil
-	} else if commandLease != nil {
-		commandLease.Release()
-		commandLease = nil
-	}
-	return saved, quiesceErr
+	d.mutations.forget(sessionID, drive)
+	return quiesceErr, nil
 }
 
 // Clear quiesces the owned drive and conditionally removes the authoritative
@@ -505,14 +541,14 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	if d.closed.Load() {
 		return ErrClosed
 	}
-	initial, present, err := d.goals.Get(ctx, sessionID)
+	initial, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return err
 	}
 	if !present {
 		return nil
 	}
-	wasActive := initial.Status == goal.StatusActive
+	wasActive := initial.Status() == goal.StatusActive
 	drive := d.mutations.quiesce(sessionID)
 	var commandLease DriveLease
 	if wasActive && drive == nil {
@@ -531,14 +567,14 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 		}
 		d.mutations.forget(sessionID, drive)
 	}
-	current, present, err := d.goals.Get(ctx, sessionID)
+	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return errors.Join(err, quiesceErr)
 	}
 	if !present {
 		return quiesceErr
 	}
-	if current.Status == goal.StatusActive && commandLease == nil {
+	if current.Status() == goal.StatusActive && commandLease == nil {
 		var acquired bool
 		commandLease, acquired = d.tryDriveLease(sessionID)
 		if !acquired {
@@ -561,7 +597,7 @@ func (d *Driver) Current(ctx context.Context, sessionID string) (goal.Goal, bool
 	if !d.Available() {
 		return goal.Goal{}, false, ErrUnavailable
 	}
-	return d.goals.Get(ctx, sessionID)
+	return loadGoal(ctx, d.goals, sessionID)
 }
 
 // quiesceDrive joins a lingering drive before a new Goal incarnation is
@@ -592,19 +628,19 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 		return err
 	}
 	for _, g := range all {
-		lease, acquired := d.tryDriveLease(g.SessionID)
+		lease, acquired := d.tryDriveLease(g.SessionID())
 		if !acquired {
 			// A different Runtime still owns the live drive. Its Goal and Run
 			// facts are not crash leftovers for this process to rewrite.
 			continue
 		}
-		_, exists, err := d.sessions.ModelSelection(ctx, g.SessionID)
+		_, exists, err := d.sessions.ModelSelection(ctx, g.SessionID())
 		if err != nil {
 			lease.Release()
 			return err
 		}
 		if !exists {
-			applied, err := d.goals.ClearIf(ctx, g.SessionID, g.Version())
+			applied, err := d.goals.ClearIf(ctx, g.SessionID(), g.Version())
 			if err != nil {
 				lease.Release()
 				return err
@@ -616,11 +652,15 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 			lease.Release()
 			continue
 		}
-		switch g.Status {
+		switch g.Status() {
 		case goal.StatusActive:
 			expected := g.Version()
-			g.Pause(goal.ReasonRuntimeRestarted, "", d.now())
-			if _, applied, err := d.goals.Save(ctx, g, expected); err != nil {
+			replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, "", d.now())
+			if transitionErr != nil {
+				lease.Release()
+				return transitionErr
+			}
+			if _, applied, err := d.goals.Save(ctx, replacement, expected); err != nil {
 				lease.Release()
 				return err
 			} else if !applied {
@@ -628,7 +668,7 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 				return ErrGoalConflict
 			}
 		case goal.StatusComplete:
-			applied, err := d.goals.ClearIf(ctx, g.SessionID, g.Version())
+			applied, err := d.goals.ClearIf(ctx, g.SessionID(), g.Version())
 			if err != nil {
 				lease.Release()
 				return err

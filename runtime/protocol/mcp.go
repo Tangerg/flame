@@ -29,13 +29,30 @@ type MCPListToolsRequest struct {
 // status includes "disabled", so configuration enablement and live lifecycle
 // can never contradict one another on the wire.
 type MCPServer struct {
-	Name             string         `json:"name"`
-	Description      string         `json:"description,omitempty"`
-	Connection       MCPConnection  `json:"connection"`
-	TimeoutSeconds   int            `json:"timeoutSeconds,omitempty"`
-	DisabledTools    []string       `json:"disabledTools,omitempty"`
-	AutoApproveTools []string       `json:"autoApproveTools,omitempty"`
-	Status           MCPServerState `json:"status"`
+	Name             string              `json:"name"`
+	Description      string              `json:"description,omitempty"`
+	Connection       MCPConnection       `json:"connection"`
+	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
+	DisabledTools    []string            `json:"disabledTools,omitempty"`
+	AutoApproveTools []string            `json:"autoApproveTools,omitempty"`
+	Status           MCPServerState      `json:"status"`
+}
+
+// MCPHandshakeTimeoutType names the complete MCP handshake deadline policy.
+// Unbounded means only the operation context can cancel connection setup;
+// bounded adds the positive duration carried by seconds.
+type MCPHandshakeTimeoutType string
+
+const (
+	MCPHandshakeUnbounded MCPHandshakeTimeoutType = "unbounded"
+	MCPHandshakeBounded   MCPHandshakeTimeoutType = "bounded"
+)
+
+// MCPHandshakeTimeout is a closed union. Only bounded carries seconds, and
+// that value is strictly positive.
+type MCPHandshakeTimeout struct {
+	Type    MCPHandshakeTimeoutType `json:"type"`
+	Seconds *int                    `json:"seconds,omitempty"`
 }
 
 // MCPServerStateType is the complete lifecycle of a configured MCP server. A
@@ -128,26 +145,26 @@ type MCPConnectionInput struct {
 // MCPServerCandidate is a complete, unpersisted MCP server descriptor. Create
 // persists it; test probes it without changing durable or live state.
 type MCPServerCandidate struct {
-	Name             string             `json:"name"`
-	Enabled          bool               `json:"enabled"`
-	Description      string             `json:"description,omitempty"`
-	Connection       MCPConnectionInput `json:"connection"`
-	TimeoutSeconds   int                `json:"timeoutSeconds,omitempty"`
-	DisabledTools    []string           `json:"disabledTools,omitempty"`
-	AutoApproveTools []string           `json:"autoApproveTools,omitempty"`
+	Name             string              `json:"name"`
+	Enabled          bool                `json:"enabled"`
+	Description      string              `json:"description,omitempty"`
+	Connection       MCPConnectionInput  `json:"connection"`
+	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
+	DisabledTools    []string            `json:"disabledTools,omitempty"`
+	AutoApproveTools []string            `json:"autoApproveTools,omitempty"`
 }
 
 // UpdateMCPServerRequest — mcp.servers.update body. Omitted members preserve
 // their current value; present empty strings, collections, and zeroes clear it.
 // Name is immutable and addressed by Server.
 type UpdateMCPServerRequest struct {
-	Server           string              `json:"server"`
-	Enabled          *bool               `json:"enabled,omitempty"`
-	Description      *string             `json:"description,omitempty"`
-	Connection       *MCPConnectionInput `json:"connection,omitempty"`
-	TimeoutSeconds   *int                `json:"timeoutSeconds,omitempty"`
-	DisabledTools    *[]string           `json:"disabledTools,omitempty"`
-	AutoApproveTools *[]string           `json:"autoApproveTools,omitempty"`
+	Server           string               `json:"server"`
+	Enabled          *bool                `json:"enabled,omitempty"`
+	Description      *string              `json:"description,omitempty"`
+	Connection       *MCPConnectionInput  `json:"connection,omitempty"`
+	HandshakeTimeout *MCPHandshakeTimeout `json:"handshakeTimeout,omitempty"`
+	DisabledTools    *[]string            `json:"disabledTools,omitempty"`
+	AutoApproveTools *[]string            `json:"autoApproveTools,omitempty"`
 }
 
 // MCPTool is one tool exposed by an MCP server (API.md §4.10).

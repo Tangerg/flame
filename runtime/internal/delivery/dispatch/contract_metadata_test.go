@@ -43,6 +43,36 @@ func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 			Field: "runId", Kind: ConstraintNonEmpty, Limit: 1,
 		}},
 	}
+
+	missingPrefix := FieldConstraintSpec{
+		GoType: reflect.TypeFor[protocol.GetRunRequest](),
+		Constraints: []FieldConstraint{{
+			Field: "runId", Kind: ConstraintPrefix,
+		}},
+	}
+	if validateErr := missingPrefix.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "non-empty value") {
+		t.Fatalf("prefix constraint error = %v, want required value", validateErr)
+	}
+
+	invalidPattern := FieldConstraintSpec{
+		GoType: reflect.TypeFor[protocol.GetRunRequest](),
+		Constraints: []FieldConstraint{{
+			Field: "runId", Kind: ConstraintPattern, Value: "[",
+		}},
+	}
+	if validateErr := invalidPattern.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "invalid pattern") {
+		t.Fatalf("pattern constraint error = %v, want invalid pattern", validateErr)
+	}
+
+	unexpectedValue := FieldConstraintSpec{
+		GoType: reflect.TypeFor[protocol.GetRunRequest](),
+		Constraints: []FieldConstraint{{
+			Field: "runId", Kind: ConstraintNonEmpty, Value: "run_",
+		}},
+	}
+	if validateErr := unexpectedValue.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "does not accept a value") {
+		t.Fatalf("non-prefix constraint error = %v, want rejected value", validateErr)
+	}
 	if validateErr := unbounded.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "does not accept a limit") {
 		t.Fatalf("unbounded constraint error = %v, want rejected limit", validateErr)
 	}
@@ -90,7 +120,7 @@ func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 
 	objectSpec := ObjectConstraintSpec{
 		GoType: reflect.TypeFor[protocol.ProblemData](),
-		Rules: []PresenceRule{{
+		Rules: []ConditionalRule{{
 			When: []operation.FieldCondition{{
 				Field: "type", Operator: operation.ConditionOperator("invalid"),
 			}},
@@ -104,4 +134,51 @@ func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 		t.Fatalf("object constraint error = %v, want shape, field and illegal operator", err)
 	}
 
+	allowedSpec := ObjectConstraintSpec{
+		GoType: reflect.TypeFor[protocol.ProblemData](),
+		Rules: []ConditionalRule{{
+			AllowedValues: []AllowedValueSet{{Field: "retryAfterSeconds", Values: []string{"1"}}},
+		}},
+	}
+	if validateErr := allowedSpec.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "not a string") {
+		t.Fatalf("allowed-values type error = %v, want string requirement", validateErr)
+	}
+
+	for _, test := range []struct {
+		name string
+		rule ConditionalRule
+		want string
+	}{
+		{
+			name: "duplicate required-any",
+			rule: ConditionalRule{RequiredAny: []string{"detail", "detail"}},
+			want: "required-any field \"detail\" is declared twice",
+		},
+		{
+			name: "required and required-any",
+			rule: ConditionalRule{Required: []string{"detail"}, RequiredAny: []string{"detail"}},
+			want: "both required and required-any",
+		},
+		{
+			name: "required-any and forbidden",
+			rule: ConditionalRule{RequiredAny: []string{"detail"}, Forbidden: []string{"detail"}},
+			want: "both required-any and forbidden",
+		},
+		{
+			name: "unknown required-any path",
+			rule: ConditionalRule{RequiredAny: []string{"missing"}},
+			want: "no JSON field \"missing\"",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := (ObjectConstraintSpec{
+				GoType: reflect.TypeFor[protocol.ProblemData](),
+				Rules:  []ConditionalRule{test.rule},
+			}).validate()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validate error = %v, want %q", err, test.want)
+			}
+		})
+	}
 }

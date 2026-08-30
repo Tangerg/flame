@@ -2,175 +2,220 @@ package providerregistry
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
-// fakeRegistry is an in-memory provider.Registry for exercising the env decorator.
 type fakeRegistry struct {
 	stored map[string]provider.Provider
 }
 
 func (f *fakeRegistry) List(context.Context) ([]provider.Provider, error) {
 	out := make([]provider.Provider, 0, len(f.stored))
-	for _, p := range f.stored {
-		out = append(out, p)
+	for _, entry := range f.stored {
+		out = append(out, entry)
 	}
 	return out, nil
 }
 
 func (f *fakeRegistry) Get(_ context.Context, id string) (provider.Provider, bool, error) {
-	p, ok := f.stored[id]
-	return p, ok, nil
+	entry, found := f.stored[id]
+	return entry, found, nil
 }
 
 func (f *fakeRegistry) Update(_ context.Context, id string, patch provider.Patch) (provider.Provider, error) {
-	p := f.stored[id]
-	p.ID = id
-	p = p.Apply(patch)
-	f.stored[id] = p
-	return p, nil
+	entry, found := f.stored[id]
+	if !found {
+		var err error
+		entry, err = provider.New(id)
+		if err != nil {
+			return provider.Provider{}, err
+		}
+	}
+	updated, err := entry.Apply(patch)
+	if err != nil {
+		return provider.Provider{}, err
+	}
+	f.stored[id] = updated
+	return updated, nil
 }
 
-func TestWithEnvKeys_StoredWinsOverEnv(t *testing.T) {
-	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"anthropic": {ID: "anthropic", APIKey: "sk-stored", BaseURL: "https://x"},
-	}}
-	svc := WithEnvironmentKeys(inner, map[string]string{"anthropic": "sk-env"})
-
-	got, ok, err := svc.Get(context.Background(), "anthropic")
-	if err != nil || !ok {
-		t.Fatalf("Get: ok=%v err=%v", ok, err)
-	}
-	if got.APIKey != "sk-stored" {
-		t.Errorf("APIKey = %q, want stored to win", got.APIKey)
-	}
-	if got.KeySource != provider.KeyStored {
-		t.Errorf("KeySource = %q, want %q", got.KeySource, provider.KeyStored)
-	}
-	if got.BaseURL != "https://x" {
-		t.Errorf("BaseURL = %q, want preserved", got.BaseURL)
-	}
-}
-
-func TestWithEnvKeys_EnvOnlyProviderIsEnabled(t *testing.T) {
-	inner := &fakeRegistry{stored: map[string]provider.Provider{}}
-	svc := WithEnvironmentKeys(inner, map[string]string{"openai": "sk-env"})
-
-	got, ok, err := svc.Get(context.Background(), "openai")
-	if err != nil || !ok {
-		t.Fatalf("Get env-only: ok=%v err=%v", ok, err)
-	}
-	if !got.Enabled() {
-		t.Error("env-only provider should be enabled")
-	}
-	if got.KeySource != provider.KeyEnv {
-		t.Errorf("KeySource = %q, want %q", got.KeySource, provider.KeyEnv)
-	}
-	if got.APIKey != "sk-env" {
-		t.Errorf("APIKey = %q, want env key", got.APIKey)
-	}
-}
-
-func TestWithEnvKeys_StoredEmptyFallsBackToEnvKeepsBaseURL(t *testing.T) {
-	// A row with a base URL but no key (e.g. left over from a cleared key)
-	// falls back to env while keeping the configured endpoint.
-	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"deepseek": {ID: "deepseek", APIKey: "", BaseURL: "https://ep"},
-	}}
-	svc := WithEnvironmentKeys(inner, map[string]string{"deepseek": "sk-env"})
-
-	got, _, _ := svc.Get(context.Background(), "deepseek")
-	if got.KeySource != provider.KeyEnv || got.APIKey != "sk-env" || got.BaseURL != "https://ep" {
-		t.Errorf("got %+v, want env key with base URL preserved", got)
-	}
-}
-
-func TestWithEnvKeys_UpdateNeverPersistsEnvironmentKey(t *testing.T) {
-	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"deepseek": {ID: "deepseek", APIKey: "sk-stored", BaseURL: "https://old"},
-	}}
-	svc := WithEnvironmentKeys(inner, map[string]string{"deepseek": "sk-env"})
-
-	baseURL := "https://new"
-	got, err := svc.Update(t.Context(), "deepseek", provider.Patch{BaseURL: &baseURL})
+func configuredProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
+	t.Helper()
+	entry, err := provider.New(id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.APIKey != "sk-stored" || inner.stored["deepseek"].APIKey != "sk-stored" {
-		t.Fatalf("base URL update changed key: effective=%+v stored=%+v", got, inner.stored["deepseek"])
+	patch := provider.Patch{}
+	if rawKey != "" {
+		key, keyErr := provider.NewAPIKey(rawKey)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		patch.APIKey = provider.Set(key)
 	}
-
-	emptyKey := ""
-	got, err = svc.Update(t.Context(), "deepseek", provider.Patch{APIKey: &emptyKey})
+	if rawBaseURL != "" {
+		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
+		if baseURLErr != nil {
+			t.Fatal(baseURLErr)
+		}
+		patch.BaseURL = provider.Set(baseURL)
+	}
+	entry, err = entry.Apply(patch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.APIKey != "sk-env" || got.KeySource != provider.KeyEnv {
-		t.Fatalf("cleared stored key resolved as %+v, want env fallback", got)
-	}
-	if inner.stored["deepseek"].APIKey != "" {
-		t.Fatalf("stored key = %q, want cleared without persisting env", inner.stored["deepseek"].APIKey)
-	}
+	return entry
 }
 
-func TestWithEnvKeys_UnconfiguredStaysNone(t *testing.T) {
-	inner := &fakeRegistry{stored: map[string]provider.Provider{}}
-	svc := WithEnvironmentKeys(inner, map[string]string{"openai": "sk-env"})
-
-	got, ok, _ := svc.Get(context.Background(), "groq")
-	if ok || got.Enabled() {
-		t.Errorf("unknown provider should be neither found nor enabled, got ok=%v %+v", ok, got)
+func providerCredential(t *testing.T, entry provider.Provider) (string, provider.KeySource) {
+	t.Helper()
+	credential, configured := entry.Credential()
+	if !configured {
+		t.Fatal("provider is not configured")
 	}
+	key, _ := credential.APIKey()
+	source, _ := credential.Source()
+	return key.Reveal(), source
 }
 
-func TestWithEnvKeys_ListMergesEnvOnlyAndSorts(t *testing.T) {
+func registryWithEnvironment(t *testing.T, inner *fakeRegistry, envKeys map[string]string) interface {
+	Get(context.Context, string) (provider.Provider, bool, error)
+	List(context.Context) ([]provider.Provider, error)
+	Update(context.Context, string, provider.Patch) (provider.Provider, error)
+} {
+	t.Helper()
+	registry, err := WithEnvironmentKeys(inner, envKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry
+}
+
+func TestStoredCredentialWinsEnvironmentFallback(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"openai": {ID: "openai", APIKey: "sk-stored"},
+		"anthropic": configuredProvider(t, "anthropic", "sk-stored", "https://x"),
 	}}
-	svc := WithEnvironmentKeys(inner, map[string]string{
-		"anthropic": "sk-env", // env-only, must appear
-		"openai":    "sk-env", // stored wins, must not duplicate
+	registry := registryWithEnvironment(t, inner, map[string]string{"anthropic": "sk-env"})
+
+	got, found, err := registry.Get(t.Context(), "anthropic")
+	if err != nil || !found {
+		t.Fatalf("Get: found=%v err=%v", found, err)
+	}
+	key, source := providerCredential(t, got)
+	baseURL, present := got.BaseURL()
+	if key != "sk-stored" || source != provider.KeyStored || !present || baseURL.String() != "https://x" {
+		t.Fatalf("provider = (%q, %q, %q, %v)", key, source, baseURL.String(), present)
+	}
+}
+
+func TestEnvironmentOnlyProviderIsEnabled(t *testing.T) {
+	registry := registryWithEnvironment(t, &fakeRegistry{stored: map[string]provider.Provider{}}, map[string]string{"openai": "sk-env"})
+	got, found, err := registry.Get(t.Context(), "openai")
+	_, configured := got.Credential()
+	if err != nil || !found || !configured {
+		t.Fatalf("Get env-only: found=%v configured=%v err=%v", found, configured, err)
+	}
+	key, source := providerCredential(t, got)
+	if key != "sk-env" || source != provider.KeyEnvironment {
+		t.Fatalf("credential = (%q, %q)", key, source)
+	}
+}
+
+func TestEnvironmentFallbackPreservesStoredEndpoint(t *testing.T) {
+	inner := &fakeRegistry{stored: map[string]provider.Provider{
+		"deepseek": configuredProvider(t, "deepseek", "", "https://ep"),
+	}}
+	registry := registryWithEnvironment(t, inner, map[string]string{"deepseek": "sk-env"})
+	got, _, err := registry.Get(t.Context(), "deepseek")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, source := providerCredential(t, got)
+	baseURL, present := got.BaseURL()
+	if key != "sk-env" || source != provider.KeyEnvironment || !present || baseURL.String() != "https://ep" {
+		t.Fatalf("provider = (%q, %q, %q, %v)", key, source, baseURL.String(), present)
+	}
+}
+
+func TestUpdateNeverPersistsEnvironmentCredential(t *testing.T) {
+	inner := &fakeRegistry{stored: map[string]provider.Provider{
+		"deepseek": configuredProvider(t, "deepseek", "sk-stored", "https://old"),
+	}}
+	registry := registryWithEnvironment(t, inner, map[string]string{"deepseek": "sk-env"})
+	baseURL, _ := provider.NewBaseURL("https://new")
+	got, err := registry.Update(t.Context(), "deepseek", provider.Patch{BaseURL: provider.Set(baseURL)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	effectiveKey, _ := providerCredential(t, got)
+	storedKey, _ := providerCredential(t, inner.stored["deepseek"])
+	if effectiveKey != "sk-stored" || storedKey != "sk-stored" {
+		t.Fatalf("base URL update changed credential: effective=%q stored=%q", effectiveKey, storedKey)
+	}
+
+	got, err = registry.Update(t.Context(), "deepseek", provider.Patch{APIKey: provider.Clear[provider.APIKey]()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	effectiveKey, source := providerCredential(t, got)
+	if effectiveKey != "sk-env" || source != provider.KeyEnvironment {
+		t.Fatalf("cleared stored key resolved as (%q, %q)", effectiveKey, source)
+	}
+	if _, configured := inner.stored["deepseek"].Credential(); configured {
+		t.Fatal("environment credential crossed durable registry boundary")
+	}
+}
+
+func TestListMergesEnvironmentOnlyProvidersAndSorts(t *testing.T) {
+	inner := &fakeRegistry{stored: map[string]provider.Provider{
+		"openai": configuredProvider(t, "openai", "sk-stored", ""),
+	}}
+	registry := registryWithEnvironment(t, inner, map[string]string{
+		"anthropic": "sk-env",
+		"openai":    "sk-env",
 	})
-
-	list, err := svc.List(context.Background())
+	list, err := registry.List(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 2 {
-		t.Fatalf("len = %d, want 2 (no duplicate openai), got %+v", len(list), list)
+	if len(list) != 2 || list[0].ID() != "anthropic" || list[1].ID() != "openai" {
+		t.Fatalf("providers = %+v", list)
 	}
-	if list[0].ID != "anthropic" || list[1].ID != "openai" {
-		t.Errorf("not sorted by id: %+v", list)
-	}
-	if list[0].KeySource != provider.KeyEnv {
-		t.Errorf("anthropic KeySource = %q, want env", list[0].KeySource)
-	}
-	if list[1].KeySource != provider.KeyStored {
-		t.Errorf("openai KeySource = %q, want stored (stored>env)", list[1].KeySource)
+	_, firstSource := providerCredential(t, list[0])
+	_, secondSource := providerCredential(t, list[1])
+	if firstSource != provider.KeyEnvironment || secondSource != provider.KeyStored {
+		t.Fatalf("sources = (%q, %q)", firstSource, secondSource)
 	}
 }
 
-func TestWithEnvKeys_EmptyMapStillProjectsStoredSource(t *testing.T) {
-	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"openai": {ID: "openai", APIKey: "sk-stored"},
-	}}
-	registry := WithEnvironmentKeys(inner, nil)
-	got, ok, err := registry.Get(t.Context(), "openai")
-	if err != nil || !ok || got.KeySource != provider.KeyStored {
-		t.Fatalf("stored provider = %+v, ok=%v, err=%v", got, ok, err)
-	}
-}
-
-func TestWithEnvKeys_SnapshotsInput(t *testing.T) {
+func TestEnvironmentSnapshotRejectsInvalidInputAndIgnoresCallerMutation(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{}}
-	env := map[string]string{"openai": "before"}
-	svc := WithEnvironmentKeys(inner, env)
-	env["openai"] = "after"
+	if _, err := WithEnvironmentKeys(inner, map[string]string{"openai": ""}); !errors.Is(err, provider.ErrAPIKeyRequired) {
+		t.Fatalf("blank environment credential error = %v", err)
+	}
+	environment := map[string]string{"openai": "before"}
+	registry := registryWithEnvironment(t, inner, environment)
+	environment["openai"] = "after"
+	got, found, err := registry.Get(t.Context(), "openai")
+	if err != nil || !found {
+		t.Fatalf("Get after caller mutation: found=%v err=%v", found, err)
+	}
+	key, _ := providerCredential(t, got)
+	if key != "before" {
+		t.Fatalf("environment key = %q, want startup snapshot", key)
+	}
+}
 
-	got, ok, err := svc.Get(context.Background(), "openai")
-	if err != nil || !ok || got.APIKey != "before" {
-		t.Fatalf("Get after caller mutation = %+v, ok=%v, err=%v", got, ok, err)
+func TestRegistryRejectsMismatchedStoredIdentity(t *testing.T) {
+	inner := &fakeRegistry{stored: map[string]provider.Provider{
+		"openai": configuredProvider(t, "anthropic", "sk", ""),
+	}}
+	registry := registryWithEnvironment(t, inner, nil)
+	_, _, err := registry.Get(t.Context(), "openai")
+	if !errors.Is(err, ErrIdentityMismatch) {
+		t.Fatalf("identity mismatch error = %v", err)
 	}
 }

@@ -43,7 +43,7 @@ func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.F
 	return out, nil
 }
 
-func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.FileReadInput) (_ workspaceapp.FileReadResult, err error) {
+func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.FileReadPlan) (_ workspaceapp.FileReadResult, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return workspaceapp.FileReadResult{}, cause
 	}

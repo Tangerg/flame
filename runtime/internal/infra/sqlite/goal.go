@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
@@ -26,10 +27,18 @@ type GoalStore struct {
 // autonomous-goal persistence surface.
 func NewGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
 
-type goalBudget struct {
-	MaxRuns    int     `json:"max_runs"`
-	MaxCostUSD float64 `json:"max_cost_usd"`
-	MaxSteps   int     `json:"max_steps"`
+type goalBudgetType string
+
+const (
+	goalBudgetUnlimited goalBudgetType = "unlimited"
+	goalBudgetLimited   goalBudgetType = "limited"
+)
+
+type storedGoalBudget struct {
+	Type       goalBudgetType `json:"type"`
+	MaxRuns    *int           `json:"max_runs,omitempty"`
+	MaxCostUSD *float64       `json:"max_cost_usd,omitempty"`
+	MaxSteps   *int           `json:"max_steps,omitempty"`
 }
 
 type goalUsed struct {
@@ -38,58 +47,57 @@ type goalUsed struct {
 	Steps   int     `json:"steps"`
 }
 
-// Get returns the session's goal, or (zero, false, nil) when it has none.
-func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
+// Get returns the Session's explicit optional Goal.
+func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, error) {
+	unwritten, err := goal.Unwritten(sessionID)
+	if err != nil {
+		return goal.Current{}, err
+	}
 	row := conn(ctx, g.db).QueryRowContext(ctx,
 		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, budget, used, incarnation_id, revision, created_at, updated_at
 		 FROM goals WHERE session_id = ?`, sessionID)
 	loaded, err := scanGoal(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		return goal.Goal{}, false, nil
+		return unwritten, nil
 	}
 	if err != nil {
-		return goal.Goal{}, false, err
+		return goal.Current{}, err
 	}
-	return loaded, true, nil
+	current, err := goal.CurrentOf(loaded)
+	if err != nil {
+		return goal.Current{}, fmt.Errorf("sqlite: own Goal: %w", err)
+	}
+	return current, nil
 }
 
-// Save is the goal CAS and the sole authority that advances revisions.
+// Save is the Goal CAS. Domain transitions advance revisions before this
+// adapter atomically persists the exact replacement.
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
 func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
-	if expected == (goal.Version{}) {
-		record.Revision = 1
-	} else {
-		if expected.IncarnationID == "" || expected.Revision <= 0 {
-			return goal.Goal{}, false, errors.New("sqlite: expected goal version is invalid")
-		}
-		if expected.Revision == math.MaxInt64 {
-			return goal.Goal{}, false, errors.New("sqlite: goal revision exhausted")
-		}
-		record.Revision = expected.Revision + 1
+	if err := expected.AdvancesTo(record); err != nil {
+		return goal.Goal{}, false, fmt.Errorf("sqlite: validate Goal replacement: %w", err)
 	}
-	if err := record.ValidateSnapshot(); err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: validate goal: %w", err)
-	}
-	budget, err := json.Marshal(goalBudget{MaxRuns: record.Budget.MaxRuns, MaxCostUSD: record.Budget.MaxCostUSD, MaxSteps: record.Budget.MaxSteps})
+	snapshot := record.Snapshot()
+	budget, err := encodeGoalBudget(snapshot.Budget)
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal budget: %w", err)
 	}
-	used, err := json.Marshal(goalUsed{Runs: record.Used.Runs, CostUSD: record.Used.CostUSD, Steps: record.Used.Steps})
+	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.CostUSD, Steps: snapshot.Used.Steps})
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal used: %w", err)
 	}
-	capabilities, err := encodeRunCapabilities(record.Capabilities)
+	capabilities, err := encodeRunCapabilities(snapshot.Capabilities)
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
 	}
-	if expected == (goal.Version{}) {
+	if expected.IsUnwritten() {
 		res, execContextErr := conn(ctx, g.db).ExecContext(ctx,
 			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, budget, used, incarnation_id, revision, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(session_id) DO NOTHING`,
-			record.SessionID, record.Objective, string(record.Status), string(record.Reason.Code), record.Reason.Detail, record.ModelSelection.Provider(), record.ModelSelection.Model(), record.ModelSelection.ReasoningEffort(),
-			capabilities, string(budget), string(used), record.IncarnationID, record.Revision, record.CreatedAt.UTC().UnixNano(), record.UpdatedAt.UTC().UnixNano())
+			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
+			capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
 		if execContextErr != nil {
 			return goal.Goal{}, false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
 		}
@@ -99,12 +107,17 @@ func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Ve
 		}
 		return record, true, nil
 	}
+	expectedIncarnation, committed := expected.IncarnationID()
+	expectedRevision, revisionCommitted := expected.Revision()
+	if !committed || !revisionCommitted {
+		return goal.Goal{}, false, errors.New("sqlite: committed Goal version lost identity")
+	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
 		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, budget = ?, used = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
 		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
-		record.Objective, string(record.Status), string(record.Reason.Code), record.Reason.Detail, record.ModelSelection.Provider(), record.ModelSelection.Model(), record.ModelSelection.ReasoningEffort(),
-		capabilities, string(budget), string(used), record.IncarnationID, record.Revision, record.CreatedAt.UTC().UnixNano(), record.UpdatedAt.UTC().UnixNano(),
-		record.SessionID, expected.IncarnationID, expected.Revision)
+		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
+		capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
+		snapshot.SessionID, expectedIncarnation, expectedRevision)
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: save goal: %w", err)
 	}
@@ -140,16 +153,20 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 			return g.validateExistingRun(ctx, record)
 		}
 
-		existing, found, err := g.Get(ctx, record.SessionID)
+		current, err := g.Get(ctx, record.SessionID)
 		if err != nil {
 			return err
 		}
-		if !found || existing.IncarnationID != record.IncarnationID {
+		existing, found := current.Goal()
+		if !found || existing.IncarnationID() != record.IncarnationID {
 			return nil
 		}
 		expected := existing.Version()
-		existing.RecordRun(record)
-		_, applied, err := g.Save(ctx, existing, expected)
+		replacement, err := existing.RecordRun(record)
+		if err != nil {
+			return fmt.Errorf("sqlite: apply Goal Run: %w", err)
+		}
+		_, applied, err := g.Save(ctx, replacement, expected)
 		if err != nil {
 			return err
 		}
@@ -201,6 +218,9 @@ func rowsAffected(res sql.Result) (bool, error) {
 // Clear removes the session's goal unconditionally; a missing goal is not an
 // error.
 func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
+	if err := validateSessionResource("clear Goal", sessionID); err != nil {
+		return err
+	}
 	if _, err := conn(ctx, g.db).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
 		return fmt.Errorf("sqlite: clear goal: %w", err)
 	}
@@ -210,8 +230,16 @@ func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
 // ClearIf removes the session's goal only when its version matches expected
 // (the loop's CAS delete), reporting whether it applied.
 func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal.Version) (bool, error) {
+	if err := validateSessionResource("clear Goal with version", sessionID); err != nil {
+		return false, err
+	}
+	incarnationID, committed := expected.IncarnationID()
+	revision, revisionCommitted := expected.Revision()
+	if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
+		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
+	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
-		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, expected.IncarnationID, expected.Revision)
+		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: clear goal (cas): %w", err)
 	}
@@ -225,7 +253,7 @@ func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list goals: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []goal.Goal
 	for rows.Next() {
 		loaded, err := scanGoal(rows)
@@ -245,15 +273,17 @@ func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 // *sql.Row (Get) and *sql.Rows (List) alike.
 func scanGoal(row scanRow) (goal.Goal, error) {
 	var (
-		g                                goal.Goal
-		status                           string
-		reasonCode                       string
-		provider, model, reasoningEffort string
-		capabilitiesJSON                 string
-		budgetJSON, usedJSON             string
-		createdAt, updatedAt             int64
+		sessionID, objective, incarnationID string
+		revision                            int64
+		status                              string
+		reasonCode                          string
+		reasonDetail                        string
+		provider, model, reasoningEffort    string
+		capabilitiesJSON                    string
+		budgetJSON, usedJSON                string
+		createdAt, updatedAt                int64
 	)
-	if err := row.Scan(&g.SessionID, &g.Objective, &status, &reasonCode, &g.Reason.Detail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &budgetJSON, &usedJSON, &g.IncarnationID, &g.Revision, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &budgetJSON, &usedJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return goal.Goal{}, err
 		}
@@ -263,28 +293,81 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal model selection: %w", err)
 	}
-	g.ModelSelection = selection
 	capabilities, err := decodeRunCapabilities(capabilitiesJSON)
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal capabilities: %w", err)
 	}
-	g.Capabilities = capabilities
-	var budget goalBudget
-	if err := json.Unmarshal([]byte(budgetJSON), &budget); err != nil {
+	budget, err := decodeGoalBudget(budgetJSON)
+	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal budget: %w", err)
 	}
 	var used goalUsed
 	if err := json.Unmarshal([]byte(usedJSON), &used); err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal used: %w", err)
 	}
-	g.Status = goal.Status(status)
-	g.Reason.Code = goal.ReasonCode(reasonCode)
-	g.Budget = goal.Budget{MaxRuns: budget.MaxRuns, MaxCostUSD: budget.MaxCostUSD, MaxSteps: budget.MaxSteps}
-	g.Used = goal.Usage{Runs: used.Runs, CostUSD: used.CostUSD, Steps: used.Steps}
-	g.CreatedAt = time.Unix(0, createdAt).UTC()
-	g.UpdatedAt = time.Unix(0, updatedAt).UTC()
-	if err := g.ValidateSnapshot(); err != nil {
+	value, err := goal.Restore(goal.Snapshot{
+		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
+		ReasonCode: goal.ReasonCode(reasonCode), ReasonDetail: reasonDetail,
+		ModelSelection: selection, Capabilities: capabilities,
+		Budget:        budget,
+		Used:          goal.Usage{Runs: used.Runs, CostUSD: used.CostUSD, Steps: used.Steps},
+		IncarnationID: incarnationID, Revision: revision,
+		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
+	})
+	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: validate goal: %w", err)
 	}
-	return g, nil
+	return value, nil
+}
+
+func encodeGoalBudget(budget goal.Budget) (string, error) {
+	if err := budget.Validate(); err != nil {
+		return "", err
+	}
+	row := storedGoalBudget{Type: goalBudgetUnlimited}
+	if !budget.Unlimited() {
+		row.Type = goalBudgetLimited
+		if value, limited := budget.MaxRuns(); limited {
+			row.MaxRuns = &value
+		}
+		if value, limited := budget.MaxCostUSD(); limited {
+			row.MaxCostUSD = &value
+		}
+		if value, limited := budget.MaxSteps(); limited {
+			row.MaxSteps = &value
+		}
+	}
+	encoded, err := json.Marshal(row)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
+}
+
+func decodeGoalBudget(encoded string) (goal.Budget, error) {
+	var row storedGoalBudget
+	decoder := json.NewDecoder(strings.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&row); err != nil {
+		return goal.Budget{}, err
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = errors.New("multiple JSON values")
+		}
+		return goal.Budget{}, err
+	}
+	switch row.Type {
+	case goalBudgetUnlimited:
+		if row.MaxRuns != nil || row.MaxCostUSD != nil || row.MaxSteps != nil {
+			return goal.Budget{}, errors.New("unlimited budget carries a limit")
+		}
+		return goal.UnlimitedBudget(), nil
+	case goalBudgetLimited:
+		return goal.NewBudget(goal.BudgetLimits{
+			MaxRuns: row.MaxRuns, MaxCostUSD: row.MaxCostUSD, MaxSteps: row.MaxSteps,
+		})
+	default:
+		return goal.Budget{}, fmt.Errorf("unknown budget type %q", row.Type)
+	}
 }

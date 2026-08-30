@@ -13,6 +13,8 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 
 	run := agent.Run{
 		ID: "run_1", SessionID: "session_1", Status: agent.RunStatusRunning, ActiveSegmentID: "segment_1",
+		Lineage: agent.RootRunLineage(),
+		Limits:  agent.UnlimitedRunLimits(),
 		Contract: &agent.RunContract{
 			RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
 			InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},

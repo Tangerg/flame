@@ -39,8 +39,9 @@ func Load(configDirectories []string) (Settings, error) {
 	// or via FLAME_PROVIDER. (No vendor is privileged as the implicit default.)
 	v.SetDefault("server.listen", "127.0.0.1:17171")
 	v.SetDefault("server.noLocalToken", false)
-	// Tool-result eviction is on by default; an explicit non-positive value
-	// (e.g. toolResultOffload.threshold: 0) disables it.
+	// Tool-result eviction is on by default. Enablement and threshold are
+	// independent so zero never acts as a hidden feature flag.
+	v.SetDefault("toolResultOffload.enabled", true)
 	v.SetDefault("toolResultOffload.threshold", DefaultToolResultOffloadThreshold)
 
 	// FLAME_* env override yaml (e.g. FLAME_PROVIDER, FLAME_SERVER_LISTEN).
@@ -84,6 +85,10 @@ func Load(configDirectories []string) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
+	toolResultOffloadThreshold := v.GetInt("toolResultOffload.threshold")
+	if toolResultOffloadThreshold <= 0 {
+		return Settings{}, errors.New("config: toolResultOffload.threshold must be positive; use toolResultOffload.enabled: false to disable eviction")
+	}
 
 	return Settings{
 		Provider:     provider,
@@ -96,7 +101,10 @@ func Load(configDirectories []string) (Settings, error) {
 		A2AAgents:    a2aAgents,
 		LSPServers:   lspServers,
 
-		ToolResultOffloadThreshold: v.GetInt("toolResultOffload.threshold"),
+		ToolResultOffload: ToolResultOffloadSettings{
+			Enabled:   v.GetBool("toolResultOffload.enabled"),
+			Threshold: toolResultOffloadThreshold,
+		},
 
 		SandboxShell:         v.GetBool("sandbox.shell"),
 		SandboxReadOnlyPaths: v.GetStringSlice("sandbox.readOnlyPaths"),

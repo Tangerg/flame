@@ -22,11 +22,7 @@ func LookupTokenLimits(selection modelref.Selection) (modelref.TokenLimits, bool
 	if !found {
 		return modelref.TokenLimits{}, false, nil
 	}
-	limits, err := modelref.NewTokenLimits(
-		entry.Limits.ContextWindow,
-		entry.Limits.MaxInputTokens,
-		entry.Limits.MaxOutputTokens,
-	)
+	limits, err := catalogTokenLimits(entry)
 	if err != nil {
 		return modelref.TokenLimits{}, false, fmt.Errorf(
 			"modelcatalog: token limits for %q/%q: %w",
@@ -36,4 +32,22 @@ func LookupTokenLimits(selection modelref.Selection) (modelref.TokenLimits, bool
 		)
 	}
 	return limits, true, nil
+}
+
+func catalogTokenLimits(entry catalog.Model) (modelref.TokenLimits, error) {
+	return modelref.NewTokenLimits(modelref.TokenLimitValues{
+		ContextWindow:   publishedTokenLimit(entry.Limits.ContextWindow),
+		MaxInputTokens:  publishedTokenLimit(entry.Limits.MaxInputTokens),
+		MaxOutputTokens: publishedTokenLimit(entry.Limits.MaxOutputTokens),
+	})
+}
+
+// publishedTokenLimit translates the upstream catalog's legacy numeric
+// absence convention exactly once at the infrastructure boundary. Domain and
+// application code never receive zero as an alternate spelling of unknown.
+func publishedTokenLimit(value int64) *int64 {
+	if value == 0 {
+		return nil
+	}
+	return &value
 }

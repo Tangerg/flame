@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	usageapi "github.com/Tangerg/flame/cli/internal/usage"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -51,7 +52,7 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Runtime, sessionID stri
 	t.Helper()
 	start := goal.Start{
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
-		Provider: "missing", Model: "missing", Budget: goal.Budget{MaxRuns: 3},
+		Provider: "missing", Model: "missing", Budget: limitedGoalBudget(t, 3),
 	}
 	started, err := runtime.StartGoal(t.Context(), start)
 	if err != nil {
@@ -72,14 +73,14 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Runtime, sessionID stri
 	if err != nil {
 		t.Fatalf("StopGoal: %v", err)
 	}
-	if stopped.Status == goal.Active {
+	if stopped.Status() == goal.Active {
 		t.Fatalf("stopped goal remained active: %+v", stopped)
 	}
 	resumed, err := runtime.ResumeGoal(t.Context(), sessionID)
 	if err != nil {
 		t.Fatalf("ResumeGoal: %v", err)
 	}
-	if resumed.Status != goal.Active {
+	if resumed.Status() != goal.Active {
 		t.Fatalf("resumed goal = %+v", resumed)
 	}
 	if _, err := runtime.StopGoal(t.Context(), sessionID); err != nil {
@@ -320,15 +321,26 @@ func requireWorkspaceInspection(t *testing.T, runtime *Runtime, path string) {
 		files.Entries[0].Type != workspaceapi.FileEntryDirectory || files.Entries[1].Path != "main.go" {
 		t.Fatalf("Files = (%+v, %v)", files, err)
 	}
-	head, err := runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", Lines: 2})
+	headLimit, err := workspaceapi.NewHeadLineLimit(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
 	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
 		t.Fatalf("Head = (%+v, %v)", head, err)
 	}
-	found, err := runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: 20})
+	searchLimit, err := workspaceapi.NewSearchResultLimit(20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: searchLimit})
 	if err != nil || found.Total != 1 || len(found.Matches) != 1 {
 		t.Fatalf("Search = (%+v, %v)", found, err)
 	}
-	content, err := runtime.Read(t.Context(), workspaceapi.ReadRequest{Workspace: path, Path: "main.go"})
+	content, err := runtime.Read(t.Context(), workspaceapi.ReadRequest{
+		Workspace: path, Path: "main.go", Range: workspaceapi.WholeFileReadRange(),
+		ByteLimit: workspaceapi.DefaultReadByteLimit(),
+	})
 	if err != nil || content.TotalLines != 4 || content.Content == "" {
 		t.Fatalf("Read = (%+v, %v)", content, err)
 	}
@@ -354,7 +366,9 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Runtime) {
 	if err != nil {
 		t.Fatalf("configure provider: %v", err)
 	}
-	if configured.BaseURL != setBaseURL.Value || configured.APIKeyMasked == "" || configured.KeySource != modelconfig.KeyStored {
+	configuredBaseURL, hasConfiguredBaseURL := configured.BaseURL()
+	configuredCredential, hasConfiguredCredential := configured.Credential()
+	if !hasConfiguredBaseURL || configuredBaseURL != setBaseURL.Value || !hasConfiguredCredential || !configuredCredential.Stored() {
 		t.Fatalf("configured provider = %+v", configured)
 	}
 
@@ -365,7 +379,9 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Runtime) {
 	if err != nil {
 		t.Fatalf("clear provider: %v", err)
 	}
-	if fallback.BaseURL != "" || fallback.APIKeyMasked == "" || fallback.KeySource != modelconfig.KeyEnv {
+	_, hasFallbackBaseURL := fallback.BaseURL()
+	fallbackCredential, hasFallbackCredential := fallback.Credential()
+	if hasFallbackBaseURL || !hasFallbackCredential || !fallbackCredential.FromEnvironment() {
 		t.Fatalf("provider environment fallback = %+v", fallback)
 	}
 }
@@ -390,7 +406,7 @@ func requireSessionCatalog(t *testing.T, runtime *Runtime, workspace string) age
 		t.Fatalf("CreateSession: %v", err)
 	}
 	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		Limit: 10, Search: "ADAPTER", Workspace: created.Workspace.Path,
+		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Path,
 	})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
@@ -409,7 +425,9 @@ func requireSessionCatalog(t *testing.T, runtime *Runtime, workspace string) age
 	if snapshot.Session.ID != created.ID || len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
-	runs, err := runtime.ListRuns(t.Context(), agent.RunQuery{SessionID: created.ID, IncludeDescendants: true})
+	runs, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		SessionID: created.ID, IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
+	})
 	if err != nil || len(runs.Items) != 0 {
 		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
 	}
@@ -469,9 +487,17 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Runtime, sessionID, workspace
 	if err != nil || sessionUsage.SessionID != sessionID {
 		t.Fatalf("SessionUsage = (%+v, %v)", sessionUsage, err)
 	}
-	usageSummary, err := runtime.Summary(t.Context(), 30)
-	if err != nil || usageSummary.SinceDays != 30 {
+	usagePeriod, err := usageapi.RecentDays(30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	usageSummary, err := runtime.Summary(t.Context(), usagePeriod)
+	if err != nil {
 		t.Fatalf("Summary = (%+v, %v)", usageSummary, err)
+	}
+	days, recent, periodErr := usageSummary.Period.Days()
+	if periodErr != nil || !recent || days != 30 {
+		t.Fatalf("Summary period = (%d, %t, %v)", days, recent, periodErr)
 	}
 	if current, exists, getGoalErr := runtime.GetGoal(t.Context(), sessionID); getGoalErr != nil || exists {
 		t.Fatalf("GetGoal without a goal = (%+v, %t, %v)", current, exists, getGoalErr)
@@ -509,6 +535,10 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Runtime, sessionID, workspace
 
 func requireMCPMutationLifecycle(t *testing.T, runtime *Runtime) {
 	t.Helper()
+	timeout, err := mcp.NewHandshakeTimeout(5)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
 	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer integration-secret"}
 	headers := mcp.HeadersChange{Kind: mcp.Set, Value: map[string]string{"X-Key": "integration-secret"}}
 	candidate := mcp.Candidate{
@@ -517,7 +547,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Runtime) {
 			Transport: mcp.StreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
 		},
-		TimeoutSeconds: 5, DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
+		HandshakeTimeout: timeout, DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
 	}
 	created, err := runtime.CreateServer(t.Context(), candidate)
 	if err != nil {
@@ -528,9 +558,13 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Runtime) {
 	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: mcp.Clear}
 	clearHeaders := mcp.HeadersChange{Kind: mcp.Clear}
-	description, timeout := "Updated integration MCP", 10
+	description := "Updated integration MCP"
+	updatedTimeout, err := mcp.NewHandshakeTimeout(10)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
 	update := mcp.ServerUpdate{
-		Server: candidate.Name, Description: &description, TimeoutSeconds: &timeout,
+		Server: candidate.Name, Description: &description, HandshakeTimeout: &updatedTimeout,
 		Connection: &mcp.ConnectionInput{
 			Transport: mcp.StreamableHTTP, URL: candidate.Connection.URL,
 			Authorization: &clearAuthorization, Headers: &clearHeaders,

@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 const (
@@ -227,7 +229,7 @@ func (r ReviewDecision) Result() (Status, error) {
 // into (or retrieved for) the model. Pinned items are always injected — the L1
 // core — and are never auto-pruned. SessionID/Day carry provenance.
 type Item struct {
-	ID        string
+	ID        ItemID
 	Scope     Scope
 	Project   string // "" for ScopeUser
 	Content   string
@@ -251,7 +253,7 @@ type Item struct {
 // item was edited, while Space prevents vectors from different models being
 // compared as though they shared one coordinate system.
 type EmbeddingUpdate struct {
-	ItemID        string
+	ItemID        ItemID
 	ContentDigest string
 	Space         string
 	Vector        []float32
@@ -260,8 +262,8 @@ type EmbeddingUpdate struct {
 // NewEmbeddingUpdate binds a vector to the exact item content and embedding
 // space that produced it.
 func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpdate, error) {
-	if strings.TrimSpace(item.ID) == "" {
-		return EmbeddingUpdate{}, errors.New("agentmemory: embedding item id is required")
+	if err := item.ID.Validate(); err != nil {
+		return EmbeddingUpdate{}, err
 	}
 	content, err := NormalizeContent(item.Content)
 	if err != nil {
@@ -283,8 +285,8 @@ func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpd
 
 // Validate protects a cache update received at a persistence boundary.
 func (e EmbeddingUpdate) Validate() error {
-	if strings.TrimSpace(e.ItemID) == "" {
-		return errors.New("agentmemory: embedding item id is required")
+	if err := e.ItemID.Validate(); err != nil {
+		return err
 	}
 	if strings.TrimSpace(e.ContentDigest) == "" {
 		return errors.New("agentmemory: embedding content digest is required")
@@ -315,17 +317,51 @@ func ValidateEmbeddingVector(vector []float32) error {
 
 // NewProposal builds a mined memory item awaiting review: project-scoped, auto
 // origin, pending status. The caller supplies the id and the clock.
-func NewProposal(id, project, content string, now time.Time) (Item, error) {
+func NewProposal(id ItemID, project, content string, now time.Time) (Item, error) {
 	return newItem(id, ScopeProject, project, content, OriginAuto, StatusPending, now)
 }
 
 // NewUserItem builds a user-authored memory item: active immediately (the user
 // is the author, so there is nothing to review).
-func NewUserItem(id string, scope Scope, project, content string, now time.Time) (Item, error) {
+func NewUserItem(id ItemID, scope Scope, project, content string, now time.Time) (Item, error) {
 	return newItem(id, scope, project, content, OriginUser, StatusActive, now)
 }
 
-func newItem(id string, scope Scope, project, content string, origin Origin, status Status, now time.Time) (Item, error) {
+// ActivateFromUser replaces a pending or rejected proposal with explicit user
+// authorship while preserving its durable identity and creation time. The
+// supplied user item owns the canonical content and new update timestamp; any
+// proposal provenance, pin, or derived embedding is deliberately discarded.
+func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
+	if err := i.Validate(); err != nil {
+		return Item{}, fmt.Errorf("agentmemory: activate existing item: %w", err)
+	}
+	if i.Status == StatusActive {
+		return Item{}, errors.New("agentmemory: active item cannot be activated again")
+	}
+	content, err := NormalizeContent(content)
+	if err != nil {
+		return Item{}, err
+	}
+	now = now.UTC()
+	if now.IsZero() || now.Before(i.UpdatedAt) {
+		return Item{}, errors.New("agentmemory: activation time precedes current item")
+	}
+	i.Content = content
+	i.Origin = OriginUser
+	i.Status = StatusActive
+	i.Pinned = false
+	i.SessionID = ""
+	i.Day = now.Format(time.DateOnly)
+	i.UpdatedAt = now
+	i.EmbeddingSpace = ""
+	i.Embedding = nil
+	if err := i.Validate(); err != nil {
+		return Item{}, fmt.Errorf("agentmemory: activate item: %w", err)
+	}
+	return i, nil
+}
+
+func newItem(id ItemID, scope Scope, project, content string, origin Origin, status Status, now time.Time) (Item, error) {
 	content, err := NormalizeContent(content)
 	if err != nil {
 		return Item{}, err
@@ -351,8 +387,13 @@ func newItem(id string, scope Scope, project, content string, origin Origin, sta
 // Validate protects the identity, partition, provenance, lifecycle, and time
 // invariants of one durable memory item.
 func (i Item) Validate() error {
-	if strings.TrimSpace(i.ID) == "" {
-		return errors.New("agentmemory: item id is required")
+	if err := i.ID.Validate(); err != nil {
+		return err
+	}
+	if i.SessionID != "" {
+		if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+			return fmt.Errorf("agentmemory: item provenance: %w", err)
+		}
 	}
 	if err := i.Scope.Validate(); err != nil {
 		return err
@@ -412,12 +453,11 @@ type FactBatch struct {
 // Parsing and rendering a model's Markdown response belong to the caller.
 func (f FactBatch) Normalize() (FactBatch, error) {
 	f.Project = strings.TrimSpace(f.Project)
-	f.SessionID = strings.TrimSpace(f.SessionID)
 	if f.Project == "" {
 		return FactBatch{}, errors.New("agentmemory: fact batch project is required")
 	}
-	if f.SessionID == "" {
-		return FactBatch{}, errors.New("agentmemory: fact batch session is required")
+	if _, err := resourceid.ParseSession(f.SessionID); err != nil {
+		return FactBatch{}, fmt.Errorf("agentmemory: fact batch: %w", err)
 	}
 	day, err := time.Parse(time.DateOnly, f.Day)
 	if err != nil || day.Format(time.DateOnly) != f.Day {

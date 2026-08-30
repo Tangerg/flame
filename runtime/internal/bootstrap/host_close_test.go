@@ -33,6 +33,7 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 	}
 	host := Host{
 		lifetime: &hostLifetime{
+			shutdownWait:   defaultShutdownWaitPolicy(),
 			goalDriver:     shutdownFunc{stop: recordStop("goals"), wait: recordWait("goals")},
 			mcpCoordinator: shutdownFunc{stop: recordStop("mcp"), wait: recordWait("mcp")},
 			runCoordinator: shutdownFunc{stop: recordStop("active-runs"), wait: recordWait("active-runs")},
@@ -99,6 +100,7 @@ func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
 		return closeErr
 	})
 	host := Host{lifetime: &hostLifetime{
+		shutdownWait: defaultShutdownWaitPolicy(),
 		// A2A, LSP, Shells and SQLite all use this one-shot close shape: the
 		// resource reaches its terminal state on the first call even when that
 		// call reports a diagnostic. Replaying the same cached error can never
@@ -131,7 +133,7 @@ func TestHostCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	toolClosed := make(chan struct{})
 	host := Host{lifetime: &hostLifetime{
-		shutdownTimeout: time.Millisecond,
+		shutdownWait: testShutdownWait(t, time.Millisecond),
 		runCoordinator: shutdownFunc{
 			wait: func(ctx context.Context) error {
 				select {
@@ -171,6 +173,7 @@ func TestHostCloseStartsNewGenerationAfterComponentError(t *testing.T) {
 	want := errors.New("component did not settle")
 	var stops, attempts, closed int
 	host := Host{lifetime: &hostLifetime{
+		shutdownWait: defaultShutdownWaitPolicy(),
 		runCoordinator: shutdownFunc{
 			stop: func() { stops++ },
 			wait: func(context.Context) error {
@@ -202,7 +205,7 @@ func TestHostCloseBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testin
 	release := make(chan struct{})
 	var calls atomic.Int32
 	host := Host{lifetime: &hostLifetime{
-		shutdownTimeout: time.Millisecond,
+		shutdownWait: testShutdownWait(t, time.Millisecond),
 		toolResources: []*teardown.Step{teardown.Terminal(func(context.Context) error {
 			calls.Add(1)
 			close(started)
@@ -223,7 +226,7 @@ func TestHostCloseBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testin
 	}
 
 	close(release)
-	host.lifetime.shutdownTimeout = time.Second
+	host.lifetime.shutdownWait = testShutdownWait(t, time.Second)
 	if err := host.Close(); err != nil {
 		t.Fatalf("retry Close: %v", err)
 	}
@@ -233,6 +236,15 @@ func TestHostCloseBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testin
 }
 
 type closerFunc func() error
+
+func testShutdownWait(t *testing.T, timeout time.Duration) shutdownWaitPolicy {
+	t.Helper()
+	policy, err := newShutdownWaitPolicy(timeout)
+	if err != nil {
+		t.Fatalf("newShutdownWaitPolicy(%v): %v", timeout, err)
+	}
+	return policy
+}
 
 func (c closerFunc) Close() error { return c() }
 

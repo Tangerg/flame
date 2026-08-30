@@ -16,11 +16,11 @@ import (
 // replacing is excluded from the current catalog for reconnect/configure. At
 // boot it is nil because the candidate has not joined servers yet. The caller
 // serializes access to servers.
-func validateToolCatalog(servers []*server, replacing *server, candidateServer string, candidate []toolcontract.Tool) error {
+func validateToolCatalog(servers []*server, replacing *server, candidateServer mcpserver.ServerName, candidate []toolcontract.Tool) error {
 	if err := mcpserver.ValidateRemoteToolCount(len(candidate)); err != nil {
 		return fmt.Errorf("mcp: validate tools from server %q: %w", candidateServer, err)
 	}
-	owners := make(map[string]string)
+	owners := make(map[string]mcpserver.ServerName)
 	for _, current := range servers {
 		if current == replacing || current.session == nil {
 			continue
@@ -30,6 +30,13 @@ func validateToolCatalog(servers []*server, replacing *server, candidateServer s
 		}
 	}
 	for _, tool := range candidate {
+		ref, err := remoteToolRef(tool)
+		if err != nil {
+			return fmt.Errorf("mcp: validate tools from server %q: %w", candidateServer, err)
+		}
+		if ref.Server != candidateServer {
+			return fmt.Errorf("mcp: candidate tool source %q does not match server %q", ref.Server, candidateServer)
+		}
 		name := tool.Definition().Name
 		if owner, collision := owners[name]; collision {
 			return fmt.Errorf(

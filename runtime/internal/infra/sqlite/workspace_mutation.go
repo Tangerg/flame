@@ -41,6 +41,12 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	if w == nil {
 		return nil
 	}
+	if err := validateSessionResource("record workspace mutation", m.SessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
+		return err
+	}
 	_, err := w.db.ExecContext(ctx,
 		`INSERT OR REPLACE INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES (?, ?, ?, ?)`,
 		m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory)
@@ -56,6 +62,9 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 func (w *WorkspaceMutationStore) Complete(ctx context.Context, sessionID string) error {
 	if w == nil {
 		return nil
+	}
+	if err := validateSessionResource("complete workspace mutation", sessionID); err != nil {
+		return err
 	}
 	_, err := w.db.ExecContext(ctx,
 		`DELETE FROM pending_workspace_mutations WHERE session_id = ?`, sessionID)
@@ -76,13 +85,19 @@ func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]WorkspaceMu
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list workspace mutations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []WorkspaceMutationRecord
 	for rows.Next() {
 		var m WorkspaceMutationRecord
 		if err := rows.Scan(&m.SessionID, &m.CWD, &m.ToRunID, &m.RestoreHistory); err != nil {
 			return nil, fmt.Errorf("sqlite: scan workspace mutation: %w", err)
+		}
+		if err := validateSessionResource("restore workspace mutation", m.SessionID); err != nil {
+			return nil, err
+		}
+		if err := validateRunResource("restore workspace mutation", m.ToRunID); err != nil {
+			return nil, err
 		}
 		out = append(out, m)
 	}

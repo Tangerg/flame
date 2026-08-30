@@ -10,11 +10,13 @@ import (
 	"slices"
 	"strings"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -77,7 +79,7 @@ func (i *interactionSession) executorCheckpoint(
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: tree.RootID().String(), Payload: payload,
-		BuildID: i.buildID, Scope: i.scope,
+		BuildID: i.buildID.String(), Scope: i.scope,
 		ModelSelection: i.start.ModelSelection, Limits: i.start.Limits,
 		Capabilities: run.Capabilities{
 			ChildRuns:      i.start.ChildRunAdmissionEnabled,
@@ -182,8 +184,10 @@ func encodeInteractionPendingSteers(
 		if len(steer.content) == 0 {
 			return nil, fmt.Errorf("pending steer %s has no product content", signalID)
 		}
-		if steer.projectedItemID != strings.TrimSpace(steer.projectedItemID) {
-			return nil, fmt.Errorf("pending steer %s projected Item identity is not canonical", signalID)
+		if steer.projectedItemID != "" {
+			if _, err := resourceid.ParseItem(steer.projectedItemID); err != nil {
+				return nil, fmt.Errorf("pending steer %s projected Item: %w", signalID, err)
+			}
 		}
 		content := make([]interactionContentBlockWire, len(steer.content))
 		for index, block := range steer.content {
@@ -218,6 +222,9 @@ func interactionCallCounts(
 ) ([]interactionModelCallsWire, error) {
 	models := make([]interactionModelCallsWire, 0, len(byModel))
 	for model, usage := range byModel {
+		if _, err := modelref.NewModelIdentity(model); err != nil {
+			return nil, err
+		}
 		if err := usage.Validate(); err != nil || usage.Model != model {
 			if err == nil {
 				err = errors.New("model key differs from usage identity")
@@ -278,8 +285,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	}
 	previousMember := ""
 	for index, member := range wire.Members {
-		if strings.TrimSpace(member.MemberID) == "" || member.MemberID != strings.TrimSpace(member.MemberID) ||
-			index > 0 && member.MemberID <= previousMember {
+		if index > 0 && member.MemberID <= previousMember {
 			return interactionCheckpointState{}, errors.New("agentexec: Interaction checkpoint members are not canonical")
 		}
 		processID, parseProcessIDErr := agent.ParseProcessID(member.MemberID)
@@ -322,8 +328,7 @@ func decodeInteractionModelContexts(
 	contexts := make(map[agent.ProcessID]ModelContextTokenCalibration, len(values))
 	previous := ""
 	for index, value := range values {
-		if strings.TrimSpace(value.MemberID) == "" || value.MemberID != strings.TrimSpace(value.MemberID) ||
-			index > 0 && value.MemberID <= previous {
+		if index > 0 && value.MemberID <= previous {
 			return nil, errors.New("model contexts are not canonical")
 		}
 		processID, err := agent.ParseProcessID(value.MemberID)
@@ -354,56 +359,85 @@ func decodeInteractionPendingSteers(
 ) (map[agent.SignalID]pendingInteractionSteer, error) {
 	pending := make(map[agent.SignalID]pendingInteractionSteer, len(values))
 	previous := ""
-	for index, value := range values {
-		if strings.TrimSpace(value.SignalID) == "" || value.SignalID != strings.TrimSpace(value.SignalID) ||
-			index > 0 && value.SignalID <= previous || len(value.Content) == 0 {
-			return nil, errors.New("pending steers are not canonical")
-		}
-		signalID, err := agent.ParseSignalID(value.SignalID)
+	for _, value := range values {
+		signalID, steer, err := value.decode(previous)
 		if err != nil {
-			return nil, fmt.Errorf("pending steer identity: %w", err)
+			return nil, err
 		}
-		content := make([]transcript.ContentBlock, len(value.Content))
-		for contentIndex, block := range value.Content {
-			switch block.Kind {
-			case transcript.TextContent:
-				if block.Text == "" || block.MediaType != "" || block.Data != "" {
-					return nil, fmt.Errorf("pending steer %s content %d is not canonical text", signalID, contentIndex)
-				}
-				content[contentIndex] = transcript.ContentBlock{Kind: transcript.TextContent, Text: block.Text}
-			case transcript.ImageContent:
-				if block.Text != "" || block.MediaType == "" || block.Data == "" {
-					return nil, fmt.Errorf("pending steer %s content %d is not canonical image", signalID, contentIndex)
-				}
-				data, err := base64.StdEncoding.Strict().DecodeString(block.Data)
-				if err != nil {
-					return nil, fmt.Errorf("pending steer %s content %d image data: %w", signalID, contentIndex, err)
-				}
-				content[contentIndex] = transcript.ContentBlock{
-					Kind: transcript.ImageContent, MediaType: block.MediaType, Bytes: data,
-				}
-			default:
-				return nil, fmt.Errorf("pending steer %s content %d has unknown kind %q", signalID, contentIndex, block.Kind)
-			}
-			if err := content[contentIndex].Validate(); err != nil {
-				return nil, fmt.Errorf("pending steer %s content %d: %w", signalID, contentIndex, err)
-			}
-		}
-		if value.ProjectedItemID != strings.TrimSpace(value.ProjectedItemID) {
-			return nil, fmt.Errorf("pending steer %s projected Item identity is not canonical", signalID)
-		}
-		pending[signalID] = pendingInteractionSteer{content: content, projectedItemID: value.ProjectedItemID}
+		pending[signalID] = steer
 		previous = value.SignalID
 	}
 	return pending, nil
+}
+
+func (w interactionPendingSteerWire) decode(
+	previousSignalID string,
+) (agent.SignalID, pendingInteractionSteer, error) {
+	var zeroSignalID agent.SignalID
+	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
+		return zeroSignalID, pendingInteractionSteer{}, errors.New("pending steers are not canonical")
+	}
+	signalID, err := agent.ParseSignalID(w.SignalID)
+	if err != nil {
+		return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf("pending steer identity: %w", err)
+	}
+	content := make([]transcript.ContentBlock, len(w.Content))
+	for index, block := range w.Content {
+		content[index], err = block.decode()
+		if err != nil {
+			return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf(
+				"pending steer %s content %d: %w", signalID, index, err,
+			)
+		}
+	}
+	if w.ProjectedItemID != "" {
+		if _, err := resourceid.ParseItem(w.ProjectedItemID); err != nil {
+			return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf(
+				"pending steer %s projected Item: %w", signalID, err,
+			)
+		}
+	}
+	return signalID, pendingInteractionSteer{
+		content: content, projectedItemID: w.ProjectedItemID,
+	}, nil
+}
+
+func (w interactionContentBlockWire) decode() (transcript.ContentBlock, error) {
+	var content transcript.ContentBlock
+	switch w.Kind {
+	case transcript.TextContent:
+		if w.Text == "" || w.MediaType != "" || w.Data != "" {
+			return transcript.ContentBlock{}, errors.New("is not canonical text")
+		}
+		content = transcript.ContentBlock{Kind: transcript.TextContent, Text: w.Text}
+	case transcript.ImageContent:
+		if w.Text != "" || w.MediaType == "" || w.Data == "" {
+			return transcript.ContentBlock{}, errors.New("is not canonical image")
+		}
+		data, err := base64.StdEncoding.Strict().DecodeString(w.Data)
+		if err != nil {
+			return transcript.ContentBlock{}, fmt.Errorf("image data: %w", err)
+		}
+		content = transcript.ContentBlock{
+			Kind: transcript.ImageContent, MediaType: w.MediaType, Bytes: data,
+		}
+	default:
+		return transcript.ContentBlock{}, fmt.Errorf("has unknown kind %q", w.Kind)
+	}
+	if err := content.Validate(); err != nil {
+		return transcript.ContentBlock{}, err
+	}
+	return content, nil
 }
 
 func decodeInteractionCallCounts(values []interactionModelCallsWire) (map[string]int, error) {
 	result := make(map[string]int, len(values))
 	previous := ""
 	for index, value := range values {
-		if strings.TrimSpace(value.Model) == "" || value.Model != strings.TrimSpace(value.Model) ||
-			value.Calls <= 0 || index > 0 && value.Model <= previous {
+		if _, err := modelref.NewModelIdentity(value.Model); err != nil {
+			return nil, fmt.Errorf("model call counts: models[%d]: %w", index, err)
+		}
+		if value.Calls <= 0 || index > 0 && value.Model <= previous {
 			return nil, errors.New("model call counts are not canonical")
 		}
 		result[value.Model] = value.Calls

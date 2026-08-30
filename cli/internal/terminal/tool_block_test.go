@@ -15,6 +15,21 @@ import (
 	"github.com/Tangerg/flame/cli/internal/failure"
 )
 
+func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
+	oldCalls, replacementCalls := 0, 0
+	block := &toolBlock{}
+	unsubscribeOld := block.Observe(func(readerDocument) { oldCalls++ })
+	unsubscribeReplacement := block.Observe(func(readerDocument) { replacementCalls++ })
+	unsubscribeReplacement()
+	unsubscribeReplacement()
+	block.observers.notify(readerDocument{})
+
+	if oldCalls != 2 || replacementCalls != 1 {
+		t.Fatalf("observer calls after replacement retirement = old %d replacement %d", oldCalls, replacementCalls)
+	}
+	unsubscribeOld()
+}
+
 func TestPluginPresenterPanicBecomesAnError(t *testing.T) {
 	_, err := presentSafely(BlockPresenter{
 		Kind: agent.BlockAssistant,
@@ -294,7 +309,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 	}
 	for row := range height - 1 {
 		cell, ok := surface.CellAt(0, row)
-		if !ok || cell.Content != glyphs.Vertical || cell.Style != theme.Success {
+		if !ok || cell.Content() != glyphs.Vertical || cell.Style != theme.Success {
 			t.Fatalf("status rail row %d = %+v, want %q with success style", row, cell, glyphs.Vertical)
 		}
 	}

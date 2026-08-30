@@ -117,7 +117,7 @@ function DiagnosticToolRowPresentation({
   tool: BuiltinToolRowViewModel;
   cwd?: string;
   enabled: boolean;
-  materialGeneration: number;
+  materialGeneration: bigint;
 }) {
   const t = useT();
   const panelId = useId();
@@ -159,7 +159,7 @@ function DiagnosticToolRowPresentation({
       </Pressable>
       <Collapsible open={open}>
         <DiagnosticToolInvocationMaterial
-          key={materialGeneration}
+          key={materialGeneration.toString()}
           tool={tool}
           cwd={cwd}
           enabled={enabled}

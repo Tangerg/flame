@@ -83,10 +83,23 @@ func TestRunEventValidationOwnsEnvelopeAndPayloadIdentity(t *testing.T) {
 		mutate func(*RunEvent)
 	}{
 		{name: "event id", mutate: func(event *RunEvent) { event.EventID = " " }},
+		{name: "non-exact event id", mutate: func(event *RunEvent) { event.EventID = " event_1" }},
 		{name: "run id", mutate: func(event *RunEvent) { event.RunID = "" }},
 		{name: "segment id", mutate: func(event *RunEvent) { event.SegmentID = "" }},
+		{name: "non-exact run id", mutate: func(event *RunEvent) {
+			event.RunID = " run_1"
+			completed := event.Event.(BlockCompleted)
+			completed.Block.RunID = event.RunID
+			event.Event = completed
+		}},
+		{name: "non-exact segment id", mutate: func(event *RunEvent) { event.SegmentID = "segment_1 " }},
 		{name: "stream segment id", mutate: func(event *RunEvent) { event.StreamSegmentID = " " }},
 		{name: "payload", mutate: func(event *RunEvent) { event.Event = nil }},
+		{name: "non-exact block id", mutate: func(event *RunEvent) {
+			completed := event.Event.(BlockCompleted)
+			completed.Block.ID = " answer"
+			event.Event = completed
+		}},
 		{name: "block ownership", mutate: func(event *RunEvent) {
 			completed := event.Event.(BlockCompleted)
 			completed.Block.RunID = "run_2"
@@ -136,12 +149,9 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 		t.Fatalf("custom clone aliases source: %s", custom.PayloadJSON)
 	}
 
-	index := 2
-	delta := BlockDelta{BlockID: "answer", Text: "tail", ContentIndex: &index}
-	deltaClone := CloneEvent(delta).(BlockDelta)
-	*deltaClone.ContentIndex = 7
-	if *delta.ContentIndex != 2 || !equalEvent(delta, CloneEvent(delta)) {
-		t.Fatalf("block delta clone aliases source: source=%+v clone=%+v", delta, deltaClone)
+	delta := BlockDelta{BlockID: "answer", Text: "tail"}
+	if !equalEvent(delta, CloneEvent(delta)) {
+		t.Fatalf("block delta clone differs from source: %+v", delta)
 	}
 }
 
@@ -163,7 +173,7 @@ func TestEphemeralEventValidationRejectsMalformedValues(t *testing.T) {
 	tests := []Event{
 		RunProgress{Step: &negative},
 		RunProgress{ContextTokens: &negativeContext},
-		BlockDelta{BlockID: "answer", Text: "invalid", ContentIndex: &negative},
+		BlockDelta{},
 		ToolArgumentsDelta{},
 		CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{`)},
 		CustomEvent{PayloadJSON: []byte(`null`)},

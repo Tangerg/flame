@@ -3,7 +3,10 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { setHookTrust } from "./application/hookTrust";
 import hooksPlugin from "./index";
 
@@ -19,7 +22,7 @@ describe("hooks plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ hooks: { setTrust } }) as unknown as FlameClient,
     });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -42,7 +45,7 @@ describe("hooks plugin Runtime generation wiring", () => {
     const command = rejected(setHookTrust("/repo", true));
     await vi.waitFor(() => expect(setTrust).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
       message: "hook_trust_mutation_generation_retired",

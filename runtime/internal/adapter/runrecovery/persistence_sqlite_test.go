@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
@@ -262,7 +263,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: "build",
+		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: identityfixture.BuildID,
 		Scope: runs.ExecutionScope{SessionID: "session_abandoned"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
@@ -362,15 +363,23 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	modelInvocations := sqlite.NewModelInvocationStore(db)
 	toolInvocations := sqlite.NewToolInvocationStore(db)
-	goalValue, err := goal.New("session", "finish recovery", modelref.Selection{}, goal.Budget{}, run.Capabilities{}, "lease_recovery", createdAt)
+	selection, err := modelref.New("provider", "model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	goalValue, err := goal.New("session", "finish recovery", selection, goal.UnlimitedBudget(), run.Capabilities{}, "lease_recovery", createdAt)
 	if err != nil {
 		t.Fatalf("New Goal: %v", err)
 	}
-	if _, applied, saveErr := goalStore.Save(ctx, goalValue, goal.Version{}); saveErr != nil || !applied {
+	unwritten, err := goal.Unwritten("session")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, applied, saveErr := goalStore.Save(ctx, goalValue, unwritten.Version()); saveErr != nil || !applied {
 		t.Fatalf("Save Goal: applied=%t err=%v", applied, saveErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
-		RunID: "run_lost", SessionID: "session", SegmentID: "segment", GoalIncarnationID: goalValue.IncarnationID, CreatedAt: createdAt,
+		RunID: "run_lost", SessionID: "session", SegmentID: "segment", GoalIncarnationID: goalValue.IncarnationID(), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
 	}
@@ -405,7 +414,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "orphan_checkpoint",
 		Payload:      []byte(`{"opaque":true}`),
-		BuildID:      "build",
+		BuildID:      identityfixture.BuildID,
 		Scope:        runs.ExecutionScope{SessionID: "session"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
@@ -539,8 +548,9 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)
 	}
-	storedGoal, found, err := goalStore.Get(ctx, goalValue.SessionID)
-	if err != nil || !found || storedGoal.Used.Runs != 1 || storedGoal.Status != goal.StatusPaused || storedGoal.Reason.Code != goal.ReasonRunNotCompleted {
+	currentGoal, err := goalStore.Get(ctx, goalValue.SessionID())
+	storedGoal, found := currentGoal.Goal()
+	if err != nil || !found || storedGoal.Used().Runs != 1 || storedGoal.Status() != goal.StatusPaused || storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
 		t.Fatalf("Goal after recovery = found:%t value:%+v err:%v", found, storedGoal, err)
 	}
 }
@@ -605,7 +615,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: "build",
+		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: identityfixture.BuildID,
 		Scope: runs.ExecutionScope{SessionID: "session"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {

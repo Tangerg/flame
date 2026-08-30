@@ -8,8 +8,8 @@ import (
 )
 
 // ListSessions returns one cursor page of Sessions.
-func (r *Runtime) ListSessions(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Session], error) {
-	return r.invoke[protocol.PageQuery, *protocol.Page[protocol.Session]](ctx, operation.SessionsList, request, callOptions(options))
+func (r *Runtime) ListSessions(ctx context.Context, request protocol.ListSessionsRequest, options CallOptions) (*protocol.Page[protocol.Session], error) {
+	return r.invoke[protocol.ListSessionsRequest, *protocol.Page[protocol.Session]](ctx, operation.SessionsList, request, callOptions(options))
 }
 
 // GetSession returns one Session by identity.

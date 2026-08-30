@@ -8,8 +8,8 @@ type SessionUsageRequest struct {
 // UsageSummaryRequest — usage.summary body (API.md §7.7).
 type UsageSummaryRequest struct {
 	// SinceDays limits the report to runs finished within the last N days;
-	// 0 (the zero value) means all time.
-	SinceDays int `json:"sinceDays,omitempty"`
+	// absence means all time, while a present value is strictly positive.
+	SinceDays *int `json:"sinceDays,omitempty"`
 }
 
 // UsageBucket is one grouped slice of usage — a provider id, a "provider/model"

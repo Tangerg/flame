@@ -182,6 +182,16 @@ func TestRuntimeSearchContractsContainOnlyComposableInputs(t *testing.T) {
 	}
 }
 
+func TestRuntimeSearchRejectsNumericDefaultSentinels(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	for _, name := range []string{"grep", "glob"} {
+		if _, err := namedDirectTool(t, root, name).Call(t.Context(), `{"pattern":"x","max_results":0}`); err == nil {
+			t.Errorf("%s accepted max_results=0 instead of requiring omission", name)
+		}
+	}
+}
+
 func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()

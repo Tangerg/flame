@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 // tracer emits the MCP dial / reconnect spans the lower layers don't (per-call
@@ -58,7 +57,7 @@ func Dial(
 	// Validate config before dialing: duplicate names collide tool prefixes and
 	// a malformed entry can never work — operator mistakes that should fail
 	// loudly at boot, not degrade to a "failed" row.
-	seen := make(map[string]struct{}, len(servers))
+	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
 	for index := range servers {
 		srv := &servers[index]
 		if _, dup := seen[srv.Name]; dup {
@@ -103,7 +102,7 @@ func Dial(
 			continue
 		}
 		c.ownSessionLocked(session, cleanupSession)
-		srcTools, terr := sourceTools(ctx, scopemcp.ToolSource{Name: srv.Name, Session: session})
+		srcTools, terr := sourceTools(ctx, srv.Name, session)
 		if terr == nil {
 			terr = validateToolCatalog(c.servers, nil, srv.Name, srcTools)
 		}

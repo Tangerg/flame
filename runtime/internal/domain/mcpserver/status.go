@@ -18,7 +18,7 @@ const (
 // control plane. Connection failures stay in the operation and observability
 // paths; a status is deliberately not an error transport.
 type ConnectionStatus struct {
-	Name      string
+	Name      ServerName
 	State     ConnectionState
 	ToolCount int
 }
@@ -29,8 +29,8 @@ var ErrUnknownServer = errors.New("mcp: unknown server")
 
 // AdvertisedTool is one tool advertised by a connected MCP server.
 type AdvertisedTool struct {
-	Server      string
-	Name        string
+	Server      ServerName
+	Name        RemoteToolName
 	Description string
 	InputSchema InputSchema
 }

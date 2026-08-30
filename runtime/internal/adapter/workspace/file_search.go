@@ -36,82 +36,147 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	if err != nil {
 		return workspaceapp.GrepResult{}, fmt.Errorf("workspace: resolve search root: %w", err)
 	}
-
-	result := workspaceapp.GrepResult{Matches: []workspaceapp.GrepMatch{}}
-	remainingSource := int64(workspaceapp.MaxGrepSourceBytes)
-	retainedBytes := 0
-	retain := true
+	search := workspaceGrep{
+		ctx:             ctx,
+		root:            root,
+		canonicalRoot:   canonicalRoot,
+		plan:            input,
+		result:          workspaceapp.GrepResult{Matches: []workspaceapp.GrepMatch{}},
+		remainingSource: int64(workspaceapp.MaxGrepSourceBytes),
+		collectMatches:  true,
+	}
 	for _, entry := range entries {
-		if entry.Kind != EntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
-			continue
-		}
-		if cause := context.Cause(ctx); cause != nil {
-			return workspaceapp.GrepResult{}, cause
-		}
-		path, pathErr := rootRelativeGrepPath(root, canonicalRoot, filepath.Join(root, filepath.FromSlash(entry.Path)))
-		if pathErr != nil {
-			return workspaceapp.GrepResult{}, pathErr
-		}
-		file, openErr := os.Open(filepath.Join(canonicalRoot, filepath.FromSlash(path)))
-		if openErr != nil {
-			return workspaceapp.GrepResult{}, fmt.Errorf("workspace: open search file %q: %w", path, openErr)
-		}
-		info, statErr := file.Stat()
-		if statErr != nil {
-			_ = file.Close()
-			return workspaceapp.GrepResult{}, fmt.Errorf("workspace: inspect search file %q: %w", path, statErr)
-		}
-		if !info.Mode().IsRegular() || info.Size() > workspaceapp.MaxGrepFileBytes {
-			if closeErr := file.Close(); closeErr != nil {
-				return workspaceapp.GrepResult{}, fmt.Errorf("workspace: close search file %q: %w", path, closeErr)
-			}
-			continue
-		}
-		if remainingSource <= 0 {
-			_ = file.Close()
-			return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
-		}
-
-		inputBytes := min(workspaceapp.MaxGrepFileBytes, remainingSource)
-		counter := &searchByteCounter{reader: file}
-		matchLimit, resultBytes := 0, 0
-		if retain {
-			matchLimit = input.Limit - len(result.Matches)
-			resultBytes = workspaceapp.MaxGrepResultBytes - retainedBytes
-		}
-		fileResult, scanErr := grepFile(ctx, counter, path, input, inputBytes, matchLimit, resultBytes)
-		closeErr := file.Close()
-		if closeErr != nil {
-			return workspaceapp.GrepResult{}, fmt.Errorf("workspace: close search file %q: %w", path, closeErr)
-		}
-		remainingSource -= counter.bytes
-		if remainingSource < 0 {
-			return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
-		}
-		if scanErr != nil {
-			switch {
-			case errors.Is(scanErr, textread.ErrInvalidText), errors.Is(scanErr, textread.ErrLineTooLarge):
-				// Binary and pathological single-line files are not members of the
-				// searchable text corpus. Discard the whole file, including any rows
-				// observed before invalid material, just as a binary-aware grep does.
-				continue
-			case errors.Is(scanErr, textread.ErrInputTooLarge):
-				return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
-			default:
-				return workspaceapp.GrepResult{}, fmt.Errorf("workspace: scan search file %q: %w", path, scanErr)
-			}
-		}
-		if fileResult.total > math.MaxInt-result.Total {
-			return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
-		}
-		result.Total += fileResult.total
-		result.Matches = append(result.Matches, fileResult.matches...)
-		retainedBytes += fileResult.materialBytes
-		if fileResult.exhausted {
-			retain = false
+		if err := search.scanEntry(entry); err != nil {
+			return workspaceapp.GrepResult{}, err
 		}
 	}
-	return result, nil
+	return search.result, nil
+}
+
+type workspaceGrep struct {
+	ctx             context.Context
+	root            string
+	canonicalRoot   string
+	plan            workspaceapp.GrepPlan
+	result          workspaceapp.GrepResult
+	remainingSource int64
+	retainedBytes   int
+	collectMatches  bool
+}
+
+func (search *workspaceGrep) scanEntry(entry FileEntry) error {
+	if entry.Kind != EntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
+		return nil
+	}
+	if cause := context.Cause(search.ctx); cause != nil {
+		return cause
+	}
+	source, usable, err := search.openSource(entry.Path)
+	if err != nil || !usable {
+		return err
+	}
+	return search.scanSource(source)
+}
+
+type grepSource struct {
+	path string
+	file *os.File
+}
+
+func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, error) {
+	path, err := rootRelativeGrepPath(
+		search.root,
+		search.canonicalRoot,
+		filepath.Join(search.root, filepath.FromSlash(entryPath)),
+	)
+	if err != nil {
+		return grepSource{}, false, err
+	}
+	file, err := os.Open(filepath.Join(search.canonicalRoot, filepath.FromSlash(path)))
+	if err != nil {
+		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return grepSource{}, false, fmt.Errorf("workspace: inspect search file %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() || info.Size() > workspaceapp.MaxGrepFileBytes {
+		if err := file.Close(); err != nil {
+			return grepSource{}, false, fmt.Errorf("workspace: close search file %q: %w", path, err)
+		}
+		return grepSource{}, false, nil
+	}
+	return grepSource{path: path, file: file}, true, nil
+}
+
+func (search *workspaceGrep) scanSource(source grepSource) error {
+	if search.remainingSource <= 0 {
+		_ = source.file.Close()
+		return workspaceapp.ErrGrepResultTooLarge
+	}
+	counter := &searchByteCounter{reader: source.file}
+	matchLimit, resultBytes := search.retentionBudget()
+	fileResult, scanErr := grepFile(
+		search.ctx,
+		counter,
+		source.path,
+		search.plan,
+		min(workspaceapp.MaxGrepFileBytes, search.remainingSource),
+		matchLimit,
+		resultBytes,
+	)
+	if err := source.file.Close(); err != nil {
+		return fmt.Errorf("workspace: close search file %q: %w", source.path, err)
+	}
+	search.remainingSource -= counter.bytes
+	if search.remainingSource < 0 {
+		return workspaceapp.ErrGrepResultTooLarge
+	}
+	if err := classifyGrepScanError(source.path, scanErr); err != nil {
+		return err
+	}
+	if scanErr != nil {
+		// Binary and pathological single-line files are not members of the
+		// searchable text corpus. Discard the whole file, including any rows
+		// observed before invalid material, just as a binary-aware grep does.
+		return nil
+	}
+	return search.merge(fileResult)
+}
+
+func (search *workspaceGrep) retentionBudget() (int, int) {
+	if !search.collectMatches {
+		return 0, 0
+	}
+	return search.plan.Limit - len(search.result.Matches),
+		workspaceapp.MaxGrepResultBytes - search.retainedBytes
+}
+
+func (search *workspaceGrep) merge(fileResult grepFileResult) error {
+	if fileResult.total > math.MaxInt-search.result.Total {
+		return workspaceapp.ErrGrepResultTooLarge
+	}
+	search.result.Total += fileResult.total
+	search.result.Matches = append(search.result.Matches, fileResult.matches...)
+	search.retainedBytes += fileResult.materialBytes
+	if fileResult.exhausted {
+		search.collectMatches = false
+	}
+	return nil
+}
+
+func classifyGrepScanError(path string, err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, textread.ErrInvalidText), errors.Is(err, textread.ErrLineTooLarge):
+		return nil
+	case errors.Is(err, textread.ErrInputTooLarge):
+		return workspaceapp.ErrGrepResultTooLarge
+	default:
+		return fmt.Errorf("workspace: scan search file %q: %w", path, err)
+	}
 }
 
 type grepFileResult struct {

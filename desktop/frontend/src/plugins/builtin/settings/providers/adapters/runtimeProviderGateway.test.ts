@@ -12,7 +12,10 @@ import {
   PROVIDERS_KEY,
   UTILITY_ROLE_KEY,
 } from "../application/providerQueries";
-import type { ProviderConfiguration } from "../application/providerModels";
+import {
+  ProviderConfiguration,
+  type ProviderConfigurationSnapshot,
+} from "../application/providerModels";
 import { installProviderGateway } from "./runtimeProviderGateway";
 
 let uninstall: (() => void) | undefined;
@@ -31,8 +34,9 @@ describe("runtimeProviderGateway", () => {
     const update = vi.fn().mockResolvedValue({
       id: "openai-compatible",
       baseUrl: "https://models.example.test/v1",
-      apiKeyMasked: "sk****st",
-      keySource: "stored",
+      credential: { masked: "sk****st", source: "stored" },
+      configured: true,
+      credentialRequirement: "apiKeyRequired",
       requiresBaseUrl: true,
       embeddingCapable: true,
       defaultEmbeddingModel: "embed-1",
@@ -45,18 +49,21 @@ describe("runtimeProviderGateway", () => {
     await expect(
       updateProvider({
         provider: "openai-compatible",
-        apiKey: "sk-test",
-        baseUrl: "https://models.example.test/v1",
+        apiKey: { type: "set", value: "sk-test" },
+        baseUrl: { type: "set", value: "https://models.example.test/v1" },
       }),
-    ).resolves.toEqual({
-      id: "openai-compatible",
-      baseUrl: "https://models.example.test/v1",
-      apiKeyMasked: "sk****st",
-      keySource: "stored",
-      requiresBaseUrl: true,
-      embeddingCapable: true,
-      defaultEmbeddingModel: "embed-1",
-    });
+    ).resolves.toEqual(
+      ProviderConfiguration.restore({
+        id: "openai-compatible",
+        baseUrl: "https://models.example.test/v1",
+        credential: { masked: "sk****st", source: "stored" },
+        configured: true,
+        credentialRequirement: "apiKeyRequired",
+        requiresBaseUrl: true,
+        embeddingCapable: true,
+        defaultEmbeddingModel: "embed-1",
+      }),
+    );
   });
 
   it("preserves the stored utility and embedding roles", async () => {
@@ -86,12 +93,16 @@ describe("runtimeProviderGateway", () => {
   it("retires in-flight and queued provider commands before installing a successor", async () => {
     const retiredUpdate = deferred<ProviderConfiguration>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
-    const updateSuccessor = vi.fn().mockResolvedValue(
-      provider({
-        baseUrl: "https://successor.example.test/v1",
-        apiKeyMasked: "successor****key",
-      }),
-    );
+    const updateSuccessor = vi.fn().mockResolvedValue({
+      id: "openai-compatible",
+      configured: true,
+      credentialRequirement: "apiKeyRequired",
+      requiresBaseUrl: true,
+      embeddingCapable: true,
+      defaultEmbeddingModel: "embed-1",
+      baseUrl: "https://successor.example.test/v1",
+      credential: { masked: "successor****key", source: "stored" },
+    });
     setContainer({
       client: () => ({ providers: { update: updateRetired } }) as unknown as FlameClient,
     });
@@ -100,11 +111,11 @@ describe("runtimeProviderGateway", () => {
 
     const inFlight = updateProvider({
       provider: "openai-compatible",
-      baseUrl: "https://retired.example.test/v1",
+      baseUrl: { type: "set", value: "https://retired.example.test/v1" },
     });
     const queued = updateProvider({
       provider: "openai-compatible",
-      baseUrl: "https://queued.example.test/v1",
+      baseUrl: { type: "set", value: "https://queued.example.test/v1" },
     });
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
@@ -123,13 +134,16 @@ describe("runtimeProviderGateway", () => {
       [
         provider({
           baseUrl: "https://successor.example.test/v1",
-          apiKeyMasked: "successor****key",
+          credential: { masked: "successor****key", source: "stored" },
         }),
       ],
     );
 
     retiredUpdate.resolve(
-      provider({ baseUrl: "https://retired.example.test/v1", apiKeyMasked: "retired****key" }),
+      provider({
+        baseUrl: "https://retired.example.test/v1",
+        credential: { masked: "retired****key", source: "stored" },
+      }),
     );
     await expect(inFlightSettlement).resolves.toMatchObject({
       message: "provider_mutation_generation_retired",
@@ -141,13 +155,13 @@ describe("runtimeProviderGateway", () => {
     expect(queryClient.getQueryData([PROVIDERS_KEY])).toEqual([
       provider({
         baseUrl: "https://successor.example.test/v1",
-        apiKeyMasked: "successor****key",
+        credential: { masked: "successor****key", source: "stored" },
       }),
     ]);
 
     const successorCommand = updateProvider({
       provider: "openai-compatible",
-      baseUrl: "https://successor.example.test/v1",
+      baseUrl: { type: "set", value: "https://successor.example.test/v1" },
     });
     retiredInstallation.replaceRuntimeGeneration();
     await expect(successorCommand).resolves.toMatchObject({
@@ -157,16 +171,16 @@ describe("runtimeProviderGateway", () => {
   });
 });
 
-function provider(overrides: Partial<ProviderConfiguration> = {}): ProviderConfiguration {
-  return {
+function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): ProviderConfiguration {
+  return ProviderConfiguration.restore({
     id: "openai-compatible",
-    baseUrl: "",
-    apiKeyMasked: "",
+    configured: false,
+    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     embeddingCapable: true,
     defaultEmbeddingModel: "embed-1",
     ...overrides,
-  };
+  });
 }
 
 function deferred<T>() {

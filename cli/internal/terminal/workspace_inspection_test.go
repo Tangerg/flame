@@ -173,7 +173,7 @@ func runUIWithWorkspaceBackend(t *testing.T, service workspace.Service, source c
 	t.Helper()
 	backend := mock.New()
 	backend.Instant = true
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -239,8 +239,9 @@ func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
 	host.Shows(t, "Workspace diff")
 	host.Shows(t, "base · rows · dir with spaces/main.go")
 	request := service.lastDiffRequest()
+	rows, explicit, err := request.RowLimit.Rows()
 	if request.Mode != workspace.DiffModeBase || request.Format != workspace.DiffFormatRows ||
-		request.Limit != 50 || request.Path != "dir with spaces/main.go" {
+		err != nil || !explicit || rows != 50 || request.Path != "dir with spaces/main.go" {
 		t.Fatalf("diff request = %+v", request)
 	}
 	stop()
@@ -291,16 +292,20 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 	}
 
 	head, search, files, read := service.inspectionRequests()
-	if head.Path != "dir with spaces/main.go" || head.Lines != 25 {
+	headLines, headErr := head.LineLimit.Lines()
+	if headErr != nil || head.Path != "dir with spaces/main.go" || headLines != 25 {
 		t.Errorf("head request = %+v", head)
 	}
-	if search.Path != "internal" || search.Limit != 75 || search.Query != "transition conflict" {
+	searchLimit, searchErr := search.Limit.Matches()
+	if searchErr != nil || search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
 		t.Errorf("search request = %+v", search)
 	}
 	if files.Path != "dir with spaces" || files.Glob != "*.go" || !files.Recursive || !files.IncludeIgnored {
 		t.Errorf("files request = %+v", files)
 	}
-	if read.Path != "dir with spaces/main.go" || read.StartLine != 10 || read.EndLine != 20 || read.MaxBytes != 4096 {
+	start, end, rangeErr := read.Range.Bounds()
+	bytes, byteErr := read.ByteLimit.Bytes()
+	if rangeErr != nil || byteErr != nil || read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
 		t.Errorf("read request = %+v", read)
 	}
 	stop()
@@ -367,6 +372,45 @@ func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *t
 	stop()
 }
 
+func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
+	t.Parallel()
+	invalidations, resyncs := 0, 0
+	monitor := runtimeChangeMonitor{
+		applyEvent: func(changefeed.Event) error {
+			invalidations++
+			return nil
+		},
+		applyResync: func([]changefeed.Topic) error {
+			resyncs++
+			return nil
+		},
+	}
+	tracker := changefeed.NewSequenceTracker()
+	topics := []changefeed.Topic{changefeed.SessionsChanged}
+	consume := func(sequence uint64) bool {
+		t.Helper()
+		applied, err := monitor.consumeChangeEvent(t.Context(), topics, false, tracker, changefeed.Event{
+			Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: sequence,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return applied
+	}
+	if !consume(1) || !consume(3) {
+		t.Fatal("contiguous/gap frames did not advance the monitor")
+	}
+	if consume(2) {
+		t.Fatal("stale frame was reapplied")
+	}
+	if !consume(4) {
+		t.Fatal("successor after stale frame was not contiguous")
+	}
+	if invalidations != 2 || resyncs != 1 {
+		t.Fatalf("monitor effects = invalidations %d, resyncs %d", invalidations, resyncs)
+	}
+}
+
 func TestWorkspaceMonitorSubscribesBeforeItsAuthoritativeRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -393,7 +437,7 @@ func TestWorkspaceMonitorSubscribesBeforeItsAuthoritativeRead(t *testing.T) {
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	mu.Lock()
 	defer mu.Unlock()
 	want := []string{"subscribe", "read", "apply"}
@@ -425,7 +469,7 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 	}
 	done := make(chan struct{})
 	go func() {
-		monitor.run(ctx)
+		_ = monitor.run(ctx)
 		close(done)
 	}()
 

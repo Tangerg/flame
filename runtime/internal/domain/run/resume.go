@@ -3,8 +3,9 @@ package run
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // ResumeDraft is one parked Run whose fresh continuation Segment is opening.
@@ -36,11 +37,13 @@ type TreeResumeDraft struct {
 // additionally proves that its root has a durable answer claim before
 // reopening any Run.
 func (t TreeResumeDraft) Validate() error {
+	if _, err := resourceid.ParseRun(t.RootRunID); err != nil {
+		return fmt.Errorf("run: tree resume root %w", err)
+	}
+	if _, err := resourceid.ParseSession(t.SessionID); err != nil {
+		return fmt.Errorf("run: tree resume %w", err)
+	}
 	switch {
-	case strings.TrimSpace(t.RootRunID) == "":
-		return errors.New("run: tree resume root run id is required")
-	case strings.TrimSpace(t.SessionID) == "":
-		return errors.New("run: tree resume session id is required")
 	case t.ResumedAt.IsZero():
 		return errors.New("run: tree resume time is required")
 	case len(t.Runs) == 0:
@@ -48,8 +51,11 @@ func (t TreeResumeDraft) Validate() error {
 	}
 	seen := make(map[string]struct{}, len(t.Runs))
 	for index, run := range t.Runs {
-		if strings.TrimSpace(run.RunID) == "" || strings.TrimSpace(run.SegmentID) == "" {
-			return fmt.Errorf("run: tree resume Run[%d] has incomplete identity", index)
+		if _, err := resourceid.ParseRun(run.RunID); err != nil {
+			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
+		}
+		if _, err := resourceid.ParseSegment(run.SegmentID); err != nil {
+			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
 		}
 		if _, duplicate := seen[run.RunID]; duplicate {
 			return fmt.Errorf("run: tree resume repeats Run %q", run.RunID)

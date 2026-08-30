@@ -3,11 +3,13 @@ package conversations
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 	"github.com/Tangerg/scope/core/chat"
@@ -54,11 +56,19 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 
 func TestMessagesRejectsMissingSession(t *testing.T) {
 	messages := NewMessages(conversationfixture.New(), nil)
-	if _, err := messages.Read(t.Context(), ""); !errors.Is(err, errSessionIDRequired) {
-		t.Fatalf("Read error = %v", err)
-	}
-	if err := messages.Append(t.Context(), "", chat.NewUserMessage(chat.NewTextPart("one"))); !errors.Is(err, errSessionIDRequired) {
-		t.Fatalf("Append error = %v", err)
+	for _, sessionID := range []string{
+		"",
+		" ses_1",
+		"ses_ one",
+		"ses_\u200bhidden",
+		strings.Repeat("界", resourceidentity.MaximumCharacters+1),
+	} {
+		if _, err := messages.Read(t.Context(), sessionID); !errors.Is(err, errSessionIDRequired) {
+			t.Errorf("Read(%q) error = %v", sessionID, err)
+		}
+		if err := messages.Append(t.Context(), sessionID, chat.NewUserMessage(chat.NewTextPart("one"))); !errors.Is(err, errSessionIDRequired) {
+			t.Errorf("Append(%q) error = %v", sessionID, err)
+		}
 	}
 }
 

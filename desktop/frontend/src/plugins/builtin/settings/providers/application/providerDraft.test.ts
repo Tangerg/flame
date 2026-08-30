@@ -1,80 +1,42 @@
 import { describe, expect, it } from "vitest";
-import {
-  initialProviderCredentialsDraft,
-  providerCredentialsDirty,
-  providerCredentialsInput,
-  providerCredentialsValid,
-} from "./providerDraft";
+import { ProviderCredentialsDraft } from "./providerDraft";
 
-describe("providerDraft", () => {
-  it("initializes from persisted provider settings without copying secrets", () => {
-    expect(initialProviderCredentialsDraft({ baseUrl: "https://api.example.test" })).toEqual({
-      apiKey: "",
-      baseUrl: "https://api.example.test",
-    });
+describe("ProviderCredentialsDraft", () => {
+  it("initializes from persisted settings without copying secrets", () => {
+    expect(ProviderCredentialsDraft.initial({ baseUrl: "https://api.example.test" })).toMatchObject(
+      {
+        apiKey: "",
+        baseUrl: "https://api.example.test",
+      },
+    );
   });
 
-  it("tracks credential changes", () => {
-    const provider = { baseUrl: "https://api.example.test" };
-
-    expect(providerCredentialsDirty(provider, { apiKey: "", baseUrl: provider.baseUrl })).toBe(
-      false,
-    );
-    expect(providerCredentialsDirty(provider, { apiKey: " key ", baseUrl: provider.baseUrl })).toBe(
-      true,
-    );
-    expect(providerCredentialsDirty(provider, { apiKey: "", baseUrl: "" })).toBe(true);
+  it("owns dirty and endpoint-validity policy", () => {
+    const provider = { baseUrl: "https://api.example.test", requiresBaseUrl: true };
+    const initial = ProviderCredentialsDraft.initial(provider);
+    expect(initial.dirty(provider)).toBe(false);
+    expect(initial.withAPIKey(" key ").dirty(provider)).toBe(true);
+    expect(initial.withBaseURL("   ").valid(provider)).toBe(false);
+    expect(initial.withBaseURL(" https://models.example.test/v1 ").valid(provider)).toBe(true);
   });
 
-  it("builds explicit provider changes from trimmed draft values", () => {
-    expect(
-      providerCredentialsInput(
-        { id: "openai", baseUrl: "" },
-        { apiKey: " sk-test ", baseUrl: "https://gateway.example.test" },
-      ),
-    ).toEqual({
+  it("preserves the exact secret while normalizing an endpoint", () => {
+    const update = ProviderCredentialsDraft.initial({})
+      .withAPIKey(" sk-test ")
+      .withBaseURL(" https://gateway.example.test ")
+      .toUpdate({ id: "openai" });
+    expect(update).toEqual({
       provider: "openai",
-      apiKey: "sk-test",
-      baseUrl: "https://gateway.example.test",
+      apiKey: { type: "set", value: " sk-test " },
+      baseUrl: { type: "set", value: "https://gateway.example.test" },
     });
   });
 
   it("preserves an untouched secret and explicitly clears an edited endpoint", () => {
-    expect(
-      providerCredentialsInput(
-        { id: "openai", baseUrl: "https://gateway.example.test" },
-        { apiKey: "", baseUrl: "" },
-      ),
-    ).toEqual({ provider: "openai", baseUrl: null });
-  });
-
-  it("requires a non-blank endpoint only for endpoint-defined providers", () => {
-    expect(
-      providerCredentialsValid({ requiresBaseUrl: true }, { apiKey: "key", baseUrl: "   " }),
-    ).toBe(false);
-    expect(
-      providerCredentialsValid(
-        { requiresBaseUrl: true },
-        {
-          apiKey: "key",
-          baseUrl: " https://models.example.test/v1 ",
-        },
-      ),
-    ).toBe(true);
-    expect(
-      providerCredentialsValid({ requiresBaseUrl: false }, { apiKey: "key", baseUrl: "" }),
-    ).toBe(true);
-  });
-
-  it("trims an edited endpoint before persistence", () => {
-    expect(
-      providerCredentialsInput(
-        { id: "openai-compatible", baseUrl: "" },
-        { apiKey: "", baseUrl: " https://models.example.test/v1 " },
-      ),
-    ).toEqual({
-      provider: "openai-compatible",
-      baseUrl: "https://models.example.test/v1",
+    const provider = { id: "openai", baseUrl: "https://gateway.example.test" };
+    expect(ProviderCredentialsDraft.initial(provider).withBaseURL("").toUpdate(provider)).toEqual({
+      provider: "openai",
+      baseUrl: { type: "clear" },
     });
   });
 });

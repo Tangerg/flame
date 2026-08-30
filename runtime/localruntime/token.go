@@ -75,7 +75,7 @@ func OpenToken(path string) (*Token, error) {
 		return nil, fmt.Errorf("local Runtime token: create candidate: %w", err)
 	}
 	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
+	defer func() { _ = os.Remove(temporaryPath) }()
 	if err := temporary.Chmod(0o600); err != nil {
 		_ = temporary.Close()
 		return nil, fmt.Errorf("local Runtime token: protect candidate: %w", err)
@@ -123,7 +123,7 @@ func ReadToken(path string) (*Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: open: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	openedInfo, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: inspect opened file: %w", err)
@@ -193,6 +193,6 @@ func syncDirectory(path string) error {
 	if err != nil {
 		return err
 	}
-	defer directory.Close()
+	defer func() { _ = directory.Close() }()
 	return directory.Sync()
 }

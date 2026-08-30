@@ -10,11 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // InterruptStore is the SQLite-backed registry of root-owned pending interrupt
@@ -91,15 +94,19 @@ func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
 }
 
 func (i InterruptRecord) validateStorageShape() error {
+	if _, err := resourceid.ParseRun(i.RootRunID); err != nil {
+		return err
+	}
+	if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+		return err
+	}
+	if _, _, err := goalref.ParseOptionalIncarnation(i.GoalIncarnationID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseExecutor(i.ExecutorID); err != nil {
+		return err
+	}
 	switch {
-	case strings.TrimSpace(i.RootRunID) == "" || i.RootRunID != strings.TrimSpace(i.RootRunID):
-		return errors.New("root Run ID must be non-empty without surrounding whitespace")
-	case strings.TrimSpace(i.SessionID) == "" || i.SessionID != strings.TrimSpace(i.SessionID):
-		return errors.New("session ID must be non-empty without surrounding whitespace")
-	case strings.TrimSpace(i.ExecutorID) == "" || i.ExecutorID != strings.TrimSpace(i.ExecutorID):
-		return errors.New("executor ID must be non-empty without surrounding whitespace")
-	case i.GoalIncarnationID != strings.TrimSpace(i.GoalIncarnationID):
-		return errors.New("goal incarnation ID has surrounding whitespace")
 	case i.CreatedAt.IsZero():
 		return errors.New("creation time is required")
 	case len(i.Interrupts) == 0:
@@ -110,8 +117,11 @@ func (i InterruptRecord) validateStorageShape() error {
 		return errors.New("interrupt bindings do not match interrupts")
 	}
 	root, ok := i.rootContinuation()
-	if !ok || strings.TrimSpace(root.MemberID) == "" {
+	if !ok {
 		return errors.New("root continuation and member ID are required")
+	}
+	if _, err := executoridentity.ParseMember(root.MemberID); err != nil {
+		return err
 	}
 	return nil
 }
@@ -274,6 +284,15 @@ func (i *InterruptStore) ListPage(ctx context.Context, sessionID, rootRunID stri
 }
 
 func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRunID string, limit int) ([]InterruptRecord, error) {
+	if err := validateOptionalSessionResource("list interrupts", sessionID); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalRunResource("list interrupts root", rootRunID); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalRunResource("list interrupts anchor", afterRunID); err != nil {
+		return nil, err
+	}
 	query := `SELECT ` + interruptColumns + ` FROM interrupts`
 	args := []any{}
 	conditions := []string{`state = 'open'`}
@@ -302,7 +321,7 @@ func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list interrupts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]InterruptRecord, 0)
 	for rows.Next() {
@@ -319,6 +338,9 @@ func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 }
 
 func (i *InterruptStore) Get(ctx context.Context, runID string) (InterruptRecord, bool, error) {
+	if err := validateRunResource("read interrupt", runID); err != nil {
+		return InterruptRecord{}, false, err
+	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
 		`SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = 'open'`, runID)
 	p, err := scanPending(row)
@@ -457,8 +479,8 @@ func (i *InterruptStore) DeleteResumeClaim(
 	if err := validatePendingOwner(sessionID, runID); err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
-	if strings.TrimSpace(rootMemberID) == "" || rootMemberID != strings.TrimSpace(rootMemberID) {
-		return errors.New("sqlite: delete Resume claim: root member ID must be non-empty without surrounding whitespace")
+	if _, err := executoridentity.ParseMember(rootMemberID); err != nil {
+		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,
 		`DELETE FROM interrupts
@@ -482,11 +504,11 @@ func (i *InterruptStore) DeleteResumeClaim(
 }
 
 func validatePendingOwner(sessionID, rootRunID string) error {
-	if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) {
-		return errors.New("session ID must be non-empty without surrounding whitespace")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return err
 	}
-	if strings.TrimSpace(rootRunID) == "" || rootRunID != strings.TrimSpace(rootRunID) {
-		return errors.New("root Run ID must be non-empty without surrounding whitespace")
+	if _, err := resourceid.ParseRun(rootRunID); err != nil {
+		return err
 	}
 	return nil
 }

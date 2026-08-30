@@ -58,11 +58,11 @@ export type ResumeRunAction = (
 
 export interface AgentSessionViewEntry {
   view: AgentSessionView;
-  viewEpoch: number;
-  viewRevision: number;
+  viewEpoch: bigint;
+  viewRevision: bigint;
   /** Monotonic commits of durable authoritative projections. Unlike
    * `viewRevision`, live events and optimistic writes do not advance it. */
-  authoritativeRevision: number;
+  authoritativeRevision: bigint;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
   resume: ResumeRunAction | null;
@@ -73,16 +73,16 @@ export interface AgentSessionViewEntry {
 export interface AgentViewRefreshToken {
   /** Exact mounted projection generation that admitted this read. Session-local
    * counters restart after a close/remount and cannot identify its successor. */
-  readonly generation: number;
-  readonly requestSequence: number;
-  readonly viewRevision: number;
+  readonly generation: bigint;
+  readonly requestSequence: bigint;
+  readonly viewRevision: bigint;
 }
 
 /** One projected value together with the mounted projection generation that
  * admitted it. Local presentation state must not cross this boundary even when
  * a successor server reuses the same Session and domain revision. */
 export interface AgentProjectionMaterial<T> {
-  readonly generation: number;
+  readonly generation: bigint;
   readonly value: T | undefined;
 }
 

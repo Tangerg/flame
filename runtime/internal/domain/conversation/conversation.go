@@ -30,6 +30,9 @@ func New(messages []chat.Message) (Conversation, error) {
 		if err := message.Validate(); err != nil {
 			return Conversation{}, fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
 		}
+		if err := ValidateMessageIdentities(message); err != nil {
+			return Conversation{}, fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
+		}
 		owned[index] = message.Clone()
 	}
 	return Conversation{messages: owned}, nil
@@ -82,74 +85,17 @@ func (c Conversation) CloseOpenToolCallsWithResults(
 	result string,
 	completed []chat.ToolResult,
 ) (Conversation, []chat.Message, error) {
-	type openCall struct {
-		call       chat.ToolCall
-		generation int
+	openCalls := indexOpenToolCalls(c.messages)
+	knownResults, err := newCompletedToolResults(completed)
+	if err != nil {
+		return Conversation{}, nil, err
 	}
-	ordered := make([]openCall, 0)
-	open := make(map[string]int)
-	generation := 0
-	for _, message := range c.messages {
-		for _, part := range message.Parts {
-			if call := part.ToolCall; call != nil {
-				if _, duplicate := open[call.ID]; !duplicate {
-					generation++
-					open[call.ID] = generation
-					ordered = append(ordered, openCall{call: *call, generation: generation})
-				}
-			}
-			if toolResult := part.ToolResult; toolResult != nil {
-				delete(open, toolResult.ID)
-			}
-		}
-	}
-	known := make(map[string]chat.ToolResult, len(completed))
-	for _, toolResult := range completed {
-		if _, duplicate := known[toolResult.ID]; duplicate {
-			return Conversation{}, nil, fmt.Errorf(
-				"%w: completed ToolResult %q is repeated",
-				ErrInvalid,
-				toolResult.ID,
-			)
-		}
-		known[toolResult.ID] = toolResult
-	}
-	if len(open) == 0 && len(known) == 0 {
+	if openCalls.empty() && knownResults.empty() {
 		return c, nil, nil
 	}
-	results := make([]chat.ToolResult, 0, len(open))
-	for _, unresolved := range ordered {
-		current, present := open[unresolved.call.ID]
-		if !present || current != unresolved.generation {
-			continue
-		}
-		if completedResult, ok := known[unresolved.call.ID]; ok {
-			if completedResult.Name != unresolved.call.Name {
-				return Conversation{}, nil, fmt.Errorf(
-					"%w: completed ToolResult %q names %q, want %q",
-					ErrInvalid,
-					completedResult.ID,
-					completedResult.Name,
-					unresolved.call.Name,
-				)
-			}
-			results = append(results, completedResult)
-			delete(known, unresolved.call.ID)
-			continue
-		}
-		results = append(results, chat.ToolResult{
-			ID: unresolved.call.ID, Name: unresolved.call.Name,
-			Result: result, IsError: true,
-		})
-	}
-	if len(known) != 0 {
-		for id := range known {
-			return Conversation{}, nil, fmt.Errorf(
-				"%w: completed ToolResult %q has no unresolved ToolCall",
-				ErrInvalid,
-				id,
-			)
-		}
+	results, err := openCalls.close(result, knownResults)
+	if err != nil {
+		return Conversation{}, nil, err
 	}
 	if len(results) == 0 {
 		return c, nil, nil
@@ -160,6 +106,131 @@ func (c Conversation) CloseOpenToolCallsWithResults(
 		return Conversation{}, nil, err
 	}
 	return closed, appended, nil
+}
+
+type toolCallGeneration int
+
+type openToolCall struct {
+	call       chat.ToolCall
+	generation toolCallGeneration
+}
+
+type openToolCalls struct {
+	ordered    []openToolCall
+	current    map[string]toolCallGeneration
+	generation toolCallGeneration
+}
+
+func indexOpenToolCalls(messages []chat.Message) openToolCalls {
+	calls := openToolCalls{current: make(map[string]toolCallGeneration)}
+	for _, message := range messages {
+		for _, part := range message.Parts {
+			calls.observe(part)
+		}
+	}
+	return calls
+}
+
+func (calls *openToolCalls) observe(part chat.Part) {
+	if call := part.ToolCall; call != nil {
+		calls.open(*call)
+	}
+	if result := part.ToolResult; result != nil {
+		delete(calls.current, result.ID)
+	}
+}
+
+func (calls *openToolCalls) open(call chat.ToolCall) {
+	if _, alreadyOpen := calls.current[call.ID]; alreadyOpen {
+		return
+	}
+	calls.generation++
+	calls.current[call.ID] = calls.generation
+	calls.ordered = append(calls.ordered, openToolCall{
+		call:       call,
+		generation: calls.generation,
+	})
+}
+
+func (calls openToolCalls) empty() bool { return len(calls.current) == 0 }
+
+func (calls openToolCalls) close(
+	fallback string,
+	completed completedToolResults,
+) ([]chat.ToolResult, error) {
+	results := make([]chat.ToolResult, 0, len(calls.current))
+	for _, unresolved := range calls.ordered {
+		if !calls.isCurrent(unresolved) {
+			continue
+		}
+		result, err := completed.resolve(unresolved.call, fallback)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
+	if id, unexpected := completed.first(); unexpected {
+		return nil, fmt.Errorf(
+			"%w: completed ToolResult %q has no unresolved ToolCall",
+			ErrInvalid,
+			id,
+		)
+	}
+	return results, nil
+}
+
+func (calls openToolCalls) isCurrent(candidate openToolCall) bool {
+	generation, present := calls.current[candidate.call.ID]
+	return present && generation == candidate.generation
+}
+
+type completedToolResults map[string]chat.ToolResult
+
+func newCompletedToolResults(results []chat.ToolResult) (completedToolResults, error) {
+	completed := make(completedToolResults, len(results))
+	for _, result := range results {
+		if _, duplicate := completed[result.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%w: completed ToolResult %q is repeated",
+				ErrInvalid,
+				result.ID,
+			)
+		}
+		completed[result.ID] = result
+	}
+	return completed, nil
+}
+
+func (results completedToolResults) empty() bool { return len(results) == 0 }
+
+func (results completedToolResults) resolve(
+	call chat.ToolCall,
+	fallback string,
+) (chat.ToolResult, error) {
+	if result, found := results[call.ID]; found {
+		if result.Name != call.Name {
+			return chat.ToolResult{}, fmt.Errorf(
+				"%w: completed ToolResult %q names %q, want %q",
+				ErrInvalid,
+				result.ID,
+				result.Name,
+				call.Name,
+			)
+		}
+		delete(results, call.ID)
+		return result, nil
+	}
+	return chat.ToolResult{
+		ID: call.ID, Name: call.Name,
+		Result: fallback, IsError: true,
+	}, nil
+}
+
+func (results completedToolResults) first() (string, bool) {
+	for id := range results {
+		return id, true
+	}
+	return "", false
 }
 
 // Truncate returns the prefix ending at keepN. Values below zero clear the

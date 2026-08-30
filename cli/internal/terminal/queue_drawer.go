@@ -29,7 +29,7 @@ const (
 
 type queueTarget struct {
 	kind queueTargetKind
-	id   uint64
+	id   promptqueue.EntryID
 }
 
 type queueHit struct {
@@ -75,9 +75,9 @@ type queueDrawerActions struct {
 	BeginEdit  func(promptqueue.Entry) error
 	SaveEdit   func(promptqueue.Entry, agent.Message, bool) error
 	CancelEdit func(promptqueue.Entry) error
-	Remove     func(uint64) error
-	Move       func(uint64, int) error
-	SendNow    func(uint64) error
+	Remove     func(promptqueue.EntryID) error
+	Move       func(promptqueue.EntryID, int) error
+	SendNow    func(promptqueue.EntryID) error
 	Dismiss    func()
 }
 
@@ -92,10 +92,10 @@ type queueDrawer struct {
 
 	snapshot   promptqueue.Snapshot
 	selected   int
-	selectedID uint64
+	selectedID *promptqueue.EntryID
 	viewport   int
 
-	editingEntry   promptqueue.Entry
+	editingEntry   *promptqueue.Entry
 	editingMessage agent.Message
 	editor         kit.Composer
 	focused        bool
@@ -132,11 +132,11 @@ func (q *queueDrawer) Set(snapshot promptqueue.Snapshot) {
 		}
 	}
 	if len(entries) == 0 {
-		q.selected, q.selectedID, q.viewport = 0, 0, 0
+		q.selected, q.selectedID, q.viewport = 0, nil, 0
 		return
 	}
-	if q.selectedID != 0 {
-		if index := queueEntryIndex(entries, q.selectedID); index >= 0 {
+	if q.selectedID != nil {
+		if index := queueEntryIndex(entries, *q.selectedID); index >= 0 {
 			q.selected = index
 		} else {
 			q.selected = min(q.selected, len(entries)-1)
@@ -144,13 +144,13 @@ func (q *queueDrawer) Set(snapshot promptqueue.Snapshot) {
 	} else {
 		q.selected = min(q.selected, len(entries)-1)
 	}
-	q.selectedID = entries[q.selected].ID
+	q.selectedID = new(entries[q.selected].ID)
 	q.ensureVisible()
 }
 
 func (q *queueDrawer) ResetNotice() { q.notice = "" }
 
-func (q *queueDrawer) Editing() bool { return q.editingEntry.ID != 0 }
+func (q *queueDrawer) Editing() bool { return q.editingEntry != nil }
 
 func (q *queueDrawer) Handle(event input.Event) bool {
 	if !q.lifecycle.acceptsInput() {
@@ -237,7 +237,7 @@ func (q *queueDrawer) handleEditKey(key input.Key) bool {
 		return true
 	}
 	action, _ := q.keys.Action(key.Chord())
-	if action == cancelRun && q.editor.Empty() {
+	if action == cancelRun && q.editor.Editor().Empty() {
 		q.cancelEdit()
 		return true
 	}
@@ -332,7 +332,7 @@ func (q *queueDrawer) selectIndex(index int) {
 		return
 	}
 	q.selected = min(max(index, 0), len(q.snapshot.Entries)-1)
-	q.selectedID = q.snapshot.Entries[q.selected].ID
+	q.selectedID = new(q.snapshot.Entries[q.selected].ID)
 	q.ensureVisible()
 	q.hovered = queueTarget{}
 }
@@ -355,9 +355,9 @@ func (q *queueDrawer) beginEdit() {
 			return
 		}
 	}
-	q.editingEntry = entry
+	q.editingEntry = new(entry)
 	q.editingMessage = entry.Message.Clone()
-	q.editor.SetText(entry.Message.Text)
+	q.editor.Editor().SetText(entry.Message.Text)
 	q.editor.Focus(q.focused)
 	q.notice = ""
 }
@@ -374,7 +374,7 @@ func (q *queueDrawer) releaseEdit() error {
 	if !q.Editing() {
 		return nil
 	}
-	entry := q.editingEntry
+	entry := *q.editingEntry
 	q.cancelEditState()
 	if q.actions.CancelEdit == nil {
 		return nil
@@ -383,9 +383,9 @@ func (q *queueDrawer) releaseEdit() error {
 }
 
 func (q *queueDrawer) cancelEditState() {
-	q.editingEntry = promptqueue.Entry{}
+	q.editingEntry = nil
 	q.editingMessage = agent.Message{}
-	q.editor.Reset()
+	q.editor.Editor().Clear()
 	q.editor.Focus(false)
 }
 
@@ -393,9 +393,9 @@ func (q *queueDrawer) saveEdit(sendNow bool) {
 	if !q.Editing() || q.actions.SaveEdit == nil {
 		return
 	}
-	entry := q.editingEntry
+	entry := *q.editingEntry
 	message := q.editingMessage.Clone()
-	message.Text = strings.TrimSpace(q.editor.Text())
+	message.Text = strings.TrimSpace(q.editor.Editor().Text())
 	if err := q.actions.SaveEdit(entry, message, sendNow); err != nil {
 		q.notice = err.Error()
 		return
@@ -440,7 +440,7 @@ func (q *queueDrawer) sendSelected() {
 	}
 }
 
-func (q *queueDrawer) send(id uint64) {
+func (q *queueDrawer) send(id promptqueue.EntryID) {
 	if q.actions.SendNow == nil {
 		return
 	}
@@ -470,7 +470,7 @@ func (q *queueDrawer) activate(target queueTarget) {
 	}
 }
 
-func (q *queueDrawer) selectID(id uint64) {
+func (q *queueDrawer) selectID(id promptqueue.EntryID) {
 	if index := queueEntryIndex(q.snapshot.Entries, id); index >= 0 {
 		q.selectIndex(index)
 	}
@@ -486,7 +486,7 @@ func (q *queueDrawer) hitAt(point image.Point) queueTarget {
 	return queueTarget{}
 }
 
-func queueEntryIndex(entries []promptqueue.Entry, id uint64) int {
+func queueEntryIndex(entries []promptqueue.Entry, id promptqueue.EntryID) int {
 	return slices.IndexFunc(entries, func(entry promptqueue.Entry) bool { return entry.ID == id })
 }
 

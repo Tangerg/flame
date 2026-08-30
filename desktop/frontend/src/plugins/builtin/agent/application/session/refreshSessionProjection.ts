@@ -1,4 +1,5 @@
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
+import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
 import type { SessionProjectionSynchronizationOwnership } from "../ports/sessionView";
 import { agentRuntime } from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
@@ -15,8 +16,6 @@ interface RefreshSessionProjectionOptions {
    * even when the gateway settles late or ignores cancellation. */
   signal?: AbortSignal;
 }
-
-const ABORTED = Symbol("agent-session-snapshot.aborted");
 
 export interface AgentSessionProjectionRevalidation {
   /** Projection built from this read even when a newer local write prevents it
@@ -54,40 +53,6 @@ export async function revalidateAgentSessionProjection(
     authoritativeView: view,
     committed,
   };
-}
-
-function settleBeforeAbort<T>(
-  operation: Promise<T>,
-  signal: AbortSignal,
-): Promise<T | typeof ABORTED> {
-  if (signal.aborted) {
-    void operation.catch(() => undefined);
-    return Promise.resolve(ABORTED);
-  }
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const onAbort = () => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener("abort", onAbort);
-      resolve(ABORTED);
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    operation.then(
-      (value) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
 }
 
 export interface MountedAgentSessionSynchronization {

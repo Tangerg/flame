@@ -17,10 +17,24 @@ import (
 // letting it fall through to the unrecognized-error default would tell the client
 // the server broke and hide the one remedy — start from the first page.
 func wirePageError(err error) error {
-	if errors.Is(err, pagination.ErrInvalidCursor) || errors.Is(err, pagination.ErrInvalidLimit) {
+	if errors.Is(err, pagination.ErrInvalidCursor) ||
+		errors.Is(err, pagination.ErrInvalidCursorMaterial) ||
+		errors.Is(err, pagination.ErrCursorTooLarge) ||
+		errors.Is(err, pagination.ErrInvalidLimit) {
 		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	}
 	return err
+}
+
+// requestedPageLimit is the only Protocol-to-Application projection for page
+// size intent. Absence is a named default request; a present value must survive
+// the rich-value constructor, including when handlers are invoked directly in
+// tests instead of through Dispatch validation.
+func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
+	if value == nil {
+		return pagination.DefaultLimit(), nil
+	}
+	return pagination.NewLimit(*value)
 }
 
 // ListItems returns a session's persisted history as durable Items
@@ -36,6 +50,10 @@ func wirePageError(err error) error {
 // text, createdAt). The page is cut by the query, so a long session's
 // history is not loaded to return a slice of it.
 func (s *Server) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
+	limit, err := requestedPageLimit(in.Limit)
+	if err != nil {
+		return nil, wirePageError(err)
+	}
 	scope, err := itemScopeFromWire(in.Scope)
 	if err != nil {
 		return nil, err
@@ -57,7 +75,7 @@ func (s *Server) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queries.ListItemPage(ctx, scope, order, in.Cursor, in.Limit)
+	page, err := s.queries.ListItemPage(ctx, scope, order, in.Cursor, limit)
 	if err != nil {
 		return nil, wireItemScopeError(wirePageError(err))
 	}
@@ -79,9 +97,9 @@ func (s *Server) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*
 // stream publishes, so a client folding the stream and a client that just asked are
 // holding one value and not two descriptions of it.
 //
-// A session with no list yet answers with the empty state at revision 0. That is a
-// fact rather than a gap: the panel renders empty, and only a session that does not
-// exist is an error.
+// A session with no list yet answers with an absent Plan.state. That is a fact
+// rather than a gap: the panel renders empty, while a present empty state means an
+// explicit clear; only a session that does not exist is an error.
 func (s *Server) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*protocol.Plan, error) {
 	state, err := s.queries.PlanState(ctx, in.SessionID)
 	if err != nil {

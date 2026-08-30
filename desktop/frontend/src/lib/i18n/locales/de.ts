@@ -42,6 +42,8 @@ export const de: Record<string, string> = {
   "composer.placeholder": "Beschreibe, was zu tun ist — @ referenziert eine Datei",
   "composer.switchModel": "Modell wechseln",
   "composer.switchReasoningEffort": "Denkintensität ändern",
+  "composer.model.search.placeholder": "Modelle suchen…",
+  "composer.model.search.empty": "Keine Modelle gefunden",
   "composer.model.contextWindow": "{{tokens}} Kontext",
   "composer.model.maxInput": "Maximale Eingabe: {{tokens}}",
   "composer.model.maxOutput": "Maximale Ausgabe: {{tokens}}",
@@ -249,8 +251,8 @@ export const de: Record<string, string> = {
   "composer.project.required": "Wähle ein Projekt aus, um fortzufahren",
   "providers.setup.title": "Modell-Provider verbinden",
   "providers.setup.sub":
-    "Füge einen API-Schlüssel hinzu, um loszulegen — der Agent braucht einen Modell-Provider.",
-  "providers.setup.action": "Provider-Schlüssel hinzufügen",
+    "Konfiguriere einen Modell-Provider, um loszulegen — die Authentifizierung hängt vom Provider ab.",
+  "providers.setup.action": "Provider konfigurieren",
 
   "settings.title": "Einstellungen",
   "settings.backToApp": "Zur App",
@@ -291,6 +293,7 @@ export const de: Record<string, string> = {
   "providers.baseUrl.placeholder": "Basis-URL",
   "providers.baseUrl.aria": "{{provider}} Basis-URL",
   "providers.key": "Schlüssel {{masked}}",
+  "providers.ready": "bereit",
   "providers.notConfigured": "nicht konfiguriert",
   "providers.save": "Speichern",
   "providers.saving": "Speichern…",
@@ -1017,7 +1020,7 @@ export const de: Record<string, string> = {
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",
   "composer.key.historyNextDesc": "Nächste Nachricht abrufen",
   "mcp.import.hint":
-    'Füge einen Claude-Desktop-Konfigurationsblock ein — einen oder mehrere Server unter "mcpServers".',
+    'Füge einen MCP-Client-Konfigurationsblock ein — einen oder mehrere Server unter "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Diese Sitzung hat bereits einen laufenden Durchlauf — steuere, beantworte oder brich ihn zuerst ab.",
@@ -1064,7 +1067,7 @@ export const de: Record<string, string> = {
     "Dieser Anmeldeversuch ist abgelaufen. Starte ihn erneut.",
   "rpcError.mcp_dial_failed":
     "Dieser Server ist nicht erreichbar — prüfe Befehl oder URL und versuche es erneut.",
-  "rpcError.provider_not_configured": "Hinterlege zuerst den API-Key.",
+  "rpcError.provider_not_configured": "Schließe zuerst die Provider-Konfiguration ab.",
   "rpcError.provider_test_failed":
     "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
   "session.error.create": "Sitzung konnte nicht erstellt werden.",

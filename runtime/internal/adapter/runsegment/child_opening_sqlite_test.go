@@ -61,7 +61,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		CreatedAt: time.Unix(3, 0),
 	}
 	if commitOpeningErr := effects.CommitOpening(t.Context(), runs.OpeningCommit{
-		CommitID: "run_commit_child_opening", Admit: &child,
+		CommitID: testCommitID("run_commit_child_opening"), Admit: &child,
 		Events: []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{spawningItem},
@@ -109,7 +109,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	rolledBackChild.SpawnedByItemID = rolledBackItem.ID()
 	rolledBackChild.CreatedAt = time.Unix(5, 0)
 	err = failingEffects.CommitOpening(t.Context(), runs.OpeningCommit{
-		CommitID: "run_commit_child_failure", Admit: &rolledBackChild,
+		CommitID: testCommitID("run_commit_child_failure"), Admit: &rolledBackChild,
 		Events: []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{rolledBackItem},
@@ -192,7 +192,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 		t.Fatalf("ReserveChildRunStart: %v", reserveChildRunStartErr)
 	}
 	opening := runs.OpeningCommit{
-		CommitID: "run_commit_child_started", Admit: &child,
+		CommitID: testCommitID("run_commit_child_started"), Admit: &child,
 		Events: []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{spawningItem},
@@ -211,7 +211,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, opening); commitStartedChildRunErr != nil {
 		t.Fatalf("exact concluded child opening = %v, want idempotent success", commitStartedChildRunErr)
 	}
-	opening.CommitID = "run_commit_other_child_started"
+	opening.CommitID = testCommitID("run_commit_other_child_started")
 	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, opening); commitStartedChildRunErr == nil {
 		t.Fatal("different child opening write-set reused a concluded reservation")
 	}
@@ -244,7 +244,7 @@ func requireChildOpeningSQLiteHealthy(t *testing.T, ctx context.Context, db *sql
 	if err != nil {
 		t.Fatalf("foreign_key_check: %v", err)
 	}
-	defer foreignKeys.Close()
+	defer func() { _ = foreignKeys.Close() }()
 	if foreignKeys.Next() {
 		t.Fatal("foreign_key_check reported a violation")
 	}

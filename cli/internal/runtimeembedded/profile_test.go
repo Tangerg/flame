@@ -3,9 +3,11 @@ package runtimeembedded
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
 
@@ -53,12 +55,43 @@ func TestRuntimeProfileProjectionPreservesCompleteDiscovery(t *testing.T) {
 		t.Fatalf("MCP profile = %+v", feature)
 	}
 	limits := profile.Limits
-	if limits.MaxConcurrentRuns != 4 || limits.IdempotencyRetentionSeconds != 600 ||
-		limits.IdempotencyNamespace != "idp_test" ||
+	maximum, bounded := limits.RunConcurrency.Maximum()
+	if !bounded || maximum != 4 || limits.CommandReplay.Retention() != 10*time.Minute ||
+		limits.CommandReplay.Namespace() != "idp_test" ||
 		limits.RunReplay.MaxEvents != 1024 || limits.RunReplay.MaxBytes != 1<<20 ||
 		limits.MCPAuthorizationRetentionSeconds != 600 ||
 		limits.RuntimeSubscription.MaxTopics != 32 || limits.RuntimeSubscription.MaxWatches != 32 {
 		t.Fatalf("runtime limits = %+v", limits)
+	}
+}
+
+func testCommandReplay(t *testing.T, namespace string) commandreplay.Capability {
+	t.Helper()
+	capability, err := commandreplay.NewCapability(namespace, 10*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return capability
+}
+
+func TestRuntimeProfileProjectionDistinguishesUnboundedFromInvalidConcurrency(t *testing.T) {
+	t.Parallel()
+
+	unboundedDiscovery := compatibleDiscovery()
+	unboundedDiscovery.Capabilities.Limits.MaxConcurrentRuns = nil
+	unbounded, err := projectRuntimeProfile(unboundedDiscovery, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, bounded := unbounded.Limits.RunConcurrency.Maximum(); bounded {
+		t.Fatal("absent runtime concurrency cap was projected as bounded")
+	}
+
+	zero := 0
+	invalidDiscovery := compatibleDiscovery()
+	invalidDiscovery.Capabilities.Limits.MaxConcurrentRuns = &zero
+	if _, err := projectRuntimeProfile(invalidDiscovery, nil); err == nil {
+		t.Fatal("explicit zero runtime concurrency cap was accepted")
 	}
 }
 
@@ -78,5 +111,18 @@ func TestServicesReturnOwnedProfilesWithoutForkingCapabilityPolicy(t *testing.T)
 	first.RuntimeProfile.RuntimeTopics[0] = "mutated"
 	if runtime.profile.RuntimeTopics[0] == "mutated" || second.RuntimeProfile.RuntimeTopics[0] == "mutated" {
 		t.Fatal("service profile mutation crossed an ownership boundary")
+	}
+}
+
+func TestEmbeddedServicesNeverInferProfilePresenceFromServerName(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{}
+	services := runtime.services()
+	if services.RuntimeProfile == nil {
+		t.Fatal("embedded Runtime omitted its construction-owned profile")
+	}
+	if err := services.Validate(); err == nil {
+		t.Fatal("invalid embedded Runtime profile was mistaken for AgentOnly composition")
 	}
 }

@@ -1,4 +1,4 @@
-# Flame Runtime Protocol（定稿 `2026-08-28`）
+# Flame Runtime Protocol（定稿 `2026-08-30`）
 
 > **状态：正式契约（canonical）。** 本文是 Flame 客户端 ↔ Flame Runtime 的 wire 契约真相源之一。物理传输见同目录
 > [`TRANSPORT.md`](./TRANSPORT.md)，旁路能力见 [`AUX_API.md`](./AUX_API.md)。
@@ -13,7 +13,7 @@
 > **本文写的是生成物写不出来的东西**：语义、不变量、"为什么不能是另一种形状"、以及跨方法的走查。一个事实一个作者
 > —— 本文一旦重述字段表，它就成了第二份会腐烂的真相。
 >
-> `protocolVersion`: **`2026-08-28`**（本 build 只服务这一个精确版本，旧版本请求确定性返回
+> `protocolVersion`: **`2026-08-30`**（本 build 只服务这一个精确版本，旧版本请求确定性返回
 > `invalid_protocol_version`，见 §12）。
 
 ---
@@ -63,12 +63,12 @@ Workspace          文件、配置发现与执行的显式资源根             
 - **Run**：一次 agent 执行。它有**三个**持久化状态（`RunStatus`）：`running`（在执行）/ `waiting`（停在人身上）/
   `finished`（终结，带 `RunOutcome`）。`waiting` 不是 `finished` 的一种打扮 —— 一个等人回答的 Run 既没有结束、也没有
   在烧钱，把它记成任何一个都会让列表说谎。
-- **Item**：run 内一个持久化工作单元 —— `userMessage` / `agentMessage` / `reasoning` / `plan` / `question` /
+- **Item**：run 内一个持久化工作单元 —— `userMessage` / `agentMessage` / `reasoning` / `question` /
   `toolCall` / `compaction`。
 
-**`Item` 是历史与流式的唯一原语**：流式推 Item 生命周期事件（`item.started → item.delta* → item.completed`），
-历史 `items.list` 返回持久化 Item。**没有独立的 `Message` 资源类型**；"消息"就是 `userMessage`/`agentMessage`
-两种 Item。
+**`Item` 是历史与流式的唯一原语**：完整事实直接以 `item.completed` 发布；只有 agent message/reasoning 的流式渲染
+使用 `item.started → item.delta* → item.completed`，ToolCall 则以同一事件序列表达唯一的持久 lifecycle。历史
+`items.list` 只返回持久化 Item。**没有独立的 `Message` 资源类型**；"消息"就是 `userMessage`/`agentMessage` 两种 Item。
 
 ### 0.2 Workspace 资源模型
 
@@ -183,7 +183,7 @@ client identity 返回带精确 `errors[].field` 的 `invalid_params`，不会�
 ### 2.2 字段与枚举
 
 - 字段名、枚举值一律 **camelCase**。
-- 缩写**白名单**（写死，其余全词）：`id` / `url` / `mime` / `api`（如 `apiKey` / `apiKeyMasked`）。
+- 缩写**白名单**（写死，其余全词）：`id` / `url` / `mime` / `api`（如 `apiKey`）。
 - 单位用显式后缀，**后缀集也写死**（新单位先在此登记）：
   - `USD`（货币）：`maxBudgetUsd` / `inputUsdPerMillionTokens`
   - `Millis`（毫秒）：`activeDurationMillis`
@@ -262,16 +262,17 @@ metadata 判断本次 run / subscription 能否产出某些事件或 HITL interr
 ### 3.1 一次 run 的端到端走查
 
 ```text
-runs.start ──▶ segment.started ──▶ (item.started → item.delta* → item.completed)*  ──▶ segment.finished{outcome, metrics}
-                                  └ assistant message / reasoning / toolCall 逐个流式落地            │
+runs.start ──▶ segment.started ──▶ (item.completed | item.started → item.delta* → item.completed)* ──▶ segment.finished{outcome, metrics}
+                                  └ 完整事实直接落地；assistant message / reasoning / toolCall 可流式落地      │
                                                                                                     ├─ completed / error / … → Run finished
                                                                                                     └─ interrupt → Run waiting（见下）
 ```
 
 1. **起 run**：客户端 `runs.start{ sessionId, input }`，**立即**返 `{ runId, segmentId, userItemId }`，同一条流随即推
    `RunEvent`（§5）。会话已有非终态 root run 时**不隐式取消它**，而是返回 `session_has_active_run`（§7.3）。
-2. **流式产出**：先 `segment.started{run}`，然后每个 Item 走 `item.started`（壳）→ `item.delta*`（文本 / 工具入参 /
-   输出增量，§5.1）→ `item.completed`（权威终态）。
+2. **流式产出**：先 `segment.started{run}`。UserMessage、Question、Compaction 直接发布 `item.completed`；
+   AgentMessage/Reasoning 可走 `item.started`（渲染锚点）→ `item.delta*` → `item.completed`；ToolCall 走同一事件序列，
+   但其 running Item 是持久事实。`item.completed` 始终是权威终态（§5.1）。
 3. **需要人介入**（HITL，§0.3 / §6）：当前**段**以 `segment.finished{ outcome:{type:"interrupt", interrupts} }`
    收尾、资源释放；**Run 转 `waiting`**，待解项持久化（跨重启可经 `interrupts.list` 发现）。
 4. **续段**：客户端 `runs.resume{ runId, responses, input? }` 在**同一 Run 上开新的一段**（同 `runId`、新
@@ -332,7 +333,9 @@ profile，会被**拒绝**而不是降级投递——降级等于给同一个 Ru
   `activeDuration` **不含等人的时间**（一个停在审批上过夜的 Run 不因此变贵）。
 - **`limits` 是一份冻结的 Run-tree policy**：`maxTotalTokens`、`maxSteps`、`maxBudgetUsd` 都跨 child 与 resume
   累计；其中 `maxTotalTokens` 统计 prompt + completion，而 `params.maxTokens` 只约束一次模型输出。两者不同名，
-  避免 SDK 和 Agent 把累计预算当成 generation 参数。
+  避免 SDK 和 Agent 把累计预算当成 generation 参数。`runs.start` 省略整个 `limits` 表示 unlimited；一旦
+  `limits` 出现就必须至少携带一个有限严格正数。`RunRef` 同样以整个字段缺席表示 unlimited，客户端不得发送
+  空对象或任何数值 `0`，也不得把缺席轴补零。
 - **血缘三字段全有或全无**：`spawnedByItemId` / `parentRunId` / `rootRunId` 要么都在（child），要么都不在（root）。
   半连的树导不出来。`features.subagents` 关闭时不产生 child run，这三个字段恒空——**shape 在、行为关**，这是
   刻意的（见 §13）。
@@ -366,8 +369,8 @@ profile，会被**拒绝**而不是降级投递——降级等于给同一个 Ru
   plan/安全决策保持闭合选项。answer 与 field 始终按同一顺序对应。
 - `toolCall.error`（+ `status:"incomplete"`）是**工具级失败的统一结构化落点**。工具失败**通常不终止整个 run** ——
   agent 可据此换方案、继续（§8 落点 c）。
-- **`compaction`** 标"此处压缩了 N 条更早消息"（`droppedMessages` = 压缩前后净减条数），fold 成时间线分隔条。摘要
-  文本已折进重写后的对话历史，故 Item 只表达边界与删减计数。
+- **`compaction`** 携带 canonical、非空的原始 `summary`，fold 成可展开的时间线活动行。它与重写后模型历史中的
+  framed summary 来自同一个领域值；模型专用前缀不进入 Item。可选 `droppedMessages` 仅记录压缩前后净减条数。
 - **一个 Item 属于一个 Run**（`runId`），不属于 Segment：Item 是历史，段是投递单位。
 
 ### 4.4 ToolInvocation（领域中立的通用信封）
@@ -379,7 +382,7 @@ profile，会被**拒绝**而不是降级投递——降级等于给同一个 Ru
 
 | 出现处                                            | 值                                                                                          |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `MCPTool.name`（`mcp.tools.list`，§4.10）         | MCP server **原样播报**的远端工具名（可含 `.` / 任意字符）                                  |
+| `MCPTool.name`（`mcp.tools.list`，§4.10）         | MCP server **原样播报**的远端工具名：1–128 位 ASCII `[A-Za-z0-9_.-]`                          |
 | `ToolInvocation.name`（toolCall Item / 审批载荷） | **模型可见名** `sanitize("<server>_<tool>")`：非 `[A-Za-z0-9_-]` 一律换 `_`，超 64 字符截断 |
 
 模型可见名是**有损**的：不同 `(server, tool)` 对可能塌成同一个字符串（`("a_b","c")` 与 `("a","b_c")` 都得
@@ -387,7 +390,8 @@ profile，会被**拒绝**而不是降级投递——降级等于给同一个 Ru
 
 - 要把一次 toolCall 关联回 `mcp.tools.list` 的条目时**不能**反解 `ToolInvocation.name`；需要精确身份就按
   `(server, tool)` 对匹配。
-- `MCPServer.disabledTools` / `autoApproveTools` 用**远端原名**（在其 server 条目内寻址，不受塌名影响）。
+- `MCPServer.disabledTools` / `autoApproveTools` 用**远端原名**（在其 server 条目内寻址，不受塌名影响）；每台 server
+  最多配置 2048 条互不矛盾的规则，同一个远端工具不能同时 disabled 与 auto-approved。
 - 审批记忆（`remember`，AUX_API §6）的 key 是**模型可见名** —— 塌名的两个 MCP 工具会共享一条规则。这是当前形态的
   已知后果，非疏漏。
 
@@ -475,12 +479,16 @@ process、session、审批或模型循环的只读诊断能力。
 
 ### 4.9 Provider / Model
 
-provider 凭证只回 `apiKeyMasked`，永不可逆推。per-run 的 provider + model **显式配对**（缺一即错；都缺时读取
+provider 只有已配置时才回 `credential:{masked,source}`；`masked` 永不可逆推，整个对象缺席才表示未配置。per-run 的 provider + model **显式配对**（缺一即错；都缺时读取
 既有 Session 的 durable selection，只有 fresh Session admission 才安装 Runtime 默认），provider **不从 model 名推断**。
 可选 `reasoningEffort` 是该 exact model 的执行参数：已知 catalog model 只接受其 `reasoningLevels` 中的值；
 effort 不能脱离 pair 存在，私有 catalog miss 则保持可用。
-`models.list` 的 `contextWindow` 配 live `RunProgress.contextTokens` 或 durable
-`RunRef.contextTokens` 做占用条。
+`models.list` 只通过可缺席的 `tokenLimits` 发布模型窗口事实。对象存在时至少包含
+`contextWindow`、`maxInputTokens`、`maxOutputTokens` 之一，且每个值都是严格正整数；
+对象缺席才表示 provider 未发布任何事实，不允许 `{}`、显式 `0` 或客户端补零。
+三个字段是独立事实：streaming/multimodal model 可以合法发布
+`maxOutputTokens > contextWindow`。`tokenLimits.contextWindow` 配 live
+`RunProgress.contextTokens` 或 durable `RunRef.contextTokens` 做占用条。
 
 Session 同样持久化完整 selection，并作为省略 per-run 选择时的唯一默认 owner。reasoning-only update 保留 identity；
 切换 provider/model 而省略 reasoning 时清空旧 effort。显式 Run 选择成功进入 opening write-set 后原子替换 Session
@@ -546,8 +554,8 @@ MCP 只发布一个 `MCPServer` 资源，不再把可编辑配置与连接状态
 | ------------------ | ---------------------------------------------------------------- |
 | `segment.started`  | 这一段开始，带 `run: RunRef`（含 `activeSegmentId` 与 profile）  |
 | `segment.progress` | 瞬时读数（step / activity / usage / contextTokens）              |
-| `item.started`     | 一个 Item 的壳落地                                               |
-| `item.delta`       | 该 Item 的增量预览（五种，§5.1）                                 |
+| `item.started`     | AgentMessage/Reasoning 渲染锚点，或 running ToolCall 落地         |
+| `item.delta`       | 该 Item 的增量预览（四种，§5.1）                                 |
 | `item.completed`   | 该 Item 的**权威终态**                                           |
 | `plan.updated`     | Session Plan 的**整份**当前值（§5.3）                            |
 | `segment.finished` | 这一段结束，带 `outcome: SegmentOutcome` + `metrics: RunMetrics` |
@@ -557,12 +565,16 @@ MCP 只发布一个 `MCPServer` 资源，不再把可编辑配置与连接状态
 > Artifact round-trip 都能恢复最近一次权威 prompt footprint；压缩后的较小正值允许覆盖旧值。`0` 表示本次没有新读数，
 > 不得擦除已有 footprint。客户端按 Session 中最新的正值 root Run 读取，不能把累计 usage 当作窗口占用。
 >
+> **`segment.progress` 不是 heartbeat**：`progress` 必须至少携带 `step` / `usage` / `contextTokens` / `activity`
+> 之一，多个事实可以在同一帧一起推进；空对象没有领域含义，会在 Runtime 发布边界与生成 validator 中共同拒绝。
+>
 > **`segment.finished` 不带 `run`**：一段结束时 Run 的完整状态该从 `runs.get` 读，把 RunRef 再抄一份到终态帧上，
 > 就等于让终态成为 Run 状态的第二个作者。
 
 ### 5.1 ItemDelta
 
-五种：`content`（agentMessage 文本）/ `reasoning` / `toolArguments` / `toolOutput` / `plan`。
+四种：`content`（agentMessage 文本）/ `reasoning` / `toolArguments` / `toolOutput`。同一 Item 的文本
+delta 按事件顺序追加；Runtime 上游没有内容块位置事实，因此协议不发布推测性的 block index。
 
 > **`toolArguments` 是文本增量**：流式工具入参逐片到达、中途不构成合法 JSON，客户端累积 `argumentsTextDelta` 做
 > 预览；**已解析结构化字段只在 completed `toolCall` 的 `tool.arguments` 落定**（§4.4）。
@@ -595,7 +607,6 @@ Authoritative、replayable 与 persisted 是三个不同概念：
 | `item.delta{reasoning}`     | ⬜            | ⬜         | `reasoning.text`（completed）               |
 | `item.delta{toolArguments}` | ⬜            | ⬜         | `tool.arguments`（completed，§4.4）         |
 | `item.delta{toolOutput}`    | ⬜            | ⬜         | `tool.result.output`（completed，§4.4.2）   |
-| `item.delta{plan}`          | ⬜            | ⬜         | `plan.steps`（completed）                   |
 
 **硬规则**：每个 preview **必须**在 authoritative projection 上有命名终值。第三方扩展若需要新事实，
 使用已有的领域中立 Item，或定义带 read model 的 capability-gated 领域资源。
@@ -608,15 +619,27 @@ Authoritative、replayable 与 persisted 是三个不同概念：
 Plan 只以整份 `plan.updated` 传播（**无增量事件**），由 root Run 写入，作用域固定为 Session；它不是通用 state
 registry 的一个变体。`plan.updated` 与 `plan.get` 使用同一个 `Plan` shape，并遵守：
 
+```ts
+interface Plan {
+  sessionId: string;
+  state?: { revision: number; steps: PlanStep[]; updatedAt: string };
+}
+```
+
+`state` 缺席表示这个 Session 从未写入 Plan；`state` 存在且 `steps: []` 表示一次已提交的显式清空。版本、时间和内容
+作为一个不可拆分的 committed value 一起出现，不使用 `revision: 0` 兼任“未写入”。因此 `plan.updated` 必带
+`plan.state`，而 `plan.get` 可以返回只有 `sessionId` 的未写入值。
+
 - **每次改变时发**（快照即当前完整视图，带单调 `revision`）；
 - **`segment.finished` 之前必发**该段改过的 Plan —— 这条是**位置保证**：收到终态的人就已经收到了终值。晚接入或
-  从更后的 cursor 重放的订阅者，否则会走到终态却从没见过 Plan。**这一段没改过 Plan 就不发**：一份 revision 0 的
-  空 Plan 在按 revision 折叠的客户端那里读作"清单被清空了"，不是"没变"。
+	从更后的 cursor 重放的订阅者，否则会走到终态却从没见过 Plan。**这一段没改过 Plan 就不发**；未写入与已提交的
+	空 Plan 由 `state` 是否存在区分，不能把其中一个推断成另一个。
 - **revision 只增不减**：把一个更早的值重新发布（回退、导入归档）也是**一次新的写入**，拿到更大的 revision。
   否则客户端会把回退后的清单当旧值丢掉。
 - **Plan 不带 runId**：它一个 Session 一份值，用 Run 去窄化 refetch 会按一个它并不索引的键去查。
 
-**cold read 是一等公民**：`plan.get` 返回与事件**同形同 revision**的 Plan。重载、回退、replay 窗口过期之后，
+**cold read 是一等公民**：`plan.get` 返回与事件同一个 Plan shape；一旦 `state` 存在，它与事件携带**同 revision**。
+重载、回退、replay 窗口过期之后，
 客户端靠它把面板接回来；Plan 不是第三方扩展缝，也没有动态 key、scope、writer 或 recovery-method metadata。
 
 ### 5.4 Run 树
@@ -731,10 +754,10 @@ Run 创建时把这份声明冻进 `RunProtocolProfile.interruptTypes`（§3.2�
   `restoreType` 可选还原文件（`features.checkpoints`），并把**边界那一刻的 Plan 作为一次新写入重新发布**
   （§5.3）。返回 `droppedRuns: DroppedRun[]`（每条带 `run: RunSummary` + 触发它的 `userInput`），所以客户端能
   告诉人"回退丢了哪些回合"。session 有 run 在飞时拒绝（`session_busy`），不去和正在 append 的历史赛跑。
-- **`export` / `import` 是同一份 `SessionArtifact`（v24）的两端**（AUX_API §4.3）：Session 与每条 Run 的 exact model/reasoning selection + 终态 run + 完整 Item 历史 +
+- **`export` / `import` 是同一份 `SessionArtifact`（v26）的两端**（AUX_API §4.3）：Session 与每条 Run 的 exact model/reasoning selection + 终态 run + 完整 Item 历史 +
   chat 消息 + offload 的工具正文 + 显式 `plan` 语义值（不带 revision / updatedAt —— 那是源 runtime 的排序
   凭证，带过去会让导入值声称一个目标 runtime 从未发出的位置）。import 是**替换语义**（同 id 覆盖），版本不认识就
-  确定性拒绝、**不迁移**，只接受当前 v24 shape。
+  确定性拒绝、**不迁移**，只接受当前 v26 shape。
 
 ### 7.3 runs.\*
 
@@ -793,16 +816,22 @@ Run 创建时把这份声明冻进 `RunProtocolProfile.interruptTypes`（§3.2�
 
 ### 7.6 providers.\* / models.\* / tools.\*
 
-`providers.list` 返回固定受支持集合与当前有效配置；`providers.update` 对已持久化配置做**原子字段变更**：
+`providers.list` 返回固定受支持集合与当前有效配置。每项的 `configured` 是 Runtime 按该 provider 的完整认证与 endpoint
+策略计算出的权威可用事实；它不能由客户端从 `credential` 是否存在反推。`credentialRequirement` 是闭合枚举：
+`apiKeyRequired` 要求有效 credential，`apiKeyOptional`（例如默认本地 endpoint 的 Ollama）即使没有 credential 也可配置完成，
+但仍允许用户显式保存 key。`credential` 只表示实际凭据的脱敏来源，不兼任可用状态。
+
+`providers.update` 对已持久化配置做**原子字段变更**：
 
 - 省略 `apiKey` / `baseUrl` 表示保持；
 - `{ type:"set", value }` 表示替换，`value` 必须非空；
 - `{ type:"clear" }` 表示清空，不允许同时携带 `value`。
 
 因此客户端无需发送不可回读的旧密钥，也不会把“空字符串”猜成保持或清空。清空 stored key 后若进程环境提供该
-provider 的 key，读取面自然回落到 `keySource:"env"`；环境值只参与读取投影，绝不由更新路径写入持久层。声明
-`requiresBaseUrl:true` 的 provider 在最终状态中必须保有 endpoint，故首次设置 key 时需同时设置 URL，且不能清空
-已有 URL。`providers.test` 是只读探测，失败 verdict 走 `ProviderTestResult.error`，不改变配置。
+provider 的 key，读取面自然回落到 `credential:{source:"env",masked}`；环境值只参与读取投影，绝不由更新路径写入持久层。
+清空 optional credential 不会把拥有完整 endpoint policy 的 provider 误判为未配置。声明 `requiresBaseUrl:true` 的 provider
+在更新后的最终状态中必须保有 endpoint，不能靠 credential presence 掩盖 endpoint 缺失，也不能清空已有 URL。
+`providers.test` 是只读探测，失败 verdict 走 `ProviderTestResult.error`，不改变配置。
 
 `models.*` 提供模型目录与 utility / embedding 角色；`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
 
@@ -869,6 +898,10 @@ cron 形态的 headless run 管理（`features.schedules`）：一条 schedule �
 自主执行环的目标与预算（`features.goals`）。**goal 是会话拥有的聚合**：run 的终态在**同一个事务**里给它记账
 （所以没有"goal 的账和 run 的账不一致"这种中间态），会话被删 / 回退 / 导入时 goal 一并清理，而不是变成一条指向
 不存在会话的孤儿记录。
+
+Goal 预算没有数值哨兵。`goals.start` 省略整个 `budget` 表示无预算边界；一旦出现，`maxRuns`、`maxCostUsd`、
+`maxSteps` 至少出现一项，且出现的每项必须是有限严格正数。`0`、负数、非有限数和空对象均为 `invalid_params`。
+Goal 读模型同样只在有限预算存在时携带 `budget`，消费者不得把缺席补成三组 `0` 或反向发送空对象。
 
 暂停或阻塞的 goal 通过结构化 `reason { code, detail? }` 暴露停止上下文。`code` 是闭合、稳定的机器语义，客户端据此
 决定行为并本地化文案；`detail` 只携带安全的领域/模型上下文。runtime 不生成面向用户的英文句子，也不把基础设施错误
@@ -1050,14 +1083,14 @@ dispatcher、discovery 与客户端 preflight 读的是同一份）。
 
 ## 12. 版本规则
 
-- `protocolVersion` 是日期串（本定稿 `2026-08-28`）：**本 build 只服务一个精确版本**，协议没有兼容范围。
+- `protocolVersion` 是日期串（本定稿 `2026-08-30`）：**本 build 只服务一个精确版本**，协议没有兼容范围。
 - 版本不兼容以 request 级 `invalid_protocol_version` 返回（带上本 build 服务的精确版本），**不存在连接级硬断开**。
 - **加什么不用 bump**：加 method / 加可选响应字段 / 加 `features` map key / 加开放枚举值 → 同版本号。
 - **加什么必须 bump**：新增请求字段（旧 server 严格拒绝）、**给闭合枚举或闭合 union 加成员**（客户端对它写
   exhaustive switch，§2.3）、加一等事件/资源、改语义 / 删字段 / 改字段类型。
 - **判据不是"加还是改"，而是"老客户端会不会做错事"**。这条规则由 CI 强制：compatibility differ 拿本次产物与
   上一版基线对比，判定 breaking 就要求同批 bump（§14）。
-- `SessionArtifactVersion` 与 `protocolVersion` 各自独立编号（本定稿 artifact = **24**）：一份归档可能被一个更新的
+- `SessionArtifactVersion` 与 `protocolVersion` 各自独立编号（本定稿 artifact = **27**）：一份归档可能被一个更新的
   runtime 读到。不认识的版本确定性拒绝，**dev 阶段不写 migration**。
 - HTTP URL 里的 `/v2/`（wire major epoch）与日期 `protocolVersion`（epoch 内请求版本）是两个层级
   （见 TRANSPORT §6.1）。
@@ -1101,14 +1134,14 @@ capability 规则在 dispatcher / discovery / SDK preflight 三方等价；schem
 每条 system invariant 有跨 projection fixture；TS 产物可编译且**都有消费者**；canonical 样本三方通过（含一个不
 参与生产的 JSON Schema 验证器）；list query fixture；**protocol manifest / canonical 文档 / 代码 / canonical 样本
 版本一致**；错误 type↔code 单一源；Plan 的 live event、cold read、Session material 与 archive shape 一致；
-Artifact v24 round-trip；compatibility differ 判定 breaking 并要求同批 bump（§12）。
+Artifact v27 round-trip；compatibility differ 判定 breaking 并要求同批 bump（§12）。
 
 ---
 
 ## 15. 安全不变量汇总
 
 - **路径 containment**：fs 工具路径相对 `WorkspaceRef.path`，越界 → `path_outside_root`。
-- **provider secret**：只回 `apiKeyMasked`，永不可逆推（§4.9）。
+- **provider secret**：只回可选的 `credential.masked`，永不可逆推；`credential` 缺席明确表示未配置（§4.9）。
 - **协议层零鉴权**：无 user / account 概念；本地进程门禁由 transport 层处理（TRANSPORT §11）。
 - **workspace 是业务身份不是传输上下文**：`WorkspaceRef` 走 body，不走带外 directory header（TRANSPORT §2）。
 - **防挂死**：server 不产出 client 解不了的 open interrupt（§6.2）。
@@ -1181,9 +1214,9 @@ path，**不静默截断**。
 
 ### C.3 · `compaction` Item —— 自动上下文压缩
 
-runtime 在 turn 边界需要压缩时产出它（`item.started` + `item.completed`，`droppedMessages` = 净减条数），客户端
-fold 成时间线分隔条。摘要文本已折进重写后的对话历史。压缩策略属于 runtime 领域服务，不开放会与自动策略竞争的
-手动 RPC。
+runtime 在安全模型调用或 Run 边界需要压缩时，以 `item.completed` 产出同一个 canonical、非空的原始 `summary`；客户端
+fold 成可展开的时间线活动行。模型历史使用由 adapter 添加 framing 的同值摘要；可选 `droppedMessages` 只表达净减条数，
+不充当摘要。压缩策略属于 runtime 领域服务，不开放会与自动策略竞争的手动 RPC。
 
 ### C.4 · `plan.updated`（门控 `plan`）—— 模型的工作清单
 

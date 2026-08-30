@@ -2,10 +2,12 @@ package agent
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/failure"
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
 )
 
 func TestRunLifecycleShape(t *testing.T) {
@@ -46,11 +48,61 @@ func TestRunLifecycleShape(t *testing.T) {
 	}
 }
 
+func TestRunRejectsNonExactExecutionIdentity(t *testing.T) {
+	run := runningRun("seg_1")
+	run.ID = " run_1"
+	if err := run.Validate(); err == nil {
+		t.Fatal("Run accepted an identity that requires trimming")
+	}
+	run = runningRun(" seg_1")
+	if err := run.Validate(); err == nil {
+		t.Fatal("Run accepted an active segment identity that requires trimming")
+	}
+}
+
+func TestRunLineageRequiresExplicitRootOrValidChild(t *testing.T) {
+	t.Parallel()
+	if err := (RunLineage{}).validate("run_1"); err == nil {
+		t.Fatal("zero lineage was accepted as a root")
+	}
+	root := RootRunLineage()
+	if err := root.validate("run_root"); err != nil || !root.IsRoot() {
+		t.Fatalf("root lineage = (%+v, %v)", root, err)
+	}
+	child, err := NewChildRunLineage("run_child", "item_spawn", "run_parent", "run_root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.IsRoot() || child.SpawnedByBlockID() != "item_spawn" || child.ParentRunID() != "run_parent" || child.RootRunID() != "run_root" {
+		t.Fatalf("child lineage = %+v", child)
+	}
+	for _, test := range []struct {
+		name                 string
+		runID, spawn, parent string
+		root                 string
+	}{
+		{name: "missing spawn", runID: "run_child", parent: "run_parent", root: "run_root"},
+		{name: "self parent", runID: "run_child", spawn: "item_spawn", parent: "run_child", root: "run_root"},
+		{name: "self root", runID: "run_child", spawn: "item_spawn", parent: "run_parent", root: "run_child"},
+		{name: "non-exact parent", runID: "run_child", spawn: "item_spawn", parent: " run_parent", root: "run_root"},
+		{name: "non-exact root", runID: "run_child", spawn: "item_spawn", parent: "run_parent", root: "run_root "},
+	} {
+		if _, err := NewChildRunLineage(test.runID, test.spawn, test.parent, test.root); err == nil {
+			t.Errorf("%s lineage was accepted", test.name)
+		}
+	}
+}
+
 func TestRunOptionsValidateBounds(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(4096)
+	maxSteps, maxBudget := 20, float64(3)
+	limits, err := NewRunLimits(RunLimitValues{MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudget})
+	if err != nil {
+		t.Fatal(err)
+	}
 	options := RunOptions{
 		Provider: "mock", Model: "balanced",
-		Limits:     RunLimits{MaxSteps: 20, MaxBudgetUSD: 3},
+		Limits:     limits,
 		Generation: GenerationParams{Temperature: &temperature, TopP: &topP, MaxTokens: &maxTokens, Stop: []string{"END"}},
 	}
 	if err := options.Validate(); err != nil {
@@ -65,7 +117,10 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 
 func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 	zero := 0.0
-	left := RunOptions{Provider: "deepseek", Model: "v4", Generation: GenerationParams{Temperature: &zero, Stop: []string{"END"}}}
+	left := RunOptions{
+		Provider: "deepseek", Model: "v4", Limits: UnlimitedRunLimits(),
+		Generation: GenerationParams{Temperature: &zero, Stop: []string{"END"}},
+	}
 	if !left.Equal(left.Clone()) {
 		t.Fatal("cloned options are not equal")
 	}
@@ -79,6 +134,26 @@ func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 	if left.Equal(right) {
 		t.Fatal("different stop sequences are equal")
 	}
+}
+
+func testRootRun(run Run) Run {
+	run.Lineage = RootRunLineage()
+	run.Limits = UnlimitedRunLimits()
+	return run
+}
+
+func testChildRun(run Run) Run {
+	run.Limits = UnlimitedRunLimits()
+	return run
+}
+
+func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLineage {
+	t.Helper()
+	lineage, err := NewChildRunLineage(runID, spawn, parent, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return lineage
 }
 
 func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
@@ -147,6 +222,14 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	}
 	if err := (Usage{ByModel: map[string]ModelUsage{"": {}}}).Validate(); err == nil {
 		t.Fatal("empty model attribution key was accepted")
+	}
+	if err := (Usage{ByModel: map[string]ModelUsage{"bad model": {}}}).Validate(); err == nil {
+		t.Fatal("non-canonical model attribution key was accepted")
+	}
+	if err := (Usage{ByModel: map[string]ModelUsage{
+		strings.Repeat("m", modelidentity.MaximumModelCharacters+1): {},
+	}}).Validate(); err == nil {
+		t.Fatal("overlong model attribution key was accepted")
 	}
 	if err := validateUsageProgress(
 		Usage{Steps: 3, ByModel: map[string]ModelUsage{"deepseek/v4": {InputTokens: 12}}},

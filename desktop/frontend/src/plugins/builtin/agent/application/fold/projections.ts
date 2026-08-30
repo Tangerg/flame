@@ -43,24 +43,18 @@ export function contentText(blocks: AgentMessagePart[] | undefined): string {
 // Project a userMessage's wire content into view blocks: the merged text (one
 // block) followed by one image block per inlined image (MULTIMODAL_IMAGE_INPUT,
 // §4.3). A userMessage is atomic, so the text block is always `complete`.
-export function userContentBlocks(content: AgentMessagePart[] | undefined): ContentBlock[] {
+export function userContentBlocks(content: AgentMessagePart[]): ContentBlock[] {
   const blocks: ContentBlock[] = [];
   const text = contentText(content);
   if (text) blocks.push({ kind: "text", text, status: "complete" });
-  for (const b of content ?? []) {
+  for (const b of content) {
     if (b.type === "image") blocks.push({ kind: "image", mime: b.mime, data: b.data });
   }
   return blocks;
 }
 
-// Like `contentText`, tolerate a body-less started shell: the `question` / `tool`
-// fields are absent on the `item.started` shell of a question / toolCall and
-// arrive whole on item.completed (tool also streams via item.delta). Default the
-// missing field so the shell folds to an empty block that later events patch —
-// not a throw the reducer's try/catch swallows, leaving the block permanently
-// unrendered.
-export function mapQuestion(q: AgentQuestion | undefined): QuestionItem[] {
-  return (q?.fields ?? []).map((f) =>
+export function mapQuestion(q: AgentQuestion): QuestionItem[] {
+  return q.fields.map((f) =>
     f.type === "choice"
       ? {
           type: "choice" as const,
@@ -82,8 +76,8 @@ export function mapQuestion(q: AgentQuestion | undefined): QuestionItem[] {
   );
 }
 
-export function mapQuestionAnswers(q: AgentQuestion | undefined): string[][] | undefined {
-  return q?.answers?.map((values) => [...values]);
+export function mapQuestionAnswers(q: AgentQuestion): string[][] | undefined {
+  return q.answers?.map((values) => [...values]);
 }
 
 // §4.4.2 display conventions — read the domain-neutral { name, arguments,
@@ -126,7 +120,7 @@ function firstLine(v: unknown): string | undefined {
  *  category (each reads a different key argument). Checked BEFORE the
  *  category switch in toolLabel. */
 function nameLabel(tool: AgentToolInvocation): string | undefined {
-  const a = tool.arguments ?? {};
+  const a = tool.arguments;
   switch (tool.name) {
     case "lsp": {
       // One operation-dispatched tool: operation + path/line/character, or query
@@ -168,7 +162,7 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
 }
 
 /** Human-readable label for a tool invocation (the toolCall row title). */
-export function toolLabel(tool: AgentToolInvocation | undefined): string {
+export function toolLabel(tool: AgentToolInvocation): string {
   return labelSource(tool).text;
 }
 
@@ -181,12 +175,11 @@ export function toolLabel(tool: AgentToolInvocation | undefined): string {
  * name instead), and a second rule that "fileEdit means path" would call those a
  * path too, then truncate a word from its left.
  */
-export function toolLabelKind(tool: AgentToolInvocation | undefined): "path" | "text" {
+export function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
   return labelSource(tool).path ? "path" : "text";
 }
 
-function labelSource(tool: AgentToolInvocation | undefined): { text: string; path: boolean } {
-  if (!tool) return { text: "tool", path: false };
+function labelSource(tool: AgentToolInvocation): { text: string; path: boolean } {
   const byName = nameLabel(tool);
   if (byName) return { text: byName, path: false };
   const a = tool.arguments ?? {};
@@ -232,10 +225,9 @@ function labelSource(tool: AgentToolInvocation | undefined): { text: string; pat
 }
 
 /** Derive view ToolCall fields from a (possibly completed) toolCall Item. */
-export function toolFields(tool: AgentToolInvocation | undefined): Partial<ToolCall> {
-  if (!tool) return {};
+export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
   const result = asRecord(tool.result);
-  const operation = asString(tool.arguments?.operation);
+  const operation = asString(tool.arguments.operation);
   return {
     ...(operation !== undefined ? { operation } : {}),
     ...planFields(tool),
@@ -369,13 +361,10 @@ function categoryFields(
  *  ones (lsp_* / skill / ask_user, see nameLabel) — and for an empty object,
  *  so a started shell seeds "" for delta accrual rather than "{}". Guards the
  *  case where a tool delivers its args only on item.completed (no streaming). */
-export function argsText(tool: AgentToolInvocation | undefined): string {
-  if (!tool) return "";
+export function argsText(tool: AgentToolInvocation): string {
   if (nameLabel(tool) !== undefined) return "";
   if (toolCategory(tool.name) !== "generic" && toolCategory(tool.name) !== "subagent") return "";
-  return Object.keys(tool.arguments ?? {}).length > 0
-    ? JSON.stringify(tool.arguments, null, 2)
-    : "";
+  return Object.keys(tool.arguments).length > 0 ? JSON.stringify(tool.arguments, null, 2) : "";
 }
 
 export function toolStatus(item: Extract<AgentItem, { type: "toolCall" }>): ToolCallStatus {

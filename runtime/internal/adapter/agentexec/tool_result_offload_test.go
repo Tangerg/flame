@@ -23,9 +23,16 @@ func (f *fakeOffloader) Stage(_ context.Context, stage toolresult.Stage) error {
 	return f.err
 }
 
-func evictForTest(store toolResultOffloader, threshold int, sessionID, toolName, body string) (string, *toolresult.Ref) {
+func evictForTest(t *testing.T, store toolResultOffloader, threshold int, sessionID, toolName, body string) (string, *toolresult.Ref) {
+	t.Helper()
+	policy, err := newToolResultOffloadPolicy(ToolResultOffloadPolicyValues{
+		Threshold: intPointer(threshold), ReaderName: testToolResultReaderName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return evictToolResult(
-		context.Background(), store, threshold, testToolResultReaderName,
+		context.Background(), store, policy,
 		sessionID, toolName, body,
 	)
 }
@@ -34,7 +41,7 @@ func TestEvict_OversizedIsOffloadedWithRetrievablePreview(t *testing.T) {
 	store := new(fakeOffloader)
 	body := strings.Repeat("x", 500)
 
-	got, ref := evictForTest(store, 100, "sess-1", "shell", body)
+	got, ref := evictForTest(t, store, 100, "sess-1", "shell", body)
 	if store.calls != 1 {
 		t.Fatalf("Stage called %d times, want 1", store.calls)
 	}
@@ -57,7 +64,7 @@ func TestEvict_OversizedIsOffloadedWithRetrievablePreview(t *testing.T) {
 
 func TestEvict_SmallResultUntouched(t *testing.T) {
 	store := &fakeOffloader{}
-	if got, ref := evictForTest(store, 100, "s", "shell", "small"); got != "small" || ref != nil || store.calls != 0 {
+	if got, ref := evictForTest(t, store, 100, "s", "shell", "small"); got != "small" || ref != nil || store.calls != 0 {
 		t.Fatalf("small result: got %q, calls %d — want (small, 0)", got, store.calls)
 	}
 }
@@ -66,7 +73,7 @@ func TestEvict_UnprofitablePreviewKeepsBodyWithoutStaging(t *testing.T) {
 	store := new(fakeOffloader)
 	body := "xx"
 
-	got, ref := evictForTest(store, 1, "sess-1", "shell", body)
+	got, ref := evictForTest(t, store, 1, "sess-1", "shell", body)
 	if got != body || ref != nil {
 		t.Fatalf("unprofitable eviction = (%q, %+v), want original body", got, ref)
 	}
@@ -79,7 +86,7 @@ func TestEvict_ReadBackToolExcluded(t *testing.T) {
 	store := new(fakeOffloader)
 	body := strings.Repeat("x", 500)
 	// Evicting the read-back tool's own output would loop.
-	if got, ref := evictForTest(store, 10, "s", testToolResultReaderName, body); got != body || ref != nil || store.calls != 0 {
+	if got, ref := evictForTest(t, store, 10, "s", testToolResultReaderName, body); got != body || ref != nil || store.calls != 0 {
 		t.Fatalf("read-back tool must not be offloaded (calls %d)", store.calls)
 	}
 }
@@ -88,7 +95,7 @@ func TestEvict_NoSessionKeepsFullBody(t *testing.T) {
 	store := new(fakeOffloader)
 	body := strings.Repeat("x", 500)
 	// Bare ctx → no session → nothing to scope/retrieve the blob under.
-	if got, ref := evictForTest(store, 10, "", "shell", body); got != body || ref != nil || store.calls != 0 {
+	if got, ref := evictForTest(t, store, 10, "", "shell", body); got != body || ref != nil || store.calls != 0 {
 		t.Fatalf("no session must keep the full body (calls %d)", store.calls)
 	}
 }
@@ -96,17 +103,23 @@ func TestEvict_NoSessionKeepsFullBody(t *testing.T) {
 func TestEvict_StageFailureDegradesToFullBody(t *testing.T) {
 	store := &fakeOffloader{err: errors.New("db down")}
 	body := strings.Repeat("x", 500)
-	if got, ref := evictForTest(store, 10, "s", "shell", body); got != body || ref != nil {
+	if got, ref := evictForTest(t, store, 10, "s", "shell", body); got != body || ref != nil {
 		t.Fatal("a failed offload must degrade to the full body, not a broken preview")
 	}
 }
 
-func TestEvict_DisabledWhenNoStoreOrThreshold(t *testing.T) {
+func TestEvict_DisabledOnlyByPolicyOrMissingStore(t *testing.T) {
 	body := strings.Repeat("x", 500)
-	if got, ref := evictForTest(nil, 100, "s", "shell", body); got != body || ref != nil {
+	if got, ref := evictForTest(t, nil, 100, "s", "shell", body); got != body || ref != nil {
 		t.Error("nil store must disable eviction")
 	}
-	if got, ref := evictForTest(&fakeOffloader{}, 0, "s", "shell", body); got != body || ref != nil {
-		t.Error("zero threshold must disable eviction")
+	if got, ref := evictToolResult(t.Context(), &fakeOffloader{}, toolResultOffloadPolicy{}, "s", "shell", body); got != body || ref != nil {
+		t.Error("disabled policy must keep the full result")
+	}
+	zero := 0
+	if _, err := newToolResultOffloadPolicy(ToolResultOffloadPolicyValues{
+		Threshold: &zero, ReaderName: testToolResultReaderName,
+	}); err == nil {
+		t.Error("present zero threshold was treated as disabled policy")
 	}
 }

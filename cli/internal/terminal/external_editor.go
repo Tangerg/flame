@@ -53,7 +53,7 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 		return "", fmt.Errorf("create editor draft: %w", err)
 	}
 	path := temporary.Name()
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 	if chmodErr := temporary.Chmod(0o600); chmodErr != nil {
 		_ = temporary.Close()
 		return "", fmt.Errorf("protect editor draft: %w", chmodErr)
@@ -80,7 +80,7 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if err != nil {
 		return "", fmt.Errorf("open edited draft: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	content, err := io.ReadAll(io.LimitReader(file, maxExternalDraftBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read edited draft: %w", err)

@@ -28,4 +28,32 @@ func TestLoadUsesOnlyExplicitAbsoluteSearchDirectories(t *testing.T) {
 	if settings.Provider != "anthropic" || settings.Model != "explicit-model" {
 		t.Fatalf("settings = %+v, want explicit config file values", settings)
 	}
+	if !settings.ToolResultOffload.Enabled || settings.ToolResultOffload.Threshold != DefaultToolResultOffloadThreshold {
+		t.Fatalf("default Tool-result offload = %+v", settings.ToolResultOffload)
+	}
+}
+
+func TestLoadToolResultOffloadUsesExplicitEnablement(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "config.yaml")
+	if err := os.WriteFile(path, []byte("provider: anthropic\ntoolResultOffload:\n  enabled: false\n  threshold: 1234\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_TOOLRESULTOFFLOAD_ENABLED", "")
+	t.Setenv("FLAME_TOOLRESULTOFFLOAD_THRESHOLD", "")
+	settings, err := Load([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.ToolResultOffload.Enabled || settings.ToolResultOffload.Threshold != 1234 {
+		t.Fatalf("Tool-result offload = %+v", settings.ToolResultOffload)
+	}
+
+	if err := os.WriteFile(path, []byte("provider: anthropic\ntoolResultOffload:\n  enabled: false\n  threshold: 0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load([]string{directory}); err == nil {
+		t.Fatal("numeric zero was accepted as an implicit offload switch")
+	}
 }

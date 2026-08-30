@@ -77,7 +77,7 @@ func (a *app) refreshCompletion() {
 }
 
 func (a *app) currentCompletionQuery() (completionQuery, bool) {
-	lines := strings.Split(a.composer.Text(), "\n")
+	lines := strings.Split(a.composer.Editor().Text(), "\n")
 	line, column := a.composer.Editor().Cursor()
 	if line < 0 || line >= len(lines) {
 		return completionQuery{}, false
@@ -114,7 +114,7 @@ func (a *app) completeFiles(query completionQuery) {
 	resolver := a.attachments
 	a.runOperation(completionOperation, true,
 		func(ctx context.Context) ([]headless.Candidate, error) {
-			matches, err := resolver.Complete(ctx, query.token.Query, 50)
+			matches, err := resolver.Complete(ctx, query.token.Query)
 			candidates := make([]headless.Candidate, 0, len(matches))
 			for _, match := range matches {
 				candidates = append(candidates, headless.Candidate{

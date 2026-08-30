@@ -229,10 +229,11 @@ func TestRunTreeOwnerCancelWaitIsContextBounded(t *testing.T) {
 	}()
 	<-commitStarted
 
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := treeOwner.requestCancel(ctx, "user canceled", acceptRootCancel); !errors.Is(err, context.Canceled) {
-		t.Fatalf("requestCancel error = %v, want context canceled", err)
+	want := errors.New("cancellation caller retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(want)
+	if _, err := treeOwner.requestCancel(ctx, "user canceled", acceptRootCancel); !errors.Is(err, want) {
+		t.Fatalf("requestCancel error = %v, want owner cause", err)
 	}
 	close(releaseCommit)
 	<-commitDone

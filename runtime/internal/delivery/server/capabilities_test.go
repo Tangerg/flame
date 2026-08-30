@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -14,7 +15,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	caps := capabilitiesFor(featureAvailability{
 		knowledge: true, git: true, fileWatch: true, plan: true,
 		goals: true, agentMemory: true, schedules: true,
-	}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: "idp_test"}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
+	}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: identityfixture.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
 	want := []protocol.StreamEventType{
 		protocol.StreamSegmentStarted,
 		protocol.StreamSegmentProgress,
@@ -35,8 +36,8 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 			t.Fatalf("wired feature %q was not advertised: %+v", feature, caps.Features)
 		}
 	}
-	if caps.Limits.MaxConcurrentRuns != 0 {
-		t.Fatalf("maxConcurrentRuns = %d, want omitted without an enforced process-wide cap", caps.Limits.MaxConcurrentRuns)
+	if caps.Limits.MaxConcurrentRuns != nil {
+		t.Fatalf("maxConcurrentRuns = %v, want absent without an enforced process-wide cap", caps.Limits.MaxConcurrentRuns)
 	}
 	// The replay window is advertised because it is enforced, and the numbers are the
 	// enforcer's own: a client told one bound while the runtime evicts by another
@@ -55,8 +56,8 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	if got := caps.Limits.Idempotency.RetentionSeconds; got != 86_400 {
 		t.Fatalf("idempotency retention = %d, want 86400", got)
 	}
-	if got := caps.Limits.Idempotency.Namespace; got != "idp_test" {
-		t.Fatalf("idempotency namespace = %q, want idp_test", got)
+	if got := caps.Limits.Idempotency.Namespace; got != identityfixture.IdempotencyNamespace {
+		t.Fatalf("idempotency namespace = %q, want %q", got, identityfixture.IdempotencyNamespace)
 	}
 }
 
@@ -74,7 +75,7 @@ func TestCapabilitiesAdvertiseThePublishedVocabulary(t *testing.T) {
 	caps := capabilitiesFor(
 		featureAvailability{},
 		replayLimitsFrom(runs.DefaultRetention()),
-		protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: "idp_test"},
+		protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: identityfixture.IdempotencyNamespace},
 		protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73},
 	)
 	for _, feature := range protocol.FeatureKeys() {

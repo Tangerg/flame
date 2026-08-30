@@ -30,31 +30,37 @@ func (r *runScope) bind(run agent.Run) error {
 }
 
 func (r *runScope) accept(envelope agent.RunEvent) error {
-	started, opening := envelope.Event.(agent.SegmentStarted)
-	if opening {
-		run := started.Run
-		if run.ID != envelope.RunID {
-			return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelope.RunID)
-		}
-		if run.Lineage.IsRoot() {
-			return r.bind(run)
-		}
-		if r.rootID == "" || run.Lineage.RootRunID != r.rootID {
-			return fmt.Errorf("child run %s does not belong to root %s", run.ID, r.rootID)
-		}
-		r.ensureMembers()
-		if _, exists := r.members[run.Lineage.ParentRunID]; !exists {
-			return fmt.Errorf("child run %s has unknown parent %s", run.ID, run.Lineage.ParentRunID)
-		}
-		if lineage, exists := r.members[run.ID]; exists && lineage != run.Lineage {
-			return fmt.Errorf("child run %s changed lineage", run.ID)
-		}
-		r.members[run.ID] = run.Lineage
-		return nil
+	if started, opening := envelope.Event.(agent.SegmentStarted); opening {
+		return r.acceptSegmentStarted(envelope.RunID, started.Run)
 	}
 	if _, exists := r.members[envelope.RunID]; !exists {
 		return fmt.Errorf("event references unknown run %s", envelope.RunID)
 	}
+	return validateRunEventOwnership(envelope)
+}
+
+func (r *runScope) acceptSegmentStarted(envelopeRunID string, run agent.Run) error {
+	if run.ID != envelopeRunID {
+		return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelopeRunID)
+	}
+	if run.Lineage.IsRoot() {
+		return r.bind(run)
+	}
+	if r.rootID == "" || run.Lineage.RootRunID() != r.rootID {
+		return fmt.Errorf("child run %s does not belong to root %s", run.ID, r.rootID)
+	}
+	r.ensureMembers()
+	if _, exists := r.members[run.Lineage.ParentRunID()]; !exists {
+		return fmt.Errorf("child run %s has unknown parent %s", run.ID, run.Lineage.ParentRunID())
+	}
+	if lineage, exists := r.members[run.ID]; exists && lineage != run.Lineage {
+		return fmt.Errorf("child run %s changed lineage", run.ID)
+	}
+	r.members[run.ID] = run.Lineage
+	return nil
+}
+
+func validateRunEventOwnership(envelope agent.RunEvent) error {
 	switch event := envelope.Event.(type) {
 	case agent.BlockStarted:
 		if event.Block.RunID != envelope.RunID {
@@ -83,7 +89,7 @@ func (r *runScope) restore(snapshot agent.SessionSnapshot, rootID string) error 
 		return err
 	}
 	for _, member := range snapshot.Runs {
-		if member.Lineage.RootRunID == rootID {
+		if member.Lineage.RootRunID() == rootID {
 			r.members[member.ID] = member.Lineage
 		}
 	}

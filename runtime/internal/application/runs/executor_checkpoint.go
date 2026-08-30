@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // ErrExecutorCheckpointNotFound reports that no durable executor checkpoint
@@ -33,21 +37,22 @@ type ExecutionScope struct {
 // Validate rejects ambiguous host identities before they cross a durable
 // continuation boundary.
 func (e ExecutionScope) Validate() error {
-	if strings.TrimSpace(e.SessionID) == "" {
-		return errors.New("execution: scope session ID is required")
+	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+		return fmt.Errorf("execution: scope: %w", err)
 	}
 	for _, field := range []struct {
 		name  string
 		value string
 	}{
-		{name: "session ID", value: e.SessionID},
 		{name: "working dir", value: e.CWD},
 		{name: "workspace dir", value: e.WorkspaceCWD},
-		{name: "goal incarnation ID", value: e.GoalIncarnationID},
 	} {
 		if field.value != strings.TrimSpace(field.value) {
 			return fmt.Errorf("execution: scope %s has surrounding whitespace", field.name)
 		}
+	}
+	if _, _, err := goalref.ParseOptionalIncarnation(e.GoalIncarnationID); err != nil {
+		return fmt.Errorf("execution: scope: %w", err)
 	}
 	return nil
 }
@@ -94,14 +99,14 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
-	if strings.TrimSpace(e.RootMemberID) == "" || e.RootMemberID != strings.TrimSpace(e.RootMemberID) {
-		return fmt.Errorf("%w: root member ID must be non-empty without surrounding whitespace", ErrInvalidExecutorCheckpoint)
+	if _, err := executoridentity.ParseMember(e.RootMemberID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if len(e.Payload) == 0 {
 		return fmt.Errorf("%w: payload is empty", ErrInvalidExecutorCheckpoint)
 	}
-	if strings.TrimSpace(e.BuildID) == "" || e.BuildID != strings.TrimSpace(e.BuildID) {
-		return fmt.Errorf("%w: build ID must be non-empty without surrounding whitespace", ErrInvalidExecutorCheckpoint)
+	if _, err := buildidentity.Parse(e.BuildID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := e.Scope.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
@@ -129,11 +134,11 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 	if err := e.Validate(); err != nil {
 		return err
 	}
-	if strings.TrimSpace(rootMemberID) == "" || rootMemberID != strings.TrimSpace(rootMemberID) {
-		return fmt.Errorf("%w: expected root member ID must be non-empty without surrounding whitespace", ErrInvalidExecutorCheckpoint)
+	if _, err := executoridentity.ParseMember(rootMemberID); err != nil {
+		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) {
-		return fmt.Errorf("%w: expected session ID must be non-empty without surrounding whitespace", ErrInvalidExecutorCheckpoint)
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if e.RootMemberID != rootMemberID {
 		return fmt.Errorf(
@@ -177,8 +182,8 @@ func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) 
 	if err := expected.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: expected capabilities: %w", ErrInvalidExecutorCheckpoint, err)
 	}
-	if expected.GoalIncarnationID != strings.TrimSpace(expected.GoalIncarnationID) {
-		return fmt.Errorf("%w: expected goal incarnation ID has surrounding whitespace", ErrInvalidExecutorCheckpoint)
+	if _, _, err := goalref.ParseOptionalIncarnation(expected.GoalIncarnationID); err != nil {
+		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if e.Scope.CWD != expected.CWD {
 		return fmt.Errorf(

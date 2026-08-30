@@ -29,7 +29,12 @@ import { PROTOCOL_VERSION, type Item, type RunEvent } from "@flame/runtime-contr
 // nobody read it.
 import discoverResponse from "@flame/runtime-contract/samples/method.discover.resp.json";
 
-function agentMessageItem(id: string, runId: string, text: string, status: Item["status"]): Item {
+function agentMessageItem(
+  id: string,
+  runId: string,
+  text: string,
+  status: Extract<Item, { type: "agentMessage" }>["status"],
+): Extract<Item, { type: "agentMessage" }> {
   return {
     id: asItemId(id),
     runId: asRunId(runId),
@@ -270,7 +275,7 @@ describe("smoke: v2 end-to-end happy path", () => {
     ]);
   });
 
-  it("foreign-segment events are filtered out (cross-run isolation)", async () => {
+  it("concurrent response streams stay isolated by request identity", async () => {
     transport = createMemoryTransport();
     client = createRpcClient(transport);
     methods = createMethods(client);
@@ -297,7 +302,7 @@ describe("smoke: v2 end-to-end happy path", () => {
           type: "item.completed",
           item: agentMessageItem("item_x", "run_other", "stolen", "completed"),
         },
-        req.id,
+        "rpc_other",
       );
       injectRunEvent(
         transport,

@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 )
 
 func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +21,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	pending := steerTestPending(sessionID, attachment)
+	pending := steerTestPending(t, sessionID, attachment)
 	if stagePendingSteerErr := store.StagePendingSteer(pending, source); stagePendingSteerErr != nil {
 		t.Fatal(stagePendingSteerErr)
 	}
@@ -28,19 +29,19 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatalf("draft after staging = %+v, found %t, error %v", draft, found, draftErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	staged, found := reopened.PendingSteer(sessionID)
-	if !found || !staged.Command.Equal(pending.Command) {
+	if !found || !staged.Command().Equal(pending.Command()) {
 		t.Fatalf("reopened pending steer = %+v, found %t", staged, found)
 	}
 	newer := agent.Message{Text: "new input while steer settles"}
 	if saveDraftErr := reopened.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	recovered, err := reopened.RejectPendingSteer(sessionID, pending.Command.CommandID, newer)
+	recovered, err := reopened.RejectPendingSteer(sessionID, pending.CommandID(), newer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatalf("recovered draft = %+v, want %+v", recovered, want)
 	}
 
-	settled, err := Open(directory, Config{})
+	settled, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,14 +64,14 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 
 func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	sessionID := "ses_steer"
 	attachment := steerTestAttachment(t.TempDir())
 	source := agent.Message{Text: "/steer inspect the parser", Attachments: []agent.Attachment{attachment}}
-	pending := steerTestPending(sessionID, attachment)
+	pending := steerTestPending(t, sessionID, attachment)
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -81,11 +82,11 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if acknowledgePendingSteerErr := store.AcknowledgePendingSteer(sessionID, pending.Command.CommandID); acknowledgePendingSteerErr != nil {
+	if acknowledgePendingSteerErr := store.AcknowledgePendingSteer(sessionID, pending.CommandID()); acknowledgePendingSteerErr != nil {
 		t.Fatal(acknowledgePendingSteerErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,8 +97,29 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 		t.Fatalf("newer draft = %+v, found %t, error %v", draft, found, err)
 	}
 	history := reopened.History()
-	if len(history) != 1 || !history[0].Equal(pending.Command.Message) {
+	if len(history) != 1 || !history[0].Equal(pending.Message()) {
 		t.Fatalf("steer history = %+v", history)
+	}
+}
+
+func TestPendingSteerRejectsInstructionThatDoesNotExactlyOwnTheSourceDraft(t *testing.T) {
+	sessionID := "ses_steer"
+	pending := steerTestPending(t, sessionID, steerTestAttachment(t.TempDir()))
+	command := pending.Command()
+	command.Message.Attachments = nil
+	command.Message.Text = " inspect the parser "
+	if _, err := NewPendingSteer(sessionID, command, pending.StagedAt(), pending.Replay()); err == nil {
+		t.Fatal("non-canonical steer instruction claimed ownership of a different source draft")
+	}
+}
+
+func TestPendingSteerOwnsDetachedCommandMaterial(t *testing.T) {
+	pending := steerTestPending(t, "ses_steer", steerTestAttachment(t.TempDir()))
+	command := pending.Command()
+	command.Message.Text = "mutated"
+	command.Message.Attachments[0].Name = "mutated.txt"
+	if pending.Message().Text != "inspect the parser" || pending.Message().Attachments[0].Name != "notes.txt" {
+		t.Fatal("caller mutation changed durable steer ownership")
 	}
 }
 
@@ -109,17 +131,28 @@ func steerTestAttachment(directory string) agent.Attachment {
 }
 
 func steerTestPending(
+	t *testing.T,
 	sessionID string,
 	attachment agent.Attachment,
 ) PendingSteer {
+	t.Helper()
 	stagedAt := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
-	return PendingSteer{
-		SessionID: sessionID,
-		Command: agent.SteerRun{
+	replay, err := commandreplay.NewProtectedGuard("runtime-test", stagedAt.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending, err := NewPendingSteer(
+		sessionID,
+		agent.SteerRun{
 			CommandID: "cli_11111111111111111111111111111111",
 			RunID:     "run_1", SegmentID: "seg_1",
 			Message: agent.Message{Text: "inspect the parser", Attachments: []agent.Attachment{attachment}},
 		},
-		StagedAt: stagedAt, ReplayNamespace: "runtime-test", ReplayUntil: stagedAt.Add(time.Hour),
+		stagedAt,
+		replay,
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return pending
 }

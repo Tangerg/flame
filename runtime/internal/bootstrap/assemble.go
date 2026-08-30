@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runrecovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
+	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/sessiontitle"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -64,6 +65,7 @@ func newAssembly(
 		buildTools: buildTools,
 		lifetime: &hostLifetime{
 			context:       lifetime,
+			shutdownWait:  defaultShutdownWaitPolicy(),
 			hostResources: terminalResources(cfg.Resources),
 		},
 	}
@@ -364,11 +366,18 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	scheduleFiring := schedules.NewFiring(
-		cfg.ScheduleStore,
-		schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
-		policy.invalidations.Publish,
-	)
+	scheduleFiring := schedules.DisabledFiring()
+	if cfg.ScheduleStore != nil {
+		scheduleFiring, err = schedules.NewFiring(schedules.FiringDependencies{
+			Store:         cfg.ScheduleStore,
+			RunStarter:    schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
+			Identities:    scheduleidentity.Source{},
+			Invalidations: policy.invalidations.Publish,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("runtime: construct Schedule firing: %w", err)
+		}
+	}
 
 	approvalCoordinator := approvals.New(policy.approvals, cfg.SessionStore)
 

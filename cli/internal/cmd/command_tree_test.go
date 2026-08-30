@@ -43,10 +43,24 @@ func (p *postCommitDeleteRuntime) DeleteSession(ctx context.Context, request age
 // run in parallel and assert on exact output.
 func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string) (string, string, error) {
 	t.Helper()
-	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) { return backend.AgentOnly(rt), nil }}
+	services := backend.AgentOnly(rt)
 	if rt == nil {
-		dependencies.OpenRuntime = func(context.Context) (backend.Services, error) { return backend.AgentOnly(mock.New()), nil }
+		services = backend.AgentOnly(mock.New())
+	}
+	return executeCommandWithServices(t, services, rt == nil, stdin, args...)
+}
+
+func executeCommandWithServices(
+	t *testing.T,
+	services backend.Services,
+	announceRuntime bool,
+	stdin string,
+	args ...string,
+) (string, string, error) {
+	t.Helper()
+	var out, errb bytes.Buffer
+	dependencies := Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) { return services, nil }}
+	if announceRuntime {
 		dependencies.RuntimeNotice = testRuntimeNotice
 	}
 	root := NewRoot(dependencies)
@@ -66,7 +80,7 @@ func instantRuntime() *mock.Runtime {
 
 func firstSession(t *testing.T, rt agent.Runtime) string {
 	t.Helper()
-	sessions, err := rt.ListSessions(t.Context(), agent.SessionQuery{})
+	sessions, err := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
@@ -324,7 +338,8 @@ func (a *ambiguousControls) calls() (int, int) {
 func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 	t.Run("start", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseStart: true}
-		_, _, err := executeCommand(t, runtime, "", "run", "-s", firstSession(t, runtime), "start once")
+		profile := commandRuntimeProfile(t)
+		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "run", "-s", firstSession(t, runtime), "start once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -336,7 +351,8 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 
 	t.Run("resume", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseResume: true}
-		_, _, err := executeCommand(t, runtime, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
+		profile := commandRuntimeProfile(t)
+		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -428,11 +444,11 @@ func TestRunRejectsInvalidAndConflictingOutputFormatsBeforeCreatingASession(t *t
 	} {
 		t.Run(strings.Join(args[1:3], " "), func(t *testing.T) {
 			runtime := instantRuntime()
-			before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+			before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 			if _, _, err := executeCommand(t, runtime, "", args...); err == nil {
 				t.Fatalf("arguments %v were accepted", args)
 			}
-			after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+			after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 			if len(after.Items) != len(before.Items) {
 				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Items), len(after.Items))
 			}
@@ -552,12 +568,12 @@ func userPromptBlock(t *testing.T, blocks []agent.Block) agent.Block {
 
 func TestRunRejectsInvalidAttachmentBeforeCreatingASession(t *testing.T) {
 	runtime := instantRuntime()
-	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	_, _, err := executeCommand(t, runtime, "", "-C", t.TempDir(), "run", "-f", "missing.txt")
 	if err == nil || !strings.Contains(err.Error(), "missing.txt") {
 		t.Fatalf("error = %v", err)
 	}
-	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if len(after.Items) != len(before.Items) {
 		t.Fatalf("invalid input created a session: %d -> %d", len(before.Items), len(after.Items))
 	}
@@ -598,11 +614,11 @@ func TestRunRejectsAnUnknownSession(t *testing.T) {
 
 func TestRunCreatesASessionWhenNoneIsNamed(t *testing.T) {
 	rt := instantRuntime()
-	before, _ := rt.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	before, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if _, _, err := executeCommand(t, rt, "", "run", "--approve-all", "why?"); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	after, _ := rt.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	after, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if len(after.Items) != len(before.Items)+1 {
 		t.Fatalf("session count went %d -> %d, want one more", len(before.Items), len(after.Items))
 	}
@@ -622,11 +638,11 @@ func TestWorkspaceFlagIsNormalizedBeforeCreatingASession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if _, _, err := executeCommand(t, runtime, "", "-C", relative, "run", "--approve-all", "normalize workspace"); err != nil {
 		t.Fatal(err)
 	}
-	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if len(after.Items) != len(before.Items)+1 || after.Items[0].Workspace.Path != want {
 		t.Fatalf("newest session workspace = %q, want %q", after.Items[0].Workspace.Path, want)
 	}
@@ -674,7 +690,7 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := commandRuntimeProfile()
+	profile := commandRuntimeProfile(t)
 	profile.Features[runtimeprofile.FeatureRelocate] = runtimeprofile.Feature{}
 	provider := runtimeProvider{open: func(context.Context) (backend.Services, error) {
 		return backend.Services{Agent: base, RuntimeProfile: new(profile.Clone())}, nil
@@ -817,7 +833,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	base := instantRuntime()
 	target := firstSession(t, base)
 	stateDirectory := t.TempDir()
-	authoring, err := workbench.Open(stateDirectory, workbench.Config{})
+	authoring, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -842,7 +858,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if runtime.request.SessionID != target || runtime.request.CommandID == "" {
 		t.Fatalf("delete request = %+v", runtime.request)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -946,7 +962,10 @@ func TestApprovalRuleCommandsInspectAndForget(t *testing.T) {
 
 func createProjectApprovalRule(t *testing.T, runtime agent.Runtime, sessionID string) string {
 	t.Helper()
-	stream, err := runtime.StartRun(t.Context(), agent.StartRun{SessionID: sessionID, Message: agent.Message{Text: "remember this"}})
+	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
+		SessionID: sessionID, Message: agent.Message{Text: "remember this"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

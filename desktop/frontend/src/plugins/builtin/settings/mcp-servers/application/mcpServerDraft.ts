@@ -1,5 +1,11 @@
 import type { MCPServerSettings, MCPTransport } from "./mcpServerConfig";
 import type { MCPServerInput } from "./mcpServerInput";
+import {
+  boundedMCPHandshakeTimeout,
+  mcpHandshakeTimeoutSeconds,
+  UNBOUNDED_MCP_HANDSHAKE,
+  type MCPHandshakeTimeout,
+} from "./mcpHandshakeTimeout";
 
 export interface MCPServerDraft {
   name: string;
@@ -73,7 +79,7 @@ export function initialMCPServerDraft(server?: MCPServerSettings): MCPServerDraf
     url: server?.url ?? "",
     authorization: preserveRetainedValue(),
     headers: preserveRetainedValue(),
-    timeoutSec: server?.timeoutSeconds ? String(server.timeoutSeconds) : "",
+    timeoutSec: server ? String(mcpHandshakeTimeoutSeconds(server.handshakeTimeout) ?? "") : "",
     disabledTools: server?.disabledTools ?? [],
     autoApproveTools: server?.autoApproveTools ?? [],
   };
@@ -85,7 +91,8 @@ export function isMCPServerDraftValid(draft: MCPServerDraft, server?: MCPServerS
     (draft.transport === "stdio" ? draft.command.trim() !== "" : draft.url.trim() !== "") &&
     !mcpAuthorizationNeedsDisposition(draft, server) &&
     !mcpHeadersNeedDisposition(draft, server) &&
-    !mcpEnvironmentNeedsDisposition(draft, server)
+    !mcpEnvironmentNeedsDisposition(draft, server) &&
+    handshakeTimeoutFromDraft(draft.timeoutSec) !== undefined
   );
 }
 
@@ -132,13 +139,16 @@ export function mcpServerInputFromDraft(
   draft: MCPServerDraft,
   server?: MCPServerSettings,
 ): MCPServerInput {
-  const secs = parseInt(draft.timeoutSec, 10);
+  const handshakeTimeout = handshakeTimeoutFromDraft(draft.timeoutSec);
+  if (handshakeTimeout === undefined) {
+    throw new Error("MCP handshake timeout must be blank or a positive integer");
+  }
   const base: MCPServerInput = {
     name: draft.name.trim(),
     transport: draft.transport,
     enabled: server?.enabled ?? true,
     description: draft.description.trim() || undefined,
-    timeoutSeconds: Number.isFinite(secs) && secs > 0 ? secs : undefined,
+    handshakeTimeout,
     disabledTools: draft.disabledTools.length ? draft.disabledTools : undefined,
     autoApproveTools: draft.autoApproveTools.length ? draft.autoApproveTools : undefined,
   };
@@ -157,6 +167,18 @@ export function mcpServerInputFromDraft(
     authorization: authorizationFromDraft(draft),
     headers: headersFromDraft(draft),
   };
+}
+
+function handshakeTimeoutFromDraft(value: string): MCPHandshakeTimeout | undefined {
+  const normalized = value.trim();
+  if (normalized === "") return UNBOUNDED_MCP_HANDSHAKE;
+  if (!/^\d+$/.test(normalized)) return undefined;
+  const seconds = Number(normalized);
+  try {
+    return boundedMCPHandshakeTimeout(seconds);
+  } catch {
+    return undefined;
+  }
 }
 
 function authorizationFromDraft(draft: MCPServerDraft): string | null | undefined {

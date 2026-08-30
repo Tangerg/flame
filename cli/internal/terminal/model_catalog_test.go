@@ -12,10 +12,17 @@ import (
 
 func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 	t.Parallel()
+	contextWindow, maxInput, maxOutput := int64(200_000), int64(180_000), int64(20_000)
+	limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
+		ContextWindow: &contextWindow, MaxInputTokens: &maxInput, MaxOutputTokens: &maxOutput,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	document := modelCatalogDocument([]agent.Model{{
 		ID: "reasoner", Provider: "provider", DisplayName: "Reasoner", Deprecated: true,
-		ContextWindow: 200_000, MaxInputTokens: 180_000, MaxOutputTokens: 20_000,
+		TokenLimits:     limits,
 		KnowledgeCutoff: "2026-01-31",
 		Capabilities: &agent.ModelCapabilities{
 			Reasoning: true, ReasoningLevels: []string{"low", "high"}, ReasoningDefaultLevel: "high",

@@ -90,8 +90,8 @@ func writeRuntimeProfile(output io.Writer, profile runtimeprofile.Profile) error
 	}
 	limits := profile.Limits
 	rows = append(rows,
-		[2]string{"max concurrent runs", formatOptionalRuntimeLimit(limits.MaxConcurrentRuns)},
-		[2]string{"idempotency retention", fmt.Sprintf("%d seconds", limits.IdempotencyRetentionSeconds)},
+		[2]string{"run concurrency", formatRunConcurrency(limits.RunConcurrency)},
+		[2]string{"command replay retention", limits.CommandReplay.Retention().String()},
 		[2]string{"run replay", fmt.Sprintf("%d events · %d bytes · %s", limits.RunReplay.MaxEvents, limits.RunReplay.MaxBytes, limits.RunReplay.Scope)},
 		[2]string{"MCP auth retention", fmt.Sprintf("%d seconds", limits.MCPAuthorizationRetentionSeconds)},
 		[2]string{"runtime subscription", fmt.Sprintf("%d topics · %d watches", limits.RuntimeSubscription.MaxTopics, limits.RuntimeSubscription.MaxWatches)},
@@ -104,9 +104,10 @@ func writeRuntimeProfile(output io.Writer, profile runtimeprofile.Profile) error
 	return writer.Flush()
 }
 
-func formatOptionalRuntimeLimit(value int) string {
-	if value == 0 {
-		return "runtime default"
+func formatRunConcurrency(limit runtimeprofile.RunConcurrencyLimit) string {
+	maximum, bounded := limit.Maximum()
+	if !bounded {
+		return "unbounded"
 	}
-	return fmt.Sprintf("%d", value)
+	return fmt.Sprintf("at most %d runs", maximum)
 }

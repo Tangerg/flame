@@ -35,7 +35,7 @@ func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 	if bundle.DataDirectory != dataDirectory {
 		t.Fatalf("DataDirectory = %q, want %q", bundle.DataDirectory, dataDirectory)
 	}
-	if bundle.IdempotencyNamespace == "" {
+	if bundle.IdempotencyNamespace.String() == "" {
 		t.Fatal("Open returned an empty idempotency namespace")
 	}
 	if _, statErr := os.Stat(filepath.Join(dataDirectory, "flame.db")); statErr != nil {

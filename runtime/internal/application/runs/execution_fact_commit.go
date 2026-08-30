@@ -70,6 +70,6 @@ func (e ExecutionFactReceipt) Await(ctx context.Context) error {
 	case err := <-e.state.done:
 		return err
 	case <-ctx.Done():
-		return ctx.Err()
+		return context.Cause(ctx)
 	}
 }

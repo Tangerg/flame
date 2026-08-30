@@ -2,9 +2,42 @@ package terminal
 
 import (
 	"context"
+	"math"
 	"sync/atomic"
 	"testing"
 )
+
+func TestOperationOwnerExhaustionDoesNotCancelTheCurrentLease(t *testing.T) {
+	owner := newOperationOwner(t.Context())
+	owner.next = operationLeaseID(math.MaxUint64 - 1)
+	t.Cleanup(owner.Close)
+
+	started := make(chan struct{})
+	canceled := make(chan struct{})
+	if !owner.Go("long-running", false, func(ctx context.Context, _ operationLease) {
+		close(started)
+		<-ctx.Done()
+		close(canceled)
+	}) {
+		t.Fatal("last representable operation lease was rejected")
+	}
+	<-started
+
+	var replacementRan atomic.Bool
+	if owner.Go("long-running", true, func(context.Context, operationLease) {
+		replacementRan.Store(true)
+	}) {
+		t.Fatal("operation owner wrapped its exhausted lease identity")
+	}
+	select {
+	case <-canceled:
+		t.Fatal("identity exhaustion canceled the still-authoritative lease")
+	default:
+	}
+	if replacementRan.Load() || !owner.Active("long-running") {
+		t.Fatal("identity exhaustion replaced the still-authoritative lease")
+	}
+}
 
 func TestOperationOwnerReplacesJoinsAndRejectsWorkAfterClose(t *testing.T) {
 	owner := newOperationOwner(t.Context())

@@ -13,8 +13,6 @@ import (
 var errCanceled = errors.New("mock: run canceled")
 
 const (
-	defaultPageSize = 20
-	maxPageSize     = 100
 	defaultProvider = "mock"
 	defaultModel    = "balanced"
 )
@@ -47,18 +45,17 @@ type Runtime struct {
 	rules        []storedRule
 	approvalMode agent.ApprovalMode
 	fault        int
-	next         uint64
+	identities   mockIdentitySequence
 	now          func() time.Time
 }
 
 type sessionState struct {
-	meta         agent.Session
-	items        []durableItem
-	plan         []agent.PlanItem
-	planRevision uint64
-	planAtRun    map[string][]agent.PlanItem
-	runs         []string
-	active       string
+	meta      agent.Session
+	items     []durableItem
+	plan      *agent.Plan
+	planAtRun map[string]*agent.Plan
+	runs      []string
+	active    string
 }
 
 type durableItem struct {
@@ -86,16 +83,16 @@ type runState struct {
 	answers      map[string]agent.Answer
 	cancel       chan struct{}
 	cancelOnce   sync.Once
-	finishOnce   sync.Once
 	usage        agent.Usage
 	outcome      agent.Outcome
 }
 
 type segmentState struct {
-	id      string
-	events  []agent.RunEvent
-	changed chan struct{}
-	closed  bool
+	id          string
+	events      []agent.RunEvent
+	changed     chan struct{}
+	closed      bool
+	terminalErr error
 }
 
 func New() *Runtime {
@@ -119,11 +116,21 @@ func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
 		return nil, err
 	}
 	models := []agent.Model{
-		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", ContextWindow: 200_000, MaxOutputTokens: 32_000, Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true, StructuredOutput: true}},
-		{ID: "fast", Provider: "mock", DisplayName: "Mock Fast", ContextWindow: 128_000, MaxOutputTokens: 16_000, Capabilities: &agent.ModelCapabilities{InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
-		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", ContextWindow: 400_000, MaxOutputTokens: 64_000, Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
+		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", TokenLimits: mockModelTokenLimits(200_000, 32_000), Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true, StructuredOutput: true}},
+		{ID: "fast", Provider: "mock", DisplayName: "Mock Fast", TokenLimits: mockModelTokenLimits(128_000, 16_000), Capabilities: &agent.ModelCapabilities{InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
+		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", TokenLimits: mockModelTokenLimits(400_000, 64_000), Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
 	}
 	return models, nil
+}
+
+func mockModelTokenLimits(contextWindow, maxOutput int64) agent.ModelTokenLimits {
+	limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
+		ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return limits
 }
 
 func (r *Runtime) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {

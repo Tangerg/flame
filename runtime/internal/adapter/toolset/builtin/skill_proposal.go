@@ -9,6 +9,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 )
@@ -63,9 +64,12 @@ func NewProposal(proposals SkillProposalSubmitter, defaultWorkspacePath string) 
 }
 
 func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult, error) {
-	sessionID := strings.TrimSpace(executionctx.SessionID(ctx))
+	sessionID := executionctx.SessionID(ctx)
 	if sessionID == "" {
 		return proposalResult{}, errors.New("propose_skill: no active session")
+	}
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
 	}
 	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, p.defaultWorkspacePath))
 	if cwd == "" {

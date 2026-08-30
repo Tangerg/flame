@@ -2,25 +2,38 @@ package terminal
 
 import (
 	"errors"
+	"math"
 	"sync"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
-var errDraftPersistenceClosed = errors.New("draft persistence is closed")
+var (
+	errDraftPersistenceClosed            = errors.New("draft persistence is closed")
+	errDraftPersistenceRevisionExhausted = errors.New("draft persistence revision space is exhausted")
+)
+
+type draftRevision uint64
+
+func (r draftRevision) successor() (draftRevision, bool) {
+	if r == draftRevision(math.MaxUint64) {
+		return 0, false
+	}
+	return r + 1, true
+}
 
 type draftRepository interface {
 	SaveDraft(string, agent.Message) error
 }
 
 type draftSnapshot struct {
-	revision  uint64
+	revision  draftRevision
 	sessionID string
 	message   agent.Message
 }
 
 type draftPersistenceResult struct {
-	revision uint64
+	revision draftRevision
 	err      error
 }
 
@@ -31,7 +44,7 @@ type draftPersistence struct {
 	commandMu sync.Mutex
 	mu        sync.Mutex
 	pending   *draftSnapshot
-	revision  uint64
+	revision  draftRevision
 	closed    bool
 	wake      chan struct{}
 	flush     chan draftFlush
@@ -66,21 +79,26 @@ func newDraftPersistence(repository draftRepository, notify func(draftPersistenc
 // Schedule records the latest complete authoring value without blocking the
 // caller on filesystem latency. A snapshot is cloned at this boundary because
 // attachment slices remain owned by the UI model.
-func (d *draftPersistence) Schedule(sessionID string, message agent.Message) bool {
+func (d *draftPersistence) Schedule(sessionID string, message agent.Message) error {
 	if d == nil || sessionID == "" {
-		return false
+		return nil
 	}
 	d.mu.Lock()
 	if d.closed {
 		d.mu.Unlock()
-		return false
+		return errDraftPersistenceClosed
 	}
-	d.revision++
+	next, ok := d.revision.successor()
+	if !ok {
+		d.mu.Unlock()
+		return errDraftPersistenceRevisionExhausted
+	}
+	d.revision = next
 	snapshot := draftSnapshot{revision: d.revision, sessionID: sessionID, message: message.Clone()}
 	d.pending = &snapshot
 	d.mu.Unlock()
 	d.signal()
-	return true
+	return nil
 }
 
 // Flush supersedes older pending work and waits until every older write has
@@ -92,9 +110,9 @@ func (d *draftPersistence) Flush(sessionID string, message agent.Message) error 
 	}
 	d.commandMu.Lock()
 	defer d.commandMu.Unlock()
-	snapshot, ok := d.reserve(sessionID, message)
-	if !ok {
-		return errDraftPersistenceClosed
+	snapshot, err := d.reserve(sessionID, message)
+	if err != nil {
+		return err
 	}
 	request := draftFlush{snapshot: snapshot, done: make(chan error, 1)}
 	select {
@@ -105,7 +123,7 @@ func (d *draftPersistence) Flush(sessionID string, message agent.Message) error 
 	}
 }
 
-func (d *draftPersistence) Current(revision uint64) bool {
+func (d *draftPersistence) Current(revision draftRevision) bool {
 	if d == nil {
 		return false
 	}
@@ -140,14 +158,18 @@ func (d *draftPersistence) Close() error {
 	}
 }
 
-func (d *draftPersistence) reserve(sessionID string, message agent.Message) (draftSnapshot, bool) {
+func (d *draftPersistence) reserve(sessionID string, message agent.Message) (draftSnapshot, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.closed {
-		return draftSnapshot{}, false
+		return draftSnapshot{}, errDraftPersistenceClosed
 	}
-	d.revision++
-	return draftSnapshot{revision: d.revision, sessionID: sessionID, message: message.Clone()}, true
+	next, ok := d.revision.successor()
+	if !ok {
+		return draftSnapshot{}, errDraftPersistenceRevisionExhausted
+	}
+	d.revision = next
+	return draftSnapshot{revision: d.revision, sessionID: sessionID, message: message.Clone()}, nil
 }
 
 func (d *draftPersistence) takePending() (draftSnapshot, bool) {
@@ -161,7 +183,7 @@ func (d *draftPersistence) takePending() (draftSnapshot, bool) {
 	return snapshot, true
 }
 
-func (d *draftPersistence) discardPendingThrough(revision uint64) {
+func (d *draftPersistence) discardPendingThrough(revision draftRevision) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.pending != nil && d.pending.revision <= revision {

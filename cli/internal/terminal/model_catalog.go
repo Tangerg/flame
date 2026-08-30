@@ -33,7 +33,10 @@ func modelCatalogDocument(models []agent.Model) readerDocument {
 	}
 	ordered := slices.Clone(models)
 	slices.SortFunc(ordered, func(left, right agent.Model) int {
-		return strings.Compare(left.Provider+"\x00"+left.ID, right.Provider+"\x00"+right.ID)
+		if compared := strings.Compare(left.Provider, right.Provider); compared != 0 {
+			return compared
+		}
+		return strings.Compare(left.ID, right.ID)
 	})
 	sections := make([]ToolSection, 0, len(ordered))
 	for _, model := range ordered {
@@ -76,16 +79,20 @@ func modelCatalogLines(model agent.Model) []string {
 
 func modelTokenLimits(model agent.Model) string {
 	var limits []string
+	contextWindow, contextKnown := model.TokenLimits.ContextWindow()
+	maxInput, inputKnown := model.TokenLimits.MaxInputTokens()
+	maxOutput, outputKnown := model.TokenLimits.MaxOutputTokens()
 	for _, limit := range []struct {
-		name  string
-		value int
+		name    string
+		value   int64
+		present bool
 	}{
-		{name: "context", value: model.ContextWindow},
-		{name: "input", value: model.MaxInputTokens},
-		{name: "output", value: model.MaxOutputTokens},
+		{name: "context", value: contextWindow, present: contextKnown},
+		{name: "input", value: maxInput, present: inputKnown},
+		{name: "output", value: maxOutput, present: outputKnown},
 	} {
-		if limit.value > 0 {
-			limits = append(limits, limit.name+" "+formatThousands(int64(limit.value)))
+		if limit.present {
+			limits = append(limits, limit.name+" "+formatThousands(limit.value))
 		}
 	}
 	return strings.Join(limits, " · ")

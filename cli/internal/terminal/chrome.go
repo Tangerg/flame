@@ -222,16 +222,17 @@ func activityWindow(total, capacity, active int) (start, end int) {
 }
 
 type statusView struct {
-	theme   kit.Theme
-	glyphs  kit.Glyphs
-	doing   string
-	problem string
-	elapsed string
-	usage   agent.Usage
-	outcome agent.Outcome
-	status  kit.Status
-	busy    bool
-	options agent.RunOptions
+	theme              kit.Theme
+	glyphs             kit.Glyphs
+	doing              string
+	problem            string
+	elapsed            string
+	usage              agent.Usage
+	outcome            agent.Outcome
+	status             kit.Status
+	busy               bool
+	runningDescendants int
+	options            agent.RunOptions
 }
 
 func newStatusView(theme kit.Theme, glyphs kit.Glyphs, options agent.RunOptions) *statusView {
@@ -257,7 +258,14 @@ func (s *statusView) Draw(view grid.View) {
 	if s.busy {
 		s.status.Theme, s.status.Glyphs = s.theme, s.glyphs
 		s.status.Doing, s.status.Elapsed = s.doing, s.elapsed
-		s.status.Draw(view)
+		right := runningDescendantsLabel(s.glyphs, s.runningDescendants)
+		rightWidth := text.Width(right)
+		if right == "" || rightWidth+2 >= width {
+			s.status.Draw(view)
+			return
+		}
+		s.status.Draw(view.Sub(grid.Rect(0, 0, width-rightWidth-1, 1)))
+		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 		return
 	}
 	right := usageLabel(s.usage)
@@ -287,6 +295,17 @@ func (s *statusView) setOptions(options agent.RunOptions) { s.options = options 
 
 func (s *statusView) setProblem(problem string) { s.problem = strings.TrimSpace(problem) }
 
+func (s *statusView) setRunningDescendants(count int) {
+	s.runningDescendants = max(count, 0)
+}
+
+func runningDescendantsLabel(glyphs kit.Glyphs, count int) string {
+	if count <= 0 {
+		return ""
+	}
+	return glyphs.Bullet + " " + countedNoun(count, "subagent") + " active"
+}
+
 func optionsLabel(options agent.RunOptions) string {
 	parts := []string{modelLabel(options)}
 	if limits := limitsLabel(options.Limits); limits != "" {
@@ -304,14 +323,14 @@ func modelLabel(options agent.RunOptions) string {
 
 func limitsLabel(limits agent.RunLimits) string {
 	parts := make([]string, 0, 3)
-	if limits.MaxTotalTokens > 0 {
-		parts = append(parts, fmt.Sprintf("tokens ≤ %d", limits.MaxTotalTokens))
+	if value, limited := limits.MaxTotalTokens(); limited {
+		parts = append(parts, fmt.Sprintf("tokens ≤ %d", value))
 	}
-	if limits.MaxSteps > 0 {
-		parts = append(parts, fmt.Sprintf("steps ≤ %d", limits.MaxSteps))
+	if value, limited := limits.MaxSteps(); limited {
+		parts = append(parts, fmt.Sprintf("steps ≤ %d", value))
 	}
-	if limits.MaxBudgetUSD > 0 {
-		parts = append(parts, fmt.Sprintf("budget ≤ $%.2f", limits.MaxBudgetUSD))
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		parts = append(parts, fmt.Sprintf("budget ≤ $%.2f", value))
 	}
 	if len(parts) == 0 {
 		return ""
@@ -327,6 +346,7 @@ func (s *statusView) tick(elapsed time.Duration) {
 func (s *statusView) settled(outcome agent.Outcome, usage agent.Usage) {
 	s.outcome, s.usage, s.elapsed = outcome, usage.Clone(), ""
 	s.busy = false
+	s.runningDescendants = 0
 	switch outcome.Status {
 	case agent.OutcomeCompleted:
 		s.doing = "complete"

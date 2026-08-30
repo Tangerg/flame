@@ -20,17 +20,41 @@ func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 	if err != nil {
 		return err
 	}
-	if ok && existing.Enabled() {
-		if existing.KeySource != provider.KeyEnv || existing.BaseURL != "" || cfg.BaseURL == "" {
-			return nil
+	if ok {
+		credential, configured := existing.Credential()
+		if configured {
+			source, _ := credential.Source()
+			_, hasBaseURL := existing.BaseURL()
+			if source != provider.KeyEnvironment || hasBaseURL || cfg.BaseURL == "" {
+				return nil
+			}
+			baseURL, parseErr := provider.NewBaseURL(cfg.BaseURL)
+			if parseErr != nil {
+				return parseErr
+			}
+			_, err = registry.Update(ctx, id, provider.Patch{BaseURL: provider.Set(baseURL)})
+			return err
 		}
-		_, err = registry.Update(ctx, id, provider.Patch{BaseURL: &cfg.BaseURL})
-		return err
 	}
-	_, err = registry.Update(ctx, id, provider.Patch{
-		APIKey:  &cfg.APIKey,
-		BaseURL: &cfg.BaseURL,
-	})
+	patch := provider.Patch{}
+	if cfg.APIKey != "" {
+		apiKey, keyErr := provider.NewAPIKey(cfg.APIKey)
+		if keyErr != nil {
+			return keyErr
+		}
+		patch.APIKey = provider.Set(apiKey)
+	}
+	if cfg.BaseURL != "" {
+		baseURL, parseErr := provider.NewBaseURL(cfg.BaseURL)
+		if parseErr != nil {
+			return parseErr
+		}
+		patch.BaseURL = provider.Set(baseURL)
+	}
+	if patch.Empty() {
+		return nil
+	}
+	_, err = registry.Update(ctx, id, patch)
 	return err
 }
 

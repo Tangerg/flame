@@ -18,14 +18,17 @@ func TestLookupTokenLimitsPreservesIndependentCatalogFacts(t *testing.T) {
 	if !found {
 		t.Fatal("LookupTokenLimits() missed openai/gpt-5-pro")
 	}
-	if limits.ContextWindow() != 400_000 ||
-		limits.MaxInputTokens() != 272_000 ||
-		limits.MaxOutputTokens() != 272_000 {
+	contextWindow, contextKnown := limits.ContextWindow()
+	maxInput, inputKnown := limits.MaxInputTokens()
+	maxOutput, outputKnown := limits.MaxOutputTokens()
+	if contextWindow != 400_000 || !contextKnown ||
+		maxInput != 272_000 || !inputKnown ||
+		maxOutput != 272_000 || !outputKnown {
 		t.Fatalf(
-			"limits = context:%d input:%d output:%d",
-			limits.ContextWindow(),
-			limits.MaxInputTokens(),
-			limits.MaxOutputTokens(),
+			"limits = context:(%d,%t) input:(%d,%t) output:(%d,%t)",
+			contextWindow, contextKnown,
+			maxInput, inputKnown,
+			maxOutput, outputKnown,
 		)
 	}
 }
@@ -36,7 +39,7 @@ func TestLookupTokenLimitsAllowsPrivateCatalogMiss(t *testing.T) {
 		t.Fatal(err)
 	}
 	limits, found, err := LookupTokenLimits(selection)
-	if err != nil || found || !limits.IsZero() {
-		t.Fatalf("LookupTokenLimits() = (%+v,%t,%v), want zero,false,nil", limits, found, err)
+	if err != nil || found || !limits.Unknown() {
+		t.Fatalf("LookupTokenLimits() = (%+v,%t,%v), want unknown,false,nil", limits, found, err)
 	}
 }

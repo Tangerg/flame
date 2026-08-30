@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -25,6 +26,8 @@ import (
 	"github.com/Tangerg/scope/models/xai"
 	"github.com/Tangerg/scope/models/xiaomi"
 	"github.com/Tangerg/scope/models/zhipu"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 const (
@@ -32,107 +35,239 @@ const (
 	defaultOpenAIModel    = "gpt-5.6-sol"
 )
 
-// ClientSpec is everything needed to build one chat client: which provider
-// (the adapter to use), which model, the api key, and an optional endpoint
-// override. It is the unit a multi-provider registry resolves a Run to.
+type clientCredentialKind uint8
+
+const (
+	clientCredentialAbsent clientCredentialKind = iota + 1
+	clientCredentialAPIKey
+)
+
+// ClientCredential explicitly represents an unauthenticated endpoint or one
+// exact API key. Raw secret access remains inside the provider implementation.
+type ClientCredential struct {
+	kind   clientCredentialKind
+	apiKey string
+}
+
+func NoClientCredential() ClientCredential {
+	return ClientCredential{kind: clientCredentialAbsent}
+}
+
+func NewAPIKeyCredential(apiKey string) (ClientCredential, error) {
+	if strings.TrimSpace(apiKey) == "" {
+		return ClientCredential{}, fmt.Errorf("llm: API key is blank")
+	}
+	return ClientCredential{kind: clientCredentialAPIKey, apiKey: apiKey}, nil
+}
+
+func (c ClientCredential) validate() error {
+	switch c.kind {
+	case clientCredentialAbsent:
+		if c.apiKey != "" {
+			return fmt.Errorf("unauthenticated credential carries an API key")
+		}
+	case clientCredentialAPIKey:
+		if strings.TrimSpace(c.apiKey) == "" {
+			return fmt.Errorf("API key credential is blank")
+		}
+	default:
+		return fmt.Errorf("unknown credential kind %d", c.kind)
+	}
+	return nil
+}
+
+func (c ClientCredential) sdkAPIKey() string {
+	if c.kind != clientCredentialAPIKey {
+		return ""
+	}
+	return c.apiKey
+}
+
+func (c ClientCredential) configured() bool { return c.kind == clientCredentialAPIKey }
+
+type clientEndpointKind uint8
+
+const (
+	clientEndpointAbsent clientEndpointKind = iota + 1
+	clientEndpointConfigured
+)
+
+type clientEndpoint struct {
+	kind    clientEndpointKind
+	baseURL string
+}
+
+func noClientEndpoint() clientEndpoint {
+	return clientEndpoint{kind: clientEndpointAbsent}
+}
+
+func configuredClientEndpoint(baseURL string) (clientEndpoint, error) {
+	if err := validateCatalogBaseURL(baseURL); err != nil {
+		return clientEndpoint{}, err
+	}
+	return clientEndpoint{kind: clientEndpointConfigured, baseURL: baseURL}, nil
+}
+
+func (e clientEndpoint) validate() error {
+	switch e.kind {
+	case clientEndpointAbsent:
+		if e.baseURL != "" {
+			return fmt.Errorf("absent endpoint carries a base URL")
+		}
+	case clientEndpointConfigured:
+		if err := validateCatalogBaseURL(e.baseURL); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown endpoint kind %d", e.kind)
+	}
+	return nil
+}
+
+func (e clientEndpoint) configured() bool { return e.kind == clientEndpointConfigured }
+
+func (e clientEndpoint) sdkBaseURL() string {
+	if !e.configured() {
+		return ""
+	}
+	return e.baseURL
+}
+
+// ClientSpec is the constructed input for one chat or embedding client. Its
+// fields are private so endpoint and credential absence cannot be encoded by
+// blank strings or a partial struct literal.
 type ClientSpec struct {
-	Provider Provider
-	Model    string
-	APIKey   string
-	BaseURL  string // empty uses the adapter's default endpoint
+	provider   Provider
+	model      modelref.ModelIdentity
+	credential ClientCredential
+	endpoint   clientEndpoint
+}
+
+func NewClientSpec(provider Provider, model string, credential ClientCredential) (ClientSpec, error) {
+	identity, err := modelref.NewModelIdentity(model)
+	if err != nil {
+		return ClientSpec{}, fmt.Errorf("llm: model: %w", err)
+	}
+	spec := ClientSpec{provider: provider, model: identity, credential: credential, endpoint: noClientEndpoint()}
+	if err := spec.validate(); err != nil {
+		return ClientSpec{}, err
+	}
+	return spec, nil
+}
+
+func (s ClientSpec) WithBaseURL(baseURL string) (ClientSpec, error) {
+	endpoint, err := configuredClientEndpoint(baseURL)
+	if err != nil {
+		return ClientSpec{}, fmt.Errorf("llm: base URL: %w", err)
+	}
+	s.endpoint = endpoint
+	return s, nil
+}
+
+func (s ClientSpec) validate() error {
+	profile, found := providers.lookup(s.provider)
+	if !found {
+		return fmt.Errorf("llm: unsupported provider %q", s.provider)
+	}
+	if _, err := modelref.NewModelIdentity(s.model.String()); err != nil {
+		return fmt.Errorf("llm: model: %w", err)
+	}
+	if err := s.credential.validate(); err != nil {
+		return fmt.Errorf("llm: credential: %w", err)
+	}
+	if profile.credential.required() && !s.credential.configured() {
+		return fmt.Errorf("llm: provider %q requires an API key", s.provider)
+	}
+	if err := s.endpoint.validate(); err != nil {
+		return fmt.Errorf("llm: endpoint: %w", err)
+	}
+	return nil
+}
+
+func (s ClientSpec) sdkAPIKey() string { return s.credential.sdkAPIKey() }
+
+func (s ClientSpec) sdkBaseURL() string { return s.endpoint.sdkBaseURL() }
+
+func (s ClientSpec) withEndpoint(endpoint clientEndpoint) ClientSpec {
+	s.endpoint = endpoint
+	return s
 }
 
 // buildFunc constructs the scope chat adapter for one (key, model, baseURL).
-// One per provider — it's the only provider-specific code; everything else
-// (validate / default-model / key-env) is data in [chatProviderCatalog].
+// One per provider — it is the only provider-specific chat construction code.
 type buildFunc func(spec ClientSpec, opts chat.Options) (chat.Model, error)
 
-type chatProviderProfile struct {
-	defaultModel string // catalog default model; "" when the model id is user-supplied
-	apiKeyEnv    string
-	build        buildFunc
-	// requiresBaseURL marks providers with no built-in endpoint (the compatible
-	// endpoint providers and Azure's per-resource URL): a base URL is mandatory,
-	// validated at client build.
-	requiresBaseURL bool
-	// defaultBaseURL is a built-in endpoint used for live model discovery
-	// when the caller configured none — set only for the local
-	// Ollama daemon (hosted vendors encode their endpoint inside the adapter).
-	defaultBaseURL string
-}
-
-// chatProviderCatalog is the data-driven provider table — the single place that knows
-// each provider's adapter, default model, and key env var. A provider is
-// "known" iff it has a row here; the supported / default-model / key-env /
-// dispatch lookups all read this map. Most rows route through a vendor's
-// OpenAI-compatible adapter (which encodes its own endpoint); the two generic
-// compatible providers reuse the direct OpenAI / Anthropic adapters with a caller URL.
-var chatProviderCatalog = map[Provider]chatProviderProfile{
+// providers is the constructed provider catalog. Registration helpers encode
+// the only legal combinations of endpoint ownership and model discovery;
+// newProviderCatalog rejects duplicate identities and incomplete integrations.
+var providers = mustProviderCatalog(
 	// Direct vendor wire adapters (base URL optional — defaults to the vendor endpoint).
-	ProviderAnthropic: {defaultModel: defaultAnthropicModel, apiKeyEnv: "ANTHROPIC_API_KEY", build: buildAnthropicCountingModel},
-	ProviderOpenAI:    {defaultModel: defaultOpenAIModel, apiKeyEnv: "OPENAI_API_KEY", build: buildOpenAIResponsesModel},
-	ProviderGoogle: {defaultModel: google.ModelGemini36Flash, apiKeyEnv: "GOOGLE_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return google.NewChat(google.ChatConfig{APIKey: s.APIKey, DefaultOptions: o})
-	}},
+	bundledProvider(ProviderAnthropic, defaultAnthropicModel, "ANTHROPIC_API_KEY", buildAnthropicCountingModel),
+	bundledProvider(ProviderOpenAI, defaultOpenAIModel, "OPENAI_API_KEY", buildOpenAIResponsesModel).
+		withEmbedding(bundledModels(defaultOpenAIEmbeddingModel), buildOpenAIEmbeddingModel),
+	bundledProvider(ProviderGoogle, google.ModelGemini36Flash, "GOOGLE_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return google.NewChat(google.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o})
+	}).withEmbedding(bundledModels(google.ModelGeminiEmbedding2), buildGoogleEmbeddingModel),
 
 	// OpenAI-compatible vendors — each adapter encodes its own endpoint.
-	ProviderMoonshot: {defaultModel: moonshot.ModelK3, apiKeyEnv: "MOONSHOT_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return moonshot.NewOpenAIChat(moonshot.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderDeepSeek: {defaultModel: deepseek.ModelV4Flash, apiKeyEnv: "DEEPSEEK_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return deepseek.NewOpenAIChat(deepseek.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderAlibaba: {defaultModel: alibaba.ModelQwen37Plus, apiKeyEnv: "ALIBABA_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return alibaba.NewOpenAIChat(alibaba.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderFireworks: {defaultModel: fireworks.ModelGPTOSS20B, apiKeyEnv: "FIREWORKS_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return fireworks.NewOpenAIChat(fireworks.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderGroq: {defaultModel: groq.ModelGPTOSS20B, apiKeyEnv: "GROQ_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return groq.NewOpenAIChat(groq.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderHuggingface: {defaultModel: huggingface.ModelGPTOSS120B, apiKeyEnv: "HUGGINGFACE_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return huggingface.NewOpenAIChat(huggingface.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderMinimax: {defaultModel: minimax.ModelM3, apiKeyEnv: "MINIMAX_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return minimax.NewOpenAIChat(minimax.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderMistral: {defaultModel: mistral.ModelSmall, apiKeyEnv: "MISTRAL_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return mistral.NewChat(mistral.ChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderOpenRouter: {defaultModel: openrouter.ModelAuto, apiKeyEnv: "OPENROUTER_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return openrouter.NewOpenAIChat(openrouter.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderPerplexity: {defaultModel: perplexity.ModelSonar, apiKeyEnv: "PERPLEXITY_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewOpenAIChat(perplexity.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderTogether: {defaultModel: together.ModelRnj1Instruct, apiKeyEnv: "TOGETHER_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return together.NewOpenAIChat(together.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderXAI: {defaultModel: xai.ModelGrok45, apiKeyEnv: "XAI_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return xai.NewOpenAIChat(xai.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderXiaomi: {defaultModel: xiaomi.ModelV25Pro, apiKeyEnv: "XIAOMI_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return xiaomi.NewOpenAIChat(xiaomi.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
-	ProviderZhipu: {defaultModel: zhipu.ModelGLM52, apiKeyEnv: "ZHIPU_API_KEY", build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return zhipu.NewOpenAIChat(zhipu.OpenAIChatConfig{APIKey: s.APIKey, DefaultOptions: o, BaseURL: s.BaseURL})
-	}},
+	bundledProvider(ProviderMoonshot, moonshot.ModelK3, "MOONSHOT_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return moonshot.NewOpenAIChat(moonshot.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderDeepSeek, deepseek.ModelV4Flash, "DEEPSEEK_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return deepseek.NewOpenAIChat(deepseek.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderAlibaba, alibaba.ModelQwen37Plus, "ALIBABA_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return alibaba.NewOpenAIChat(alibaba.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}).withEmbedding(bundledModels(alibaba.ModelEmbeddingV4), buildAlibabaEmbeddingModel),
+	bundledProvider(ProviderFireworks, fireworks.ModelGPTOSS20B, "FIREWORKS_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return fireworks.NewOpenAIChat(fireworks.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderGroq, groq.ModelGPTOSS20B, "GROQ_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return groq.NewOpenAIChat(groq.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderHuggingface, huggingface.ModelGPTOSS120B, "HUGGINGFACE_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return huggingface.NewOpenAIChat(huggingface.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderMinimax, minimax.ModelM3, "MINIMAX_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return minimax.NewOpenAIChat(minimax.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderMistral, mistral.ModelSmall, "MISTRAL_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return mistral.NewChat(mistral.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}).withEmbedding(bundledModels(mistral.ModelEmbed), buildMistralEmbeddingModel),
+	bundledProvider(ProviderOpenRouter, openrouter.ModelAuto, "OPENROUTER_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return openrouter.NewOpenAIChat(openrouter.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderPerplexity, perplexity.ModelSonar, "PERPLEXITY_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return perplexity.NewOpenAIChat(perplexity.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderTogether, together.ModelRnj1Instruct, "TOGETHER_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return together.NewOpenAIChat(together.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderXAI, xai.ModelGrok45, "XAI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return xai.NewOpenAIChat(xai.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderXiaomi, xiaomi.ModelV25Pro, "XIAOMI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return xiaomi.NewOpenAIChat(xiaomi.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}),
+	bundledProvider(ProviderZhipu, zhipu.ModelGLM52, "ZHIPU_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return zhipu.NewOpenAIChat(zhipu.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	}).withEmbedding(bundledModels(zhipu.ModelEmbedding3), buildZhipuEmbeddingModel),
 
 	// Local daemon (base URL defaults to localhost; model id is user-pulled —
 	// dynamic discovery probes the daemon's /v1/models for what is installed).
-	ProviderOllama: {apiKeyEnv: "OLLAMA_API_KEY", defaultBaseURL: defaultOllamaOpenAIBaseURL, build: buildOllamaChatModel},
+	optionalCredentialEndpointProvider(ProviderOllama, catalogEndpoint(defaultOllamaOpenAIBaseURL), "OLLAMA_API_KEY", buildOllamaChatModel).
+		withEmbedding(bundledModels(defaultOllamaEmbeddingModel), buildOllamaEmbeddingModel),
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
 	// the model id is a deployment name. Both are user-supplied.
-	ProviderAzureOpenAI: {apiKeyEnv: "AZURE_OPENAI_API_KEY", requiresBaseURL: true, build: func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return azureopenai.NewChat(azureopenai.ChatConfig{APIKey: s.APIKey, BaseURL: s.BaseURL, DefaultOptions: o})
-	}},
+	endpointProvider(ProviderAzureOpenAI, configuredEndpoint(), "AZURE_OPENAI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
+		return azureopenai.NewChat(azureopenai.ChatConfig{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), DefaultOptions: o})
+	}).withEmbedding(endpointModels(), buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
-	ProviderOpenAICompatible:    {apiKeyEnv: "OPENAI_COMPATIBLE_API_KEY", requiresBaseURL: true, build: buildOpenAICompatibleModel},
-	ProviderAnthropicCompatible: {apiKeyEnv: "ANTHROPIC_COMPATIBLE_API_KEY", requiresBaseURL: true, build: buildAnthropicCompatibleModel},
-}
+	endpointProvider(ProviderOpenAICompatible, configuredEndpoint(), "OPENAI_COMPATIBLE_API_KEY", buildOpenAICompatibleModel),
+	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicCompatibleModel),
+)
 
 type anthropicCountingModel struct {
 	*anthropic.Chat
@@ -158,50 +293,55 @@ func buildAnthropicCompatibleModel(spec ClientSpec, opts chat.Options) (chat.Mod
 
 func newAnthropicModel(spec ClientSpec, opts chat.Options) (*anthropic.Chat, error) {
 	return anthropic.NewChat(anthropic.ChatConfig{
-		APIKey:         spec.APIKey,
+		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,
-		BaseURL:        spec.BaseURL,
+		BaseURL:        spec.sdkBaseURL(),
 	})
 }
 
 func buildOpenAIResponsesModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
 	return openai.NewResponsesChat(openai.ChatConfig{
-		APIKey:         spec.APIKey,
+		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,
-		BaseURL:        spec.BaseURL,
+		BaseURL:        spec.sdkBaseURL(),
 	})
 }
 
 func buildOpenAICompatibleModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
 	return openai.NewChat(openai.ChatConfig{
-		APIKey:         spec.APIKey,
+		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,
-		BaseURL:        spec.BaseURL,
+		BaseURL:        spec.sdkBaseURL(),
 	})
 }
 
-// BuildClient wires a *chatclient.Client for one provider+model from [chatProviderCatalog]:
+// BuildClient wires a *chatclient.Client for one provider+model from the provider catalog:
 // it picks the model adapter, plugs in the model id, api key, and optional base
 // URL. A provider that requires a base URL (a compatible endpoint provider or Azure)
 // errors when one isn't supplied. Pricing is a separate accounting concern, so
 // the constructed client carries no pricing hook.
 func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
-	profile, ok := chatProviderCatalog[spec.Provider]
+	if err := spec.validate(); err != nil {
+		return nil, err
+	}
+	profile, ok := providers.lookup(spec.provider)
 	if !ok {
-		return nil, fmt.Errorf("llm: unsupported provider %q", spec.Provider)
+		return nil, fmt.Errorf("llm: unsupported provider %q", spec.provider)
 	}
-	if profile.requiresBaseURL && spec.BaseURL == "" {
-		return nil, fmt.Errorf("llm: provider %q requires a base URL", spec.Provider)
-	}
-
-	opts := chat.Options{Model: spec.Model}
-	if err := opts.Validate(); err != nil {
-		return nil, fmt.Errorf("llm: chat options for %q: %w", spec.Model, err)
-	}
-
-	model, err := profile.build(spec, opts)
+	endpoint, err := profile.endpoint.resolve(spec.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("llm: build %s model: %w", spec.Provider, err)
+		return nil, fmt.Errorf("llm: provider %q: %w", spec.provider, err)
+	}
+	spec = spec.withEndpoint(endpoint)
+
+	opts := chat.Options{Model: spec.model.String()}
+	if err := opts.Validate(); err != nil {
+		return nil, fmt.Errorf("llm: chat options for %q: %w", spec.model.String(), err)
+	}
+
+	model, err := profile.chatBuilder(spec, opts)
+	if err != nil {
+		return nil, fmt.Errorf("llm: build %s model: %w", spec.provider, err)
 	}
 
 	client, err := chatclient.New(classifyModelFailures(model), chatclient.Config{})

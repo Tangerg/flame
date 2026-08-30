@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-08-28",
+  "protocolVersion": "2026-08-30",
   "features": [
     "reasoning",
     "multimodal",
@@ -2661,10 +2661,16 @@
             "id",
             "runId",
             "status",
-            "createdAt"
-          ],
-          "optional": [
+            "createdAt",
             "content"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -2678,6 +2684,15 @@
           "optional": [
             "phase",
             "content"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "running",
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -2691,6 +2706,15 @@
           "optional": [
             "text",
             "redacted"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "running",
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -2699,10 +2723,16 @@
             "id",
             "runId",
             "status",
-            "createdAt"
-          ],
-          "optional": [
+            "createdAt",
             "question"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -2711,15 +2741,25 @@
             "id",
             "runId",
             "status",
-            "startedAt"
+            "startedAt",
+            "tool"
           ],
           "optional": [
             "finishedAt",
             "durationMillis",
-            "tool",
             "safetyClass",
             "approvalDecision",
             "error"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "running",
+                "completed",
+                "incomplete"
+              ]
+            }
           ]
         },
         {
@@ -2728,11 +2768,19 @@
             "id",
             "runId",
             "status",
-            "createdAt"
+            "createdAt",
+            "summary"
           ],
           "optional": [
-            "summary",
             "droppedMessages"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         }
       ]
@@ -2745,9 +2793,6 @@
           "tag": "content",
           "required": [
             "text"
-          ],
-          "optional": [
-            "index"
           ]
         },
         {
@@ -2900,6 +2945,21 @@
         },
         {
           "tag": "clear"
+        }
+      ]
+    },
+    {
+      "type": "MCPHandshakeTimeout",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "unbounded"
+        },
+        {
+          "tag": "bounded",
+          "required": [
+            "seconds"
+          ]
         }
       ]
     },
@@ -3345,10 +3405,16 @@
             "id",
             "runId",
             "status",
-            "createdAt"
-          ],
-          "optional": [
+            "createdAt",
             "content"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -3358,10 +3424,16 @@
             "runId",
             "status",
             "createdAt",
-            "phase"
-          ],
-          "optional": [
+            "phase",
             "content"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -3370,11 +3442,19 @@
             "id",
             "runId",
             "status",
-            "createdAt"
+            "createdAt",
+            "text"
           ],
           "optional": [
-            "text",
             "redacted"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -3383,10 +3463,16 @@
             "id",
             "runId",
             "status",
-            "createdAt"
-          ],
-          "optional": [
+            "createdAt",
             "question"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         },
         {
@@ -3395,15 +3481,24 @@
             "id",
             "runId",
             "status",
-            "startedAt"
+            "startedAt",
+            "tool"
           ],
           "optional": [
             "finishedAt",
             "durationMillis",
-            "tool",
             "safetyClass",
             "approvalDecision",
             "error"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed",
+                "incomplete"
+              ]
+            }
           ]
         },
         {
@@ -3412,11 +3507,19 @@
             "id",
             "runId",
             "status",
-            "createdAt"
+            "createdAt",
+            "summary"
           ],
           "optional": [
-            "summary",
             "droppedMessages"
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "completed"
+              ]
+            }
           ]
         }
       ]
@@ -3476,6 +3579,160 @@
     }
   ],
   "objectConstraints": [
+    {
+      "type": "GoalBudget",
+      "rules": [
+        {
+          "requiredAny": [
+            "maxRuns",
+            "maxCostUsd",
+            "maxSteps"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RunLimits",
+      "rules": [
+        {
+          "requiredAny": [
+            "maxTotalTokens",
+            "maxSteps",
+            "maxBudgetUsd"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ArtifactRunLimits",
+      "rules": [
+        {
+          "requiredAny": [
+            "maxTotalTokens",
+            "maxSteps",
+            "maxBudgetUsd"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ModelTokenLimits",
+      "rules": [
+        {
+          "requiredAny": [
+            "contextWindow",
+            "maxInputTokens",
+            "maxOutputTokens"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RunProgress",
+      "rules": [
+        {
+          "requiredAny": [
+            "step",
+            "usage",
+            "contextTokens",
+            "activity"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ReadFileRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "endLine",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "startLine"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "GetDiffRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "format",
+              "operator": "equals",
+              "value": "raw"
+            }
+          ],
+          "forbidden": [
+            "limit"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "StreamEvent",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "item.started"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "item.type",
+              "values": [
+                "agentMessage",
+                "reasoning",
+                "toolCall"
+              ]
+            },
+            {
+              "field": "item.status",
+              "values": [
+                "running"
+              ]
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "item.completed"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "item.status",
+              "values": [
+                "completed",
+                "incomplete"
+              ]
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "plan.updated"
+            }
+          ],
+          "required": [
+            "plan.state"
+          ]
+        }
+      ]
+    },
     {
       "type": "StartRunRequest",
       "rules": [
@@ -3548,114 +3805,6 @@
       ]
     },
     {
-      "type": "Item",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "toolCall"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "running"
-            }
-          ],
-          "forbidden": [
-            "finishedAt",
-            "durationMillis"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "toolCall"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "completed"
-            }
-          ],
-          "required": [
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "toolCall"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "incomplete"
-            }
-          ],
-          "required": [
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "agentMessage"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "running"
-            }
-          ],
-          "forbidden": [
-            "phase"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "agentMessage"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "completed"
-            }
-          ],
-          "required": [
-            "phase"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "agentMessage"
-            },
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "incomplete"
-            }
-          ],
-          "required": [
-            "phase"
-          ]
-        }
-      ]
-    },
-    {
       "type": "ArtifactItem",
       "rules": [
         {
@@ -3668,14 +3817,35 @@
             {
               "field": "status",
               "operator": "equals",
-              "value": "running"
+              "value": "completed"
             }
           ],
-          "forbidden": [
-            "finishedAt",
-            "durationMillis"
+          "required": [
+            "finishedAt"
           ]
         },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "toolCall"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "incomplete"
+            }
+          ],
+          "required": [
+            "finishedAt"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Item",
+      "rules": [
         {
           "when": [
             {
@@ -3708,6 +3878,76 @@
           ],
           "required": [
             "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "toolCall"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "running"
+            }
+          ],
+          "forbidden": [
+            "finishedAt",
+            "durationMillis"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "agentMessage"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "running"
+            }
+          ],
+          "forbidden": [
+            "phase"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "agentMessage"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "completed"
+            }
+          ],
+          "required": [
+            "phase",
+            "content"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "reasoning"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "completed"
+            }
+          ],
+          "required": [
+            "text"
           ]
         }
       ]
@@ -4267,11 +4507,24 @@
   ],
   "valueConstraints": [
     {
+      "type": "PageContinuation",
+      "rules": [
+        {
+          "field": "nextCursor",
+          "constraint": "maxLength(65536)"
+        }
+      ]
+    },
+    {
       "type": "PageQuery",
       "rules": [
         {
           "field": "limit",
-          "constraint": "nonNegative"
+          "constraint": "positive"
+        },
+        {
+          "field": "cursor",
+          "constraint": "maxLength(65536)"
         }
       ]
     },
@@ -4279,12 +4532,65 @@
       "type": "Session",
       "rules": [
         {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "provider",
           "constraint": "nonEmpty"
         },
         {
           "field": "model",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "revision",
+          "constraint": "positive"
+        },
+        {
+          "field": "revision",
+          "constraint": "maximum(9007199254740991)"
+        }
+      ]
+    },
+    {
+      "type": "ListSessionsRequest",
+      "rules": [
+        {
+          "field": "search",
+          "constraint": "maxLength(1024)"
         }
       ]
     },
@@ -4294,6 +4600,31 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "GetSessionSnapshotRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4303,24 +4634,14 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
-        }
-      ]
-    },
-    {
-      "type": "ForkSessionRequest",
-      "rules": [
+        },
         {
           "field": "sessionId",
-          "constraint": "nonEmpty"
-        }
-      ]
-    },
-    {
-      "type": "RollbackSessionRequest",
-      "rules": [
+          "constraint": "identity"
+        },
         {
           "field": "sessionId",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4330,6 +4651,64 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ForkSessionRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "fromRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "fromRunId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "RollbackSessionRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "toRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "toRunId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4341,8 +4720,20 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "expectedRevision",
           "constraint": "positive"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "maximum(9007199254740991)"
         },
         {
           "field": "provider",
@@ -4351,6 +4742,30 @@
         {
           "field": "model",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -4360,6 +4775,14 @@
         {
           "field": "artifact.session.id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "artifact.session.id",
+          "constraint": "identity"
+        },
+        {
+          "field": "artifact.session.id",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4367,12 +4790,187 @@
       "type": "ArtifactSession",
       "rules": [
         {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "provider",
           "constraint": "nonEmpty"
         },
         {
           "field": "model",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
+      "type": "ArtifactRun",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "spawnedByItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "spawnedByItemId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "parentRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "parentRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "messageMark",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "contextTokens",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "ArtifactItem",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "droppedMessages",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "durationMillis",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "ArtifactToolResult",
+      "rules": [
+        {
+          "field": "itemId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4381,24 +4979,11 @@
       "rules": [
         {
           "field": "version",
-          "constraint": "minimum(24)"
+          "constraint": "minimum(27)"
         },
         {
           "field": "version",
-          "constraint": "maximum(24)"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactRun",
-      "rules": [
-        {
-          "field": "messageMark",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "contextTokens",
-          "constraint": "nonNegative"
+          "constraint": "maximum(27)"
         }
       ]
     },
@@ -4441,6 +5026,14 @@
         {
           "field": "costUsd",
           "constraint": "nonNegative"
+        },
+        {
+          "field": "byModel",
+          "constraint": "identityPropertyNames"
+        },
+        {
+          "field": "byModel",
+          "constraint": "maxPropertyNameLength(256)"
         }
       ]
     },
@@ -4474,19 +5067,6 @@
       ]
     },
     {
-      "type": "ArtifactItem",
-      "rules": [
-        {
-          "field": "droppedMessages",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "durationMillis",
-          "constraint": "nonNegative"
-        }
-      ]
-    },
-    {
       "type": "ArtifactProblem",
       "rules": [
         {
@@ -4496,8 +5076,191 @@
       ]
     },
     {
+      "type": "RunSummary",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "spawnedByItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "spawnedByItemId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "parentRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "parentRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
+      "type": "RunEvent",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "eventId",
+          "constraint": "identity"
+        },
+        {
+          "field": "eventId",
+          "constraint": "prefix(\"evt_\")"
+        },
+        {
+          "field": "eventId",
+          "constraint": "maxLength(65540)"
+        }
+      ]
+    },
+    {
+      "type": "SubscribeRunResponse",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "headEventId",
+          "constraint": "identity"
+        },
+        {
+          "field": "headEventId",
+          "constraint": "prefix(\"evt_\")"
+        },
+        {
+          "field": "headEventId",
+          "constraint": "maxLength(65540)"
+        }
+      ]
+    },
+    {
       "type": "Item",
       "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
         {
           "field": "durationMillis",
           "constraint": "nonNegative"
@@ -4505,11 +5268,104 @@
       ]
     },
     {
+      "type": "InterruptResponse",
+      "rules": [
+        {
+          "field": "itemId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
       "type": "RunRef",
       "rules": [
         {
+          "field": "activeSegmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "activeSegmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "contextTokens",
           "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "RunProgress",
+      "rules": [
+        {
+          "field": "step",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "contextTokens",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "RunMetrics",
+      "rules": [
+        {
+          "field": "steps",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "activeDurationMillis",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "ModelUsage",
+      "rules": [
+        {
+          "field": "inputTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "outputTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheReadTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheWriteTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "reasoningTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "costUsd",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "Usage",
+      "rules": [
+        {
+          "field": "byModel",
+          "constraint": "identityPropertyNames"
+        },
+        {
+          "field": "byModel",
+          "constraint": "maxPropertyNameLength(256)"
         }
       ]
     },
@@ -4534,20 +5390,40 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "input",
           "constraint": "nonEmptyItems"
         },
         {
-          "field": "maxTotalTokens",
-          "constraint": "nonNegative"
+          "field": "provider",
+          "constraint": "identity"
         },
         {
-          "field": "maxSteps",
-          "constraint": "nonNegative"
+          "field": "provider",
+          "constraint": "maxLength(64)"
         },
         {
-          "field": "maxBudgetUsd",
-          "constraint": "nonNegative"
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -4589,15 +5465,15 @@
       "rules": [
         {
           "field": "maxTotalTokens",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxSteps",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxBudgetUsd",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -4606,15 +5482,32 @@
       "rules": [
         {
           "field": "maxTotalTokens",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxSteps",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxBudgetUsd",
-          "constraint": "nonNegative"
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "ModelTokenLimits",
+      "rules": [
+        {
+          "field": "contextWindow",
+          "constraint": "positive"
+        },
+        {
+          "field": "maxInputTokens",
+          "constraint": "positive"
+        },
+        {
+          "field": "maxOutputTokens",
+          "constraint": "positive"
         }
       ]
     },
@@ -4624,6 +5517,14 @@
         {
           "field": "runId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         },
         {
           "field": "input",
@@ -4718,12 +5619,36 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "segmentId",
           "constraint": "nonEmpty"
         },
         {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "userItemId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4735,12 +5660,36 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "segmentId",
           "constraint": "nonEmpty"
         },
         {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "userItemId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4752,8 +5701,24 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "segmentId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4763,6 +5728,14 @@
         {
           "field": "runId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4772,6 +5745,14 @@
         {
           "field": "runId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         },
         {
           "field": "reason",
@@ -4787,8 +5768,24 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "expectedSegmentId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "expectedSegmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "expectedSegmentId",
+          "constraint": "maxLength(256)"
         },
         {
           "field": "input",
@@ -4809,6 +5806,14 @@
       "type": "ListRunsRequest",
       "rules": [
         {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "statuses",
           "constraint": "nonEmptyItems"
         },
@@ -4819,10 +5824,116 @@
       ]
     },
     {
+      "type": "ListInterruptsRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ItemListScope",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "StreamEvent",
+      "rules": [
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
       "type": "GetPlanRequest",
       "rules": [
         {
           "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "Plan",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "PlanState",
+      "rules": [
+        {
+          "field": "revision",
+          "constraint": "positive"
+        },
+        {
+          "field": "revision",
+          "constraint": "maximum(9007199254740991)"
+        }
+      ]
+    },
+    {
+      "type": "PlanStep",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "description",
           "constraint": "nonEmpty"
         }
       ]
@@ -4841,7 +5952,7 @@
       "rules": [
         {
           "field": "limit",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -4854,7 +5965,7 @@
         },
         {
           "field": "lines",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -4867,15 +5978,15 @@
         },
         {
           "field": "startLine",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "endLine",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxBytes",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -4888,7 +5999,7 @@
         },
         {
           "field": "limit",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -4898,6 +6009,14 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4906,7 +6025,36 @@
       "rules": [
         {
           "field": "sinceDays",
-          "constraint": "nonNegative"
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "FeedbackRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4947,6 +6095,14 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -4964,7 +6120,11 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         }
       ]
     },
@@ -4973,7 +6133,90 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "MCPListToolsRequest",
+      "rules": [
+        {
+          "field": "server",
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "MCPServer",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "name",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "maxItems(2048)"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItems(2048)"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        }
+      ]
+    },
+    {
+      "type": "MCPTool",
+      "rules": [
+        {
+          "field": "server",
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "name",
+          "constraint": "maxLength(128)"
+        },
+        {
+          "field": "name",
+          "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },
@@ -4982,7 +6225,7 @@
       "rules": [
         {
           "field": "attemptId",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^mcpauth_[A-Z2-7]{26,64}$\")"
         }
       ]
     },
@@ -4991,11 +6234,15 @@
       "rules": [
         {
           "field": "id",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^mcpauth_[A-Z2-7]{26,64}$\")"
         },
         {
           "field": "server",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(32)"
+        },
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         }
       ]
     },
@@ -5035,6 +6282,15 @@
       ]
     },
     {
+      "type": "MCPHandshakeTimeout",
+      "rules": [
+        {
+          "field": "seconds",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
       "type": "MCPHeadersChange",
       "rules": [
         {
@@ -5057,19 +6313,43 @@
       "rules": [
         {
           "field": "name",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(32)"
         },
         {
-          "field": "timeoutSeconds",
-          "constraint": "nonNegative"
+          "field": "name",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "maxItems(2048)"
         },
         {
           "field": "disabledTools",
           "constraint": "uniqueItems"
         },
         {
+          "field": "disabledTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItems(2048)"
+        },
+        {
           "field": "autoApproveTools",
           "constraint": "uniqueItems"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },
@@ -5078,19 +6358,68 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "nonEmpty"
+          "constraint": "maxLength(32)"
         },
         {
-          "field": "timeoutSeconds",
-          "constraint": "nonNegative"
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "maxItems(2048)"
         },
         {
           "field": "disabledTools",
           "constraint": "uniqueItems"
         },
         {
+          "field": "disabledTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItems(2048)"
+        },
+        {
           "field": "autoApproveTools",
           "constraint": "uniqueItems"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "maxItemLength(128)"
+        },
+        {
+          "field": "autoApproveTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        }
+      ]
+    },
+    {
+      "type": "Provider",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "defaultEmbeddingModel",
+          "constraint": "identity"
+        },
+        {
+          "field": "defaultEmbeddingModel",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -5100,6 +6429,14 @@
         {
           "field": "provider",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
         }
       ]
     },
@@ -5118,6 +6455,119 @@
         {
           "field": "provider",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        }
+      ]
+    },
+    {
+      "type": "UtilityRole",
+      "rules": [
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "EmbeddingRole",
+      "rules": [
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ListModelsRequest",
+      "rules": [
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        }
+      ]
+    },
+    {
+      "type": "Model",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        }
+      ]
+    },
+    {
+      "type": "ModelCapabilities",
+      "rules": [
+        {
+          "field": "reasoningLevels",
+          "constraint": "identityItems"
+        },
+        {
+          "field": "reasoningLevels",
+          "constraint": "maxItemLength(32)"
+        },
+        {
+          "field": "reasoningDefaultLevel",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningDefaultLevel",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -5154,6 +6604,14 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(36)"
+        },
+        {
+          "field": "id",
+          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         }
       ]
     },
@@ -5163,12 +6621,40 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(36)"
+        },
+        {
+          "field": "id",
+          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         }
       ]
     },
     {
       "type": "AgentMemoryItem",
       "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(36)"
+        },
+        {
+          "field": "id",
+          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
         {
           "field": "content",
           "constraint": "nonEmpty"
@@ -5185,6 +6671,14 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(36)"
+        },
+        {
+          "field": "id",
+          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         },
         {
           "field": "content",
@@ -5210,6 +6704,59 @@
       ]
     },
     {
+      "type": "Schedule",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "id",
+          "constraint": "prefix(\"sch_\")"
+        },
+        {
+          "field": "revision",
+          "constraint": "positive"
+        },
+        {
+          "field": "revision",
+          "constraint": "maximum(9007199254740991)"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
       "type": "CreateScheduleRequest",
       "rules": [
         {
@@ -5219,6 +6766,30 @@
         {
           "field": "cron",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -5230,8 +6801,24 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "id",
+          "constraint": "prefix(\"sch_\")"
+        },
+        {
           "field": "expectedRevision",
           "constraint": "positive"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "maximum(9007199254740991)"
         },
         {
           "field": "instructions",
@@ -5240,6 +6827,30 @@
         {
           "field": "cron",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -5249,6 +6860,18 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "id",
+          "constraint": "prefix(\"sch_\")"
         }
       ]
     },
@@ -5258,6 +6881,88 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "id",
+          "constraint": "prefix(\"sch_\")"
+        }
+      ]
+    },
+    {
+      "type": "RunScheduleNowResponse",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "Goal",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -5269,8 +6974,40 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "objective",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "identity"
+        },
+        {
+          "field": "provider",
+          "constraint": "maxLength(64)"
+        },
+        {
+          "field": "model",
+          "constraint": "identity"
+        },
+        {
+          "field": "model",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "identity"
+        },
+        {
+          "field": "reasoningEffort",
+          "constraint": "maxLength(32)"
         }
       ]
     },
@@ -5280,6 +7017,31 @@
         {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "UpdateGoalRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -5288,15 +7050,15 @@
       "rules": [
         {
           "field": "maxRuns",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxCostUsd",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         },
         {
           "field": "maxSteps",
-          "constraint": "nonNegative"
+          "constraint": "positive"
         }
       ]
     },
@@ -5310,6 +7072,15 @@
         {
           "field": "version",
           "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "RuntimeLimits",
+      "rules": [
+        {
+          "field": "maxConcurrentRuns",
+          "constraint": "positive"
         }
       ]
     },
@@ -5356,6 +7127,10 @@
           "constraint": "positive"
         },
         {
+          "field": "sequence",
+          "constraint": "maximum(9007199254740991)"
+        },
+        {
           "field": "paths",
           "constraint": "nonEmptyItems"
         },
@@ -5418,6 +7193,34 @@
         {
           "field": "watchIds",
           "constraint": "uniqueItems"
+        },
+        {
+          "field": "scheduleIds",
+          "constraint": "identityItems"
+        },
+        {
+          "field": "scheduleIds",
+          "constraint": "maxItemLength(256)"
+        },
+        {
+          "field": "scheduleIds",
+          "constraint": "prefixItems(\"sch_\")"
+        },
+        {
+          "field": "sessionIds",
+          "constraint": "identityItems"
+        },
+        {
+          "field": "sessionIds",
+          "constraint": "maxItemLength(256)"
+        },
+        {
+          "field": "runIds",
+          "constraint": "identityItems"
+        },
+        {
+          "field": "runIds",
+          "constraint": "maxItemLength(256)"
         }
       ]
     },
@@ -5429,8 +7232,24 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "rootRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "rootRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "sessionId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
         },
         {
           "field": "interrupts",
@@ -5446,8 +7265,24 @@
           "constraint": "nonEmpty"
         },
         {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
+        },
+        {
           "field": "runId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -5457,6 +7292,14 @@
         {
           "field": "runId",
           "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -5521,7 +7364,7 @@
         },
         {
           "field": "namespace",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^idp_[0-9a-f]{32}$\")"
         }
       ]
     },

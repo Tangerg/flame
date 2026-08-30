@@ -55,9 +55,9 @@ describe("diagnostic Tool material generation", () => {
     owner = undefined;
 
     expect([installed, replaced, diagnosticToolMaterialGeneration()]).toEqual([
-      before + 1,
-      before + 2,
-      before + 3,
+      before + 1n,
+      before + 2n,
+      before + 3n,
     ]);
     expect(changed).toHaveBeenCalledTimes(3);
     unsubscribe();

@@ -102,19 +102,21 @@ type RunProgress struct {
 
 // Plan is the Session's persisted latest Plan. A root Run publishes it through
 // plan.updated, and plan.get returns the same shape, so live and cold recovery cannot
-// describe the checklist differently (§5.2 / §5.3).
-//
-// Revision is the projection's own monotonic counter, assigned by the replacement
-// that produced it. Zero means nothing has ever been written — the empty list a
-// session starts with — and it is what tells an older snapshot from a newer one when
-// the contents alone cannot: the list is replaced wholesale, so it can shrink.
+// describe the checklist differently (§5.2 / §5.3). State is absent when no Plan
+// replacement has ever been written; a committed empty State means the Plan was
+// explicitly cleared. This keeps absence distinct without a magic revision zero.
 type Plan struct {
 	SessionID string     `json:"sessionId"`
+	State     *PlanState `json:"state,omitempty"`
+}
+
+// PlanState is one committed whole-list replacement. Revision and UpdatedAt are
+// coupled to Steps as one value, so a frame cannot carry version metadata without
+// content or content without the version that orders it.
+type PlanState struct {
 	Revision  uint64     `json:"revision"`
 	Steps     []PlanStep `json:"steps"`
-	// UpdatedAt is absent exactly while Revision is 0: nothing was written, so there
-	// is no time at which it was.
-	UpdatedAt time.Time `json:"updatedAt,omitzero"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 }
 
 // GetPlanRequest is the plan.get body — the cold read for the Plan projection.
@@ -154,14 +156,13 @@ const (
 // ItemDelta is a tag-discriminated union over incremental updates
 // (API.md §5.1). All delta events are non-authoritative and non-replayable.
 //
-//	content       → Index, Text
+//	content       → Text
 //	reasoning     → Text
 //	toolArguments → ArgumentsTextDelta (partial JSON text; client repairs)
 //	toolOutput    → Text
 type ItemDelta struct {
 	Type ItemDeltaType `json:"type"`
 
-	Index              *int   `json:"index,omitempty"`
 	Text               string `json:"text,omitempty"`
 	ArgumentsTextDelta string `json:"argumentsTextDelta,omitempty"`
 }

@@ -2,11 +2,8 @@
 
 package sideload
 
-import (
-	"os/exec"
-	"time"
-)
+import "os/exec"
 
 func configureProcess(command *exec.Cmd) {
-	command.WaitDelay = 250 * time.Millisecond
+	command.WaitDelay = processWaitDelay
 }

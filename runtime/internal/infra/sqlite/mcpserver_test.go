@@ -20,9 +20,13 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMCPServerStore(db)
+	boundedTimeout, err := mcpserver.NewHandshakeTimeout(3 * time.Second)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
 	servers := []mcpserver.Server{
 		{
-			Name:             "files",
+			Name:             testMCPServerName("files"),
 			Transport:        mcpserver.TransportStdio,
 			Enabled:          true,
 			Description:      "local files",
@@ -30,12 +34,11 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 			Args:             []string{"--root", "/repo"},
 			Env:              map[string]string{"TOKEN": "secret"},
 			Dir:              "/repo",
-			Timeout:          3 * time.Second,
-			DisabledTools:    []string{"remove"},
-			AutoApproveTools: []string{"read"},
+			HandshakeTimeout: boundedTimeout,
+			ToolPolicy:       testServerToolPolicy([]string{"remove"}, []string{"read"}),
 		},
 		{
-			Name:          "remote",
+			Name:          testMCPServerName("remote"),
 			Transport:     mcpserver.TransportStreamableHTTP,
 			Enabled:       true,
 			URL:           "https://mcp.example.test",
@@ -59,14 +62,136 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 			t.Fatalf("Get %q round trip = %+v, want %+v", want.Name, got, want)
 		}
 	}
+	listed, err := store.List(t.Context())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(listed) != len(servers) {
+		t.Fatalf("List count = %d, want %d", len(listed), len(servers))
+	}
+	for i := range listed {
+		if !equalMCPServer(listed[i], servers[i]) {
+			t.Fatalf("List[%d] = %+v, want %+v", i, listed[i], servers[i])
+		}
+	}
+
+	files := servers[0]
+	files.ToolPolicy = testServerToolPolicy(nil, []string{"stat"})
+	if err := store.Save(t.Context(), files); err != nil {
+		t.Fatalf("replace files policy: %v", err)
+	}
+	replaced, found, err := store.Get(t.Context(), files.Name)
+	if err != nil || !found || !equalMCPServer(replaced, files) {
+		t.Fatalf("replaced files = %+v, found=%v err=%v", replaced, found, err)
+	}
+}
+
+func TestMCPServerSchemaRejectsNonCanonicalIdentity(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	invalid := []string{
+		"",
+		"GitHub",
+		"with space",
+		"server/name",
+		strings.Repeat("a", mcpserver.MaximumServerNameCharacters+1),
+	}
+	for _, name := range invalid {
+		if _, err := db.ExecContext(
+			t.Context(),
+			`INSERT INTO mcp_servers (name, transport, command) VALUES (?, 'stdio', 'mcp-server')`,
+			name,
+		); err == nil {
+			t.Errorf("fresh schema accepted invalid MCP server identity %q", name)
+		}
+	}
+}
+
+func TestMCPServerToolPolicySchemaRejectsInvalidIdentityAndDecision(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	server := testMCPServerName("files")
+	if _, err := db.ExecContext(
+		t.Context(),
+		`INSERT INTO mcp_servers (name, transport, command) VALUES (?, 'stdio', 'mcp-server')`,
+		server.String(),
+	); err != nil {
+		t.Fatalf("insert server: %v", err)
+	}
+
+	invalidNames := []string{"", "with space", "tool/name", "工具", strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)}
+	for _, toolName := range invalidNames {
+		if _, err := db.ExecContext(
+			t.Context(),
+			`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, ?, ?)`,
+			server.String(),
+			toolName,
+			string(mcpserver.ToolDisabled),
+		); err == nil {
+			t.Errorf("fresh schema accepted invalid remote tool identity %q", toolName)
+		}
+	}
+	if _, err := db.ExecContext(
+		t.Context(),
+		`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, 'read', 'maybe')`,
+		server.String(),
+	); err == nil {
+		t.Error("fresh schema accepted unknown MCP tool-policy decision")
+	}
+}
+
+func TestMCPServerToolPolicySchemaEnforcesCardinality(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	server := testMCPServerName("files")
+	if _, err := db.ExecContext(
+		t.Context(),
+		`INSERT INTO mcp_servers (name, transport, command) VALUES (?, 'stdio', 'mcp-server')`,
+		server.String(),
+	); err != nil {
+		t.Fatalf("insert server: %v", err)
+	}
+	if _, err := db.ExecContext(
+		t.Context(),
+		`WITH RECURSIVE sequence(value) AS (
+			SELECT 1
+			UNION ALL
+			SELECT value + 1 FROM sequence WHERE value < ?
+		)
+		INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision)
+		SELECT ?, 'tool_' || value, ? FROM sequence`,
+		mcpserver.MaxRemoteToolsPerServer,
+		server.String(),
+		string(mcpserver.ToolDisabled),
+	); err != nil {
+		t.Fatalf("insert maximum tool policy: %v", err)
+	}
+	if _, err := db.ExecContext(
+		t.Context(),
+		`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, 'overflow', ?)`,
+		server.String(),
+		string(mcpserver.ToolDisabled),
+	); err == nil {
+		t.Error("fresh schema accepted more than the MCP tool-policy cardinality limit")
+	}
 }
 
 func equalMCPServer(a, b mcpserver.Server) bool {
 	return a.Name == b.Name && a.Transport == b.Transport && a.Enabled == b.Enabled &&
 		a.Description == b.Description && a.URL == b.URL && a.Authorization == b.Authorization &&
 		maps.Equal(a.Headers, b.Headers) && a.Command == b.Command && slices.Equal(a.Args, b.Args) &&
-		maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.Timeout == b.Timeout &&
-		slices.Equal(a.DisabledTools, b.DisabledTools) && slices.Equal(a.AutoApproveTools, b.AutoApproveTools)
+		maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout &&
+		slices.Equal(a.ToolPolicy.Rules(), b.ToolPolicy.Rules())
 }
 
 func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
@@ -77,7 +202,7 @@ func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMCPServerStore(db)
 	server := mcpserver.Server{
-		Name:      "files",
+		Name:      testMCPServerName("files"),
 		Transport: mcpserver.TransportStdio,
 		Enabled:   true,
 		Command:   "mcp-files",
@@ -91,15 +216,13 @@ func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
 		{name: "headers", update: `UPDATE mcp_servers SET headers = '{' WHERE name = ?`, field: "headers"},
 		{name: "args", update: `UPDATE mcp_servers SET args = '{' WHERE name = ?`, field: "args"},
 		{name: "env", update: `UPDATE mcp_servers SET env = '{' WHERE name = ?`, field: "env"},
-		{name: "disabled tools", update: `UPDATE mcp_servers SET disabled_tools = '{' WHERE name = ?`, field: "disabled_tools"},
-		{name: "auto approve tools", update: `UPDATE mcp_servers SET auto_approve_tools = '{' WHERE name = ?`, field: "auto_approve_tools"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			if err := store.Save(t.Context(), server); err != nil {
 				t.Fatalf("Configure: %v", err)
 			}
-			if _, err := db.ExecContext(t.Context(), test.update, server.Name); err != nil {
+			if _, err := db.ExecContext(t.Context(), test.update, server.Name.String()); err != nil {
 				t.Fatalf("corrupt %s: %v", test.field, err)
 			}
 
@@ -123,7 +246,7 @@ func TestMCPServerStoreBindsOAuthSessionLifecycle(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMCPServerStore(db)
 	server := mcpserver.Server{
-		Name: "remote", Transport: mcpserver.TransportStreamableHTTP,
+		Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
 		Enabled: true, URL: "https://mcp.example.test/tools",
 	}
 	if saveErr := store.Save(t.Context(), server); saveErr != nil {

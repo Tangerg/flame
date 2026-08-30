@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { tupleKey } from "@/lib/tupleKey";
 import type {
   DiagnosticToolGateway,
   InvokeDiagnosticToolInput,
@@ -44,7 +45,7 @@ class DiagnosticToolGeneration {
   }
 
   invoke(input: InvokeDiagnosticToolInput): Promise<unknown> {
-    const identity = `${input.cwd ?? ""}\u0000${input.name}`;
+    const identity = tupleKey(input.cwd ?? "", input.name);
     const result = this.#settle(this.#tails.get(identity) ?? Promise.resolve()).then(async () => {
       this.#assertCurrent();
       const value = await this.#settle(this.#gateway.invoke(input));
@@ -78,7 +79,7 @@ class DiagnosticToolGeneration {
 
 /** Owns direct Tool invocations for one exact Plugin Host and Runtime generation. */
 export class DiagnosticToolOwner {
-  static #materialGeneration = 0;
+  static #materialGeneration = 0n;
   static readonly #listeners = new Set<() => void>();
 
   readonly #gateway: DiagnosticToolGateway;
@@ -103,7 +104,7 @@ export class DiagnosticToolOwner {
     return owner;
   }
 
-  static materialGeneration(): number {
+  static materialGeneration(): bigint {
     return DiagnosticToolOwner.#materialGeneration;
   }
 
@@ -134,7 +135,7 @@ export class DiagnosticToolOwner {
   }
 
   static #advanceMaterialGeneration(): void {
-    DiagnosticToolOwner.#materialGeneration += 1;
+    DiagnosticToolOwner.#materialGeneration += 1n;
     for (const listener of DiagnosticToolOwner.#listeners) listener();
   }
 }
@@ -149,7 +150,7 @@ export function diagnosticToolInvocationWasRetired(error: unknown): boolean {
   return error instanceof DiagnosticToolGenerationRetiredError;
 }
 
-export function diagnosticToolMaterialGeneration(): number {
+export function diagnosticToolMaterialGeneration(): bigint {
   return DiagnosticToolOwner.materialGeneration();
 }
 

@@ -10,7 +10,10 @@
     },
     "dir": "/Users/dev/project"
   },
-  "timeoutSeconds": 30,
+  "handshakeTimeout": {
+    "type": "bounded",
+    "seconds": 30
+  },
   "disabledTools": ["delete_file"],
   "autoApproveTools": ["read_file"],
   "status": {

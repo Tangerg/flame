@@ -34,8 +34,8 @@ func TestSubscribeRun_AttachesToTheAddressedSegment(t *testing.T) {
 	}
 	// The opening events are already on the stream, so the ack must name a head —
 	// and it must be framed like every other event id the client sees.
-	if !strings.HasPrefix(out.HeadEventID, protocol.IDPrefixEvent) {
-		t.Fatalf("headEventId = %q, want an evt_-framed position", out.HeadEventID)
+	if out.HeadEventID == nil || !strings.HasPrefix(*out.HeadEventID, protocol.IDPrefixEvent) {
+		t.Fatalf("headEventId = %v, want an evt_-framed position", out.HeadEventID)
 	}
 
 	// A segment the run is not executing: the client is holding a replaced
@@ -168,13 +168,14 @@ func TestStartRunCarriesOneLimitsValueToTheDurableRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
+	maxTotalTokens, maxSteps, maxBudgetUSD := int64(12_345), 17, 2.75
 
 	started, _, err := s.StartRun(t.Context(), protocol.StartRunRequest{
-		SessionID:      sess.ID,
-		Input:          []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "measure this run"}},
-		MaxTotalTokens: 12_345,
-		MaxSteps:       17,
-		MaxBudgetUSD:   2.75,
+		SessionID: sess.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "measure this run"}},
+		Limits: &protocol.RunLimits{
+			MaxTotalTokens: &maxTotalTokens, MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudgetUSD,
+		},
 	})
 	if err != nil {
 		t.Fatalf("start run: %v", err)
@@ -185,9 +186,29 @@ func TestStartRunCarriesOneLimitsValueToTheDurableRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get started run: %v", err)
 	}
-	want := protocol.RunLimits{MaxTotalTokens: 12_345, MaxSteps: 17, MaxBudgetUSD: 2.75}
-	if got.Limits == nil || *got.Limits != want {
-		t.Fatalf("durable limits = %+v, want %+v", got.Limits, want)
+	if got.Limits == nil || got.Limits.MaxTotalTokens == nil || *got.Limits.MaxTotalTokens != maxTotalTokens ||
+		got.Limits.MaxSteps == nil || *got.Limits.MaxSteps != maxSteps ||
+		got.Limits.MaxBudgetUSD == nil || *got.Limits.MaxBudgetUSD != maxBudgetUSD {
+		t.Fatalf("durable limits = %+v", got.Limits)
+	}
+
+	unlimitedSession, err := s.sessions.CreateView(t.Context(), "", t.TempDir())
+	if err != nil {
+		t.Fatalf("create unlimited session: %v", err)
+	}
+	unlimitedStart, _, err := s.StartRun(t.Context(), protocol.StartRunRequest{
+		SessionID: unlimitedSession.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "run without a cap"}},
+	})
+	if err != nil {
+		t.Fatalf("start unlimited run: %v", err)
+	}
+	unlimitedRun, err := s.GetRun(t.Context(), protocol.GetRunRequest{RunID: unlimitedStart.RunID})
+	if err != nil {
+		t.Fatalf("get unlimited run: %v", err)
+	}
+	if unlimitedRun.Limits != nil {
+		t.Fatalf("unlimited run published limits %+v", unlimitedRun.Limits)
 	}
 }
 

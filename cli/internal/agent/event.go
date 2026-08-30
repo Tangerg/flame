@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
 )
 
 // RunEvent is one projected runtime event. EventID is an opaque replay token
@@ -33,16 +34,19 @@ func (r RunEvent) StreamSegment() string {
 // Validate enforces the CLI-owned event envelope and payload identity without
 // depending on the conversation aggregate that later folds the event.
 func (r RunEvent) Validate() error {
-	switch {
-	case strings.TrimSpace(r.EventID) == "":
-		return errors.New("run event id is empty")
-	case strings.TrimSpace(r.RunID) == "":
-		return errors.New("run event run id is empty")
-	case strings.TrimSpace(r.SegmentID) == "":
-		return errors.New("run event segment id is empty")
-	case strings.TrimSpace(r.StreamSegment()) == "":
-		return errors.New("run event stream segment id is empty")
-	case r.Event == nil:
+	if _, err := runidentity.ParseEvent(r.EventID); err != nil {
+		return fmt.Errorf("run event: %w", err)
+	}
+	if _, err := runidentity.ParseRun(r.RunID); err != nil {
+		return fmt.Errorf("run event: %w", err)
+	}
+	if _, err := runidentity.ParseSegment(r.SegmentID); err != nil {
+		return fmt.Errorf("run event: %w", err)
+	}
+	if _, err := runidentity.ParseSegment(r.StreamSegment()); err != nil {
+		return fmt.Errorf("run event stream: %w", err)
+	}
+	if r.Event == nil {
 		return errors.New("run event payload is nil")
 	}
 	if err := ValidateEvent(r.Event); err != nil {
@@ -78,7 +82,10 @@ func (r RunEvent) Equal(other RunEvent) bool {
 		r.StreamSegment() == other.StreamSegment() && r.At.Equal(other.At) && equalEvent(r.Event, other.Event)
 }
 
-type Event interface{ isEvent() }
+type Event interface {
+	isEvent()
+	equal(Event) bool
+}
 
 // SegmentStarted is the authoritative opening fact of every initial or resumed
 // run segment.
@@ -89,10 +96,6 @@ type BlockStarted struct{ Block Block }
 type BlockDelta struct {
 	BlockID string
 	Text    string
-	// ContentIndex identifies the assistant content block receiving Text. Nil
-	// means block zero and is also the only valid shape for reasoning and tool
-	// output deltas.
-	ContentIndex *int
 }
 
 // ToolArgumentsDelta carries the provisional JSON text used to assemble a
@@ -125,8 +128,7 @@ type CustomEvent struct {
 type BlockCompleted struct{ Block Block }
 
 type PlanChanged struct {
-	Revision uint64
-	Items    []PlanItem
+	Plan Plan
 }
 
 // RunInterrupted closes the current segment and parks the stable logical run.
@@ -159,6 +161,62 @@ func (RunInterrupted) isEvent()     {}
 func (RunSuspended) isEvent()       {}
 func (RunFinished) isEvent()        {}
 
+func (item SegmentStarted) equal(event Event) bool {
+	other, ok := event.(SegmentStarted)
+	return ok && item.Run.Equal(other.Run)
+}
+
+func (item BlockStarted) equal(event Event) bool {
+	other, ok := event.(BlockStarted)
+	return ok && item.Block.Equal(other.Block)
+}
+
+func (item BlockDelta) equal(event Event) bool {
+	other, ok := event.(BlockDelta)
+	return ok && item == other
+}
+
+func (item ToolArgumentsDelta) equal(event Event) bool {
+	other, ok := event.(ToolArgumentsDelta)
+	return ok && item == other
+}
+
+func (item RunProgress) equal(event Event) bool {
+	other, ok := event.(RunProgress)
+	return ok && equalOptional(item.Step, other.Step) && equalOptionalUsage(item.Usage, other.Usage) &&
+		equalOptional(item.ContextTokens, other.ContextTokens) && item.Activity == other.Activity
+}
+
+func (item CustomEvent) equal(event Event) bool {
+	other, ok := event.(CustomEvent)
+	return ok && item.Name == other.Name && bytes.Equal(item.PayloadJSON, other.PayloadJSON)
+}
+
+func (item BlockCompleted) equal(event Event) bool {
+	other, ok := event.(BlockCompleted)
+	return ok && item.Block.Equal(other.Block)
+}
+
+func (item PlanChanged) equal(event Event) bool {
+	other, ok := event.(PlanChanged)
+	return ok && item.Plan.Equal(other.Plan)
+}
+
+func (item RunInterrupted) equal(event Event) bool {
+	other, ok := event.(RunInterrupted)
+	return ok && item.Usage.Equal(other.Usage) && equalInteractions(item.Interactions, other.Interactions)
+}
+
+func (item RunSuspended) equal(event Event) bool {
+	other, ok := event.(RunSuspended)
+	return ok && item.Usage.Equal(other.Usage)
+}
+
+func (item RunFinished) equal(event Event) bool {
+	other, ok := event.(RunFinished)
+	return ok && item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
+}
+
 // ReplayableEvent reports whether the underlying runtime retains this event in
 // its segment journal. Deltas are deliberately ephemeral.
 func ReplayableEvent(event Event) bool {
@@ -179,9 +237,6 @@ func CloneEvent(event Event) Event {
 		item.Block = item.Block.Clone()
 		return item
 	case BlockDelta:
-		if item.ContentIndex != nil {
-			item.ContentIndex = new(*item.ContentIndex)
-		}
 		return item
 	case ToolArgumentsDelta:
 		return item
@@ -204,7 +259,7 @@ func CloneEvent(event Event) Event {
 		item.Block = item.Block.Clone()
 		return item
 	case PlanChanged:
-		item.Items = slices.Clone(item.Items)
+		item.Plan = item.Plan.Clone()
 		return item
 	case RunInterrupted:
 		item.Interactions = CloneInteractions(item.Interactions)
@@ -223,47 +278,10 @@ func CloneEvent(event Event) Event {
 }
 
 func equalEvent(left, right Event) bool {
-	switch item := left.(type) {
-	case SegmentStarted:
-		other, ok := right.(SegmentStarted)
-		return ok && item.Run.Equal(other.Run)
-	case BlockStarted:
-		other, ok := right.(BlockStarted)
-		return ok && item.Block.Equal(other.Block)
-	case BlockDelta:
-		other, ok := right.(BlockDelta)
-		return ok && item.BlockID == other.BlockID && item.Text == other.Text &&
-			equalOptional(item.ContentIndex, other.ContentIndex)
-	case ToolArgumentsDelta:
-		other, ok := right.(ToolArgumentsDelta)
-		return ok && item == other
-	case RunProgress:
-		other, ok := right.(RunProgress)
-		return ok && equalOptional(item.Step, other.Step) && equalOptionalUsage(item.Usage, other.Usage) &&
-			equalOptional(item.ContextTokens, other.ContextTokens) && item.Activity == other.Activity
-	case CustomEvent:
-		other, ok := right.(CustomEvent)
-		return ok && item.Name == other.Name && bytes.Equal(item.PayloadJSON, other.PayloadJSON)
-	case BlockCompleted:
-		other, ok := right.(BlockCompleted)
-		return ok && item.Block.Equal(other.Block)
-	case PlanChanged:
-		other, ok := right.(PlanChanged)
-		return ok && item.Revision == other.Revision && slices.Equal(item.Items, other.Items)
-	case RunInterrupted:
-		other, ok := right.(RunInterrupted)
-		return ok && item.Usage.Equal(other.Usage) && equalInteractions(item.Interactions, other.Interactions)
-	case RunSuspended:
-		other, ok := right.(RunSuspended)
-		return ok && item.Usage.Equal(other.Usage)
-	case RunFinished:
-		other, ok := right.(RunFinished)
-		return ok && item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
-	case nil:
+	if left == nil {
 		return right == nil
-	default:
-		return false
 	}
+	return left.equal(right)
 }
 
 func equalOptional[T comparable](left, right *T) bool {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
 
 const { cancelQueries, invalidateQueries, resetQueries, synchronizeMountedAgentSessions } =
   vi.hoisted(() => ({
@@ -208,7 +209,10 @@ describe("workspace session projection invalidation", () => {
       reportDisconnect: vi.fn(),
     });
 
-    const run = loop.start(controller.signal, "connection_1");
+    const run = loop.start(
+      controller.signal,
+      RuntimeConnectionGeneration.forProcess("connection_1"),
+    );
     await latest;
     controller.abort();
     await run;

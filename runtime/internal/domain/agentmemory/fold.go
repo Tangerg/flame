@@ -1,12 +1,14 @@
 package agentmemory
 
+import "fmt"
+
 // FoldPlan is the decision [Fold] reaches for one curation pass: the curated
 // contents to add as new pending proposals, and the ids of stale pending
 // proposals to remove. It carries no persistence detail — the store mints ids
 // for the inserts and applies the deletes.
 type FoldPlan struct {
 	InsertContents []string
-	PruneIDs       []string
+	PruneIDs       []ItemID
 }
 
 // Fold reconciles a curator's output into a project's auto-origin item set,
@@ -32,6 +34,19 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 	}
 	present := make(map[string]struct{}, len(existing))
 	for _, item := range existing {
+		if err := item.ID.Validate(); err != nil {
+			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item identity: %w", err)
+		}
+		content, err := NormalizeContent(item.Content)
+		if err != nil {
+			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item content: %w", err)
+		}
+		if content != item.Content {
+			return FoldPlan{}, fmt.Errorf("agentmemory: existing fold item content is not canonical")
+		}
+		if err := item.Status.Validate(); err != nil {
+			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item status: %w", err)
+		}
 		present[Digest(item.Content)] = struct{}{}
 	}
 

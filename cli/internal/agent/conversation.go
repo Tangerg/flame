@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/failure"
 )
@@ -32,8 +31,7 @@ func (c ConversationPhase) Valid() bool {
 // from Items; live state is folded from one exact segment stream at a time.
 type Conversation struct {
 	blocks       []Block
-	plan         []PlanItem
-	planRevision uint64
+	plan         *Plan
 	usage        Usage
 	interactions []Interaction
 	outcome      Outcome
@@ -44,10 +42,10 @@ type Conversation struct {
 	checkpoint  string
 	seen        map[string]RunEvent
 	runs        map[string]Run
+	runOrder    []string
 	index       map[string]int
 	open        map[string]bool
 	textStreams map[string]StreamedText
-	revision    uint64
 	reconciling bool
 	coldTail    bool
 }
@@ -63,9 +61,14 @@ func NewConversation() *Conversation {
 	}
 }
 
-func (c *Conversation) Blocks() []Block             { return cloneBlocks(c.blocks) }
-func (c *Conversation) Plan() []PlanItem            { return slices.Clone(c.plan) }
-func (c *Conversation) PlanRevision() uint64        { return c.planRevision }
+func (c *Conversation) Blocks() []Block { return cloneBlocks(c.blocks) }
+func (c *Conversation) Plan() *Plan     { return clonePlan(c.plan) }
+func (c *Conversation) PlanItems() []PlanItem {
+	if c.plan == nil {
+		return nil
+	}
+	return c.plan.Items()
+}
 func (c *Conversation) Usage() Usage                { return c.usage.Clone() }
 func (c *Conversation) Interactions() []Interaction { return CloneInteractions(c.interactions) }
 func (c *Conversation) Outcome() Outcome            { return c.outcome.Clone() }
@@ -74,6 +77,36 @@ func (c *Conversation) RunID() string               { return c.runID }
 func (c *Conversation) SegmentID() string           { return c.segmentID }
 func (c *Conversation) Checkpoint() string          { return c.checkpoint }
 func (c *Conversation) Busy() bool                  { return c.phase != ConversationIdle }
+
+// RunningDescendants reports how much delegated work is live beneath the
+// current root run. The aggregate owns this derivation so presentation layers
+// never infer lifecycle state from transcript blocks or copy the run-tree
+// invariants maintained here.
+func (c *Conversation) RunningDescendants() int {
+	if c.runID == "" {
+		return 0
+	}
+	running := 0
+	for id, run := range c.runs {
+		if id != c.runID && run.Lineage.RootRunID() == c.runID && run.Status == RunStatusRunning {
+			running++
+		}
+	}
+	return running
+}
+
+// Runs returns the session run catalog in creation order. The conversation
+// retains ordering as part of the aggregate instead of exposing its internal
+// identity map and asking consumers to reconstruct chronology.
+func (c *Conversation) Runs() []Run {
+	runs := make([]Run, 0, len(c.runOrder))
+	for _, id := range c.runOrder {
+		if run, exists := c.runs[id]; exists {
+			runs = append(runs, run.Clone())
+		}
+	}
+	return runs
+}
 
 // MatchesSnapshot reports whether a cold projection carries the same
 // conversation state currently folded by this aggregate. Session metadata and
@@ -91,19 +124,18 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 			return false
 		}
 	}
-	return slices.Equal(c.plan, expected.plan) && c.planRevision == expected.planRevision &&
+	return equalPlans(c.plan, expected.plan) &&
 		c.usage.Equal(expected.usage) && equalInteractions(c.interactions, expected.interactions) &&
 		c.outcome.Equal(expected.outcome) && c.phase == expected.phase && c.runID == expected.runID &&
-		c.segmentID == expected.segmentID && equalRunMaps(c.runs, expected.runs)
+		c.segmentID == expected.segmentID && equalRunCatalogs(c.Runs(), expected.Runs())
 }
 
-func equalRunMaps(left, right map[string]Run) bool {
+func equalRunCatalogs(left, right []Run) bool {
 	if len(left) != len(right) {
 		return false
 	}
-	for id, run := range left {
-		other, exists := right[id]
-		if !exists || !run.Equal(other) {
+	for index, run := range left {
+		if !run.Equal(right[index]) {
 			return false
 		}
 	}
@@ -196,11 +228,11 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 		}
 		return true, nil
 	case PlanChanged:
-		if item.Revision > c.planRevision {
+		if c.plan == nil || item.Plan.Revision() > c.plan.Revision() {
 			return false, nil
 		}
-		if item.Revision == c.planRevision && !slices.Equal(c.plan, item.Items) {
-			return false, fmt.Errorf("%w: plan revision %d differs from the cold snapshot", ErrEventConflict, item.Revision)
+		if item.Plan.Revision() == c.plan.Revision() && !c.plan.Equal(item.Plan) {
+			return false, fmt.Errorf("%w: plan revision %d differs from the cold snapshot", ErrEventConflict, item.Plan.Revision())
 		}
 		return true, nil
 	default:
@@ -210,8 +242,8 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 
 func (c *Conversation) validateEventIdentity(envelope RunEvent) error {
 	if started, ok := envelope.Event.(SegmentStarted); ok {
-		if !started.Run.Lineage.IsRoot() && started.Run.Lineage.RootRunID != c.runID {
-			return fmt.Errorf("conversation: child run %s belongs to root %s, not %s", envelope.RunID, started.Run.Lineage.RootRunID, c.runID)
+		if !started.Run.Lineage.IsRoot() && started.Run.Lineage.RootRunID() != c.runID {
+			return fmt.Errorf("conversation: child run %s belongs to root %s, not %s", envelope.RunID, started.Run.Lineage.RootRunID(), c.runID)
 		}
 		if c.phase == ConversationWaiting && started.Run.Lineage.IsRoot() && c.runID != envelope.RunID {
 			return fmt.Errorf("conversation: resumed root run %s does not match waiting run %s", envelope.RunID, c.runID)
@@ -260,7 +292,6 @@ func (c *Conversation) apply(envelope RunEvent) error {
 	if err != nil {
 		return err
 	}
-	c.revision++
 	return nil
 }
 
@@ -270,50 +301,62 @@ func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
 	run := event.Run
 	previous, exists := c.runs[run.ID]
 	if run.Lineage.IsRoot() {
-		previousUsage := c.usage
-		switch c.phase {
-		case ConversationIdle:
-			c.outcome = Outcome{}
-			previousUsage = Usage{}
-		case ConversationWaiting:
-			if c.runID != run.ID {
-				return fmt.Errorf("%w: cannot resume %s while %s is waiting", ErrInvalidTransition, run.ID, c.runID)
-			}
-		case ConversationRunning:
-			if c.runID != "" && (!exists || previous.Status == RunStatusRunning) {
-				return fmt.Errorf("%w: cannot start root segment while %s is running", ErrInvalidTransition, c.runID)
-			}
+		if err := c.applyRootSegmentStarted(run, previous, exists); err != nil {
+			return err
 		}
-		if c.runID != "" && c.runID != run.ID {
-			return fmt.Errorf("%w: root run changed from %s to %s", ErrInvalidTransition, c.runID, run.ID)
+	} else if err := c.applyChildSegmentStarted(run, previous, exists); err != nil {
+		return err
+	}
+	c.rememberRun(run)
+	return nil
+}
+
+func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) error {
+	previousUsage := c.usage
+	switch c.phase {
+	case ConversationIdle:
+		c.outcome = Outcome{}
+		previousUsage = Usage{}
+	case ConversationWaiting:
+		if c.runID != run.ID {
+			return fmt.Errorf("%w: cannot resume %s while %s is waiting", ErrInvalidTransition, run.ID, c.runID)
 		}
-		if err := validateUsageProgress(previousUsage, run.Usage); err != nil {
-			return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
-		}
-		c.runID = run.ID
-		c.phase = ConversationRunning
-		c.interactions = nil
-		c.usage = run.Usage.Clone()
-	} else {
-		if c.runID == "" || run.Lineage.RootRunID != c.runID {
-			return fmt.Errorf("%w: child run %s has no active root", ErrInvalidTransition, run.ID)
-		}
-		if _, parentExists := c.runs[run.Lineage.ParentRunID]; !parentExists {
-			return fmt.Errorf("%w: child run %s has unknown parent %s", ErrInvalidTransition, run.ID, run.Lineage.ParentRunID)
-		}
-		if exists && previous.Lineage != run.Lineage {
-			return fmt.Errorf("%w: child run %s changed lineage", ErrInvalidTransition, run.ID)
-		}
-		if exists && previous.Status == RunStatusRunning {
-			return fmt.Errorf("%w: child run %s started twice", ErrInvalidTransition, run.ID)
-		}
-		if exists {
-			if err := validateUsageProgress(previous.Usage, run.Usage); err != nil {
-				return fmt.Errorf("%w: child segment started: %w", ErrInvalidTransition, err)
-			}
+	case ConversationRunning:
+		if c.runID != "" && (!exists || previous.Status == RunStatusRunning) {
+			return fmt.Errorf("%w: cannot start root segment while %s is running", ErrInvalidTransition, c.runID)
 		}
 	}
-	c.runs[run.ID] = run.Clone()
+	if c.runID != "" && c.runID != run.ID {
+		return fmt.Errorf("%w: root run changed from %s to %s", ErrInvalidTransition, c.runID, run.ID)
+	}
+	if err := validateUsageProgress(previousUsage, run.Usage); err != nil {
+		return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
+	}
+	c.runID = run.ID
+	c.phase = ConversationRunning
+	c.interactions = nil
+	c.usage = run.Usage.Clone()
+	return nil
+}
+
+func (c *Conversation) applyChildSegmentStarted(run, previous Run, exists bool) error {
+	if c.runID == "" || run.Lineage.RootRunID() != c.runID {
+		return fmt.Errorf("%w: child run %s has no active root", ErrInvalidTransition, run.ID)
+	}
+	if _, parentExists := c.runs[run.Lineage.ParentRunID()]; !parentExists {
+		return fmt.Errorf("%w: child run %s has unknown parent %s", ErrInvalidTransition, run.ID, run.Lineage.ParentRunID())
+	}
+	if exists && previous.Lineage != run.Lineage {
+		return fmt.Errorf("%w: child run %s changed lineage", ErrInvalidTransition, run.ID)
+	}
+	if exists && previous.Status == RunStatusRunning {
+		return fmt.Errorf("%w: child run %s started twice", ErrInvalidTransition, run.ID)
+	}
+	if exists {
+		if err := validateUsageProgress(previous.Usage, run.Usage); err != nil {
+			return fmt.Errorf("%w: child segment started: %w", ErrInvalidTransition, err)
+		}
+	}
 	return nil
 }
 
@@ -338,27 +381,14 @@ func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
 	}
 	block := &c.blocks[at]
 	switch block.Kind {
-	case BlockAssistant:
+	case BlockAssistant, BlockReasoning:
 		stream := c.textStreams[key]
-		if _, err := stream.Apply(event); err != nil {
-			return fmt.Errorf("%w: block %s: %w", ErrInvalidTransition, event.BlockID, err)
-		}
-		c.textStreams[key] = stream
-		block.Text = stream.String()
-	case BlockReasoning:
-		if event.ContentIndex != nil {
-			return fmt.Errorf("%w: reasoning block %s has a content index", ErrInvalidTransition, event.BlockID)
-		}
-		stream := c.textStreams[key]
-		if _, err := stream.Apply(event); err != nil {
+		if err := stream.Apply(event); err != nil {
 			return fmt.Errorf("%w: block %s: %w", ErrInvalidTransition, event.BlockID, err)
 		}
 		c.textStreams[key] = stream
 		block.Text = stream.String()
 	case BlockTool:
-		if event.ContentIndex != nil {
-			return fmt.Errorf("%w: tool block %s has a content index", ErrInvalidTransition, event.BlockID)
-		}
 		block.Tool.Output += event.Text
 	default:
 		return fmt.Errorf("%w: block %s of kind %s cannot stream", ErrInvalidTransition, event.BlockID, block.Kind)
@@ -423,11 +453,11 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	if err := c.requireRunRunning(runID, "change the plan"); err != nil {
 		return err
 	}
-	if event.Revision <= c.planRevision {
-		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, event.Revision, c.planRevision)
+	if c.plan != nil && event.Plan.Revision() <= c.plan.Revision() {
+		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, event.Plan.Revision(), c.plan.Revision())
 	}
-	c.plan = slices.Clone(event.Items)
-	c.planRevision = event.Revision
+	plan := event.Plan.Clone()
+	c.plan = &plan
 	return nil
 }
 
@@ -509,7 +539,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	}
 	if runID == c.runID {
 		for memberID, member := range c.runs {
-			if memberID != runID && member.Lineage.RootRunID == runID && member.Status != RunStatusFinished {
+			if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != RunStatusFinished {
 				return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
 			}
 		}
@@ -549,7 +579,6 @@ func (c *Conversation) Starting() error {
 	c.interactions = nil
 	c.reconciling = false
 	c.coldTail = false
-	c.revision++
 	return nil
 }
 
@@ -561,7 +590,6 @@ func (c *Conversation) CancelStarting() error {
 	c.reconciling = false
 	c.coldTail = false
 	c.outcome = Outcome{Status: OutcomeCanceled}
-	c.revision++
 	return nil
 }
 
@@ -591,7 +619,7 @@ func (c *Conversation) SettleRun(run Run) error {
 	}
 	c.settleOpenBlocks(toolStatus)
 	for memberID, member := range c.runs {
-		if member.Lineage.RootRunID != run.ID || member.Status == RunStatusFinished {
+		if member.Lineage.RootRunID() != run.ID || member.Status == RunStatusFinished {
 			continue
 		}
 		member.Status = RunStatusFinished
@@ -599,7 +627,7 @@ func (c *Conversation) SettleRun(run Run) error {
 		member.Outcome = run.Outcome.Clone()
 		c.runs[memberID] = member
 	}
-	c.runs[run.ID] = run.Clone()
+	c.rememberRun(run)
 	c.runID = run.ID
 	c.segmentID = ""
 	c.phase = ConversationIdle
@@ -608,7 +636,6 @@ func (c *Conversation) SettleRun(run Run) error {
 	c.coldTail = false
 	c.outcome = run.Outcome.Clone()
 	c.usage = run.Usage.Clone()
-	c.revision++
 	return nil
 }
 
@@ -622,20 +649,39 @@ func (c *Conversation) Failed(err error) {
 	c.coldTail = false
 	c.outcome = Outcome{Status: OutcomeFailed, Problem: &failure.Problem{Type: "conversation_failed", Detail: err.Error()}}
 	c.settleOpenBlocks(ToolError)
-	_ = c.put(Block{ID: fmt.Sprintf("failure:%d", c.revision+1), RunID: c.runID, Status: BlockStatusIncomplete, Kind: BlockError, Text: err.Error()}, true)
-	c.revision++
+	c.appendFailureBlock(err.Error())
+}
+
+const conversationFailureBlockIDPrefix = "failure:"
+
+func (c *Conversation) appendFailureBlock(detail string) {
+	c.ensureStorage()
+	ordinal := uint64(len(c.blocks)) + 1
+	var id string
+	for {
+		id = fmt.Sprintf("%s%d", conversationFailureBlockIDPrefix, ordinal)
+		if _, exists := c.index[blockIdentity(c.runID, id)]; !exists {
+			break
+		}
+		ordinal++
+	}
+	block := Block{
+		ID: id, RunID: c.runID, Status: BlockStatusIncomplete, Kind: BlockError, Text: detail,
+	}
+	key := blockIdentity(block.RunID, block.ID)
+	c.index[key] = len(c.blocks)
+	c.blocks = append(c.blocks, block)
+	c.open[key] = false
 }
 
 func (c *Conversation) ClearPresentation() {
 	c.blocks = nil
 	c.plan = nil
-	c.planRevision = 0
 	c.usage = Usage{}
 	c.outcome = Outcome{}
 	c.index = make(map[string]int)
 	c.open = make(map[string]bool)
 	c.textStreams = make(map[string]StreamedText)
-	c.revision++
 }
 
 func (c *Conversation) put(block Block, completed bool) error {
@@ -699,6 +745,13 @@ func (c *Conversation) ensureStorage() {
 	}
 }
 
+func (c *Conversation) rememberRun(run Run) {
+	if _, exists := c.runs[run.ID]; !exists {
+		c.runOrder = append(c.runOrder, run.ID)
+	}
+	c.runs[run.ID] = run.Clone()
+}
+
 func (c *Conversation) rebuildBlockIndex() {
 	c.index = make(map[string]int, len(c.blocks))
 	c.open = make(map[string]bool, len(c.blocks))
@@ -755,7 +808,9 @@ func (c *Conversation) settleOpenBlocksForRun(runID string, toolStatus ToolStatu
 	}
 }
 
-func blockIdentity(runID, blockID string) string { return runID + "\x00" + blockID }
+func blockIdentity(runID, blockID string) string {
+	return (BlockIdentity{RunID: runID, BlockID: blockID}).Key()
+}
 
 func (c *Conversation) requireRunRunning(runID, action string) error {
 	run, exists := c.runs[runID]

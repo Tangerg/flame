@@ -68,7 +68,7 @@ func (c *Coordinator) SetEmbeddingRole(ctx context.Context, providerID, model st
 		if err != nil {
 			return modelref.Selection{}, err
 		}
-		if !meta.EmbeddingCapable {
+		if !meta.Embedding().Supported() {
 			return modelref.Selection{}, fmt.Errorf("%w: provider %q", ErrEmbeddingUnsupported, role.Provider())
 		}
 		if c.embeddingValidator == nil {

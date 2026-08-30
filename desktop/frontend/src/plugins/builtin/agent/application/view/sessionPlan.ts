@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { AgentPlan, PlanStep } from "@/plugins/sdk/types/agentSessionView";
 import { agentSessionView } from "../ports/sessionView";
 import { useActiveSessionId } from "../session/activeSession";
+import { tupleKey } from "@/lib/tupleKey";
 
 export type { PlanStep } from "@/plugins/sdk/types/agentSessionView";
 
@@ -32,17 +33,22 @@ export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
  * Session and revision from inheriting predecessor presentation state. */
 export class SessionPlan {
   readonly identity: string;
-  readonly generation: number;
-  readonly revision: number;
+  readonly generation: bigint;
+  readonly revision: number | undefined;
   readonly steps: readonly PlanStep[];
 
   private constructor(
     sessionId: string,
-    generation: number,
-    revision: number,
+    generation: bigint,
+    revision: number | undefined,
     steps: readonly PlanStep[],
   ) {
-    this.identity = JSON.stringify([sessionId, generation, revision]);
+    this.identity = tupleKey(
+      sessionId,
+      generation.toString(),
+      revision === undefined ? "unwritten" : "committed",
+      ...(revision === undefined ? [] : [String(revision)]),
+    );
     this.generation = generation;
     this.revision = revision;
     this.steps = steps;
@@ -50,10 +56,10 @@ export class SessionPlan {
 
   static fromSnapshot(
     sessionId: string,
-    generation: number,
+    generation: bigint,
     plan: AgentPlan | undefined,
   ): SessionPlan {
-    return new SessionPlan(sessionId, generation, plan?.revision ?? 0, planSteps(plan));
+    return new SessionPlan(sessionId, generation, plan?.revision, planSteps(plan));
   }
 
   activeStep(): PlanStep | undefined {

@@ -2,6 +2,7 @@ package modelref
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -17,8 +18,15 @@ func TestNew(t *testing.T) {
 		{name: "configured", provider: "openai", model: "gpt-5", wantSet: true},
 		{name: "provider without model", provider: "openai", wantErr: ErrIncomplete},
 		{name: "model without provider", model: "gpt-5", wantErr: ErrIncomplete},
-		{name: "provider whitespace", provider: " openai", model: "gpt-5", wantErr: ErrSurroundingWhitespace},
-		{name: "model whitespace", provider: "openai", model: "gpt-5 ", wantErr: ErrSurroundingWhitespace},
+		{name: "provider whitespace", provider: " openai", model: "gpt-5", wantErr: ErrProviderIdentity},
+		{name: "model whitespace", provider: "openai", model: "gpt-5 ", wantErr: ErrModelIdentity},
+		{name: "provider NUL", provider: "openai\x00shadow", model: "gpt-5", wantErr: ErrProviderIdentity},
+		{name: "model newline", provider: "openai", model: "gpt-5\nshadow", wantErr: ErrModelIdentity},
+		{name: "provider too long", provider: strings.Repeat("p", MaximumProviderIdentityCharacters+1), model: "gpt-5", wantErr: ErrProviderIdentity},
+		{name: "model too long", provider: "openai", model: strings.Repeat("m", MaximumModelIdentityCharacters+1), wantErr: ErrModelIdentity},
+		{name: "invalid UTF-8 provider", provider: string([]byte{0xff}), model: "gpt-5", wantErr: ErrProviderIdentity},
+		{name: "zero-width model character", provider: "openai", model: "gpt-\u200b5", wantErr: ErrModelIdentity},
+		{name: "unicode provider boundary", provider: strings.Repeat("模", MaximumProviderIdentityCharacters), model: "gpt-5", wantSet: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,7 +58,9 @@ func TestNewWithReasoningEffort(t *testing.T) {
 		{name: "provider default", provider: "openai", model: "gpt-5"},
 		{name: "explicit", provider: "openai", model: "gpt-5", effort: "high"},
 		{name: "effort without model", effort: "high", wantErr: ErrReasoningEffortWithoutModel},
-		{name: "effort whitespace", provider: "openai", model: "gpt-5", effort: " high", wantErr: ErrReasoningEffortWhitespace},
+		{name: "effort whitespace", provider: "openai", model: "gpt-5", effort: " high", wantErr: ErrReasoningEffortIdentity},
+		{name: "effort control", provider: "openai", model: "gpt-5", effort: "high\t", wantErr: ErrReasoningEffortIdentity},
+		{name: "effort too long", provider: "openai", model: "gpt-5", effort: strings.Repeat("e", MaximumReasoningEffortCharacters+1), wantErr: ErrReasoningEffortIdentity},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

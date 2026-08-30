@@ -50,35 +50,84 @@ interface TasksState {
 }
 
 interface TasksActions {
-  add: (entry: TaskEntry) => void;
-  patch: (id: string, next: Partial<TaskEntry>) => void;
-  remove: (id: string) => void;
+  add: (task: TaskLifecycle) => void;
+  mutate: (task: TaskLifecycle, mutation: () => boolean) => boolean;
+  remove: (task: TaskLifecycle) => void;
 }
 
 export const useTasksStore = create<TasksState & TasksActions>((set) => ({
   tasks: new Map(),
-  add: (entry) =>
+  add: (task) =>
     set((s) => {
       const next = new Map(s.tasks);
-      next.set(entry.id, entry);
+      next.set(task.id, task);
       return { tasks: next };
     }),
-  patch: (id, partial) =>
+  mutate: (task, mutation) => {
+    let accepted = false;
     set((s) => {
-      const prev = s.tasks.get(id);
-      if (!prev) return s;
-      const next = new Map(s.tasks);
-      next.set(id, { ...prev, ...partial });
-      return { tasks: next };
-    }),
-  remove: (id) =>
+      if (s.tasks.get(task.id) !== task || !mutation()) return s;
+      accepted = true;
+      return { tasks: new Map(s.tasks) };
+    });
+    return accepted;
+  },
+  remove: (task) =>
     set((s) => {
-      if (!s.tasks.has(id)) return s;
+      if (s.tasks.get(task.id) !== task) return s;
       const next = new Map(s.tasks);
-      next.delete(id);
+      next.delete(task.id);
       return { tasks: next };
     }),
 }));
+
+/** Rich process-local lifecycle. Object identity is the task generation; wall
+ * time remains presentation data and cannot grant a handle mutation rights. */
+class TaskLifecycle implements TaskEntry {
+  readonly id: string;
+  readonly label: string;
+  readonly startedAt: number;
+  progress: number | null;
+  message: string | null;
+  status: TaskStatus = "running";
+  error?: string;
+  settledAt?: number;
+
+  constructor(id: string, opts: TaskStartOptions) {
+    this.id = id;
+    this.label = opts.label;
+    this.message = opts.message ?? null;
+    this.progress = opts.progress ?? null;
+    this.startedAt = Date.now();
+  }
+
+  update(patch: { progress?: number | null; message?: string | null }): boolean {
+    if (this.status !== "running") return false;
+    if (patch.progress !== undefined) this.progress = patch.progress;
+    if (patch.message !== undefined) this.message = patch.message;
+    return true;
+  }
+
+  succeed(message?: string): boolean {
+    if (!this.settle("succeeded")) return false;
+    this.progress = 1;
+    if (message !== undefined) this.message = message;
+    return true;
+  }
+
+  fail(error: unknown): boolean {
+    if (!this.settle("failed")) return false;
+    this.error = error instanceof Error ? error.message : String(error);
+    return true;
+  }
+
+  private settle(status: Exclude<TaskStatus, "running">): boolean {
+    if (this.status !== "running") return false;
+    this.status = status;
+    this.settledAt = Date.now();
+    return true;
+  }
+}
 
 // How long settled tasks linger before auto-removal — long enough for the
 // user to catch the success/error flash, short enough that the status bar
@@ -91,52 +140,30 @@ const TASK_LINGER_MS = 2400;
 export function startTask(pluginName: string, opts: TaskStartOptions): TaskHandle {
   const store = useTasksStore.getState();
   const id = opts.id ?? `task:${pluginName}:${nanoid(8)}`;
-  // Generation stamp: ids are a supported cross-call handle, so a restart can
-  // reuse this id with a FRESH entry. The old handle (and its timers) must
-  // only ever touch the generation it created — startedAt is the marker.
-  const startedAt = Date.now();
-  const isMine = (cur: TaskEntry | undefined): cur is TaskEntry =>
-    cur !== undefined && cur.startedAt === startedAt;
-
-  store.add({
-    id,
-    label: opts.label,
-    message: opts.message ?? null,
-    progress: opts.progress ?? null,
-    status: "running",
-    startedAt,
-  });
+  const task = new TaskLifecycle(id, opts);
+  store.add(task);
 
   // Mark settled + schedule removal. Guards against double-settle so a
   // late `succeed()` after `fail()` (or vice versa) is a silent no-op.
-  const settle = (status: "succeeded" | "failed", patch: Partial<TaskEntry>): void => {
-    const cur = useTasksStore.getState().tasks.get(id);
-    if (!isMine(cur) || cur.status !== "running") return;
-    const settledAt = Date.now();
-    useTasksStore.getState().patch(id, { ...patch, status, settledAt });
+  const settle = (transition: (task: TaskLifecycle) => boolean): void => {
+    if (!useTasksStore.getState().mutate(task, () => transition(task))) return;
     // The linger timer removes only THE settle it was armed for — a
     // restarted task reusing this id must not be deleted mid-flight by the
     // previous settle's stale timer.
     window.setTimeout(() => {
-      const latest = useTasksStore.getState().tasks.get(id);
-      if (isMine(latest) && latest.settledAt === settledAt) useTasksStore.getState().remove(id);
+      useTasksStore.getState().remove(task);
     }, TASK_LINGER_MS);
   };
 
   return {
     update(patch) {
-      const cur = useTasksStore.getState().tasks.get(id);
-      if (!isMine(cur) || cur.status !== "running") return;
-      useTasksStore.getState().patch(id, {
-        progress: patch.progress === undefined ? cur.progress : patch.progress,
-        message: patch.message === undefined ? cur.message : patch.message,
-      });
+      useTasksStore.getState().mutate(task, () => task.update(patch));
     },
     succeed(message) {
-      settle("succeeded", { progress: 1, ...(message !== undefined ? { message } : {}) });
+      settle((current) => current.succeed(message));
     },
     fail(err) {
-      settle("failed", { error: err instanceof Error ? err.message : String(err) });
+      settle((current) => current.fail(err));
     },
   };
 }

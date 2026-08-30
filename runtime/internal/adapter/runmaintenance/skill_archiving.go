@@ -11,23 +11,31 @@ const (
 	defaultSkillArchiveCheckInterval = 6 * time.Hour
 )
 
-// SkillArchiveConfig tunes idle-Skill archival. Zero values select defaults.
-type SkillArchiveConfig struct {
+// SkillArchivePolicyValues tunes idle-Skill archival. Nil selects a named
+// default; present non-positive durations are invalid.
+type SkillArchivePolicyValues struct {
 	// ArchiveAfter is the inactivity before an agent-authored skill is archived.
-	ArchiveAfter time.Duration
+	ArchiveAfter *time.Duration
 	// CheckInterval is the minimum wall-clock interval between Run-boundary
 	// archival checks, bounding their cost across a busy Session.
-	CheckInterval time.Duration
+	CheckInterval *time.Duration
 }
 
-func (s SkillArchiveConfig) normalized() SkillArchiveConfig {
-	if s.ArchiveAfter <= 0 {
-		s.ArchiveAfter = defaultSkillArchiveAfter
+type skillArchivePolicy struct {
+	archiveAfter  time.Duration
+	checkInterval time.Duration
+}
+
+func newSkillArchivePolicy(values SkillArchivePolicyValues) (skillArchivePolicy, error) {
+	archiveAfter, err := positiveDurationOrDefault(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
+	if err != nil {
+		return skillArchivePolicy{}, err
 	}
-	if s.CheckInterval <= 0 {
-		s.CheckInterval = defaultSkillArchiveCheckInterval
+	checkInterval, err := positiveDurationOrDefault(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
+	if err != nil {
+		return skillArchivePolicy{}, err
 	}
-	return s
+	return skillArchivePolicy{archiveAfter: archiveAfter, checkInterval: checkInterval}, nil
 }
 
 // idleSkillArchiver is the Application capability consumed by this scheduling
@@ -43,7 +51,7 @@ type idleSkillArchiver interface {
 // Run after start performs a check, avoiding a startup-time filesystem mutation.
 type IdleSkillArchiver struct {
 	skills idleSkillArchiver
-	config SkillArchiveConfig
+	policy skillArchivePolicy
 	now    func() time.Time
 
 	mu        sync.Mutex
@@ -52,12 +60,16 @@ type IdleSkillArchiver struct {
 
 // NewIdleSkillArchiver builds a Run-boundary scheduler over the Application's
 // automatic Skill-curation capability.
-func NewIdleSkillArchiver(skills idleSkillArchiver, config SkillArchiveConfig) *IdleSkillArchiver {
+func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyValues) (*IdleSkillArchiver, error) {
+	policy, err := newSkillArchivePolicy(values)
+	if err != nil {
+		return nil, err
+	}
 	return &IdleSkillArchiver{
 		skills: skills,
-		config: config.normalized(),
+		policy: policy,
 		now:    time.Now,
-	}
+	}, nil
 }
 
 // ArchiveIfDue archives eligible Skills unless the previous check occurred
@@ -69,13 +81,13 @@ func (i *IdleSkillArchiver) ArchiveIfDue(ctx context.Context) error {
 	}
 	now := i.now()
 	i.mu.Lock()
-	if !i.lastCheck.IsZero() && now.Sub(i.lastCheck) < i.config.CheckInterval {
+	if !i.lastCheck.IsZero() && now.Sub(i.lastCheck) < i.policy.checkInterval {
 		i.mu.Unlock()
 		return nil
 	}
 	i.lastCheck = now
 	i.mu.Unlock()
-	archived, err := i.skills.ArchiveIdle(ctx, now, i.config.ArchiveAfter)
+	archived, err := i.skills.ArchiveIdle(ctx, now, i.policy.archiveAfter)
 	recordArchivedIdleSkills(ctx, len(archived))
 	return err
 }

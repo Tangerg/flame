@@ -9,8 +9,8 @@ describe("usePluginErrorStore", () => {
 
     const log = usePluginErrorStore.getState().log;
     expect(log).toHaveLength(2);
-    expect(log[0]!.id).toBe(1);
-    expect(log[1]!.id).toBe(2);
+    expect(log[0]!.id).toMatch(/^\d+$/);
+    expect(BigInt(log[1]!.id)).toBe(BigInt(log[0]!.id) + 1n);
     expect(log[0]!.timestamp).toBeLessThanOrEqual(log[1]!.timestamp);
   });
 

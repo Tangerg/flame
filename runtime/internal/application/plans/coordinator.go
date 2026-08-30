@@ -7,17 +7,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // Store is the use case's consumer-owned persistence port.
 type Store interface {
-	State(ctx context.Context, sessionID string) (plan.State, error)
-	Save(ctx context.Context, sessionID string, expectedRevision uint64, replacement plan.State) error
+	State(ctx context.Context, sessionID string) (plan.Current, error)
+	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
 }
 
 // Clock supplies the commit time for a Plan replacement.
@@ -49,20 +49,20 @@ func New(deps Dependencies) *Coordinator {
 	return &Coordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}
 }
 
-// State returns the canonical Plan aggregate for one session.
-func (c *Coordinator) State(ctx context.Context, sessionID string) (plan.State, error) {
+// State returns the canonical optional Plan aggregate for one session.
+func (c *Coordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
 	if c == nil || c.store == nil {
-		return plan.State{}, errors.New("plans: store is unavailable")
+		return plan.Current{}, errors.New("plans: store is unavailable")
 	}
-	if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) {
-		return plan.State{}, errors.New("plans: session ID is required and must not contain surrounding whitespace")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return plan.Current{}, fmt.Errorf("plans: %w", err)
 	}
 	state, err := c.store.State(ctx, sessionID)
 	if err != nil {
-		return plan.State{}, err
+		return plan.Current{}, err
 	}
 	if err := state.Validate(); err != nil {
-		return plan.State{}, fmt.Errorf("plans: read invalid state: %w", err)
+		return plan.Current{}, fmt.Errorf("plans: read invalid state: %w", err)
 	}
 	return state, nil
 }
@@ -74,7 +74,7 @@ func (c *Coordinator) Replace(ctx context.Context, sessionID string, steps []pla
 	if err != nil {
 		return plan.State{}, err
 	}
-	if err := c.store.Save(ctx, sessionID, replacement.ExpectedRevision(), replacement.State()); err != nil {
+	if err := c.store.Save(ctx, sessionID, replacement.ExpectedVersion(), replacement.State()); err != nil {
 		return plan.State{}, err
 	}
 	c.invalidations.Notify(invalidation.InSession(invalidation.PlanState, sessionID))
@@ -98,34 +98,34 @@ func (c *Coordinator) PrepareInitial(steps []plan.Step) (Replacement, error) {
 	if c == nil {
 		return Replacement{}, errors.New("plans: coordinator is unavailable")
 	}
-	return c.replace(plan.State{}, steps)
+	return c.replace(plan.Current{}, steps)
 }
 
-func (c *Coordinator) replace(current plan.State, steps []plan.Step) (Replacement, error) {
+func (c *Coordinator) replace(current plan.Current, steps []plan.Step) (Replacement, error) {
 	next, err := current.Replace(steps, c.now())
 	if err != nil {
 		return Replacement{}, err
 	}
-	return newReplacement(current.Revision(), next)
+	return newReplacement(current.Version(), next)
 }
 
 // Replacement is an immutable, application-decided Plan state transition.
 // Persistence implementations may execute it but may not enrich or reinterpret it.
 type Replacement struct {
-	expectedRevision uint64
-	state            plan.State
+	expectedVersion plan.Version
+	state           plan.State
 }
 
-func newReplacement(expectedRevision uint64, state plan.State) (Replacement, error) {
-	replacement := Replacement{expectedRevision: expectedRevision, state: state}
+func newReplacement(expectedVersion plan.Version, state plan.State) (Replacement, error) {
+	replacement := Replacement{expectedVersion: expectedVersion, state: state}
 	if err := replacement.Validate(); err != nil {
 		return Replacement{}, err
 	}
 	return replacement, nil
 }
 
-// ExpectedRevision returns the state revision this replacement was based on.
-func (r Replacement) ExpectedRevision() uint64 { return r.expectedRevision }
+// ExpectedVersion returns the optional state identity this replacement was based on.
+func (r Replacement) ExpectedVersion() plan.Version { return r.expectedVersion }
 
 // State returns the already-decided replacement state.
 func (r Replacement) State() plan.State {
@@ -134,11 +134,8 @@ func (r Replacement) State() plan.State {
 
 // Validate verifies that the replacement advances its expected revision once.
 func (r Replacement) Validate() error {
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("plans: invalid replacement state: %w", err)
-	}
-	if r.expectedRevision == ^uint64(0) || r.state.Revision() != r.expectedRevision+1 {
-		return fmt.Errorf("plans: replacement revision %d does not follow expected revision %d", r.state.Revision(), r.expectedRevision)
+	if err := r.expectedVersion.AdvancesTo(r.state); err != nil {
+		return fmt.Errorf("plans: invalid replacement: %w", err)
 	}
 	return nil
 }

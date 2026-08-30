@@ -1,6 +1,23 @@
 package runs
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+)
+
+func TestExecutionFactReceiptPreservesTheProducerCancellationCause(t *testing.T) {
+	_, receipt, err := NewExecutionFactCommit(SteerMessagesApplied{})
+	if err != nil {
+		t.Fatalf("new execution fact commit: %v", err)
+	}
+	want := errors.New("interaction producer retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(want)
+	if err := receipt.Await(ctx); !errors.Is(err, want) {
+		t.Fatalf("receipt error = %v, want producer cause", err)
+	}
+}
 
 func TestExecutorMemberValidate(t *testing.T) {
 	tests := []struct {
@@ -28,7 +45,7 @@ func TestExecutorMemberValidate(t *testing.T) {
 		{
 			name:    "executor member whitespace",
 			member:  ExecutorMember{MemberID: " member_root"},
-			wantErr: "runs: executor member id has surrounding whitespace",
+			wantErr: "runs: executor member identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "parent whitespace",
@@ -36,7 +53,7 @@ func TestExecutorMemberValidate(t *testing.T) {
 				MemberID: "member_child",
 				ParentID: "member_root ",
 			},
-			wantErr: "runs: executor member parent id has surrounding whitespace",
+			wantErr: "runs: executor parent: executor member identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "spawn call whitespace",
@@ -45,7 +62,7 @@ func TestExecutorMemberValidate(t *testing.T) {
 				ParentID:    "member_root",
 				SpawnCallID: " call_delegate",
 			},
-			wantErr: "runs: executor member spawn call id has surrounding whitespace",
+			wantErr: "runs: executor spawn call: executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "empty executor member with parent",

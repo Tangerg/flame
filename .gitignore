@@ -13,3 +13,4 @@ desktop/.cache/
 desktop/.task/
 desktop/build/bin/
 runtime/cmd/contractgen/contractgen
+*/**/config.yaml

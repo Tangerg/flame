@@ -124,7 +124,7 @@ func (a *app) setHookTrust(workspace, projectRoot string, trusted bool) {
 				a.message("update project hook trust failed: " + err.Error())
 				return
 			}
-			if a.sessionContext == presentation {
+			if a.sessionContext.current(presentation) {
 				a.setRuntimeReader(runtimeReaderHooks)
 				a.openReaderDocument(hooksDocument(workspace, catalog))
 			}

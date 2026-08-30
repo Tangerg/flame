@@ -3,231 +3,424 @@ package goal
 import (
 	"errors"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
 
-func TestNewValidates(t *testing.T) {
-	now := time.Unix(0, 0)
-	if _, err := New("", "obj", modelref.Selection{}, Budget{}, run.Capabilities{}, "lease", now); err == nil {
-		t.Fatal("empty session should error")
-	}
-	if _, err := New("s", "", modelref.Selection{}, Budget{}, run.Capabilities{}, "lease", now); err == nil {
-		t.Fatal("empty objective should error")
-	}
-	if _, err := New("s", "obj", modelref.Selection{}, Budget{MaxRuns: -1}, run.Capabilities{}, "lease", now); err == nil {
-		t.Fatal("negative budget should error")
-	}
-	selection, err := modelref.New("p", "m")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, newErr := New("s", "obj", selection, Budget{}, run.Capabilities{}, "", now); newErr == nil {
-		t.Fatal("empty incarnation should error")
-	}
-	g, err := New("s", "obj", selection, Budget{MaxRuns: 3}, run.Capabilities{}, "lease", now)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if g.Status != StatusActive {
-		t.Fatalf("new goal status = %q, want active", g.Status)
-	}
-}
-
-func TestGoalOwnsFrozenRunCapabilities(t *testing.T) {
-	input := run.Capabilities{
-		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Question, interrupt.Approval},
-	}
-	g, err := New("s", "obj", modelref.Selection{}, Budget{}, input, "lease", time.Unix(0, 0))
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	want := run.Capabilities{
-		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
-	}
-	validationErr := g.Capabilities.Validate()
-	if !g.Capabilities.Equal(want) || validationErr != nil {
-		t.Fatalf("capabilities = %+v err=%v, want canonical %+v", g.Capabilities, validationErr, want)
-	}
-	input.InterruptKinds[0] = interrupt.Approval
-	if !g.Capabilities.Equal(want) {
-		t.Fatalf("Goal shares caller capability storage: %+v", g.Capabilities)
-	}
-	clone := g.Clone()
-	clone.Capabilities.InterruptKinds[0] = interrupt.Question
-	if !g.Capabilities.Equal(want) {
-		t.Fatalf("Goal.Clone shares capability storage: %+v", g.Capabilities)
-	}
-}
-
-func TestGoalRejectsNonFiniteBudgetAndUsage(t *testing.T) {
-	for name, value := range map[string]float64{
-		"NaN":               math.NaN(),
-		"positive infinity": math.Inf(1),
-		"negative infinity": math.Inf(-1),
-	} {
-		t.Run("budget "+name, func(t *testing.T) {
-			if _, err := New(
-				"s", "obj", modelref.Selection{}, Budget{MaxCostUSD: value},
-				run.Capabilities{},
-				"lease", time.Unix(0, 0),
-			); err == nil {
-				t.Fatal("New accepted a non-finite goal budget")
-			}
-		})
-		t.Run("usage "+name, func(t *testing.T) {
-			goal, err := New("s", "obj", modelref.Selection{}, Budget{}, run.Capabilities{}, "lease", time.Unix(0, 0))
-			if err != nil {
-				t.Fatalf("New: %v", err)
-			}
-			goal.Revision = 1
-			goal.Used.CostUSD = value
-			if err := goal.ValidateSnapshot(); err == nil {
-				t.Fatal("ValidateSnapshot accepted non-finite goal usage")
-			}
-		})
-	}
-}
-
-func TestValidateSnapshotRejectsMissingConcurrencyIdentity(t *testing.T) {
-	g, err := New("s", "obj", modelref.Selection{}, Budget{}, run.Capabilities{}, "lease", time.Unix(0, 0))
-	if err != nil {
-		t.Fatal(err)
-	}
-	tests := []struct {
-		name   string
-		mutate func(*Goal)
-	}{
-		{"incarnation", func(g *Goal) { g.IncarnationID = "" }},
-		{"revision", func(g *Goal) { g.Revision = 0 }},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			corrupt := g
-			tt.mutate(&corrupt)
-			if err := corrupt.ValidateSnapshot(); err == nil {
-				t.Fatalf("ValidateSnapshot accepted missing %s", tt.name)
-			}
-		})
-	}
-}
-
-func TestResumeRejectsSpentBudget(t *testing.T) {
-	now := time.Unix(0, 0)
-	g, err := New("s", "obj", modelref.Selection{}, Budget{MaxRuns: 1}, run.Capabilities{}, "lease", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	g.AddRun(0, 0, now)
-	g.Block(ReasonRunBudgetReached, "", now)
-	if err := g.Resume(now); !errors.Is(err, ErrBudgetExhausted) {
-		t.Fatalf("Resume error = %v, want ErrBudgetExhausted", err)
-	}
-	if g.Status != StatusBlocked {
-		t.Fatalf("status after rejected Resume = %q, want blocked", g.Status)
-	}
-}
-
-func TestReviseObjectiveOpensANewIncarnationWithoutResettingGoalFacts(t *testing.T) {
-	createdAt := time.Unix(10, 0)
-	updatedAt := createdAt.Add(time.Minute)
-	g, err := New(
-		"s", "first", modelref.Selection{}, Budget{MaxRuns: 4},
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
-		"lease-first", createdAt,
+func TestNewBuildsCommittedActiveGoal(t *testing.T) {
+	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.FixedZone("offset", 8*60*60))
+	selection := testSelection(t)
+	budget := testBudget(t, BudgetLimits{MaxRuns: intPointer(3)})
+	value, err := New(
+		"ses_1", "finish the refactor", selection, budget,
+		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question, interrupt.Approval}},
+		"inc_1", now,
 	)
 	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if value.Status() != StatusActive || value.Revision() != firstRevision {
+		t.Fatalf("new Goal = status %q revision %d", value.Status(), value.Revision())
+	}
+	if !value.CreatedAt().Equal(now) || value.CreatedAt().Location() != time.UTC {
+		t.Fatalf("created at = %v, want canonical UTC %v", value.CreatedAt(), now)
+	}
+	wantCapabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question}}
+	if !value.Capabilities().Equal(wantCapabilities) {
+		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
+	}
+	if err := value.ValidateSnapshot(); err != nil {
+		t.Fatalf("ValidateSnapshot: %v", err)
+	}
+}
+
+func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
+	selection := testSelection(t)
+	now := time.Unix(1, 0).UTC()
+	tests := []struct {
+		name        string
+		sessionID   string
+		objective   string
+		selection   modelref.Selection
+		budget      Budget
+		incarnation string
+		createdAt   time.Time
+	}{
+		{name: "session missing", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session whitespace", sessionID: " ses ", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session interior whitespace", sessionID: "ses_ one", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session non-printing", sessionID: "ses_\u200bhidden", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session oversized", sessionID: strings.Repeat("界", resourceidentity.MaximumCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "objective missing", sessionID: "ses", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "objective whitespace", sessionID: "ses", objective: " obj ", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "selection missing", sessionID: "ses", objective: "obj", incarnation: "inc", createdAt: now},
+		{name: "budget missing", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "incarnation missing", sessionID: "ses", objective: "obj", selection: selection, createdAt: now},
+		{name: "incarnation whitespace", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc arnation", createdAt: now},
+		{name: "incarnation non-printing", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc\u200barnation", createdAt: now},
+		{name: "incarnation invalid UTF-8", sessionID: "ses", objective: "obj", selection: selection, incarnation: string([]byte{0xff}), createdAt: now},
+		{name: "incarnation oversized", sessionID: "ses", objective: "obj", selection: selection, incarnation: strings.Repeat("界", goalref.MaximumIncarnationCharacters+1), createdAt: now},
+		{name: "time missing", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := New(test.sessionID, test.objective, test.selection, test.budget, run.Capabilities{}, test.incarnation, test.createdAt); err == nil {
+				t.Fatal("New accepted invalid input")
+			}
+		})
+	}
+}
+
+func TestBudgetRequiresExplicitConstructionAndPositiveLimits(t *testing.T) {
+	if err := (Budget{}).Validate(); err == nil {
+		t.Fatal("zero Budget was accepted as an implicit unlimited policy")
+	}
+	if err := (Budget{initialized: true, maxRuns: -1}).Validate(); err == nil {
+		t.Fatal("corrupt negative Budget was accepted")
+	}
+	unlimited := UnlimitedBudget()
+	if err := unlimited.Validate(); err != nil || !unlimited.Unlimited() {
+		t.Fatalf("UnlimitedBudget = %+v, error %v", unlimited, err)
+	}
+	for _, test := range []struct {
+		name   string
+		limits BudgetLimits
+	}{
+		{name: "empty"},
+		{name: "zero runs", limits: BudgetLimits{MaxRuns: intPointer(0)}},
+		{name: "zero cost", limits: BudgetLimits{MaxCostUSD: floatPointer(0)}},
+		{name: "zero steps", limits: BudgetLimits{MaxSteps: intPointer(0)}},
+		{name: "nan cost", limits: BudgetLimits{MaxCostUSD: floatPointer(math.NaN())}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := NewBudget(test.limits); err == nil {
+				t.Fatal("NewBudget accepted a non-positive or absent limit")
+			}
+		})
+	}
+	limited := testBudget(t, BudgetLimits{
+		MaxRuns: intPointer(3), MaxCostUSD: floatPointer(1.5), MaxSteps: intPointer(20),
+	})
+	if value, ok := limited.MaxRuns(); !ok || value != 3 {
+		t.Fatalf("MaxRuns = (%d, %t), want (3, true)", value, ok)
+	}
+	if _, ok := limited.MaxCostUSD(); !ok {
+		t.Fatal("MaxCostUSD lost its explicit limit")
+	}
+	if _, ok := limited.MaxSteps(); !ok {
+		t.Fatal("MaxSteps lost its explicit limit")
+	}
+}
+
+func TestGoalOwnsCapabilityStorage(t *testing.T) {
+	input := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question, interrupt.Approval}}
+	value := testGoal(t, UnlimitedBudget(), input)
+	input.InterruptKinds[0] = interrupt.Approval
+
+	read := value.Capabilities()
+	read.InterruptKinds[0] = interrupt.Question
+	if !value.Capabilities().Equal(run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question}}) {
+		t.Fatalf("Goal shares capability storage: %v", value.Capabilities())
+	}
+}
+
+func TestRestoreRejectsImpossibleCommittedState(t *testing.T) {
+	base := testGoal(t, UnlimitedBudget(), run.Capabilities{}).Snapshot()
+	tests := []struct {
+		name   string
+		mutate func(*Snapshot)
+	}{
+		{name: "revision missing", mutate: func(s *Snapshot) { s.Revision = 0 }},
+		{name: "update before create", mutate: func(s *Snapshot) { s.UpdatedAt = s.CreatedAt.Add(-time.Nanosecond) }},
+		{name: "active with reason", mutate: func(s *Snapshot) { s.ReasonCode = ReasonStoppedByUser }},
+		{name: "paused without reason", mutate: func(s *Snapshot) { s.Status = StatusPaused }},
+		{name: "paused with blocked reason", mutate: func(s *Snapshot) {
+			s.Status, s.ReasonCode = StatusPaused, ReasonBlockedByModel
+			s.ReasonDetail = "blocked"
+		}},
+		{name: "blocked without model detail", mutate: func(s *Snapshot) { s.Status, s.ReasonCode = StatusBlocked, ReasonBlockedByModel }},
+		{name: "noncanonical capabilities", mutate: func(s *Snapshot) {
+			s.Capabilities.InterruptKinds = []interrupt.Kind{interrupt.Question, interrupt.Approval}
+		}},
+		{name: "active exhausted budget", mutate: func(s *Snapshot) {
+			s.Budget, s.Used.Runs = testBudget(t, BudgetLimits{MaxRuns: intPointer(1)}), 1
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := base
+			snapshot.Capabilities = base.Capabilities.Clone()
+			test.mutate(&snapshot)
+			if _, err := Restore(snapshot); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("Restore error = %v, want ErrInvalid", err)
+			}
+		})
+	}
+}
+
+func TestCurrentAndVersionDistinguishAbsenceFromCommittedState(t *testing.T) {
+	unwritten, err := Unwritten("ses_1")
+	if err != nil {
 		t.Fatal(err)
 	}
-	g.AddRun(0.25, 2, createdAt.Add(time.Second))
-	g.Pause(ReasonStoppedByUser, "", createdAt.Add(2*time.Second))
+	if _, exists := unwritten.Goal(); exists || !unwritten.Version().IsUnwritten() {
+		t.Fatal("unwritten Current became committed")
+	}
 
-	if err := g.ReviseObjective("second", "lease-second", updatedAt); err != nil {
-		t.Fatalf("ReviseObjective: %v", err)
+	value := testGoal(t, UnlimitedBudget(), run.Capabilities{})
+	current, err := CurrentOf(value)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if g.Objective != "second" || g.IncarnationID != "lease-second" {
-		t.Fatalf("revised identity = %q/%q", g.Objective, g.IncarnationID)
+	owned, exists := current.Goal()
+	if !exists || current.Version().IsUnwritten() || owned.Version() != current.Version() {
+		t.Fatal("committed Current lost Goal identity")
 	}
-	if g.Status != StatusPaused || g.Reason.Code != ReasonStoppedByUser {
-		t.Fatalf("revised lifecycle = %q/%+v", g.Status, g.Reason)
+
+	fresh := testGoalFor(t, "ses_1", "inc_fresh", UnlimitedBudget())
+	if err := unwritten.Version().AdvancesTo(fresh); err != nil {
+		t.Fatalf("unwritten advance: %v", err)
 	}
-	if g.Budget.MaxRuns != 4 || g.Used != (Usage{Runs: 1, CostUSD: 0.25, Steps: 2}) {
-		t.Fatalf("revised accounting = budget %+v used %+v", g.Budget, g.Used)
+	paused, err := value.Pause(ReasonStoppedByUser, "", value.UpdatedAt())
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !g.CreatedAt.Equal(createdAt) || !g.UpdatedAt.Equal(updatedAt) {
-		t.Fatalf("revised times = created %v updated %v", g.CreatedAt, g.UpdatedAt)
+	if err := value.Version().AdvancesTo(paused); err != nil {
+		t.Fatalf("same-incarnation advance: %v", err)
+	}
+}
+
+func TestLifecycleTransitionsAreImmutableAndMonotonic(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, UnlimitedBudget(), run.Capabilities{}, now)
+	paused, err := active.Pause(ReasonStoppedByUser, "", now.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if active.Status() != StatusActive || active.Revision() != 1 {
+		t.Fatalf("Pause mutated source = %q@%d", active.Status(), active.Revision())
+	}
+	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonStoppedByUser || paused.Revision() != 2 {
+		t.Fatalf("paused = %q/%q@%d", paused.Status(), paused.Reason().Code(), paused.Revision())
+	}
+	resumed, err := paused.Resume(now.Add(2 * time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Status() != StatusActive || !resumed.Reason().IsNone() || resumed.Revision() != 3 {
+		t.Fatalf("resumed = %q/%q@%d", resumed.Status(), resumed.Reason().Code(), resumed.Revision())
+	}
+	complete, err := resumed.Complete(now.Add(3 * time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if complete.Status() != StatusComplete || complete.Revision() != 4 {
+		t.Fatalf("complete = %q@%d", complete.Status(), complete.Revision())
+	}
+	if _, err := complete.Resume(now.Add(4 * time.Second)); !errors.Is(err, ErrNotResumable) {
+		t.Fatalf("complete Resume error = %v", err)
+	}
+}
+
+func TestTransitionRejectsInvalidReasonTimeAndState(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, UnlimitedBudget(), run.Capabilities{}, now)
+	if _, err := active.Pause(ReasonNone, "", now); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Pause no reason = %v", err)
+	}
+	if _, err := active.Pause(ReasonBlockedByModel, "blocked", now); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Pause blocked reason = %v", err)
+	}
+	if _, err := active.Block(ReasonBlockedByModel, "", now); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Block no detail = %v", err)
+	}
+	if _, err := active.Complete(now.Add(-time.Nanosecond)); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("time travel = %v", err)
+	}
+	paused, err := active.Pause(ReasonStoppedByUser, "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := paused.Pause(ReasonStoppedByUser, "", now); !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("double Pause = %v", err)
+	}
+}
+
+func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, testBudget(t, BudgetLimits{MaxRuns: intPointer(1)}), run.Capabilities{}, now)
+	record := RunRecord{
+		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
+		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 2, CompletedAt: now.Add(time.Second),
+	}
+	blocked, err := active.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked.Status() != StatusBlocked || blocked.Reason().Code() != ReasonRunBudgetReached ||
+		blocked.Used() != (Usage{Runs: 1, CostUSD: 0.25, Steps: 2}) || blocked.Revision() != 2 {
+		t.Fatalf("blocked = %+v", blocked.Snapshot())
+	}
+	if _, err := blocked.Resume(now.Add(2 * time.Second)); !errors.Is(err, ErrBudgetExhausted) {
+		t.Fatalf("Resume error = %v, want ErrBudgetExhausted", err)
+	}
+
+	failedGoal := testGoalAt(t, UnlimitedBudget(), run.Capabilities{}, now)
+	record.Outcome, record.RunID = run.OutcomeFailed, "run_2"
+	paused, err := failedGoal.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted || paused.Reason().Detail() != run.OutcomeFailed.String() {
+		t.Fatalf("failed Run state = %+v", paused.Snapshot())
+	}
+}
+
+func TestRecordRunPreservesPriorModelReport(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, testBudget(t, BudgetLimits{MaxRuns: intPointer(1)}), run.Capabilities{}, now)
+	blocked, err := active.Block(ReasonBlockedByModel, "need a credential", now.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounted, err := blocked.RecordRun(RunRecord{
+		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
+		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 2, CompletedAt: now.Add(2 * time.Second),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if accounted.Status() != StatusBlocked || accounted.Reason() != blocked.Reason() || accounted.Used().Runs != 1 {
+		t.Fatalf("accounted = %+v", accounted.Snapshot())
+	}
+}
+
+func TestRecordRunRejectsForeignIdentityAndOverflow(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, UnlimitedBudget(), run.Capabilities{}, now)
+	record := RunRecord{
+		SessionID: "other", IncarnationID: "inc_1", RunID: "run_1",
+		Outcome: run.OutcomeCompleted, CompletedAt: now,
+	}
+	if _, err := active.RecordRun(record); !errors.Is(err, ErrRunIdentityConflict) {
+		t.Fatalf("foreign Run error = %v", err)
+	}
+
+	overflowSnapshot := active.Snapshot()
+	overflowSnapshot.Used.Runs = math.MaxInt
+	overflow, err := Restore(overflowSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.SessionID = "ses_1"
+	if _, err := overflow.RecordRun(record); !errors.Is(err, ErrInvalid) && err == nil {
+		t.Fatalf("overflow error = %v", err)
+	}
+}
+
+func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	active := testGoalAt(t, testBudget(t, BudgetLimits{MaxRuns: intPointer(4)}), run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}, now)
+	paused, err := active.Pause(ReasonStoppedByUser, "", now.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	revised, err := paused.ReviseObjective("second", "inc_2", now.Add(2*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revised.Objective() != "second" || revised.IncarnationID() != "inc_2" || revised.Revision() != firstRevision {
+		t.Fatalf("revised identity = %s/%s@%d", revised.Objective(), revised.IncarnationID(), revised.Revision())
+	}
+	if revised.Status() != StatusPaused || revised.Reason() != paused.Reason() || revised.Budget() != active.Budget() ||
+		!revised.CreatedAt().Equal(active.CreatedAt()) {
+		t.Fatalf("revised facts = %+v", revised.Snapshot())
+	}
+	if err := paused.Version().AdvancesTo(revised); err != nil {
+		t.Fatalf("fresh incarnation advance: %v", err)
+	}
+
+	activeRevision, err := paused.ReviseObjectiveAndResume("second", "inc_3", now.Add(2*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if activeRevision.Status() != StatusActive || activeRevision.Revision() != firstRevision {
+		t.Fatalf("revised+resumed = %+v", activeRevision.Snapshot())
 	}
 }
 
 func TestBudgetExceeded(t *testing.T) {
 	tests := []struct {
-		name   string
-		budget Budget
-		used   Usage
-		limit  BudgetLimit
-		want   bool
+		name     string
+		budget   Budget
+		used     Usage
+		limit    BudgetLimit
+		exceeded bool
 	}{
-		{"unbounded", Budget{}, Usage{Runs: 100, CostUSD: 999, Steps: 999}, BudgetLimitNone, false},
-		{"under", Budget{MaxRuns: 5}, Usage{Runs: 4}, BudgetLimitNone, false},
-		{"Runs", Budget{MaxRuns: 5}, Usage{Runs: 5}, BudgetLimitRuns, true},
-		{"cost", Budget{MaxCostUSD: 1.0}, Usage{CostUSD: 1.0}, BudgetLimitCost, true},
-		{"steps", Budget{MaxSteps: 10}, Usage{Steps: 11}, BudgetLimitSteps, true},
+		{name: "unbounded", budget: UnlimitedBudget(), used: Usage{Runs: 100, CostUSD: 999, Steps: 999}},
+		{name: "under", budget: testBudget(t, BudgetLimits{MaxRuns: intPointer(5)}), used: Usage{Runs: 4}},
+		{name: "runs", budget: testBudget(t, BudgetLimits{MaxRuns: intPointer(5)}), used: Usage{Runs: 5}, limit: BudgetLimitRuns, exceeded: true},
+		{name: "cost", budget: testBudget(t, BudgetLimits{MaxCostUSD: floatPointer(1)}), used: Usage{CostUSD: 1}, limit: BudgetLimitCost, exceeded: true},
+		{name: "steps", budget: testBudget(t, BudgetLimits{MaxSteps: intPointer(10)}), used: Usage{Steps: 11}, limit: BudgetLimitSteps, exceeded: true},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			limit, ok := tt.budget.Exceeded(tt.used)
-			if ok != tt.want || limit != tt.limit {
-				t.Fatalf("Exceeded = (%v, %v), want (%v, %v)", limit, ok, tt.limit, tt.want)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			limit, exceeded := test.budget.exceeded(test.used)
+			if limit != test.limit || exceeded != test.exceeded {
+				t.Fatalf("Exceeded = (%s,%t), want (%s,%t)", limit, exceeded, test.limit, test.exceeded)
 			}
 		})
 	}
 }
 
-func TestRecordRunPreservesPriorTerminalReport(t *testing.T) {
-	now := time.Unix(0, 0)
-	g, err := New("s", "obj", modelref.Selection{}, Budget{MaxRuns: 1}, run.Capabilities{}, "lease", now)
+func testSelection(t *testing.T) modelref.Selection {
+	t.Helper()
+	selection, err := modelref.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
 	}
-	g.Block(ReasonBlockedByModel, "need a credential", now)
-	g.RecordRun(RunRecord{
-		SessionID: "s", IncarnationID: "lease", RunID: "run_1", Outcome: run.OutcomeCompleted,
-		CostUSD: 0.25, Steps: 2, CompletedAt: now.Add(time.Second),
-	})
-	if g.Status != StatusBlocked || g.Reason != (Reason{Code: ReasonBlockedByModel, Detail: "need a credential"}) {
-		t.Fatalf("status/reason after terminal record = %q/%+v", g.Status, g.Reason)
-	}
-	if g.Used != (Usage{Runs: 1, CostUSD: 0.25, Steps: 2}) {
-		t.Fatalf("usage after terminal record = %+v", g.Used)
-	}
+	return selection
 }
 
-func TestTransitions(t *testing.T) {
-	now := time.Unix(0, 0)
-	g, _ := New("s", "obj", modelref.Selection{}, Budget{}, run.Capabilities{}, "lease", now)
+func testBudget(t *testing.T, limits BudgetLimits) Budget {
+	t.Helper()
+	budget, err := NewBudget(limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return budget
+}
 
-	g.AddRun(0.5, 2, now)
-	g.AddRun(0.25, 1, now)
-	if g.Used.Runs != 2 || g.Used.CostUSD != 0.75 || g.Used.Steps != 3 {
-		t.Fatalf("usage accumulation = %+v", g.Used)
-	}
+func intPointer(value int) *int { return &value }
 
-	g.Block(ReasonRunBudgetReached, "", now)
-	if g.Status != StatusBlocked || g.Reason != (Reason{Code: ReasonRunBudgetReached}) {
-		t.Fatalf("Block = (%q, %+v)", g.Status, g.Reason)
+func floatPointer(value float64) *float64 { return &value }
+
+func testGoal(t *testing.T, budget Budget, capabilities run.Capabilities) Goal {
+	t.Helper()
+	return testGoalAt(t, budget, capabilities, time.Unix(10, 0).UTC())
+}
+
+func testGoalAt(t *testing.T, budget Budget, capabilities run.Capabilities, now time.Time) Goal {
+	t.Helper()
+	value, err := New("ses_1", "objective", testSelection(t), budget, capabilities, "inc_1", now)
+	if err != nil {
+		t.Fatal(err)
 	}
-	g.Resume(now)
-	if g.Status != StatusActive || g.Reason != (Reason{}) {
-		t.Fatalf("Resume = (%q, %+v), want (active, zero reason)", g.Status, g.Reason)
+	return value
+}
+
+func testGoalFor(t *testing.T, sessionID, incarnationID string, budget Budget) Goal {
+	t.Helper()
+	value, err := New(sessionID, "objective", testSelection(t), budget, run.Capabilities{}, incarnationID, time.Unix(10, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
 	}
-	g.Pause(ReasonStoppedByUser, "", now)
-	if g.Status != StatusPaused || g.Reason != (Reason{Code: ReasonStoppedByUser}) {
-		t.Fatalf("Pause = (%q, %+v)", g.Status, g.Reason)
-	}
+	return value
 }

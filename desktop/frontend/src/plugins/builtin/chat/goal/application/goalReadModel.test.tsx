@@ -19,7 +19,7 @@ const state = (objective: string): GoalState => ({
     objective,
     status: "active",
     stop: null,
-    budget: { maxRuns: 0, maxCostUsd: 0, maxSteps: 0 },
+    budget: null,
     used: { runs: 0, costUsd: 0, steps: 0 },
     provider: "openai",
     model: "gpt-5",

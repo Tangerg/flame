@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -12,7 +13,7 @@ import (
 
 // List returns user-facing sessions (roots and forks), newest-updated first.
 func (s *SessionStore) List(ctx context.Context) ([]session.Session, error) {
-	return s.ListPage(ctx, false, 0, "", 0)
+	return s.list(ctx, session.AllCatalogEntries(), nil, 0)
 }
 
 // ListPage returns user-facing sessions in list order, bounded by the query. The
@@ -24,18 +25,48 @@ func (s *SessionStore) List(ctx context.Context) ([]session.Session, error) {
 // session's view is resolved against the filesystem and the live-run registry, so
 // slicing a fully-resolved list did that work for every session to return one
 // page of them.
-func (s *SessionStore) ListPage(ctx context.Context, afterFavorite bool, afterUpdatedAt int64, afterID string, limit int) ([]session.Session, error) {
+func (s *SessionStore) ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error) {
+	if err := read.Validate(); err != nil {
+		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
+	}
+	var after *session.CatalogAnchor
+	if value, present := read.After(); present {
+		after = &value
+	}
+	return s.list(ctx, read.Filter(), after, read.Limit())
+}
+
+func (s *SessionStore) list(
+	ctx context.Context,
+	filter session.CatalogFilter,
+	after *session.CatalogAnchor,
+	limit int,
+) ([]session.Session, error) {
 	query := `SELECT ` + sessionColumns + ` FROM sessions`
+	var predicates []string
 	var args []any
-	if afterUpdatedAt > 0 || afterID != "" {
+	if search, present := filter.Search(); present {
+		pattern := "%" + escapeSessionLikePattern(search) + "%"
+		predicates = append(predicates, `(title_search LIKE ? ESCAPE '\' OR workspace_search LIKE ? ESCAPE '\')`)
+		args = append(args, pattern, pattern)
+	}
+	if workspacePath, present := filter.WorkspacePath(); present {
+		predicates = append(predicates, `workspace_path = ?`)
+		args = append(args, workspacePath)
+	}
+	if after != nil {
 		favorite := 0
-		if afterFavorite {
+		if after.Favorite() {
 			favorite = 1
 		}
-		query += ` WHERE (favorite < ?
+		updatedAt := after.UpdatedAt().UnixNano()
+		predicates = append(predicates, `(favorite < ?
 			OR (favorite = ? AND updated_at < ?)
-			OR (favorite = ? AND updated_at = ? AND id < ?))`
-		args = append(args, favorite, favorite, afterUpdatedAt, favorite, afterUpdatedAt, afterID)
+			OR (favorite = ? AND updated_at = ? AND id < ?))`)
+		args = append(args, favorite, favorite, updatedAt, favorite, updatedAt, after.ID())
+	}
+	if len(predicates) > 0 {
+		query += ` WHERE ` + strings.Join(predicates, ` AND `)
 	}
 	query += ` ORDER BY favorite DESC, updated_at DESC, id DESC`
 	if limit > 0 {
@@ -46,7 +77,7 @@ func (s *SessionStore) ListPage(ctx context.Context, afterFavorite bool, afterUp
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]session.Session, 0)
 	for rows.Next() {
@@ -62,10 +93,17 @@ func (s *SessionStore) ListPage(ctx context.Context, afterFavorite bool, afterUp
 	return out, nil
 }
 
+func escapeSessionLikePattern(value string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+}
+
 // Exists reports whether a session row exists — the cheap existence check the
 // goal driver uses to refuse a goal for a missing session and to sweep orphaned
 // goals at boot, without decoding the whole aggregate.
 func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
+	if err := validateSessionResource("check Session existence", id); err != nil {
+		return false, err
+	}
 	var one int
 	err := conn(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -81,6 +119,9 @@ func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
 // decoding unrelated aggregate state. Goal admission uses the boolean as its
 // existence fact and freezes the returned selection when no override was sent.
 func (s *SessionStore) ModelSelection(ctx context.Context, id string) (modelref.Selection, bool, error) {
+	if err := validateSessionResource("read Session model selection", id); err != nil {
+		return modelref.Selection{}, false, err
+	}
 	var provider, model, reasoningEffort string
 	err := conn(ctx, s.db).QueryRowContext(ctx,
 		`SELECT provider, model, reasoning_effort FROM sessions WHERE id = ?`, id,
@@ -99,6 +140,9 @@ func (s *SessionStore) ModelSelection(ctx context.Context, id string) (modelref.
 }
 
 func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, error) {
+	if err := validateSessionResource("read Session", id); err != nil {
+		return session.Session{}, err
+	}
 	row := conn(ctx, s.db).QueryRowContext(ctx,
 		`SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
 	sess, err := rowToSession(row)

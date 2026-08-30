@@ -71,7 +71,6 @@ type eventRecord struct {
 	Options          *runOptionsJSON   `json:"options,omitzero"`
 	BlockID          string            `json:"blockId,omitzero"`
 	Text             string            `json:"text,omitzero"`
-	Index            *int              `json:"index,omitempty"`
 	Step             *int              `json:"step,omitempty"`
 	ContextTokens    *int64            `json:"contextTokens,omitempty"`
 	Activity         string            `json:"activity,omitzero"`
@@ -87,11 +86,9 @@ type eventRecord struct {
 }
 
 type runOptionsJSON struct {
-	Provider       string  `json:"provider,omitzero"`
-	Model          string  `json:"model,omitzero"`
-	MaxTotalTokens int64   `json:"maxTotalTokens,omitzero"`
-	MaxSteps       int     `json:"maxSteps,omitzero"`
-	MaxBudgetUSD   float64 `json:"maxBudgetUsd,omitzero"`
+	Provider string         `json:"provider,omitzero"`
+	Model    string         `json:"model,omitzero"`
+	Limits   *runLimitsJSON `json:"limits,omitempty"`
 }
 
 type blockFrame struct {
@@ -262,7 +259,7 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		Runs:       make([]runFrame, 0, len(snapshot.Runs)),
 	}
 	for _, run := range snapshot.Runs {
-		if run.ID == target.ID || run.Lineage.RootRunID == target.ID {
+		if run.ID == target.ID || run.Lineage.RootRunID() == target.ID {
 			frame.Runs = append(frame.Runs, encodeRun(run))
 		}
 	}
@@ -272,7 +269,9 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		}
 	}
 	if latest, ok := snapshot.LatestRun(); ok && latest.ID == target.ID {
-		frame.Revision, frame.Plan = snapshot.PlanRevision, encodePlan(snapshot.Plan)
+		if snapshot.Plan != nil {
+			frame.Revision, frame.Plan = snapshot.Plan.Revision(), encodePlan(snapshot.Plan.Items())
+		}
 	}
 	if target.Status == agent.RunStatusWaiting {
 		frame.Interactions = encodeInteractions(snapshot.Interactions)
@@ -290,14 +289,14 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 	case agent.SegmentStarted:
 		return eventRecord{
 			Type: "segment.started", RunID: event.Run.ID, SessionID: event.Run.SessionID,
-			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID,
-			ParentRunID:      event.Run.Lineage.ParentRunID, RootRunID: event.Run.Lineage.RootRunID,
+			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID(),
+			ParentRunID:      event.Run.Lineage.ParentRunID(), RootRunID: event.Run.Lineage.RootRunID(),
 		}, nil
 	case agent.BlockStarted:
 		return eventRecord{Type: "block.started", Block: encodeBlock(event.Block)}, nil
 	case agent.BlockDelta:
 		return eventRecord{
-			Type: "block.delta", BlockID: event.BlockID, Text: event.Text, Index: event.ContentIndex,
+			Type: "block.delta", BlockID: event.BlockID, Text: event.Text,
 		}, nil
 	case agent.ToolArgumentsDelta:
 		return eventRecord{Type: "tool.arguments.delta", BlockID: event.BlockID, Text: event.Text}, nil
@@ -314,7 +313,7 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 	case agent.BlockCompleted:
 		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
 	case agent.PlanChanged:
-		return eventRecord{Type: "plan.changed", Revision: event.Revision, Plan: encodePlan(event.Items)}, nil
+		return eventRecord{Type: "plan.changed", Revision: event.Plan.Revision(), Plan: encodePlan(event.Plan.Items())}, nil
 	case agent.RunInterrupted:
 		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(event.Usage)}, nil
 	case agent.RunSuspended:
@@ -378,11 +377,25 @@ func cloneFloat64(value *float64) *float64 {
 
 func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
 	return &runOptionsJSON{
-		Provider: options.Provider, Model: options.Model,
-		MaxTotalTokens: options.Limits.MaxTotalTokens,
-		MaxSteps:       options.Limits.MaxSteps,
-		MaxBudgetUSD:   options.Limits.MaxBudgetUSD,
+		Provider: options.Provider, Model: options.Model, Limits: encodeRunLimits(options.Limits),
 	}
+}
+
+func encodeRunLimits(limits agent.RunLimits) *runLimitsJSON {
+	if limits.Unlimited() {
+		return nil
+	}
+	encoded := &runLimitsJSON{}
+	if value, limited := limits.MaxTotalTokens(); limited {
+		encoded.MaxTotalTokens = &value
+	}
+	if value, limited := limits.MaxSteps(); limited {
+		encoded.MaxSteps = &value
+	}
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		encoded.MaxBudgetUSD = &value
+	}
+	return encoded
 }
 
 func encodeInteractions(interactions []agent.Interaction) []interactionJSON {

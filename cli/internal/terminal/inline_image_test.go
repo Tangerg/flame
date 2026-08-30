@@ -35,7 +35,7 @@ func (i *imageTransportStub) CellSize() (image.Point, bool) {
 }
 func (i *imageTransportStub) Transmit([]byte) (graphics.Image, error) {
 	i.transmitted++
-	return graphics.Image{ID: 1, Width: 200, Height: 100}, nil
+	return graphics.Image{ID: 1, Size: image.Pt(200, 100)}, nil
 }
 
 func TestTerminalImageBlockReflowsWithTheHostCellSize(t *testing.T) {

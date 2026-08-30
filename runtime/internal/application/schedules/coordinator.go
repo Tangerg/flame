@@ -20,10 +20,9 @@ import (
 // ManagementStore is the editable-schedule persistence slice owned by this
 // use case. Firing and worker cursor updates intentionally remain separate.
 type ManagementStore interface {
-	List(ctx context.Context) ([]schedule.Schedule, error)
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
-	Create(ctx context.Context, scheduled schedule.Schedule) (schedule.Schedule, error)
+	Insert(ctx context.Context, scheduled schedule.Schedule) error
 	Update(ctx context.Context, scheduled schedule.Schedule, expectedRevision uint64) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) (bool, error)
 }
@@ -34,6 +33,7 @@ type Coordinator struct {
 	store         ManagementStore
 	paths         CWDResolver
 	models        ModelAdmitter
+	identities    ManagementIdentities
 	now           func() time.Time
 	invalidations invalidation.Publish
 }
@@ -51,6 +51,11 @@ type ModelAdmitter interface {
 	AdmitSelection(selection modelref.Selection) error
 }
 
+// ManagementIdentities supplies new Schedule aggregate identities.
+type ManagementIdentities interface {
+	NewScheduleID() string
+}
+
 // ErrUnavailable reports that scheduled-run management was not assembled in
 // this Runtime.
 var ErrUnavailable = errors.New("schedules: unavailable")
@@ -60,6 +65,7 @@ type Dependencies struct {
 	Store         ManagementStore
 	Paths         CWDResolver
 	Models        ModelAdmitter
+	Identities    ManagementIdentities
 	Invalidations invalidation.Publish
 }
 
@@ -81,28 +87,36 @@ type UpdateCommand struct {
 	ExpectedRevision uint64
 }
 
-// New returns a Coordinator over deps. A nil store yields a disabled
-// coordinator (every CRUD operation returns [ErrUnavailable]).
-func New(deps Dependencies) *Coordinator {
+// Disabled returns an explicitly unavailable schedule-management capability.
+func Disabled() *Coordinator { return &Coordinator{} }
+
+// New returns a fully wired Coordinator or rejects partial construction.
+func New(deps Dependencies) (*Coordinator, error) {
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{name: "store", value: deps.Store},
+		{name: "cwd resolver", value: deps.Paths},
+		{name: "model admitter", value: deps.Models},
+		{name: "identity source", value: deps.Identities},
+	} {
+		if dependencyMissing(required.value) {
+			return nil, fmt.Errorf("schedules: %s is required", required.name)
+		}
+	}
 	return &Coordinator{
 		store:         deps.Store,
 		paths:         deps.Paths,
 		models:        deps.Models,
+		identities:    deps.Identities,
 		now:           time.Now,
 		invalidations: deps.Invalidations,
-	}
+	}, nil
 }
 
 // Available reports whether schedule-management use cases are wired.
-func (c *Coordinator) Available() bool { return c != nil && c.store != nil && c.models != nil }
-
-// List returns every saved schedule, newest-created first.
-func (c *Coordinator) List(ctx context.Context) ([]schedule.Schedule, error) {
-	if !c.Available() {
-		return nil, ErrUnavailable
-	}
-	return c.store.List(ctx)
-}
+func (c *Coordinator) Available() bool { return c != nil && c.store != nil }
 
 // listPageNamespace binds cursors to this schedule read independently of other
 // paged reads.
@@ -113,7 +127,7 @@ const listPageLimit = 100
 
 // ListPage returns one page of schedules, newest-created first, continuing after
 // cursor.
-func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit int) (pagination.Page[schedule.Schedule], error) {
+func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	anchor, err := pagination.Decode(cursor, listPageNamespace, nil)
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
@@ -130,8 +144,11 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit int) (p
 		}
 		afterCreatedAt = time.Unix(0, afterCreatedAtNanos).UTC()
 		afterID = anchor[1]
+		if err := schedule.ValidateID(afterID); err != nil {
+			return pagination.Page[schedule.Schedule]{}, pagination.ErrInvalidCursor
+		}
 	}
-	size, err := pagination.Limit(limit, listPageLimit)
+	size, err := limit.Resolve(listPageLimit)
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}
@@ -143,8 +160,8 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit int) (p
 		return pagination.Page[schedule.Schedule]{}, err
 	}
 	return pagination.PageOf(rows, size, listPageNamespace, nil, func(scheduled schedule.Schedule) []string {
-		return []string{strconv.FormatInt(scheduled.CreatedAt.UnixNano(), 10), scheduled.ID}
-	}), nil
+		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixNano(), 10), scheduled.ID()}
+	})
 }
 
 // Create validates, normalizes, schedules, and persists a new schedule.
@@ -155,26 +172,30 @@ func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.S
 	if err := c.models.AdmitSelection(cmd.ModelSelection); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
 	}
-	scheduled, err := (schedule.Schedule{
+	draft := schedule.Draft{
 		Title:          cmd.Title,
 		Instructions:   cmd.Instructions,
 		CWD:            cmd.CWD,
 		ModelSelection: cmd.ModelSelection,
 		Cron:           cmd.Cron,
 		Enabled:        cmd.Enabled,
-	}).ScheduledAfter(c.now())
+	}
+	if err := draft.Validate(); err != nil {
+		return schedule.Schedule{}, err
+	}
+	resolvedCWD, err := c.resolveCWD(draft.CWD)
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	scheduled.CWD, err = c.resolveCWD(scheduled.CWD)
+	draft.CWD = resolvedCWD
+	created, err := schedule.New(c.identities.NewScheduleID(), draft, c.now())
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	created, err := c.store.Create(ctx, scheduled)
-	if err != nil {
+	if err := c.store.Insert(ctx, created); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
 	}
-	c.invalidations.Notify(invalidation.ForSchedules(created.ID))
+	c.invalidations.Notify(invalidation.ForSchedules(created.ID()))
 	return created, nil
 }
 
@@ -184,8 +205,8 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	if !c.Available() {
 		return schedule.Schedule{}, ErrUnavailable
 	}
-	if cmd.ID == "" {
-		return schedule.Schedule{}, schedule.ErrIDRequired
+	if err := schedule.ValidateID(cmd.ID); err != nil {
+		return schedule.Schedule{}, err
 	}
 	if cmd.ExpectedRevision == 0 {
 		return schedule.Schedule{}, schedule.ErrRevisionRequired
@@ -195,7 +216,7 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 		return schedule.Schedule{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
 	if !cmd.ModelSelection.Empty() {
-		selection, selectionErr := cmd.ModelSelection.Apply(existing.ModelSelection)
+		selection, selectionErr := cmd.ModelSelection.Apply(existing.ModelSelection())
 		if selectionErr != nil {
 			return schedule.Schedule{}, selectionErr
 		}
@@ -215,25 +236,22 @@ func (c *Coordinator) updateExisting(
 	patch schedule.Patch,
 	expectedRevision uint64,
 ) (schedule.Schedule, error) {
-	updated, err := existing.Apply(patch)
-	if err != nil {
-		return schedule.Schedule{}, err
-	}
-	updated, err = updated.ScheduledAfter(c.now())
-	if err != nil {
-		return schedule.Schedule{}, err
-	}
 	if patch.CWD != nil {
-		updated.CWD, err = c.resolveCWD(updated.CWD)
+		resolved, err := c.resolveCWD(*patch.CWD)
 		if err != nil {
 			return schedule.Schedule{}, err
 		}
+		patch.CWD = &resolved
+	}
+	updated, err := existing.Edit(patch, expectedRevision, c.now())
+	if err != nil {
+		return schedule.Schedule{}, err
 	}
 	updated, err = c.store.Update(ctx, updated, expectedRevision)
 	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID, err)
+		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
 	}
-	c.invalidations.Notify(invalidation.ForSchedules(updated.ID))
+	c.invalidations.Notify(invalidation.ForSchedules(updated.ID()))
 	return updated, nil
 }
 
@@ -242,8 +260,8 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if !c.Available() {
 		return ErrUnavailable
 	}
-	if id == "" {
-		return schedule.ErrIDRequired
+	if err := schedule.ValidateID(id); err != nil {
+		return err
 	}
 	deleted, err := c.store.Delete(ctx, id)
 	if err != nil {

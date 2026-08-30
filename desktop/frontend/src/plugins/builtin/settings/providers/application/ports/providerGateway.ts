@@ -2,10 +2,11 @@ import type { ProviderConfiguration, ProviderRole } from "../providerModels";
 
 export interface ProviderUpdate {
   provider: string;
-  // undefined preserves, null clears, and a string replaces the setting.
-  apiKey?: string | null;
-  baseUrl?: string | null;
+  apiKey?: ProviderSettingChange;
+  baseUrl?: ProviderSettingChange;
 }
+
+export type ProviderSettingChange = { type: "set"; value: string } | { type: "clear" };
 
 export interface ProviderTestOutcome {
   ok: boolean;

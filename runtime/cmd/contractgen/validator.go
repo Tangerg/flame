@@ -28,7 +28,7 @@ import (
 //     decoder puts any string into a named string type, so without this check a
 //     bogus tag reaches a use case or client;
 //   - registered union variants;
-//   - registered conditional presence rules.
+//   - registered conditional field rules.
 
 // validatorFile is written into the protocol package, beside the shapes it checks.
 const validatorFile = "wire_constraints.generated.go"
@@ -46,7 +46,7 @@ func newValidators(registry *operation.Registry, shapes *dispatch.Shapes) string
 	for _, spec := range shapes.Unions() {
 		unions[spec.GoType] = spec
 	}
-	objects := make(map[reflect.Type][]dispatch.PresenceRule)
+	objects := make(map[reflect.Type][]dispatch.ConditionalRule)
 	for _, spec := range shapes.Constraints() {
 		objects[spec.GoType] = append(objects[spec.GoType], spec.Rules...)
 	}
@@ -87,7 +87,7 @@ func newValidators(registry *operation.Registry, shapes *dispatch.Shapes) string
 	}
 
 	for _, target := range targets {
-		checks := validatorChecks(target, declared[target], unions[target], objects[target])
+		checks := validatorChecks(target, inheritedValueConstraints(target, declared), unions[target], objects[target])
 		if len(checks) == 0 {
 			continue
 		}
@@ -99,6 +99,24 @@ func newValidators(registry *operation.Registry, shapes *dispatch.Shapes) string
 		out.WriteString("\t)\n}\n")
 	}
 	return out.String()
+}
+
+// inheritedValueConstraints returns the constraints visible on an encoded
+// shape, including fields flattened from embedded DTOs. encoding/json does not
+// preserve the embedded object boundary, so a generated Go validator that only
+// checked the outer declaration would disagree with the schema and TypeScript
+// validators for the exact same JSON frame.
+func inheritedValueConstraints(shape reflect.Type, declared map[reflect.Type][]dispatch.FieldConstraint) []dispatch.FieldConstraint {
+	owners := append([]reflect.Type{shape}, contractshape.Embeds(shape)...)
+	var out []dispatch.FieldConstraint
+	for _, owner := range owners {
+		for _, constraint := range declared[owner] {
+			if !slices.Contains(out, constraint) {
+				out = append(out, constraint)
+			}
+		}
+	}
+	return out
 }
 
 // receiverName is the identifier the generated method binds its receiver to.
@@ -117,7 +135,7 @@ func validatorChecks(
 	shape reflect.Type,
 	constraints []dispatch.FieldConstraint,
 	union dispatch.UnionSpec,
-	rules []dispatch.PresenceRule,
+	rules []dispatch.ConditionalRule,
 ) []string {
 	recv := receiverName(shape)
 	checks := make([]string, 0, len(constraints))
@@ -192,6 +210,12 @@ func constraintCheck(
 			validatorName = "optionalMinItems"
 		}
 		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
+	case dispatch.ConstraintMaxItems:
+		validatorName := "maxItems"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalMaxItems"
+		}
+		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
 	case dispatch.ConstraintMaxLength:
 		validatorName := "maxLength"
 		if leaf.Type.Kind() == reflect.Pointer {
@@ -203,6 +227,86 @@ func constraintCheck(
 			field,
 			stringExpr(shape, selector, leaf.Type),
 			constraint.Limit,
+		)
+	case dispatch.ConstraintMaxItemLength:
+		validatorName := "maxItemLength"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalMaxItemLength"
+		}
+		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
+	case dispatch.ConstraintIdentity:
+		validatorName := "identity"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalIdentity"
+		}
+		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
+	case dispatch.ConstraintIdentityItems:
+		validatorName := "identityItems"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalIdentityItems"
+		}
+		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
+	case dispatch.ConstraintMaxPropertyNameLength:
+		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
+	case dispatch.ConstraintIdentityPropertyNames:
+		return fmt.Sprintf("identityPropertyNames(%s, %s)", field, ref)
+	case dispatch.ConstraintPrefix:
+		validatorName := "requiredTextPrefix"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "requiredTextPointerPrefix"
+			if leaf.Optional {
+				validatorName = "optionalTextPointerPrefix"
+			}
+		} else if leaf.Optional {
+			validatorName = "optionalTextPrefix"
+		}
+		return fmt.Sprintf(
+			"%s(%s, %s, %s)",
+			validatorName,
+			field,
+			stringExpr(shape, selector, leaf.Type),
+			strconv.Quote(constraint.Value),
+		)
+	case dispatch.ConstraintPrefixItems:
+		validatorName := "textPrefixItems"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalTextPrefixItems"
+		}
+		return fmt.Sprintf(
+			"%s(%s, %s, %s)",
+			validatorName,
+			field,
+			ref,
+			strconv.Quote(constraint.Value),
+		)
+	case dispatch.ConstraintPatternItems:
+		validatorName := "textPatternItems"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalTextPatternItems"
+		}
+		return fmt.Sprintf(
+			"%s(%s, %s, %s)",
+			validatorName,
+			field,
+			ref,
+			strconv.Quote(constraint.Value),
+		)
+	case dispatch.ConstraintPattern:
+		validatorName := "requiredTextPattern"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "requiredTextPointerPattern"
+			if leaf.Optional {
+				validatorName = "optionalTextPointerPattern"
+			}
+		} else if leaf.Optional {
+			validatorName = "optionalTextPattern"
+		}
+		return fmt.Sprintf(
+			"%s(%s, %s, %s)",
+			validatorName,
+			field,
+			stringExpr(shape, selector, leaf.Type),
+			strconv.Quote(constraint.Value),
 		)
 	case dispatch.ConstraintMinimum:
 		validatorName := "minimumNumber"
@@ -292,6 +396,7 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 			}
 			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
 		}
+		checks = append(checks, allowedValueChecks(applies, variant.AllowedValues, recv)...)
 	}
 	if pattern := union.PatternVariant; pattern != nil {
 		applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, union.Discriminator, pattern.TagPattern)
@@ -328,16 +433,39 @@ func unionPaths(union dispatch.UnionSpec) []string {
 	return paths
 }
 
-func objectChecks(rules []dispatch.PresenceRule, recv string) []string {
+func objectChecks(rules []dispatch.ConditionalRule, recv string) []string {
 	var checks []string
 	for _, rule := range rules {
 		applies := conditionExpression(rule.When, recv)
 		for _, field := range rule.Required {
 			checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
 		}
+		if len(rule.RequiredAny) > 0 {
+			checks = append(checks, fmt.Sprintf(
+				"requiredAnyWhen(%s, %s, %s)",
+				applies,
+				valueList(rule.RequiredAny),
+				recv,
+			))
+		}
 		for _, field := range rule.Forbidden {
 			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
 		}
+		checks = append(checks, allowedValueChecks(applies, rule.AllowedValues, recv)...)
+	}
+	return checks
+}
+
+func allowedValueChecks(applies string, sets []dispatch.AllowedValueSet, recv string) []string {
+	checks := make([]string, 0, len(sets))
+	for _, set := range sets {
+		checks = append(checks, fmt.Sprintf(
+			"allowedValuesWhen(%s, %q, %s, %s)",
+			applies,
+			set.Field,
+			recv,
+			valueList(set.Values),
+		))
 	}
 	return checks
 }
@@ -356,7 +484,7 @@ func conditionExpression(conditions []operation.FieldCondition, recv string) str
 		case "present":
 			parts = append(parts, fmt.Sprintf("wireFieldPresent(%s, %q)", recv, condition.Field))
 		default:
-			panic(fmt.Sprintf("contractgen: unsupported presence operator %q", condition.Operator))
+			panic(fmt.Sprintf("contractgen: unsupported conditional operator %q", condition.Operator))
 		}
 	}
 	return strings.Join(parts, " && ")

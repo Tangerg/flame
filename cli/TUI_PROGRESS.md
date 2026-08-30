@@ -7,7 +7,7 @@ changes do not make completed evidence ambiguous.
 Baseline date: 2026-08-11
 Source baseline: `451e839fa`
 Oolong baseline: `v0.11.0`
-Current Oolong release: `v0.12.0`
+Current Oolong release: `v0.16.0`
 
 Reference snapshots:
 
@@ -50,14 +50,15 @@ Status values are `done`, `active`, `pending`, and `deferred`.
 | HITL-03 | Denial feedback | Fixed denial reason | Optional user feedback is submitted as the denial reason | done |
 | HITL-04 | Interaction review | Answers commit one dialog at a time | Multi-item wizard supports back, edit, review and one final resume | done |
 | INPUT-01 | Rich editor mechanics | Oolong v0.11 editor | Grapheme movement, selection, undo and kill-ring behavior remain delegated | done |
-| INPUT-02 | Durable prompt history | Process memory only | Crash-safe bounded history is shared across launches | done |
+| INPUT-02 | Durable prompt history | Process memory only | Crash-safe bounded history is shared across launches; durable and process-memory stores are explicit construction modes, and only absent validated capacity selects a default | done |
 | INPUT-03 | Session draft | No durable draft | Text and attachment identities restore per session | done |
 | INPUT-04 | Prompt stash | No stash | Stash, list, apply and delete are explicit CLI-owned operations | done |
 | INPUT-05 | External editor | No round trip | Configured editor round trip preserves the original draft on failure | done |
 | INPUT-06 | Run admission ordering | Async runtime mutations could race the next prompt | Run-affecting mutations own an explicit admission barrier; prompts persist behind it and drain automatically | done |
+| INPUT-07 | Durable command replay ownership | Each workflow rebuilt namespace, retention, deadline, and zero-value fallback | One strict Capability/Guard/Policy model owns store identity and deadline; fresh unprotected commands get one attempt, retry/cold recovery requires an advertised protected guard, queued Run limits survive restart, and non-zero queue identity with explicit dispatch/edit/selection presence cannot wrap into another entry | done |
 | SESSION-01 | Session switch/create/rename/fork | Implemented | Existing behavior remains authoritative | done |
-| SESSION-02 | Paginated session center | First page only | Cursor pagination, grouping, preview, favorite, rename and delete | done |
-| SESSION-03 | Current-session timeline | No dedicated surface | Jump to retained entries and fork from an existing root run | done |
+| SESSION-02 | Paginated session center | First page only | Cursor pagination, grouping, preview, favorite, rename and delete use explicitly constructed page intent; an omitted value object cannot silently choose the default | done |
+| SESSION-03 | Current-session run tree | No dedicated surface | `Ctrl+G` opens a live root/subagent tree during execution, follows lifecycle changes, jumps to retained entries, and permits forks only after session ownership is idle | done |
 | SESSION-04 | Runtime rewind/rollback | Runtime protocol is now exposed | Consume authoritative rollback with preview, confirmation, and recovery tests | done |
 | CMD-01 | Searchable command palette | Implemented flat catalog | Existing palette remains authoritative | done |
 | CMD-02 | Context-aware command catalog | Handlers reject unavailable actions late | Category, availability and disabled reason share one descriptor | done |
@@ -67,17 +68,17 @@ Status values are `done`, `active`, `pending`, and `deferred`.
 | OUTPUT-01 | Transcript copy/export/import | Selected block copy only | Last assistant copy plus runtime-native Markdown/JSON export and portable JSON import | done |
 | RUN-01 | Exact-segment steering | Follow-ups are queue-only | Steer text/attachments bind to the observed segment and fail closed when stale | done |
 | WORKSPACE-01 | Workspace selection | New sessions inherit current workspace | Recent workspace picker and explicit directory selection | done |
-| WORKSPACE-02 | Runtime workspace inspection | Local attachment resolver only | Runtime-backed changes, diff, head, list, read and grep surfaces use the full reader | done |
+| WORKSPACE-02 | Runtime workspace inspection | Local attachment resolver only | Runtime-backed changes, diff, head, list, read and grep surfaces use the full reader; default/whole and explicit-positive request policies are closed constructed values with invalid zero state | done |
 | WORKSPACE-03 | File invalidation stream | No runtime-wide subscription | Negotiated watch refetches authoritative changes after events, gaps and reconnects | done |
 | BACKEND-02 | Session-side invalidation stream | No side-channel reconciliation | Session, run, state and interrupt events trigger scoped authoritative reads without racing active streams | done |
-| BACKEND-03 | Runtime management surfaces | Usage, provider, auxiliary-role, and goal APIs were not consumed | Secret-safe provider configuration, usage reporting, model roles, goal lifecycle, and goal invalidation have deterministic and real-runtime evidence | done |
+| BACKEND-03 | Runtime management surfaces | Usage, provider, auxiliary-role, and goal APIs were not consumed | Secret-safe provider configuration, explicitly constructed all-time/recent usage periods, closed inherited/disabled/configured model roles, goal lifecycle, and goal invalidation have deterministic and real-runtime evidence | done |
 | BACKEND-04 | Skill governance surfaces | Skill APIs and `skills.changed` were not consumed | Workspace discovery, managed lifecycle, immutable proposal review, resize-safe confirmation, and authoritative invalidation refresh | done |
 | BACKEND-05 | MCP connection surfaces | MCP APIs and `mcp.changed` were not consumed | Secret-safe server lifecycle, transport-specific bounded wizard, tool schemas, probes, reconnect, browser authorization polling, resize-safe editing, and authoritative invalidation refresh | done |
 | BACKEND-06 | Scheduled-run surfaces | Schedule APIs and `schedules.changed` were not consumed | Cursor-complete catalog, revision-guarded editing, enable/disable, immediate run handles, destructive confirmation, resize-safe forms, and authoritative invalidation refresh | done |
 | BACKEND-07 | Governed agent memory | Agent memory APIs were not consumed | Project/user partitions, provenance, pending review, pin/edit/add, confirmed decisions/deletion, resize-safe multiline authoring, and authoritative post-mutation reads | done |
 | BACKEND-08 | Human-authored knowledge | Knowledge APIs were not consumed | FLAME.md cascade list/get/update, exact scope context, verbatim multiline editing/clearing, resize safety, authoritative post-save reads, and external-edit invalidation | done |
 | BACKEND-09 | Diagnostics, authoring context, hooks, and feedback | Seven exported embedded APIs were not consumed | Safe workspace-confined direct tools, agent documents, recipe expansion, hook trust governance with external-edit invalidation, and scoped feedback have adapter, terminal, resize, and real-runtime evidence | done |
-| BACKEND-01 | Public runtime API coverage | Core run/session methods only | Every exported embedded API is inventoried and tracked to a consumer surface and test | done |
+| BACKEND-01 | Public runtime API coverage | Core run/session methods only | Every exported embedded API is inventoried and tracked to a consumer surface and test; root/child Run lineage is an explicit validated domain value | done |
 | QUALITY-01 | Deterministic package tests | Full suite passes | New domains use table tests and consumer-owned fakes | done |
 | QUALITY-02 | Race safety | Terminal race suite passes | Full CLI race suite passes after all batches | done |
 | QUALITY-03 | Architecture boundaries | Architecture tests exist | New packages do not import runtime protocol, Cobra, Viper, or Oolong inward | done |

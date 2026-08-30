@@ -30,18 +30,29 @@ type ListModelsRequest struct {
 
 // Model is one entry in models.list (API.md §4.9).
 type Model struct {
-	ID              string `json:"id"`
-	Provider        string `json:"provider"`
-	DisplayName     string `json:"displayName,omitempty"`
-	ContextWindow   int    `json:"contextWindow,omitempty"`
-	MaxInputTokens  int    `json:"maxInputTokens,omitempty"`
-	MaxOutputTokens int    `json:"maxOutputTokens,omitempty"`
+	ID          string `json:"id"`
+	Provider    string `json:"provider"`
+	DisplayName string `json:"displayName,omitempty"`
+	// TokenLimits is omitted when the provider publishes no context-envelope
+	// facts. Every present member is strictly positive and at least one member
+	// must be present; numeric zero is never a wire spelling of unknown.
+	TokenLimits *ModelTokenLimits `json:"tokenLimits,omitempty"`
 	// KnowledgeCutoff is the training cutoff (RFC3339 date), empty when unknown.
 	KnowledgeCutoff string `json:"knowledgeCutoff,omitempty"`
 	// Deprecated marks a model the provider has retired; clients hide or flag it.
 	Deprecated   bool               `json:"deprecated,omitempty"`
 	Capabilities *ModelCapabilities `json:"capabilities,omitempty"`
 	Pricing      *ModelPricing      `json:"pricing,omitempty"`
+}
+
+// ModelTokenLimits is the provider-published context envelope for one exact
+// model. The three maxima are independent facts rather than simultaneously
+// attainable quotas. A streaming/multimodal model may legitimately publish an
+// output maximum above its input context window.
+type ModelTokenLimits struct {
+	ContextWindow   *int64 `json:"contextWindow,omitempty"`
+	MaxInputTokens  *int64 `json:"maxInputTokens,omitempty"`
+	MaxOutputTokens *int64 `json:"maxOutputTokens,omitempty"`
 }
 
 // Modality is a media type a model takes as input or emits as output

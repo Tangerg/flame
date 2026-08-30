@@ -106,22 +106,38 @@ func TestRecoverLost(t *testing.T) {
 func TestRunLimitsValidate(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		limits Limits
+		values LimitValues
 	}{
-		{name: "negative tokens", limits: Limits{MaxTotalTokens: -1}},
-		{name: "negative steps", limits: Limits{MaxSteps: -1}},
-		{name: "negative budget", limits: Limits{MaxBudgetUSD: -1}},
-		{name: "nan budget", limits: Limits{MaxBudgetUSD: math.NaN()}},
-		{name: "positive infinite budget", limits: Limits{MaxBudgetUSD: math.Inf(1)}},
-		{name: "negative infinite budget", limits: Limits{MaxBudgetUSD: math.Inf(-1)}},
+		{name: "empty"},
+		{name: "negative tokens", values: LimitValues{MaxTotalTokens: int64Pointer(-1)}},
+		{name: "negative steps", values: LimitValues{MaxSteps: intPointer(-1)}},
+		{name: "negative budget", values: LimitValues{MaxBudgetUSD: floatPointer(-1)}},
+		{name: "nan budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.NaN())}},
+		{name: "positive infinite budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.Inf(1))}},
+		{name: "negative infinite budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.Inf(-1))}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.limits.Validate(); err == nil {
-				t.Fatal("Validate accepted malformed limits")
+			if _, err := NewLimits(test.values); err == nil {
+				t.Fatal("NewLimits accepted malformed limits")
 			}
 		})
 	}
+	if limits := UnlimitedLimits(); !limits.Unlimited() || limits.Validate() != nil {
+		t.Fatalf("UnlimitedLimits = %+v", limits)
+	}
+	limited, err := NewLimits(LimitValues{
+		MaxTotalTokens: int64Pointer(10), MaxSteps: intPointer(2), MaxBudgetUSD: floatPointer(0.25),
+	})
+	if err != nil || limited.Unlimited() {
+		t.Fatalf("NewLimits = (%+v, %v)", limited, err)
+	}
 }
+
+func intPointer(value int) *int { return &value }
+
+func int64Pointer(value int64) *int64 { return &value }
+
+func floatPointer(value float64) *float64 { return &value }
 
 // TestOutcomeTerminalState pins the outcome → terminal-state mapping: completion
 // and cancellation get their own states; every failure flavor folds into Failed.

@@ -51,12 +51,12 @@ func copyTree(ctx context.Context, source, destination string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceRoot.Close()
+	defer func() { _ = sourceRoot.Close() }()
 	destinationRoot, err := openDirectoryRoot(destination, "destination")
 	if err != nil {
 		return err
 	}
-	defer destinationRoot.Close()
+	defer func() { _ = destinationRoot.Close() }()
 
 	copier := treeCopier{
 		source:      sourceRoot,
@@ -251,9 +251,11 @@ func (t *treeCopier) restoreDirectoryModes(ctx context.Context) error {
 }
 
 func validateSymlinkTarget(name, target string) error {
+	const nullCharacter rune = 0
+
 	platformTarget := filepath.FromSlash(target)
 	if target == "" ||
-		strings.ContainsRune(target, '\x00') ||
+		strings.ContainsRune(target, nullCharacter) ||
 		strings.ContainsRune(target, '\\') ||
 		isAbsolutePortablePath(target, platformTarget) {
 		return fmt.Errorf("workspace symlink %q has unsafe target %q", name, target)

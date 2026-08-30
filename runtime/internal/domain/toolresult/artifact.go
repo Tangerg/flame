@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 const (
@@ -75,8 +77,8 @@ func (s Stage) Validate() error {
 	if err := s.ID.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	if strings.TrimSpace(s.SessionID) == "" {
-		errs = append(errs, errors.New("toolresult: session ID is required"))
+	if _, err := resourceid.ParseSession(s.SessionID); err != nil {
+		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
 	if strings.TrimSpace(s.ToolName) == "" {
 		errs = append(errs, errors.New("toolresult: tool name is required"))
@@ -104,11 +106,11 @@ func (b Blob) Validate() error {
 	if err := b.ID.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	if strings.TrimSpace(b.SessionID) == "" {
-		errs = append(errs, errors.New("toolresult: session ID is required"))
+	if _, err := resourceid.ParseSession(b.SessionID); err != nil {
+		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
-	if strings.TrimSpace(b.ItemID) == "" {
-		errs = append(errs, errors.New("toolresult: item ID is required"))
+	if _, err := resourceid.ParseItem(b.ItemID); err != nil {
+		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
 	if strings.TrimSpace(b.ToolName) == "" {
 		errs = append(errs, errors.New("toolresult: tool name is required"))

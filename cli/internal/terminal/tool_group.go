@@ -18,20 +18,19 @@ import (
 // Each child remains an ordinary toolBlock and therefore retains its own
 // lifecycle, presenter, output, reader sections, and failure status.
 type toolGroupBlock struct {
-	theme        kit.Theme
-	glyphs       kit.Glyphs
-	tools        []*toolBlock
-	expanded     bool
-	open         bool
-	nextObserver uint64
-	observers    map[uint64]func(readerDocument)
+	theme     kit.Theme
+	glyphs    kit.Glyphs
+	tools     []*toolBlock
+	expanded  bool
+	open      bool
+	observers readerDocumentObservers
 }
 
 var (
-	_ headless.Block       = (*toolGroupBlock)(nil)
-	_ headless.Copyable    = (*toolGroupBlock)(nil)
-	_ toolDisclosure       = (*toolGroupBlock)(nil)
-	_ readerDocumentSource = (*toolGroupBlock)(nil)
+	_ headless.Block         = (*toolGroupBlock)(nil)
+	_ headless.TextProjector = (*toolGroupBlock)(nil)
+	_ toolDisclosure         = (*toolGroupBlock)(nil)
+	_ readerDocumentSource   = (*toolGroupBlock)(nil)
 )
 
 func newToolGroupBlock(theme kit.Theme, glyphs kit.Glyphs, expanded bool) *toolGroupBlock {
@@ -236,24 +235,14 @@ func (t *toolGroupBlock) Observe(observer func(readerDocument)) func() {
 	if t == nil || observer == nil {
 		return func() {}
 	}
-	if t.observers == nil {
-		t.observers = make(map[uint64]func(readerDocument))
-	}
-	t.nextObserver++
-	id := t.nextObserver
-	t.observers[id] = observer
-	observer(t.readerDocument())
-	return func() { delete(t.observers, id) }
+	return t.observers.observe(observer, t.readerDocument())
 }
 
 func (t *toolGroupBlock) notify() {
 	if t == nil {
 		return
 	}
-	document := t.readerDocument()
-	for _, observer := range t.observers {
-		observer(document)
-	}
+	t.observers.notify(t.readerDocument())
 }
 
 func groupableTool(call agent.ToolCall) bool {

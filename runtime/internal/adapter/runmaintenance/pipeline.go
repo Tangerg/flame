@@ -66,12 +66,8 @@ func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceI
 		result.Errors = append(result.Errors, err)
 		return result
 	}
-	result.Compaction = agentexec.CompactionResult{
-		Compacted:      compaction.Compacted,
-		MessagesBefore: compaction.MessagesBefore,
-		MessagesAfter:  compaction.MessagesAfter,
-	}
-	if !compaction.Compacted || p.consolidator == nil {
+	result.Compaction = compaction
+	if !compaction.Compacted() || p.consolidator == nil {
 		return result
 	}
 	if err := p.consolidator.Consolidate(ctx, input.SessionID, input.CWD); err != nil {

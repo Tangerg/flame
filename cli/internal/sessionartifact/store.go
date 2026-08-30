@@ -38,7 +38,7 @@ func (Store) Publish(workspace, title, requestedName string, document sessiontra
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(staged)
+	defer func() { _ = os.Remove(staged) }()
 	flow := fileflow.Flow{FindAvailableName: fileflow.FindAvailableNameAuto, NoCreateDirs: true}
 	finalPath, err := flow.Move(staged, destination)
 	if err != nil {
@@ -59,7 +59,7 @@ func (Store) Load(workspace, selectedPath string) (sessiontransfer.Document, err
 	if err != nil {
 		return sessiontransfer.Document{}, fmt.Errorf("open session artifact: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
 		return sessiontransfer.Document{}, fmt.Errorf("inspect session artifact: %w", err)

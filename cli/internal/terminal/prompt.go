@@ -35,7 +35,10 @@ func newPromptView(
 	composer *kit.Composer,
 	options agent.RunOptions,
 ) *promptView {
-	panel := kit.NewPanel(theme, glyphs, composer)
+	panel := kit.NewPanel(kit.PanelConfig{
+		Box:     kit.Box{Theme: theme, Glyphs: glyphs},
+		Content: composer,
+	})
 	panel.Box.Padding = layout.Symmetric(0, 1)
 	panel.Box.FooterAlign = layout.End
 	p := &promptView{

@@ -1,8 +1,8 @@
 import { createDataQuery } from "@/plugins/sdk";
-import type { ProviderConfiguration, ProviderRole } from "./providerModels";
+import { ProviderConfiguration, type ProviderRole } from "./providerModels";
 import { SelectableModel } from "./selectableModel";
 
-export type { ProviderConfiguration, ProviderRole } from "./providerModels";
+export { ProviderConfiguration, type ProviderRole } from "./providerModels";
 export { SelectableModel } from "./selectableModel";
 
 /**
@@ -18,7 +18,7 @@ export function providerRoleIsAvailable(
   return Boolean(
     role?.provider &&
     role.model &&
-    providers.some((provider) => provider.id === role.provider && provider.apiKeyMasked !== ""),
+    providers.some((provider) => provider.id === role.provider && provider.configured),
   );
 }
 

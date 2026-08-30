@@ -35,7 +35,7 @@ func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
 	saver := &fakeUtilityRoleSaver{}
 	validator := &fakeChatModelValidator{}
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = validator
 	cfg.UtilityStore = saver
@@ -56,7 +56,7 @@ func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
 func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 	fail := errors.New("build client")
 	state := NewRoleState(modelref.Selection{})
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = &fakeChatModelValidator{err: fail}
 	c := New(cfg)
@@ -68,7 +68,7 @@ func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 
 func TestSetUtilityRoleRequiresChatModelValidator(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	c := New(cfg)
 
@@ -80,7 +80,7 @@ func TestSetUtilityRoleRequiresChatModelValidator(t *testing.T) {
 
 func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.Providers = &testProviderRegistry{}
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = staticChatModelValidator{}
@@ -112,7 +112,7 @@ func TestSetEmbeddingRoleUsesSaverPort(t *testing.T) {
 
 func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = NewRoleState(modelref.Selection{})
 	cfg.UtilityValidator = staticChatModelValidator{}
 	cfg.UtilityStore = &fakeUtilityRoleSaver{}
@@ -140,7 +140,7 @@ func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 
 func TestSetEmbeddingRoleRequiresResolver(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.EmbeddingRoleState = state
 	c := New(cfg)
 
@@ -152,8 +152,10 @@ func TestSetEmbeddingRoleRequiresResolver(t *testing.T) {
 
 func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
-	cfg := configuredRoleConfig()
-	cfg.Catalog = testCatalog{metadata: []ProviderMetadata{{ID: "anthropic"}}}
+	cfg := configuredRoleConfig(t)
+	cfg.Catalog = testCatalog{metadata: []ProviderMetadata{
+		providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability()),
+	}}
 	cfg.EmbeddingRoleState = state
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
 	c := New(cfg)
@@ -167,7 +169,7 @@ func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
 func TestSetUtilityRoleSerializesPersistAndPublish(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
 	saver := newBlockingUtilitySaver()
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = staticChatModelValidator{}
 	cfg.UtilityStore = saver
@@ -179,7 +181,7 @@ func TestSetUtilityRoleSerializesPersistAndPublish(t *testing.T) {
 func TestSetEmbeddingRoleSerializesPersistAndPublish(t *testing.T) {
 	state := NewRoleState(modelref.Selection{})
 	saver := newBlockingEmbeddingSaver()
-	cfg := configuredRoleConfig()
+	cfg := configuredRoleConfig(t)
 	cfg.EmbeddingRoleState = state
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
 	cfg.EmbeddingStore = saver
@@ -274,17 +276,18 @@ func (staticEmbeddingResolver) ValidateEmbeddingModel(context.Context, string, s
 	return nil
 }
 
-func configuredRoleConfig() Config {
+func configuredRoleConfig(t *testing.T) Config {
+	t.Helper()
 	return Config{
 		Providers: &testProviderRegistry{entries: map[string]provider.Provider{
-			"anthropic": {ID: "anthropic", APIKey: "key"},
-			"openai":    {ID: "openai", APIKey: "key"},
-			"provider":  {ID: "provider", APIKey: "key"},
+			"anthropic": modelProvider(t, "anthropic", "key", ""),
+			"openai":    modelProvider(t, "openai", "key", ""),
+			"provider":  modelProvider(t, "provider", "key", ""),
 		}},
 		Catalog: testCatalog{metadata: []ProviderMetadata{
-			{ID: "anthropic", EmbeddingCapable: true},
-			{ID: "openai", EmbeddingCapable: true},
-			{ID: "provider", EmbeddingCapable: true},
+			providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, EmbeddingCapabilityWithoutDefault()),
+			providerMetadataFixture(t, "openai", ProviderEndpointOptional, ProviderModelsBundled, EmbeddingCapabilityWithoutDefault()),
+			providerMetadataFixture(t, "provider", ProviderEndpointOptional, ProviderModelsBundled, EmbeddingCapabilityWithoutDefault()),
 		}},
 	}
 }

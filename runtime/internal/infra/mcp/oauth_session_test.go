@@ -11,6 +11,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"golang.org/x/oauth2"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 )
 
 type memoryOAuthStore struct {
@@ -21,7 +23,7 @@ type memoryOAuthStore struct {
 	saveErr error
 }
 
-func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, _ string, origin string) ([]byte, bool, error) {
+func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, _ mcpserver.ServerName, origin string) ([]byte, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.origin != origin || len(m.payload) == 0 {
@@ -30,7 +32,7 @@ func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, _ string, origin 
 	return append([]byte(nil), m.payload...), true, nil
 }
 
-func (m *memoryOAuthStore) SaveOAuthSession(_ context.Context, _ string, origin string, payload []byte) error {
+func (m *memoryOAuthStore) SaveOAuthSession(_ context.Context, _ mcpserver.ServerName, origin string, payload []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.saveErr != nil {
@@ -41,7 +43,7 @@ func (m *memoryOAuthStore) SaveOAuthSession(_ context.Context, _ string, origin 
 	return nil
 }
 
-func (m *memoryOAuthStore) RemoveOAuthSession(context.Context, string) error {
+func (m *memoryOAuthStore) RemoveOAuthSession(context.Context, mcpserver.ServerName) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.payload = nil
@@ -129,7 +131,7 @@ func TestInvalidatingTokenSourceDeletesRejectedRefresh(t *testing.T) {
 	store := &memoryOAuthStore{payload: []byte("saved")}
 	source := invalidateRejectedTokens(tokenSourceFunc(func() (*oauth2.Token, error) {
 		return nil, &oauth2.RetrieveError{ErrorCode: "invalid_grant"}
-	}), t.Context(), store, "remote")
+	}), t.Context(), store, testMCPServerName("remote"))
 
 	if token, err := source.Token(); token != nil || dialStatus(err) != "needsAuth" {
 		t.Fatalf("Token = %+v, %v, want needsAuth", token, err)
@@ -147,7 +149,7 @@ func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T
 	_, payload := oauthSessionFixture(t, token)
 	store := &memoryOAuthStore{origin: "https://mcp.example:443", payload: payload}
 
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, "remote", "https://MCP.example/tools")
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, testMCPServerName("remote"), "https://MCP.example/tools")
 	if err != nil {
 		t.Fatalf("restoreOAuthHandler: %v", err)
 	}
@@ -181,7 +183,7 @@ func TestRestoreOAuthHandlerRejectsMalformedPayload(t *testing.T) {
 		payload: []byte(`{"version":1,"unknown":true}`),
 	}
 	var handler auth.OAuthHandler
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, "remote", "https://mcp.example/tools")
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, testMCPServerName("remote"), "https://mcp.example/tools")
 	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("restore malformed = handler %v, err %v", handler, err)
 	}

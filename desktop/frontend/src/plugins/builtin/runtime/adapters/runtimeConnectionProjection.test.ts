@@ -6,6 +6,7 @@ import {
   type RuntimeConnectionInspector,
 } from "../application/runtimeService";
 import { runtimeServiceStatus } from "../application/ports/serviceStatus";
+import { RuntimeConnectionGeneration } from "../public/ports";
 import {
   resetRuntimeConnectionForTest,
   runtimeSupportsTopic,
@@ -72,12 +73,13 @@ describe("runtime connection projection", () => {
   });
 
   it("starts empty before discovery", () => {
-    expect(useRuntimeConnectionStore.getState()).toMatchObject({
+    const state = useRuntimeConnectionStore.getState();
+    expect(state).toMatchObject({
       connectionGeneration: null,
-      processGeneration: null,
       capabilities: null,
       service: { phase: "checking" },
     });
+    expect(state).not.toHaveProperty("processGeneration");
   });
 
   it("makes negotiated feature and topic facts readable", () => {
@@ -107,19 +109,13 @@ describe("runtime connection projection", () => {
     });
     const unsubscribe = owner.subscribeConnection(changed);
 
-    useRuntimeConnectionStore.setState({
-      connectionGeneration: "connection_retired",
-      processGeneration: "runtime_retired",
-      capabilities,
-    });
-    useRuntimeConnectionStore.setState({
-      connectionGeneration: "connection_successor",
-      processGeneration: "runtime_successor",
-      capabilities,
-    });
+    const retired = RuntimeConnectionGeneration.forProcess("runtime_retired");
+    const successor = RuntimeConnectionGeneration.forProcess("runtime_successor");
+    useRuntimeConnectionStore.setState({ connectionGeneration: retired, capabilities });
+    useRuntimeConnectionStore.setState({ connectionGeneration: successor, capabilities });
 
     expect(changed).toHaveBeenCalledTimes(2);
-    expect(owner.connectionGeneration()).toBe("connection_successor");
+    expect(owner.connectionGeneration()).toBe(successor);
     unsubscribe();
     settleInspection(inspection());
     await vi.waitFor(() =>
@@ -172,7 +168,6 @@ describe("runtime connection projection", () => {
     successor.dispose();
     expect(useRuntimeConnectionStore.getState()).toMatchObject({
       connectionGeneration: null,
-      processGeneration: null,
       capabilities: null,
       service: { phase: "checking" },
     });
@@ -243,7 +238,6 @@ describe("runtime connection projection", () => {
     expect(order).toEqual(["connection:none", "commit:none", "scope:none"]);
     expect(useRuntimeConnectionStore.getState()).toMatchObject({
       connectionGeneration: null,
-      processGeneration: null,
       capabilities: null,
       service: { phase: "checking" },
     });
@@ -309,6 +303,8 @@ describe("runtime connection projection", () => {
     const successorGeneration = owner.connectionGeneration();
     expect(successorGeneration).not.toBeNull();
     expect(successorGeneration).not.toBe(predecessorGeneration);
+    expect(predecessorGeneration.belongsTo("runtime_1")).toBe(true);
+    expect(successorGeneration?.belongsTo("runtime_1")).toBe(true);
     expect(connectionChanges).toHaveBeenCalledTimes(2);
 
     await owner.reportConnectionLoss(predecessorGeneration);
@@ -336,7 +332,6 @@ describe("runtime connection projection", () => {
       await owner.reportConnectionLoss(predecessorGeneration!);
       expect(useRuntimeConnectionStore.getState()).toMatchObject({
         connectionGeneration: null,
-        processGeneration: null,
         capabilities: null,
         service: { phase: "unavailable" },
       });

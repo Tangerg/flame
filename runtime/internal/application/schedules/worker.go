@@ -4,10 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
-
-	"github.com/google/uuid"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -33,7 +30,7 @@ const workerBatchSize = 32
 // ScheduledRunStarter starts one scheduled instruction set as a headless run. It is the
 // application-owned seam between a fired schedule and a run start.
 type ScheduledRunStarter interface {
-	StartScheduledRun(ctx context.Context, occurrence schedule.Occurrence) (StartedRun, error)
+	StartScheduledRun(ctx context.Context, request schedule.RunRequest) (StartedRun, error)
 }
 
 // StartedRun identifies the Run accepted for one schedule occurrence.
@@ -47,32 +44,48 @@ type StartedRun struct {
 // re-drives the durable pending work items it previously materialized.
 type WorkerStore interface {
 	Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error)
-	Claim(ctx context.Context, occurrence schedule.Occurrence) (claimed bool, err error)
+	Claim(ctx context.Context, claim schedule.Claim) (claimed bool, err error)
 	Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error)
 }
 
-// Worker scans due schedules, atomically materializes occurrence work items,
+// OccurrenceIdentities supplies the stable Session and Run identities captured
+// before a durable claim. Concrete entropy and namespace formats belong to the
+// composition edge, not this use case.
+type OccurrenceIdentities interface {
+	NewSessionID() string
+	NewRunID() string
+}
+
+// workerDependencies is the complete collaborator set for a due scanner.
+type workerDependencies struct {
+	Store         WorkerStore
+	RunStarter    ScheduledRunStarter
+	Identities    OccurrenceIdentities
+	Invalidations invalidation.Publish
+}
+
+// worker scans due schedules, atomically materializes occurrence work items,
 // and dispatches pending work. It is the ticker component of the automation
 // use case — the schedule spec and next-fire rule are the domain's
 // ([schedule.Schedule] / [schedule.NextRun]); the periodic scan and side-effecting
 // firing are the application's.
-type Worker struct {
+type worker struct {
 	schedules     WorkerStore
 	runStarter    ScheduledRunStarter
+	identities    OccurrenceIdentities
 	now           func() time.Time
 	invalidations invalidation.Publish
 }
 
-// NewWorker wires a scheduled-run worker.
-func NewWorker(schedules WorkerStore, runStarter ScheduledRunStarter, invalidations invalidation.Publish) Worker {
-	return Worker{schedules: schedules, runStarter: runStarter, now: time.Now, invalidations: invalidations}
+func newWorker(deps workerDependencies) worker {
+	return worker{
+		schedules: deps.Store, runStarter: deps.RunStarter, identities: deps.Identities,
+		now: time.Now, invalidations: deps.Invalidations,
+	}
 }
 
 // Run starts the scheduled-run loop until ctx is canceled.
-func (w Worker) Run(ctx context.Context) {
-	if w.schedules == nil || w.runStarter == nil {
-		return
-	}
+func (w worker) Run(ctx context.Context) {
 	w.fireDue(ctx, w.now())
 	t := time.NewTicker(workerTick)
 	defer t.Stop()
@@ -86,17 +99,19 @@ func (w Worker) Run(ctx context.Context) {
 	}
 }
 
-// Fire starts one durable schedule occurrence through runner under the schedule
-// firing span. An empty occurrence ID denotes a manual run-now, which does not
-// consume a cron cursor.
-func Fire(ctx context.Context, runStarter ScheduledRunStarter, occurrence schedule.Occurrence) (StartedRun, error) {
+// Fire starts one schedule RunRequest through runner under the firing span. A
+// request with no occurrence identity is manual and does not consume a cursor.
+func Fire(ctx context.Context, runStarter ScheduledRunStarter, request schedule.RunRequest) (StartedRun, error) {
 	if runStarter == nil {
 		return StartedRun{}, errors.New("schedules: scheduled run starter is nil")
 	}
+	if err := request.Validate(); err != nil {
+		return StartedRun{}, fmt.Errorf("schedules: invalid run request: %w", err)
+	}
 	ctx, span := workerTracer.Start(ctx, "schedule.fire",
-		trace.WithAttributes(attribute.String("schedule.id", occurrence.Schedule.ID)))
+		trace.WithAttributes(attribute.String("schedule.id", request.ScheduleID())))
 	defer span.End()
-	handle, err := runStarter.StartScheduledRun(ctx, occurrence)
+	handle, err := runStarter.StartScheduledRun(ctx, request)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "start run")
@@ -105,10 +120,7 @@ func Fire(ctx context.Context, runStarter ScheduledRunStarter, occurrence schedu
 	return handle, nil
 }
 
-func (w Worker) fireDue(ctx context.Context, now time.Time) {
-	if w.schedules == nil || w.runStarter == nil {
-		return
-	}
+func (w worker) fireDue(ctx context.Context, now time.Time) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -165,9 +177,9 @@ func (o *occurrenceBatch) dispatch(occurrence schedule.Occurrence) bool {
 		return false
 	}
 	o.dispatched++
-	_, err := Fire(o.ctx, o.runStarter, occurrence)
+	_, err := Fire(o.ctx, o.runStarter, occurrence.RunRequest())
 	if err == nil {
-		o.invalidations.Notify(invalidation.ForSchedules(occurrence.Schedule.ID))
+		o.invalidations.Notify(invalidation.ForSchedules(occurrence.ScheduleID()))
 	}
 	if err != nil && o.ctx.Err() != nil && errors.Is(err, o.ctx.Err()) {
 		return false
@@ -176,37 +188,33 @@ func (o *occurrenceBatch) dispatch(occurrence schedule.Occurrence) bool {
 		recordWorkerError(
 			o.ctx,
 			"run start failed",
-			fmt.Errorf("schedule %s: %w", occurrence.Schedule.ID, err),
+			fmt.Errorf("schedule %s: %w", occurrence.ScheduleID(), err),
 		)
 	}
 	return true
 }
 
-func (w Worker) claimDueOccurrence(
+func (w worker) claimDueOccurrence(
 	ctx context.Context,
 	scheduled schedule.Schedule,
 	now time.Time,
 ) (schedule.Occurrence, bool) {
-	nextRunAt, err := schedule.NextRun(scheduled.Cron, now)
+	claim, err := schedule.NewClaim(
+		scheduled,
+		w.identities.NewSessionID(),
+		w.identities.NewRunID(),
+		now,
+	)
 	if err != nil {
-		recordWorkerError(ctx, "unparseable cron", fmt.Errorf("schedule %s: %w", scheduled.ID, err))
-		nextRunAt = time.Time{}
+		recordWorkerError(ctx, "prepare due occurrence failed", fmt.Errorf("schedule %s: %w", scheduled.ID(), err))
+		return schedule.Occurrence{}, false
 	}
-	occurrence := schedule.Occurrence{
-		ID:        occurrenceID(scheduled.ID, scheduled.NextRunAt),
-		Schedule:  scheduled,
-		DueAt:     scheduled.NextRunAt,
-		FiredAt:   now.UTC(),
-		NextRunAt: nextRunAt,
-		SessionID: "ses_" + uuid.NewString(),
-		RunID:     "run_" + uuid.NewString(),
-	}
-	claimed, err := w.schedules.Claim(ctx, occurrence)
+	claimed, err := w.schedules.Claim(ctx, claim)
 	if err != nil {
 		recordWorkerError(
 			ctx,
 			"claim due occurrence failed",
-			fmt.Errorf("schedule %s: %w", scheduled.ID, err),
+			fmt.Errorf("schedule %s: %w", scheduled.ID(), err),
 		)
 		return schedule.Occurrence{}, false
 	}
@@ -214,13 +222,9 @@ func (w Worker) claimDueOccurrence(
 		// Claim advances NextRunAt before Run admission. Publish that committed
 		// cursor even when the following start fails; a later pending retry that is
 		// accepted publishes again for LastRunAt.
-		w.invalidations.Notify(invalidation.ForSchedules(scheduled.ID))
+		w.invalidations.Notify(invalidation.ForSchedules(scheduled.ID()))
 	}
-	return occurrence, claimed
-}
-
-func occurrenceID(scheduleID string, dueAt time.Time) string {
-	return scheduleID + ":" + strconv.FormatInt(dueAt.UTC().UnixMilli(), 10)
+	return claim.Occurrence(), claimed
 }
 
 func recordWorkerError(ctx context.Context, msg string, err error) {

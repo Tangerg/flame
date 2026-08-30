@@ -25,7 +25,7 @@ func toPosition(line, column int) lsp.Position {
 // whose line merely shifted (or that the server re-reported from cache) is not
 // counted as introduced.
 func newProblems(before, after []lsp.Diagnostic) []lsp.Diagnostic {
-	seen := make(map[string]int, len(before))
+	seen := make(map[diagnosticIdentity]int, len(before))
 	for _, d := range before {
 		seen[diagKey(d)]++
 	}
@@ -43,8 +43,20 @@ func newProblems(before, after []lsp.Diagnostic) []lsp.Diagnostic {
 
 // diagKey identifies a diagnostic independently of its position, so line shifts
 // from the edit don't turn a pre-existing problem into a "new" one.
-func diagKey(d lsp.Diagnostic) string {
-	return fmt.Sprintf("%d\x00%s\x00%v\x00%s", d.Severity, d.Source, d.Code, d.Message)
+type diagnosticIdentity struct {
+	severity lsp.DiagnosticSeverity
+	source   string
+	code     string
+	message  string
+}
+
+func diagKey(d lsp.Diagnostic) diagnosticIdentity {
+	return diagnosticIdentity{
+		severity: d.Severity,
+		source:   d.Source,
+		code:     fmt.Sprint(d.Code),
+		message:  d.Message,
+	}
 }
 
 // diagnosticsSection renders the errors and warnings (info/hint are dropped as

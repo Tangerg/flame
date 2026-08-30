@@ -12,7 +12,9 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
+	"github.com/Tangerg/flame/cli/internal/reconnect"
 )
 
 type invalidOpeningRuntime struct{ *mock.Runtime }
@@ -182,13 +184,52 @@ func (r *recordingRenderer) Reconcile(snapshot agent.SessionSnapshot) error {
 
 func (*recordingRenderer) Close() error { return nil }
 
+func advertisedReplayPolicy(t *testing.T) commandreplay.Policy {
+	t.Helper()
+	capability, err := commandreplay.NewCapability("runtime-test", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := commandreplay.NewPolicy(capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
+func unlimitedStart(sessionID, text string) agent.StartRun {
+	return agent.StartRun{
+		SessionID: sessionID, Message: agent.Message{Text: text},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	}
+}
+
+func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
+	t.Parallel()
+	runtime := mock.New()
+	err := Execute(t.Context(), Invocation{
+		Runtime: runtime, Renderer: new(recordingRenderer), ReconnectAttempts: -1,
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart("ses_demo_1", "must not start"),
+	})
+	if !errors.Is(err, reconnect.ErrInvalidPolicy) {
+		t.Fatalf("Execute error = %v, want ErrInvalidPolicy", err)
+	}
+	page, listErr := runtime.ListRuns(t.Context(), agent.RunQuery{
+		SessionID: "ses_demo_1", PageSize: agent.DefaultPageSize(),
+	})
+	if listErr != nil || len(page.Items) != 1 {
+		t.Fatalf("runs after rejected invocation = (%+v, %v)", page, listErr)
+	}
+}
+
 func TestOpenRunChecksReplayAdmissionBeforeEveryAttempt(t *testing.T) {
 	base := mock.New()
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
 	admissions := 0
 	_, err := openRun(t.Context(), runtime, agent.StartRun{
 		CommandID: "cli_dddddddddddddddddddddddddddddddd", SessionID: "ses_demo_1",
-		Message: agent.Message{Text: "admit every attempt"},
+		Message: agent.Message{Text: "admit every attempt"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}, func() error {
 		admissions++
 		if admissions > 1 {
@@ -212,8 +253,9 @@ func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
 	renderer := new(recordingRenderer)
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: renderer,
-		Start:      agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "fix it"}},
-		ApproveAll: true, ReconnectAttempts: 2,
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "fix it"),
+		ApproveAll:   true, ReconnectAttempts: 2,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -237,8 +279,9 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 	}
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		Start:      agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "confirm every mutation"}},
-		ApproveAll: true,
+		ReplayPolicy: advertisedReplayPolicy(t),
+		Start:        unlimitedStart(session.ID, "confirm every mutation"),
+		ApproveAll:   true,
 		// Acknowledgement confirmation is not a stream reconnect budget.
 		ReconnectAttempts: 0,
 	})
@@ -251,6 +294,28 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 	}
 	if len(resumes) != 2 || resumes[0].CommandID == "" || resumes[0].CommandID != resumes[1].CommandID {
 		t.Fatalf("resume confirmation attempts = %+v", resumes)
+	}
+}
+
+func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *testing.T) {
+	base := mock.New()
+	base.Instant = true
+	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
+	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Execute(t.Context(), Invocation{
+		Runtime: runtime, Renderer: new(recordingRenderer),
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "do not guess at replay"),
+	})
+	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
+		t.Fatalf("one-shot error = %v", err)
+	}
+	starts, _ := runtime.attempts()
+	if len(starts) != 1 || starts[0].CommandID == "" {
+		t.Fatalf("unprotected one-shot starts = %+v", starts)
 	}
 }
 
@@ -271,7 +336,8 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "ask"}},
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "ask"),
 	})
 	if _, ok := errors.AsType[*interactionRequiredError](err); !ok {
 		t.Fatalf("error = %v", err)
@@ -295,7 +361,8 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		Start:             agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "fix"}},
+		ReplayPolicy:      commandreplay.UnavailablePolicy(),
+		Start:             unlimitedStart(session.ID, "fix"),
 		ReconnectAttempts: 3,
 	})
 	if err != nil {
@@ -310,7 +377,8 @@ func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
 	want := errors.New("write failed")
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: &recordingRenderer{err: want},
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "fix"}},
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "fix"),
 	})
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v", err)
@@ -333,7 +401,8 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 	renderFailure := errors.New("output unavailable")
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: &recordingRenderer{err: renderFailure},
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "fail and clean up"}},
+		ReplayPolicy: advertisedReplayPolicy(t),
+		Start:        unlimitedStart(session.ID, "fail and clean up"),
 	})
 	if !errors.Is(err, renderFailure) || !errors.Is(err, cleanupFailure) {
 		t.Fatalf("joined execution failure = %v", err)
@@ -369,7 +438,8 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 	renderFailure := errors.New("output unavailable")
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: &recordingRenderer{err: renderFailure},
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "confirm cleanup"}},
+		ReplayPolicy: advertisedReplayPolicy(t),
+		Start:        unlimitedStart(session.ID, "confirm cleanup"),
 	})
 	if !errors.Is(err, renderFailure) {
 		t.Fatalf("execution error = %v", err)
@@ -395,7 +465,8 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 	renderFailure := errors.New("output unavailable")
 	err = Execute(t.Context(), Invocation{
 		Runtime: misdirectedCancellationRuntime{Runtime: base}, Renderer: &recordingRenderer{err: renderFailure},
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "validate cleanup receipt"}},
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "validate cleanup receipt"),
 	})
 	if !errors.Is(err, renderFailure) || !strings.Contains(err.Error(), "cancel abandoned run") ||
 		!strings.Contains(err.Error(), "run_misdirected") {
@@ -411,7 +482,8 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 	session, _ := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: invalidOpeningRuntime{Runtime: base}, Renderer: new(recordingRenderer),
-		Start: agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "start"}},
+		ReplayPolicy: commandreplay.UnavailablePolicy(),
+		Start:        unlimitedStart(session.ID, "start"),
 	})
 	if err == nil {
 		t.Fatal("invalid opening stream was accepted")

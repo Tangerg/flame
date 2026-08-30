@@ -2,6 +2,7 @@ import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { tupleKey } from "@/lib/tupleKey";
 import type { SkillCurationGateway, SkillProposalHandle } from "./ports/skillCurationGateway";
 import {
   WORKSPACE_MANAGED_SKILLS_KEY,
@@ -209,13 +210,13 @@ export function skillCurationWasRetired(error: unknown): boolean {
 }
 
 function userSkillIdentity(name: string): string {
-  return `user\u0000${name}`;
+  return tupleKey("user", name);
 }
 
 function proposalIdentity(handle: SkillProposalHandle): string {
   return handle.scope === "user"
     ? userSkillIdentity(handle.name)
-    : `project\u0000${handle.workspace}\u0000${handle.name}`;
+    : tupleKey("project", handle.workspace, handle.name);
 }
 
 function libraryRepair(): QueryFilters[] {

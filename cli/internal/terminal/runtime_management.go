@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
 	"github.com/Tangerg/flame/cli/internal/usage"
 )
 
@@ -82,7 +83,7 @@ func (a *app) ShowUsage(argument string) error {
 	if a.usage == nil {
 		return errors.New("this runtime composition has no usage service")
 	}
-	sinceDays, err := parseSinceDays(argument)
+	period, err := parseUsagePeriod(argument)
 	if err != nil {
 		return err
 	}
@@ -93,31 +94,35 @@ func (a *app) ShowUsage(argument string) error {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			summary, err := a.usage.Summary(ctx, sinceDays)
+			summary, err := a.usage.Summary(ctx, period)
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return usageDocument(usageReport{session: session, summary: summary}), nil
+			return usageDocument(usageReport{session: session, summary: summary})
 		})
 	return nil
 }
 
-func parseSinceDays(argument string) (int, error) {
+func parseUsagePeriod(argument string) (usage.SummaryPeriod, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" || strings.EqualFold(argument, "all") {
-		return 0, nil
+		return usage.AllTime(), nil
 	}
 	days, err := strconv.Atoi(argument)
 	if err != nil || days <= 0 {
-		return 0, errors.New("usage: /usage [positive-days|all]")
+		return usage.SummaryPeriod{}, errors.New("usage: /usage [positive-days|all]")
 	}
-	return days, nil
+	return usage.RecentDays(days)
 }
 
-func usageDocument(report usageReport) readerDocument {
+func usageDocument(report usageReport) (readerDocument, error) {
 	window := "all time"
-	if report.summary.SinceDays > 0 {
-		window = fmt.Sprintf("last %d days", report.summary.SinceDays)
+	days, recent, err := report.summary.Period.Days()
+	if err != nil {
+		return readerDocument{}, fmt.Errorf("runtime usage document: %w", err)
+	}
+	if recent {
+		window = fmt.Sprintf("last %d days", days)
 	}
 	sections := []ToolSection{
 		{Title: "Current session", Style: toolSectionCode, Language: "text", Text: usageTotalsText(report.session.Total)},
@@ -129,7 +134,7 @@ func usageDocument(report usageReport) readerDocument {
 	return readerDocument{
 		Title: "Runtime usage", Detail: fmt.Sprintf("%s · %d sessions · %d runs", window, report.summary.Sessions, report.summary.Runs),
 		Sections: sections,
-	}
+	}, nil
 }
 
 func appendUsageBreakdown(sections []ToolSection, title string, buckets []usage.Bucket) []ToolSection {
@@ -185,16 +190,27 @@ func (a *app) modelRolesReaderQuery() runtimeReaderQuery {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return modelRolesDocument(roles), nil
+			return modelRolesDocument(roles)
 		},
 	}
 }
 
-func modelRolesDocument(roles modelconfig.Roles) readerDocument {
+func modelRolesDocument(roles modelconfig.Roles) (readerDocument, error) {
+	if err := roles.Validate(); err != nil {
+		return readerDocument{}, fmt.Errorf("model roles document: %w", err)
+	}
+	utility, err := roles.Utility.Label()
+	if err != nil {
+		return readerDocument{}, fmt.Errorf("utility model role: %w", err)
+	}
+	embedding, err := roles.Embedding.Label()
+	if err != nil {
+		return readerDocument{}, fmt.Errorf("embedding model role: %w", err)
+	}
 	return paragraphDocument("Auxiliary model roles", "runtime configuration", []string{
-		"utility    " + roles.Utility.Label(),
-		"embedding  " + roles.Embedding.Label(),
-	})
+		"utility    " + utility,
+		"embedding  " + embedding,
+	}), nil
 }
 
 func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
@@ -213,7 +229,12 @@ func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
 				a.message("update " + string(kind) + " role failed: " + err.Error())
 				return
 			}
-			a.message(string(kind) + " model · " + updated.Label())
+			label, labelErr := updated.Label()
+			if labelErr != nil {
+				a.message("update " + string(kind) + " role returned invalid state: " + labelErr.Error())
+				return
+			}
+			a.message(string(kind) + " model · " + label)
 		},
 	)
 	if !started {
@@ -223,17 +244,36 @@ func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
 }
 
 func parseModelRole(kind modelconfig.RoleKind, argument string) (modelconfig.Role, error) {
-	argument = strings.TrimSpace(argument)
-	role := modelconfig.Role{Kind: kind}
-	if strings.EqualFold(argument, "off") || strings.EqualFold(argument, "inherit") {
-		return role, role.Validate()
+	if err := kind.Validate(); err != nil {
+		return modelconfig.Role{}, err
+	}
+	switch {
+	case kind == modelconfig.UtilityRole && strings.EqualFold(argument, utilityRoleInheritedArgument):
+		return modelconfig.InheritedUtilityRole(), nil
+	case kind == modelconfig.EmbeddingRole && strings.EqualFold(argument, embeddingRoleDisabledArgument):
+		return modelconfig.DisabledEmbeddingRole(), nil
 	}
 	provider, model, found := strings.Cut(argument, "/")
 	if !found {
-		return modelconfig.Role{}, fmt.Errorf("usage: /%s <provider/model|off>", kind)
+		return modelconfig.Role{}, modelRoleUsage(kind)
 	}
-	role.Provider, role.Model = strings.TrimSpace(provider), strings.TrimSpace(model)
-	return role, role.Validate()
+	role, err := modelconfig.NewConfiguredRole(kind, provider, model)
+	if err != nil {
+		return modelconfig.Role{}, modelRoleUsage(kind)
+	}
+	return role, nil
+}
+
+const (
+	utilityRoleInheritedArgument  = "inherit"
+	embeddingRoleDisabledArgument = "off"
+)
+
+func modelRoleUsage(kind modelconfig.RoleKind) error {
+	if kind == modelconfig.UtilityRole {
+		return errors.New("usage: /utility <provider/model|inherit>")
+	}
+	return errors.New("usage: /embedding <provider/model|off>")
 }
 
 func (a *app) ShowProviders() {
@@ -262,22 +302,25 @@ func providersDocument(providers []modelconfig.Provider) readerDocument {
 	for _, provider := range providers {
 		status := "not configured"
 		if provider.Configured() {
-			status = provider.APIKeyMasked
-			if provider.KeySource == modelconfig.KeyEnv {
+			status = "ready"
+		}
+		if credential, configured := provider.Credential(); configured {
+			status = credential.Masked()
+			if credential.FromEnvironment() {
 				status += " · from env"
 			}
 		}
 		capabilities := ""
-		if provider.EmbeddingCapable {
+		if provider.EmbeddingCapable() {
 			capabilities = " · embeddings"
 		}
 		endpoint := ""
-		if provider.BaseURL != "" {
-			endpoint = " · " + provider.BaseURL
-		} else if provider.RequiresBaseURL {
+		if baseURL, configured := provider.BaseURL(); configured {
+			endpoint = " · " + baseURL
+		} else if provider.RequiresBaseURL() {
 			endpoint = " · endpoint required"
 		}
-		lines = append(lines, provider.ID+"  "+status+endpoint+capabilities)
+		lines = append(lines, provider.ID()+"  "+status+endpoint+capabilities)
 	}
 	return paragraphDocument("Providers", fmt.Sprintf("%d available", len(providers)), lines)
 }
@@ -286,9 +329,8 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	providerID = strings.TrimSpace(providerID)
-	if providerID == "" {
-		return errors.New("usage: /provider-test <provider>")
+	if err := modelidentity.Provider(providerID); err != nil {
+		return fmt.Errorf("provider test: %w", err)
 	}
 	a.status.note("testing provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
@@ -317,9 +359,8 @@ func (a *app) ConfigureProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	providerID = strings.TrimSpace(providerID)
-	if providerID == "" {
-		return errors.New("usage: /provider-config <provider>")
+	if err := modelidentity.Provider(providerID); err != nil {
+		return fmt.Errorf("provider configuration: %w", err)
 	}
 	presentation := a.sessionContext
 	a.status.note("loading provider " + providerID)
@@ -330,7 +371,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 				return modelconfig.Provider{}, err
 			}
 			for _, provider := range providers {
-				if strings.EqualFold(provider.ID, providerID) {
+				if provider.ID() == providerID {
 					return provider, nil
 				}
 			}
@@ -341,7 +382,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 				a.message("configure provider failed: " + err.Error())
 				return
 			}
-			if presentation != a.sessionContext {
+			if !a.sessionContext.current(presentation) {
 				a.message("provider loaded after the active session changed; reopen configuration to continue")
 				return
 			}
@@ -355,40 +396,44 @@ func (a *app) ConfigureProvider(providerID string) error {
 }
 
 func (a *app) openProviderConfig(provider modelconfig.Provider) {
-	baseMode := "keep"
-	if provider.RequiresBaseURL && provider.BaseURL == "" {
-		baseMode = "set"
+	baseURL, endpointConfigured := provider.BaseURL()
+	baseMode := formChangeKeep
+	if provider.RequiresBaseURL() && !endpointConfigured {
+		baseMode = formChangeSet
 	}
-	baseURL := provider.BaseURL
-	keyMode, apiKey := "keep", ""
-	baseChoice := &headless.Select[string]{Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3}
-	baseChoice.SetOptions([]headless.Option[string]{
-		{Label: "Keep current endpoint", Value: "keep"},
-		{Label: "Set endpoint", Value: "set"},
-		{Label: "Clear endpoint", Value: "clear"},
+	keyMode, apiKey := formChangeKeep, ""
+	baseChoice := &headless.Select[formChange]{Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3}
+	baseChoice.SetOptions([]headless.Option[formChange]{
+		{Label: "Keep current endpoint", Value: formChangeKeep},
+		{Label: "Set endpoint", Value: formChangeSet},
+		{Label: "Clear endpoint", Value: formChangeClear},
 	})
 	baseField := &headless.Text{
 		Label: "Endpoint URL", Placeholder: "https://api.example.com", Value: headless.Bind(&baseURL),
 		Check: func(value string) error {
-			if baseMode == "set" {
+			if baseMode.SetsValue() {
 				return requiredText(value)
 			}
 			return nil
 		},
 	}
-	keyChoice := &headless.Select[string]{Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
-	keyOptions := []headless.Option[string]{{Label: "Keep current key", Value: "keep"}}
+	keyChoice := &headless.Select[formChange]{Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
+	keyOptions := []headless.Option[formChange]{{Label: "Keep current key", Value: formChangeKeep}}
 	if provider.KeyEditable() {
 		keyOptions = append(keyOptions,
-			headless.Option[string]{Label: "Set a new key", Value: "set"},
-			headless.Option[string]{Label: "Clear stored key", Value: "clear"},
+			headless.Option[formChange]{Label: "Set a new key", Value: formChangeSet},
+			headless.Option[formChange]{Label: "Clear stored key", Value: formChangeClear},
 		)
 	}
 	keyChoice.SetOptions(keyOptions)
+	keyPlaceholder := ""
+	if credential, configured := provider.Credential(); configured {
+		keyPlaceholder = credential.Masked()
+	}
 	keyField := &headless.Text{
-		Label: "New API key", Placeholder: provider.APIKeyMasked, Value: headless.Bind(&apiKey),
+		Label: "New API key", Placeholder: keyPlaceholder, Value: headless.Bind(&apiKey),
 		Check: func(value string) error {
-			if keyMode == "set" {
+			if keyMode.SetsValue() {
 				return requiredText(value)
 			}
 			return nil
@@ -407,7 +452,7 @@ func (a *app) openProviderConfig(provider modelconfig.Provider) {
 	dismiss := func() {
 		clearKey()
 		if a.providerDialog == dialog {
-			dialog.Dismiss()
+			dialog.Controller().Dismiss()
 			a.providerDialog = nil
 		}
 	}
@@ -416,7 +461,11 @@ func (a *app) openProviderConfig(provider modelconfig.Provider) {
 			clearKey()
 			return
 		}
-		update := providerUpdate(provider.ID, baseMode, baseURL, keyMode, apiKey)
+		update, err := providerUpdate(provider.ID(), baseMode, baseURL, keyMode, apiKey)
+		if err != nil {
+			a.message("provider form: " + err.Error())
+			return
+		}
 		dismiss()
 		if update.BaseURL == nil && update.APIKey == nil {
 			a.message("provider configuration unchanged")
@@ -431,29 +480,42 @@ func (a *app) openProviderConfig(provider modelconfig.Provider) {
 	})
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
-		Title: "Configure provider · " + provider.ID, Body: dressed,
+		Title: "Configure provider · " + provider.ID(), Body: dressed,
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
 	a.providerDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
-func providerUpdate(providerID, baseMode, baseURL, keyMode, apiKey string) modelconfig.UpdateProvider {
+func providerUpdate(providerID string, baseMode formChange, baseURL string, keyMode formChange, apiKey string) (modelconfig.UpdateProvider, error) {
 	update := modelconfig.UpdateProvider{Provider: providerID}
-	update.BaseURL = valueChange(baseMode, strings.TrimSpace(baseURL))
-	update.APIKey = valueChange(keyMode, strings.TrimSpace(apiKey))
-	return update
+	baseChange, err := valueChange(baseMode, strings.TrimSpace(baseURL))
+	if err != nil {
+		return modelconfig.UpdateProvider{}, err
+	}
+	keyChange, err := valueChange(keyMode, strings.TrimSpace(apiKey))
+	if err != nil {
+		return modelconfig.UpdateProvider{}, err
+	}
+	update.BaseURL, update.APIKey = baseChange, keyChange
+	return update, nil
 }
 
-func valueChange(mode, value string) *modelconfig.ValueChange {
-	switch mode {
-	case "set":
-		return &modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: value}
-	case "clear":
-		return &modelconfig.ValueChange{Kind: modelconfig.ClearValue}
-	default:
-		return nil
+func valueChange(mode formChange, value string) (*modelconfig.ValueChange, error) {
+	if err := mode.Validate(); err != nil {
+		return nil, err
 	}
+	switch mode {
+	case formChangeSet:
+		change := &modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: value}
+		return change, change.Validate()
+	case formChangeClear:
+		change := &modelconfig.ValueChange{Kind: modelconfig.ClearValue}
+		return change, change.Validate()
+	case formChangeKeep:
+		return nil, nil
+	}
+	panic("validated form change became unreachable")
 }
 
 func (a *app) updateProvider(update modelconfig.UpdateProvider) {
@@ -467,7 +529,7 @@ func (a *app) updateProvider(update modelconfig.UpdateProvider) {
 				a.message("update provider failed: " + err.Error())
 				return
 			}
-			a.message("provider updated · " + provider.ID)
+			a.message("provider updated · " + provider.ID())
 		},
 	)
 	if !started {
@@ -503,37 +565,37 @@ func goalDocument(current goal.Goal, exists bool) readerDocument {
 		return paragraphDocument("Session goal", "none", []string{"No autonomous goal is active or paused for this session."})
 	}
 	lines := []string{
-		"objective  " + current.Objective,
-		"status     " + string(current.Status),
-		fmt.Sprintf("used       %d runs · %d steps · $%.4f", current.Used.Runs, current.Used.Steps, current.Used.CostUSD),
+		"objective  " + current.Objective(),
+		"status     " + string(current.Status()),
+		fmt.Sprintf("used       %d runs · %d steps · $%.4f", current.Used().Runs(), current.Used().Steps(), current.Used().CostUSD()),
 	}
 	model := "runtime default"
-	if current.Provider != "" {
-		model = current.Provider + "/" + current.Model
+	if current.Provider() != "" {
+		model = current.Provider() + "/" + current.Model()
 	}
 	lines = append(lines, "model      "+model)
 	budget := []string{}
-	if current.Budget.MaxRuns > 0 {
-		budget = append(budget, fmt.Sprintf("%d runs", current.Budget.MaxRuns))
+	if value, limited := current.Budget().MaxRuns(); limited {
+		budget = append(budget, fmt.Sprintf("%d runs", value))
 	}
-	if current.Budget.MaxSteps > 0 {
-		budget = append(budget, fmt.Sprintf("%d steps", current.Budget.MaxSteps))
+	if value, limited := current.Budget().MaxSteps(); limited {
+		budget = append(budget, fmt.Sprintf("%d steps", value))
 	}
-	if current.Budget.MaxCostUSD > 0 {
-		budget = append(budget, fmt.Sprintf("$%.4f", current.Budget.MaxCostUSD))
+	if value, limited := current.Budget().MaxCostUSD(); limited {
+		budget = append(budget, fmt.Sprintf("$%.4f", value))
 	}
 	if len(budget) == 0 {
 		budget = append(budget, "unbounded")
 	}
 	lines = append(lines, "budget     "+strings.Join(budget, " · "))
-	if current.Reason != nil {
-		reason := string(current.Reason.Code)
-		if current.Reason.Detail != "" {
-			reason += " · " + current.Reason.Detail
+	if currentReason, present := current.Reason(); present {
+		reason := string(currentReason.Code())
+		if currentReason.Detail() != "" {
+			reason += " · " + currentReason.Detail()
 		}
 		lines = append(lines, "reason     "+reason)
 	}
-	return paragraphDocument("Session goal", string(current.Status), lines)
+	return paragraphDocument("Session goal", string(current.Status()), lines)
 }
 
 func (a *app) StartGoal(objective string) error {
@@ -543,6 +605,7 @@ func (a *app) StartGoal(objective string) error {
 	start := goal.Start{
 		SessionID: a.session.ID, Objective: strings.TrimSpace(objective),
 		Provider: a.options.Provider, Model: a.options.Model,
+		Budget: goal.UnlimitedBudget(),
 	}
 	if err := start.Validate(); err != nil {
 		return err
@@ -582,7 +645,7 @@ func (a *app) ClearGoal() error {
 				a.message(label + " failed: " + err.Error())
 				return
 			}
-			if a.sessionContext == presentation {
+			if a.sessionContext.current(presentation) {
 				a.setRuntimeReader(runtimeReaderGoal)
 				a.workspaceReader = workspaceReaderNone
 				a.openReaderDocument(goalDocument(goal.Goal{}, false))
@@ -625,7 +688,7 @@ func (a *app) changeGoal(label string, change func(context.Context) (goal.Goal, 
 		if err != nil {
 			return goal.Goal{}, err
 		}
-		if exists && !current.Status.AllowsLifecycleCommands() {
+		if exists && !current.Status().AllowsLifecycleCommands() {
 			return goal.Goal{}, errors.New("goal is completing final accounting; wait for the next runtime change")
 		}
 		return change(ctx)
@@ -635,12 +698,12 @@ func (a *app) changeGoal(label string, change func(context.Context) (goal.Goal, 
 			a.message(label + " failed: " + err.Error())
 			return
 		}
-		if a.sessionContext == presentation {
+		if a.sessionContext.current(presentation) {
 			a.setRuntimeReader(runtimeReaderGoal)
 			a.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(goalDocument(current, true))
 		}
-		a.status.note("goal · " + string(current.Status))
+		a.status.note("goal · " + string(current.Status()))
 	})
 	if !started {
 		return errors.New("another goal operation is running")

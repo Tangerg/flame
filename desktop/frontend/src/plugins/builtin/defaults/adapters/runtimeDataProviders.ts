@@ -10,6 +10,7 @@ import {
   EMBEDDING_ROLE_KEY,
   MODELS_KEY,
   PROVIDERS_KEY,
+  ProviderConfiguration,
   SelectableModel,
   UTILITY_ROLE_KEY,
 } from "@/plugins/builtin/settings/providers/public/queries";
@@ -267,26 +268,26 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
   });
   contribute({
     key: MODELS_KEY,
-    // Aggregate models across enabled providers only; catalog-only providers
+    // Aggregate models across Runtime-configured providers only; catalog-only providers
     // cannot run and would produce dead composer-picker options.
     fetcher: async (read) => {
-      const enabled = (await pageData(read.client.providers.list())).filter(
-        (p) => p.apiKeyMasked !== "",
+      const configured = (await pageData(read.client.providers.list())).filter(
+        (provider) => provider.configured,
       );
       // Runtime owns remote-discovery fallback (for example, an offline
       // endpoint falls back to its static catalog). A rejected models.list is
       // therefore a transport / protocol / service failure, not an empty model
       // catalog; preserve it so consumers can render the failure honestly.
-      const lists = await Promise.all(enabled.map((p) => pageData(read.client.models.list(p.id))));
+      const lists = await Promise.all(
+        configured.map((provider) => pageData(read.client.models.list(provider.id))),
+      );
       return lists.flat().map(
         (m) =>
           new SelectableModel({
             id: m.id,
             provider: m.provider,
             label: m.displayName ?? m.id,
-            contextWindow: m.contextWindow,
-            maxInputTokens: m.maxInputTokens,
-            maxOutputTokens: m.maxOutputTokens,
+            tokenLimits: m.tokenLimits,
             knowledgeCutoff: m.knowledgeCutoff,
             deprecated: m.deprecated,
             reasoning: m.capabilities?.reasoning,
@@ -303,15 +304,9 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
   contribute({
     key: PROVIDERS_KEY,
     fetcher: async (read) =>
-      (await pageData(read.client.providers.list())).map((p) => ({
-        id: p.id,
-        baseUrl: p.baseUrl ?? "",
-        apiKeyMasked: p.apiKeyMasked,
-        keySource: p.keySource,
-        requiresBaseUrl: p.requiresBaseUrl,
-        embeddingCapable: p.embeddingCapable,
-        defaultEmbeddingModel: p.defaultEmbeddingModel,
-      })),
+      (await pageData(read.client.providers.list())).map((provider) =>
+        ProviderConfiguration.restore(provider),
+      ),
   });
   contribute({
     key: APPROVAL_MODE_KEY,

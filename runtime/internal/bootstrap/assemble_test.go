@@ -94,11 +94,11 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: CheckpointDir must be absolute when set",
 		},
 		{
-			name: "chat client",
+			name: "chat resolver",
 			edit: func(cfg *Config) {
-				cfg.ChatClient = nil
+				cfg.ChatResolver = nil
 			},
-			want: "runtime: ChatClient is required",
+			want: "runtime: ChatResolver is required",
 		},
 		{
 			name: "conversation store",
@@ -209,9 +209,7 @@ func TestAssemblyCloseBeforeBuildReleasesResourcesAndConsumesBuilder(t *testing.
 
 func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
-	// Force engine construction to fail after the tool environment is built, so
-	// the reclamation path runs; an invalid BuildID is rejected inside New.
-	cfg.BuildID = "dev"
+	buildErr := errors.New("complete tool environment rejected")
 	var (
 		toolClosed     atomic.Int32
 		resourceClosed atomic.Int32
@@ -233,11 +231,11 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 			toolClosed.Add(1)
 			return nil
 		}))
-		return toolRuntime, nil
+		return toolRuntime, buildErr
 	})
 	host, err := BuildAssembly(t.Context(), assembly)
-	if err == nil || !strings.Contains(err.Error(), "build ID") {
-		t.Fatalf("Assembly.Build error = %v, want engine construction failure", err)
+	if !errors.Is(err, buildErr) {
+		t.Fatalf("Assembly.Build error = %v, want complete tool-environment failure", err)
 	}
 	if host != nil {
 		t.Fatal("failed Build returned a Host")
@@ -283,7 +281,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	// Fail after tool acquisition. OpenInstance receives no Host on this path and
 	// can make only its bounded rollback calls, so the graph itself must retain
 	// ownership when a terminal closer finishes after both callers time out.
-	cfg.BuildID = "dev"
+	buildErr := errors.New("complete tool environment rejected")
 	resourceClosed := make(chan struct{})
 	cfg.Resources = []TerminalResource{closerFunc(func() error {
 		close(resourceClosed)
@@ -304,9 +302,9 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 			<-releaseCloser
 			return nil
 		}))
-		return toolRuntime, nil
+		return toolRuntime, buildErr
 	})
-	assembly.lifetime.shutdownTimeout = time.Millisecond
+	assembly.lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
 
 	failedHost, err := BuildAssembly(t.Context(), assembly)
 	if failedHost != nil || !errors.Is(err, context.DeadlineExceeded) {
@@ -381,7 +379,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) Config {
 		UserHome:             t.TempDir(),
 		KnowledgeDirectory:   t.TempDir(),
 		DefaultWorkspacePath: t.TempDir(),
-		ChatClient:           client,
+		ChatResolver:         testChatResolver(client),
 		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ConversationStore:    sqlitestore.NewMessageStore(db),
 		ProviderRegistry:     sqlitestore.NewProviderStore(db),

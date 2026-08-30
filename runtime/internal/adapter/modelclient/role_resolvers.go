@@ -15,21 +15,36 @@ type RoleSource interface {
 	Role() modelref.Selection
 }
 
-// UtilityClient returns the current specialized utility client, falling back to
-// main when no role is configured or the configured client cannot be resolved.
-func (c *ChatResolver) UtilityClient(main *chatclient.Client, roles RoleSource) func(context.Context) *chatclient.Client {
+// ChatClientResolver resolves an exact selection from the current provider
+// configuration snapshot. The utility role adapter depends only on that
+// behavior, not on ChatResolver's registry implementation.
+type ChatClientResolver interface {
+	ResolveChat(context.Context, modelref.Selection) (*chatclient.Client, error)
+}
+
+// LiveUtilityClient resolves the optional specialized role on every use. When
+// that role is unavailable it resolves the main selection through the same live
+// boundary; no process-start client or retired credential generation is kept.
+func LiveUtilityClient(
+	resolver ChatClientResolver,
+	mainSelection modelref.Selection,
+	roles RoleSource,
+) func(context.Context) *chatclient.Client {
 	return func(ctx context.Context) *chatclient.Client {
-		if c == nil || roles == nil {
-			return main
+		selection := mainSelection
+		if roles != nil {
+			if role := roles.Role(); role.Configured() {
+				selection = role
+			}
 		}
-		role := roles.Role()
-		if !role.Configured() {
-			return main
+		client, err := resolver.ResolveChat(ctx, selection)
+		if err == nil && client != nil {
+			return client
 		}
-		client, err := c.ResolveChat(ctx, role)
-		if err != nil || client == nil {
-			return main
+		if selection == mainSelection {
+			return nil
 		}
+		client, _ = resolver.ResolveChat(ctx, mainSelection)
 		return client
 	}
 }

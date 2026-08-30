@@ -19,6 +19,11 @@ import (
 // start because the Server has stopped admitting new streams.
 var errSubscriptionAdmissionsClosed = errors.New("server: runtime subscriptions are closed")
 
+// runtimeSubscriptionQueueCapacity absorbs short UI/refetch bursts without
+// back-pressuring publishers. Sustained lag does not consume more memory: the
+// subscription folds excess signals into one scoped resync.
+const runtimeSubscriptionQueueCapacity = 64
+
 // workspaceHub fans runtime change signals out to the live runtime.subscribe
 // streams (§7.1). It is the non-run, ephemeral counterpart to the per-run hubs:
 // coalescing rather than back-pressuring the publisher (a change signal carries no
@@ -44,6 +49,11 @@ func newWorkspaceHub() *workspaceHub {
 
 type workspaceSubscription struct {
 	events chan protocol.RuntimeEvent
+	// exhausted closes exactly once when this connection has used every sequence
+	// identity JSON clients can represent exactly. The stream drains frames already
+	// accepted by events, then its owner stops watchers and unregisters it.
+	exhausted         chan struct{}
+	sequenceExhausted bool
 	// topics is what THIS subscription asked for. The hub broadcasts every signal it
 	// receives; a subscription only sees the ones it can fold. A resync is narrowed
 	// to this same set before delivery: a client cannot re-read a topic it never
@@ -57,7 +67,7 @@ type workspaceSubscription struct {
 	// sequence is assigned when a frame is handed to the queue, never when one is
 	// produced or filtered — so the numbers a subscriber sees are consecutive and a
 	// gap can only mean the transport lost a frame.
-	sequence uint64
+	sequence runtimeEventSequence
 	// stalledTopics / stalledWatchIDs accumulate the scope of signals a full queue
 	// could not take. They become one resync; until it is delivered every further
 	// signal folds into them, because a client must not receive a later invalidation
@@ -66,6 +76,17 @@ type workspaceSubscription struct {
 	stalledWatchIDs   []string
 	stalledAllWatches bool
 }
+
+type runtimeEventSequence uint64
+
+func (s runtimeEventSequence) next() (runtimeEventSequence, bool) {
+	if uint64(s) >= protocol.MaximumRuntimeEventSequence {
+		return 0, false
+	}
+	return s + 1, true
+}
+
+func (s runtimeEventSequence) wire() uint64 { return uint64(s) }
 
 // register adds a caller-owned channel to the broadcast fan-out and returns an
 // idempotent unregister. It does NOT close the channel — the owner does, after
@@ -77,9 +98,10 @@ func (w *workspaceHub) register(
 	watchIDs []string,
 ) (*workspaceSubscription, func(), bool) {
 	subscription := &workspaceSubscription{
-		events:   events,
-		topics:   topics,
-		watchIDs: slices.Clone(watchIDs),
+		events:    events,
+		exhausted: make(chan struct{}),
+		topics:    topics,
+		watchIDs:  slices.Clone(watchIDs),
 	}
 	w.mu.Lock()
 	if w.closed {
@@ -139,6 +161,9 @@ func (w *workspaceHub) publishTo(subscription *workspaceSubscription, event prot
 }
 
 func (*workspaceHub) sendLocked(subscription *workspaceSubscription, event protocol.RuntimeEvent) {
+	if subscription.sequenceExhausted {
+		return
+	}
 	if event.Type == protocol.RuntimeResync {
 		var deliver bool
 		event, deliver = subscription.scopeResync(event)
@@ -166,10 +191,16 @@ func (*workspaceHub) sendLocked(subscription *workspaceSubscription, event proto
 	// notice that frames were missed must not arrive after the frames that followed
 	// them.
 	if !subscription.flushStalledLocked() {
-		subscription.stallLocked(subscription.prepareLocked(event))
+		if prepared, ok := subscription.prepareLocked(event); ok {
+			subscription.stallLocked(prepared)
+		}
 		return
 	}
-	event = subscription.prepareLocked(event)
+	var prepared bool
+	event, prepared = subscription.prepareLocked(event)
+	if !prepared {
+		return
+	}
 	if !subscription.offerPreparedLocked(event) {
 		subscription.stallLocked(event)
 	}
@@ -239,26 +270,34 @@ func (w *workspaceSubscription) scopeResync(
 // queueing or coalescing it. Doing this before stallLocked is essential: otherwise
 // an invalid producer frame is widened to a full resync when the queue has room but
 // narrowed to its superficial topic when the queue is full.
-func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) protocol.RuntimeEvent {
+func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) (protocol.RuntimeEvent, bool) {
+	next, ok := w.sequence.next()
+	if !ok {
+		w.exhaustLocked()
+		return protocol.RuntimeEvent{}, false
+	}
 	event = cloneRuntimeEvent(event)
 	clearEmptyRuntimeScopes(&event)
-	event.Sequence = w.sequence + 1
+	event.Sequence = next.wire()
 	if err := protocol.ValidateWireTree(event); err != nil {
 		event = w.resyncEvent()
-		event.Sequence = w.sequence + 1
+		event.Sequence = next.wire()
 		if recoveryErr := protocol.ValidateWireTree(event); recoveryErr != nil {
 			panic("server: invalid runtime resync invariant: " + recoveryErr.Error())
 		}
 	}
-	return event
+	return event, true
 }
 
 // offerPreparedLocked hands a canonical event to the queue, advancing the
 // subscription sequence only when it fits.
 func (w *workspaceSubscription) offerPreparedLocked(event protocol.RuntimeEvent) bool {
+	if w.sequenceExhausted {
+		return false
+	}
 	select {
 	case w.events <- event:
-		w.sequence++
+		w.sequence = runtimeEventSequence(event.Sequence)
 		return true
 	default:
 		return false
@@ -267,7 +306,19 @@ func (w *workspaceSubscription) offerPreparedLocked(event protocol.RuntimeEvent)
 
 // offerLocked is the preparation boundary used by synthetic recovery events.
 func (w *workspaceSubscription) offerLocked(event protocol.RuntimeEvent) bool {
-	return w.offerPreparedLocked(w.prepareLocked(event))
+	prepared, ok := w.prepareLocked(event)
+	return ok && w.offerPreparedLocked(prepared)
+}
+
+func (w *workspaceSubscription) exhaustLocked() {
+	if w.sequenceExhausted {
+		return
+	}
+	w.sequenceExhausted = true
+	w.stalledTopics = nil
+	w.stalledWatchIDs = nil
+	w.stalledAllWatches = false
+	close(w.exhausted)
 }
 
 func (w *workspaceSubscription) resyncEvent() protocol.RuntimeEvent {
@@ -315,6 +366,9 @@ func clearEmptyRuntimeScopes(event *protocol.RuntimeEvent) {
 // resync being stalled contributes its own scope, so a coalesced resync never
 // narrows what an earlier one had already widened.
 func (w *workspaceSubscription) stallLocked(event protocol.RuntimeEvent) {
+	if w.sequenceExhausted {
+		return
+	}
 	if w.stalledTopics == nil {
 		w.stalledTopics = make(map[protocol.RuntimeTopic]bool, len(protocol.RuntimeTopics()))
 	}
@@ -362,6 +416,9 @@ func (w *workspaceSubscription) stallFileScopeLocked(ids []string) {
 // the subscription is caught up — false means the queue is still full and the
 // caller's own signal has to fold in too.
 func (w *workspaceSubscription) flushStalledLocked() bool {
+	if w.sequenceExhausted {
+		return false
+	}
 	if len(w.stalledTopics) == 0 {
 		return true
 	}
@@ -433,7 +490,7 @@ func (s *Server) SubscribeRuntime(ctx context.Context, request protocol.RuntimeS
 	// SubscribeRuntime owns the channel: the hub broadcasts to it and (when
 	// watches are present) the application-owned watcher emits to it. Closing it
 	// only after that watcher has stopped keeps emit from racing the close.
-	events := make(chan protocol.RuntimeEvent, 64)
+	events := make(chan protocol.RuntimeEvent, runtimeSubscriptionQueueCapacity)
 	subscription, unregister, registered := s.workspaceHub.register(events, topics, watchIDs)
 	if !registered {
 		close(events)
@@ -498,6 +555,7 @@ func (s *Server) SubscribeRuntime(ctx context.Context, request protocol.RuntimeS
 	})
 	return &protocol.RuntimeSubscribeResponse{}, subscriptionEventSequence(
 		events,
+		subscription.exhausted,
 		func() { s.workspaceHub.drained(subscription) },
 		stopSubscription,
 	), nil
@@ -524,15 +582,36 @@ func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []worksp
 // consumer.
 func subscriptionEventSequence(
 	events <-chan protocol.RuntimeEvent,
+	exhausted <-chan struct{},
 	queueDrained func(),
 	stopSubscription func(),
 ) iter.Seq[protocol.RuntimeEvent] {
 	return func(yield func(protocol.RuntimeEvent) bool) {
 		defer stopSubscription()
-		for event := range events {
-			queueDrained()
-			if !yield(event) {
-				return
+		for {
+			select {
+			case event, open := <-events:
+				if !open {
+					return
+				}
+				queueDrained()
+				if !yield(event) {
+					return
+				}
+			case <-exhausted:
+				// No producer can enqueue after exhaustion. Drain everything accepted
+				// before the terminal signal, then let the deferred owner release stop
+				// watchers, unregister from the hub and close events.
+				for {
+					select {
+					case event, open := <-events:
+						if !open || !yield(event) {
+							return
+						}
+					default:
+						return
+					}
+				}
 			}
 		}
 	}

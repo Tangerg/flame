@@ -37,7 +37,7 @@ export function createRunOpeningController({
   setStartError,
 }: RunOpeningControllerOptions): RunOpeningController {
   let starting = false;
-  let beginSeq = 0;
+  let openingLease: object = {};
   let endActiveSpan: (() => void) | null = null;
 
   return {
@@ -45,7 +45,7 @@ export function createRunOpeningController({
     begin(run, onResult, onStartError) {
       endActiveSpan?.();
       starting = true;
-      const beginId = ++beginSeq;
+      const ownLease = (openingLease = {});
       markInteracted();
       abortCurrent();
       const ctrl = new AbortController();
@@ -69,7 +69,7 @@ export function createRunOpeningController({
       void opening
         .then(
           async (stream) => {
-            if (isCancelled() || ctrl.signal.aborted || beginId !== beginSeq) {
+            if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) {
               disposeIterable(stream.events);
               return;
             }
@@ -78,13 +78,13 @@ export function createRunOpeningController({
               span.setAttribute("flame.run_id", stream.result.runId);
               await pump(stream, ctrl.signal);
             } catch (err) {
-              if (isCancelled() || ctrl.signal.aborted || beginId !== beginSeq) return;
+              if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
               failure = err;
               console.error("[agent] accepted run stream failed:", sessionId, err);
             }
           },
           (err: unknown) => {
-            if (isCancelled() || ctrl.signal.aborted || beginId !== beginSeq) return;
+            if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
             // The Application projection may already prove that another client
             // won this opening race (for example, consumed the same HITL set).
             // Let that neutral fact suppress a now-stale command error without
@@ -97,12 +97,12 @@ export function createRunOpeningController({
           },
         )
         .finally(() => {
-          if (beginId === beginSeq) starting = false;
+          if (ownLease === openingLease) starting = false;
           finishSpan();
         });
     },
     retire() {
-      beginSeq += 1;
+      openingLease = {};
       starting = false;
       abortCurrent();
       endActiveSpan?.();

@@ -90,23 +90,23 @@ func capItems[T any](ranked []T, limit int, pick func(T) Item) []Item {
 // contributions, so agreement wins.
 func fuseByRank(keyword, vector []Item, topK int) []Item {
 	const rrfK = 60.0
-	score := make(map[string]float64)
-	item := make(map[string]Item)
+	score := make(map[ItemID]float64)
+	item := make(map[ItemID]Item)
 	for _, list := range [][]Item{keyword, vector} {
 		for rank, it := range list {
 			score[it.ID] += 1.0 / (rrfK + float64(rank+1))
 			item[it.ID] = it
 		}
 	}
-	ids := make([]string, 0, len(score))
+	ids := make([]ItemID, 0, len(score))
 	for id := range score {
 		ids = append(ids, id)
 	}
-	slices.SortFunc(ids, func(a, b string) int {
+	slices.SortFunc(ids, func(a, b ItemID) int {
 		if d := cmp.Compare(score[b], score[a]); d != 0 {
 			return d
 		}
-		return cmp.Compare(a, b) // deterministic tiebreak
+		return cmp.Compare(a.String(), b.String()) // deterministic tiebreak
 	})
 	out := make([]Item, 0, min(topK, len(ids)))
 	for _, id := range ids {

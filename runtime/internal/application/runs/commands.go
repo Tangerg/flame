@@ -8,8 +8,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -122,6 +126,11 @@ type StartCommand struct {
 // a caller-chosen Session or Run without the occurrence that makes retries
 // safe.
 func (s StartCommand) ValidateScheduledIdentity() error {
+	if s.SessionID != "" {
+		if _, err := resourceid.ParseSession(s.SessionID); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+		}
+	}
 	scheduled := s.RunID != "" || s.NewSessionID != "" || s.ScheduleFiring != ""
 	if !scheduled {
 		return nil
@@ -131,6 +140,15 @@ func (s StartCommand) ValidateScheduledIdentity() error {
 	}
 	if s.SessionID != "" {
 		return fmt.Errorf("%w: scheduled start cannot also select an existing session", ErrInvalidScheduledStart)
+	}
+	if _, err := resourceid.ParseRun(s.RunID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+	}
+	if _, err := resourceid.ParseSession(s.NewSessionID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+	}
+	if err := schedule.ValidateOccurrenceID(s.ScheduleFiring); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 	}
 	return nil
 }
@@ -375,6 +393,9 @@ func (r RootExecutionStart) Validate() error {
 		if err := message.Validate(); err != nil {
 			return fmt.Errorf("runs: working context message[%d]: %w", index, err)
 		}
+		if err := conversation.ValidateMessageIdentities(message); err != nil {
+			return fmt.Errorf("runs: working context message[%d]: %w", index, err)
+		}
 	}
 	if len(r.WorkingContext) > 0 && r.WorkingContext[len(r.WorkingContext)-1].Role != corechat.RoleUser {
 		return errors.New("runs: fresh working context must end with the current user message")
@@ -391,8 +412,8 @@ func (r RootExecutionStart) Validate() error {
 	}).Validate(); err != nil {
 		return fmt.Errorf("runs: capabilities: %w", err)
 	}
-	if r.GoalIncarnationID != strings.TrimSpace(r.GoalIncarnationID) {
-		return errors.New("runs: goal incarnation ID has surrounding whitespace")
+	if _, _, err := goalref.ParseOptionalIncarnation(r.GoalIncarnationID); err != nil {
+		return fmt.Errorf("runs: %w", err)
 	}
 	return validateOptions(r.Options)
 }

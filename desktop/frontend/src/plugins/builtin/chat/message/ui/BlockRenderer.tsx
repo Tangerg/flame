@@ -124,13 +124,7 @@ export function renderBlock(
       );
 
     case "compaction":
-      return (
-        <CompactionBlock
-          key={key}
-          summary={block.summary}
-          droppedMessages={block.droppedMessages}
-        />
-      );
+      return <CompactionBlock key={key} summary={block.summary} />;
   }
 }
 

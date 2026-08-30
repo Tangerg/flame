@@ -39,7 +39,7 @@ func TestInfoIsMinimalAndTyped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get info: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var body struct {
 		ProtocolVersion string `json:"protocolVersion"`
@@ -81,7 +81,7 @@ func TestInfoDoesNotExposeRuntimePathsOrCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get info: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var body map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -108,7 +108,7 @@ func TestLivenessDoesNotCallReadinessProbes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get liveness: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -142,7 +142,7 @@ func TestReadinessReportsWorstProbe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get readiness: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusServiceUnavailable {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -172,21 +172,32 @@ func TestReadinessContainsProbePanic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get readiness: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusServiceUnavailable {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
 }
 
-func TestNewServerRequiresRuntimeInstanceIdentity(t *testing.T) {
-	_, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
-		Addr:            ":0",
-		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0"},
-		ProtocolVersion: testProtocolVersion,
-	})
-	if err == nil {
-		t.Fatal("NewServer accepted a binding without Runtime instance identity")
+func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
+	tests := []struct {
+		name       string
+		instanceID string
+	}{
+		{name: "missing"},
+		{name: "old unconstrained spelling", instanceID: "runtime_test"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := flamehttp.NewServer(flamehttp.Config{
+				Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+				Addr:            ":0",
+				ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
+				ProtocolVersion: testProtocolVersion,
+			})
+			if err == nil {
+				t.Fatalf("NewServer accepted Runtime instance identity %q", test.instanceID)
+			}
+		})
 	}
 }
 

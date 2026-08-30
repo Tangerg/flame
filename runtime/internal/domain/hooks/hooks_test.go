@@ -187,3 +187,17 @@ func TestValidateCommandMaterialAcceptsExactBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateCommandMaterialRejectsCorruptResourceReferences(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []Input{
+		{Event: SessionStart, SessionID: "ses_ one"},
+		{Event: SubagentStart, Subagent: &SubagentInput{RunID: "run_\u200bhidden"}},
+		{Event: SubagentStart, Subagent: &SubagentInput{RunID: "run_child", ParentRunID: "run parent"}},
+	} {
+		if err := input.ValidateCommandMaterial(); !errors.Is(err, ErrInvalidCommandInput) {
+			t.Errorf("ValidateCommandMaterial(%+v) = %v, want ErrInvalidCommandInput", input, err)
+		}
+	}
+}

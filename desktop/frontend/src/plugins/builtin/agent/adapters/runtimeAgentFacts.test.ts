@@ -152,6 +152,26 @@ describe("Runtime → Agent fact adapter", () => {
     });
 
     expect(
+      runtimeItem({
+        type: "compaction",
+        id: "item_compaction",
+        runId: "run_root",
+        status: "completed",
+        createdAt: "2026-08-12T08:00:01.000Z",
+        summary: "Retained the active Goal and implementation decisions.",
+        droppedMessages: 18,
+      }),
+    ).toEqual({
+      type: "compaction",
+      id: "item_compaction",
+      runId: "run_root",
+      status: "completed",
+      createdAt: "2026-08-12T08:00:01.000Z",
+      summary: "Retained the active Goal and implementation decisions.",
+      droppedMessages: 18,
+    });
+
+    expect(
       runtimeAgentEvent(
         event({
           type: "segment.progress",
@@ -172,9 +192,11 @@ describe("Runtime → Agent fact adapter", () => {
           type: "plan.updated",
           plan: {
             sessionId: "ses_1",
-            revision: 6,
-            steps: [{ id: "step_1", description: "Verify", status: "in_progress" }],
-            updatedAt: "2026-08-17T00:00:00Z",
+            state: {
+              revision: 6,
+              steps: [{ id: "step_1", description: "Verify", status: "in_progress" }],
+              updatedAt: "2026-08-17T00:00:00Z",
+            },
           },
         }),
       ).event,

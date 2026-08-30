@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	runtimeserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -31,6 +32,7 @@ func TestInstanceConfigRequiresExactAbsoluteHostPaths(t *testing.T) {
 		{name: "relative data", mutate: func(cfg *InstanceConfig) { cfg.DataDirectory = "data" }},
 		{name: "missing config directories", mutate: func(cfg *InstanceConfig) { cfg.ConfigDirectories = nil }},
 		{name: "relative config directory", mutate: func(cfg *InstanceConfig) { cfg.ConfigDirectories = []string{"config"} }},
+		{name: "noncanonical build identity", mutate: func(cfg *InstanceConfig) { cfg.BuildID = "sha256:short" }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			candidate := valid
@@ -56,7 +58,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 		ConfigDirectories:    []string{t.TempDir()},
 		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ServerInfo: protocol.ServerInfo{
-			Name: "test-runtime", Version: "test-version", InstanceID: "runtime_caller_owned",
+			Name: "test-runtime", Version: "test-version", InstanceID: identityfixture.AlternateRuntimeInstanceID,
 		},
 	}
 	instance, _, err := OpenInstance(t.Context(), cfg)
@@ -127,6 +129,7 @@ func TestInstanceCloseIsIdempotent(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	instance := &Instance{
+		shutdownWait:  defaultShutdownWaitPolicy(),
 		delivery:      operationDelivery{service: &runtimeserver.Server{}},
 		host:          &Host{},
 		stopRuntime:   func() {},
@@ -144,7 +147,7 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	resourceClosed := make(chan struct{})
 	host := &Host{lifetime: &hostLifetime{
-		shutdownTimeout: time.Millisecond,
+		shutdownWait: testShutdownWait(t, time.Millisecond),
 		runCoordinator: shutdownFunc{wait: func(ctx context.Context) error {
 			select {
 			case <-releaseComponent:
@@ -161,11 +164,11 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	instance := &Instance{
-		delivery:        operationDelivery{service: &runtimeserver.Server{}},
-		host:            host,
-		stopRuntime:     func() {},
-		schedulerDone:   done,
-		shutdownTimeout: time.Millisecond,
+		delivery:      operationDelivery{service: &runtimeserver.Server{}},
+		host:          host,
+		stopRuntime:   func() {},
+		schedulerDone: done,
+		shutdownWait:  testShutdownWait(t, time.Millisecond),
 	}
 	if err := instance.Close(); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("first Close error = %v, want deadline exceeded", err)
@@ -211,7 +214,8 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	close(schedulerDone)
 	resourceClosed := make(chan struct{})
 	instance := &Instance{
-		delivery: operationDelivery{endpoint: endpoint, service: &runtimeserver.Server{}},
+		shutdownWait: defaultShutdownWaitPolicy(),
+		delivery:     operationDelivery{endpoint: endpoint, service: &runtimeserver.Server{}},
 		host: &Host{lifetime: &hostLifetime{hostResources: terminalClosers([]func() error{
 			func() error {
 				close(resourceClosed)
@@ -307,7 +311,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 		schedulerDone:       workersDone,
 		databaseChangesDone: workersDone,
 		recoveryDone:        workersDone,
-		shutdownTimeout:     time.Millisecond,
+		shutdownWait:        testShutdownWait(t, time.Millisecond),
 	}
 
 	callDone := make(chan struct{})

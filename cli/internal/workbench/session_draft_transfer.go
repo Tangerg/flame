@@ -3,9 +3,9 @@ package workbench
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 const sessionDraftTransferName = "session-draft-transfer.json"
@@ -30,13 +30,6 @@ func (d DraftTransfer) clone() DraftTransfer {
 	return d
 }
 
-func (d DraftTransfer) normalized() DraftTransfer {
-	d = d.clone()
-	d.SourceSessionID = strings.TrimSpace(d.SourceSessionID)
-	d.DestinationSessionID = strings.TrimSpace(d.DestinationSessionID)
-	return d
-}
-
 func (d DraftTransfer) equal(other DraftTransfer) bool {
 	return d.SourceSessionID == other.SourceSessionID &&
 		d.DestinationSessionID == other.DestinationSessionID &&
@@ -47,10 +40,11 @@ func (d DraftTransfer) equal(other DraftTransfer) bool {
 }
 
 func (d DraftTransfer) validate() error {
-	d.SourceSessionID = strings.TrimSpace(d.SourceSessionID)
-	d.DestinationSessionID = strings.TrimSpace(d.DestinationSessionID)
-	if d.SourceSessionID == "" || d.DestinationSessionID == "" {
-		return errors.New("draft transfer session id is empty")
+	if _, err := sessionidentity.Parse(d.SourceSessionID); err != nil {
+		return fmt.Errorf("draft transfer source: %w", err)
+	}
+	if _, err := sessionidentity.Parse(d.DestinationSessionID); err != nil {
+		return fmt.Errorf("draft transfer destination: %w", err)
 	}
 	if d.SourceSessionID == d.DestinationSessionID {
 		return errors.New("draft transfer source and destination are the same session")
@@ -80,7 +74,6 @@ func (d DraftTransfer) validate() error {
 }
 
 func (d DraftTransfer) blocks(sessionID string) bool {
-	sessionID = strings.TrimSpace(sessionID)
 	return sessionID == d.SourceSessionID || sessionID == d.DestinationSessionID
 }
 
@@ -88,7 +81,7 @@ func (d DraftTransfer) blocks(sessionID string) bool {
 // journal. If a filesystem failure leaves only one side committed, subsequent
 // mutations of either aggregate fail closed until Open completes the journal.
 func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
-	transfer = transfer.normalized()
+	transfer = transfer.clone()
 	if err := transfer.validate(); err != nil {
 		return err
 	}

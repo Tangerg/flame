@@ -18,8 +18,9 @@ import (
 const maxCheckpointFileSize = 2 << 20
 
 const (
-	maxCheckpointPaths = 20_000
-	maxCheckpointBytes = 512 << 20
+	maxCheckpointPaths     = 20_000
+	maxCheckpointBytes     = 512 << 20
+	gitPathRecordSeparator = "\x00" // Git's -z output protocol.
 )
 
 // Snapshot anchors the current state of cwd at the runID boundary: it stages
@@ -141,7 +142,7 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 	var stage, untrack []string
 	seen := make(map[string]struct{}, min(maxCheckpointPaths, len(output)/2))
 	var admittedBytes int64
-	for p := range strings.SplitSeq(string(output), "\x00") {
+	for p := range strings.SplitSeq(string(output), gitPathRecordSeparator) {
 		if cause := context.Cause(ctx); cause != nil {
 			return nil, nil, cause
 		}

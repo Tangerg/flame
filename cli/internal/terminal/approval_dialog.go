@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/oolong/core/text"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
@@ -198,7 +199,7 @@ func (a *app) setApprovalPreview(sections []ToolSection) {
 		}
 	}
 	if blockCount == 0 {
-		id := a.approvalPane.preview.Append(&kit.Message{Theme: a.approvalPane.theme, Body: "This request has no additional preview."})
+		id := a.approvalPane.preview.Append(&kit.Entry{Theme: a.approvalPane.theme, Body: "This request has no additional preview."})
 		a.approvalPane.preview.Finish(id)
 	}
 	a.approvalPane.scroll = headless.Scroll{}
@@ -304,11 +305,11 @@ func (a *app) backInteraction() bool {
 	}
 	if a.questionnaire != nil {
 		a.questionnaire = nil
-		a.questionDialog.Dismiss()
+		a.questionDialog.Controller().Dismiss()
 		a.questionDialog = nil
 	}
 	if a.reviewDialog != nil {
-		a.reviewDialog.Dismiss()
+		a.reviewDialog.Controller().Dismiss()
 		a.reviewDialog = nil
 	}
 	a.openCurrentInteraction()
@@ -377,7 +378,7 @@ func (a *app) reopenCompletedInteractionReview(review *interactionReview) error 
 func (a *app) deliverInteractionResume(
 	review *interactionReview,
 	command agent.ResumeRun,
-	replay workbench.ReplayGuard,
+	replay commandreplay.Guard,
 ) {
 	a.status.active("resuming")
 	a.syncAnimation()
@@ -521,7 +522,7 @@ func (a *app) abortInteractions(reason string) {
 	a.questionnaire = nil
 	a.interactionReview = nil
 	if a.reviewDialog != nil {
-		a.reviewDialog.Dismiss()
+		a.reviewDialog.Controller().Dismiss()
 		a.reviewDialog = nil
 	}
 	if runID := a.conversation.RunID(); runID != "" {

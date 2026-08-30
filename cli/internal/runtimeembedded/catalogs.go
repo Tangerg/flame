@@ -3,6 +3,7 @@ package runtimeembedded
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 type modelCatalogBinding interface {
@@ -37,8 +39,7 @@ func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
 	var models []agent.Model
 	seenProviders := make(map[string]struct{}, len(providerValues))
 	for _, provider := range providerValues {
-		projectedProvider := projectProvider(provider)
-		if err := projectedProvider.Validate(); err != nil {
+		if _, err := projectProvider(provider); err != nil {
 			return nil, runtimeContractViolation("model catalog returned an invalid provider: %v", err)
 		}
 		if _, duplicate := seenProviders[provider.ID]; duplicate {
@@ -57,7 +58,10 @@ func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
 			if value.Provider != provider.ID {
 				return nil, runtimeContractViolation("models for provider %q returned model %q from %q", provider.ID, value.ID, value.Provider)
 			}
-			projected := projectModel(value)
+			projected, err := projectModel(value)
+			if err != nil {
+				return nil, runtimeContractViolation("models for provider %q returned invalid token limits in item %d: %v", provider.ID, index+1, err)
+			}
 			if err := projected.Validate(); err != nil {
 				return nil, runtimeContractViolation("models for provider %q returned invalid item %d: %v", provider.ID, index+1, err)
 			}
@@ -70,12 +74,24 @@ func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
 	return models, nil
 }
 
-func projectModel(value protocol.Model) agent.Model {
+func projectModel(value protocol.Model) (agent.Model, error) {
 	model := agent.Model{
 		ID: value.ID, Provider: value.Provider, DisplayName: value.DisplayName,
-		ContextWindow: value.ContextWindow, MaxInputTokens: value.MaxInputTokens,
-		MaxOutputTokens: value.MaxOutputTokens, KnowledgeCutoff: value.KnowledgeCutoff,
-		Deprecated: value.Deprecated,
+		KnowledgeCutoff: value.KnowledgeCutoff,
+		Deprecated:      value.Deprecated,
+	}
+	if value.TokenLimits != nil {
+		limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
+			ContextWindow: value.TokenLimits.ContextWindow, MaxInputTokens: value.TokenLimits.MaxInputTokens,
+			MaxOutputTokens: value.TokenLimits.MaxOutputTokens,
+		})
+		if err != nil {
+			return agent.Model{}, err
+		}
+		if limits.Unknown() {
+			return agent.Model{}, errors.New("model token limits object is empty")
+		}
+		model.TokenLimits = limits
 	}
 	if value.Capabilities != nil {
 		capabilities := &agent.ModelCapabilities{
@@ -103,7 +119,7 @@ func projectModel(value protocol.Model) agent.Model {
 			CacheWriteUSDPerMillionTokens: value.Pricing.CacheWriteUSDPerMillionTokens,
 		}
 	}
-	return model
+	return model, nil
 }
 
 func (r *Runtime) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {
@@ -147,9 +163,8 @@ func (r *Runtime) SetApprovalMode(ctx context.Context, mode agent.ApprovalMode) 
 }
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
-	sessionID = strings.TrimSpace(sessionID)
-	if sessionID == "" {
-		return nil, errors.New("list approval rules: session id is empty")
+	if _, err := sessionidentity.Parse(sessionID); err != nil {
+		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	result, err := r.approvals.ListApprovalRules(ctx, protocol.ListApprovalRulesRequest{SessionID: sessionID}, r.callOptions())
 	if err != nil {

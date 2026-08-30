@@ -13,8 +13,8 @@ import (
 
 // TestChatResolverRejectsUnconfigured verifies an explicit provider that
 // has no key errors out (the "configure it first" path); once configured it
-// resolves to a cached client. The provider is taken as given — never
-// inferred from the model.
+// resolves a client from the current registry snapshot. The provider is taken
+// as given — never inferred from the model.
 func TestChatResolverRejectsUnconfigured(t *testing.T) {
 	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -32,8 +32,8 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 		t.Fatalf("unconfigured provider error = %#v, want invalid-credentials failure", err)
 	}
 
-	apiKey := "k"
-	_, err = ps.Update(t.Context(), "deepseek", provider.Patch{APIKey: &apiKey})
+	apiKey, _ := provider.NewAPIKey("k")
+	_, err = ps.Update(t.Context(), "deepseek", provider.Patch{APIKey: provider.Set(apiKey)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,13 +41,29 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 	if err != nil || c == nil {
 		t.Fatalf("ResolveChat after configure: client=%v err=%v", c, err)
 	}
-	// Same (provider, model) is cached — second call returns the same client.
-	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2 != c {
-		t.Error("expected the resolved client to be cached")
+	// Client construction is cheap and immutable. Re-resolving deliberately
+	// avoids a process-lifetime cache retaining old credential generations.
+	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2 == c {
+		t.Error("resolver retained a process-lifetime client")
 	}
 	// A different model on the same provider builds a distinct client.
 	if c3, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-flash")); c3 == c {
 		t.Error("different model should resolve a distinct client")
+	}
+}
+
+func TestChatResolverBuildsOptionalCredentialProviderWithoutRegistryRow(t *testing.T) {
+	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := modelref.New("ollama", "local-model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewChatResolver(sqlitestore.NewProviderStore(db)).ResolveChat(t.Context(), selection)
+	if err != nil || client == nil {
+		t.Fatalf("ResolveChat optional credential provider = %v, %v", client, err)
 	}
 }
 

@@ -698,8 +698,8 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 			t.Fatal(err)
 		}
 		executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-			Lifetime:      t.Context(),
-			DefaultClient: client, DefaultSelection: testDefaultSelection(), BuildID: interactionTestBuildID,
+			Lifetime:     t.Context(),
+			ChatResolver: staticInteractionChatResolver(client), BuildID: interactionTestBuildID,
 			ImplementationIdentity: "interaction-observation-test-build",
 			ConfigurationIdentity:  "different-deployment-configuration",
 		})
@@ -774,7 +774,7 @@ func TestInteractionExecutorDoesNotCheckpointOrReplayUnknownEffect(t *testing.T)
 		return interactionUsageTextResponse("externally completed", 2, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		UnknownEffectPollInterval: 5 * time.Millisecond,
+		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace

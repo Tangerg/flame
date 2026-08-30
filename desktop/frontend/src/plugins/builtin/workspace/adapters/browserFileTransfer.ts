@@ -1,5 +1,7 @@
 import type { FileTransferPort } from "../application/ports/fileTransfer";
 
+const OBJECT_URL_REVOCATION_DELAY_MS = 1_000;
+
 // How a browser hands a file to the user and takes one back.
 //
 // Both are pure mechanism — an anchor with a blob URL, a hidden file input — and
@@ -20,7 +22,7 @@ function downloadFile(filename: string, content: string, mime: string): void {
   anchor.remove();
   // Revoking immediately races the download in WebKit; a beat later is safe and
   // still bounded.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_REVOCATION_DELAY_MS);
 }
 
 function pickTextFile(accept: string): Promise<string | null> {

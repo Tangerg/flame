@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -31,5 +32,21 @@ func TestPromptHistoryDropsConsecutiveDuplicates(t *testing.T) {
 	history.Add(agent.Message{Text: "same"})
 	if len(history.entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(history.entries))
+	}
+}
+
+func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
+	var history promptHistory
+	for index := range promptHistoryCapacity + 5 {
+		history.Add(agent.Message{Text: fmt.Sprintf("prompt %d", index)})
+	}
+	if len(history.entries) != promptHistoryCapacity {
+		t.Fatalf("entries = %d, want %d", len(history.entries), promptHistoryCapacity)
+	}
+	if got := history.entries[0].Text; got != "prompt 5" {
+		t.Fatalf("oldest retained prompt = %q, want prompt 5", got)
+	}
+	if got := history.entries[len(history.entries)-1].Text; got != "prompt 1004" {
+		t.Fatalf("newest retained prompt = %q, want prompt 1004", got)
 	}
 }

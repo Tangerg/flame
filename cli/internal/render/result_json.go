@@ -52,8 +52,7 @@ func (a *assistantProse) delta(delta agent.BlockDelta) error {
 	if !exists {
 		return nil
 	}
-	_, err := a.blocks[at].text.Apply(delta)
-	return err
+	return a.blocks[at].text.Apply(delta)
 }
 
 func (a *assistantProse) complete(block agent.Block) {

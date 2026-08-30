@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"math"
 	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // liveHeadroom bounds queued live-only events per subscriber. Replayable events
@@ -55,9 +58,24 @@ var (
 // the same three, so one from another process or another segment is refused
 // instead of resolving against a stream that never issued it.
 type streamScope struct {
-	Epoch     string
-	RunID     string
-	SegmentID string
+	Epoch     replayEpoch
+	RunID     resourceid.RunID
+	SegmentID resourceid.SegmentID
+}
+
+func newStreamScope(epoch replayEpoch, runID, segmentID string) (streamScope, error) {
+	if err := epoch.Validate(); err != nil {
+		return streamScope{}, err
+	}
+	parsedRunID, err := resourceid.ParseRun(runID)
+	if err != nil {
+		return streamScope{}, err
+	}
+	parsedSegmentID, err := resourceid.ParseSegment(segmentID)
+	if err != nil {
+		return streamScope{}, err
+	}
+	return streamScope{Epoch: epoch, RunID: parsedRunID, SegmentID: parsedSegmentID}, nil
 }
 
 // subscription is one attached consumer of a journal.
@@ -88,7 +106,8 @@ type journal struct {
 	retention Retention
 	// head is the last sequence assigned. Zero means nothing has been published,
 	// which is why a cursor's sequence starts at 1.
-	head uint64
+	head       uint64
+	headCursor string
 	// retained is the replay window: replayable events, oldest first, each
 	// carrying what it was charged.
 	retained      []chargedEvent
@@ -97,8 +116,7 @@ type journal struct {
 	// before it has lost at least one replayable event, which is the difference
 	// between "replay this" and "you must recover from the reads".
 	evictedThrough uint64
-	subs           map[int]*journalSubscriber
-	nextSubID      int
+	subs           map[*journalSubscriber]struct{}
 	// closeEvent is the root segment.finished event. Its durable facts may commit
 	// before terminal maintenance, but clients treat receiving it as permission to
 	// start the next operation, so fan-out waits until close releases admission.
@@ -109,8 +127,14 @@ type journal struct {
 // newJournal builds the stream for one segment. scope binds every position it
 // mints; retention bounds both the replay window and any one subscriber's
 // replayable backlog.
-func newJournal(scope streamScope, retention Retention) *journal {
-	return &journal{scope: scope, retention: retention, subs: map[int]*journalSubscriber{}}
+func newJournal(scope streamScope, retention Retention) (*journal, error) {
+	if retention.MaxEvents <= 0 || retention.MaxBytes <= 0 {
+		return nil, errors.New("runs: journal retention budgets must be positive")
+	}
+	if err := validateReplayScope(scope); err != nil {
+		return nil, fmt.Errorf("runs: journal replay scope: %w", err)
+	}
+	return &journal{scope: scope, retention: retention, subs: map[*journalSubscriber]struct{}{}}, nil
 }
 
 // append assigns ev its position in this stream, retains it if it is
@@ -119,14 +143,14 @@ func newJournal(scope streamScope, retention Retention) *journal {
 // The position is assigned HERE, under the same lock as the fan-out, so
 // sequence order, publication order and replay order are one order rather than
 // three that agree by convention.
-func (j *journal) append(ev Event) {
+func (j *journal) append(ev Event) error {
 	charged := chargeJournalEvent(ev)
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.closed {
-		return
+		return nil
 	}
-	j.appendLocked(charged)
+	return j.appendLocked(charged)
 }
 
 // deferCloseEvent retains the root terminal signal until close. Exactly one
@@ -155,28 +179,38 @@ func chargeJournalEvent(ev Event) chargedEvent {
 
 // appendLocked assigns the next stream position and fans out one pre-charged
 // event. The caller holds j.mu and has proved the journal is open.
-func (j *journal) appendLocked(charged chargedEvent) {
+func (j *journal) appendLocked(charged chargedEvent) error {
+	if j.head == math.MaxUint64 {
+		return errReplaySequenceExhausted
+	}
 	ev := charged.event
-	j.head++
-	ev.Sequence = j.head
-	ev.Cursor = encodeReplayCursor(replayPosition{
+	nextSequence := j.head + 1
+	nextCursor, err := encodeReplayCursor(replayPosition{
 		epoch: j.scope.Epoch, runID: j.scope.RunID,
-		segmentID: j.scope.SegmentID, sequence: j.head,
+		segmentID: j.scope.SegmentID, sequence: nextSequence,
 	})
+	if err != nil {
+		return err
+	}
+	j.head = nextSequence
+	j.headCursor = nextCursor
+	ev.Sequence = nextSequence
+	ev.Cursor = nextCursor
 	if ev.Replayable() {
 		j.retained = append(j.retained, chargedEvent{event: ev, bytes: charged.bytes})
 		j.retainedBytes += charged.bytes
 		j.evictLocked()
 	}
-	for id, subscriber := range j.subs {
+	for subscriber := range j.subs {
 		if !subscriber.enqueue(ev, charged.bytes) {
 			// Overflow is a disconnection even when the consumer has not started
 			// ranging and therefore cannot run the sequence's deferred Cancel.
 			// The journal owns this registry, so retire the subscriber here under
 			// the same lock that serialized the publication which disconnected it.
-			delete(j.subs, id)
+			delete(j.subs, subscriber)
 		}
 	}
+	return nil
 }
 
 // evictLocked drops the oldest replayable events until the window fits both
@@ -197,27 +231,29 @@ func (j *journal) evictLocked() {
 // events in order and then its sequence returns. Close does not wait, which lets
 // a stream opened by a fast run return to its caller before that caller starts
 // draining.
-func (j *journal) close() {
+func (j *journal) close() error {
 	j.mu.Lock()
 	if j.closed {
 		j.mu.Unlock()
-		return
+		return nil
 	}
+	var closeErr error
 	if j.closeEvent != nil {
-		j.appendLocked(*j.closeEvent)
+		closeErr = j.appendLocked(*j.closeEvent)
 		j.closeEvent = nil
 	}
 	j.closed = true
 	subscribers := make([]*journalSubscriber, 0, len(j.subs))
-	for id, subscriber := range j.subs {
+	for subscriber := range j.subs {
 		subscribers = append(subscribers, subscriber)
-		delete(j.subs, id)
+		delete(j.subs, subscriber)
 	}
 	j.mu.Unlock()
 
 	for _, subscriber := range subscribers {
 		subscriber.finish()
 	}
+	return closeErr
 }
 
 // tail attaches from the current head: the subscriber receives only what is
@@ -294,13 +330,7 @@ func (j *journal) replay(token string) (subscription, error) {
 // headCursorLocked is the cursor for the last published position, or "" when the
 // stream has published nothing.
 func (j *journal) headCursorLocked() string {
-	if j.head == 0 {
-		return ""
-	}
-	return encodeReplayCursor(replayPosition{
-		epoch: j.scope.Epoch, runID: j.scope.RunID,
-		segmentID: j.scope.SegmentID, sequence: j.head,
-	})
+	return j.headCursor
 }
 
 // attachLocked registers a subscriber primed with backlog and releases the lock.
@@ -315,16 +345,14 @@ func (j *journal) attachLocked(backlog []chargedEvent, head string) subscription
 	}
 
 	subscriber := newJournalSubscriber(backlog, j.retention)
-	id := j.nextSubID
-	j.nextSubID++
-	j.subs[id] = subscriber
+	j.subs[subscriber] = struct{}{}
 	j.mu.Unlock()
 
 	var cancelOnce sync.Once
 	cancel := func() {
 		cancelOnce.Do(func() {
 			j.mu.Lock()
-			delete(j.subs, id)
+			delete(j.subs, subscriber)
 			j.mu.Unlock()
 			subscriber.abort()
 		})

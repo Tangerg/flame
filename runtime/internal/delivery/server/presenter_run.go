@@ -159,12 +159,20 @@ func presentMetrics(metrics rundomain.Metrics) protocol.RunMetrics {
 }
 
 func presentLimits(limits rundomain.Limits) *protocol.RunLimits {
-	if limits.IsZero() {
+	if limits.Unlimited() {
 		return nil
 	}
-	return &protocol.RunLimits{
-		MaxTotalTokens: limits.MaxTotalTokens, MaxSteps: limits.MaxSteps, MaxBudgetUSD: limits.MaxBudgetUSD,
+	wire := &protocol.RunLimits{}
+	if value, limited := limits.MaxTotalTokens(); limited {
+		wire.MaxTotalTokens = &value
 	}
+	if value, limited := limits.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		wire.MaxBudgetUSD = &value
+	}
+	return wire
 }
 
 func presentProgress(progress runs.RunProgress) protocol.RunProgress {

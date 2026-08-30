@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
 )
 
 // IdempotencyStore persists replay records across runtime restarts.
@@ -20,22 +20,18 @@ func NewIdempotencyStore(db *sql.DB) *IdempotencyStore { return &IdempotencyStor
 // IdempotencyNamespace returns the opaque identity of db's durable replay
 // store. It is published as a transport capability so a client never replays a
 // persisted key into a different store that happens to occupy the same URL.
-func IdempotencyNamespace(ctx context.Context, db *sql.DB) (string, error) {
+func IdempotencyNamespace(ctx context.Context, db *sql.DB) (idempotencynamespace.ID, error) {
 	var namespace string
 	if err := db.QueryRowContext(ctx,
 		`SELECT idempotency_namespace FROM runtime_identity WHERE id = 1`,
 	).Scan(&namespace); err != nil {
-		return "", fmt.Errorf("sqlite: read idempotency namespace: %w", err)
+		return idempotencynamespace.ID{}, fmt.Errorf("sqlite: read idempotency namespace: %w", err)
 	}
-	if len(namespace) != len("idp_")+32 || !strings.HasPrefix(namespace, "idp_") {
-		return "", errors.New("sqlite: invalid idempotency namespace")
+	parsed, err := idempotencynamespace.Parse(namespace)
+	if err != nil {
+		return idempotencynamespace.ID{}, fmt.Errorf("sqlite: invalid idempotency namespace: %w", err)
 	}
-	for _, digit := range namespace[len("idp_"):] {
-		if (digit < '0' || digit > '9') && (digit < 'a' || digit > 'f') {
-			return "", errors.New("sqlite: invalid idempotency namespace")
-		}
-	}
-	return namespace, nil
+	return parsed, nil
 }
 
 func (i *IdempotencyStore) Claim(ctx context.Context, key, fingerprint string) (record idempotency.Record, claimed bool, err error) {

@@ -59,7 +59,7 @@ type transcriptView struct {
 	runLineages      map[string]agent.RunLineage
 	activeToolGroup  *trackedToolGroup
 	images           *terminalImagePresenter
-	contentEpoch     uint64
+	contentLease     *transcriptContentLease
 	presentedBlocks  headless.Snapshot[transcriptBlockPresentation]
 }
 
@@ -76,8 +76,26 @@ type transcriptBlockPlacement struct {
 }
 
 type transcriptBlockPresentation struct {
-	epoch  uint64
+	lease  *transcriptContentLease
 	blocks []transcriptBlockPlacement
+}
+
+type transcriptContentLease struct {
+	retired bool
+}
+
+func newTranscriptContentLease() *transcriptContentLease {
+	return &transcriptContentLease{}
+}
+
+func (l *transcriptContentLease) retire() {
+	if l != nil {
+		l.retired = true
+	}
+}
+
+func (l *transcriptContentLease) current(candidate *transcriptContentLease) bool {
+	return l != nil && l == candidate && !l.retired
 }
 
 type transcriptPointerGesture struct {
@@ -213,6 +231,7 @@ func newTranscriptView(
 		runEntries:       make(map[string][]headless.BlockID),
 		runLineages:      make(map[string]agent.RunLineage),
 		keys:             transcriptKeys(),
+		contentLease:     newTranscriptContentLease(),
 	}
 	c.scroll.Wheel(wheel)
 	c.scroll.ToBottom()
@@ -227,7 +246,7 @@ func newTranscriptView(
 func (t *transcriptView) Draw(frame headless.Frame) {
 	width, _ := frame.Size()
 	t.presentedBlocks.Stage(frame, transcriptBlockPresentation{
-		epoch: t.contentEpoch, blocks: t.projectBlockPlacements(width),
+		lease: t.contentLease, blocks: t.projectBlockPlacements(width),
 	})
 	t.view.Matches, t.view.Current = t.matches, t.current
 	t.view.Draw(frame)
@@ -241,17 +260,8 @@ func (t *transcriptView) Draw(frame headless.Frame) {
 func (t *transcriptView) SetEntrance(entrance grid.Drawable) { t.entrance = entrance }
 
 func (t *transcriptView) Handle(event input.Event) bool {
-	if key, ok := event.(input.Key); ok && key.Down() {
-		t.pointerGesture.cancel()
-		if t.focused {
-			if key.Code == input.Esc && t.selection.Active() {
-				t.selection.Clear()
-				return true
-			}
-			if _, handled := t.matcher.Handle(t.keys, key, t.Do); handled {
-				return true
-			}
-		}
+	if t.handleKey(event) {
+		return true
 	}
 	handled := t.view.Handle(event)
 	mouse, ok := event.(input.Mouse)
@@ -264,6 +274,23 @@ func (t *transcriptView) Handle(event input.Event) bool {
 	}
 	t.handleMouse(mouse)
 	return true
+}
+
+func (t *transcriptView) handleKey(event input.Event) bool {
+	key, ok := event.(input.Key)
+	if !ok || !key.Down() {
+		return false
+	}
+	t.pointerGesture.cancel()
+	if !t.focused {
+		return false
+	}
+	if key.Code == input.Esc && t.selection.Active() {
+		t.selection.Clear()
+		return true
+	}
+	_, handled := t.matcher.Handle(t.keys, key, t.Do)
+	return handled
 }
 
 func (t *transcriptView) Focus(has bool) {
@@ -352,7 +379,7 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 	case input.MouseDown:
 		point, _ := t.selection.Range()
 		presented := t.presentedBlocks.Value()
-		if presented.epoch != t.contentEpoch {
+		if !t.contentLease.current(presented.lease) {
 			// The transcript widget has already translated the press through its last
 			// complete frame. Cancel the resulting selection when that frame belonged
 			// to content Reset has replaced; BlockIDs restart from zero and must not
@@ -512,7 +539,7 @@ func (t *transcriptView) revealSelected() {
 	}
 	if top, height, ok := t.content.Extent(t.selected); ok {
 		start := t.content.StartRow()
-		t.scroll.RevealRange(top-start, top-start+height-1)
+		t.scroll.Reveal(top-start, top-start+height-1)
 	}
 }
 
@@ -619,7 +646,7 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	case *toolGroupBlock:
 		return readerTarget{document: tool.readerDocument(), source: tool}, true
 	}
-	copyable, ok := entry.content.(headless.Copyable)
+	copyable, ok := entry.content.(headless.TextProjector)
 	if !ok {
 		return readerTarget{}, false
 	}
@@ -634,9 +661,9 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 		title = block.speaker
 	case *userMessageBlock:
 		title = "you"
-	case *kit.Message:
-		if strings.TrimSpace(block.Speaker) != "" {
-			title = block.Speaker
+	case *kit.Entry:
+		if strings.TrimSpace(block.Label) != "" {
+			title = block.Label
 		}
 	}
 	return readerTarget{document: readerDocument{
@@ -690,7 +717,7 @@ func (t *transcriptView) apply(runID string, event agent.Event, registry *extens
 	case agent.BlockCompleted:
 		return t.complete(e.Block, registry)
 	case agent.RunFinished:
-		if strings.TrimSpace(runID) == "" {
+		if runID == "" {
 			t.settleLive(e.Outcome)
 		} else {
 			t.settleRun(runID, e.Outcome)
@@ -751,7 +778,7 @@ func (t *transcriptView) begin(block agent.Block) error {
 	t.trackRunEntry(block.RunID, live.id)
 	t.textStreams[key] = live
 	if block.Text != "" {
-		t.updateLiveText(live, agent.TextMutation{Text: block.Text})
+		t.updateLiveText(live, block.Text)
 	}
 	return nil
 }
@@ -761,23 +788,15 @@ func (t *transcriptView) delta(key string, delta agent.BlockDelta) error {
 	if !ok {
 		return fmt.Errorf("terminal transcript: delta for inactive text block %s", delta.BlockID)
 	}
-	if live.kind != agent.BlockAssistant && delta.ContentIndex != nil {
-		return fmt.Errorf("terminal transcript: %s block %s has a content index", live.kind, delta.BlockID)
-	}
-	mutation, err := live.text.Apply(delta)
-	if err != nil {
+	if err := live.text.Apply(delta); err != nil {
 		return fmt.Errorf("terminal transcript: stream text block %s: %w", delta.BlockID, err)
 	}
-	t.updateLiveText(live, mutation)
+	t.updateLiveText(live, delta.Text)
 	return nil
 }
 
-func (t *transcriptView) updateLiveText(live *liveText, mutation agent.TextMutation) {
-	if mutation.Replace {
-		live.stream.Reset()
-		live.stable = nil
-	}
-	live.stable = append(live.stable, live.stream.Feed(mutation.Text)...)
+func (t *transcriptView) updateLiveText(live *liveText, text string) {
+	live.stable = append(live.stable, live.stream.Feed(text)...)
 	blocks := slices.Clone(live.stable)
 	blocks = append(blocks, live.stream.Open()...)
 	live.block.doc.SetBlocks(blocks)
@@ -789,9 +808,6 @@ func (t *transcriptView) deltaTool(key string, delta agent.BlockDelta) error {
 	live, ok := t.tools[key]
 	if !ok {
 		return fmt.Errorf("terminal transcript: delta for inactive tool block %s", delta.BlockID)
-	}
-	if delta.ContentIndex != nil {
-		return fmt.Errorf("terminal transcript: tool block %s has a content index", delta.BlockID)
 	}
 	for _, tracked := range live.blocks {
 		tracked.block.AppendOutput(delta.Text)
@@ -1174,7 +1190,8 @@ func (t *transcriptView) DiscardExcess() {
 
 func (t *transcriptView) Reset() {
 	t.entrance = nil
-	t.contentEpoch++
+	t.contentLease.retire()
+	t.contentLease = newTranscriptContentLease()
 	t.content = headless.Transcript{}
 	t.scroll = headless.Scroll{}
 	t.scroll.Wheel(t.wheel)
@@ -1232,7 +1249,7 @@ func (t *transcriptView) speakerFor(block agent.Block) string {
 }
 
 func (t *transcriptView) trackRunEntry(runID string, id headless.BlockID) {
-	if strings.TrimSpace(runID) == "" {
+	if runID == "" {
 		return
 	}
 	t.runEntries[runID] = append(t.runEntries[runID], id)
@@ -1259,10 +1276,7 @@ func blockOffset(index int) headless.BlockID {
 }
 
 func transcriptBlockKey(runID, blockID string) string {
-	if runID == "" {
-		return blockID
-	}
-	return runID + "\x00" + blockID
+	return (agent.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
 func (t *transcriptView) Find(query string) {

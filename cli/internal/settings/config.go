@@ -24,6 +24,7 @@ const (
 	ActionCommandPalette  = "command-palette"
 	ActionShortcuts       = "shortcuts"
 	ActionSessions        = "sessions"
+	ActionTimeline        = "timeline"
 	ActionSearch          = "search"
 	ActionManageQueue     = "manage-queue"
 	ActionChooseModel     = "choose-model"
@@ -50,9 +51,9 @@ type Config struct {
 }
 
 type Run struct {
-	MaxTotalTokens int64   `json:"maxTotalTokens" mapstructure:"max-total-tokens"`
-	MaxSteps       int     `json:"maxSteps"       mapstructure:"max-steps"`
-	MaxBudgetUSD   float64 `json:"maxBudgetUsd"   mapstructure:"max-budget-usd"`
+	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty" mapstructure:"max-total-tokens"`
+	MaxSteps       *int     `json:"maxSteps,omitempty"       mapstructure:"max-steps"`
+	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"   mapstructure:"max-budget-usd"`
 }
 
 type Approval struct {
@@ -110,8 +111,9 @@ func Default() Config {
 			ActionCommandPalette:  {"ctrl+p"},
 			ActionShortcuts:       {"ctrl+x"},
 			ActionSessions:        {"ctrl+r"},
+			ActionTimeline:        {"ctrl+g"},
 			ActionSearch:          {"ctrl+f"},
-			ActionManageQueue:     {"ctrl+;", "ctrl+g"},
+			ActionManageQueue:     {"ctrl+;"},
 			ActionChooseModel:     {"shift+tab"},
 			ActionToggleDetails:   {"ctrl+o"},
 			ActionHistoryPrevious: {"alt+up"},
@@ -129,7 +131,15 @@ func Default() Config {
 
 func (c Config) Validate() error {
 	var problems []error
-	if err := c.RunOptions().Validate(); err != nil {
+	options, err := c.RunOptions()
+	if err != nil {
+		problems = append(problems, err)
+		if selectionErr := (agent.RunOptions{
+			Provider: c.Provider, Model: c.Model, Limits: agent.UnlimitedRunLimits(),
+		}).Validate(); selectionErr != nil {
+			problems = append(problems, selectionErr)
+		}
+	} else if err := options.Validate(); err != nil {
 		problems = append(problems, err)
 	}
 	problems = append(problems, validateApproval(c.Approval)...)
@@ -199,24 +209,38 @@ func validateKeys(keys map[string][]string) []error {
 	return problems
 }
 
-func (c Config) RunOptions() agent.RunOptions {
-	return agent.RunOptions{
-		Provider: c.Provider,
-		Model:    c.Model,
-		Limits: agent.RunLimits{
+func (c Config) RunOptions() (agent.RunOptions, error) {
+	limits := agent.UnlimitedRunLimits()
+	if c.Run.MaxTotalTokens != nil || c.Run.MaxSteps != nil || c.Run.MaxBudgetUSD != nil {
+		var err error
+		limits, err = agent.NewRunLimits(agent.RunLimitValues{
 			MaxTotalTokens: c.Run.MaxTotalTokens,
 			MaxSteps:       c.Run.MaxSteps,
 			MaxBudgetUSD:   c.Run.MaxBudgetUSD,
-		},
+		})
+		if err != nil {
+			return agent.RunOptions{}, fmt.Errorf("run settings: %w", err)
+		}
 	}
+	return agent.RunOptions{Provider: c.Provider, Model: c.Model, Limits: limits}, nil
 }
 
 func (c Config) Clone() Config {
 	out := c
+	out.Run.MaxTotalTokens = clonePointer(c.Run.MaxTotalTokens)
+	out.Run.MaxSteps = clonePointer(c.Run.MaxSteps)
+	out.Run.MaxBudgetUSD = clonePointer(c.Run.MaxBudgetUSD)
 	out.Plugins.Directories = slices.Clone(c.Plugins.Directories)
 	out.Keys = make(map[string][]string, len(c.Keys))
 	for action, bindings := range c.Keys {
 		out.Keys[action] = slices.Clone(bindings)
 	}
 	return out
+}
+
+func clonePointer[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	return new(*value)
 }

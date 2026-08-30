@@ -41,6 +41,9 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 }
 
 func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+	if err := validateOptionalSessionResource("list visible approval rules", sessionID); err != nil {
+		return nil, err
+	}
 	// Scope predicate expressed as a WHERE clause — the mirror of approval's
 	// visible(): session rules for this session, project rules for this cwd
 	// (skipped entirely when the call has no cwd), and all global rules.
@@ -54,7 +57,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []approval.Rule
 	for rows.Next() {
@@ -84,6 +87,9 @@ func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
 }
 
 func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID string) error {
+	if err := validateSessionResource("delete Session approval rules", sessionID); err != nil {
+		return err
+	}
 	if _, err := conn(ctx, a.db).ExecContext(ctx,
 		`DELETE FROM approval_rules WHERE scope = 'session' AND scope_key = ?`, sessionID); err != nil {
 		return fmt.Errorf("sqlite: delete session approval rules: %w", err)

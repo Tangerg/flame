@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
@@ -20,12 +19,12 @@ type Host struct {
 }
 
 type hostLifetime struct {
-	context         context.Context
-	closeMu         sync.Mutex
-	stopping        bool
-	closed          bool
-	shutdownTimeout time.Duration
-	shutdown        *hostShutdownAttempt
+	context      context.Context
+	closeMu      sync.Mutex
+	stopping     bool
+	closed       bool
+	shutdownWait shutdownWaitPolicy
+	shutdown     *hostShutdownAttempt
 
 	goalDriver     shutdownComponent
 	mcpCoordinator shutdownComponent
@@ -53,8 +52,6 @@ type taskOwner interface {
 	Wait(ctx context.Context) error
 }
 
-const hostShutdownTimeout = 10 * time.Second
-
 // Close shuts the assembled application tier down in reverse dependency order
 // (§10.3). The first caller starts one Host-owned generation that broadcasts
 // cancellation, joins components and then enters terminal resource teardown.
@@ -80,13 +77,13 @@ func closeHostLifetime(lifetime *hostLifetime) error {
 	if lifetime.context != nil {
 		ownerCtx = context.WithoutCancel(lifetime.context)
 	}
-	attempt, timeout, closed := beginHostShutdown(ownerCtx, lifetime)
+	timeout, err := shutdownWaitTimeout(lifetime.shutdownWait)
+	if err != nil {
+		return err
+	}
+	attempt, closed := beginHostShutdown(ownerCtx, lifetime)
 	if closed {
 		return nil
-	}
-
-	if timeout <= 0 {
-		timeout = hostShutdownTimeout
 	}
 	waitCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -99,11 +96,11 @@ func closeHostLifetime(lifetime *hostLifetime) error {
 func beginHostShutdown(
 	ownerCtx context.Context,
 	lifetime *hostLifetime,
-) (attempt *hostShutdownAttempt, timeout time.Duration, closed bool) {
+) (attempt *hostShutdownAttempt, closed bool) {
 	lifetime.closeMu.Lock()
 	defer lifetime.closeMu.Unlock()
 	if lifetime.closed {
-		return nil, lifetime.shutdownTimeout, true
+		return nil, true
 	}
 	attempt = lifetime.shutdown
 	if attempt == nil || attempt.completed {
@@ -111,14 +108,14 @@ func beginHostShutdown(
 		lifetime.shutdown = attempt
 		go runHostShutdown(ownerCtx, lifetime, attempt)
 	}
-	return attempt, lifetime.shutdownTimeout, false
+	return attempt, false
 }
 
 func awaitHostShutdown(ctx context.Context, host *Host) error {
 	if host == nil || host.lifetime == nil {
 		return nil
 	}
-	attempt, _, closed := beginHostShutdown(ctx, host.lifetime)
+	attempt, closed := beginHostShutdown(ctx, host.lifetime)
 	if closed {
 		return nil
 	}

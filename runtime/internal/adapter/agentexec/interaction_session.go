@@ -13,12 +13,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -38,7 +39,7 @@ type interactionSession struct {
 	mcpToolAutoApproved func(server, tool string) bool
 	maintenance         RunMaintenance
 	lifecycleHooks      InteractionLifecycleHooks
-	buildID             string
+	buildID             buildidentity.ID
 	start               runs.RootExecutionStart
 	toolOutcomes        interactionToolOutcomes
 	committedReplies    interactionCommittedReplies
@@ -66,7 +67,7 @@ type interactionState struct {
 	deployments               *interactionDeploymentSet
 	delegateCalls             map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren          map[agent.ProcessID]*managedDelegateCall
-	activeDispatches          map[string]activeInteractionDispatch
+	activeDispatches          map[interactionDispatchIdentity]activeInteractionDispatch
 	canceledSubtreeRoots      map[agent.ProcessID]struct{}
 	rootCancellationRequested bool
 }
@@ -99,39 +100,44 @@ func newInteractionSession(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
 	config InteractionExecutorConfig,
+	buildID buildidentity.ID,
+	policy interactionExecutionPolicy,
 ) *interactionSession {
-	provider := start.ModelSelection.Provider()
-	if provider == "" {
-		provider = config.Provider
-	}
 	return &interactionSession{
 		ref: ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
 			pendingSteers:        make(map[agent.SignalID]pendingInteractionSteer),
 			delegateCalls:        make(map[delegateCallIdentity]*managedDelegateCall),
 			delegateChildren:     make(map[agent.ProcessID]*managedDelegateCall),
-			activeDispatches:     make(map[string]activeInteractionDispatch),
+			activeDispatches:     make(map[interactionDispatchIdentity]activeInteractionDispatch),
 			canceledSubtreeRoots: make(map[agent.ProcessID]struct{}),
 		},
 		committedReplies: newInteractionCommittedReplies(),
 		accounting: newInteractionAccounting(
-			provider,
-			start.ModelSelection.Model(),
+			start.ModelSelection,
 			config.Pricing,
 		),
-		unknownPollInterval: config.UnknownEffectPollInterval,
-		statePollInterval:   config.StatePollInterval,
+		unknownPollInterval: policy.unknownEffectPollInterval,
+		statePollInterval:   policy.statePollInterval,
 		mcpToolAutoApproved: config.MCPToolAutoApproved,
 		maintenance:         config.Maintenance,
 		lifecycleHooks:      config.LifecycleHooks,
-		buildID:             config.BuildID, start: start,
+		buildID:             buildID, start: start,
 	}
 }
 
 var errInteractionRunCanceled = errors.New("agentexec: Interaction Run cancellation requested")
 
-func interactionDispatchKey(request agent.EffectRequest) string {
-	return request.ProcessID().String() + "\x00" + request.ID().String()
+type interactionDispatchIdentity struct {
+	processID agent.ProcessID
+	effectID  agent.EffectID
+}
+
+func interactionDispatchKey(request agent.EffectRequest) interactionDispatchIdentity {
+	return interactionDispatchIdentity{
+		processID: request.ProcessID(),
+		effectID:  request.ID(),
+	}
 }
 
 // beginDispatch binds one Agent-owned Effect attempt to the product Run's

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,6 +48,13 @@ func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRu
 	return r.cancel(ctx, request, options)
 }
 
+func unlimitedStartRequest(sessionID string, message agent.Message) agent.StartRun {
+	return agent.StartRun{
+		SessionID: sessionID, Message: message,
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	}
+}
+
 func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	const (
 		runID     = "run_1"
@@ -60,6 +68,9 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion ||
 			options.RequestMeta.ClientInfo == nil || options.RequestMeta.ClientInfo.Name != clientName {
 			t.Fatalf("start options = %+v", options)
+		}
+		if request.Limits == nil || request.Limits.MaxTotalTokens != nil || request.Limits.MaxSteps == nil || *request.Limits.MaxSteps != 20 || request.Limits.MaxBudgetUSD == nil || *request.Limits.MaxBudgetUSD != 3.5 {
+			t.Fatalf("start limits = %+v", request.Limits)
 		}
 		return &protocol.StartRunResponse{RunID: runID, SegmentID: segmentID, UserItemID: "item_user"}, func(yield func(protocol.RunEvent, error) bool) {
 			yield(protocol.RunEvent{
@@ -81,8 +92,13 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		}, nil
 	}
 	runtime := &Runtime{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
+	maxSteps, maxBudget := 20, 3.5
+	limits, err := agent.NewRunLimits(agent.RunLimitValues{MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudget})
+	if err != nil {
+		t.Fatal(err)
+	}
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_1", Message: agent.Message{Text: "hello"},
+		SessionID: "ses_1", Message: agent.Message{Text: "hello"}, Options: agent.RunOptions{Limits: limits},
 	})
 	if err != nil {
 		t.Fatalf("StartRun: %v", err)
@@ -141,9 +157,11 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	}
 	runtime := &Runtime{
 		runs: stub, meta: requestMeta("test"),
-		profile: runtimeprofile.Profile{Limits: runtimeprofile.Limits{IdempotencyNamespace: namespace}},
+		profile: runtimeprofile.Profile{Limits: runtimeprofile.Limits{CommandReplay: testCommandReplay(t, namespace)}},
 	}
-	if _, err := runtime.StartRun(t.Context(), agent.StartRun{CommandID: commandID, SessionID: "ses_1", Message: agent.Message{Text: "start"}}); err != nil {
+	request := unlimitedStartRequest("ses_1", agent.Message{Text: "start"})
+	request.CommandID = commandID
+	if _, err := runtime.StartRun(t.Context(), request); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{CommandID: commandID, RunID: "run_1", Answers: []agent.InterruptAnswer{{ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}}}); err != nil {
@@ -171,7 +189,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "start",
 			call: func(ctx context.Context, runtime *Runtime) error {
-				_, err := runtime.StartRun(ctx, agent.StartRun{SessionID: "ses_1", Message: message})
+				_, err := runtime.StartRun(ctx, unlimitedStartRequest("ses_1", message))
 				return err
 			},
 		},
@@ -232,20 +250,42 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 func TestSubscribeRunPassesOpaqueReplayCursor(t *testing.T) {
 	stub := runBindingStub{}
 	stub.subscribe = func(_ context.Context, request protocol.SubscribeRunRequest, options embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-		if request.RunID != "run_1" || request.SegmentID != "seg_1" || options.AfterEventID != "opaque:event/cursor" {
+		if request.RunID != "run_1" || request.SegmentID != "seg_1" || options.AfterEventID != "evt_opaque-event-cursor" {
 			t.Fatalf("subscribe = (%+v, %+v)", request, options)
 		}
-		return &protocol.SubscribeRunResponse{RunID: request.RunID, SegmentID: request.SegmentID, HeadEventID: "head"}, func(func(protocol.RunEvent, error) bool) {}, nil
+		return &protocol.SubscribeRunResponse{RunID: request.RunID, SegmentID: request.SegmentID, HeadEventID: runStringPointer("evt_head")}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}
 	runtime := &Runtime{runs: stub, meta: requestMeta("test")}
 	stream, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
-		RunID: "run_1", SegmentID: "seg_1", AfterEventID: "opaque:event/cursor",
+		RunID: "run_1", SegmentID: "seg_1", AfterEventID: "evt_opaque-event-cursor",
 	})
 	if err != nil {
 		t.Fatalf("SubscribeRun: %v", err)
 	}
-	if stream.HeadEventID != "head" {
+	if stream.HeadEventID != "evt_head" {
 		t.Fatalf("head = %q", stream.HeadEventID)
+	}
+}
+
+func TestSubscribeRunRejectsInvalidReplayCursorBeforeBinding(t *testing.T) {
+	t.Parallel()
+	called := false
+	runtime := &Runtime{runs: runBindingStub{subscribe: func(context.Context, protocol.SubscribeRunRequest, embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+		called = true
+		return nil, nil, nil
+	}}, meta: requestMeta("test")}
+	for _, cursor := range []string{
+		"opaque",
+		protocol.IDPrefixEvent + strings.Repeat("x", protocol.MaximumRunEventIDCharacters),
+	} {
+		if _, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
+			RunID: "run_1", SegmentID: "seg_1", AfterEventID: cursor,
+		}); err == nil {
+			t.Fatalf("SubscribeRun accepted cursor of length %d", len(cursor))
+		}
+	}
+	if called {
+		t.Fatal("invalid replay cursor reached Runtime binding")
 	}
 }
 
@@ -310,7 +350,7 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	started, err := runtime.StartRun(t.Context(), agent.StartRun{SessionID: "ses_1", Message: agent.Message{Text: "start"}})
+	started, err := runtime.StartRun(t.Context(), unlimitedStartRequest("ses_1", agent.Message{Text: "start"}))
 	requireRuntimeContractViolation(t, err)
 	receipt, accepted := agent.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(started) || receipt.RunID != "run_started" || receipt.SegmentID != "seg_started" {
@@ -331,6 +371,8 @@ func segmentStreamEmpty(stream agent.SegmentStream) bool {
 	return stream.RunID == "" && stream.SegmentID == "" && stream.UserItemID == "" &&
 		stream.HeadEventID == "" && stream.Events == nil
 }
+
+func runStringPointer(value string) *string { return &value }
 
 func TestResumeAndCancelMapControlContracts(t *testing.T) {
 	override, err := agent.ParseToolArgumentOverride([]byte(`{"command":"go test -race ./...","count":9007199254740993}`))
@@ -466,7 +508,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
-	if result.Canceled.ID != "run_child" || result.Canceled.Lineage.RootRunID != "run_root" ||
+	if result.Canceled.ID != "run_child" || result.Canceled.Lineage.RootRunID() != "run_root" ||
 		result.Root.ID != "run_root" || result.Root.Status != agent.RunStatusWaiting {
 		t.Fatalf("result = %+v", result)
 	}

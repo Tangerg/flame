@@ -15,12 +15,90 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	applicationruns "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	deliveryserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestPaginationCursorResourceContractDoesNotDriftAcrossRings(t *testing.T) {
+	if pagination.MaximumCursorCharacters != protocol.MaximumPaginationCursorCharacters {
+		t.Fatalf(
+			"Application cursor ceiling = %d, public wire ceiling = %d",
+			pagination.MaximumCursorCharacters,
+			protocol.MaximumPaginationCursorCharacters,
+		)
+	}
+}
+
+func TestRunReplayCursorResourceContractDoesNotDriftAcrossRings(t *testing.T) {
+	if applicationruns.MaximumReplayCursorCharacters+len(protocol.IDPrefixEvent) != protocol.MaximumRunEventIDCharacters {
+		t.Fatalf(
+			"Application replay cursor ceiling + framing = %d, public event-id ceiling = %d",
+			applicationruns.MaximumReplayCursorCharacters+len(protocol.IDPrefixEvent),
+			protocol.MaximumRunEventIDCharacters,
+		)
+	}
+}
+
+// TestPositiveOptionalToolNumbersUseExplicitPresence prevents model-facing Tool
+// DTOs from making primitive zero mean both "omitted" and "invalid". Positive
+// optional numbers must use pointer presence at the JSON boundary and normalize
+// into concrete values before reaching the capability implementation.
+func TestPositiveOptionalToolNumbersUseExplicitPresence(t *testing.T) {
+	root := filepath.Join(moduleRoot(t), "internal", "adapter", "toolset")
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		file, parseErr := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if parseErr != nil {
+			return parseErr
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			field, ok := node.(*ast.Field)
+			if !ok || field.Tag == nil || len(field.Names) == 0 {
+				return true
+			}
+			tags := field.Tag.Value
+			if !strings.Contains(tags, "omitempty") ||
+				(!strings.Contains(tags, "minimum=1") && !strings.Contains(tags, "exclusiveMinimum=0")) {
+				return true
+			}
+			if _, pointer := field.Type.(*ast.StarExpr); pointer {
+				return true
+			}
+			primitive, isPrimitive := field.Type.(*ast.Ident)
+			if !isPrimitive || !primitiveNumericType(primitive.Name) {
+				return true
+			}
+			relative, _ := filepath.Rel(moduleRoot(t), path)
+			t.Errorf("%s: optional positive Tool field %s uses primitive %s without explicit presence", filepath.ToSlash(relative), field.Names[0].Name, primitive.Name)
+			return true
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan Tool argument presence: %v", err)
+	}
+}
+
+func primitiveNumericType(name string) bool {
+	switch name {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"float32", "float64":
+		return true
+	default:
+		return false
+	}
+}
 
 // TestPlanMutationHasOneOwner freezes the P16 Plan vertical: aggregate fields
 // are closed, Tool adapters cannot regain a Store-shaped inbound boundary, and
@@ -366,7 +444,7 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"completion", "httporigin", "idempotency",
+		"completion", "cursorresource", "exactint", "httporigin", "idempotency",
 	} {
 		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
 			domainPkg,
@@ -834,7 +912,21 @@ func TestBootstrapDoesNotOwnLiveRuntimeState(t *testing.T) {
 	forbidTopLevelNames(t, dir, map[string]string{
 		"buildUtilityEnvironment":   "utility role resolution belongs to modelclient",
 		"buildEmbeddingEnvironment": "embedding role resolution belongs to modelclient",
+		"DefaultClient":             "default selections must resolve through the live provider registry",
 		"liveStateSnapshot":         "Run maintenance live-state projection belongs to adapter/runmaintenance",
+	})
+}
+
+// TestModelClientDoesNotRetainCredentialGenerations keeps exact model-client
+// construction tied to one resolution. A process-lifetime cache would retain
+// arbitrary compatible model ids and old SDK objects after key/endpoint
+// rotation; active executions already own the client they resolved.
+func TestModelClientDoesNotRetainCredentialGenerations(t *testing.T) {
+	root := moduleRoot(t)
+	dir := filepath.Join(root, "internal", "adapter", "modelclient")
+	forbidExternalImports(t, dir, []string{"sync", "sync/atomic"})
+	forbidTopLevelNames(t, dir, map[string]string{
+		"credentialClientIdentity": "credential-bound clients must not have process-lifetime cache identity",
 	})
 }
 
@@ -1252,7 +1344,6 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 	forbidQualifiedCalls(t, server, map[string]string{
 		"pagination.Decode": "a cursor is decoded by the read that minted it",
 		"pagination.Encode": "a cursor is minted by the read that knows the sort position",
-		"pagination.Limit":  "how wide a page may be is the read's policy",
 		"pagination.PageOf": "cutting a page belongs to the read that ordered the rows",
 	})
 }

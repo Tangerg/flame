@@ -40,7 +40,7 @@ func TestRetentionByteBudgetTracksHeap(t *testing.T) {
 	retention := Retention{MaxEvents: maxEvents, MaxBytes: maxBytes}
 
 	before := heapInUse()
-	j := newJournal(streamScope{Epoch: testEpoch, RunID: testRunID, SegmentID: testSegmentID}, retention)
+	j := mustNewJournal(t, testStreamScope(testEpoch, testRunID, testSegmentID), retention)
 	// Overfill deliberately: the window must be at its budget, not below it, and
 	// eviction is what puts it there.
 	for range (maxBytes / payload) * 2 {
@@ -83,7 +83,7 @@ func BenchmarkJournalAppendReplayable(b *testing.B) {
 	}
 	for _, size := range sizes {
 		b.Run(size.name, func(b *testing.B) {
-			j := testJournal()
+			j := testJournal(b)
 			attached := j.tail()
 			defer attached.Cancel()
 			next, stop := iter.Pull(attached.Events)
@@ -105,7 +105,7 @@ func BenchmarkJournalReplayAttach(b *testing.B) {
 	const payload = 64 << 10
 	for _, depth := range []int{16, 64} {
 		b.Run(fmt.Sprintf("backlog_%d", depth), func(b *testing.B) {
-			j := testJournal()
+			j := testJournal(b)
 			for range depth {
 				j.append(sized(payload))
 			}
@@ -117,7 +117,7 @@ func BenchmarkJournalReplayAttach(b *testing.B) {
 			oldest := j.retained[0].event.Sequence
 			retained := len(j.retained)
 			j.mu.Unlock()
-			from := cursorAt(oldest)
+			from := cursorAt(b, oldest)
 
 			// No SetBytes: an attach is not throughput. B/op is the useful signal.
 			b.Logf("backlog: %d events, %d bytes", retained-1, (retained-1)*payload)

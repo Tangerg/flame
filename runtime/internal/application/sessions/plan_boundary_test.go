@@ -48,8 +48,12 @@ func boundaryCoordinator(stores testStores, boundaries PlanBoundaries) *Coordina
 
 type boundaryPlanStore struct{}
 
-func (boundaryPlanStore) State(context.Context, string) (plan.State, error)      { return plan.State{}, nil }
-func (boundaryPlanStore) Save(context.Context, string, uint64, plan.State) error { return nil }
+func (boundaryPlanStore) State(context.Context, string) (plan.Current, error) {
+	return plan.Current{}, nil
+}
+func (boundaryPlanStore) Save(context.Context, string, plan.Version, plan.State) error {
+	return nil
+}
 
 func replacementSteps(replacement *planapp.Replacement) []plan.Step {
 	if replacement == nil {

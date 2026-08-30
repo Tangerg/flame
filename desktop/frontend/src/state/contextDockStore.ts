@@ -4,11 +4,12 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions } from "@/lib/persistedStore";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
+const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
 
 const persistedDockScopeSchema = z.object({
   dockViewIds: z.array(z.string()),
   lastViewId: z.string().nullable(),
-  fileFocus: z.object({ path: z.string(), revision: z.number().int().nonnegative() }),
+  fileFocus: z.object({ path: z.string(), revision: z.string().regex(NON_NEGATIVE_DECIMAL) }),
   fileViewer: z.object({ path: z.string(), line: z.number().int().nonnegative() }).nullable(),
 });
 
@@ -36,19 +37,20 @@ export interface WorkspaceFileViewer {
 export class WorkspaceFileFocus {
   private constructor(
     readonly path: string,
-    readonly revision: number,
+    readonly revision: bigint,
   ) {}
 
   static empty(): WorkspaceFileFocus {
-    return new WorkspaceFileFocus("", 0);
+    return new WorkspaceFileFocus("", 0n);
   }
 
-  static restore(path: string, revision: number): WorkspaceFileFocus {
+  static restore(path: string, revision: bigint): WorkspaceFileFocus {
+    if (revision < 0n) throw new RangeError("Workspace file focus revision cannot be negative");
     return new WorkspaceFileFocus(path, revision);
   }
 
   moveTo(path: string): WorkspaceFileFocus {
-    return new WorkspaceFileFocus(path, this.revision + 1);
+    return new WorkspaceFileFocus(path, this.revision + 1n);
   }
 }
 
@@ -122,7 +124,7 @@ function persistedSessionScopes(state: ContextDockState): [string, PersistedDock
     {
       dockViewIds: scope.dockViewIds,
       lastViewId: scope.lastViewId,
-      fileFocus: { path: scope.fileFocus.path, revision: scope.fileFocus.revision },
+      fileFocus: { path: scope.fileFocus.path, revision: scope.fileFocus.revision.toString() },
       fileViewer: scope.fileViewer,
     },
   ]);
@@ -133,7 +135,7 @@ function restorePersistedScope(scope: PersistedDockScope): ContextDockSessionSco
     ...emptySessionScope(),
     dockViewIds: [...new Set(scope.dockViewIds)],
     lastViewId: scope.lastViewId,
-    fileFocus: WorkspaceFileFocus.restore(scope.fileFocus.path, scope.fileFocus.revision),
+    fileFocus: WorkspaceFileFocus.restore(scope.fileFocus.path, BigInt(scope.fileFocus.revision)),
     fileViewer: scope.fileViewer,
   };
 }
@@ -224,7 +226,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       name: CONTEXT_DOCK_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
-      version: 1,
+      version: 2,
       migrate: discardOlderVersions,
       merge: (persisted, current) => {
         if (persisted === undefined) return current;

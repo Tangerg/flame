@@ -27,7 +27,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 		if closeErr := file.Close(); closeErr != nil {
 			t.Fatal(closeErr)
 		}
-		_, err = (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadInput{Path: "oversized.txt"})
+		_, err = (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "oversized.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
 		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) {
 			t.Fatalf("oversized source error = %v, want ErrFileReadTooLarge", err)
 		}
@@ -40,7 +40,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		_, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadInput{Path: "line.txt"})
+		_, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "line.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
 		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) {
 			t.Fatalf("oversized line error = %v, want ErrFileReadTooLarge", err)
 		}
@@ -51,7 +51,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "short.txt"), []byte("first\nsecond"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		_, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadInput{
+		_, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{
 			Path: "short.txt", StartLine: 3, MaxBytes: workspaceapp.DefaultFileReadBytes,
 		})
 		if !errors.Is(err, workspaceapp.ErrInvalidFileRange) {
@@ -65,7 +65,7 @@ func TestFileBrowserReadClipsAtUTF8BoundaryAndPreservesTextShape(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "utf8.txt"), []byte("\xef\xbb\xbféé\r\nlast\r\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadInput{Path: "utf8.txt", MaxBytes: 3})
+	got, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "utf8.txt", MaxBytes: 3})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -25,7 +25,7 @@ func TestShellKillReclaimsDescendants(t *testing.T) {
 		"",
 		"",
 		`sleep 30 & echo $! > "$SCOPE_EXEC_DESCENDANT_PID_FILE"; wait`,
-		0,
+		Timeout{},
 		false,
 	)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestShellCompletionReclaimsDescendantsWithoutRewritingLeaderExit(t *testing
 		"",
 		"",
 		`sleep 30 & echo $! > "$SCOPE_EXEC_DESCENDANT_PID_FILE"`,
-		0,
+		Timeout{},
 		false,
 	)
 	if err != nil {

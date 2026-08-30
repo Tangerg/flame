@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
+	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -34,7 +37,7 @@ type Result struct {
 type Endpoint struct {
 	target               any
 	idempotency          *replayStore
-	idempotencyNamespace string
+	idempotencyNamespace idempotencynamespace.ID
 	invocations          *invocationGroup
 }
 
@@ -54,6 +57,10 @@ func New(target any, config Config) (*Endpoint, error) {
 	if config.Lifetime == nil {
 		return nil, errors.New("operation: lifetime is required")
 	}
+	namespace, _, err := idempotencynamespace.ParseOptional(config.IdempotencyNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("operation: idempotency namespace: %w", err)
+	}
 	store := config.IdempotencyStore
 	if store == nil {
 		store = newMemoryIdempotencyStore()
@@ -61,7 +68,7 @@ func New(target any, config Config) (*Endpoint, error) {
 	return &Endpoint{
 		target:               target,
 		idempotency:          newReplayStore(store),
-		idempotencyNamespace: config.IdempotencyNamespace,
+		idempotencyNamespace: namespace,
 		invocations:          newInvocationGroup(config.Lifetime),
 	}, nil
 }
@@ -106,7 +113,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		return failed(err)
 	}
 	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
-		options.IdempotencyNamespace != e.idempotencyNamespace {
+		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
 		release()
 		return failed(NewFailure(
 			protocol.ErrIdempotencyStoreMismatch,
@@ -218,12 +225,23 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 	if options.IdempotencyNamespace != "" && options.IdempotencyKey == "" {
 		return NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
 	}
+	if options.IdempotencyNamespace != "" {
+		if _, err := idempotencynamespace.Parse(options.IdempotencyNamespace); err != nil {
+			return NewFailure(protocol.ErrInvalidParams, "idempotency namespace is not an exact durable store identity")
+		}
+	}
 	if options.AfterEventID != "" {
 		if method.ReplayCursor != ReplayCursorRun {
 			return NewFailure(protocol.ErrInvalidParams, "this operation does not accept a run replay cursor")
 		}
 		if method.Operation == OperationCommand && options.IdempotencyKey == "" {
 			return NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
+		}
+		if _, err := resourceid.ParseEvent(options.AfterEventID); err != nil {
+			return NewFailure(protocol.ErrInvalidParams, "run replay cursor is not an exact bounded event identity")
+		}
+		if !strings.HasPrefix(options.AfterEventID, protocol.IDPrefixEvent) {
+			return NewFailure(protocol.ErrInvalidParams, "run replay cursor has an invalid event-id framing")
 		}
 	}
 	return nil

@@ -12,6 +12,7 @@ import { getActiveSessionId, useActiveSessionId } from "../session/activeSession
 import { selectCurrentRootRun } from "../view/runTree";
 import { agentCommandOwner } from "../agentCommandOwner";
 import { useCurrentRootMaterial } from "../run/runReadModel";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 /**
@@ -88,7 +89,7 @@ export function canAcceptChatInput(
 // local-N counter). The fold reconciles it against the streamed userMessage Item
 // by content match (appendUserMessage) once the runtime drains the steer — no
 // explicit relabel, since runs.steer returns no item id.
-let steerSeq = 0;
+const steerBubbleIds = new ExactSequence();
 
 interface SteerRunningTurnInput {
   sessionId: string;
@@ -164,7 +165,7 @@ function mintSteerBubble(
   sessionId: string,
   input: AgentInput,
 ): string {
-  const id = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${++steerSeq}`;
+  const id = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${steerBubbleIds.issue()}`;
   view.appendLocalUserMessage(sessionId, id, input);
   return id;
 }

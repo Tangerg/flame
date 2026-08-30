@@ -18,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -26,12 +25,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
 )
 
-const bootstrapCheckpointBuildID = "test-build"
+const bootstrapCheckpointBuildID = identityfixture.BuildID
 
 func bootstrapSession(id, title, cwd string) session.Session {
 	return sessionfixture.MustRestore(session.Snapshot{ID: id, Title: title, Workspace: sessionfixture.MustWorkspace(cwd)})
@@ -175,6 +175,15 @@ func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanSto
 		t.Fatalf("prepare fixture Plan: %v", err)
 	}
 	return &replacement
+}
+
+func committedFixturePlan(t testing.TB, current plan.Current) plan.State {
+	t.Helper()
+	state, committed := current.State()
+	if !committed {
+		t.Fatal("fixture Plan is unwritten")
+	}
+	return state
 }
 
 // parkCreatedAt is when the fixture's parked Run was admitted.
@@ -408,8 +417,8 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	goalValue, err := goal.New(
 		"ses_A",
 		"finish the parked run",
-		modelref.Selection{},
-		goal.Budget{},
+		runfixture.Selection(),
+		goal.UnlimitedBudget(),
 		run.Capabilities{},
 		incarnationID,
 		parkCreatedAt,
@@ -417,7 +426,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new Goal: %v", err)
 	}
-	if _, applied, saveErr := ss.goals.Save(ctx, goalValue, goal.Version{}); saveErr != nil || !applied {
+	if _, applied, saveErr := ss.goals.Save(ctx, goalValue, bootstrapUnwrittenGoalVersion(t, "ses_A")); saveErr != nil || !applied {
 		t.Fatalf("save Goal: applied=%t err=%v", applied, saveErr)
 	}
 
@@ -448,13 +457,13 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		t.Fatalf("ApplyTerminal: %v", applyTerminalErr)
 	}
 
-	storedGoal, found, err := ss.goals.Get(ctx, "ses_A")
+	storedGoal, found, err := readBootstrapGoal(ctx, ss.goals, "ses_A")
 	if err != nil || !found {
 		t.Fatalf("get Goal: found=%t err=%v", found, err)
 	}
-	if storedGoal.Used != (goal.Usage{Runs: 1, CostUSD: costUSD, Steps: 4}) ||
-		storedGoal.Status != goal.StatusPaused ||
-		storedGoal.Reason.Code != goal.ReasonRunNotCompleted {
+	if storedGoal.Used() != (goal.Usage{Runs: 1, CostUSD: costUSD, Steps: 4}) ||
+		storedGoal.Status() != goal.StatusPaused ||
+		storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
 		t.Fatalf("Goal after terminal park = %+v", storedGoal)
 	}
 	storedRun, found, err := runs.Run(ctx, terminal.ID())
@@ -487,7 +496,7 @@ func TestApplyRollbackDropsRunsAndFreesAdmission(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ApplyRollback: %v", err)
 	}
-	if _, ok, err := ss.goals.Get(ctx, "ses_A"); err != nil || ok {
+	if _, ok, err := readBootstrapGoal(ctx, ss.goals, "ses_A"); err != nil || ok {
 		t.Fatalf("goal survived the rollback: ok=%v err=%v", ok, err)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -546,8 +555,9 @@ func TestApplyRollbackRepublishesBoundaryPlan(t *testing.T) {
 	if len(afterSteps) != 1 || afterSteps[0].Description != "the plan at the boundary" {
 		t.Fatalf("plan after rollback = %+v, want the boundary plan", afterSteps)
 	}
-	if after.Revision() <= before.Revision() {
-		t.Fatalf("revision after rollback = %d, want greater than %d", after.Revision(), before.Revision())
+	afterState, beforeState := committedFixturePlan(t, after), committedFixturePlan(t, before)
+	if afterState.Revision() <= beforeState.Revision() {
+		t.Fatalf("revision after rollback = %d, want greater than %d", afterState.Revision(), beforeState.Revision())
 	}
 }
 
@@ -581,8 +591,9 @@ func TestApplyRollbackClearsToARecordedEmptyBoundary(t *testing.T) {
 	if len(after.Steps()) != 0 {
 		t.Fatalf("plan after rollback = %+v, want cleared to the recorded empty boundary", after.Steps())
 	}
-	if after.Revision() <= before.Revision() {
-		t.Fatalf("revision after rollback = %d, want greater than %d", after.Revision(), before.Revision())
+	afterState, beforeState := committedFixturePlan(t, after), committedFixturePlan(t, before)
+	if afterState.Revision() <= beforeState.Revision() {
+		t.Fatalf("revision after rollback = %d, want greater than %d", afterState.Revision(), beforeState.Revision())
 	}
 }
 
@@ -759,10 +770,14 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 		t.Fatalf("plan after restore = %+v, %v, want cleared", got, err)
 	}
 	after, err := ss.plan.State(ctx, "ses_A")
-	if err != nil || after.Revision() <= before.Revision() {
-		t.Fatalf("Plan revision after restore = %d err=%v, want greater than %d", after.Revision(), err, before.Revision())
+	if err != nil {
+		t.Fatalf("read Plan after restore: %v", err)
 	}
-	if _, ok, getErr := ss.goals.Get(ctx, "ses_A"); getErr != nil || ok {
+	afterState, beforeState := committedFixturePlan(t, after), before
+	if afterState.Revision() <= beforeState.Revision() {
+		t.Fatalf("Plan revision after restore = %d, want greater than %d", afterState.Revision(), beforeState.Revision())
+	}
+	if _, ok, getErr := readBootstrapGoal(ctx, ss.goals, "ses_A"); getErr != nil || ok {
 		t.Fatalf("goal survived the restore: ok=%v err=%v", ok, getErr)
 	}
 	rules, err := ss.approvals.Visible(ctx, "ses_A", "/repo")
@@ -804,7 +819,7 @@ func TestApplyRollbackRejectsInvalidCheckpointSetAtomically(t *testing.T) {
 	if err == nil {
 		t.Fatal("ApplyRollback unexpectedly accepted an invalid checkpoint root member ID")
 	}
-	if _, ok, err := ss.goals.Get(ctx, parent.ID()); err != nil || !ok {
+	if _, ok, err := readBootstrapGoal(ctx, ss.goals, parent.ID()); err != nil || !ok {
 		t.Fatalf("goal clear was not rolled back: ok=%v err=%v", ok, err)
 	}
 	if _, err := ss.checkpoints.LoadCheckpoint(ctx, "member_preserve"); err != nil {
@@ -883,8 +898,8 @@ func seedGoal(t *testing.T, ss sessionStores, sessionID string) {
 	} else if err != nil {
 		t.Fatalf("get goal session %q: %v", sessionID, err)
 	}
-	g, _ := goal.New(sessionID, "obj", modelref.Selection{}, goal.Budget{}, run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
-	if _, applied, err := ss.goals.Save(context.Background(), g, goal.Version{}); err != nil || !applied {
+	g, _ := goal.New(sessionID, "obj", runfixture.Selection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
+	if _, applied, err := ss.goals.Save(context.Background(), g, bootstrapUnwrittenGoalVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed goal %q: applied=%v err=%v", sessionID, applied, err)
 	}
 }
@@ -901,7 +916,7 @@ func TestApplyDeleteClearsSessionGoal(t *testing.T) {
 	if err := ss.ApplyDelete(ctx, sessions.DeletePlan{SessionID: "ses_goal"}); err != nil {
 		t.Fatalf("ApplyDelete: %v", err)
 	}
-	if _, ok, err := ss.goals.Get(ctx, "ses_goal"); err != nil || ok {
+	if _, ok, err := readBootstrapGoal(ctx, ss.goals, "ses_goal"); err != nil || ok {
 		t.Fatalf("goal survived the delete cascade: ok=%v err=%v", ok, err)
 	}
 }

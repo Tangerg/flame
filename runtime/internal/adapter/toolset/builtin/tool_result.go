@@ -17,6 +17,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 )
@@ -47,7 +48,7 @@ type ToolResultStore interface {
 type toolResultReadArgs struct {
 	ResultID    string `json:"result_id" jsonschema:"minLength=2,maxLength=64,pattern=^[A-Z2-7]+$" jsonschema_description:"Offloaded result identifier copied exactly from the inline marker."`
 	OffsetBytes int    `json:"offset_bytes,omitempty" jsonschema:"minimum=0" jsonschema_description:"Zero-based byte offset at which to start reading. Defaults to 0."`
-	LimitBytes  int    `json:"limit_bytes,omitempty" jsonschema:"minimum=1,maximum=20000" jsonschema_description:"Maximum bytes to return. Defaults to 20000 and cannot exceed 20000."`
+	LimitBytes  *int   `json:"limit_bytes,omitempty" jsonschema:"minimum=1,maximum=20000" jsonschema_description:"Maximum bytes to return. Defaults to 20000 and cannot exceed 20000."`
 }
 
 type toolResultReader struct {
@@ -88,7 +89,11 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 		return "No stored tool result with result_id " + a.ResultID + " — it may have been deleted with its session.", nil
 	}
 
-	start, end := window(body, a.OffsetBytes, a.LimitBytes)
+	limit, err := toolarg.PositiveInt(a.LimitBytes, defaultReadWindow, defaultReadWindow, "limit_bytes")
+	if err != nil {
+		return "", err
+	}
+	start, end := window(body, a.OffsetBytes, limit)
 	header := fmt.Sprintf("[tool result %s — %d bytes total, showing bytes %d–%d]\n", a.ResultID, len(body), start, end)
 	if end < len(body) {
 		header += fmt.Sprintf("[%d bytes remain; call again with {\"result_id\":%q,\"offset_bytes\":%d} for the next window]\n", len(body)-end, a.ResultID, end)
@@ -97,17 +102,14 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 }
 
 // window clamps (offset, limit) to a valid rune-aligned [start, end) slice of
-// body: offset is bounded to [0, len]; an unset/zero limit uses
-// [defaultReadWindow]; both cuts snap outward to a rune boundary so a byte
-// offset landing mid-rune never splits one.
+// body: offset is bounded to [0, len]; limit is a validated positive concrete
+// value; both cuts snap outward to a rune boundary so a byte offset landing
+// mid-rune never splits one.
 func window(body string, offset, limit int) (start, end int) {
 	total := len(body)
 	start = min(max(offset, 0), total)
 	for start < total && !utf8.RuneStart(body[start]) {
 		start++
-	}
-	if limit <= 0 {
-		limit = defaultReadWindow
 	}
 	end = min(start+limit, total)
 	for end < total && !utf8.RuneStart(body[end]) {

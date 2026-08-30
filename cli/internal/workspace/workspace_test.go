@@ -92,9 +92,8 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 
 func TestReadRequestRefusesAnAmbiguousLineWindow(t *testing.T) {
 	t.Parallel()
-	request := ReadRequest{Workspace: "/workspace", Path: "main.go", EndLine: 10}
-	if err := request.Validate(); err == nil || !strings.Contains(err.Error(), "requires a start") {
-		t.Fatalf("Validate = %v", err)
+	if _, err := NewReadLineRange(0, 10); err == nil {
+		t.Fatal("line range accepted an end without a positive start")
 	}
 }
 

@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type concurrencyKeyer interface {
@@ -62,7 +61,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = clientSession.Close() })
 
-	wrapped, err := sourceTools(t.Context(), scopemcp.ToolSource{Name: "catalog", Session: clientSession})
+	wrapped, err := sourceTools(t.Context(), testMCPServerName("catalog"), clientSession)
 	if err != nil {
 		t.Fatalf("sourceTools: %v", err)
 	}
@@ -94,7 +93,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			Description: strings.Repeat("x", mcpserver.MaxRemoteToolDescriptionBytes+1),
 			InputSchema: json.RawMessage(`{"type":"object"}`),
 		})
-		if _, err := sourceTools(t.Context(), scopemcp.ToolSource{Name: "catalog", Session: session}); err == nil {
+		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
 			t.Fatal("sourceTools accepted a description larger than 64 KiB")
 		}
 	})
@@ -106,10 +105,11 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 				strings.Repeat("x", mcpserver.MaxRemoteToolInputSchemaBytes+1) + `"}`),
 		})
 		connections := &Connections{servers: []*server{{
-			config:  ServerConfig{Name: "catalog"},
+			config:  ServerConfig{Name: testMCPServerName("catalog")},
 			session: session,
 		}}}
-		if _, err := connections.Tools(t.Context(), "catalog"); err == nil {
+		name := testMCPServerName("catalog")
+		if _, err := connections.Tools(t.Context(), &name); err == nil {
 			t.Fatal("Connections.Tools accepted a schema larger than 1 MiB")
 		}
 	})
@@ -119,7 +119,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 		for index := range candidate {
 			candidate[index] = catalogTool(fmt.Sprintf("catalog_tool_%04d", index))
 		}
-		if err := validateToolCatalog(nil, nil, "catalog", candidate); err == nil {
+		if err := validateToolCatalog(nil, nil, testMCPServerName("catalog"), candidate); err == nil {
 			t.Fatal("validateToolCatalog accepted more than 2,048 remote tools")
 		}
 	})

@@ -3,12 +3,24 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
 )
+
+func testMemoryItemID(digit byte) domain.ItemID {
+	id, err := domain.ParseItemID(domain.ItemIDPrefix + strings.Repeat(
+		string(digit),
+		domain.MaximumItemIDCharacters-len(domain.ItemIDPrefix),
+	))
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
 
 type fakeStore struct {
 	listScope   domain.Scope
@@ -23,20 +35,20 @@ type fakeStore struct {
 
 func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	f.listScope, f.listProject = scope, project
-	return []domain.Item{{ID: "mem_1", Scope: scope, Project: project}}, nil
+	return []domain.Item{{ID: testMemoryItemID('1'), Scope: scope, Project: project}}, nil
 }
 
-func (f *fakeStore) Review(_ context.Context, _ string, decision domain.ReviewDecision, _ time.Time) error {
+func (f *fakeStore) Review(_ context.Context, _ domain.ItemID, decision domain.ReviewDecision, _ time.Time) error {
 	f.decision = decision
 	return f.err
 }
 
-func (f *fakeStore) Update(_ context.Context, _ string, content *string, pinned *bool, now time.Time) (domain.Item, error) {
+func (f *fakeStore) Update(_ context.Context, _ domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error) {
 	f.content, f.pinned, f.updatedAt = content, pinned, now
-	return domain.Item{ID: "mem_1"}, f.err
+	return domain.Item{ID: testMemoryItemID('1')}, f.err
 }
 
-func (f *fakeStore) Delete(context.Context, string) error { return f.err }
+func (f *fakeStore) Delete(context.Context, domain.ItemID) error { return f.err }
 
 func (f *fakeStore) Add(context.Context, domain.Scope, string, string, time.Time) (domain.Item, bool, error) {
 	return domain.Item{}, f.addChanged, f.err
@@ -76,7 +88,7 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	content := "- use table-driven tests"
 	pinned := true
 
-	if _, err := c.Update(context.Background(), "mem_1", &content, &pinned); err != nil {
+	if _, err := c.Update(context.Background(), testMemoryItemID('1').String(), &content, &pinned); err != nil {
 		t.Fatal(err)
 	}
 	if store.content != &content || store.pinned != &pinned || !store.updatedAt.Equal(now) {
@@ -87,14 +99,29 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 func TestReviewAcceptsDecisionNotTargetState(t *testing.T) {
 	store := &fakeStore{}
 	c := New(Config{Store: store})
-	if err := c.Review(t.Context(), "mem_1", domain.ReviewApprove); err != nil {
+	if err := c.Review(t.Context(), testMemoryItemID('1').String(), domain.ReviewApprove); err != nil {
 		t.Fatal(err)
 	}
 	if store.decision != domain.ReviewApprove {
 		t.Fatalf("decision = %q, want approve", store.decision)
 	}
-	if err := c.Review(t.Context(), "mem_1", domain.ReviewDecision("active")); err == nil {
+	if err := c.Review(t.Context(), testMemoryItemID('1').String(), domain.ReviewDecision("active")); err == nil {
 		t.Fatal("target status was accepted as a review decision")
+	}
+}
+
+func TestMutationRejectsNonCanonicalItemIdentityBeforeStore(t *testing.T) {
+	wantStoreErr := errors.New("store must not be reached")
+	c := New(Config{Store: &fakeStore{err: wantStoreErr}})
+
+	if err := c.Review(t.Context(), "mem_1", domain.ReviewApprove); !errors.Is(err, domain.ErrInvalidItemID) {
+		t.Fatalf("Review error = %v, want ErrInvalidItemID", err)
+	}
+	if _, err := c.Update(t.Context(), "mem_1", nil, nil); !errors.Is(err, domain.ErrInvalidItemID) {
+		t.Fatalf("Update error = %v, want ErrInvalidItemID", err)
+	}
+	if err := c.Delete(t.Context(), "mem_1"); !errors.Is(err, domain.ErrInvalidItemID) {
+		t.Fatalf("Delete error = %v, want ErrInvalidItemID", err)
 	}
 }
 
@@ -125,13 +152,13 @@ func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
 	})
 	content := "updated"
 	pinned := true
-	if err := c.Review(t.Context(), "mem_1", domain.ReviewApprove); err != nil {
+	if err := c.Review(t.Context(), testMemoryItemID('1').String(), domain.ReviewApprove); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.Update(t.Context(), "mem_1", &content, &pinned); err != nil {
+	if _, err := c.Update(t.Context(), testMemoryItemID('1').String(), &content, &pinned); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Delete(t.Context(), "mem_1"); err != nil {
+	if err := c.Delete(t.Context(), testMemoryItemID('1').String()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.Add(t.Context(), domain.ScopeProject, "/repo", "new"); err != nil {
@@ -163,7 +190,7 @@ func TestFailedAgentMemoryMutationDoesNotPublishInvalidation(t *testing.T) {
 			notices = append(notices, notice)
 		},
 	})
-	if _, err := c.Update(t.Context(), "mem_1", nil, nil); !errors.Is(err, wantErr) {
+	if _, err := c.Update(t.Context(), testMemoryItemID('1').String(), nil, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("Update error = %v, want %v", err, wantErr)
 	}
 	if len(notices) != 0 {

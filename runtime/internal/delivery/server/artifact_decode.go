@@ -147,6 +147,10 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}
+	limits, err := portableLimitsFromArtifact(artifact.Limits)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".limits", "%v", err)
+	}
 	return sessions.PortableRun{
 		SessionID: artifact.SessionID, ID: artifact.ID, SpawnedByItemID: artifact.SpawnedByItemID,
 		ParentRunID: artifact.ParentRunID, RootRunID: artifact.RootRunID,
@@ -154,7 +158,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 		Failure:       failure,
 		Metrics:       metrics,
 		ContextTokens: artifact.ContextTokens,
-		Limits:        portableLimitsFromArtifact(artifact.Limits),
+		Limits:        limits,
 		Capabilities:  capabilities,
 		Detail:        artifact.Outcome.Detail,
 		CreatedAt:     artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
@@ -224,13 +228,13 @@ func portableMetricsFromArtifact(path string, artifact protocol.ArtifactRunMetri
 	return metrics, nil
 }
 
-func portableLimitsFromArtifact(artifact *protocol.ArtifactRunLimits) run.Limits {
+func portableLimitsFromArtifact(artifact *protocol.ArtifactRunLimits) (run.Limits, error) {
 	if artifact == nil {
-		return run.Limits{}
+		return run.UnlimitedLimits(), nil
 	}
-	return run.Limits{
+	return run.NewLimits(run.LimitValues{
 		MaxTotalTokens: artifact.MaxTotalTokens, MaxSteps: artifact.MaxSteps, MaxBudgetUSD: artifact.MaxBudgetUSD,
-	}
+	})
 }
 
 func portableUsageFromArtifact(artifact *protocol.ArtifactUsage) *accounting.Usage {

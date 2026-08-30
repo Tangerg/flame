@@ -110,56 +110,105 @@ func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 	if !repository {
 		return nil
 	}
-	srcObjects, err := gitIn(ctx, cwd, "rev-parse", "--path-format=absolute", "--git-path", "objects")
-	if err != nil {
-		return fmt.Errorf("checkpoint: discover source object store: %w", err)
-	}
-	if srcObjects == "" {
-		return errors.New("checkpoint: source repository returned an empty object-store path")
-	}
+	seed := sourceRepositorySeed{ctx: ctx, gitDir: gitDir, cwd: cwd}
+	return seed.apply()
+}
 
-	info, err := os.Stat(srcObjects)
+type sourceRepositorySeed struct {
+	ctx    context.Context
+	gitDir string
+	cwd    string
+}
+
+func (seed sourceRepositorySeed) apply() error {
+	sourceObjects, present, err := seed.sourceObjectStore()
+	if err != nil || !present {
+		return err
+	}
+	alternates, err := seed.resolveAlternates(sourceObjects)
+	if err != nil {
+		return err
+	}
+	if err := seed.writeAlternates(alternates); err != nil {
+		return err
+	}
+	return seed.copyIndex()
+}
+
+func (seed sourceRepositorySeed) sourceObjectStore() (string, bool, error) {
+	sourceObjects, err := gitIn(seed.ctx, seed.cwd, "rev-parse", "--path-format=absolute", "--git-path", "objects")
+	if err != nil {
+		return "", false, fmt.Errorf("checkpoint: discover source object store: %w", err)
+	}
+	if sourceObjects == "" {
+		return "", false, errors.New("checkpoint: source repository returned an empty object-store path")
+	}
+	info, err := os.Stat(sourceObjects)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil
+		return "", false, nil
 	}
 	if err != nil {
-		return fmt.Errorf("checkpoint: inspect source object store: %w", err)
+		return "", false, fmt.Errorf("checkpoint: inspect source object store: %w", err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("checkpoint: source object store %q is not a directory", srcObjects)
+		return "", false, fmt.Errorf("checkpoint: source object store %q is not a directory", sourceObjects)
 	}
+	return sourceObjects, true, nil
+}
 
+func (seed sourceRepositorySeed) resolveAlternates(sourceObjects string) ([]string, error) {
 	// Share the real object DB plus any store it already borrows, keeping only
 	// stores that still exist so the chain resolves. Git interprets relative
 	// entries relative to the object database that owns the alternates file.
-	alternates := []string{srcObjects}
-	if data, readSourceAlternatesErr := readSourceAlternates(filepath.Join(srcObjects, "info", "alternates")); readSourceAlternatesErr == nil {
-		for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
-			p := strings.TrimSpace(line)
-			if p == "" {
-				continue
-			}
-			if !filepath.IsAbs(p) {
-				p = filepath.Join(srcObjects, p)
-			}
-			p = filepath.Clean(p)
-			if statInfo, statErr := os.Stat(p); statErr == nil && statInfo.IsDir() {
-				if len(alternates) == maxSourceAlternates {
-					return fmt.Errorf(
-						"%w: source repository has more than %d object stores",
-						ErrSnapshotTooLarge, maxSourceAlternates,
-					)
-				}
-				alternates = append(alternates, p)
-			} else if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
-				return fmt.Errorf("checkpoint: inspect source alternate %q: %w", p, statErr)
-			}
-		}
-	} else if !errors.Is(readSourceAlternatesErr, os.ErrNotExist) {
-		return fmt.Errorf("checkpoint: read source alternates: %w", readSourceAlternatesErr)
+	alternates := []string{sourceObjects}
+	data, err := readSourceAlternates(filepath.Join(sourceObjects, "info", "alternates"))
+	if errors.Is(err, os.ErrNotExist) {
+		return alternates, nil
 	}
-	if mkdirAllErr := os.MkdirAll(filepath.Join(gitDir, "objects", "info"), 0o755); mkdirAllErr != nil {
-		return fmt.Errorf("checkpoint: create alternates directory: %w", mkdirAllErr)
+	if err != nil {
+		return nil, fmt.Errorf("checkpoint: read source alternates: %w", err)
+	}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+		alternate, present, err := resolveSourceAlternate(sourceObjects, line)
+		if err != nil {
+			return nil, err
+		}
+		if !present {
+			continue
+		}
+		if len(alternates) == maxSourceAlternates {
+			return nil, fmt.Errorf(
+				"%w: source repository has more than %d object stores",
+				ErrSnapshotTooLarge, maxSourceAlternates,
+			)
+		}
+		alternates = append(alternates, alternate)
+	}
+	return alternates, nil
+}
+
+func resolveSourceAlternate(sourceObjects, line string) (string, bool, error) {
+	alternate := strings.TrimSpace(line)
+	if alternate == "" {
+		return "", false, nil
+	}
+	if !filepath.IsAbs(alternate) {
+		alternate = filepath.Join(sourceObjects, alternate)
+	}
+	alternate = filepath.Clean(alternate)
+	info, err := os.Stat(alternate)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("checkpoint: inspect source alternate %q: %w", alternate, err)
+	}
+	return alternate, info.IsDir(), nil
+}
+
+func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
+	if err := os.MkdirAll(filepath.Join(seed.gitDir, "objects", "info"), 0o755); err != nil {
+		return fmt.Errorf("checkpoint: create alternates directory: %w", err)
 	}
 	encodedAlternates := []byte(strings.Join(alternates, "\n") + "\n")
 	if len(encodedAlternates) > maxSourceAlternatesBytes {
@@ -168,15 +217,18 @@ func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 			ErrSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
 	}
-	if writeFileErr := os.WriteFile(filepath.Join(gitDir, "objects", "info", "alternates"), encodedAlternates, 0o644); writeFileErr != nil {
-		return fmt.Errorf("checkpoint: write source alternates: %w", writeFileErr)
+	if err := os.WriteFile(filepath.Join(seed.gitDir, "objects", "info", "alternates"), encodedAlternates, 0o644); err != nil {
+		return fmt.Errorf("checkpoint: write source alternates: %w", err)
 	}
+	return nil
+}
 
-	srcIndex, err := gitIn(ctx, cwd, "rev-parse", "--path-format=absolute", "--git-path", "index")
+func (seed sourceRepositorySeed) copyIndex() error {
+	sourceIndex, err := gitIn(seed.ctx, seed.cwd, "rev-parse", "--path-format=absolute", "--git-path", "index")
 	if err != nil {
 		return fmt.Errorf("checkpoint: discover source index: %w", err)
 	}
-	info, err = os.Stat(srcIndex)
+	info, err := os.Stat(sourceIndex)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -184,7 +236,7 @@ func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 		return fmt.Errorf("checkpoint: inspect source index: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return fmt.Errorf("checkpoint: source index %q is not a regular file", srcIndex)
+		return fmt.Errorf("checkpoint: source index %q is not a regular file", sourceIndex)
 	}
 	if info.Size() > maxSourceIndexBytes {
 		return fmt.Errorf(
@@ -192,7 +244,7 @@ func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 			ErrSnapshotTooLarge, info.Size(), maxSourceIndexBytes,
 		)
 	}
-	if err := copyFile(srcIndex, filepath.Join(gitDir, "index"), maxSourceIndexBytes); err != nil {
+	if err := copyFile(sourceIndex, filepath.Join(seed.gitDir, "index"), maxSourceIndexBytes); err != nil {
 		return fmt.Errorf("checkpoint: copy source index: %w", err)
 	}
 	return nil

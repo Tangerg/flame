@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 )
 
 func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
-	store, err := Open(directory, Config{
-		HistoryLimit: 2, StashLimit: 2, WorkspaceLimit: 2,
+	store, err := OpenDirectory(directory, Config{
+		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
 		Now: func() time.Time { return now }, Random: bytes.NewReader([]byte("12345678abcdefgh")),
 	})
 	if err != nil {
@@ -41,7 +42,9 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 		}
 	}
 
-	reopened, err := Open(directory, Config{HistoryLimit: 2, StashLimit: 2, WorkspaceLimit: 2})
+	reopened, err := OpenDirectory(directory, Config{
+		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +70,7 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 
 func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +88,7 @@ func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 
 func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,8 +122,8 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 
 func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{
-		StashLimit: 1, Random: bytes.NewReader([]byte("12345678abcdefgh")),
+	store, err := OpenDirectory(directory, Config{
+		StashCapacity: testCapacity(t, 1), Random: bytes.NewReader([]byte("12345678abcdefgh")),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -157,16 +160,18 @@ func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 
 func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
 	pending := PendingRun{
-		State: PendingRunQueued,
+		State: PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
+		CancelReplay: commandreplay.UnprotectedGuard(),
 		Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
 			SessionID: sessionID, Message: agent.Message{Text: "pending run"},
+			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(pending); stagePendingRunErr != nil {
@@ -181,7 +186,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}},
 		},
-		Interactions: []agent.Interaction{approval},
+		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -194,7 +199,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 		t.Fatal(stashDraftErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +221,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 	for _, phase := range []string{"intent saved", "stash saved", "source retired"} {
 		t.Run(phase, func(t *testing.T) {
 			directory := t.TempDir()
-			store, err := Open(directory, Config{StashLimit: 2})
+			store, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +244,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				t.Fatal(saveErr)
 			}
 			if phase == "stash saved" || phase == "source retired" {
-				next := tailStashes(append(slices.Clone(store.stashes), transfer.Stash), store.stashLimit)
+				next := tailStashes(append(slices.Clone(store.stashes), transfer.Stash), store.stashCapacity)
 				if saveErr := store.save("stashes.json", next); saveErr != nil {
 					t.Fatal(saveErr)
 				}
@@ -250,7 +255,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				}
 			}
 
-			reopened, err := Open(directory, Config{StashLimit: 2})
+			reopened, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -261,7 +266,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			if len(stashes) != 2 || stashes[0].ID != transfer.Stash.ID || !stashes[0].Message.Equal(draft) {
 				t.Fatalf("stashes after recovery = %+v", stashes)
 			}
-			settled, err := Open(directory, Config{StashLimit: 2})
+			settled, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -274,7 +279,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 
 func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +300,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +314,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 
 func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,16 +334,18 @@ func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 
 func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
 	command := PendingRun{
-		State: PendingRunQueued,
+		State: PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
+		CancelReplay: commandreplay.UnprotectedGuard(),
 		Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
 			SessionID: sessionID, Message: agent.Message{Text: "pending run"},
+			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(command); stagePendingRunErr != nil {
@@ -353,7 +360,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}},
 		},
-		Interactions: []agent.Interaction{approval},
+		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -392,7 +399,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		deletions[0].SessionID != sessionID || deletions[0].Phase != SessionDeletionConfirmed {
 		t.Fatalf("session deletion tombstones = %+v", deletions)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,7 +422,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err = Open(directory, Config{})
+	reopened, err = OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +439,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 
 func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,11 +450,11 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: "owned until runtime confirmation"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, ReplayGuard{}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(request, commandreplay.UnprotectedGuard()); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,15 +476,62 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	}
 }
 
+func TestStoreDoesNotNormalizeSessionDeletionIdentity(t *testing.T) {
+	store, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := agent.DeleteSession{
+		CommandID: agent.CommandID("cli_33333333333333333333333333333334"),
+		SessionID: " session ",
+	}
+	if err := store.StageSessionDeletion(request, commandreplay.UnprotectedGuard()); err == nil {
+		t.Fatal("StageSessionDeletion accepted an identity that requires trimming")
+	}
+	if deletions := store.PendingSessionDeletions(); len(deletions) != 0 {
+		t.Fatalf("invalid identity created deletion state: %+v", deletions)
+	}
+}
+
+func TestStoreRejectsNonExactSessionIdentityInDeletionJournal(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := agent.DeleteSession{
+		CommandID: agent.CommandID("cli_33333333333333333333333333333335"),
+		SessionID: "session",
+	}
+	if err := store.StageSessionDeletion(request, commandreplay.UnprotectedGuard()); err != nil {
+		t.Fatal(err)
+	}
+	journalPath := filepath.Join(directory, sessionDeletionsName)
+	content, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content = bytes.Replace(content, []byte(`"sessionId": "session"`), []byte(`"sessionId": " session"`), 1)
+	if !bytes.Contains(content, []byte(`"sessionId": " session"`)) {
+		t.Fatal("fixture did not corrupt the durable session identity")
+	}
+	if err := os.WriteFile(journalPath, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
+		t.Fatal("OpenDirectory repaired a non-exact durable session identity")
+	}
+}
+
 func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := agent.DeleteSession{
 		CommandID: agent.CommandID("cli_44444444444444444444444444444444"), SessionID: "session",
 	}
-	if err := store.StageSessionDeletion(request, ReplayGuard{}); err != nil {
+	if err := store.StageSessionDeletion(request, commandreplay.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.RejectSessionDeletion(request.SessionID, agent.CommandID("cli_55555555555555555555555555555555")); err == nil {
@@ -493,7 +547,7 @@ func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
 
 func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -504,6 +558,7 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_66666666666666666666666666666666"),
+		Replay:    commandreplay.UnprotectedGuard(),
 		SessionID: sessionID, ToRunID: "run_1", Scope: agent.RestoreHistory,
 		BeforeRevision: 7, BeforeRunIDs: []string{"run_1", "run_2"}, AfterRunIDs: []string{"run_1"},
 		OpeningText: "restored opening", OpeningImages: 2,
@@ -513,7 +568,7 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 		t.Fatal(stageSessionRollbackErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,7 +588,7 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 		t.Fatalf("rollback recovery = %+v, present %t", recovery, found)
 	}
 
-	reopened, err = Open(directory, Config{})
+	reopened, err = OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,14 +600,33 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 	}
 }
 
+func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
+	pending := PendingSessionRollback{
+		Phase:          SessionRollbackPrepared,
+		CommandID:      agent.CommandID("cli_66666666666666666666666666666667"),
+		SessionID:      "session",
+		ToRunID:        " run_1",
+		Scope:          agent.RestoreHistory,
+		BeforeRevision: 1,
+		BeforeRunIDs:   []string{" run_1"},
+		AfterRunIDs:    []string{" run_1"},
+		StagedAt:       time.Now().UTC(),
+		Replay:         commandreplay.UnprotectedGuard(),
+	}
+	if err := pending.Validate(); err == nil {
+		t.Fatal("PendingSessionRollback accepted a run identity that requires trimming")
+	}
+}
+
 func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
+		Replay:    commandreplay.UnprotectedGuard(),
 		SessionID: "session", Scope: agent.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"}, OpeningText: "opening",
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
@@ -573,13 +647,14 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 }
 
 func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
+		Replay:    commandreplay.UnprotectedGuard(),
 		SessionID: "session", Scope: agent.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"},
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
@@ -596,7 +671,7 @@ func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
 }
 
 func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
-	store, err := Open("", Config{})
+	store, err := OpenMemory(Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,21 +695,21 @@ func TestStoreRejectsUnknownOnDiskFormat(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(`{"version":99,"value":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(directory, Config{}); err == nil {
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
 		t.Fatal("unknown format was accepted")
 	}
 }
 
 func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
 	pending := agent.StartRun{
 		CommandID: commandID, SessionID: "ses_1", Message: agent.Message{Text: "recover this start"},
-		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Generation: agent.GenerationParams{Stop: []string{"done"}}},
+		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Limits: agent.UnlimitedRunLimits(), Generation: agent.GenerationParams{Stop: []string{"done"}}},
 	}
 	if saveDraftErr := store.SaveDraft("ses_1", pending.Message); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -643,7 +718,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	pending.Message.Text = "mutated"
 	pending.Options.Generation.Stop[0] = "mutated"
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -667,7 +742,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 
 func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailure(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -705,7 +780,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -719,7 +794,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 		t.Fatalf("retried settlement retained outbox: %+v", pending)
 	}
 
-	settled, err := Open(directory, Config{})
+	settled, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,7 +805,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 
 func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{HistoryLimit: 1})
+	store, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -771,7 +846,7 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := Open(directory, Config{HistoryLimit: 1})
+	reopened, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,6 +858,15 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	}
 }
 
+func testCapacity(t *testing.T, value int) *Capacity {
+	t.Helper()
+	capacity, err := NewCapacity(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &capacity
+}
+
 func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
 	commandID := agent.CommandID("cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd")
@@ -790,21 +874,21 @@ func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(encoded), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(directory, Config{}); err == nil {
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
 		t.Fatal("duplicate history command identity was accepted")
 	}
 }
 
 func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending := PendingRun{State: PendingRunQueued, Command: agent.StartRun{
 		CommandID: agent.CommandID("cli_33333333333333333333333333333333"),
 		SessionID: "ses_1", Message: agent.Message{Text: "original"},
-		Options: agent.RunOptions{Provider: "deepseek", Model: "v4"},
-	}}
+		Options: agent.RunOptions{Provider: "deepseek", Model: "v4", Limits: agent.UnlimitedRunLimits()},
+	}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()}
 	if err := store.StagePendingRun(pending); err != nil {
 		t.Fatal(err)
 	}
@@ -827,7 +911,7 @@ func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
 }
 
 func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -851,7 +935,7 @@ func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
 }
 
 func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -859,7 +943,7 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 		CommandID: agent.CommandID("cli_44444444444444444444444444444444"),
 		SessionID: "ses_1", Message: agent.Message{Text: "must be delivered before settlement"},
 	}
-	if err := store.StagePendingRun(PendingRun{State: PendingRunQueued, Command: command}); err != nil {
+	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err == nil {
@@ -868,7 +952,7 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 	if _, err := store.RequeuePendingRun(command.SessionID, command.CommandID); err == nil {
 		t.Fatal("queued run was reidentified before delivery")
 	}
-	if _, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, ReplayGuard{}); err == nil {
+	if _, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err == nil {
 		t.Fatal("queued run entered cancellation before delivery")
 	}
 	pending := store.PendingRuns(command.SessionID)
@@ -879,10 +963,10 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 		t.Fatalf("invalid acknowledgement committed history: %+v", history)
 	}
 
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, ReplayGuard{}); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, ReplayGuard{}); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
 		t.Fatalf("idempotent dispatch returned %v", err)
 	}
 	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
@@ -897,7 +981,7 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 }
 
 func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -906,7 +990,7 @@ func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
 		SessionID: "ses_1", Message: agent.Message{Text: "canceling delivery"},
 	}
 	stageDispatchingPendingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, ReplayGuard{})
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -924,7 +1008,7 @@ func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
 
 func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -933,14 +1017,14 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 		SessionID: "ses_1", Message: agent.Message{Text: "cancel this uncertain start"},
 	}
 	stageDispatchingPendingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, ReplayGuard{})
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, ReplayGuard{}); markPendingRunCancelingErr != nil || replayed != cancelID {
+	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); markPendingRunCancelingErr != nil || replayed != cancelID {
 		t.Fatalf("idempotent cancel transition = %q, %v; want %q", replayed, markPendingRunCancelingErr, cancelID)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -952,24 +1036,24 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 }
 
 func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	commands := []PendingRun{
 		{State: PendingRunQueued, Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
-			SessionID: "ses_1", Message: agent.Message{Text: "first"},
-		}},
+			SessionID: "ses_1", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()},
 		{State: PendingRunQueued, Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"),
-			SessionID: "ses_1", Message: agent.Message{Text: "second"},
-		}},
+			SessionID: "ses_1", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()},
 	}
 	if err := store.SavePendingRuns("ses_1", commands); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, ReplayGuard{}); err == nil {
+	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, commandreplay.UnprotectedGuard()); err == nil {
 		t.Fatal("non-front command entered dispatching state")
 	}
 	if got := store.PendingRuns("ses_1"); len(got) != 2 || got[0].State != PendingRunQueued || got[1].State != PendingRunQueued {
@@ -983,16 +1067,18 @@ func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing
 }
 
 func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := agent.StartRun{SessionID: "ses_1", Message: agent.Message{Text: "missing identity"}}
-	if err := store.StagePendingRun(PendingRun{State: PendingRunQueued, Command: command}); err == nil {
+	if err := store.StagePendingRun(queuedPendingRun(command)); err == nil {
 		t.Fatal("pending run without a command identity was staged")
 	}
 	command.CommandID = agent.CommandID("cli_99999999999999999999999999999999")
-	if err := store.StagePendingRun(PendingRun{State: PendingRunDispatching, Command: command}); err == nil {
+	invalidDispatch := queuedPendingRun(command)
+	invalidDispatch.State = PendingRunDispatching
+	if err := store.StagePendingRun(invalidDispatch); err == nil {
 		t.Fatal("pending run bypassed the queued initial state")
 	}
 	if pending := store.PendingRuns(command.SessionID); len(pending) != 0 {
@@ -1004,13 +1090,13 @@ func TestInvalidPendingRunTransitionsDoNotAllocateMutationIdentity(t *testing.T)
 	pending := PendingRun{State: PendingRunQueued, Command: agent.StartRun{
 		CommandID: agent.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 		SessionID: "ses_1", Message: agent.Message{Text: "still queued"},
-	}}
+	}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()}
 	allocations := 0
 	allocate := func() (agent.CommandID, error) {
 		allocations++
 		return agent.CommandID("cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"), nil
 	}
-	if _, err := pending.beginCancellation(ReplayGuard{}, allocate); err == nil {
+	if _, err := pending.beginCancellation(commandreplay.UnprotectedGuard(), allocate); err == nil {
 		t.Fatal("queued run began cancellation")
 	}
 	if _, err := pending.requeue(allocate); err == nil {
@@ -1026,17 +1112,17 @@ func TestInvalidPendingRunTransitionsDoNotAllocateMutationIdentity(t *testing.T)
 
 func stageDispatchingPendingRun(t *testing.T, store *Store, command agent.StartRun) {
 	t.Helper()
-	if err := store.StagePendingRun(PendingRun{State: PendingRunQueued, Command: command}); err != nil {
+	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, ReplayGuard{}); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1059,7 +1145,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 				},
 			}},
 		},
-		Interactions: []agent.Interaction{approval},
+		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1067,7 +1153,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 	pending.Command.Answers[0].Answer = agent.ApprovalAnswer{Decision: agent.ApprovalApprove}
 	pending.Interactions[0] = agent.Approval{RunID: "mutated"}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1096,7 +1182,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 }
 
 func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1109,7 +1195,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 			CommandID: agent.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove}}},
 		},
-		Interactions: []agent.Interaction{approval},
+		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 	if err := store.StagePendingResume("ses_1", pending); err != nil {
 		t.Fatal(err)
@@ -1148,7 +1234,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 
 func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1165,14 +1251,12 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 			}},
 		},
 		Interactions: []agent.Interaction{approval},
-		Replay: ReplayGuard{
-			Namespace: "runtime-a", Until: time.Now().UTC().Add(-time.Second),
-		},
+		Replay:       protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
-	replay := ReplayGuard{Namespace: "runtime-a", Until: time.Now().UTC().Add(time.Hour)}
+	replay := protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour))
 	requeued, err := store.RequeuePendingResume("ses_1", pending.Command.CommandID, replay)
 	if err != nil {
 		t.Fatal(err)
@@ -1181,7 +1265,7 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 		len(requeued.Command.Answers) != 1 || !agent.InteractionsEqual(requeued.Interactions, pending.Interactions) {
 		t.Fatalf("requeued resume = %+v", requeued)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1198,7 +1282,7 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 }
 
 func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
-	store, err := Open(t.TempDir(), Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1214,7 +1298,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 				Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
 			}},
 		},
-		Interactions: []agent.Interaction{approval},
+		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 
 	if err := store.StagePendingResume("ses_1", pending); err == nil {
@@ -1227,7 +1311,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 
 func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1252,12 +1336,12 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 				{ItemID: question.ItemID, Answer: agent.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
 			},
 		},
-		Interactions: []agent.Interaction{approval, question},
+		Interactions: []agent.Interaction{approval, question}, Replay: commandreplay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

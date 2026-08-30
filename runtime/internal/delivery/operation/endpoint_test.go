@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -31,6 +33,16 @@ func mustNewEndpoint(t *testing.T, target any, config Config) *Endpoint {
 func TestEndpointRequiresProcessLifetime(t *testing.T) {
 	if endpoint, err := New(struct{}{}, Config{}); err == nil || endpoint != nil {
 		t.Fatalf("New without lifetime = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
+	}
+}
+
+func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
+	endpoint, err := New(struct{}{}, Config{
+		Lifetime:             t.Context(),
+		IdempotencyNamespace: "idp_test",
+	})
+	if err == nil || endpoint != nil {
+		t.Fatalf("New with invalid namespace = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
 	}
 }
 
@@ -78,7 +90,15 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			name:       "namespace without key",
 			method:     RuntimeDiscover,
 			parameters: struct{}{},
-			options:    Options{IdempotencyNamespace: "idp_store"},
+			options:    Options{IdempotencyNamespace: identityfixture.IdempotencyNamespace},
+		},
+		{
+			name:       "non-canonical namespace",
+			method:     RunsCancel,
+			parameters: protocol.CancelRunRequest{},
+			options: Options{
+				IdempotencyKey: "cancel-once", IdempotencyNamespace: " " + identityfixture.IdempotencyNamespace,
+			},
 		},
 		{
 			name:   "runtime subscription run cursor",
@@ -93,6 +113,32 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			method:     RunsStart,
 			parameters: protocol.StartRunRequest{},
 			options:    Options{AfterEventID: "evt_cursor"},
+		},
+		{
+			name:       "run replay cursor without event framing",
+			method:     RunsSubscribe,
+			parameters: protocol.SubscribeRunRequest{},
+			options:    Options{AfterEventID: "opaque"},
+		},
+		{
+			name:       "run replay cursor with interior whitespace",
+			method:     RunsSubscribe,
+			parameters: protocol.SubscribeRunRequest{},
+			options:    Options{AfterEventID: "evt_bad cursor"},
+		},
+		{
+			name:       "run replay cursor with non-printing character",
+			method:     RunsSubscribe,
+			parameters: protocol.SubscribeRunRequest{},
+			options:    Options{AfterEventID: "evt_bad\u200bhidden"},
+		},
+		{
+			name:       "oversized run replay cursor",
+			method:     RunsSubscribe,
+			parameters: protocol.SubscribeRunRequest{},
+			options: Options{AfterEventID: protocol.IDPrefixEvent + strings.Repeat(
+				"x", protocol.MaximumRunEventIDCharacters,
+			)},
 		},
 	}
 	for _, test := range tests {

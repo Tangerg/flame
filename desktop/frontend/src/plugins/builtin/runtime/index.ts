@@ -6,6 +6,7 @@ import { startRuntimeConnection } from "./adapters/runtimeConnectionProjection";
 import {
   RUNTIME_SERVER_SCOPE_PORTS,
   RUNTIME_STREAM_PORTS,
+  type RuntimeConnectionGeneration,
 } from "@/plugins/builtin/runtime/public/ports";
 
 export default definePlugin({
@@ -32,7 +33,7 @@ export default definePlugin({
       stream: {
         connectionGeneration: () => connection.connectionGeneration(),
         subscribeConnection: (onChange: () => void) => connection.subscribeConnection(onChange),
-        reportConnectionLoss: (expectedGeneration: string) =>
+        reportConnectionLoss: (expectedGeneration: RuntimeConnectionGeneration) =>
           connection.reportConnectionLoss(expectedGeneration),
       },
     };

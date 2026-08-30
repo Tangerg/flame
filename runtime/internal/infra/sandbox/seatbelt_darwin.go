@@ -18,7 +18,10 @@ import (
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
-const sandboxExecPath = "/usr/bin/sandbox-exec"
+const (
+	sandboxExecPath         = "/usr/bin/sandbox-exec"
+	sandboxProcessWaitDelay = time.Second
+)
 
 // checkBackend reports whether this host has a working isolation backend. macOS
 // Seatbelt is the only one today; its absence is the fail-closed signal.
@@ -130,7 +133,7 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 		}
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
-	cmd.WaitDelay = time.Second
+	cmd.WaitDelay = sandboxProcessWaitDelay
 	var stdout, stderr limitedBuffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

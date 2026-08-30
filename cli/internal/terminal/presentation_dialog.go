@@ -11,9 +11,23 @@ import (
 // the lease, so input routed through an older frame is consumed without reaching
 // the replacement presentation.
 type presentationLease struct {
-	current   uint64
-	presented headless.Snapshot[uint64]
+	current   *presentationIdentity
+	presented headless.Snapshot[*presentationIdentity]
 	active    func() bool
+}
+
+type presentationIdentity struct {
+	retired bool
+}
+
+func (p *presentationIdentity) retire() {
+	if p != nil {
+		p.retired = true
+	}
+}
+
+func (p *presentationIdentity) current(candidate *presentationIdentity) bool {
+	return p != nil && p == candidate && !p.retired
 }
 
 func (p *presentationLease) bind(active func() bool) {
@@ -27,10 +41,8 @@ func (p *presentationLease) bind(active func() bool) {
 }
 
 func (p *presentationLease) renew() {
-	p.current++
-	if p.current == 0 {
-		panic("terminal: presentation lease exhausted")
-	}
+	p.current.retire()
+	p.current = &presentationIdentity{}
 }
 
 func (p *presentationLease) stage(frame headless.Frame) {
@@ -41,7 +53,7 @@ func (p *presentationLease) acceptsInput() bool {
 	if p.active == nil {
 		return true
 	}
-	return p.active() && p.current != 0 && p.presented.Value() == p.current
+	return p.active() && p.current.current(p.presented.Value())
 }
 
 // presentationGuard is a decorator for reusable dialog bodies. It preserves
@@ -85,7 +97,7 @@ func newPresentationDialog(config kit.DialogConfig) *presentationDialog {
 	guard := &presentationGuard{body: config.Body}
 	config.Body = guard
 	dialog := kit.NewDialog(config)
-	guard.lease.bind(dialog.Open)
+	guard.lease.bind(dialog.Controller().Open)
 	return &presentationDialog{dialog: dialog, guard: guard}
 }
 
@@ -94,17 +106,17 @@ func (p *presentationDialog) Show() {
 		return
 	}
 	p.guard.lease.renew()
-	p.dialog.Show()
+	p.dialog.Controller().Show()
 }
 
 func (p *presentationDialog) Dismiss() {
 	if p != nil && p.dialog != nil {
-		p.dialog.Dismiss()
+		p.dialog.Controller().Dismiss()
 	}
 }
 
 func (p *presentationDialog) Open() bool {
-	return p != nil && p.dialog != nil && p.dialog.Open()
+	return p != nil && p.dialog != nil && p.dialog.Controller().Open()
 }
 
 func (p *presentationDialog) Controller() *headless.Dialog {

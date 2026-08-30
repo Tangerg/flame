@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -52,7 +53,7 @@ type TranscriptReader interface {
 // PlanReader is the coordinator's view of the Plan projection: the whole
 // state, because what identifies one replacement from the next is its revision.
 type PlanReader interface {
-	State(ctx context.Context, sessionID string) (plan.State, error)
+	State(ctx context.Context, sessionID string) (plan.Current, error)
 }
 
 // SessionReader answers only whether a session exists. The item read needs that
@@ -170,7 +171,7 @@ func RunTreeItems(runID string) ItemScope {
 // An unusable cursor is refused rather than reinterpreted — see
 // [pagination.ErrInvalidCursor]. Silently restarting from the top would look like a
 // page of duplicates to a client that had already read them.
-func (c *Coordinator) ListItemPage(ctx context.Context, scope ItemScope, order transcript.SequenceOrder, cursor string, limit int) (ItemPage, error) {
+func (c *Coordinator) ListItemPage(ctx context.Context, scope ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (ItemPage, error) {
 	if err := order.Validate(); err != nil {
 		return ItemPage{}, err
 	}
@@ -186,7 +187,7 @@ func (c *Coordinator) ListItemPage(ctx context.Context, scope ItemScope, order t
 	if err != nil {
 		return ItemPage{}, err
 	}
-	size, err := pagination.Limit(limit, itemPageLimit)
+	size, err := limit.Resolve(itemPageLimit)
 	if err != nil {
 		return ItemPage{}, err
 	}
@@ -200,10 +201,13 @@ func (c *Coordinator) ListItemPage(ctx context.Context, scope ItemScope, order t
 	if err != nil {
 		return ItemPage{}, err
 	}
-	page := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
+	page, err := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
 		func(entry transcript.SequencedItem) []string {
 			return []string{strconv.FormatInt(entry.Sequence, 10)}
 		})
+	if err != nil {
+		return ItemPage{}, err
+	}
 
 	items := make([]transcript.Item, 0, len(page.Rows))
 	for _, entry := range page.Rows {
@@ -216,18 +220,19 @@ func (c *Coordinator) ListItemPage(ctx context.Context, scope ItemScope, order t
 	return ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}, nil
 }
 
-// PlanState returns a session's Plan projection. A session that exists but has
-// never written a list is the zero state — revision 0, no items — because "nothing
-// has been written" is an answer, not a gap. Only a session that does not exist is
-// [session.ErrNotFound]: an empty list for an id nobody owns would read as a real,
-// empty session.
-func (c *Coordinator) PlanState(ctx context.Context, sessionID string) (plan.State, error) {
+// PlanState returns a session's optional Plan projection. An existing Session
+// with no committed replacement returns an explicit unwritten Current; only an
+// unknown Session is [session.ErrNotFound].
+func (c *Coordinator) PlanState(ctx context.Context, sessionID string) (plan.Current, error) {
+	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
+		return plan.Current{}, fmt.Errorf("queries: read Plan: %w", parseErr)
+	}
 	found, err := c.sessions.Exists(ctx, sessionID)
 	if err != nil {
-		return plan.State{}, err
+		return plan.Current{}, err
 	}
 	if !found {
-		return plan.State{}, session.ErrNotFound
+		return plan.Current{}, session.ErrNotFound
 	}
 	return c.plan.State(ctx, sessionID)
 }
@@ -278,8 +283,14 @@ func (c *Coordinator) readScope(ctx context.Context, scope ItemScope, order tran
 func (i ItemScope) cursorFilters(order transcript.SequenceOrder) ([]string, error) {
 	switch i.kind {
 	case sessionItemScope:
+		if _, err := resourceid.ParseSession(i.subjectID); err != nil {
+			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
+		}
 		return []string{i.subjectID, "", strconv.FormatBool(false), order.String()}, nil
 	case runItemScope:
+		if _, err := resourceid.ParseRun(i.subjectID); err != nil {
+			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
+		}
 		return []string{"", i.subjectID, strconv.FormatBool(i.includeDescendants), order.String()}, nil
 	default:
 		return nil, errInvalidItemScope
@@ -319,6 +330,9 @@ func (c *Coordinator) Run(ctx context.Context, runID string) (run.Run, bool, err
 	if runID == "" {
 		return run.Run{}, false, nil
 	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return run.Run{}, false, fmt.Errorf("queries: read Run: %w", err)
+	}
 	return c.runs.Run(ctx, runID)
 }
 
@@ -344,18 +358,23 @@ type RunPageFilter struct {
 // The cursor is bound to the normalized filter, not just to the method: continuing
 // a page under a different session or status set would seek into a collection the
 // anchor was never a position in.
-func (c *Coordinator) ListRunPage(ctx context.Context, filter RunPageFilter, cursor string, limit int) (pagination.Page[run.Run], error) {
+func (c *Coordinator) ListRunPage(ctx context.Context, filter RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error) {
+	if filter.SessionID != "" {
+		if _, err := resourceid.ParseSession(filter.SessionID); err != nil {
+			return pagination.Page[run.Run]{}, fmt.Errorf("queries: page Runs: %w", err)
+		}
+	}
 	filter.Statuses = normalizeStatuses(filter.Statuses)
 	filters := []string{
 		filter.SessionID,
 		statusFilter(filter.Statuses),
 		strconv.FormatBool(filter.IncludeDescendants),
 	}
-	beforeCreatedAt, beforeID, err := timeAndIDAnchor(cursor, runPageNamespace, filters)
+	beforeCreatedAt, beforeID, err := timeAndRunIDAnchor(cursor, runPageNamespace, filters)
 	if err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
-	size, err := pagination.Limit(limit, runPageLimit)
+	size, err := limit.Resolve(runPageLimit)
 	if err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
@@ -373,7 +392,7 @@ func (c *Coordinator) ListRunPage(ctx context.Context, filter RunPageFilter, cur
 	}
 	return pagination.PageOf(rows, size, runPageNamespace, filters, func(run run.Run) []string {
 		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID()}
-	}), nil
+	})
 }
 
 // normalizeStatuses puts a status set in one canonical order and drops repeats, so
@@ -418,13 +437,23 @@ func statusFilter(statuses []run.Status) string {
 //
 // rootRunID must name a root. A child id is [transcript.ErrNotRoot], because the
 // set it belongs to exists — under the root — and an empty page would say otherwise.
-func (c *Coordinator) ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit int) (pagination.Page[runs.Pending], error) {
+func (c *Coordinator) ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error) {
+	if sessionID != "" {
+		if _, err := resourceid.ParseSession(sessionID); err != nil {
+			return pagination.Page[runs.Pending]{}, fmt.Errorf("queries: page interrupts: %w", err)
+		}
+	}
+	if rootRunID != "" {
+		if _, err := resourceid.ParseRun(rootRunID); err != nil {
+			return pagination.Page[runs.Pending]{}, fmt.Errorf("queries: page interrupts: %w", err)
+		}
+	}
 	filters := []string{sessionID, rootRunID}
-	afterCreatedAt, afterID, err := timeAndIDAnchor(cursor, interruptPageNamespace, filters)
+	afterCreatedAt, afterID, err := timeAndRunIDAnchor(cursor, interruptPageNamespace, filters)
 	if err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
-	size, err := pagination.Limit(limit, interruptPageLimit)
+	size, err := limit.Resolve(interruptPageLimit)
 	if err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
@@ -435,9 +464,12 @@ func (c *Coordinator) ListPendingInterruptPage(ctx context.Context, sessionID, r
 	if err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
-	page := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
+	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
 		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
 	})
+	if err != nil {
+		return pagination.Page[runs.Pending]{}, err
+	}
 	for _, pending := range page.Rows {
 		if gap := pending.Capabilities.MissingFrom(caller); !gap.IsEmpty() {
 			return pagination.Page[runs.Pending]{}, &run.InsufficientCapabilitiesError{RunID: pending.RootRunID, Missing: gap}
@@ -454,6 +486,9 @@ func (c *Coordinator) requireRoot(ctx context.Context, runID string) error {
 	if runID == "" {
 		return nil
 	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return fmt.Errorf("queries: require root: %w", err)
+	}
 	run, found, err := c.runs.Run(ctx, runID)
 	if err != nil || !found {
 		return err
@@ -464,10 +499,12 @@ func (c *Coordinator) requireRoot(ctx context.Context, runID string) error {
 	return nil
 }
 
-// timeAndIDAnchor reads a decoded cursor's (timestamp, id) sort position. The id
-// is what makes the order total: two rows can share a nanosecond, and a
-// timestamp-only bound would then drop one or return it twice.
-func timeAndIDAnchor(cursor, method string, filters []string) (int64, string, error) {
+// timeAndRunIDAnchor reads a decoded cursor's (timestamp, Run identity) sort
+// position. The Run identity is what makes the order total: two rows can share
+// a nanosecond, and a timestamp-only bound would then drop one or return it
+// twice. Both current consumers page Run-owned records, so accepting a generic
+// string here would weaken the identity boundary immediately after decoding.
+func timeAndRunIDAnchor(cursor, method string, filters []string) (int64, string, error) {
 	anchor, err := pagination.Decode(cursor, method, filters)
 	if err != nil {
 		return 0, "", err
@@ -480,6 +517,9 @@ func timeAndIDAnchor(cursor, method string, filters []string) (int64, string, er
 	}
 	stamp, err := strconv.ParseInt(anchor[0], 10, 64)
 	if err != nil {
+		return 0, "", pagination.ErrInvalidCursor
+	}
+	if _, err := resourceid.ParseRun(anchor[1]); err != nil {
 		return 0, "", pagination.ErrInvalidCursor
 	}
 	return stamp, anchor[1], nil

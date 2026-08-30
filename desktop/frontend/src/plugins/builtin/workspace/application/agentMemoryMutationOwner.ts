@@ -1,6 +1,7 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { tupleKey } from "@/lib/tupleKey";
 import type {
   AgentMemoryAddInput,
   AgentMemoryDecision,
@@ -61,7 +62,7 @@ class AgentMemoryMutationGeneration {
   }
 
   add(input: AgentMemoryAddInput): Promise<AgentMemoryEntry> {
-    return this.#run(`add\u0000${input.scope}\u0000${input.cwd ?? ""}\u0000${input.content}`, {
+    return this.#run(tupleKey("add", input.scope, input.cwd ?? "", input.content), {
       execute: () => this.#gateway.add(input),
       commit: (saved) => commitAddedAgentMemory(input, saved),
     });

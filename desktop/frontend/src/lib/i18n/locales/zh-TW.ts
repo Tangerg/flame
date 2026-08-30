@@ -40,6 +40,8 @@ export const zhTW: Record<string, string> = {
   "composer.placeholder": "描述你要做的事，@ 引用檔案或符號",
   "composer.switchModel": "切換模型",
   "composer.switchReasoningEffort": "切換思考強度",
+  "composer.model.search.placeholder": "搜尋模型…",
+  "composer.model.search.empty": "找不到相符的模型",
   "composer.model.contextWindow": "{{tokens}} 上下文",
   "composer.model.maxInput": "最大輸入 {{tokens}}",
   "composer.model.maxOutput": "最大輸出 {{tokens}}",
@@ -246,7 +248,7 @@ export const zhTW: Record<string, string> = {
   "composer.project.add": "新增專案",
   "composer.project.required": "選擇專案後繼續",
   "providers.setup.title": "接入一個模型 provider",
-  "providers.setup.sub": "新增 API key 即可開始對話 —— agent 需要一個模型 provider 才能運作。",
+  "providers.setup.sub": "設定模型 provider 即可開始對話 —— 是否需要驗證由 provider 自身決定。",
   "providers.setup.action": "前往設定 provider",
 
   "settings.title": "設定",
@@ -287,6 +289,7 @@ export const zhTW: Record<string, string> = {
   "providers.baseUrl.placeholder": "Base URL",
   "providers.baseUrl.aria": "{{provider}} Base URL",
   "providers.key": "金鑰 {{masked}}",
+  "providers.ready": "就緒",
   "providers.notConfigured": "未設定",
   "providers.save": "儲存",
   "providers.saving": "儲存中…",
@@ -980,7 +983,7 @@ export const zhTW: Record<string, string> = {
   "schedules.preset.daily": "每天上午 9 點",
   "schedules.preset.weekdays": "平日上午 9 點",
   "schedules.preset.weekly": "每週一",
-  "mcp.import.hint": '貼上一段 Claude Desktop 設定區塊 —— 在 "mcpServers" 下的一個或多個伺服器。',
+  "mcp.import.hint": '貼上一段 MCP 用戶端設定區塊 —— 在 "mcpServers" 下的一個或多個伺服器。',
 
   "rpcError.session_has_active_run": "該工作階段已有一個進行中的執行 —— 請先介入、回應或取消它。",
 
@@ -1009,7 +1012,7 @@ export const zhTW: Record<string, string> = {
   "rpcError.mcp_authorization_failed": "登入未完成，請重試。",
   "rpcError.mcp_authorization_attempt_not_found": "這次登入嘗試已過期，請重新開始。",
   "rpcError.mcp_dial_failed": "連不上這個伺服器 —— 檢查指令或 URL 後重試。",
-  "rpcError.provider_not_configured": "請先填寫 API key。",
+  "rpcError.provider_not_configured": "請先完成 provider 設定。",
   "rpcError.provider_test_failed": "供應方連不上，或拒絕了這次測試請求。",
   "session.error.create": "無法建立工作階段。",
   "session.error.chooseWorkingDirectory": "無法開啟資料夾選擇器。",

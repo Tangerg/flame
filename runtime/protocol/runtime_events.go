@@ -119,6 +119,12 @@ type RuntimeEventNotification struct {
 	Event RuntimeEvent `json:"event"`
 }
 
+// MaximumRuntimeEventSequence is the largest connection-local sequence that
+// remains an exact integer after JSON decoding in JavaScript. A subscription ends
+// before it would exceed this value; imprecise sequence identities would make gap
+// detection lie to the Desktop client.
+const MaximumRuntimeEventSequence = MaximumExactJSONInteger
+
 // RuntimeEvent is one change signal (§7.3): a flat tag-discriminated struct whose
 // optional fields say WHICH resources moved.
 //
@@ -129,7 +135,8 @@ type RuntimeEventNotification struct {
 type RuntimeEvent struct {
 	Type RuntimeEventType `json:"type"`
 	// Sequence is monotonic per subscription, so a client can tell it missed frames
-	// even when it cannot tell which.
+	// even when it cannot tell which. It never exceeds
+	// MaximumRuntimeEventSequence and never wraps within a subscription.
 	Sequence uint64 `json:"sequence"`
 
 	// files.changed

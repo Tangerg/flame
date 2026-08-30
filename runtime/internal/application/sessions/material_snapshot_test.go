@@ -140,13 +140,16 @@ func TestMaterialSnapshotRejectsRunningItemOwnedByTerminalRun(t *testing.T) {
 
 func TestMaterialSnapshotRejectsGoalFromAnotherSession(t *testing.T) {
 	snapshot := validMaterialSnapshot()
-	snapshot.Goal = &goal.Goal{
-		SessionID: "ses_other", Objective: "wrong owner", Status: goal.StatusActive,
-		IncarnationID: "goal_other", Revision: 1,
-		CreatedAt: snapshot.Runs[0].CreatedAt(), UpdatedAt: snapshot.Runs[0].CreatedAt(),
+	foreign, err := goal.New(
+		"ses_other", "wrong owner", runfixture.Selection(), goal.UnlimitedBudget(), run.Capabilities{},
+		"goal_other", snapshot.Runs[0].CreatedAt(),
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
+	snapshot.Goal = &foreign
 
-	err := snapshot.Validate()
+	err = snapshot.Validate()
 	if err == nil || !strings.Contains(err.Error(), "Goal belongs to Session \"ses_other\"") {
 		t.Fatalf("Validate() error = %v, want foreign Goal rejected", err)
 	}

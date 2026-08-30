@@ -19,6 +19,8 @@ import (
 
 const modelCallsBeforeMidRunCompaction = 12
 
+const longContextCompactionSummary = "## Goal\nKeep the long Run stable.\n\n## Progress\nTool rounds completed."
+
 func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
@@ -36,7 +38,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 	cfg := ComposeConfig(
 		config.Settings{Provider: "anthropic", Model: "claude-test"},
 		stores,
-		client,
+		testChatResolver(client),
 		stores.Providers,
 		NewHookResolver(stores.DataDirectory, stores.Trust),
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
@@ -79,8 +81,8 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 		finished.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("Run = %+v, want completed", finished)
 	}
-	if !eventsContainCompaction(events) {
-		t.Fatalf("Run events contain no mid-run compaction boundary: %+v", events)
+	if summary, found := compactionSummaryFromEvents(events); !found || summary != longContextCompactionSummary {
+		t.Fatalf("Run compaction summary = %q/%t, want %q", summary, found, longContextCompactionSummary)
 	}
 	second, secondSequence, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: session.ID,
@@ -142,7 +144,7 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 	if isCompactionRequest(request) {
 		l.summaryCalls++
 		l.summaryAtMainCalls = append(l.summaryAtMainCalls, l.mainCalls)
-		return completedTextResponse("## Goal\nKeep the long Run stable.\n\n## Progress\nTool rounds completed."), nil
+		return completedTextResponse(longContextCompactionSummary), nil
 	}
 	l.mainCalls++
 	if l.mainCalls <= modelCallsBeforeMidRunCompaction {
@@ -212,11 +214,11 @@ func completedTextResponse(text string) *chat.Response {
 	}}
 }
 
-func eventsContainCompaction(events []protocol.RunEvent) bool {
+func compactionSummaryFromEvents(events []protocol.RunEvent) (string, bool) {
 	for _, event := range events {
 		if event.Event.Item != nil && event.Event.Item.Type == protocol.ItemTypeCompaction {
-			return true
+			return event.Event.Item.Summary, true
 		}
 	}
-	return false
+	return "", false
 }

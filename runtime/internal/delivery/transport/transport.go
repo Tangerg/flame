@@ -69,7 +69,8 @@ func DecodeMessage(encoded []byte) (Message, error) {
 func validateUniqueJSONMembers(encoded []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()
-	if _, err := validateUniqueJSONValue(decoder, true); err != nil {
+	parser := uniqueJSONParser{decoder: decoder}
+	if _, err := parser.value(true); err != nil {
 		return err
 	}
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
@@ -92,8 +93,12 @@ const (
 	jsonArray
 )
 
-func validateUniqueJSONValue(decoder *json.Decoder, envelope bool) (jsonValueKind, error) {
-	token, err := decoder.Token()
+type uniqueJSONParser struct {
+	decoder *json.Decoder
+}
+
+func (parser uniqueJSONParser) value(envelope bool) (jsonValueKind, error) {
+	token, err := parser.decoder.Token()
 	if err != nil {
 		return jsonNull, err
 	}
@@ -102,94 +107,134 @@ func validateUniqueJSONValue(decoder *json.Decoder, envelope bool) (jsonValueKin
 	}
 	delimiter, isDelimiter := token.(json.Delim)
 	if !isDelimiter {
-		switch token.(type) {
-		case string:
-			return jsonString, nil
-		case json.Number:
-			return jsonNumber, nil
-		case bool:
-			return jsonBoolean, nil
-		default:
-			return jsonNull, fmt.Errorf("unexpected JSON scalar %T", token)
-		}
+		return jsonScalarKind(token)
 	}
-
 	switch delimiter {
 	case '{':
-		members := make(map[string]struct{})
-		for decoder.More() {
-			memberToken, err := decoder.Token()
-			if err != nil {
-				return jsonObject, err
-			}
-			member, ok := memberToken.(string)
-			if !ok {
-				return jsonObject, errors.New("JSON object member name is not a string")
-			}
-			if _, exists := members[member]; exists {
-				return jsonObject, fmt.Errorf("duplicate JSON member %q", member)
-			}
-			members[member] = struct{}{}
-			valueKind, err := validateUniqueJSONValue(decoder, false)
-			if err != nil {
-				return jsonObject, err
-			}
-			// Flame deliberately narrows every wire message id to a string.
-			// Enforce that at the wire owner before SDK decoding: the SDK
-			// collapses null into an omitted id and converts numbers through
-			// float64/int64, which can truncate fractions, lose large integers,
-			// or saturate out-of-range values. Any such coercion could associate
-			// a reply with the wrong request.
-			if envelope && member == "id" && valueKind != jsonString {
-				return jsonObject, errors.New(
-					"JSON-RPC id must be a string; omit id for a notification",
-				)
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil {
-			return jsonObject, err
-		}
-		if closing != json.Delim('}') {
-			return jsonObject, errors.New("JSON object is not closed")
-		}
-		if envelope {
-			if err := validateJSONRPCEnvelopeMembers(members); err != nil {
-				return jsonObject, err
-			}
-		}
-		return jsonObject, nil
+		return parser.object(envelope)
 	case '[':
-		for decoder.More() {
-			if _, err := validateUniqueJSONValue(decoder, false); err != nil {
-				return jsonArray, err
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil {
-			return jsonArray, err
-		}
-		if closing != json.Delim(']') {
-			return jsonArray, errors.New("JSON array is not closed")
-		}
-		return jsonArray, nil
+		return parser.array()
 	default:
 		return jsonNull, fmt.Errorf("unexpected JSON delimiter %q", delimiter)
 	}
 }
 
-func validateJSONRPCEnvelopeMembers(members map[string]struct{}) error {
-	_, hasMethod := members["method"]
-	_, hasResult := members["result"]
-	_, hasError := members["error"]
+func jsonScalarKind(token json.Token) (jsonValueKind, error) {
+	switch token.(type) {
+	case string:
+		return jsonString, nil
+	case json.Number:
+		return jsonNumber, nil
+	case bool:
+		return jsonBoolean, nil
+	default:
+		return jsonNull, fmt.Errorf("unexpected JSON scalar %T", token)
+	}
+}
+
+func (parser uniqueJSONParser) object(envelope bool) (jsonValueKind, error) {
+	members := make(jsonObjectMembers)
+	for parser.decoder.More() {
+		member, err := parser.memberName()
+		if err != nil {
+			return jsonObject, err
+		}
+		if err := members.add(member); err != nil {
+			return jsonObject, err
+		}
+		valueKind, err := parser.value(false)
+		if err != nil {
+			return jsonObject, err
+		}
+		if envelope && member == jsonRPCIDMember && valueKind != jsonString {
+			return jsonObject, errors.New(
+				"JSON-RPC id must be a string; omit id for a notification",
+			)
+		}
+	}
+	if err := parser.close(json.Delim('}'), "JSON object is not closed"); err != nil {
+		return jsonObject, err
+	}
+	if envelope {
+		if err := members.validateEnvelope(); err != nil {
+			return jsonObject, err
+		}
+	}
+	return jsonObject, nil
+}
+
+func (parser uniqueJSONParser) memberName() (string, error) {
+	token, err := parser.decoder.Token()
+	if err != nil {
+		return "", err
+	}
+	member, ok := token.(string)
+	if !ok {
+		return "", errors.New("JSON object member name is not a string")
+	}
+	return member, nil
+}
+
+func (parser uniqueJSONParser) array() (jsonValueKind, error) {
+	for parser.decoder.More() {
+		if _, err := parser.value(false); err != nil {
+			return jsonArray, err
+		}
+	}
+	if err := parser.close(json.Delim(']'), "JSON array is not closed"); err != nil {
+		return jsonArray, err
+	}
+	return jsonArray, nil
+}
+
+func (parser uniqueJSONParser) close(expected json.Delim, message string) error {
+	closing, err := parser.decoder.Token()
+	if err != nil {
+		return err
+	}
+	if closing != expected {
+		return errors.New(message)
+	}
+	return nil
+}
+
+const (
+	jsonRPCVersionMember = "jsonrpc"
+	jsonRPCIDMember      = "id"
+	jsonRPCMethodMember  = "method"
+	jsonRPCParamsMember  = "params"
+	jsonRPCResultMember  = "result"
+	jsonRPCErrorMember   = "error"
+)
+
+type jsonObjectMembers map[string]struct{}
+
+func (members jsonObjectMembers) add(member string) error {
+	if _, exists := members[member]; exists {
+		return fmt.Errorf("duplicate JSON member %q", member)
+	}
+	members[member] = struct{}{}
+	return nil
+}
+
+func (members jsonObjectMembers) has(member string) bool {
+	_, present := members[member]
+	return present
+}
+
+func (members jsonObjectMembers) validateEnvelope() error {
+	hasMethod := members.has(jsonRPCMethodMember)
+	hasResult := members.has(jsonRPCResultMember)
+	hasError := members.has(jsonRPCErrorMember)
 
 	if hasMethod {
-		return rejectUnknownEnvelopeMembers(members, "request", map[string]struct{}{
-			"jsonrpc": {},
-			"id":      {},
-			"method":  {},
-			"params":  {},
-		})
+		return members.rejectUnknown(
+			"request",
+			jsonRPCVersionMember,
+			jsonRPCIDMember,
+			jsonRPCMethodMember,
+			jsonRPCParamsMember,
+		)
 	}
 	if hasResult == hasError {
 		if hasResult {
@@ -197,21 +242,22 @@ func validateJSONRPCEnvelopeMembers(members map[string]struct{}) error {
 		}
 		return errors.New("JSON-RPC message contains neither method, result, nor error")
 	}
-	return rejectUnknownEnvelopeMembers(members, "response", map[string]struct{}{
-		"jsonrpc": {},
-		"id":      {},
-		"result":  {},
-		"error":   {},
-	})
+	return members.rejectUnknown(
+		"response",
+		jsonRPCVersionMember,
+		jsonRPCIDMember,
+		jsonRPCResultMember,
+		jsonRPCErrorMember,
+	)
 }
 
-func rejectUnknownEnvelopeMembers(
-	members map[string]struct{},
-	envelopeKind string,
-	allowed map[string]struct{},
-) error {
+func (members jsonObjectMembers) rejectUnknown(envelopeKind string, allowed ...string) error {
+	allowedMembers := make(map[string]struct{}, len(allowed))
+	for _, member := range allowed {
+		allowedMembers[member] = struct{}{}
+	}
 	for member := range members {
-		if _, ok := allowed[member]; !ok {
+		if _, ok := allowedMembers[member]; !ok {
 			return fmt.Errorf("unknown JSON-RPC %s member %q", envelopeKind, member)
 		}
 	}

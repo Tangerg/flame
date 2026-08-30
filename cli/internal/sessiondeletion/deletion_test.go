@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/workbench"
@@ -30,22 +31,23 @@ func (d *deletionRuntimeStub) DeleteSession(context.Context, agent.DeleteSession
 }
 
 func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := agent.DeleteSession{
 		CommandID: "cli_77777777777777777777777777777777", SessionID: "ses_1",
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: time.Now().UTC().Add(time.Hour),
-	}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(
+		request, protectedGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
+	); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 	runtime := new(deletionRuntimeStub)
-	err = Recover(t.Context(), runtime, store, ReplayWindow{
-		Namespace: "runtime-b", Retention: time.Hour,
-	}, retry.Backoff{})
+	err = Recover(
+		t.Context(), runtime, store,
+		replayPolicy(t, "runtime-b", time.Hour, time.Now), retry.ImmediateBackoff(),
+	)
 	if err == nil {
 		t.Fatal("cross-store deletion recovery unexpectedly succeeded")
 	}
@@ -59,12 +61,9 @@ func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
 
 func TestDeletionReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	deadline := time.Date(2026, 8, 13, 10, 1, 0, 0, time.UTC)
-	guard := workbench.ReplayGuard{Namespace: "runtime-a", Until: deadline}
-	window := ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Minute,
-		Now: func() time.Time { return deadline },
-	}
-	if replaySafe(guard, window) {
+	guard := protectedGuard(t, "runtime-a", deadline)
+	policy := replayPolicy(t, "runtime-a", time.Minute, func() time.Time { return deadline })
+	if policy.Replayable(guard) {
 		t.Fatal("deletion replay remained safe at its retention deadline")
 	}
 }
@@ -75,7 +74,7 @@ func (d *deletionRuntimeStub) GetSession(context.Context, string) (agent.Session
 }
 
 func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,15 +82,14 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 		CommandID: "cli_99999999999999999999999999999999", SessionID: "ses_1",
 	}
 	deadline := time.Now().UTC().Add(-time.Second)
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: deadline,
-	}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(request, protectedGuard(t, "runtime-a", deadline)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
-	err = Recover(t.Context(), runtime, store, ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Hour,
-	}, retry.Backoff{})
+	err = Recover(
+		t.Context(), runtime, store,
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,22 +102,23 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 }
 
 func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := agent.DeleteSession{
 		CommandID: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SessionID: "ses_1",
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: time.Now().UTC().Add(-time.Second),
-	}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(
+		request, protectedGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
+	); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
-	result, err := Execute(t.Context(), runtime, store, request.SessionID, ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Hour,
-	}, retry.Backoff{})
+	result, err := Execute(
+		t.Context(), runtime, store, request.SessionID,
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+	)
 	if err != nil || result.Outcome != mutation.Confirmed || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
 	}
@@ -129,22 +128,23 @@ func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) 
 }
 
 func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := agent.DeleteSession{
 		CommandID: "cli_abababababababababababababababab", SessionID: "ses_1",
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: time.Now().UTC().Add(-time.Second),
-	}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(
+		request, protectedGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
+	); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 	runtime := new(deletionRuntimeStub)
-	result, err := Execute(t.Context(), runtime, store, request.SessionID, ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Hour,
-	}, retry.Backoff{})
+	result, err := Execute(
+		t.Context(), runtime, store, request.SessionID,
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+	)
 	if err != nil || result.Outcome != mutation.Rejected || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
 	}
@@ -159,10 +159,11 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 		CommandID: "cli_66666666666666666666666666666666", SessionID: "ses_1",
 	}
 	deadline := time.Now().UTC().Add(time.Hour)
-	window := ReplayWindow{Namespace: "runtime-a", Retention: time.Hour}
-	outcome, err := Settle(t.Context(), runtime, request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: deadline,
-	}, window, retry.Backoff{})
+	policy := replayPolicy(t, "runtime-a", time.Hour, time.Now)
+	outcome, err := Settle(
+		t.Context(), runtime, request, protectedGuard(t, "runtime-a", deadline),
+		policy, retry.ImmediateBackoff(),
+	)
 	if outcome != mutation.Unknown || !errors.Is(err, agent.ErrCommandStoreMismatch) {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", outcome, err)
 	}
@@ -172,7 +173,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 }
 
 func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,21 +181,17 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 	request := agent.DeleteSession{
 		CommandID: "cli_88888888888888888888888888888888", SessionID: "ses_1",
 	}
-	if err := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: deadline,
-	}); err != nil {
+	if err := store.StageSessionDeletion(request, protectedGuard(t, "runtime-a", deadline)); err != nil {
 		t.Fatal(err)
 	}
 	now := deadline.Add(-time.Nanosecond)
-	window := ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Minute, Now: func() time.Time { return now },
-	}
+	policy := replayPolicy(t, "runtime-a", time.Minute, func() time.Time { return now })
 	runtime := &deletionRuntimeStub{deleteErr: agent.ErrDisconnected}
 	runtime.afterDelete = func() {
 		now = deadline
 		runtime.deleteErr = nil
 	}
-	if err := Recover(t.Context(), runtime, store, window, retry.Backoff{}); err != nil {
+	if err := Recover(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {
@@ -206,7 +203,7 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 }
 
 func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
-	store, err := workbench.Open(t.TempDir(), workbench.Config{})
+	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,21 +211,17 @@ func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
 	request := agent.DeleteSession{
 		CommandID: "cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", SessionID: "ses_1",
 	}
-	if err := store.StageSessionDeletion(request, workbench.ReplayGuard{
-		Namespace: "runtime-a", Until: deadline,
-	}); err != nil {
+	if err := store.StageSessionDeletion(request, protectedGuard(t, "runtime-a", deadline)); err != nil {
 		t.Fatal(err)
 	}
 	now := deadline.Add(-time.Nanosecond)
-	window := ReplayWindow{
-		Namespace: "runtime-a", Retention: time.Minute, Now: func() time.Time { return now },
-	}
+	policy := replayPolicy(t, "runtime-a", time.Minute, func() time.Time { return now })
 	runtime := &deletionRuntimeStub{deleteErr: agent.ErrDisconnected}
 	runtime.afterDelete = func() {
 		now = deadline
 		runtime.readErr = agent.ErrSessionNotFound
 	}
-	if err := Recover(t.Context(), runtime, store, window, retry.Backoff{}); err != nil {
+	if err := Recover(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {
@@ -237,4 +230,31 @@ func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
 	if pending, found := store.PendingSessionDeletion(request.SessionID); found {
 		t.Fatalf("converged deletion remains durable: %+v", pending)
 	}
+}
+
+func protectedGuard(t *testing.T, namespace string, until time.Time) commandreplay.Guard {
+	t.Helper()
+	guard, err := commandreplay.NewProtectedGuard(namespace, until)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return guard
+}
+
+func replayPolicy(
+	t *testing.T,
+	namespace string,
+	retention time.Duration,
+	now func() time.Time,
+) commandreplay.Policy {
+	t.Helper()
+	capability, err := commandreplay.NewCapability(namespace, retention)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := commandreplay.NewPolicyWithClock(capability, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
 }

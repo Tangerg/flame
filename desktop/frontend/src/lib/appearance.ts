@@ -88,7 +88,7 @@ const DEFAULT_MOTION: VisualStyleMotion = {
 let scheme: Scheme = "dark";
 let scale = 1;
 let motion = DEFAULT_MOTION;
-let tokenRevision = 0;
+let tokenRevision: object = {};
 const listeners = new Set<() => void>();
 
 function announce(): void {
@@ -111,7 +111,7 @@ export function publishScheme(next: Scheme): void {
  * replacement rather than guessing which preferences affect computed colours.
  */
 export function publishTokens(): void {
-  tokenRevision += 1;
+  tokenRevision = {};
   announce();
 }
 
@@ -151,6 +151,6 @@ export function useScheme(): Scheme {
 
 /** An opaque, monotonic stamp of the last token repaint — an invalidation key for
  *  anything that reads computed token values. */
-export function useTokenRevision(): number {
+export function useTokenRevision(): object {
   return useSyncExternalStore(subscribe, () => tokenRevision);
 }

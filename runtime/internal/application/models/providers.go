@@ -16,20 +16,28 @@ import (
 // configuration. It intentionally carries only the redacted credential view.
 type ProviderSummary struct {
 	ID                    string
-	BaseURL               string
-	APIKeyMasked          string
-	KeySource             provider.KeySource
+	BaseURL               *string
+	Credential            *ProviderCredentialSummary
+	Configured            bool
+	RequiresAPIKey        bool
 	RequiresBaseURL       bool
 	EmbeddingCapable      bool
-	DefaultEmbeddingModel string
+	DefaultEmbeddingModel *string
 }
 
-// UpdateProviderCommand is an atomic partial change to provider configuration.
-// Nil fields preserve the stored value; a non-nil empty string clears it.
+// ProviderCredentialSummary is the redacted configured-credential state.
+// Absence is represented by a nil summary, never by an empty mask/source.
+type ProviderCredentialSummary struct {
+	Masked string
+	Source provider.KeySource
+}
+
+// UpdateProviderCommand carries already-validated domain changes. External
+// values are parsed before this boundary; this use case owns provider policy.
 type UpdateProviderCommand struct {
 	ID      string
-	APIKey  *string
-	BaseURL *string
+	APIKey  provider.Change[provider.APIKey]
+	BaseURL provider.Change[provider.BaseURL]
 }
 
 // ProviderTestOutcome is the complete client-relevant result of a live
@@ -56,12 +64,12 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	}
 	byID := make(map[string]provider.Provider, len(entries))
 	for _, entry := range entries {
-		byID[entry.ID] = entry
+		byID[entry.ID()] = entry
 	}
 	metadata := c.supportedProviders()
 	out := make([]ProviderSummary, 0, len(metadata))
 	for _, meta := range metadata {
-		out = append(out, providerSummary(meta, byID[meta.ID]))
+		out = append(out, providerSummary(meta, byID[meta.ID()]))
 	}
 	return out, nil
 }
@@ -80,19 +88,21 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 	if patch.Empty() {
 		return ProviderSummary{}, fmt.Errorf("%w: provider %q has no changes", ErrProviderUpdateRequired, cmd.ID)
 	}
-	if meta.RequiresBaseURL {
-		if cmd.BaseURL != nil {
-			if *cmd.BaseURL == "" {
-				return ProviderSummary{}, fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, cmd.ID)
-			}
-		} else {
-			existing, _, getErr := c.providers.Get(ctx, cmd.ID)
-			if getErr != nil {
-				return ProviderSummary{}, getErr
-			}
-			if existing.BaseURL == "" {
-				return ProviderSummary{}, fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, cmd.ID)
-			}
+	if meta.RequiresConfiguredEndpoint() {
+		existing, found, getErr := c.providers.Get(ctx, cmd.ID)
+		if getErr != nil {
+			return ProviderSummary{}, getErr
+		}
+		currentBaseURL := provider.BaseURL{}
+		if found {
+			currentBaseURL, _ = existing.BaseURL()
+		}
+		finalBaseURL, resolveErr := cmd.BaseURL.Resolve(currentBaseURL)
+		if resolveErr != nil {
+			return ProviderSummary{}, resolveErr
+		}
+		if !finalBaseURL.Present() {
+			return ProviderSummary{}, fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, cmd.ID)
 		}
 	}
 	entry, err := c.providers.Update(ctx, cmd.ID, patch)
@@ -107,23 +117,32 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 // request. Its result is deliberately a stable use-case outcome; integration
 // diagnostics never become caller-visible data.
 func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTestOutcome, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	_, entry, err := c.configuredProvider(ctx, id)
 	if err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return "", contextErr
+		}
 		if errors.Is(err, ErrProviderUnsupported) {
 			return "", err
 		}
 		if errors.Is(err, ErrProviderUnconfigured) {
 			return ProviderTestNotConfigured, nil
 		}
-		trace.SpanFromContext(ctx).RecordError(err)
-		return ProviderTestFailed, nil
+		return "", err
 	}
 	if c.prober == nil {
 		trace.SpanFromContext(ctx).RecordError(errors.New("models: provider probe is unavailable"))
 		return ProviderTestFailed, nil
 	}
-	if err := c.prober.Probe(ctx, entry); err != nil {
-		trace.SpanFromContext(ctx).RecordError(err)
+	probeErr := c.prober.Probe(ctx, entry)
+	if contextErr := ctx.Err(); contextErr != nil {
+		return "", contextErr
+	}
+	if probeErr != nil {
+		trace.SpanFromContext(ctx).RecordError(probeErr)
 		return ProviderTestFailed, nil
 	}
 	return ProviderTestSucceeded, nil
@@ -133,22 +152,37 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 // model sets prefer a successful non-empty remote list; every other outcome
 // falls back to the static catalog, so restart behavior never depends on an
 // in-memory probe result.
-func (c *Coordinator) ListModels(ctx context.Context, providerID string) []Model {
+func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Model, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	meta, found := c.providerMetadata(providerID)
-	if found && meta.ProbeModels {
-		if ids, err := c.listRemoteModels(ctx, providerID); err == nil && len(ids) > 0 {
+	if found && meta.DiscoversModelsAtEndpoint() && c.lister != nil {
+		entry, err := c.modelDiscoveryProvider(ctx, providerID)
+		if err != nil {
+			return nil, err
+		}
+		ids, probeErr := c.lister.ListModels(ctx, entry)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if probeErr == nil && len(ids) > 0 {
 			out := make([]Model, 0, len(ids))
 			for _, id := range ids {
 				if model, ok := c.lookupModel(providerID, id); ok {
 					out = append(out, model)
 					continue
 				}
-				out = append(out, Model{ID: id, Provider: providerID})
+				model, modelErr := NewModel(providerID, id, nil)
+				if modelErr != nil {
+					return c.catalogModels(providerID), nil
+				}
+				out = append(out, model)
 			}
-			return out
+			return out, nil
 		}
 	}
-	return c.catalogModels(providerID)
+	return c.catalogModels(providerID), nil
 }
 
 func (c *Coordinator) supportedProviders() []ProviderMetadata {
@@ -185,27 +219,33 @@ func (c *Coordinator) configuredProvider(ctx context.Context, id string) (Provid
 	if err != nil {
 		return ProviderMetadata{}, provider.Provider{}, err
 	}
-	if !ok || !entry.Enabled() {
+	if !ok {
+		entry, err = provider.New(id)
+		if err != nil {
+			return ProviderMetadata{}, provider.Provider{}, err
+		}
+	}
+	if !meta.ConfigurationSatisfied(entry) {
 		return ProviderMetadata{}, provider.Provider{}, fmt.Errorf("%w: provider %q", ErrProviderUnconfigured, id)
 	}
 	return meta, entry, nil
 }
 
-func (c *Coordinator) listRemoteModels(ctx context.Context, providerID string) ([]string, error) {
-	if c.lister == nil {
-		return nil, nil
+func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID string) (provider.Provider, error) {
+	entry, err := provider.New(providerID)
+	if err != nil {
+		return provider.Provider{}, err
 	}
-	entry := provider.Provider{ID: providerID}
 	if c.providers != nil {
-		configured, ok, err := c.providers.Get(ctx, providerID)
-		if err != nil {
-			return nil, err
+		configured, ok, getErr := c.providers.Get(ctx, providerID)
+		if getErr != nil {
+			return provider.Provider{}, getErr
 		}
 		if ok {
 			entry = configured
 		}
 	}
-	return c.lister.ListModels(ctx, entry)
+	return entry, nil
 }
 
 func (c *Coordinator) catalogModels(providerID string) []Model {
@@ -223,13 +263,32 @@ func (c *Coordinator) lookupModel(providerID, modelID string) (Model, bool) {
 }
 
 func providerSummary(meta ProviderMetadata, entry provider.Provider) ProviderSummary {
+	var baseURL *string
+	if configuredBaseURL, present := entry.BaseURL(); present {
+		value := configuredBaseURL.String()
+		baseURL = &value
+	}
+	var credentialSummary *ProviderCredentialSummary
+	if credential, configured := entry.Credential(); configured {
+		key, _ := credential.APIKey()
+		source, _ := credential.Source()
+		credentialSummary = &ProviderCredentialSummary{
+			Masked: secrets.Mask(key.Reveal()),
+			Source: source,
+		}
+	}
+	var defaultEmbeddingModel *string
+	if value, present := meta.Embedding().DefaultModel(); present {
+		defaultEmbeddingModel = &value
+	}
 	return ProviderSummary{
-		ID:                    meta.ID,
-		BaseURL:               entry.BaseURL,
-		APIKeyMasked:          secrets.Mask(entry.APIKey),
-		KeySource:             entry.KeySource,
-		RequiresBaseURL:       meta.RequiresBaseURL,
-		EmbeddingCapable:      meta.EmbeddingCapable,
-		DefaultEmbeddingModel: meta.DefaultEmbeddingModel,
+		ID:                    meta.ID(),
+		BaseURL:               baseURL,
+		Credential:            credentialSummary,
+		Configured:            meta.ConfigurationSatisfied(entry),
+		RequiresAPIKey:        meta.RequiresAPIKey(),
+		RequiresBaseURL:       meta.RequiresConfiguredEndpoint(),
+		EmbeddingCapable:      meta.Embedding().Supported(),
+		DefaultEmbeddingModel: defaultEmbeddingModel,
 	}
 }

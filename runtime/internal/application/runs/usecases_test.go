@@ -532,14 +532,15 @@ func TestWaitSessionStartableCancellationReleasesDurableChangeObservation(t *tes
 		activeObserved: make(chan struct{}),
 	}
 	c := newUseCaseCoordinator(&fakeExecutor{}, &fakeExecutionPorts{}, sessions, &fakeEffects{})
-	ctx, cancel := context.WithCancel(t.Context())
+	want := errors.New("goal owner stopped waiting")
+	ctx, cancel := context.WithCancelCause(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- c.WaitSessionStartable(ctx, "ses_1") }()
 
 	<-sessions.activeObserved
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("WaitSessionStartable error = %v, want context cancellation", err)
+	cancel(want)
+	if err := <-done; !errors.Is(err, want) {
+		t.Fatalf("WaitSessionStartable error = %v, want owner cause", err)
 	}
 	if got := len(c.publications.changes.sessions); got != 0 {
 		t.Fatalf("retained canceled session change observations = %d, want 0", got)
@@ -570,10 +571,15 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	control.activateCheck = func() { activatedAfterOpening = effects.opening().Admit != nil }
 	c := newUseCaseCoordinator(exec, control, sessions, effects)
 
+	wantLimits := runfixture.MustLimits(run.LimitValues{
+		MaxTotalTokens: runfixture.Pointer[int64](16_384),
+		MaxSteps:       runfixture.Pointer(12),
+		MaxBudgetUSD:   runfixture.Pointer(3.5),
+	})
 	result, err := c.Start(context.Background(), StartCommand{
 		SessionID:      "ses_1",
 		ModelSelection: mustUseCaseSelection("provider", "model"),
-		Limits:         run.Limits{MaxTotalTokens: 16_384, MaxSteps: 12, MaxBudgetUSD: 3.5},
+		Limits:         wantLimits,
 		Capabilities:   run.Capabilities{ChildRuns: true},
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
@@ -587,7 +593,6 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	if control.started.SessionID != "ses_1" || control.started.CWD != "/work" || control.started.WorkspaceCWD != "/work" {
 		t.Fatalf("started execution = %+v", control.started)
 	}
-	wantLimits := run.Limits{MaxTotalTokens: 16_384, MaxSteps: 12, MaxBudgetUSD: 3.5}
 	if control.started.Limits != wantLimits {
 		t.Fatalf("executor limits = %+v, want %+v", control.started.Limits, wantLimits)
 	}
@@ -597,7 +602,7 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	if !control.activated || !activatedAfterOpening {
 		t.Fatalf("activated=%v activatedAfterOpening=%v", control.activated, activatedAfterOpening)
 	}
-	if opening := effects.opening(); opening.CommitID == "" || opening.Admit == nil || opening.Admit.RunID != "run_new" {
+	if opening := effects.opening(); opening.CommitID.IsZero() || opening.Admit == nil || opening.Admit.RunID != "run_new" {
 		t.Fatalf("opening = %+v, want fresh run admission", opening)
 	} else if opening.Admit.Limits != wantLimits {
 		t.Fatalf("opening limits = %+v, want %+v", opening.Admit.Limits, wantLimits)
@@ -742,7 +747,7 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	coordinator := newUseCaseCoordinator(executor, control, sessions, effects)
 
 	result, err := coordinator.Start(t.Context(), StartCommand{
-		RunID: "run_new", NewSessionID: "ses_1", ScheduleFiring: "fire_1",
+		RunID: "run_new", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000",
 		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
 		ModelSelection: mustUseCaseSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
@@ -916,8 +921,8 @@ func TestStartRejectsPartialScheduledIdentityBeforeSideEffects(t *testing.T) {
 	for _, command := range []StartCommand{
 		{RunID: "run_1"},
 		{NewSessionID: "ses_1"},
-		{ScheduleFiring: "fire_1"},
-		{RunID: "run_1", NewSessionID: "ses_1", ScheduleFiring: "fire_1", SessionID: "ses_existing"},
+		{ScheduleFiring: "sch_test:1000"},
+		{RunID: "run_1", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000", SessionID: "ses_existing"},
 	} {
 		t.Run("partial", func(t *testing.T) {
 			exec := &fakeExecutor{}

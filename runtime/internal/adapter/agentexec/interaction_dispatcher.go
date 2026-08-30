@@ -15,15 +15,18 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -218,7 +221,11 @@ func (o *observedInteractionModel) begin(
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", err
 	}
-	callID := modelInvocationID(invocation)
+	callIdentity, err := modelInvocationID(invocation)
+	if err != nil {
+		return interaction.ModelInvocation{}, nil, "", err
+	}
+	callID := callIdentity.String()
 	if _, err := o.session.reconcileCompletedDelegateChildren(ctx); err != nil {
 		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)
 	}
@@ -268,16 +275,15 @@ func (o *observedInteractionModel) complete(
 }
 
 type observedInteractionTool struct {
-	inner       toolcontract.Tool
-	session     *interactionSession
-	interpreter InteractionToolInterpreter
-	presenter   InteractionToolPresenter
-	authorizer  InteractionToolAuthorizer
-	hooks       InteractionToolHooks
-	offloader   toolResultOffloader
-	offloadAt   int
-	readTool    string
-	start       runs.RootExecutionStart
+	inner         toolcontract.Tool
+	session       *interactionSession
+	interpreter   InteractionToolInterpreter
+	presenter     InteractionToolPresenter
+	authorizer    InteractionToolAuthorizer
+	hooks         InteractionToolHooks
+	offloader     toolResultOffloader
+	offloadPolicy toolResultOffloadPolicy
+	start         runs.RootExecutionStart
 }
 
 func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
@@ -299,11 +305,18 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
 		return "", errors.New("agentexec: Tool invocation differs from its bound executable")
 	}
+	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
+		return "", fmt.Errorf("agentexec: Tool invocation: %w", err)
+	}
 	arguments, err := tool.ParseArguments(rawArguments)
 	if err != nil {
 		return "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
 	}
-	callID := toolInvocationID(invocation)
+	callIdentity, err := toolInvocationID(invocation)
+	if err != nil {
+		return "", err
+	}
+	callID := callIdentity.String()
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
 	arguments, denied, denialReason, err := o.prepare(ctx, callID, call.Name, arguments)
 	if err != nil {
@@ -704,8 +717,7 @@ func (o *observedInteractionTool) offload(
 	return evictToolResult(
 		ctx,
 		o.offloader,
-		o.offloadAt,
-		o.readTool,
+		o.offloadPolicy,
 		o.start.SessionID,
 		toolName,
 		output,
@@ -718,11 +730,24 @@ func normalizeMutationPaths(paths []string) []string {
 	return slices.Compact(paths)
 }
 
-func modelInvocationID(invocation interaction.ModelInvocation) string {
-	return "model:" + invocation.EffectID().String() + ":" + strconv.FormatUint(uint64(invocation.ModelCallSequence()), 10)
+const (
+	modelInvocationNamespace = "model"
+	toolInvocationNamespace  = "tool"
+)
+
+func modelInvocationID(invocation interaction.ModelInvocation) (executoridentity.EffectID, error) {
+	return modelInvocationIDFrom(invocation.EffectID(), invocation.ModelCallSequence())
 }
 
-func toolInvocationID(invocation interaction.ToolInvocation) string {
+func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (executoridentity.EffectID, error) {
+	digest := sha256.New()
+	_, _ = digest.Write([]byte(effectID.String()))
+	_, _ = digest.Write([]byte{0})
+	_, _ = digest.Write([]byte(strconv.FormatUint(uint64(modelCallSequence), 10)))
+	return parsedInvocationID(modelInvocationNamespace, digest.Sum(nil), modelCallSequence)
+}
+
+func toolInvocationID(invocation interaction.ToolInvocation) (executoridentity.EffectID, error) {
 	return delegatedToolCallID(
 		invocation.Relation(), invocation.ModelCallSequence(), invocation.ToolCallIndex(), invocation.ToolCall(),
 	)
@@ -733,7 +758,7 @@ func delegatedToolCallID(
 	modelCallSequence uint32,
 	toolCallIndex uint32,
 	call corechat.ToolCall,
-) string {
+) (executoridentity.EffectID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(relation.ProcessID().String()))
 	_, _ = digest.Write([]byte{0})
@@ -742,7 +767,13 @@ func delegatedToolCallID(
 	_, _ = digest.Write([]byte(call.ID))
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write([]byte(call.Name))
-	return "tool:" + hex.EncodeToString(digest.Sum(nil)) + ":" + strconv.FormatUint(uint64(toolCallIndex), 10)
+	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), toolCallIndex)
+}
+
+func parsedInvocationID(namespace string, digest []byte, ordinal uint32) (executoridentity.EffectID, error) {
+	return executoridentity.ParseEffect(
+		namespace + ":" + hex.EncodeToString(digest) + ":" + strconv.FormatUint(uint64(ordinal), 10),
+	)
 }
 
 func basicExecutorMember(relation agent.ProcessRelation) runs.ExecutorMember {
@@ -757,6 +788,7 @@ func wrapInteractionTools(
 	manifest toolset.Manifest,
 	session *interactionSession,
 	config InteractionExecutorConfig,
+	offloadPolicy toolResultOffloadPolicy,
 	start runs.RootExecutionStart,
 ) (visible []toolcontract.Tool, deferred []toolcontract.Tool) {
 	wrap := func(values []toolcontract.Tool) []toolcontract.Tool {
@@ -766,8 +798,8 @@ func wrapInteractionTools(
 				inner: executable, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
-				offloadAt: config.ToolResultThreshold, readTool: config.ToolResultReaderName,
-				start: start,
+				offloadPolicy: offloadPolicy,
+				start:         start,
 			}
 		}
 		return wrapped
@@ -831,8 +863,7 @@ func isNilInteractionCapability(value any) bool {
 
 func modelUsage(
 	response *corechat.Response,
-	provider string,
-	fallbackModel string,
+	selection modelref.Selection,
 	pricing accounting.Pricing,
 ) accounting.ModelUsage {
 	var metadata corechat.ResponseMetadata
@@ -841,14 +872,11 @@ func modelUsage(
 	}
 	servedModel := metadata.Model
 	if servedModel == "" {
-		servedModel = fallbackModel
-	}
-	if servedModel == "" {
-		servedModel = "unknown"
+		servedModel = selection.Model()
 	}
 	cost := 0.0
 	if pricing != nil {
-		cost = pricing(provider, servedModel, &metadata.Usage)
+		cost = pricing(selection.Provider(), servedModel, &metadata.Usage)
 	}
 	return accounting.ModelUsage{
 		Model: servedModel, TokenUsage: accountingTokenUsage(metadata.Usage), CostUSD: cost, Calls: 1,

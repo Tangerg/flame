@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // RollbackPlan is the atomic durable command for truncating a session back to a
@@ -88,12 +89,13 @@ func (s SessionReplacement) Validate() error {
 		return fmt.Errorf("sessions: invalid Session replacement: %w", err)
 	}
 	if s.expectedRevision == 0 {
-		if s.state.Revision() != 1 {
-			return fmt.Errorf("sessions: initial Session revision is %d, want 1", s.state.Revision())
+		firstRevision := exactint.First().Value()
+		if s.state.Revision() != firstRevision {
+			return fmt.Errorf("sessions: initial Session revision is %d, want %d", s.state.Revision(), firstRevision)
 		}
 		return nil
 	}
-	if s.expectedRevision == ^uint64(0) || s.state.Revision() != s.expectedRevision+1 {
+	if err := exactint.Follows(s.expectedRevision, s.state.Revision()); err != nil {
 		return fmt.Errorf(
 			"sessions: Session replacement revision %d does not follow expected revision %d",
 			s.state.Revision(), s.expectedRevision,
@@ -238,8 +240,8 @@ func (t TerminalPlan) Validate() error {
 	if !slices.Equal(actualOrder, tree.Postorder()) {
 		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
 	}
-	if strings.TrimSpace(t.CheckpointRootID) == "" || t.CheckpointRootID != strings.TrimSpace(t.CheckpointRootID) {
-		return errors.New("sessions: terminal plan checkpoint root ID must be non-empty without surrounding whitespace")
+	if _, err := executoridentity.ParseMember(t.CheckpointRootID); err != nil {
+		return fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}
 	seenItems := make(map[string]struct{}, len(t.Items))
 	for index, item := range t.Items {

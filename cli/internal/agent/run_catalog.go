@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 // RunQuery selects one cursor page in runtime order, newest first. An empty
@@ -15,12 +17,17 @@ type RunQuery struct {
 	Statuses           []RunStatus
 	IncludeDescendants bool
 	Cursor             string
-	Limit              int
+	PageSize           PageSize
 }
 
 func (r RunQuery) Validate() error {
-	if r.Limit < 0 {
-		return errors.New("run query: limit cannot be negative")
+	if r.SessionID != "" {
+		if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+			return fmt.Errorf("run query: %w", err)
+		}
+	}
+	if _, err := r.PageSize.Rows(); err != nil {
+		return fmt.Errorf("run query: %w", err)
 	}
 	seen := make(map[RunStatus]struct{}, len(r.Statuses))
 	for _, status := range r.Statuses {
@@ -84,7 +91,7 @@ func (r RunCancellation) Validate() error {
 		if !r.Canceled.Equal(r.Root) {
 			problems = append(problems, errors.New("root cancellation carries two different root projections"))
 		}
-	} else if r.Canceled.Lineage.RootRunID != r.Root.ID {
+	} else if r.Canceled.Lineage.RootRunID() != r.Root.ID {
 		problems = append(problems, errors.New("canceled child does not belong to the returned root"))
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -97,8 +104,8 @@ func (r RunCancellation) ValidateTarget(runID string) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
-	if strings.TrimSpace(runID) == "" {
-		return errors.New("run cancellation: target run id is empty")
+	if _, err := runidentity.ParseRun(runID); err != nil {
+		return fmt.Errorf("run cancellation: %w", err)
 	}
 	if r.Canceled.ID != runID {
 		return fmt.Errorf("run cancellation: returned run %q, want %q", r.Canceled.ID, runID)

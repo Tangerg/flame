@@ -78,7 +78,11 @@ func TestNonReplayablePayloadsDoNotConsumeReplayBudget(t *testing.T) {
 	if got := (SegmentProgressed{Progress: RunProgress{Activity: strings.Repeat("x", 1024)}}).retainedBytes(); got != 0 {
 		t.Fatalf("SegmentProgressed retention charge = %d, want 0", got)
 	}
-	if got := (ItemChanged{Delta: ItemDelta{Text: strings.Repeat("x", 1024)}}).retainedBytes(); got != 0 {
+	delta, err := newReasoningItemDelta(strings.Repeat("x", 1024))
+	if err != nil {
+		t.Fatalf("newReasoningItemDelta: %v", err)
+	}
+	if got := (ItemChanged{Delta: delta}).retainedBytes(); got != 0 {
 		t.Fatalf("ItemChanged retention charge = %d, want 0", got)
 	}
 }

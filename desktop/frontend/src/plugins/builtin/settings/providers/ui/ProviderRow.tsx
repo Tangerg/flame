@@ -7,12 +7,7 @@ import {
   useUpdateProvider,
   useTestProvider,
 } from "../application/providerConfig";
-import {
-  initialProviderCredentialsDraft,
-  providerCredentialsDirty,
-  providerCredentialsInput,
-  providerCredentialsValid,
-} from "../application/providerDraft";
+import { ProviderCredentialsDraft } from "../application/providerDraft";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../public";
 import { cn } from "@/lib/classNames";
@@ -21,24 +16,24 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const t = useT();
   const update = useUpdateProvider();
   const test = useTestProvider();
-  const [draft, setDraft] = useState(() => initialProviderCredentialsDraft(p));
+  const [draft, setDraft] = useState(() => ProviderCredentialsDraft.initial(p));
   const [saving, setSaving] = useState(false);
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
 
-  const enabled = p.apiKeyMasked !== "";
+  const enabled = p.configured;
   // Env keys are read-only at the source, but a typed key still overrides them.
-  const fromEnv = p.keySource === "env";
-  const hasStoredKey = p.keySource === "stored";
-  const dirty = providerCredentialsDirty(p, draft);
-  const valid = providerCredentialsValid(p, draft);
+  const fromEnv = p.credential?.fromEnvironment ?? false;
+  const hasStoredKey = p.credential?.stored ?? false;
+  const dirty = draft.dirty(p);
+  const valid = draft.valid(p);
 
   const onSave = async () => {
     setSaving(true);
     reset(); // invalidate any in-flight test so its result can't overwrite the new key state
     try {
-      const saved = await update(providerCredentialsInput(p, draft));
-      setDraft(initialProviderCredentialsDraft(saved));
+      const saved = await update(draft.toUpdate(p));
+      setDraft(ProviderCredentialsDraft.initial(saved));
     } catch (err) {
       if (providerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
@@ -51,8 +46,8 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
     setSaving(true);
     reset();
     try {
-      const saved = await update({ provider: p.id, apiKey: null });
-      setDraft(initialProviderCredentialsDraft(saved));
+      const saved = await update({ provider: p.id, apiKey: { type: "clear" } });
+      setDraft(ProviderCredentialsDraft.initial(saved));
     } catch (err) {
       if (providerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
@@ -71,7 +66,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           <div className="truncate text-ui-md font-medium capitalize text-fg">{p.id}</div>
         </div>
         <span
-          title={fromEnv ? p.apiKeyMasked : undefined}
+          title={fromEnv ? p.credential?.masked : undefined}
           className={cn(
             "rounded-pill px-2 py-0.5 font-mono text-ui-sm font-medium",
             fromEnv
@@ -84,7 +79,9 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           {fromEnv
             ? t("providers.fromEnv")
             : enabled
-              ? t("providers.key", { masked: p.apiKeyMasked })
+              ? p.credential
+                ? t("providers.key", { masked: p.credential.masked })
+                : t("providers.ready")
               : t("providers.notConfigured")}
         </span>
       </div>
@@ -94,11 +91,11 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           type="password"
           aria-label={t("providers.apiKey.aria", { provider: p.id })}
           value={draft.apiKey}
-          onChange={(e) => setDraft((value) => ({ ...value, apiKey: e.target.value }))}
+          onChange={(e) => setDraft((value) => value.withAPIKey(e.target.value))}
           placeholder={
             fromEnv
               ? t("providers.apiKey.envPlaceholder")
-              : enabled
+              : p.credential
                 ? t("providers.apiKey.replace")
                 : t("providers.apiKey.placeholder")
           }
@@ -107,7 +104,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           type="text"
           aria-label={t("providers.baseUrl.aria", { provider: p.id })}
           value={draft.baseUrl}
-          onChange={(e) => setDraft((value) => ({ ...value, baseUrl: e.target.value }))}
+          onChange={(e) => setDraft((value) => value.withBaseURL(e.target.value))}
           placeholder={t("providers.baseUrl.placeholder")}
         />
       </div>

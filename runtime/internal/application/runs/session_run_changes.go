@@ -12,8 +12,10 @@ type sessionRunChanges struct {
 
 type sessionRunObservation struct {
 	changed   chan struct{}
-	observers int
+	observers map[*sessionRunObserver]struct{}
 }
+
+type sessionRunObserver struct{ registration byte }
 
 func (s *sessionRunChanges) observe(sessionID string) (<-chan struct{}, func()) {
 	s.mu.Lock()
@@ -22,10 +24,14 @@ func (s *sessionRunChanges) observe(sessionID string) (<-chan struct{}, func()) 
 	}
 	observation := s.sessions[sessionID]
 	if observation == nil {
-		observation = &sessionRunObservation{changed: make(chan struct{})}
+		observation = &sessionRunObservation{
+			changed:   make(chan struct{}),
+			observers: make(map[*sessionRunObserver]struct{}),
+		}
 		s.sessions[sessionID] = observation
 	}
-	observation.observers++
+	observer := new(sessionRunObserver)
+	observation.observers[observer] = struct{}{}
 	s.mu.Unlock()
 
 	var once sync.Once
@@ -33,8 +39,8 @@ func (s *sessionRunChanges) observe(sessionID string) (<-chan struct{}, func()) 
 		once.Do(func() {
 			s.mu.Lock()
 			defer s.mu.Unlock()
-			observation.observers--
-			if observation.observers == 0 && s.sessions[sessionID] == observation {
+			delete(observation.observers, observer)
+			if len(observation.observers) == 0 && s.sessions[sessionID] == observation {
 				delete(s.sessions, sessionID)
 			}
 		})

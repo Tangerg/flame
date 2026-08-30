@@ -7,13 +7,20 @@ const PLAN_STATUS: Record<RuntimePlanStep["status"], PlanStep["status"]> = {
   pending: "pending",
 };
 
-export function runtimePlan(plan: RuntimePlan): AgentPlan {
+export function runtimePlan(plan: RuntimePlan): AgentPlan | undefined {
+  if (!plan.state) return undefined;
   return {
-    revision: plan.revision,
-    steps: plan.steps.map((step) => ({
+    revision: plan.state.revision,
+    steps: plan.state.steps.map((step) => ({
       id: step.id,
       text: step.description,
       status: PLAN_STATUS[step.status],
     })),
   };
+}
+
+export function runtimePlanUpdate(plan: RuntimePlan): AgentPlan {
+  const projected = runtimePlan(plan);
+  if (!projected) throw new Error("plan.updated has no committed state");
+  return projected;
 }

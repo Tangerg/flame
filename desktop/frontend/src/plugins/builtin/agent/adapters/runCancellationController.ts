@@ -2,8 +2,8 @@ import { RetirableTaskCohort } from "@/lib/taskQueue";
 
 interface RunCancellationTarget {
   terminal: boolean;
-  viewEpoch: number;
-  viewRevision: number;
+  viewEpoch: bigint;
+  viewRevision: bigint;
 }
 
 interface RunCancellationControllerOptions<Response> {

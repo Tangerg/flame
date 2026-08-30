@@ -13,6 +13,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -40,13 +41,13 @@ var errRuntimeSearchResultTooLarge = errors.New("toolset: search result exceeds 
 type runtimeGrepRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=65536" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching."`
 	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root."`
-	MaxResults int    `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete matching lines to retain. Defaults to 100; total still reports the exact match count."`
+	MaxResults *int   `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete matching lines to retain. Defaults to 100; total still reports the exact match count."`
 }
 
 type runtimeGlobRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=4096" jsonschema_description:"Workspace-relative doublestar path pattern, such as **/*.go or src/**/*.ts."`
 	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search under. Defaults to the workspace root."`
-	MaxResults int    `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete paths to retain. Defaults to 100; total still reports the exact match count."`
+	MaxResults *int   `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete paths to retain. Defaults to 100; total still reports the exact match count."`
 }
 
 type runtimeSearchResponse struct {
@@ -125,7 +126,10 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	limit := normalizedRuntimeSearchLimit(request.MaxResults)
+	limit, err := toolarg.PositiveInt(request.MaxResults, defaultRuntimeSearchResults, maxRuntimeSearchResults, "max_results")
+	if err != nil {
+		return runtimePathSearchResponse{}, err
+	}
 	entries, err := workspaceadapter.ListFiles(ctx, root, workspaceadapter.ListFilesOptions{
 		Path: path, Glob: request.Pattern, Recursive: true,
 	})
@@ -181,8 +185,12 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	if err != nil {
 		return runtimeSearchResponse{}, err
 	}
+	limit, err := toolarg.PositiveInt(request.MaxResults, defaultRuntimeSearchResults, maxRuntimeSearchResults, "max_results")
+	if err != nil {
+		return runtimeSearchResponse{}, err
+	}
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
-		Path: path, Pattern: pattern, Limit: normalizedRuntimeSearchLimit(request.MaxResults),
+		Path: path, Pattern: pattern, Limit: limit,
 	})
 	if err != nil {
 		return runtimeSearchResponse{}, fmt.Errorf("toolset: grep workspace: %w", err)
@@ -208,13 +216,6 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	}
 	response.Truncated = response.Total > len(response.Matches)
 	return response, nil
-}
-
-func normalizedRuntimeSearchLimit(requested int) int {
-	if requested <= 0 {
-		return defaultRuntimeSearchResults
-	}
-	return min(requested, maxRuntimeSearchResults)
 }
 
 func validateRuntimeSearchText(value string, limit int, field string) error {

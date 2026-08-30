@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/workbench"
@@ -19,21 +20,6 @@ import (
 type runtime interface {
 	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
-}
-
-// ReplayWindow identifies one runtime's durable command replay store and the
-// conservative interval during which a newly staged command remains replayable.
-type ReplayWindow struct {
-	Namespace string
-	Retention time.Duration
-	Now       func() time.Time
-}
-
-func (r ReplayWindow) now() time.Time {
-	if r.Now == nil {
-		return time.Now().UTC()
-	}
-	return r.Now().UTC()
 }
 
 // Preview is the exact authoritatively-read before/after projection authorized
@@ -121,16 +107,16 @@ func (p Preview) DroppedCount() int {
 }
 
 func (p Preview) ValidateCommit(snapshot agent.SessionSnapshot) error {
-	return validateBefore(p.journal("", ReplayWindow{}, time.Time{}), snapshot)
+	return validateBefore(p.journal("", commandreplay.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
 func (p Preview) ValidateApplied(snapshot agent.SessionSnapshot) error {
-	return validateApplied(p.journal("", ReplayWindow{}, time.Time{}), snapshot)
+	return validateApplied(p.journal("", commandreplay.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
 func (p Preview) journal(
 	commandID agent.CommandID,
-	window ReplayWindow,
+	replay commandreplay.Guard,
 	stagedAt time.Time,
 ) workbench.PendingSessionRollback {
 	pending := workbench.PendingSessionRollback{
@@ -138,11 +124,7 @@ func (p Preview) journal(
 		SessionID: p.request.SessionID, ToRunID: p.request.ToRunID, Scope: p.request.Scope,
 		BeforeRevision: p.beforeRevision, BeforeRunIDs: slices.Clone(p.beforeRunIDs),
 		AfterRunIDs: slices.Clone(p.afterRunIDs), OpeningText: p.openingText,
-		OpeningImages: p.openingImages, StagedAt: stagedAt,
-	}
-	if p.request.Scope != agent.RestoreHistory {
-		pending.ReplayNamespace = strings.TrimSpace(window.Namespace)
-		pending.ReplayUntil = stagedAt.Add(window.Retention)
+		OpeningImages: p.openingImages, StagedAt: stagedAt, Replay: replay,
 	}
 	return pending
 }
@@ -162,7 +144,7 @@ func Execute(
 	runtime runtime,
 	authoring *workbench.Store,
 	preview Preview,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) (Result, error) {
 	if authoring == nil {
@@ -179,12 +161,22 @@ func Execute(
 	if err != nil {
 		return Result{}, fmt.Errorf("create session rollback identity: %w", err)
 	}
-	stagedAt := window.now()
-	pending := preview.journal(commandID, window, stagedAt)
+	if err := policy.Validate(); err != nil {
+		return Result{}, err
+	}
+	stagedAt := policy.Now()
+	replay := commandreplay.UnprotectedGuard()
+	if preview.request.Scope != agent.RestoreHistory {
+		replay, err = policy.NewGuardAt(stagedAt)
+		if err != nil {
+			return Result{}, err
+		}
+	}
+	pending := preview.journal(commandID, replay, stagedAt)
 	if err := authoring.StageSessionRollback(pending); err != nil {
 		return Result{}, fmt.Errorf("stage session rollback: %w", err)
 	}
-	return Settle(ctx, runtime, pending, window, backoff)
+	return settle(ctx, runtime, pending, policy, backoff, true)
 }
 
 // Settle observes or replays one prepared command. History projections can
@@ -194,8 +186,19 @@ func Settle(
 	ctx context.Context,
 	runtime runtime,
 	pending workbench.PendingSessionRollback,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
+) (Result, error) {
+	return settle(ctx, runtime, pending, policy, backoff, false)
+}
+
+func settle(
+	ctx context.Context,
+	runtime runtime,
+	pending workbench.PendingSessionRollback,
+	policy commandreplay.Policy,
+	backoff retry.Backoff,
+	fresh bool,
 ) (Result, error) {
 	result := Result{Pending: pending}
 	if err := pending.Validate(); err != nil {
@@ -214,28 +217,13 @@ func Settle(
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("authoritative session matches neither side of the pending rollback: %w", err)
 	}
-	if pending.Scope != agent.RestoreHistory && !replaySafe(pending, window) {
+	if pending.Scope != agent.RestoreHistory &&
+		!policy.Replayable(pending.Replay) && (!fresh || !policy.CanStart(pending.Replay)) {
 		result.Outcome = mutation.Unknown
 		return result, errors.New("file rollback replay guarantee expired or belongs to another runtime")
 	}
 
-	var rollbackResult agent.RollbackResult
-	var rollbackErr error
-	if pending.Scope == agent.RestoreHistory {
-		// History rollback has an authoritative before/after projection. One call
-		// followed by another read converges an uncertain acknowledgement without
-		// blindly replaying beyond an unrecorded command-store deadline.
-		rollbackResult, rollbackErr = runtime.RollbackSession(ctx, pending.Request())
-	} else {
-		rollbackResult, rollbackErr = mutation.ConfirmAdmitted(ctx, backoff, func() error {
-			if !replaySafe(pending, window) {
-				return mutation.ErrReplayGuaranteeUnavailable
-			}
-			return nil
-		}, func(ctx context.Context) (agent.RollbackResult, error) {
-			return runtime.RollbackSession(ctx, pending.Request())
-		})
-	}
+	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff, fresh)
 	if errors.Is(rollbackErr, agent.ErrCommandStoreMismatch) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("rollback session outcome is unknown: %w", rollbackErr)
@@ -249,6 +237,39 @@ func Settle(
 		}
 		return result, errors.Join(commandErr, fmt.Errorf("read rollback outcome: %w", readErr))
 	}
+	return reconcileRollback(result, pending, rollbackResult, rollbackErr, after)
+}
+
+func executeRollback(
+	ctx context.Context,
+	runtime runtime,
+	pending workbench.PendingSessionRollback,
+	policy commandreplay.Policy,
+	backoff retry.Backoff,
+	fresh bool,
+) (agent.RollbackResult, error) {
+	if pending.Scope == agent.RestoreHistory {
+		// History rollback has an authoritative before/after projection. One call
+		// followed by another read converges an uncertain acknowledgement without
+		// blindly replaying beyond an unrecorded command-store deadline.
+		return runtime.RollbackSession(ctx, pending.Request())
+	}
+	admit := mutation.ReplayAdmission(policy, pending.Replay)
+	if fresh {
+		admit = mutation.FreshReplayAdmission(policy, pending.Replay)
+	}
+	return mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (agent.RollbackResult, error) {
+		return runtime.RollbackSession(ctx, pending.Request())
+	})
+}
+
+func reconcileRollback(
+	result Result,
+	pending workbench.PendingSessionRollback,
+	rollbackResult agent.RollbackResult,
+	rollbackErr error,
+	after agent.SessionSnapshot,
+) (Result, error) {
 	result.Snapshot = after
 	if rollbackErr == nil {
 		if err := validateAcknowledged(pending, rollbackResult, after); err != nil {
@@ -347,12 +368,6 @@ func runIDs(snapshot agent.SessionSnapshot) []string {
 	return ids
 }
 
-func replaySafe(pending workbench.PendingSessionRollback, window ReplayWindow) bool {
-	return strings.TrimSpace(window.Namespace) != "" &&
-		strings.TrimSpace(window.Namespace) == pending.ReplayNamespace &&
-		window.now().Before(pending.ReplayUntil)
-}
-
 // Confirm upgrades the exact prepared journal after its result reaches the
 // caller's presentation boundary.
 func Confirm(authoring *workbench.Store, result Result) error {
@@ -371,14 +386,14 @@ func Recover(
 	ctx context.Context,
 	runtime runtime,
 	authoring *workbench.Store,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionRollbacks() {
 		if pending.Phase == workbench.SessionRollbackConfirmed {
 			continue
 		}
-		result, err := Settle(ctx, runtime, pending, window, backoff)
+		result, err := Settle(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			if confirmErr := Confirm(authoring, result); confirmErr != nil {

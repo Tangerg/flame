@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
 	"unicode/utf8"
 )
 
@@ -66,11 +68,11 @@ func ValidateInteractions(interactions []Interaction) error {
 
 func (a Approval) Validate() error {
 	var problems []error
-	if strings.TrimSpace(a.RunID) == "" {
-		problems = append(problems, errors.New("run id is empty"))
+	if _, err := runidentity.ParseRun(a.RunID); err != nil {
+		problems = append(problems, err)
 	}
-	if strings.TrimSpace(a.ItemID) == "" {
-		problems = append(problems, errors.New("item id is empty"))
+	if _, err := runidentity.ParseItem(a.ItemID); err != nil {
+		problems = append(problems, err)
 	}
 	if strings.TrimSpace(a.Title) == "" {
 		problems = append(problems, errors.New("title is empty"))
@@ -116,11 +118,11 @@ func (a Approval) Equal(other Approval) bool {
 
 func (q Question) Validate() error {
 	var problems []error
-	if strings.TrimSpace(q.RunID) == "" {
-		problems = append(problems, errors.New("run id is empty"))
+	if _, err := runidentity.ParseRun(q.RunID); err != nil {
+		problems = append(problems, err)
 	}
-	if strings.TrimSpace(q.ItemID) == "" {
-		problems = append(problems, errors.New("item id is empty"))
+	if _, err := runidentity.ParseItem(q.ItemID); err != nil {
+		problems = append(problems, err)
 	}
 	if strings.TrimSpace(q.Title) == "" {
 		problems = append(problems, errors.New("title is empty"))

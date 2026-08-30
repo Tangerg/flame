@@ -9,6 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/exactint"
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 // Schedule is one revisioned instruction set that the runtime fires on a cron
@@ -42,8 +47,11 @@ func (s Schedule) Validate() error {
 	if err := validateWorkspace(s.Workspace); err != nil {
 		return fmt.Errorf("schedule %s: %w", s.ID, err)
 	}
-	if s.CreatedAt.IsZero() || s.Revision == 0 {
+	if s.CreatedAt.IsZero() {
 		return fmt.Errorf("schedule %s has incomplete persistence metadata", s.ID)
+	}
+	if err := validateRevision("schedule", s.Revision); err != nil {
+		return fmt.Errorf("schedule %s: %w", s.ID, err)
 	}
 	if s.Enabled != (s.NextRunAt != nil) {
 		return fmt.Errorf("schedule %s has inconsistent enabled and next-run state", s.ID)
@@ -84,6 +92,9 @@ func (c Candidate) ValidateResult(result Schedule) error {
 	var problems []error
 	if err := result.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
+	}
+	if result.Revision != exactint.First().Value() {
+		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
 	}
 	if result.Title != c.Title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, c.Title))
@@ -184,8 +195,8 @@ func (p Patch) Validate() error {
 	if strings.TrimSpace(p.ID) == "" {
 		return errors.New("schedule patch id is empty")
 	}
-	if p.ExpectedRevision == 0 {
-		return errors.New("schedule patch expected revision is zero")
+	if err := validateRevision("schedule patch expected", p.ExpectedRevision); err != nil {
+		return err
 	}
 	if !p.HasChanges() {
 		return errors.New("schedule patch has no changes")
@@ -210,6 +221,17 @@ func (p Patch) Validate() error {
 	return nil
 }
 
+func validateRevision(owner string, value uint64) error {
+	revision, err := exactint.Restore(value)
+	if err != nil {
+		return fmt.Errorf("%s revision: %w", owner, err)
+	}
+	if revision.IsZero() {
+		return fmt.Errorf("%s revision must be positive", owner)
+	}
+	return nil
+}
+
 func (p Patch) ValidateResult(result Schedule) error {
 	if err := p.Validate(); err != nil {
 		return err
@@ -221,8 +243,8 @@ func (p Patch) ValidateResult(result Schedule) error {
 	if result.ID != p.ID {
 		problems = append(problems, fmt.Errorf("runtime returned schedule %q, want %q", result.ID, p.ID))
 	}
-	if result.Revision <= p.ExpectedRevision {
-		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d", result.Revision, p.ExpectedRevision))
+	if err := exactint.Follows(p.ExpectedRevision, result.Revision); err != nil {
+		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d: %w", result.Revision, p.ExpectedRevision, err))
 	}
 	if p.Title != nil && result.Title != *p.Title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, *p.Title))
@@ -266,8 +288,11 @@ type RunHandle struct {
 }
 
 func (r RunHandle) Validate() error {
-	if strings.TrimSpace(r.SessionID) == "" || strings.TrimSpace(r.RunID) == "" {
-		return errors.New("schedule run handle is incomplete")
+	if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+		return fmt.Errorf("schedule run handle: %w", err)
+	}
+	if _, err := runidentity.ParseRun(r.RunID); err != nil {
+		return fmt.Errorf("schedule run handle: %w", err)
 	}
 	return nil
 }
@@ -291,11 +316,11 @@ func validateInstructionsAndCron(instructions, cron string) error {
 }
 
 func validateModelSelection(provider, model string) error {
-	if (strings.TrimSpace(provider) == "") != (strings.TrimSpace(model) == "") {
-		return errors.New("schedule provider and model must both be set or both be empty")
-	}
-	if provider != strings.TrimSpace(provider) || model != strings.TrimSpace(model) {
-		return errors.New("schedule provider and model must not have surrounding whitespace")
+	if err := modelidentity.Selection(provider, model, ""); err != nil {
+		if errors.Is(err, modelidentity.ErrIncompleteSelection) {
+			return errors.New("schedule provider and model must both be set or both be empty")
+		}
+		return fmt.Errorf("schedule: %w", err)
 	}
 	return nil
 }

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // bindExecutorMember records the immutable application-Run to opaque executor
@@ -17,11 +19,11 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 	if r == nil {
 		return errors.New("runs: bind executor member without a live Run-tree owner")
 	}
-	if strings.TrimSpace(runID) == "" || runID != strings.TrimSpace(runID) {
-		return errors.New("runs: bind executor member without a canonical Run id")
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
-	if strings.TrimSpace(memberID) == "" || memberID != strings.TrimSpace(memberID) {
-		return fmt.Errorf("runs: bind Run %q without a canonical executor member id", runID)
+	if _, err := executoridentity.ParseMember(memberID); err != nil {
+		return fmt.Errorf("runs: bind Run %q: %w", runID, err)
 	}
 
 	r.mu.Lock()

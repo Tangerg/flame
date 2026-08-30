@@ -175,11 +175,16 @@ func presentTool(tool transcript.ToolInvocation) protocol.ToolInvocation {
 }
 
 func presentDelta(delta runs.ItemDelta) protocol.ItemDelta {
-	if !delta.Kind.Valid() {
-		panic("server: unknown item delta kind")
-	}
-	return protocol.ItemDelta{
-		Type: protocol.ItemDeltaType(delta.Kind), Index: delta.Index, Text: delta.Text,
-		ArgumentsTextDelta: delta.ArgumentsTextDelta,
+	switch delta := delta.(type) {
+	case runs.ContentItemDelta:
+		return protocol.ItemDelta{Type: protocol.DeltaContent, Text: delta.Text()}
+	case runs.ReasoningItemDelta:
+		return protocol.ItemDelta{Type: protocol.DeltaReasoning, Text: delta.Text()}
+	case runs.ToolArgumentsItemDelta:
+		return protocol.ItemDelta{Type: protocol.DeltaToolArguments, ArgumentsTextDelta: delta.Text()}
+	case runs.ToolOutputItemDelta:
+		return protocol.ItemDelta{Type: protocol.DeltaToolOutput, Text: delta.Text()}
+	default:
+		panic("server: unknown Item delta variant")
 	}
 }

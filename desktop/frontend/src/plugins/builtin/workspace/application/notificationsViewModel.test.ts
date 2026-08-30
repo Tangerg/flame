@@ -8,7 +8,7 @@ import {
 } from "./notificationsViewModel";
 
 const entry = (over: Partial<NotificationEntry>): NotificationEntry => ({
-  id: 1,
+  id: "1",
   plugin: "workspace",
   level: "info",
   message: "message",
@@ -18,9 +18,9 @@ const entry = (over: Partial<NotificationEntry>): NotificationEntry => ({
 
 describe("notificationsViewModel", () => {
   it("orders newest first and counts unread entries", () => {
-    const oldest = entry({ id: 1, message: "oldest", timestamp: 10 });
-    const dismissed = entry({ id: 2, message: "dismissed", timestamp: 20, dismissed: true });
-    const newest = entry({ id: 3, message: "newest", timestamp: 30 });
+    const oldest = entry({ id: "1", message: "oldest", timestamp: 10 });
+    const dismissed = entry({ id: "2", message: "dismissed", timestamp: 20, dismissed: true });
+    const newest = entry({ id: "3", message: "newest", timestamp: 30 });
 
     expect(notificationsViewModel([oldest, dismissed, newest])).toEqual({
       entries: [newest, dismissed, oldest],

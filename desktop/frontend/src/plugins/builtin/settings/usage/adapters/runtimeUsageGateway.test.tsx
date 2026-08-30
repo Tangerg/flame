@@ -7,6 +7,7 @@ import { createFlameClient } from "@/rpc";
 import { createMemoryTransport } from "@/rpc/transports/memory";
 import { respondSuccess } from "@/rpc/transports/memory.testkit";
 import { USAGE_SUMMARY_KEY, useUsageReport } from "../application/usageConfig";
+import { recentUsage } from "../application/usagePeriod";
 import { installUsageGateway } from "./runtimeUsageGateway";
 
 let queryClient: QueryClient;
@@ -52,15 +53,17 @@ afterEach(async () => {
 describe("mounted Usage summary generation", () => {
   it("aborts the pre-event transport before committing the successor read", async () => {
     const send = vi.spyOn(transport, "send");
-    const hook = renderHook(() => useUsageReport(30), { wrapper });
+    const period = recentUsage(30);
+    const hook = renderHook(() => useUsageReport(period), { wrapper });
     unmountHook = hook.unmount;
     const first = await waitForUsageRequest(0);
     expect(first.params).toEqual({ sinceDays: 30 });
     const firstSignal = send.mock.calls[0]?.[1];
 
     act(() => {
-      void queryClient.cancelQueries({ queryKey: [USAGE_SUMMARY_KEY, 30], exact: true });
-      void queryClient.invalidateQueries({ queryKey: [USAGE_SUMMARY_KEY, 30], exact: true });
+      const queryKey = [USAGE_SUMMARY_KEY, ...period.cacheKey()];
+      void queryClient.cancelQueries({ queryKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey, exact: true });
     });
 
     const second = await waitForUsageRequest(1);

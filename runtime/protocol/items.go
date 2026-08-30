@@ -76,7 +76,10 @@ type ListItemsResponse struct {
 	Runs []RunSummary `json:"runs"`
 }
 
-// ItemStatus is the lifecycle status of an Item (API.md §4.3).
+// ItemStatus is the closed vocabulary used across Item variants (API.md §4.3).
+// The Item union narrows it per owner: UserMessage/Question/Compaction are only
+// completed; AgentMessage/Reasoning are running rendering anchors or completed
+// facts; ToolCall alone owns running/completed/incomplete persistence.
 type ItemStatus string
 
 const (
@@ -159,6 +162,10 @@ const (
 //	question                   → Question
 //	toolCall                   → Tool, SafetyClass, ApprovalDecision, Error
 //	compaction                 → Summary, DroppedMessages
+//
+// StreamEvent further restricts a running AgentMessage/Reasoning to item.started
+// and any terminal Item to item.completed. This nested lifecycle is generated
+// from the same contract registry as the variant fields.
 type Item struct {
 	ID     string     `json:"id"`
 	RunID  string     `json:"runId"`
@@ -188,9 +195,9 @@ type Item struct {
 	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
 	Error            *ProblemData     `json:"error,omitempty"` // tool-level failure (API.md §4.3)
 	// Summary / DroppedMessages describe a compaction Item at a safe model-call
-	// or Run boundary. DroppedMessages is the net history reduction
-	// (messages before − after); Summary is an optional human note (currently
-	// left empty — the summary text is folded into the rewritten history).
+	// or Run boundary. Summary is the required user-readable semantic fold,
+	// without the model-only system-message preamble. DroppedMessages is the net
+	// history reduction (messages before − after).
 	Summary         string `json:"summary,omitempty"`         // compaction
 	DroppedMessages int    `json:"droppedMessages,omitempty"` // compaction
 }

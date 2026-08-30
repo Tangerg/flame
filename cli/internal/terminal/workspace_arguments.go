@@ -77,11 +77,14 @@ type workspaceDiffSelection struct {
 	path   string
 	mode   workspace.DiffMode
 	format workspace.DiffFormat
-	limit  int
+	limit  workspace.DiffRowLimit
 }
 
 func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error) {
-	selection := workspaceDiffSelection{mode: workspace.DiffModeWorktree, format: workspace.DiffFormatRaw}
+	selection := workspaceDiffSelection{
+		mode: workspace.DiffModeWorktree, format: workspace.DiffFormatRaw,
+		limit: workspace.DefaultDiffRowLimit(),
+	}
 	cursor := newCommandOptionCursor(argument)
 	var modeSet, formatSet bool
 	for {
@@ -110,7 +113,11 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 				selection.format = workspace.DiffFormatRows
 			}
 		case "--limit":
-			selection.limit, err = cursor.PositiveInt(option)
+			rows, parseErr := cursor.PositiveInt(option)
+			if parseErr != nil {
+				return workspaceDiffSelection{}, parseErr
+			}
+			selection.limit, err = workspace.NewDiffRowLimit(rows)
 			if err != nil {
 				return workspaceDiffSelection{}, err
 			}
@@ -119,7 +126,11 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 		}
 	}
 	selection.path = cursor.Rest()
-	if selection.limit > 0 && selection.format != workspace.DiffFormatRows {
+	_, explicit, err := selection.limit.Rows()
+	if err != nil {
+		return workspaceDiffSelection{}, err
+	}
+	if explicit && selection.format != workspace.DiffFormatRows {
 		return workspaceDiffSelection{}, errors.New("workspace diff --limit requires --rows")
 	}
 	return selection, nil
@@ -127,11 +138,11 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 
 type workspaceHeadSelection struct {
 	path  string
-	lines int
+	lines workspace.HeadLineLimit
 }
 
 func parseWorkspaceHeadSelection(argument string) (workspaceHeadSelection, error) {
-	selection := workspaceHeadSelection{lines: 80}
+	selection := workspaceHeadSelection{lines: workspace.DefaultHeadLineLimit()}
 	cursor := newCommandOptionCursor(argument)
 	for {
 		option, ok, err := cursor.Next()
@@ -144,7 +155,11 @@ func parseWorkspaceHeadSelection(argument string) (workspaceHeadSelection, error
 		if option != "--lines" {
 			return workspaceHeadSelection{}, fmt.Errorf("unknown file preview option %q", option)
 		}
-		selection.lines, err = cursor.PositiveInt(option)
+		lines, parseErr := cursor.PositiveInt(option)
+		if parseErr != nil {
+			return workspaceHeadSelection{}, parseErr
+		}
+		selection.lines, err = workspace.NewHeadLineLimit(lines)
 		if err != nil {
 			return workspaceHeadSelection{}, err
 		}
@@ -159,11 +174,11 @@ func parseWorkspaceHeadSelection(argument string) (workspaceHeadSelection, error
 type workspaceSearchSelection struct {
 	query string
 	path  string
-	limit int
+	limit workspace.SearchResultLimit
 }
 
 func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, error) {
-	selection := workspaceSearchSelection{limit: 200}
+	selection := workspaceSearchSelection{limit: workspace.DefaultSearchResultLimit()}
 	cursor := newCommandOptionCursor(argument)
 	for {
 		option, ok, err := cursor.Next()
@@ -177,7 +192,11 @@ func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, e
 		case "--path":
 			selection.path, err = cursor.Value(option)
 		case "--limit":
-			selection.limit, err = cursor.PositiveInt(option)
+			matches, parseErr := cursor.PositiveInt(option)
+			if parseErr != nil {
+				return workspaceSearchSelection{}, parseErr
+			}
+			selection.limit, err = workspace.NewSearchResultLimit(matches)
 		default:
 			return workspaceSearchSelection{}, fmt.Errorf("unknown workspace search option %q", option)
 		}
@@ -230,13 +249,16 @@ func parseWorkspaceFilesSelection(argument string) (workspaceFilesSelection, err
 
 type workspaceReadSelection struct {
 	path      string
-	startLine int
-	endLine   int
-	maxBytes  int
+	lineRange workspace.ReadLineRange
+	byteLimit workspace.ReadByteLimit
 }
 
 func parseWorkspaceReadSelection(argument string) (workspaceReadSelection, error) {
-	selection := workspaceReadSelection{maxBytes: 2 << 20}
+	selection := workspaceReadSelection{
+		lineRange: workspace.WholeFileReadRange(),
+		byteLimit: workspace.DefaultReadByteLimit(),
+	}
+	var startLine, endLine *int
 	cursor := newCommandOptionCursor(argument)
 	for {
 		option, ok, err := cursor.Next()
@@ -248,11 +270,23 @@ func parseWorkspaceReadSelection(argument string) (workspaceReadSelection, error
 		}
 		switch option {
 		case "--start":
-			selection.startLine, err = cursor.PositiveInt(option)
+			value, parseErr := cursor.PositiveInt(option)
+			if parseErr != nil {
+				return workspaceReadSelection{}, parseErr
+			}
+			startLine = &value
 		case "--end":
-			selection.endLine, err = cursor.PositiveInt(option)
+			value, parseErr := cursor.PositiveInt(option)
+			if parseErr != nil {
+				return workspaceReadSelection{}, parseErr
+			}
+			endLine = &value
 		case "--max-bytes":
-			selection.maxBytes, err = cursor.PositiveInt(option)
+			value, parseErr := cursor.PositiveInt(option)
+			if parseErr != nil {
+				return workspaceReadSelection{}, parseErr
+			}
+			selection.byteLimit, err = workspace.NewReadByteLimit(value)
 		default:
 			return workspaceReadSelection{}, fmt.Errorf("unknown workspace read option %q", option)
 		}
@@ -261,13 +295,19 @@ func parseWorkspaceReadSelection(argument string) (workspaceReadSelection, error
 		}
 	}
 	selection.path = cursor.Rest()
+	var rangeErr error
 	switch {
 	case selection.path == "":
 		return workspaceReadSelection{}, errors.New("usage: /read [--start N] [--end N] [--max-bytes N] <path>")
-	case selection.endLine > 0 && selection.startLine == 0:
+	case startLine == nil && endLine != nil:
 		return workspaceReadSelection{}, errors.New("workspace read --end requires --start")
-	case selection.endLine > 0 && selection.endLine < selection.startLine:
-		return workspaceReadSelection{}, errors.New("workspace read --end precedes --start")
+	case startLine != nil && endLine == nil:
+		selection.lineRange, rangeErr = workspace.NewReadTailRange(*startLine)
+	case startLine != nil && endLine != nil:
+		selection.lineRange, rangeErr = workspace.NewReadLineRange(*startLine, *endLine)
+	}
+	if rangeErr != nil {
+		return workspaceReadSelection{}, rangeErr
 	}
 	return selection, nil
 }

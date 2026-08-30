@@ -7,7 +7,7 @@ import (
 	"errors"
 )
 
-// Wait joins done or returns the caller's context error. Completion has
+// Wait joins done or returns the caller's cancellation cause. Completion has
 // precedence when it is already observable, including when cancellation and
 // completion become ready together.
 func Wait(ctx context.Context, done <-chan struct{}) error {
@@ -30,7 +30,7 @@ func Wait(ctx context.Context, done <-chan struct{}) error {
 		case <-done:
 			return nil
 		default:
-			return ctx.Err()
+			return context.Cause(ctx)
 		}
 	}
 }

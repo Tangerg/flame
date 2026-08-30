@@ -1,11 +1,17 @@
 package runtimeprofile
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
+)
 
 func TestProfileOwnsCapabilityCollectionsAndAnswersGates(t *testing.T) {
 	t.Parallel()
 
-	profile := validProfile()
+	profile := validProfile(t)
 	if err := profile.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +35,7 @@ func TestProfileOwnsCapabilityCollectionsAndAnswersGates(t *testing.T) {
 func TestProfileRequiresClientAgreementForOptInFeatures(t *testing.T) {
 	t.Parallel()
 
-	profile := validProfile()
+	profile := validProfile(t)
 	profile.Features["subagents"] = Feature{Enabled: true, ClientOptIn: true}
 	if profile.Supports(FeatureSubagents) {
 		t.Fatal("server support bypassed the client opt-in requirement")
@@ -48,11 +54,11 @@ func TestProfileRejectsIncompleteIdentityCapabilitiesAndLimits(t *testing.T) {
 	tests := []Profile{
 		{},
 		func() Profile {
-			value := validProfile()
+			value := validProfile(t)
 			value.RunEvents = append(value.RunEvents, value.RunEvents[0])
 			return value
 		}(),
-		func() Profile { value := validProfile(); value.Limits.RunReplay.MaxBytes = 0; return value }(),
+		func() Profile { value := validProfile(t); value.Limits.RunReplay.MaxBytes = 0; return value }(),
 	}
 	for _, profile := range tests {
 		if err := profile.Validate(); err == nil {
@@ -61,7 +67,48 @@ func TestProfileRejectsIncompleteIdentityCapabilitiesAndLimits(t *testing.T) {
 	}
 }
 
-func validProfile() Profile {
+func TestRunConcurrencyRequiresExplicitValidPolicyAndRoundTripsJSON(t *testing.T) {
+	t.Parallel()
+
+	if err := (RunConcurrencyLimit{}).Validate(); err == nil {
+		t.Fatal("zero RunConcurrencyLimit was valid")
+	}
+	if _, err := NewBoundedRunConcurrencyLimit(0); err == nil {
+		t.Fatal("bounded zero Run concurrency was valid")
+	}
+	for _, limit := range []RunConcurrencyLimit{
+		UnboundedRunConcurrencyLimit(),
+		boundedRunConcurrency(t, 4),
+	} {
+		encoded, err := json.Marshal(limit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded RunConcurrencyLimit
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		if decoded != limit {
+			t.Fatalf("round trip = %+v, want %+v", decoded, limit)
+		}
+	}
+	for _, invalid := range []string{
+		`{"type":"unbounded","maximum":1}`,
+		`{"type":"bounded"}`,
+		`{"type":"bounded","maximum":0}`,
+		`{"type":"future"}`,
+		`{"type":"unbounded","extra":true}`,
+		`{"type":"unbounded"} {"type":"unbounded"}`,
+	} {
+		var decoded RunConcurrencyLimit
+		if err := json.Unmarshal([]byte(invalid), &decoded); err == nil {
+			t.Fatalf("decoded invalid Run concurrency %s", invalid)
+		}
+	}
+}
+
+func validProfile(t *testing.T) Profile {
+	t.Helper()
 	return Profile{
 		Protocol: Protocol{Version: "2.0"},
 		Server: Server{
@@ -75,10 +122,29 @@ func validProfile() Profile {
 			FeatureSchedules: {},
 		},
 		Limits: Limits{
-			MaxConcurrentRuns: 4, IdempotencyRetentionSeconds: 600, IdempotencyNamespace: "idp_test",
+			RunConcurrency:                   boundedRunConcurrency(t, 4),
+			CommandReplay:                    commandReplayCapability(t, "idp_test", 10*time.Minute),
 			RunReplay:                        ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},
 	}
+}
+
+func commandReplayCapability(t *testing.T, namespace string, retention time.Duration) commandreplay.Capability {
+	t.Helper()
+	capability, err := commandreplay.NewCapability(namespace, retention)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return capability
+}
+
+func boundedRunConcurrency(t *testing.T, maximum int) RunConcurrencyLimit {
+	t.Helper()
+	limit, err := NewBoundedRunConcurrencyLimit(maximum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return limit
 }

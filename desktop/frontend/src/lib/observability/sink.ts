@@ -18,6 +18,7 @@ import type { LogRecordProcessor, SdkLogRecord } from "@opentelemetry/sdk-logs";
 import type { ReadableSpan, SpanProcessor } from "@opentelemetry/sdk-trace-web";
 import type { LogRow, SpanRow } from "./stores";
 import { useTelemetryStore } from "./stores";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 // Inlined enum values — keeps this module off the SDK's static graph.
 const EXPORT_SUCCESS = 0; // ExportResultCode.SUCCESS
@@ -138,7 +139,7 @@ const SPAN_KIND: Record<number, string> = {
 };
 
 // ── Logs ──────────────────────────────────────────────────────────────────
-let logSeq = 0;
+const logIds = new ExactSequence();
 
 export class LocalLogProcessor implements LogRecordProcessor {
   private readonly batcher = new Batcher<LogRow>((rows) =>
@@ -148,7 +149,7 @@ export class LocalLogProcessor implements LogRecordProcessor {
     const ctx = record.spanContext;
     const body = record.body;
     this.batcher.add({
-      id: `log-${++logSeq}`,
+      id: `log-${logIds.issue()}`,
       timeMs: record.hrTime ? hrToMs(record.hrTime) : Date.now(),
       severity: record.severityText ?? "INFO",
       body: typeof body === "string" ? body : JSON.stringify(body ?? ""),

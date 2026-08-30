@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"crypto/rand"
 	"sync"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 )
 
 const (
-	authorizationAttemptIDPrefix  = "mcpauth_"
 	authorizationAttemptRetention = 10 * time.Minute
 )
 
@@ -45,8 +43,8 @@ func (a AuthorizationAttemptStatus) String() string {
 // OAuth flow. Failure details remain in telemetry; callers receive only the
 // stable status.
 type AuthorizationAttempt struct {
-	ID         string
-	Server     string
+	ID         AuthorizationAttemptID
+	Server     mcpserver.ServerName
 	Status     AuthorizationAttemptStatus
 	CreatedAt  time.Time
 	FinishedAt *time.Time
@@ -61,7 +59,7 @@ func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
 // CreateAuthorizationAttempt validates a configured server and starts one
 // component-owned interactive OAuth flow. A newer operation for the same server
 // cancels this attempt; operations for other servers remain independent.
-func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server string) (AuthorizationAttempt, error) {
+func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcpserver.ServerName) (AuthorizationAttempt, error) {
 	target, err := c.connectionTarget(ctx, server)
 	if err != nil {
 		return AuthorizationAttempt{}, err
@@ -84,7 +82,11 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server str
 
 // AuthorizationAttempt returns one live or retained terminal attempt.
 func (c *Coordinator) AuthorizationAttempt(_ context.Context, id string) (AuthorizationAttempt, error) {
-	attempt, ok := c.authorizationAttempts.get(id)
+	parsed, err := ParseAuthorizationAttemptID(id)
+	if err != nil {
+		return AuthorizationAttempt{}, ErrAuthorizationAttemptNotFound
+	}
+	attempt, ok := c.authorizationAttempts.get(parsed)
 	if !ok {
 		return AuthorizationAttempt{}, ErrAuthorizationAttemptNotFound
 	}
@@ -107,22 +109,22 @@ func authorizationAttemptStatus(outcome connectionOutcome) AuthorizationAttemptS
 type authorizationAttemptStore struct {
 	mu        sync.Mutex
 	now       func() time.Time
-	newID     func() string
+	newID     func() AuthorizationAttemptID
 	retention time.Duration
-	attempts  map[string]AuthorizationAttempt
+	attempts  map[AuthorizationAttemptID]AuthorizationAttempt
 }
 
 func newAuthorizationAttemptStore() *authorizationAttemptStore {
 	return newAuthorizationAttemptStoreWith(
 		time.Now,
-		func() string { return authorizationAttemptIDPrefix + rand.Text() },
+		newAuthorizationAttemptID,
 		authorizationAttemptRetention,
 	)
 }
 
 func newAuthorizationAttemptStoreWith(
 	now func() time.Time,
-	newID func() string,
+	newID func() AuthorizationAttemptID,
 	retention time.Duration,
 ) *authorizationAttemptStore {
 	if now == nil || newID == nil || retention <= 0 {
@@ -130,16 +132,20 @@ func newAuthorizationAttemptStoreWith(
 	}
 	return &authorizationAttemptStore{
 		now: now, newID: newID, retention: retention,
-		attempts: make(map[string]AuthorizationAttempt),
+		attempts: make(map[AuthorizationAttemptID]AuthorizationAttempt),
 	}
 }
 
-func (a *authorizationAttemptStore) create(server string) AuthorizationAttempt {
+func (a *authorizationAttemptStore) create(server mcpserver.ServerName) AuthorizationAttempt {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.purgeExpiredLocked()
+	id := a.newID()
+	if err := id.Validate(); err != nil {
+		panic("mcp: authorization attempt identity source returned an invalid identity")
+	}
 	attempt := AuthorizationAttempt{
-		ID: a.newID(), Server: server,
+		ID: id, Server: server,
 		Status: AuthorizationAttemptPending, CreatedAt: a.now().UTC(),
 	}
 	if _, exists := a.attempts[attempt.ID]; exists {
@@ -149,7 +155,7 @@ func (a *authorizationAttemptStore) create(server string) AuthorizationAttempt {
 	return attempt
 }
 
-func (a *authorizationAttemptStore) get(id string) (AuthorizationAttempt, bool) {
+func (a *authorizationAttemptStore) get(id AuthorizationAttemptID) (AuthorizationAttempt, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.purgeExpiredLocked()
@@ -157,7 +163,7 @@ func (a *authorizationAttemptStore) get(id string) (AuthorizationAttempt, bool) 
 	return cloneAuthorizationAttempt(attempt), ok
 }
 
-func (a *authorizationAttemptStore) settle(id string, status AuthorizationAttemptStatus) {
+func (a *authorizationAttemptStore) settle(id AuthorizationAttemptID, status AuthorizationAttemptStatus) {
 	if !status.Valid() || status == AuthorizationAttemptPending {
 		panic("mcp: invalid terminal MCP authorization attempt status")
 	}
@@ -173,7 +179,7 @@ func (a *authorizationAttemptStore) settle(id string, status AuthorizationAttemp
 	a.attempts[id] = attempt
 }
 
-func (a *authorizationAttemptStore) discard(id string) {
+func (a *authorizationAttemptStore) discard(id AuthorizationAttemptID) {
 	a.mu.Lock()
 	delete(a.attempts, id)
 	a.mu.Unlock()

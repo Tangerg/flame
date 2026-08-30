@@ -11,27 +11,33 @@ import (
 )
 
 func TestReconnectRetriesOnlyTransientErrorsWithinBudget(t *testing.T) {
-	policy := Policy{Attempts: 3, Base: 10 * time.Millisecond, Maximum: 25 * time.Millisecond}
+	policy, err := newPolicy(3, 10*time.Millisecond, 25*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for failure, want := range []time.Duration{10 * time.Millisecond, 20 * time.Millisecond, 25 * time.Millisecond} {
-		got, ok := policy.Next(failure+1, agent.ErrDisconnected)
-		if !ok || got != want {
+		got, ok, err := policy.Next(failure+1, agent.ErrDisconnected)
+		if err != nil || !ok || got != want {
 			t.Fatalf("failure %d = %s, %v; want %s", failure+1, got, ok, want)
 		}
 	}
-	if _, ok := policy.Next(4, agent.ErrDisconnected); ok {
+	if _, ok, err := policy.Next(4, agent.ErrDisconnected); err != nil || ok {
 		t.Fatal("retry budget was exceeded")
 	}
-	if _, ok := policy.Next(1, agent.ErrEventConflict); ok {
+	if _, ok, err := policy.Next(1, agent.ErrEventConflict); err != nil || ok {
 		t.Fatal("identity conflict was treated as transient")
 	}
-	if _, ok := policy.Next(1, agent.ErrReplayUnavailable); ok {
+	if _, ok, err := policy.Next(1, agent.ErrReplayUnavailable); err != nil || ok {
 		t.Fatal("unavailable replay was treated as a retryable disconnect")
 	}
 }
 
 func TestCommandCommitRetriesHonorTheRuntimeBackoffFloor(t *testing.T) {
-	policy := Policy{Attempts: 2, Base: 10 * time.Millisecond, Maximum: 2 * time.Second}
-	if delay, ok := policy.Next(1, agent.ErrCommandInProgress); !ok || delay != time.Second {
+	policy, err := newPolicy(2, 10*time.Millisecond, 2*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if delay, ok, err := policy.Next(1, agent.ErrCommandInProgress); err != nil || !ok || delay != time.Second {
 		t.Fatalf("command progress retry = %s, %t; want 1s, true", delay, ok)
 	}
 	if !Retryable(agent.ErrCommandInProgress) {
@@ -39,6 +45,19 @@ func TestCommandCommitRetriesHonorTheRuntimeBackoffFloor(t *testing.T) {
 	}
 	if Retryable(agent.ErrCommandConflict) {
 		t.Fatal("command identity conflict was retryable")
+	}
+}
+
+func TestReconnectPolicyRequiresNamedDisabledOrConfiguredState(t *testing.T) {
+	t.Parallel()
+	if _, retryable, err := Disabled().Next(1, agent.ErrDisconnected); err != nil || retryable {
+		t.Fatalf("disabled Next = (%t, %v)", retryable, err)
+	}
+	if _, _, err := (Policy{}).Next(1, agent.ErrDisconnected); !errors.Is(err, ErrInvalidPolicy) {
+		t.Fatalf("zero policy Next = %v", err)
+	}
+	if _, err := New(-1); !errors.Is(err, ErrInvalidPolicy) {
+		t.Fatalf("New(-1) = %v", err)
 	}
 }
 

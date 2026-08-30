@@ -3,10 +3,10 @@ package agentexec
 import (
 	"context"
 
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/scope/agent/interaction"
 )
 
 // RequireToolInput is the execution ACL between Runtime Tools and Agent
@@ -24,8 +24,12 @@ func RequireToolInput(
 ) (interrupt.Resolution, error) {
 	if prompt.Question != nil && prompt.Question.CallID == "" {
 		if invocation, present := interaction.ToolInvocationFromContext(ctx); present {
+			callID, err := toolInvocationID(invocation)
+			if err != nil {
+				return interrupt.Resolution{}, err
+			}
 			question := *prompt.Question
-			question.CallID = toolInvocationID(invocation)
+			question.CallID = callID.String()
 			prompt.Question = &question
 		}
 	}

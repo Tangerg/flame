@@ -58,7 +58,7 @@ func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequ
 		// One event, then park: the test disconnects while this goroutine is here,
 		// which is the state a leak hides in.
 		if !yield(protocol.RunEvent{
-			RunID: "run_block", EventID: "evt_00000000001",
+			RunID: "run_block", SegmentID: "seg_block", EventID: "evt_00000000001",
 			Event: protocol.StreamEvent{
 				Type: protocol.StreamSegmentStarted,
 				Run: &protocol.RunRef{

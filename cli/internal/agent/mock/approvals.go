@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	sessionID = strings.TrimSpace(sessionID)
-	if sessionID == "" {
-		return nil, errors.New("list approval rules: session id is empty")
+	if _, err := sessionidentity.Parse(sessionID); err != nil {
+		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -63,9 +63,8 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval,
 			return
 		}
 	}
-	r.next++
 	rule := agent.ApprovalRule{
-		ID: fmt.Sprintf("rule_mock_%d", r.next), Scope: answer.Remember,
+		ID: r.identities.next(ruleIdentity), Scope: answer.Remember,
 		Tool: tool, Subject: subject, Decision: approvalRuleDecision(answer.Decision),
 	}
 	stored := storedRule{view: rule}

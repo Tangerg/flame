@@ -220,15 +220,16 @@ describe("agentRuntimeGateway", () => {
         interrupts: [],
         plan: {
           sessionId: "ses_1",
-          revision: 4,
-          steps: [{ id: "step_1", description: "Verify boundaries", status: "in_progress" }],
-          updatedAt: "2026-08-17T00:00:00Z",
+          state: {
+            revision: 4,
+            steps: [{ id: "step_1", description: "Verify boundaries", status: "in_progress" }],
+            updatedAt: "2026-08-17T00:00:00Z",
+          },
         },
         goal: {
           sessionId: "ses_1",
           objective: "Recover every mounted read",
           status: "active",
-          budget: {},
           used: { runs: 1, costUsd: 0.25, steps: 2 },
           createdAt: "2026-08-17T00:00:00Z",
           updatedAt: "2026-08-17T00:01:00Z",

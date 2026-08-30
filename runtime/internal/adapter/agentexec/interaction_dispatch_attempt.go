@@ -19,9 +19,9 @@ type dispatchAttempt struct {
 	failure  context.Context
 	fail     context.CancelCauseFunc
 
-	mu            sync.Mutex
-	externalCalls uint32
-	projectionErr error
+	mu                      sync.Mutex
+	externalBoundaryCrossed bool
+	projectionErr           error
 }
 
 func newDispatchAttempt(parent context.Context, effectID agent.EffectID) *dispatchAttempt {
@@ -50,7 +50,7 @@ func (d *dispatchAttempt) beginExternalCall() error {
 	if d.projectionErr != nil {
 		return d.projectionErr
 	}
-	d.externalCalls++
+	d.externalBoundaryCrossed = true
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (d *dispatchAttempt) close() {
 func (d *dispatchAttempt) indeterminateFailure() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.externalCalls == 0 || d.projectionErr == nil {
+	if !d.externalBoundaryCrossed || d.projectionErr == nil {
 		return nil
 	}
 	return d.projectionErr
@@ -103,5 +103,5 @@ func (d *dispatchAttempt) indeterminateFailure() error {
 func (d *dispatchAttempt) crossedExternalBoundary() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	return d.externalCalls > 0
+	return d.externalBoundaryCrossed
 }

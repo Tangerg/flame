@@ -2,14 +2,14 @@ package runtimeembedded
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/embedded"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/runidentity"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
 
@@ -18,14 +18,9 @@ type runCatalogBinding interface {
 	ListRuns(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error)
 }
 
-const (
-	defaultRunPageSize = 20
-	maximumRunPageSize = 100
-)
-
 func (r *Runtime) GetRun(ctx context.Context, runID string) (agent.Run, error) {
-	if strings.TrimSpace(runID) == "" {
-		return agent.Run{}, errors.New("get run: run id is empty")
+	if _, err := runidentity.ParseRun(runID); err != nil {
+		return agent.Run{}, fmt.Errorf("get run: %w", err)
 	}
 	value, err := r.runCatalog.GetRun(ctx, protocol.GetRunRequest{RunID: runID}, r.callOptions())
 	if err != nil {
@@ -53,11 +48,13 @@ func (r *Runtime) ListRuns(ctx context.Context, query agent.RunQuery) (agent.Run
 			return agent.RunPage{}, err
 		}
 	}
-	limit := query.Limit
-	if limit == 0 {
-		limit = defaultRunPageSize
+	limit, err := query.PageSize.Rows()
+	if err != nil {
+		return agent.RunPage{}, err
 	}
-	limit = min(limit, maximumRunPageSize)
+	if err := validateRequestCursor("list runs", query.Cursor); err != nil {
+		return agent.RunPage{}, err
+	}
 	var statuses []protocol.RunStatus
 	if len(query.Statuses) != 0 {
 		statuses = make([]protocol.RunStatus, len(query.Statuses))
@@ -67,7 +64,7 @@ func (r *Runtime) ListRuns(ctx context.Context, query agent.RunQuery) (agent.Run
 	}
 	page, err := r.runCatalog.ListRuns(ctx, protocol.ListRunsRequest{
 		SessionID: query.SessionID, Statuses: statuses, IncludeDescendants: query.IncludeDescendants,
-		PageQuery: protocol.PageQuery{Cursor: query.Cursor, Limit: limit},
+		PageQuery: protocol.PageQuery{Cursor: query.Cursor, Limit: protocolPositiveInt(limit)},
 	}, r.callOptions())
 	if err != nil {
 		return agent.RunPage{}, classifyError(err)
@@ -82,8 +79,8 @@ func projectRunPage(page *protocol.Page[protocol.RunRef], query agent.RunQuery, 
 	if len(page.Data) > limit {
 		return agent.RunPage{}, runtimeContractViolation("list runs returned %d rows for limit %d", len(page.Data), limit)
 	}
-	if page.NextCursor != "" && page.NextCursor == query.Cursor {
-		return agent.RunPage{}, runtimeContractViolation("list runs returned its request cursor as the continuation")
+	if err := validateContinuationCursor("list runs", query.Cursor, page.NextCursor); err != nil {
+		return agent.RunPage{}, err
 	}
 	projected := agent.RunPage{Items: make([]agent.Run, 0, len(page.Data)), NextCursor: page.NextCursor}
 	for _, value := range page.Data {

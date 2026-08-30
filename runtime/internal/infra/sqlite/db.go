@@ -16,6 +16,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
@@ -63,7 +65,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 // schemaEpoch identifies the one storage shape this build understands. It is an
 // epoch rather than a version because nothing connects two values: a database
 // stamped with any other number is refused, never upgraded.
-const schemaEpoch = 84
+const schemaEpoch = 95
 
 func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 	var epoch int
@@ -86,11 +88,14 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 				ErrSchemaEpochMismatch, path, epoch, schemaEpoch)
 		}
 	}
+	firstExactInteger := exactint.First().Value()
 	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS sessions (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS sessions (
 			id          TEXT    PRIMARY KEY,
 			title       TEXT    NOT NULL,
+			title_search TEXT    NOT NULL,
 			workspace_path TEXT    NOT NULL CHECK (workspace_path <> ''),
+			workspace_search TEXT  NOT NULL CHECK (workspace_search <> ''),
 			parent_id   TEXT    NOT NULL DEFAULT '',
 			started_at  INTEGER NOT NULL,
 			updated_at  INTEGER NOT NULL,
@@ -99,8 +104,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			favorite    INTEGER NOT NULL DEFAULT 0,
 			isolated    INTEGER NOT NULL DEFAULT 0,
-			revision    INTEGER NOT NULL DEFAULT 1
-		)`,
+			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
+		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
 		`CREATE INDEX IF NOT EXISTS idx_sessions_updated_at
 			ON sessions(updated_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_sessions_parent
@@ -131,7 +136,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		// a parked one has to report what it already spent. max_total_tokens / max_steps /
 		// max_budget_usd are the allowance it was admitted under, frozen at
 		// creation: a resume and a cross-restart rehydrate have to apply the same
-		// caps the first segment did, and zero means uncapped.
+		// caps the first segment did. SQL NULL means that one dimension is not
+		// capped; every present value is strictly positive.
 		//
 		// A Run's open interrupts are NOT here — the interrupts table owns them
 		// and a read composes them, because two copies of one park would be two
@@ -174,9 +180,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			usage              TEXT    NOT NULL DEFAULT '',
 			context_tokens     INTEGER NOT NULL DEFAULT 0 CHECK (context_tokens >= 0),
 			problem            TEXT    NOT NULL DEFAULT '',
-			max_total_tokens         INTEGER NOT NULL DEFAULT 0,
-			max_steps          INTEGER NOT NULL DEFAULT 0,
-			max_budget_usd     REAL    NOT NULL DEFAULT 0,
+			max_total_tokens         INTEGER,
+			max_steps          INTEGER,
+			max_budget_usd     REAL,
 			capabilities       TEXT    NOT NULL DEFAULT '',
 			message_mark       INTEGER NOT NULL DEFAULT -1,
 			started_at         INTEGER NOT NULL,
@@ -188,6 +194,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 				 parent_run_id != run_id AND root_run_id != run_id)
 			),
 			CHECK (root_run_id = '' OR goal_incarnation_id = ''),
+			CHECK (max_total_tokens IS NULL OR max_total_tokens > 0),
+			CHECK (max_steps IS NULL OR max_steps > 0),
+			CHECK (max_budget_usd IS NULL OR max_budget_usd > 0),
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (
@@ -350,8 +359,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id        TEXT PRIMARY KEY,
-			api_key   TEXT NOT NULL DEFAULT '',
-			base_url  TEXT NOT NULL DEFAULT ''
+			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),
+			base_url  TEXT CHECK (base_url IS NULL OR length(base_url) > 0)
 		)`,
 		// Global utility-model role: the (provider, model)
 		// the in-house maintenance services — compaction / extraction / titling —
@@ -363,11 +372,16 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			model     TEXT NOT NULL DEFAULT ''
 		)`,
 		// MCP-server registry (mcp.servers.create/update). One row per server
-		// name; the list columns (args/disabled_tools/auto_approve_tools) and the
-		// map columns (env/headers) are JSON; timeout is nanoseconds. transport is
+		// name; args and the map columns (env/headers) are JSON; per-tool policy is
+		// normalized in mcp_server_tool_policies. A nullable positive handshake timeout
+		// is nanoseconds (NULL means unbounded). transport is
 		// "stdio" | "streamableHttp".
-		`CREATE TABLE IF NOT EXISTS mcp_servers (
-			name               TEXT    PRIMARY KEY,
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_servers (
+			name               TEXT    PRIMARY KEY CHECK (
+				length(name) BETWEEN 1 AND %d AND
+				name NOT GLOB '*[^a-z0-9._-]*' AND
+				substr(name, 1, 1) GLOB '[a-z0-9]'
+			),
 			transport          TEXT    NOT NULL,
 			enabled            INTEGER NOT NULL DEFAULT 1,
 			description        TEXT    NOT NULL DEFAULT '',
@@ -378,10 +392,34 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			args               TEXT    NOT NULL DEFAULT '',
 			env                TEXT    NOT NULL DEFAULT '',
 			dir                TEXT    NOT NULL DEFAULT '',
-			timeout            INTEGER NOT NULL DEFAULT 0,
-			disabled_tools     TEXT    NOT NULL DEFAULT '',
-			auto_approve_tools TEXT    NOT NULL DEFAULT ''
+			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0)
+		)`, mcpserver.MaximumServerNameCharacters),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_server_tool_policies (
+			server_name TEXT NOT NULL REFERENCES mcp_servers(name) ON DELETE CASCADE,
+			tool_name   TEXT NOT NULL CHECK (
+				length(tool_name) BETWEEN 1 AND %d AND
+				tool_name NOT GLOB '*[^A-Za-z0-9_.-]*'
+			),
+			decision    TEXT NOT NULL CHECK (decision IN ('%s', '%s')),
+			PRIMARY KEY (server_name, tool_name)
 		)`,
+			mcpserver.MaximumRemoteToolNameCharacters,
+			mcpserver.ToolDisabled,
+			mcpserver.ToolAutoApproved,
+		),
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_server_tool_policy_insert
+			BEFORE INSERT ON mcp_server_tool_policies
+			WHEN (SELECT count(*) FROM mcp_server_tool_policies WHERE server_name = NEW.server_name) >= %d
+			BEGIN
+				SELECT RAISE(ABORT, 'MCP server tool policy limit exceeded');
+			END`, mcpserver.MaxRemoteToolsPerServer),
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_server_tool_policy_move
+			BEFORE UPDATE OF server_name ON mcp_server_tool_policies
+			WHEN OLD.server_name <> NEW.server_name AND
+			     (SELECT count(*) FROM mcp_server_tool_policies WHERE server_name = NEW.server_name) >= %d
+			BEGIN
+				SELECT RAISE(ABORT, 'MCP server tool policy limit exceeded');
+			END`, mcpserver.MaxRemoteToolsPerServer),
 		// OAuth owns an opaque, versioned payload in the MCP connection layer;
 		// SQLite only enforces lifecycle and origin binding. The FK cascade removes
 		// credentials with their server. A transport or endpoint change invalidates
@@ -407,12 +445,12 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			ON messages(conversation_id, seq)`,
 		// A Plan is one complete ordered value per session. revision is assigned by
 		// the replacement, not a clock, so clients can reject a late older snapshot.
-		`CREATE TABLE IF NOT EXISTS session_plans (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS session_plans (
 			session_id TEXT    PRIMARY KEY,
 			steps      TEXT    NOT NULL,
-			revision   INTEGER NOT NULL CHECK (revision > 0),
+			revision   INTEGER NOT NULL CHECK (revision BETWEEN %d AND %d),
 			updated_at INTEGER NOT NULL
-		)`,
+		)`, firstExactInteger, exactint.Maximum),
 		// A session gets an explicit permission row only after entering Plan mode.
 		// The row retains the exact mode to restore on exit and follows the owning
 		// session through the database FK lifecycle.
@@ -498,7 +536,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		// Scheduled runs (schedules.*): a saved instructions fired on a cron trigger as
 		// a headless run. last_run_at / next_run_at are unix millis (0 = never /
 		// unscheduled); next_run_at is the worker's due index.
-		`CREATE TABLE IF NOT EXISTS schedules (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (
 			id          TEXT    PRIMARY KEY,
 			title       TEXT    NOT NULL DEFAULT '',
 			instructions      TEXT    NOT NULL,
@@ -511,11 +549,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			last_run_at INTEGER NOT NULL DEFAULT 0,
 			next_run_at INTEGER NOT NULL DEFAULT 0,
 			created_at  INTEGER NOT NULL,
-			revision    INTEGER NOT NULL DEFAULT 1
-		)`,
+			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
+		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
 		`CREATE INDEX IF NOT EXISTS idx_schedules_due
 			ON schedules(enabled, next_run_at)`,
-		`CREATE TABLE IF NOT EXISTS schedule_firings (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedule_firings (
 			id          TEXT    PRIMARY KEY,
 			schedule_id TEXT    NOT NULL,
 			title       TEXT    NOT NULL DEFAULT '',
@@ -530,15 +568,15 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			next_run_at INTEGER NOT NULL,
 			session_id  TEXT    NOT NULL UNIQUE,
 			run_id      TEXT    NOT NULL UNIQUE,
-			state       TEXT    NOT NULL CHECK(state IN ('pending', 'accepted'))
-		)`,
+			state       TEXT    NOT NULL CHECK(state IN ('%s', '%s'))
+		)`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue()),
 		`CREATE INDEX IF NOT EXISTS idx_schedule_firings_pending
 			ON schedule_firings(state, due_at, id)`,
 		// A schedule has one recoverable occurrence at a time. Keeping this as a
 		// partial uniqueness invariant prevents each later cron tick from adding
 		// another pending firing while Run admission is temporarily unavailable.
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
-			ON schedule_firings(schedule_id) WHERE state = 'pending'`,
+		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
+			ON schedule_firings(schedule_id) WHERE state = '%s'`, scheduleFiringPending.databaseValue()),
 		// The namespace tells reconnecting clients whether a persisted
 		// Idempotency-Key belongs to this exact durable replay store. It is opaque,
 		// contains no path or credential, and survives process restarts while a
@@ -622,7 +660,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		// scope 'project' | 'user'. Pinned items are always injected and never
 		// auto-pruned. session_id/day carry provenance.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_items (
-			id         TEXT    PRIMARY KEY,
+			id         TEXT    PRIMARY KEY CHECK (
+				length(id) = %d AND
+				substr(id, 1, length('%s')) = '%s' AND
+				substr(id, length('%s') + 1) NOT GLOB '*[^0-9a-f]*'
+			),
 			scope      TEXT    NOT NULL CHECK (scope IN ('project', 'user')),
 			project    TEXT    NOT NULL DEFAULT '',
 			content    TEXT    NOT NULL CHECK (length(content) BETWEEN 1 AND %d),
@@ -647,7 +689,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			CHECK ((embedding_space = '' AND length(embedding) = 0) OR
 			       (embedding_space <> '' AND length(embedding) > 0 AND length(embedding) %% 4 = 0)),
 			UNIQUE(scope, project, digest)
-		)`, agentmemory.MaxContentCharacters),
+		)`,
+			agentmemory.MaximumItemIDCharacters,
+			agentmemory.ItemIDPrefix,
+			agentmemory.ItemIDPrefix,
+			agentmemory.ItemIDPrefix,
+			agentmemory.MaxContentCharacters,
+		),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
 			ON agent_memory_items(scope, project)`,
 		// Per-project curation watermark (the highest ledger seq already folded

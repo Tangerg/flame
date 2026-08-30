@@ -49,9 +49,9 @@ function view(value: AgentRunView): AgentSessionView {
 function entry(value: AgentSessionView): AgentSessionViewEntry {
   return {
     view: value,
-    viewEpoch: 0,
-    viewRevision: 0,
-    authoritativeRevision: 0,
+    viewEpoch: 0n,
+    viewRevision: 0n,
+    authoritativeRevision: 0n,
     stop: null,
     send: null,
     resume: null,

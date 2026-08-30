@@ -22,20 +22,21 @@ const (
 	defaultDelegateSignals        = 2048
 )
 
-// InteractionDelegationConfig bounds managed children independently of
-// model/token product limits. Zero fields inherit conservative defaults. The
-// values translate only into Agent Framework structural limits and a minimum per-Process
-// work allocation. A delegated Process receives one allocation unit for itself
-// and one for each remaining recursion level, so the configured depth is
-// reachable without renewing or duplicating Framework budget.
-type InteractionDelegationConfig struct {
-	MaxDepth          uint32
-	MaxChildren       uint32
-	MaxActiveChildren uint32
-	MaxTreeProcesses  uint32
-	ChildSteps        uint64
-	ChildEffects      uint64
-	ChildSignals      uint64
+// InteractionDelegationPolicyValues bounds managed children independently of
+// model/token product limits. Nil fields inherit conservative named defaults;
+// present zero never doubles as absence. The values translate only into Agent
+// Framework structural limits and a minimum per-Process work allocation. A
+// delegated Process receives one allocation unit for itself and one for each
+// remaining recursion level, so the configured depth is reachable without
+// renewing or duplicating Framework budget.
+type InteractionDelegationPolicyValues struct {
+	MaxDepth          *uint32
+	MaxChildren       *uint32
+	MaxActiveChildren *uint32
+	MaxTreeProcesses  *uint32
+	ChildSteps        *uint64
+	ChildEffects      *uint64
+	ChildSignals      *uint64
 }
 
 type effectiveInteractionDelegation struct {
@@ -43,40 +44,73 @@ type effectiveInteractionDelegation struct {
 	processBudget agent.Budget
 }
 
-func effectiveDelegation(config InteractionDelegationConfig) (effectiveInteractionDelegation, error) {
-	if config.MaxDepth == 0 {
-		config.MaxDepth = defaultDelegateDepth
+func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInteractionDelegation, error) {
+	maxDepth, err := positiveUint32OrDefault(values.MaxDepth, defaultDelegateDepth, "maximum depth")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.MaxChildren == 0 {
-		config.MaxChildren = defaultDelegateChildren
+	maxChildren, err := positiveUint32OrDefault(values.MaxChildren, defaultDelegateChildren, "maximum children")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.MaxActiveChildren == 0 {
-		config.MaxActiveChildren = defaultActiveDelegateChildren
+	maxActiveChildren, err := positiveUint32OrDefault(values.MaxActiveChildren, defaultActiveDelegateChildren, "maximum active children")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.MaxTreeProcesses == 0 {
-		config.MaxTreeProcesses = defaultDelegateTreeProcesses
+	maxTreeProcesses, err := positiveUint32OrDefault(values.MaxTreeProcesses, defaultDelegateTreeProcesses, "maximum tree processes")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.ChildSteps == 0 {
-		config.ChildSteps = defaultDelegateSteps
+	childSteps, err := positiveUint64OrDefault(values.ChildSteps, defaultDelegateSteps, "child steps")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.ChildEffects == 0 {
-		config.ChildEffects = defaultDelegateEffects
+	childEffects, err := positiveUint64OrDefault(values.ChildEffects, defaultDelegateEffects, "child effects")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
-	if config.ChildSignals == 0 {
-		config.ChildSignals = defaultDelegateSignals
+	childSignals, err := positiveUint64OrDefault(values.ChildSignals, defaultDelegateSignals, "child signals")
+	if err != nil {
+		return effectiveInteractionDelegation{}, err
 	}
 	treeLimits := agent.TreeLimits{
-		MaxDepth: config.MaxDepth, MaxChildren: config.MaxChildren,
-		MaxActiveChildren: config.MaxActiveChildren, MaxTreeProcesses: config.MaxTreeProcesses,
+		MaxDepth: maxDepth, MaxChildren: maxChildren,
+		MaxActiveChildren: maxActiveChildren, MaxTreeProcesses: maxTreeProcesses,
 	}
 	if !treeLimits.Valid() {
 		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
 	}
-	budget, err := agent.NewBudget(config.ChildSteps, config.ChildEffects, config.ChildSignals)
+	budget, err := agent.NewBudget(childSteps, childEffects, childSignals)
 	if err != nil {
 		return effectiveInteractionDelegation{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
 	}
 	return effectiveInteractionDelegation{treeLimits: treeLimits, processBudget: budget}, nil
+}
+
+func positiveUint32OrDefault(value *uint32, fallback uint32, field string) (uint32, error) {
+	if fallback == 0 {
+		return 0, fmt.Errorf("%s default must be positive", field)
+	}
+	if value == nil {
+		return fallback, nil
+	}
+	if *value == 0 {
+		return 0, fmt.Errorf("%s must be positive", field)
+	}
+	return *value, nil
+}
+
+func positiveUint64OrDefault(value *uint64, fallback uint64, field string) (uint64, error) {
+	if fallback == 0 {
+		return 0, fmt.Errorf("%s default must be positive", field)
+	}
+	if value == nil {
+		return fallback, nil
+	}
+	if *value == 0 {
+		return 0, fmt.Errorf("%s must be positive", field)
+	}
+	return *value, nil
 }
 
 func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budget, error) {

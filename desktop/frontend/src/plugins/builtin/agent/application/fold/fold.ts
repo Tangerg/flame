@@ -397,7 +397,9 @@ export function foldQuestion(
         ? {
             ...b,
             status,
-            ...(item.question ? { questions, answered: answers !== undefined, answers } : {}),
+            questions,
+            answered: answers !== undefined,
+            answers,
           }
         : b,
   );
@@ -452,7 +454,7 @@ export function writeToolCall(
   const tool: ToolCall = {
     id: item.id,
     runId: item.runId,
-    name: item.tool?.name ?? "tool",
+    name: item.tool.name,
     fn: toolLabel(item.tool),
     ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
     // Tool args are authoritative from the structured Item — tools are

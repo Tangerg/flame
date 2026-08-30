@@ -61,7 +61,7 @@ func TestRecalledMemoriesEmptyCases(t *testing.T) {
 
 func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
 	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{{
-		ID:      "user-memory",
+		ID:      testAgentMemoryItemID(t, '1'),
 		Content: "- user prefers concise explanations",
 		Scope:   agentmemory.ScopeUser,
 		Status:  agentmemory.StatusActive,
@@ -79,8 +79,8 @@ func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
 
 func TestRecalledMemoriesKeepWholeItemsWithinContextBudget(t *testing.T) {
 	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{
-		{ID: "highest-ranked", Content: strings.Repeat("甲", 3000)},
-		{ID: "outside-budget", Content: strings.Repeat("乙", 3000)},
+		{ID: testAgentMemoryItemID(t, '1'), Content: strings.Repeat("甲", 3000)},
+		{ID: testAgentMemoryItemID(t, '2'), Content: strings.Repeat("乙", 3000)},
 	}}
 	composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: search})
 

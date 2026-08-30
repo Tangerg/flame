@@ -5,43 +5,64 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func modelLimitFacts(t *testing.T, values modelref.TokenLimitValues) modelref.TokenLimits {
+	t.Helper()
+	limits, err := modelref.NewTokenLimits(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return limits
+}
+
+func modelLimitPointer(value int64) *int64 { return &value }
+
+func serverModelFixture(t testing.TB, providerID, modelID string, details *models.Details) models.Model {
+	t.Helper()
+	model, err := models.NewModel(providerID, modelID, details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return model
+}
 
 // TestModelToWire pins the application-model → wire capability mapping (models.list): the
 // full set a model picker renders — reasoning support + effort levels, the
 // input/output modalities, structured output, cache pricing, and the
 // identity/limit metadata — all flow through.
 func TestModelToWire(t *testing.T) {
-	info := models.Model{
-		ID:       "claude-x",
-		Provider: "anthropic",
-		Details: &models.Details{
-			DisplayName:      "Claude X",
-			Deprecated:       true,
-			KnowledgeCutoff:  time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
-			Reasoning:        true,
-			ReasoningLevels:  []string{"low", "high"},
-			ReasoningDefault: "low",
-			Multimodal:       true,
-			InputModalities:  []string{"text", "image"},
-			OutputModalities: []string{"text"},
-			ToolUse:          true,
-			StructuredOutput: true,
-			ContextWindow:    200000,
-			MaxInputTokens:   190000,
-			MaxOutputTokens:  8192,
-			Pricing:          &models.Pricing{InputPerMillion: 3, OutputPerMillion: 15, CacheReadPerMillion: 0.3, CacheWritePerMillion: 3.75},
-		},
-	}
+	info := serverModelFixture(t, "anthropic", "claude-x", &models.Details{
+		DisplayName:      "Claude X",
+		Deprecated:       true,
+		KnowledgeCutoff:  time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		Reasoning:        true,
+		ReasoningLevels:  []string{"low", "high"},
+		ReasoningDefault: "low",
+		Multimodal:       true,
+		InputModalities:  []string{"text", "image"},
+		OutputModalities: []string{"text"},
+		ToolUse:          true,
+		StructuredOutput: true,
+		TokenLimits: modelLimitFacts(t, modelref.TokenLimitValues{
+			ContextWindow:   modelLimitPointer(200000),
+			MaxInputTokens:  modelLimitPointer(190000),
+			MaxOutputTokens: modelLimitPointer(8192),
+		}),
+		Pricing: &models.Pricing{InputPerMillion: 3, OutputPerMillion: 15, CacheReadPerMillion: 0.3, CacheWritePerMillion: 3.75},
+	})
 
 	m := presentModel(info)
 
 	if m.ID != "claude-x" || m.Provider != "anthropic" || m.DisplayName != "Claude X" {
 		t.Fatalf("identity = %+v", m)
 	}
-	if m.ContextWindow != 200000 || m.MaxInputTokens != 190000 || m.MaxOutputTokens != 8192 {
-		t.Errorf("limits = ctx %d in %d out %d", m.ContextWindow, m.MaxInputTokens, m.MaxOutputTokens)
+	if m.TokenLimits == nil || m.TokenLimits.ContextWindow == nil || *m.TokenLimits.ContextWindow != 200000 ||
+		m.TokenLimits.MaxInputTokens == nil || *m.TokenLimits.MaxInputTokens != 190000 ||
+		m.TokenLimits.MaxOutputTokens == nil || *m.TokenLimits.MaxOutputTokens != 8192 {
+		t.Errorf("limits = %+v", m.TokenLimits)
 	}
 	if !m.Deprecated || m.KnowledgeCutoff != "2025-03-01" {
 		t.Errorf("deprecated=%v cutoff=%q", m.Deprecated, m.KnowledgeCutoff)
@@ -79,11 +100,7 @@ func TestModelToWire(t *testing.T) {
 // TestModelToWire_TextOnly verifies the convenience flags read false for a
 // plain text model: no image → multimodal false, no reasoning levels.
 func TestModelToWire_TextOnly(t *testing.T) {
-	m := presentModel(models.Model{
-		ID:       "tiny",
-		Provider: "openai",
-		Details:  &models.Details{InputModalities: []string{"text"}},
-	})
+	m := presentModel(serverModelFixture(t, "openai", "tiny", &models.Details{InputModalities: []string{"text"}}))
 	if m.Capabilities.Multimodal {
 		t.Error("text-only model must not be multimodal")
 	}
@@ -92,6 +109,9 @@ func TestModelToWire_TextOnly(t *testing.T) {
 	}
 	if m.Pricing != nil {
 		t.Error("no pricing → nil ModelPricing")
+	}
+	if m.TokenLimits != nil {
+		t.Error("unknown token-limit facts must be omitted")
 	}
 }
 

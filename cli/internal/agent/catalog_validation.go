@@ -7,18 +7,17 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
 )
 
 func (m Model) Validate() error {
 	var problems []error
-	if strings.TrimSpace(m.ID) == "" {
-		problems = append(problems, errors.New("id is empty"))
+	if err := modelidentity.Selection(m.Provider, m.ID, ""); err != nil {
+		problems = append(problems, err)
 	}
-	if strings.TrimSpace(m.Provider) == "" {
-		problems = append(problems, errors.New("provider is empty"))
-	}
-	if m.ContextWindow < 0 || m.MaxInputTokens < 0 || m.MaxOutputTokens < 0 {
-		problems = append(problems, errors.New("token limits cannot be negative"))
+	if err := m.TokenLimits.Validate(); err != nil {
+		problems = append(problems, err)
 	}
 	if m.KnowledgeCutoff != "" {
 		if _, err := time.Parse(time.DateOnly, m.KnowledgeCutoff); err != nil {
@@ -84,8 +83,8 @@ func (m ModelCapabilities) validate() error {
 func validateUniqueModelStrings(label string, values []string) error {
 	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
-		if strings.TrimSpace(value) == "" {
-			return fmt.Errorf("%s is empty", label)
+		if err := modelidentity.ReasoningEffort(value); err != nil {
+			return fmt.Errorf("%s: %w", label, err)
 		}
 		if _, duplicate := seen[value]; duplicate {
 			return fmt.Errorf("%s %q is duplicated", label, value)
@@ -125,12 +124,16 @@ func (m ModelPricing) validate() error {
 }
 
 func ValidateModels(models []Model) error {
-	identities := make(map[string]struct{}, len(models))
+	type modelIdentity struct {
+		provider string
+		model    string
+	}
+	identities := make(map[modelIdentity]struct{}, len(models))
 	for i, model := range models {
 		if err := model.Validate(); err != nil {
 			return fmt.Errorf("model %d: %w", i+1, err)
 		}
-		identity := model.Provider + "\x00" + model.ID
+		identity := modelIdentity{provider: model.Provider, model: model.ID}
 		if _, duplicate := identities[identity]; duplicate {
 			return fmt.Errorf("model %s/%s is duplicated", model.Provider, model.ID)
 		}

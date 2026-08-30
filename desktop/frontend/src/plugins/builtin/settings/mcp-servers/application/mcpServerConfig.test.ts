@@ -25,6 +25,7 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     icon: "tool",
     type: "streamableHttp",
     enabled: true,
+    handshakeTimeout: { type: "unbounded" },
     url: "https://example.test/mcp",
     ...overrides,
   };
@@ -62,6 +63,7 @@ describe("MCP server configuration", () => {
         name: "local",
         transport: "stdio",
         enabled: true,
+        handshakeTimeout: { type: "unbounded" },
         command: "tool-server",
       }),
     ).resolves.toEqual(created);

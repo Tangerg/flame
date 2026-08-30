@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
@@ -36,6 +37,16 @@ func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	}
 }
 
+func TestAcknowledgementBackoffOwnsTheSharedCommandPolicy(t *testing.T) {
+	backoff := AcknowledgementBackoff()
+	if got, err := backoff.Delay(1); err != nil || got != 50*time.Millisecond {
+		t.Fatalf("first acknowledgement retry = %s", got)
+	}
+	if got, err := backoff.Delay(6); err != nil || got != time.Second {
+		t.Fatalf("maximum acknowledgement retry = %s", got)
+	}
+}
+
 func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 	tests := []struct {
 		outcome Outcome
@@ -57,7 +68,7 @@ func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
-	_, err := Confirm(t.Context(), retry.Backoff{}, func(context.Context) (struct{}, error) {
+	_, err := Confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
 		attempts++
 		return struct{}{}, agent.ErrCommandStoreMismatch
 	})
@@ -66,9 +77,21 @@ func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	}
 }
 
+func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
+	t.Parallel()
+	attempts := 0
+	_, err := Confirm(t.Context(), retry.Backoff{}, func(context.Context) (struct{}, error) {
+		attempts++
+		return struct{}{}, nil
+	})
+	if !errors.Is(err, retry.ErrInvalidBackoff) || attempts != 0 {
+		t.Fatalf("Confirm = %v after %d attempts", err, attempts)
+	}
+}
+
 func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 	attempts := 0
-	result, err := Confirm(t.Context(), retry.Backoff{}, func(context.Context) (string, error) {
+	result, err := Confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
 		attempts++
 		if attempts < 3 {
 			return "", context.DeadlineExceeded
@@ -83,7 +106,7 @@ func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	attempts := 0
-	_, err := Confirm(ctx, retry.Backoff{}, func(context.Context) (struct{}, error) {
+	_, err := Confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
 		attempts++
 		cancel()
 		return struct{}{}, context.DeadlineExceeded
@@ -97,7 +120,7 @@ func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 	replayable := true
 	attempts := 0
 	_, err := ConfirmAdmitted(
-		t.Context(), retry.Backoff{},
+		t.Context(), retry.ImmediateBackoff(),
 		func() error {
 			if !replayable {
 				return ErrReplayGuaranteeUnavailable
@@ -120,13 +143,58 @@ func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 
 func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 	deadline := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	guard, err := commandreplay.NewProtectedGuard("runtime-a", deadline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := commandreplay.NewCapability("runtime-a", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
-		err := ReplayUntil(deadline, func() time.Time { return deadline.Add(offset) })()
+		policy, policyErr := commandreplay.NewPolicyWithClock(capability, func() time.Time { return deadline.Add(offset) })
+		if policyErr != nil {
+			t.Fatal(policyErr)
+		}
+		err := ReplayAdmission(policy, guard)()
 		if offset < 0 && err != nil {
 			t.Fatalf("admission before deadline = %v", err)
 		}
 		if offset >= 0 && !errors.Is(err, ErrReplayGuaranteeUnavailable) {
 			t.Fatalf("admission at offset %s = %v", offset, err)
 		}
+	}
+}
+
+func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.T) {
+	t.Parallel()
+
+	policy := commandreplay.UnavailablePolicy()
+	guard, err := policy.NewGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempts := 0
+	_, err = ConfirmAdmitted(
+		t.Context(), retry.ImmediateBackoff(), FreshReplayAdmission(policy, guard),
+		func(context.Context) (struct{}, error) {
+			attempts++
+			return struct{}{}, agent.ErrDisconnected
+		},
+	)
+	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 1 {
+		t.Fatalf("fresh unprotected mutation = %v after %d attempts", err, attempts)
+	}
+
+	attempts = 0
+	_, err = ConfirmAdmitted(
+		t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard),
+		func(context.Context) (struct{}, error) {
+			attempts++
+			return struct{}{}, nil
+		},
+	)
+	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 0 {
+		t.Fatalf("unprotected recovery = %v after %d attempts", err, attempts)
 	}
 }

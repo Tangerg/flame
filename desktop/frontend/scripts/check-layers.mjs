@@ -22,6 +22,7 @@ import { join } from "node:path";
 // Ordered longest-prefix-first: first match wins. Paths are relative to
 // src/ (how madge reports them when invoked with `src/`).
 const LAYER_PREFIXES = [
+  ["foundation/", "foundation"],
   ["plugins/sdk/", "sdk"],
   ["plugins/builtin/", "builtin"],
   ["plugins/", "plugins-glue"], // Slot / PluginProvider / etc. — UI glue
@@ -57,6 +58,26 @@ function layerOf(path) {
 const UI_RINGS = ["ui", "ui-primitives", "ui-atoms", "ui-agent"];
 const UI = [...UI_RINGS, "components", "pages", "builtin", "plugins-glue"];
 const FORBIDDEN = {
+  // Consumer-neutral scalar values. This is the innermost app layer and may
+  // import only external packages or itself.
+  foundation: [
+    "domain",
+    "infra",
+    "main",
+    "rpc",
+    "protocol",
+    "state",
+    "sdk",
+    "builtin",
+    "plugins-glue",
+    "lib",
+    "ui",
+    "ui-primitives",
+    "ui-atoms",
+    "ui-agent",
+    "components",
+    "pages",
+  ],
   // NOTE: `domain/` + `infra/` hold NO files today — the early clean-arch
   // gateway seam was superseded by the `rpc/` layer + main/container.ts
   // (ARCHITECTURE.md §3.1). Kept as reserved guards: if those dirs ever come

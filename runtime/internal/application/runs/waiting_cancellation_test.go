@@ -311,7 +311,7 @@ func TestCancelWaitingChildCommitsReducedPendingBeforeRuntimeTransition(t *testi
 			prepared.discarded,
 		)
 	}
-	if len(effects.waitingCancels) != 1 || effects.waitingCancels[0].CommitID == "" ||
+	if len(effects.waitingCancels) != 1 || effects.waitingCancels[0].CommitID.IsZero() ||
 		effects.waitingCancels[0].RemainingPending == nil {
 		t.Fatalf("durable waiting commits = %+v, want one reduced Pending", effects.waitingCancels)
 	}
@@ -545,7 +545,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		t.Fatalf("durable waiting commits = %d, want 1", len(effects.waitingCancels))
 	}
 	commit := effects.waitingCancels[0]
-	if commit.CommitID == "" || commit.RemainingPending != nil || commit.Resume == nil {
+	if commit.CommitID.IsZero() || commit.RemainingPending != nil || commit.Resume == nil {
 		t.Fatalf("continuation commit = %+v, want a tree Resume", commit)
 	}
 	if _, live := coordinator.segments.lookup(plan.root.run.ID()); !live {

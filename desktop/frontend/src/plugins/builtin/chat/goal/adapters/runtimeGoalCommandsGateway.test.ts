@@ -49,7 +49,6 @@ describe("Runtime Goal Adapter", () => {
       sessionId: "ses_goal",
       objective: "ship it",
       status: "active" as const,
-      budget: {},
       used: { runs: 0, costUsd: 0, steps: 0 },
       createdAt: "2026-08-12T08:00:00Z",
       updatedAt: "2026-08-12T08:01:00Z",
@@ -60,5 +59,32 @@ describe("Runtime Goal Adapter", () => {
     });
 
     expect(runtimeGoalMaterial(goal, false)).toEqual({ available: false, goal: null });
+  });
+
+  it("represents an omitted wire budget as an unlimited application Goal", () => {
+    expect(
+      toGoalReadModel({
+        sessionId: "ses_goal",
+        objective: "keep going",
+        status: "active",
+        used: { runs: 0, costUsd: 0, steps: 0 },
+        createdAt: "2026-08-12T08:00:00Z",
+        updatedAt: "2026-08-12T08:01:00Z",
+      }).budget,
+    ).toBeNull();
+  });
+
+  it("rejects an impossible empty finite budget at the adapter boundary", () => {
+    expect(() =>
+      toGoalReadModel({
+        sessionId: "ses_goal",
+        objective: "keep going",
+        status: "active",
+        budget: {},
+        used: { runs: 0, costUsd: 0, steps: 0 },
+        createdAt: "2026-08-12T08:00:00Z",
+        updatedAt: "2026-08-12T08:01:00Z",
+      }),
+    ).toThrow("Runtime Goal budget contains no limit");
   });
 });

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -171,10 +172,11 @@ func newModelContextCompaction(
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
 	}
-	if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) {
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: owning Session ID is required without surrounding whitespace",
+			"%w: owning %v",
 			errInvalidModelContextCompaction,
+			err,
 		)
 	}
 	if err := selection.Validate(); err != nil {
@@ -366,7 +368,7 @@ func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) bool {
 type ModelContextCompactionResult struct {
 	messages        []corechat.Message
 	changed         bool
-	summarized      bool
+	summary         string
 	messagesBefore  int
 	estimatedTokens int
 }
@@ -375,7 +377,7 @@ type ModelContextCompactionResult struct {
 func NewModelContextCompactionResult(
 	messages []corechat.Message,
 	changed bool,
-	summarized bool,
+	summary string,
 	messagesBefore int,
 	estimatedTokens int,
 ) (ModelContextCompactionResult, error) {
@@ -385,7 +387,14 @@ func NewModelContextCompactionResult(
 			errInvalidModelContextCompaction,
 		)
 	}
-	if summarized && !changed {
+	canonicalSummary := strings.TrimSpace(summary)
+	if canonicalSummary != summary {
+		return ModelContextCompactionResult{}, fmt.Errorf(
+			"%w: result summary is not canonical",
+			errInvalidModelContextCompaction,
+		)
+	}
+	if canonicalSummary != "" && !changed {
 		return ModelContextCompactionResult{}, fmt.Errorf(
 			"%w: summarized result must be changed",
 			errInvalidModelContextCompaction,
@@ -417,7 +426,7 @@ func NewModelContextCompactionResult(
 	return ModelContextCompactionResult{
 		messages:        cloneChatMessages(messages),
 		changed:         changed,
-		summarized:      summarized,
+		summary:         canonicalSummary,
 		messagesBefore:  messagesBefore,
 		estimatedTokens: estimatedTokens,
 	}, nil
@@ -432,7 +441,11 @@ func (m ModelContextCompactionResult) Messages() []corechat.Message {
 func (m ModelContextCompactionResult) Changed() bool { return m.changed }
 
 // Summarized reports whether older messages were replaced by a semantic summary.
-func (m ModelContextCompactionResult) Summarized() bool { return m.summarized }
+func (m ModelContextCompactionResult) Summarized() bool { return m.summary != "" }
+
+// Summary returns the exact user-readable semantic fold, without model-only
+// framing. It is empty for unchanged and deterministic trim results.
+func (m ModelContextCompactionResult) Summary() string { return m.summary }
 
 // MessageCounts returns the before/after coordinates for observable boundaries.
 func (m ModelContextCompactionResult) MessageCounts() (before int, after int) {

@@ -5,16 +5,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
+type modelInvocationState string
+
 const (
-	modelInvocationStarted   = "started"
-	modelInvocationCompleted = "completed"
-	modelInvocationFailed    = "failed"
-	modelInvocationUnknown   = "unknown"
+	modelInvocationStarted   modelInvocationState = "started"
+	modelInvocationCompleted modelInvocationState = "completed"
+	modelInvocationFailed    modelInvocationState = "failed"
+	modelInvocationUnknown   modelInvocationState = "unknown"
 )
+
+func (m modelInvocationState) databaseValue() string { return string(m) }
 
 // ModelInvocationStore is the SQLite operational journal for provider-call
 // attempts. Semantic messages stay in history_items and accounting stays on the
@@ -41,16 +46,19 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 		  FROM model_invocations
 		 WHERE state = ?
 		 ORDER BY session_id, run_id, segment_id, call_id
-	`, modelInvocationStarted)
+	`, modelInvocationStarted.databaseValue())
 	if err != nil {
 		return fmt.Errorf("sqlite: list started model invocations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var sessionID, runID, segmentID, callID string
 		var startedAt int64
 		if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &startedAt); err != nil {
 			return fmt.Errorf("sqlite: scan started model invocation: %w", err)
+		}
+		if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
+			return fmt.Errorf("sqlite: restore started model invocation: %w", err)
 		}
 		if err := yield(sessionID, runID, segmentID, callID, time.Unix(0, startedAt).UTC()); err != nil {
 			return err
@@ -81,7 +89,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 		sessionID,
 		runID,
 		segmentID,
-		modelInvocationStarted,
+		modelInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
@@ -97,7 +105,7 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationCompleted,
+		startedAt, finishedAt, modelInvocationCompleted.databaseValue(),
 	)
 }
 
@@ -108,7 +116,7 @@ func (m *ModelInvocationStore) FailModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationFailed,
+		startedAt, finishedAt, modelInvocationFailed.databaseValue(),
 	)
 }
 
@@ -119,7 +127,7 @@ func (m *ModelInvocationStore) MarkModelInvocationUnknown(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationUnknown,
+		startedAt, finishedAt, modelInvocationUnknown.databaseValue(),
 	)
 }
 
@@ -149,7 +157,7 @@ func (m *ModelInvocationStore) finish(
 		sessionID,
 		runID,
 		segmentID,
-		modelInvocationStarted,
+		modelInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
@@ -169,19 +177,11 @@ func (m *ModelInvocationStore) finish(
 }
 
 func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "session", value: sessionID},
-		{name: "Run", value: runID},
-		{name: "segment", value: segmentID},
-		{name: "call", value: callID},
-	} {
-		name, value := identity.name, identity.value
-		if strings.TrimSpace(value) == "" || value != strings.TrimSpace(value) {
-			return fmt.Errorf("sqlite: model invocation %s ID is required without surrounding whitespace", name)
-		}
+	if err := validateRunCoordinates("model invocation", sessionID, runID, segmentID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseEffect(callID); err != nil {
+		return fmt.Errorf("sqlite: model invocation: %w", err)
 	}
 	return nil
 }

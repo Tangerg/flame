@@ -127,7 +127,7 @@ func awaitStoredDraft(t *testing.T, stateDirectory, sessionID string, want agent
 }
 
 func storedDraft(stateDirectory, sessionID string) (agent.Message, bool, error) {
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		return agent.Message{}, false, err
 	}

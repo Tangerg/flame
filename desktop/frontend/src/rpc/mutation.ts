@@ -1,5 +1,7 @@
 import { isErrorType, RpcProtocolError, RpcTransportError } from "./errors";
 
+const MILLISECONDS_PER_SECOND = 1_000;
+
 export interface MutationAttemptOptions {
   /** Cancellation belongs to one delivery attempt, not the logical mutation.
    * A caller may therefore retry the same idempotency key with a fresh signal. */
@@ -48,7 +50,7 @@ async function waitForReplay(seconds: number, signal?: AbortSignal): Promise<voi
       clearTimeout(timer);
       reject(abortReason(signal!));
     };
-    const timer = setTimeout(finish, seconds * 1_000);
+    const timer = setTimeout(finish, seconds * MILLISECONDS_PER_SECOND);
     signal?.addEventListener("abort", abort, { once: true });
   });
 }

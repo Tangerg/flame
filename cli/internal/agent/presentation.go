@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -89,6 +90,35 @@ type Block struct {
 	Question *Question
 	// Tool carries the call's projection when Kind is [BlockTool].
 	Tool *ToolCall
+}
+
+// BlockIdentity names one presentation block within its owning Run. Block IDs
+// are only run-local, so consumers must retain both fields as one value object.
+type BlockIdentity struct {
+	RunID   string
+	BlockID string
+}
+
+const blockIdentityLengthSeparator byte = ':'
+
+// Key serializes the value object for terminal frameworks that require string
+// keys. Length framing keeps arbitrary run and block IDs collision-free.
+func (i BlockIdentity) Key() string {
+	var encoded strings.Builder
+	encoded.Grow(len(i.RunID) + len(i.BlockID) + 2*4)
+	writeBlockIdentityField(&encoded, i.RunID)
+	writeBlockIdentityField(&encoded, i.BlockID)
+	return encoded.String()
+}
+
+func writeBlockIdentityField(encoded *strings.Builder, value string) {
+	encoded.WriteString(strconv.Itoa(len(value)))
+	encoded.WriteByte(blockIdentityLengthSeparator)
+	encoded.WriteString(value)
+}
+
+func (b Block) Identity() BlockIdentity {
+	return BlockIdentity{RunID: b.RunID, BlockID: b.ID}
 }
 
 // Clone returns a block with no mutable storage shared with the caller.

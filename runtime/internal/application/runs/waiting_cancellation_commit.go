@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -80,12 +80,17 @@ func newWaitingCancellationValidation(
 }
 
 func validateWaitingCancellationBoundary(c WaitingSubtreeCancellationCommit) error {
-	if strings.TrimSpace(c.CommitID) == "" || c.CommitID != strings.TrimSpace(c.CommitID) {
-		return errors.New("runs: waiting cancellation commit identity is required without surrounding whitespace")
+	if err := c.CommitID.Validate(); err != nil {
+		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if strings.TrimSpace(c.RootRunID) == "" || strings.TrimSpace(c.TargetRunID) == "" ||
-		strings.TrimSpace(c.SessionID) == "" {
-		return errors.New("runs: waiting cancellation identity is incomplete")
+	if _, err := resourceid.ParseRun(c.RootRunID); err != nil {
+		return fmt.Errorf("runs: waiting cancellation root: %w", err)
+	}
+	if _, err := resourceid.ParseRun(c.TargetRunID); err != nil {
+		return fmt.Errorf("runs: waiting cancellation target: %w", err)
+	}
+	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
+		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
 	if c.RootRun.ID() != c.RootRunID || c.RootRun.SessionID() != c.SessionID ||
 		!c.RootRun.Lineage().IsRoot() || c.RootRun.State() != rundomain.Waiting {

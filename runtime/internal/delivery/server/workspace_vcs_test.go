@@ -25,6 +25,21 @@ func TestWorkspaceVcsUnavailable(t *testing.T) {
 	}
 }
 
+func TestWorkspaceDiffRejectsMeaninglessOrNonPositiveRowLimits(t *testing.T) {
+	s := newWorkspaceServer(t.TempDir())
+	if _, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{
+		Format: protocol.DiffFormatRaw,
+		Limit:  valuePtr(1),
+	}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("raw diff limit err = %v, want invalid_params", err)
+	}
+	if _, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{
+		Limit: valuePtr(0),
+	}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("zero row limit err = %v, want invalid_params", err)
+	}
+}
+
 func TestWorkspaceGitWireMapping(t *testing.T) {
 	if !workspace.GitAvailable() {
 		t.Skip("git not on PATH")

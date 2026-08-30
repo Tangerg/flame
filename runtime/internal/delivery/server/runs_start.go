@@ -35,6 +35,10 @@ func (s *Server) StartRun(ctx context.Context, in protocol.StartRunRequest) (*pr
 	if err != nil {
 		return nil, nil, err
 	}
+	limits, err := limitsFromWire(in.Limits)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: run limits: %w", protocol.ErrInvalidParams, err)
+	}
 	// Negotiated before admission: the Run is created under this contract and keeps
 	// it for life, so a capability we cannot honor has to stop the call rather than
 	// be discovered halfway through its stream.
@@ -46,14 +50,10 @@ func (s *Server) StartRun(ctx context.Context, in protocol.StartRunRequest) (*pr
 		SessionID:            in.SessionID,
 		DefaultWorkspacePath: s.serverInfo.DefaultWorkspace.Path,
 		ModelSelection:       selection,
-		Limits: run.Limits{
-			MaxTotalTokens: in.MaxTotalTokens,
-			MaxSteps:       in.MaxSteps,
-			MaxBudgetUSD:   in.MaxBudgetUSD,
-		},
-		Options:      options,
-		Capabilities: capabilities,
-		Input:        input,
+		Limits:               limits,
+		Options:              options,
+		Capabilities:         capabilities,
+		Input:                input,
 	})
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
@@ -61,6 +61,15 @@ func (s *Server) StartRun(ctx context.Context, in protocol.StartRunRequest) (*pr
 	// Return the opening userMessage Item id so the client reconciles its
 	// optimistic bubble by exact id (same id the stream + items.list carry).
 	return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, mapRunEvents(ctx, result.Events), nil
+}
+
+func limitsFromWire(wire *protocol.RunLimits) (run.Limits, error) {
+	if wire == nil {
+		return run.UnlimitedLimits(), nil
+	}
+	return run.NewLimits(run.LimitValues{
+		MaxTotalTokens: wire.MaxTotalTokens, MaxSteps: wire.MaxSteps, MaxBudgetUSD: wire.MaxBudgetUSD,
+	})
 }
 
 func decodeRunInput(blocks []protocol.ContentBlock) ([]transcript.ContentBlock, error) {

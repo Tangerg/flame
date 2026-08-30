@@ -32,7 +32,11 @@ export interface WireViolation {
  * first — a caller fixing a frame wants the whole list, and `oneOf` needs to count
  * how badly each variant missed.
  */
-export type WireCheck = (value: unknown, path: string, out: WireViolation[]) => void;
+export type WireCheck = (
+  value: unknown,
+  path: string,
+  out: WireViolation[],
+) => void;
 
 /** `type: "object"` together with the `properties` / `required` it carries. */
 export function object(
@@ -62,7 +66,8 @@ export function fields(
   return (value, path, out) => {
     if (!isObject(value)) return;
     for (const name of required) {
-      if (value[name] === undefined) out.push({ path: `${path}.${name}`, detail: "is required" });
+      if (value[name] === undefined)
+        out.push({ path: `${path}.${name}`, detail: "is required" });
     }
     for (const [name, check] of Object.entries(properties)) {
       if (value[name] !== undefined) check(value[name], `${path}.${name}`, out);
@@ -75,12 +80,14 @@ export function fields(
  * `fields` only reaches a property that is present, so this fires exactly then.
  */
 export function absent(): WireCheck {
-  return (_value, path, out) => out.push({ path, detail: "must not be present here" });
+  return (_value, path, out) =>
+    out.push({ path, detail: "must not be present here" });
 }
 
 export function text(): WireCheck {
   return (value, path, out) => {
-    if (typeof value !== "string") out.push({ path, detail: "expected a string" });
+    if (typeof value !== "string")
+      out.push({ path, detail: "expected a string" });
   };
 }
 
@@ -127,7 +134,10 @@ export function maxLength(most: number): WireCheck {
 
 /** `pattern`, applied only to strings as JSON Schema specifies. */
 export function pattern(expression: string): WireCheck {
-  const compiled = new RegExp(expression);
+  // JSON Schema patterns use ECMAScript's Unicode-aware regular-expression
+  // dialect. The explicit flag makes property escapes such as \p{C} mean the
+  // same thing in every generated client runtime.
+  const compiled = new RegExp(expression, "u");
   return (value, path, out) => {
     if (typeof value === "string" && !compiled.test(value)) {
       out.push({ path, detail: `expected to match ${expression}` });
@@ -140,6 +150,15 @@ export function minimum(least: number): WireCheck {
   return (value, path, out) => {
     if (typeof value === "number" && value < least) {
       out.push({ path, detail: `expected at least ${least}` });
+    }
+  };
+}
+
+/** `exclusiveMinimum`, applied only to numbers as JSON Schema specifies. */
+export function exclusiveMinimum(boundary: number): WireCheck {
+  return (value, path, out) => {
+    if (typeof value === "number" && value <= boundary) {
+      out.push({ path, detail: `expected greater than ${boundary}` });
     }
   };
 }
@@ -158,6 +177,15 @@ export function minItems(least: number): WireCheck {
   return (value, path, out) => {
     if (Array.isArray(value) && value.length < least) {
       out.push({ path, detail: `expected at least ${least} item(s)` });
+    }
+  };
+}
+
+/** `maxItems`, which constrains an array's length and says nothing about its elements. */
+export function maxItems(most: number): WireCheck {
+  return (value, path, out) => {
+    if (Array.isArray(value) && value.length > most) {
+      out.push({ path, detail: `expected at most ${most} item(s)` });
     }
   };
 }
@@ -199,14 +227,16 @@ export function uniqueItems(): WireCheck {
 
 export function flag(): WireCheck {
   return (value, path, out) => {
-    if (typeof value !== "boolean") out.push({ path, detail: "expected a boolean" });
+    if (typeof value !== "boolean")
+      out.push({ path, detail: "expected a boolean" });
   };
 }
 
 /** `const`: the discriminator a union branch pins. */
 export function literal(expected: string): WireCheck {
   return (value, path, out) => {
-    if (value !== expected) out.push({ path, detail: `expected ${JSON.stringify(expected)}` });
+    if (value !== expected)
+      out.push({ path, detail: `expected ${JSON.stringify(expected)}` });
   };
 }
 
@@ -260,6 +290,15 @@ export function record(values: WireCheck): WireCheck {
   };
 }
 
+/** `propertyNames`: validate every own key of an object as a string value. */
+export function propertyNames(check: WireCheck): WireCheck {
+  return (value, path, out) => {
+    if (!isObject(value)) return;
+    for (const key of Object.keys(value))
+      check(key, `${path}[${JSON.stringify(key)}]`, out);
+  };
+}
+
 /**
  * `$ref`. The target is resolved on each call, not captured: the definitions
  * reference one another (an item carries content blocks, a block carries items),
@@ -294,11 +333,14 @@ export function oneOf(branches: readonly WireCheck[]): WireCheck {
       // report the defects in that variant even when an earlier wrong-tag branch
       // happens to have fewer violations. Otherwise `{type:"resync"}` misleadingly
       // reports `expected "skills.changed"` instead of `topics is required`.
-      const missesDiscriminator = missed.some((violation) => violation.path === `${path}.type`);
+      const missesDiscriminator = missed.some(
+        (violation) => violation.path === `${path}.type`,
+      );
       if (
         nearest === undefined ||
         (nearestMissesDiscriminator && !missesDiscriminator) ||
-        (nearestMissesDiscriminator === missesDiscriminator && missed.length < nearest.length)
+        (nearestMissesDiscriminator === missesDiscriminator &&
+          missed.length < nearest.length)
       ) {
         nearest = missed;
         nearestMissesDiscriminator = missesDiscriminator;
@@ -306,10 +348,29 @@ export function oneOf(branches: readonly WireCheck[]): WireCheck {
     }
     if (matched === 1) return;
     if (matched > 1) {
-      out.push({ path, detail: `matches ${matched} variants, and exactly one may apply` });
+      out.push({
+        path,
+        detail: `matches ${matched} variants, and exactly one may apply`,
+      });
       return;
     }
     out.push({ path, detail: "matches no permitted variant" });
+    if (nearest !== undefined) out.push(...nearest);
+  };
+}
+
+/** `anyOf`: one or more alternatives may apply. */
+export function anyOf(branches: readonly WireCheck[]): WireCheck {
+  return (value, path, out) => {
+    let nearest: WireViolation[] | undefined;
+    for (const branch of branches) {
+      const missed: WireViolation[] = [];
+      branch(value, path, missed);
+      if (missed.length === 0) return;
+      if (nearest === undefined || missed.length < nearest.length)
+        nearest = missed;
+    }
+    out.push({ path, detail: "matches no permitted alternative" });
     if (nearest !== undefined) out.push(...nearest);
   };
 }
@@ -321,7 +382,10 @@ export function allOf(members: readonly WireCheck[]): WireCheck {
 }
 
 /** `if` / `then`: a cross-field presence rule. */
-export function ifThen(condition: WireCheck, consequence: WireCheck): WireCheck {
+export function ifThen(
+  condition: WireCheck,
+  consequence: WireCheck,
+): WireCheck {
   return (value, path, out) => {
     const unmet: WireViolation[] = [];
     condition(value, path, unmet);

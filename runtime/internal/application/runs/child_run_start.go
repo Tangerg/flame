@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // ChildRunStartReservation is the durable, non-public identity allocated for
@@ -51,19 +54,19 @@ func (c ChildRunStartReservation) Validate() error {
 }
 
 func (c ChildRunStartReservation) validateIdentity() error {
-	if err := validateRequiredIdentity("session ID", c.SessionID); err != nil {
+	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := validateRequiredIdentity("executor ID", c.ExecutorID); err != nil {
+	if _, err := executoridentity.ParseExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := validateRequiredIdentity("segment ID", c.SegmentID); err != nil {
+	if _, err := resourceid.ParseSegment(c.SegmentID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := validateRequiredIdentity("spawning Item ID", c.SpawnedByItemID); err != nil {
+	if _, err := resourceid.ParseItem(c.SpawnedByItemID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := validateRequiredIdentity("root Run ID", c.RootRunID); err != nil {
+	if _, err := resourceid.ParseRun(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	return nil

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/failure"
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
 )
 
 type RoleKind string
@@ -25,33 +26,82 @@ func (r RoleKind) Validate() error {
 	return nil
 }
 
+type roleMode uint8
+
+const (
+	inheritedRole roleMode = iota + 1
+	disabledRole
+	configuredRole
+)
+
 type Role struct {
-	Kind     RoleKind
-	Provider string
-	Model    string
+	kind     RoleKind
+	mode     roleMode
+	provider string
+	model    string
+}
+
+func InheritedUtilityRole() Role {
+	return Role{kind: UtilityRole, mode: inheritedRole}
+}
+
+func DisabledEmbeddingRole() Role {
+	return Role{kind: EmbeddingRole, mode: disabledRole}
+}
+
+func NewConfiguredRole(kind RoleKind, provider, model string) (Role, error) {
+	role := Role{kind: kind, mode: configuredRole, provider: provider, model: model}
+	if err := role.Validate(); err != nil {
+		return Role{}, err
+	}
+	return role, nil
 }
 
 func (r Role) Validate() error {
-	if err := r.Kind.Validate(); err != nil {
+	if err := r.kind.Validate(); err != nil {
 		return err
 	}
-	provider, model := strings.TrimSpace(r.Provider), strings.TrimSpace(r.Model)
-	if (provider == "") != (model == "") {
-		return errors.New("model role provider and model must both be set or both be empty")
+	switch r.mode {
+	case inheritedRole:
+		if r.kind != UtilityRole || r.provider != "" || r.model != "" {
+			return errors.New("only an empty utility role can inherit the run model")
+		}
+	case disabledRole:
+		if r.kind != EmbeddingRole || r.provider != "" || r.model != "" {
+			return errors.New("only an empty embedding role can be disabled")
+		}
+	case configuredRole:
+		if err := modelidentity.Selection(r.provider, r.model, ""); err != nil {
+			return fmt.Errorf("configured model role: %w", err)
+		}
+	default:
+		return errors.New("model role mode is unknown")
 	}
 	return nil
 }
 
-func (r Role) Configured() bool { return r.Provider != "" && r.Model != "" }
+func (r Role) Kind() RoleKind { return r.kind }
 
-func (r Role) Label() string {
-	if !r.Configured() {
-		if r.Kind == UtilityRole {
-			return "inherit the run model"
-		}
-		return "disabled"
+func (r Role) Configured() bool { return r.mode == configuredRole }
+
+func (r Role) ProviderModel() (string, string, bool) {
+	return r.provider, r.model, r.mode == configuredRole
+}
+
+func (r Role) Label() (string, error) {
+	if err := r.Validate(); err != nil {
+		return "", err
 	}
-	return r.Provider + "/" + r.Model
+	switch r.mode {
+	case inheritedRole:
+		return "inherit the run model", nil
+	case disabledRole:
+		return "disabled", nil
+	case configuredRole:
+		return r.provider + "/" + r.model, nil
+	default:
+		panic("validated model role mode became unreachable")
+	}
 }
 
 type Roles struct {
@@ -60,7 +110,7 @@ type Roles struct {
 }
 
 func (r Roles) Validate() error {
-	if r.Utility.Kind != UtilityRole || r.Embedding.Kind != EmbeddingRole {
+	if r.Utility.Kind() != UtilityRole || r.Embedding.Kind() != EmbeddingRole {
 		return errors.New("model roles are assigned to the wrong slots")
 	}
 	if err := r.Utility.Validate(); err != nil {
@@ -75,38 +125,145 @@ func (r Roles) Validate() error {
 type KeySource string
 
 const (
-	KeyStored KeySource = "stored"
-	KeyEnv    KeySource = "env"
+	KeyStored           KeySource = "stored"
+	KeyEnvironment      KeySource = "env"
+	credentialMaskGlyph           = "*"
 )
 
-type Provider struct {
-	ID                    string
-	BaseURL               string
-	APIKeyMasked          string
-	KeySource             KeySource
-	RequiresBaseURL       bool
-	EmbeddingCapable      bool
-	DefaultEmbeddingModel string
+type Credential struct {
+	masked string
+	source KeySource
 }
 
-func (p Provider) Validate() error {
-	if strings.TrimSpace(p.ID) == "" {
-		return errors.New("provider id is empty")
+func NewCredential(masked string, source KeySource) (Credential, error) {
+	credential := Credential{masked: masked, source: source}
+	if err := credential.Validate(); err != nil {
+		return Credential{}, err
 	}
-	if p.KeySource != "" && p.KeySource != KeyStored && p.KeySource != KeyEnv {
-		return fmt.Errorf("provider %s has invalid key source %q", p.ID, p.KeySource)
+	return credential, nil
+}
+
+func (c Credential) Validate() error {
+	if strings.TrimSpace(c.masked) == "" {
+		return errors.New("provider credential mask is empty")
 	}
-	if p.APIKeyMasked == "" && p.KeySource != "" {
-		return fmt.Errorf("provider %s has a key source without a configured key", p.ID)
-	}
-	if p.APIKeyMasked != "" && p.KeySource == "" {
-		return fmt.Errorf("provider %s has a configured key without its source", p.ID)
+	if c.source != KeyStored && c.source != KeyEnvironment {
+		return fmt.Errorf("provider credential source %q is invalid", c.source)
 	}
 	return nil
 }
 
-func (p Provider) Configured() bool  { return p.APIKeyMasked != "" }
-func (p Provider) KeyEditable() bool { return p.KeySource != KeyEnv }
+func (c Credential) Masked() string    { return c.masked }
+func (c Credential) Source() KeySource { return c.source }
+func (c Credential) FromEnvironment() bool {
+	return c.source == KeyEnvironment
+}
+func (c Credential) Stored() bool { return c.source == KeyStored }
+
+// Exposes reports whether a returned mask reproduces a non-mask credential.
+// An all-mask input is indistinguishable from a correctly redacted value and
+// contains no information to expose.
+func (c Credential) Exposes(raw string) bool {
+	return c.masked == raw && strings.Trim(raw, credentialMaskGlyph) != ""
+}
+
+type ProviderSpec struct {
+	ID                    string
+	BaseURL               *string
+	Credential            *Credential
+	Configured            bool
+	CredentialRequirement CredentialRequirement
+	RequiresBaseURL       bool
+	EmbeddingCapable      bool
+}
+
+type CredentialRequirement string
+
+const (
+	APIKeyRequired CredentialRequirement = "apiKeyRequired"
+	APIKeyOptional CredentialRequirement = "apiKeyOptional"
+)
+
+func (r CredentialRequirement) Validate() error {
+	if r != APIKeyRequired && r != APIKeyOptional {
+		return fmt.Errorf("provider credential requirement %q is invalid", r)
+	}
+	return nil
+}
+
+type Provider struct {
+	id                    string
+	baseURL               string
+	credential            Credential
+	configured            bool
+	credentialRequirement CredentialRequirement
+	requiresBaseURL       bool
+	embeddingCapable      bool
+}
+
+func NewProvider(spec ProviderSpec) (Provider, error) {
+	provider := Provider{
+		id: spec.ID, configured: spec.Configured, credentialRequirement: spec.CredentialRequirement,
+		requiresBaseURL: spec.RequiresBaseURL, embeddingCapable: spec.EmbeddingCapable,
+	}
+	if spec.BaseURL != nil {
+		if strings.TrimSpace(*spec.BaseURL) == "" {
+			return Provider{}, errors.New("provider base URL is empty")
+		}
+		provider.baseURL = *spec.BaseURL
+	}
+	if spec.Credential != nil {
+		provider.credential = *spec.Credential
+	}
+	if err := provider.Validate(); err != nil {
+		return Provider{}, err
+	}
+	return provider, nil
+}
+
+func (p Provider) Validate() error {
+	if err := modelidentity.Provider(p.id); err != nil {
+		return err
+	}
+	if err := p.credentialRequirement.Validate(); err != nil {
+		return fmt.Errorf("provider %s: %w", p.id, err)
+	}
+	if p.baseURL != "" && (p.baseURL != strings.TrimSpace(p.baseURL)) {
+		return fmt.Errorf("provider %s has a non-canonical base URL", p.id)
+	}
+	if p.credential != (Credential{}) {
+		if err := p.credential.Validate(); err != nil {
+			return fmt.Errorf("provider %s: %w", p.id, err)
+		}
+	}
+	if p.configured && p.credentialRequirement == APIKeyRequired && p.credential == (Credential{}) {
+		return fmt.Errorf("provider %s is configured without its required API key", p.id)
+	}
+	if p.configured && p.requiresBaseURL && p.baseURL == "" {
+		return fmt.Errorf("provider %s is configured without its required base URL", p.id)
+	}
+	return nil
+}
+
+func (p Provider) ID() string { return p.id }
+
+func (p Provider) Configured() bool { return p.configured }
+
+func (p Provider) RequiresAPIKey() bool { return p.credentialRequirement == APIKeyRequired }
+
+func (p Provider) RequiresBaseURL() bool { return p.requiresBaseURL }
+
+func (p Provider) EmbeddingCapable() bool { return p.embeddingCapable }
+
+func (p Provider) Credential() (Credential, bool) {
+	return p.credential, p.credential != (Credential{})
+}
+
+func (p Provider) BaseURL() (string, bool) { return p.baseURL, p.baseURL != "" }
+
+func (p Provider) KeyEditable() bool {
+	return p.credential == (Credential{}) || !p.credential.FromEnvironment()
+}
 
 type ChangeKind string
 
@@ -143,8 +300,8 @@ type UpdateProvider struct {
 }
 
 func (u UpdateProvider) Validate() error {
-	if strings.TrimSpace(u.Provider) == "" {
-		return errors.New("update provider id is empty")
+	if err := modelidentity.Provider(u.Provider); err != nil {
+		return fmt.Errorf("update provider: %w", err)
 	}
 	if u.BaseURL == nil && u.APIKey == nil {
 		return errors.New("update provider has no changes")

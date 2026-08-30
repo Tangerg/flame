@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // treeContinuation is the application-private execution hand-off shared by
@@ -91,15 +93,19 @@ func (t *treeContinuation) validate() error {
 	if t == nil {
 		return errors.New("runs: tree continuation is required")
 	}
+	if _, err := resourceid.ParseRun(t.rootRunID); err != nil {
+		return fmt.Errorf("runs: tree continuation root: %w", err)
+	}
+	if _, err := resourceid.ParseSession(t.sessionID); err != nil {
+		return fmt.Errorf("runs: tree continuation: %w", err)
+	}
+	if _, _, err := goalref.ParseOptionalIncarnation(t.goalIncarnationID); err != nil {
+		return fmt.Errorf("runs: tree continuation: %w", err)
+	}
+	if _, err := executoridentity.ParseExecutor(t.executorID); err != nil {
+		return fmt.Errorf("runs: tree continuation: %w", err)
+	}
 	switch {
-	case strings.TrimSpace(t.rootRunID) == "":
-		return errors.New("runs: tree continuation root Run id is required")
-	case strings.TrimSpace(t.sessionID) == "":
-		return errors.New("runs: tree continuation Session id is required")
-	case strings.TrimSpace(t.executorID) == "":
-		return errors.New("runs: tree continuation executor ID is required")
-	case t.goalIncarnationID != strings.TrimSpace(t.goalIncarnationID):
-		return errors.New("runs: tree continuation goal incarnation id has surrounding whitespace")
 	case len(t.continuations) == 0:
 		return errors.New("runs: tree continuation has no Runs")
 	}

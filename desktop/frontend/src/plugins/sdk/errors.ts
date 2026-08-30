@@ -12,11 +12,12 @@
 //   - Composer.submit (slash command run errors)
 
 import { create } from "zustand";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 export type PluginErrorSource = "setup" | "render" | "events" | "command" | "other";
 
 export interface PluginError {
-  id: number;
+  id: string;
   timestamp: number;
   plugin: string;
   source: PluginErrorSource;
@@ -27,8 +28,6 @@ export interface PluginError {
 
 interface ErrorStoreState {
   log: PluginError[];
-  /** Monotonic counter for stable React keys. */
-  nextId: number;
 }
 
 interface ErrorStoreActions {
@@ -41,16 +40,16 @@ interface ErrorStoreActions {
 // pathologically buggy plugin that pushes on every event would otherwise
 // grow the log + every consumer's render scope without bound.
 const MAX_ENTRIES = 200;
+const pluginErrorIds = new ExactSequence();
 
 export const usePluginErrorStore = create<ErrorStoreState & ErrorStoreActions>((set, get) => ({
   log: [],
-  nextId: 1,
 
   push({ plugin, source, message, detail }) {
-    const id = get().nextId;
+    const id = pluginErrorIds.issue().toString();
     const next = [...get().log, { id, timestamp: Date.now(), plugin, source, message, detail }];
     const trimmed = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
-    set({ log: trimmed, nextId: id + 1 });
+    set({ log: trimmed });
   },
 
   clearFor(plugin) {

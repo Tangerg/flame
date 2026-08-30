@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
@@ -28,26 +27,21 @@ type CredentialLookup interface {
 
 // ChatResolver resolves a per-Run [chatclient.Client] for an explicit model
 // selection. The provider is taken as given by the selection and is never
-// inferred from the model id; the resolver pulls that provider's credentials
-// from the registry, then builds and caches the client.
+// inferred from the model id; the resolver pulls the provider's current
+// configuration from the registry and builds an immutable client. It does not
+// retain prior credential generations in a process-lifetime cache.
 type ChatResolver struct {
 	providers CredentialLookup
-
-	mu    sync.Mutex
-	cache map[string]*chatclient.Client
 }
 
-// NewChatResolver returns a chat resolver over the provider credential lookup.
+// NewChatResolver returns a chat resolver over the provider configuration lookup.
 func NewChatResolver(providers CredentialLookup) *ChatResolver {
-	return &ChatResolver{
-		providers: providers,
-		cache:     map[string]*chatclient.Client{},
-	}
+	return &ChatResolver{providers: providers}
 }
 
 // ResolveChat returns the chat client for selection, building it from the
-// provider's registry credentials. Errors when the provider isn't configured /
-// enabled — the run then ends with a clear "set its API key first" error.
+// provider's registry configuration. Required authentication fails as invalid
+// credentials; optional-key providers may resolve without a registry row.
 func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (*chatclient.Client, error) {
 	if !selection.Configured() {
 		return nil, errors.New("modelclient: explicit model selection is required")
@@ -57,31 +51,31 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selec
 	if err != nil {
 		return nil, err
 	}
-	if !ok || !entry.Enabled() {
-		return nil, &run.FailureError{
-			Kind: run.FailureInvalidCredentials,
-			Err:  fmt.Errorf("modelclient: provider %q is not configured (set its API key first)", providerID),
+	if !ok {
+		entry, err = provider.New(providerID)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	// Key by everything that changes the built client, so a credential mutation
-	// (new key / base URL) is picked up rather than serving a stale client.
-	key := providerID + "\x00" + model + "\x00" + entry.APIKey + "\x00" + entry.BaseURL
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if cached, ok := c.cache[key]; ok {
-		return cached, nil
+	inputs, err := resolveProviderClientInputs(providerID, entry)
+	if err != nil {
+		if errors.Is(err, ErrCredentialUnavailable) {
+			return nil, &run.FailureError{
+				Kind: run.FailureInvalidCredentials,
+				Err:  fmt.Errorf("modelclient: provider %q requires an API key", providerID),
+			}
+		}
+		return nil, err
 	}
-	client, err := llm.BuildClient(llm.ClientSpec{
-		Provider: llm.Provider(providerID),
-		Model:    model,
-		APIKey:   entry.APIKey,
-		BaseURL:  entry.BaseURL,
-	})
+	spec, err := inputs.clientSpec(providerID, model)
 	if err != nil {
 		return nil, err
 	}
-	c.cache[key] = client
+	client, err := llm.BuildClient(spec)
+	if err != nil {
+		return nil, err
+	}
 	return client, nil
 }
 

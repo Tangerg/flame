@@ -30,6 +30,16 @@ func mustTreeContinuation(t *testing.T, pending Pending) *treeContinuation {
 	return continuation
 }
 
+func firstSegmentItemID(t *testing.T, segmentID string) string {
+	t.Helper()
+	identities := newSegmentItemIdentities(segmentID)
+	id, err := identities.Next()
+	if err != nil {
+		t.Fatalf("first Item identity: %v", err)
+	}
+	return id
+}
+
 func testTreeContinuation(pending Pending) *treeContinuation {
 	return &treeContinuation{
 		rootRunID:         pending.RootRunID,
@@ -1432,7 +1442,7 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	draft := *child.Admit
 	if draft.RunID != "run_child" ||
 		draft.SessionID != "ses_1" ||
-		draft.SpawnedByItemID != "item_seg_1_1" ||
+		draft.SpawnedByItemID != firstSegmentItemID(t, "seg_1") ||
 		draft.ParentRunID != "run_1" ||
 		draft.RootRunID != "run_1" ||
 		draft.SegmentID != "seg_child" ||
@@ -1644,7 +1654,9 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 	coordinator.newRunID = func() string { return "run_child" }
 	coordinator.newSegmentID = func() string { return "seg_child" }
 	spec := testSegment()
-	spec.Limits = run.Limits{MaxSteps: 20, MaxBudgetUSD: 3}
+	spec.Limits = runfixture.MustLimits(run.LimitValues{
+		MaxSteps: runfixture.Pointer(20), MaxBudgetUSD: runfixture.Pointer(float64(3)),
+	})
 	spec.Capabilities = run.Capabilities{
 		ChildRuns: true,
 	}
@@ -1659,7 +1671,7 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 	}
 
 	lineage := run.Lineage{
-		SpawnedByItemID: "item_seg_1_1",
+		SpawnedByItemID: firstSegmentItemID(t, "seg_1"),
 		ParentRunID:     "run_1",
 		RootRunID:       "run_1",
 	}
@@ -1894,8 +1906,8 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 			t.Fatalf("event[%d] cursor: %v", index, err)
 		}
 		if position.epoch != coordinator.segments.epoch ||
-			position.runID != testRunID ||
-			position.segmentID != testSegmentID ||
+			position.runID.String() != testRunID ||
+			position.segmentID.String() != testSegmentID ||
 			position.sequence != wantSequence {
 			t.Fatalf(
 				"event[%d] cursor = %+v, want root stream %s/%s at %d",
@@ -1918,7 +1930,7 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 		child.RootRunID != "run_1" ||
 		grandchild.ParentRunID != child.RunID ||
 		grandchild.RootRunID != "run_1" ||
-		grandchild.SpawnedByItemID != "item_seg_child_1" {
+		grandchild.SpawnedByItemID != firstSegmentItemID(t, "seg_child") {
 		t.Fatalf("nested drafts child=%+v grandchild=%+v", child, grandchild)
 	}
 
@@ -2312,7 +2324,7 @@ func TestCoordinatorAcknowledgesChildOnlyAfterOpeningCommit(t *testing.T) {
 	}
 	if openings := baseEffects.openingSnapshot(); len(openings) != 2 {
 		t.Fatalf("opening commits = %d, want root and child", len(openings))
-	} else if openings[0].CommitID == "" || openings[1].CommitID == "" || openings[0].CommitID == openings[1].CommitID {
+	} else if openings[0].CommitID.IsZero() || openings[1].CommitID.IsZero() || openings[0].CommitID == openings[1].CommitID {
 		t.Fatalf("opening commit identities = %q/%q, want distinct non-empty values", openings[0].CommitID, openings[1].CommitID)
 	}
 }
@@ -2483,7 +2495,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 		t.Fatalf("tree barrier commits = %d, want exactly one", len(barriers))
 	}
 	barrier := barriers[0]
-	if barrier.CommitID == "" {
+	if barrier.CommitID.IsZero() {
 		t.Fatal("tree barrier has no commit identity")
 	}
 	wantOrder := []string{"run_grandchild", "run_child_a", "run_child_b", "run_1"}
@@ -2607,7 +2619,9 @@ func TestCoordinatorCommitsSyntheticTerminalBeforeRelease(t *testing.T) {
 }
 
 func TestCoordinatorCommitFailureNeverPublishesUnbackedFact(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{CompactionBoundary{MessagesBefore: 4, MessagesAfter: 2}}}
+	executor := &fakeExecutor{events: []ExecutorPayload{CompactionBoundary{
+		Summary: "Retained context", MessagesBefore: 4, MessagesAfter: 2,
+	}}}
 	effects := &fakeEffects{commitErr: errors.New("store down")}
 	coordinator := testCoordinator(executor, effects)
 

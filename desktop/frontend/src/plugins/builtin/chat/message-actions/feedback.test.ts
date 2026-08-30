@@ -3,7 +3,10 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { submitMessageFeedback } from "./application/feedback";
 import { messageFeedback } from "./feedback";
 
@@ -17,7 +20,7 @@ describe("message feedback Runtime generation wiring", () => {
     const pending = deferred<void>();
     const create = vi.fn(() => pending.promise);
     setContainer({ client: () => ({ feedback: { create } }) as unknown as FlameClient });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -49,7 +52,7 @@ describe("message feedback Runtime generation wiring", () => {
     );
     await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
       message: "message_feedback_generation_retired",

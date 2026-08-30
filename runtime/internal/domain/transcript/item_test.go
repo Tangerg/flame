@@ -1,6 +1,7 @@
 package transcript_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -8,7 +9,27 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
+
+func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
+	valid := itemIdentity()
+	for name, mutate := range map[string]func(*transcript.ItemIdentity){
+		"session control": func(identity *transcript.ItemIdentity) { identity.SessionID = "session\n1" },
+		"run padding":     func(identity *transcript.ItemIdentity) { identity.RunID = " run-1" },
+		"item oversized": func(identity *transcript.ItemIdentity) {
+			identity.ItemID = strings.Repeat("i", resourceidentity.MaximumCharacters+1)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			identity := valid
+			mutate(&identity)
+			if err := identity.Validate(); err == nil {
+				t.Fatalf("invalid identity was accepted: %+v", identity)
+			}
+		})
+	}
+}
 
 func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	running, err := transcript.NewToolCall(

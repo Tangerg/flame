@@ -90,7 +90,7 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list pending agent memory: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var facts []agentmemory.LedgerFact
 	for rows.Next() {
 		var fact agentmemory.LedgerFact

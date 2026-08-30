@@ -10,6 +10,8 @@ import (
 	"path"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 const (
@@ -337,6 +339,21 @@ func (i Input) ValidateCommandMaterial() error {
 			i.Subagent.Result,
 			i.Subagent.Error,
 		)
+	}
+	if i.SessionID != "" {
+		if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidCommandInput, err)
+		}
+	}
+	if i.Subagent != nil {
+		if _, err := resourceid.ParseRun(i.Subagent.RunID); err != nil {
+			return fmt.Errorf("%w: subagent: %v", ErrInvalidCommandInput, err)
+		}
+		if i.Subagent.ParentRunID != "" {
+			if _, err := resourceid.ParseRun(i.Subagent.ParentRunID); err != nil {
+				return fmt.Errorf("%w: subagent parent: %v", ErrInvalidCommandInput, err)
+			}
+		}
 	}
 	for _, value := range values {
 		if !utf8.ValidString(value) {

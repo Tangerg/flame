@@ -119,7 +119,7 @@ func TestSideloadedPluginMustDeclareCommandsCapability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer extensionHost.Close()
+	defer func() { _ = extensionHost.Close() }()
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil {
 		t.Fatal(err)
@@ -142,6 +142,62 @@ func TestSideloadedCommandRejectsAnInvalidArgumentMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(discovered.Plugins) != 0 || len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), "invalid arguments mode") {
+		t.Fatalf("discovery = %+v", discovered)
+	}
+}
+
+func TestSideloadedCommandTimeoutDistinguishesAbsenceFromExplicitZero(t *testing.T) {
+	t.Parallel()
+	if timeout, err := (commandTimeoutDeclaration{}).Resolve("hello"); err != nil || timeout != defaultCommandTimeout {
+		t.Fatalf("default timeout = (%s, %v), want %s", timeout, err, defaultCommandTimeout)
+	}
+	for _, seconds := range []int{1, int(maxCommandTimeout.Seconds())} {
+		declaration := commandTimeoutDeclaration{present: true, seconds: seconds}
+		if timeout, err := declaration.Resolve("hello"); err != nil || timeout != time.Duration(seconds)*time.Second {
+			t.Fatalf("timeout %d = (%s, %v)", seconds, timeout, err)
+		}
+	}
+	for _, seconds := range []int{0, -1, int(maxCommandTimeout.Seconds()) + 1} {
+		if _, err := (commandTimeoutDeclaration{present: true, seconds: seconds}).Resolve("hello"); err == nil {
+			t.Fatalf("timeout %d was accepted", seconds)
+		}
+	}
+	if _, err := (commandTimeoutDeclaration{seconds: 1}).Resolve("hello"); err == nil {
+		t.Fatal("absent timeout carrying seconds was accepted")
+	}
+}
+
+func TestManifestRejectsExplicitZeroCommandTimeout(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	declared := validManifest("test.zero-timeout")
+	declared.Contributes.Commands[0].Timeout = commandTimeoutDeclaration{present: true}
+	writePlugin(t, root, "zero-timeout", declared, "not executed")
+	discovered, err := New([]string{root}).Discover(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(discovered.Plugins) != 0 || len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), "timeout") {
+		t.Fatalf("discovery = %+v", discovered)
+	}
+}
+
+func TestManifestRejectsNullCommandTimeout(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	directory := filepath.Join(root, "null-timeout")
+	if err := os.MkdirAll(directory, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `{"schemaVersion":2,"id":"test.null-timeout","version":"1.0.0","apiVersion":1,"requires":[],"capabilities":["terminal.commands"],"entry":"plugin","contributes":{"commands":[{"name":"hello","title":"say hello","arguments":"none","timeoutSeconds":null}]}}`
+	if err := os.WriteFile(filepath.Join(directory, manifestName), []byte(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	discovered, err := New([]string{root}).Discover(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(discovered.Plugins) != 0 || len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), "timeout") {
 		t.Fatalf("discovery = %+v", discovered)
 	}
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"
 	"golang.org/x/oauth2"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 )
 
 // OAuth for remote (HTTP) MCP servers. A server that
@@ -27,13 +29,16 @@ import (
 // and normalized endpoint origin, and a rejected credential is deleted before
 // the server returns to needsAuth.
 
-// oauthCallbackPath is the loopback redirect path the authorization server sends
-// the code back to.
-const oauthCallbackPath = "/callback"
-
-// oauthFlowTimeout bounds one interactive sign-in — discovery plus the human
-// completing the browser flow. Generous, because a person is in the loop.
-const oauthFlowTimeout = 5 * time.Minute
+const (
+	// oauthCallbackPath is the loopback redirect path the authorization server sends
+	// the code back to.
+	oauthCallbackPath = "/callback"
+	// oauthFlowTimeout bounds one interactive sign-in — discovery plus the human
+	// completing the browser flow. Generous, because a person is in the loop.
+	oauthFlowTimeout             = 5 * time.Minute
+	oauthServerReadHeaderTimeout = 5 * time.Second
+	oauthServerShutdownTimeout   = time.Second
+)
 
 // oauthCallback is the authorization-server redirect outcome.
 type oauthCallback struct {
@@ -70,7 +75,7 @@ func newOAuthFlow(ctx context.Context) (*oauthFlow, error) {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(oauthCallbackPath, f.handleCallback)
-	f.server = &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	f.server = &http.Server{Handler: mux, ReadHeaderTimeout: oauthServerReadHeaderTimeout}
 	go func() { f.serveDone <- f.server.Serve(ln) }()
 	return f, nil
 }
@@ -121,7 +126,7 @@ func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*a
 // (full-link observability, unlike a bare context.Background) — and bound the
 // graceful Shutdown with its own 1s timeout.
 func (o *oauthFlow) close(ctx context.Context) {
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), oauthServerShutdownTimeout)
 	defer cancel()
 	shutdownErr := o.server.Shutdown(shutdownCtx)
 	var forceErr error
@@ -142,7 +147,8 @@ func newOAuthHandler(
 	flow *oauthFlow,
 	lifetime context.Context,
 	store OAuthSessionStore,
-	server, endpoint string,
+	server mcpserver.ServerName,
+	endpoint string,
 ) (auth.OAuthHandler, error) {
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")

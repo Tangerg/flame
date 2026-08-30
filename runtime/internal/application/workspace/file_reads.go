@@ -63,7 +63,7 @@ type FileListOptions struct {
 // FileBrowser is the application-owned port for workspace file reads.
 type FileBrowser interface {
 	List(ctx context.Context, root string, options FileListOptions) ([]FileEntry, error)
-	Read(ctx context.Context, root string, input FileReadInput) (FileReadResult, error)
+	Read(ctx context.Context, root string, plan FileReadPlan) (FileReadResult, error)
 	Grep(ctx context.Context, root string, input GrepPlan) (GrepResult, error)
 }
 
@@ -72,7 +72,7 @@ type FileListInput struct {
 	CWD string
 	FileListOptions
 	Cursor string
-	Limit  int
+	Limit  pagination.RequestedLimit
 }
 
 // FilePage is a stable cursor page of workspace entries.
@@ -84,6 +84,14 @@ type FilePage struct {
 // FileReadInput specifies a root-relative file read. StartLine/EndLine are
 // one-based and inclusive when StartLine is positive.
 type FileReadInput struct {
+	Path      string
+	Range     FileLineRange
+	ByteLimit FileReadByteLimit
+}
+
+// FileReadPlan is the fully normalized primitive filesystem-port request. Read
+// policy has already resolved default/clamp/presence before this value exists.
+type FileReadPlan struct {
 	Path      string
 	MaxBytes  int
 	StartLine int
@@ -104,7 +112,7 @@ type FileReadResult struct {
 type GrepInput struct {
 	Path  string
 	Query string
-	Limit int
+	Limit GrepResultLimit
 }
 
 // GrepPlan is the normalized, compiled search accepted by the filesystem port.
@@ -213,7 +221,7 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 }
 
 // Head returns the first requested lines of one workspace file.
-func (f *Files) Head(ctx context.Context, cwd, path string, lines int) (FileHead, error) {
+func (f *Files) Head(ctx context.Context, cwd, path string, limit HeadLineLimit) (FileHead, error) {
 	root, err := f.scope.root(cwd)
 	if err != nil {
 		return FileHead{}, err
@@ -225,11 +233,11 @@ func (f *Files) Head(ctx context.Context, cwd, path string, lines int) (FileHead
 	if err != nil {
 		return FileHead{}, err
 	}
-	if lines <= 0 {
-		lines = defaultFileHeadLines
+	lines, err := limit.Lines()
+	if err != nil {
+		return FileHead{}, err
 	}
-	lines = min(lines, maxFileHeadLines)
-	read, err := f.readFile(ctx, root, FileReadInput{
+	read, err := f.readFile(ctx, root, FileReadPlan{
 		Path: path, EndLine: lines, StartLine: 1, MaxBytes: DefaultFileReadBytes,
 	})
 	if err != nil {
@@ -244,25 +252,32 @@ func (f *Files) Head(ctx context.Context, cwd, path string, lines int) (FileHead
 // Read returns all or a one-based inclusive line window of a workspace
 // file. It validates ranges before invoking the filesystem port.
 func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (FileReadResult, error) {
-	if err := input.validate(); err != nil {
+	if input.Path == "" {
+		return FileReadResult{}, ErrPathRequired
+	}
+	start, end, err := input.Range.Bounds()
+	if err != nil {
+		return FileReadResult{}, err
+	}
+	maxBytes, err := input.ByteLimit.Bytes()
+	if err != nil {
 		return FileReadResult{}, err
 	}
 	root, err := f.scope.root(cwd)
 	if err != nil {
 		return FileReadResult{}, err
 	}
-	input.Path, err = f.scope.paths.ResolveExistingInRoot(root, input.Path)
+	path, err := f.scope.paths.ResolveExistingInRoot(root, input.Path)
 	if err != nil {
 		return FileReadResult{}, err
 	}
-	return f.readFile(ctx, root, input)
+	return f.readFile(ctx, root, FileReadPlan{Path: path, StartLine: start, EndLine: end, MaxBytes: maxBytes})
 }
 
-func (f *Files) readFile(ctx context.Context, root string, input FileReadInput) (FileReadResult, error) {
+func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {
 	if f.files == nil {
 		return FileReadResult{}, errors.New("workspace: file browser is not configured")
 	}
-	input.MaxBytes = normalizedFileReadBytes(input.MaxBytes)
 	result, err := f.files.Read(ctx, root, input)
 	if err != nil {
 		return FileReadResult{}, err
@@ -273,7 +288,7 @@ func (f *Files) readFile(ctx context.Context, root string, input FileReadInput) 
 	return result, nil
 }
 
-func validateFileReadResult(input FileReadInput, result FileReadResult) error {
+func validateFileReadResult(input FileReadPlan, result FileReadResult) error {
 	if len(result.Content) > input.MaxBytes {
 		return ErrFileReadTooLarge
 	}
@@ -311,29 +326,6 @@ func validateFileReadResult(input FileReadInput, result FileReadResult) error {
 	return nil
 }
 
-func normalizedFileReadBytes(requested int) int {
-	if requested == 0 {
-		return DefaultFileReadBytes
-	}
-	return min(requested, MaxFileReadBytes)
-}
-
-func (f FileReadInput) validate() error {
-	if f.Path == "" {
-		return ErrPathRequired
-	}
-	if f.StartLine < 0 || f.EndLine < 0 || f.MaxBytes < 0 {
-		return ErrInvalidFileRange
-	}
-	if f.EndLine > 0 && f.StartLine == 0 {
-		return ErrInvalidFileRange
-	}
-	if f.StartLine > 0 && f.EndLine > 0 && f.EndLine < f.StartLine {
-		return ErrInvalidFileRange
-	}
-	return nil
-}
-
 // Grep searches a workspace root or an existing subdirectory. A truncated
 // search returns an honest total rather than silently under-reporting hits.
 func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResult, error) {
@@ -360,18 +352,18 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 			return GrepResult{}, err
 		}
 	}
-	if input.Limit <= 0 {
-		input.Limit = DefaultGrepLimit
-	}
-	input.Limit = min(input.Limit, MaxGrepLimit)
-	if f.files == nil {
-		return GrepResult{}, errors.New("workspace: file browser is not configured")
-	}
-	result, err := f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: input.Limit})
+	limit, err := input.Limit.Matches()
 	if err != nil {
 		return GrepResult{}, err
 	}
-	if err := validateGrepResult(pattern, input.Limit, result); err != nil {
+	if f.files == nil {
+		return GrepResult{}, errors.New("workspace: file browser is not configured")
+	}
+	result, err := f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: limit})
+	if err != nil {
+		return GrepResult{}, err
+	}
+	if err := validateGrepResult(pattern, limit, result); err != nil {
 		return GrepResult{}, err
 	}
 	return result, nil
@@ -434,8 +426,8 @@ func previewLines(read FileReadResult) []FileLine {
 	return lines
 }
 
-func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit int) ([]FileEntry, string, error) {
-	size, err := pagination.Limit(limit, defaultFileListPageLimit)
+func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit pagination.RequestedLimit) ([]FileEntry, string, error) {
+	size, err := limit.Resolve(defaultFileListPageLimit)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %w", ErrPageLimit, err)
 	}
@@ -465,5 +457,9 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 	if end == len(entries) {
 		return page, "", nil
 	}
-	return page, pagination.Encode(fileListPageNamespace, filters, []string{entries[end-1].orderKey()}), nil
+	nextCursor, err := pagination.Encode(fileListPageNamespace, filters, []string{entries[end-1].orderKey()})
+	if err != nil {
+		return nil, "", fmt.Errorf("%w: %w", ErrPageCursor, err)
+	}
+	return page, nextCursor, nil
 }

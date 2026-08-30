@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -406,7 +407,7 @@ func newTestServer(rt testRuntime) *Server {
 	s.models = models.New(models.Config{})
 	// Default to a disabled schedules coordinator (schedules.* report
 	// capability_not_negotiated); schedule tests replace it with a fake registry.
-	s.schedules = schedules.New(schedules.Dependencies{})
+	s.schedules = schedules.Disabled()
 	return s
 }
 
@@ -643,7 +644,7 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 			return sessions.MaterialSnapshot{}, err
 		}
 	}
-	var state plan.State
+	var state plan.Current
 	if s.rt.plan != nil {
 		state, err = s.rt.plan.State(ctx, id)
 		if err != nil {
@@ -652,10 +653,11 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 	}
 	var currentGoal *goal.Goal
 	if s.rt.goals != nil {
-		stored, found, err := s.rt.goals.Get(ctx, id)
+		current, err := s.rt.goals.Get(ctx, id)
 		if err != nil {
 			return sessions.MaterialSnapshot{}, err
 		}
+		stored, found := current.Goal()
 		if found {
 			stored = stored.Clone()
 			currentGoal = &stored
@@ -703,7 +705,7 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 		}
 	}
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, child.ID(), plan.PlanReplacement.ExpectedRevision(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, child.ID(), plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
 			return session.Session{}, err
 		}
 	}
@@ -714,7 +716,7 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 // transcript/run/interrupt/session stores, mirroring the persistence adapter.
 func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.RollbackPlan) error {
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, plan.SessionID, plan.PlanReplacement.ExpectedRevision(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, plan.SessionID, plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
 			return err
 		}
 	}
@@ -791,7 +793,7 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 	// Replaced, never deleted-and-reinserted: the revision has to come out greater
 	// than what this session already published.
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, id, plan.PlanReplacement.ExpectedRevision(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, id, plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
 			return err
 		}
 	}
@@ -973,7 +975,7 @@ func (emptySessionRunStore) ListNonTerminalRuns(context.Context) ([]run.Run, err
 type inertRuntimeStores struct{}
 
 func (inertRuntimeStores) List(context.Context) ([]session.Session, error) { return nil, nil }
-func (inertRuntimeStores) ListPage(context.Context, bool, int64, string, int) ([]session.Session, error) {
+func (inertRuntimeStores) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
 	return nil, nil
 }
 func (inertRuntimeStores) Get(context.Context, string) (session.Session, error) {
@@ -1194,19 +1196,19 @@ func (stubRunState) RequireActiveSegment(context.Context, string, string, string
 }
 func (stubRunState) Suspend(context.Context, run.Run) error     { return nil }
 func (stubRunState) Terminalize(context.Context, run.Run) error { return nil }
-func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, string) error {
+func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, commitidentity.ID) error {
 	return nil
 }
-func (stubRunState) RecordRunCommit(context.Context, string, string, string, string) error {
+func (stubRunState) RecordRunCommit(context.Context, string, string, string, commitidentity.ID) error {
 	return nil
 }
-func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, string) error {
+func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, commitidentity.ID) error {
 	return nil
 }
-func (stubRunState) SuspendBarrier(context.Context, run.Run, string, string) error {
+func (stubRunState) SuspendBarrier(context.Context, run.Run, string, commitidentity.ID) error {
 	return nil
 }
-func (stubRunState) RunCommitCommitted(context.Context, string, string, string, string) (bool, error) {
+func (stubRunState) RunCommitCommitted(context.Context, string, string, string, commitidentity.ID) (bool, error) {
 	return false, nil
 }
 func (stubRunState) UpdateProgress(context.Context, string, string, string, run.Metrics, int64, time.Time) error {

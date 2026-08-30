@@ -23,10 +23,15 @@ func (f *fakeRunStarter) Start(ctx context.Context, cmd runs.StartCommand) (runs
 func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	runStarter := &fakeRunStarter{canceled: make(chan struct{})}
 	launcher := NewRunLauncher(runStarter, "/default")
-
-	startedRun, err := launcher.StartScheduledRun(context.Background(), schedule.Occurrence{Schedule: schedule.Schedule{
+	scheduled := mustStoredSchedule(t, schedule.Snapshot{
 		ID: "sch_1", Instructions: "summarize", ModelSelection: mustScheduleSelection("p", "m"),
-	}})
+	})
+
+	request, err := schedule.ManualRunRequest(scheduled)
+	if err != nil {
+		t.Fatalf("ManualRunRequest: %v", err)
+	}
+	startedRun, err := launcher.StartScheduledRun(context.Background(), request)
 	if err != nil {
 		t.Fatalf("StartScheduledRun: %v", err)
 	}

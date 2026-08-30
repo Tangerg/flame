@@ -12,13 +12,17 @@ import (
 // ListWorkspaceFiles projects a paged application workspace-file listing onto
 // the wire contract.
 func (s *Server) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error) {
+	limit, err := requestedPageLimit(in.Limit)
+	if err != nil {
+		return nil, wireWorkspaceError(wirePageError(err))
+	}
 	page, err := s.workspaceFiles.List(ctx, workspaceapp.FileListInput{
 		CWD: in.Workspace.Path,
 		FileListOptions: workspaceapp.FileListOptions{
 			Path: in.Path, Glob: in.Glob, Recursive: in.Recursive, IncludeIgnored: in.IncludeIgnored,
 		},
 		Cursor: in.Cursor,
-		Limit:  in.Limit,
+		Limit:  limit,
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -56,7 +60,15 @@ func presentFileEntryType(kind workspaceapp.FileEntryKind) (protocol.FileEntryTy
 
 // GetWorkspaceFileHead projects the application file preview onto wire lines.
 func (s *Server) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHeadRequest) (*protocol.FileHead, error) {
-	head, err := s.workspaceFiles.Head(ctx, in.Workspace.Path, in.Path, in.Lines)
+	lineLimit := workspaceapp.DefaultHeadLineLimit()
+	if in.Lines != nil {
+		explicit, err := workspaceapp.NewHeadLineLimit(*in.Lines)
+		if err != nil {
+			return nil, wireWorkspaceError(err)
+		}
+		lineLimit = explicit
+	}
+	head, err := s.workspaceFiles.Head(ctx, in.Workspace.Path, in.Path, lineLimit)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
@@ -69,8 +81,20 @@ func (s *Server) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHe
 
 // ReadWorkspaceFile maps the application file read onto the protocol response.
 func (s *Server) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequest) (*protocol.FileContent, error) {
+	lineRange, err := fileLineRangeFromWire(in.StartLine, in.EndLine)
+	if err != nil {
+		return nil, wireWorkspaceError(err)
+	}
+	byteLimit := workspaceapp.DefaultFileReadByteLimit()
+	if in.MaxBytes != nil {
+		explicit, limitErr := workspaceapp.NewFileReadByteLimit(*in.MaxBytes)
+		if limitErr != nil {
+			return nil, wireWorkspaceError(limitErr)
+		}
+		byteLimit = explicit
+	}
 	read, err := s.workspaceFiles.Read(ctx, in.Workspace.Path, workspaceapp.FileReadInput{
-		Path: in.Path, MaxBytes: in.MaxBytes, StartLine: in.StartLine, EndLine: in.EndLine,
+		Path: in.Path, Range: lineRange, ByteLimit: byteLimit,
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -78,7 +102,7 @@ func (s *Server) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequ
 	out := &protocol.FileContent{
 		Path: in.Path, Content: read.Content, Encoding: "utf-8", TotalLines: read.TotalLines, Truncated: read.Truncated,
 	}
-	if in.StartLine > 0 {
+	if in.StartLine != nil {
 		out.StartLine = read.StartLine + 1
 		out.EndLine = read.EndLine
 	}
@@ -87,7 +111,15 @@ func (s *Server) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequ
 
 // GrepWorkspace maps the application content search onto the protocol result.
 func (s *Server) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*protocol.GrepResult, error) {
-	result, err := s.workspaceFiles.Grep(ctx, in.Workspace.Path, workspaceapp.GrepInput{Path: in.Path, Query: in.Query, Limit: in.Limit})
+	limit := workspaceapp.DefaultGrepResultLimit()
+	if in.Limit != nil {
+		explicit, err := workspaceapp.NewGrepResultLimit(*in.Limit)
+		if err != nil {
+			return nil, wireWorkspaceError(err)
+		}
+		limit = explicit
+	}
+	result, err := s.workspaceFiles.Grep(ctx, in.Workspace.Path, workspaceapp.GrepInput{Path: in.Path, Query: in.Query, Limit: limit})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
@@ -96,4 +128,17 @@ func (s *Server) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*p
 		matches = append(matches, protocol.GrepMatch{Path: match.Path, LineNumber: match.LineNumber, Text: match.Text})
 	}
 	return &protocol.GrepResult{Matches: matches, Total: result.Total}, nil
+}
+
+func fileLineRangeFromWire(start, end *int) (workspaceapp.FileLineRange, error) {
+	switch {
+	case start == nil && end == nil:
+		return workspaceapp.WholeFileRange(), nil
+	case start != nil && end == nil:
+		return workspaceapp.NewFileTailRange(*start)
+	case start != nil && end != nil:
+		return workspaceapp.NewFileLineRange(*start, *end)
+	default:
+		return workspaceapp.FileLineRange{}, workspaceapp.ErrInvalidFileRange
+	}
 }

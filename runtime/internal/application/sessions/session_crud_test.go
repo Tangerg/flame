@@ -25,7 +25,7 @@ type crudSessionStore struct {
 	saveErr  error
 }
 
-func (c *crudSessionStore) ListPage(ctx context.Context, _ bool, _ int64, _ string, _ int) ([]session.Session, error) {
+func (c *crudSessionStore) ListPage(ctx context.Context, _ session.CatalogRead) ([]session.Session, error) {
 	return c.List(ctx)
 }
 
@@ -388,17 +388,23 @@ type pagedSessionStore struct {
 	limit   int
 }
 
-func (p *pagedSessionStore) ListPage(_ context.Context, afterFavorite bool, afterUpdatedAt int64, afterID string, limit int) ([]session.Session, error) {
-	p.afterID, p.limit = afterID, limit
+func (p *pagedSessionStore) ListPage(_ context.Context, read session.CatalogRead) ([]session.Session, error) {
+	p.limit = read.Limit()
+	anchor, hasAnchor := read.After()
+	afterFavorite, afterUpdatedAt, afterID := false, int64(0), ""
+	if hasAnchor {
+		afterFavorite, afterUpdatedAt, afterID = anchor.Favorite(), anchor.UpdatedAt().UnixNano(), anchor.ID()
+	}
+	p.afterID = afterID
 	var out []session.Session
 	for _, row := range p.rows {
-		if afterUpdatedAt != 0 || afterID != "" {
+		if hasAnchor {
 			position := row.UpdatedAt().UnixNano()
 			if row.Favorite() != afterFavorite || position > afterUpdatedAt || (position == afterUpdatedAt && row.ID() <= afterID) {
 				continue
 			}
 		}
-		if limit > 0 && len(out) == limit {
+		if len(out) == read.Limit() {
 			break
 		}
 		out = append(out, row)
@@ -432,7 +438,8 @@ func TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor(t *testing.T) {
 	}))
 	ctx := t.Context()
 
-	first, err := c.ListViewPage(ctx, "", 2)
+	filter := session.AllCatalogEntries()
+	first, err := c.ListViewPage(ctx, filter, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -443,7 +450,7 @@ func TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor(t *testing.T) {
 		t.Fatalf("first page = %+v, want two sessions and a cursor", first.Rows)
 	}
 
-	second, err := c.ListViewPage(ctx, first.NextCursor, 2)
+	second, err := c.ListViewPage(ctx, filter, first.NextCursor, explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -454,11 +461,21 @@ func TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor(t *testing.T) {
 		t.Fatalf("second page = %+v, want the tail and no cursor", second.Rows)
 	}
 
-	foreign := pagination.Encode("runs", nil, []string{"1", "0", "ses_1"})
-	if _, err := c.ListViewPage(ctx, foreign, 2); !errors.Is(err, pagination.ErrInvalidCursor) {
+	foreign, err := pagination.Encode("runs", nil, []string{"1", "0", "ses_1"})
+	if err != nil {
+		t.Fatalf("encode foreign cursor: %v", err)
+	}
+	if _, err := c.ListViewPage(ctx, filter, foreign, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("cursor from another query err = %v, want ErrInvalidCursor", err)
 	}
-	if _, err := c.ListViewPage(ctx, first.NextCursor+"x", 2); !errors.Is(err, pagination.ErrInvalidCursor) {
+	if _, err := c.ListViewPage(ctx, filter, first.NextCursor+"x", explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("damaged cursor err = %v, want ErrInvalidCursor", err)
+	}
+	search, err := session.NewCatalogFilter("session", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.ListViewPage(ctx, search, first.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
+		t.Fatalf("cursor reused with another filter err = %v, want ErrInvalidCursor", err)
 	}
 }

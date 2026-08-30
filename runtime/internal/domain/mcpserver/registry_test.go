@@ -5,16 +5,24 @@ import (
 	"time"
 )
 
-func TestServerValidateRejectsNegativeTimeout(t *testing.T) {
+func TestServerValidateRejectsForgedBoundedHandshakeTimeout(t *testing.T) {
 	srv := Server{
-		Name:      "linear",
-		Transport: TransportStreamableHTTP,
-		URL:       "https://mcp.linear.app/mcp",
-		Timeout:   -time.Second,
+		Name:             testMCPServerName("linear"),
+		Transport:        TransportStreamableHTTP,
+		URL:              "https://mcp.linear.app/mcp",
+		HandshakeTimeout: HandshakeTimeout{mode: handshakeTimeoutBounded, duration: -time.Second},
 	}
 
 	if err := srv.Validate(); err == nil {
-		t.Fatal("Validate err = nil, want negative timeout rejected")
+		t.Fatal("Validate err = nil, want forged timeout rejected")
+	}
+}
+
+func TestNewHandshakeTimeoutRequiresPositiveDuration(t *testing.T) {
+	for _, duration := range []time.Duration{0, -time.Second, time.Millisecond, time.Second + time.Millisecond} {
+		if _, err := NewHandshakeTimeout(duration); err == nil {
+			t.Fatalf("NewHandshakeTimeout(%v) err = nil", duration)
+		}
 	}
 }
 
@@ -34,7 +42,7 @@ func TestServerValidateRejectsCrossTransportState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			server := Server{
-				Name: "cloud", Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
+				Name: testMCPServerName("cloud"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
 			}
 			test.mutate(&server)
 			if err := server.Validate(); err == nil {

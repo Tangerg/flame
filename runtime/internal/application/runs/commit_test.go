@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -41,12 +42,12 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 
 	commit := EventCommit{
 		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1", State: StateTerminalize,
-		CommitID: "event_commit_1", Outcome: outcome, Run: &record,
+		CommitID: testCommitID("run_commit_event_1"), Outcome: outcome, Run: &record,
 	}
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("terminal commit awaiting transactional watermark: %v", err)
 	}
-	commit.CommitID = ""
+	commit.CommitID = commitidentity.ID{}
 	if err := commit.Validate(); err == nil {
 		t.Fatal("terminal commit without an immutable commit identity passed validation")
 	}

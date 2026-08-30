@@ -1,11 +1,6 @@
-// Package goal is the autonomous-execution loop's durable state: at most one
-// goal per session that drives runs toward an objective until the model signals
-// it complete or blocked, an opt-in budget is spent, or the user stops it.
-// The use case driving Runs owns the loop; this package holds the entity,
-// its status vocabulary, and the cross-Run budget accounting. A goal is
-// deliberately session-scoped, not run-scoped: it spans the
-// many runs the loop launches, so it lives outside the per-run run.State
-// machine (which has no paused state and terminalizes a lost run on restart).
+// Package goal owns the durable autonomous-objective aggregate. A Goal spans
+// every Run launched for one objective incarnation; the owning use case drives the
+// loop, while this package owns lifecycle, accounting, time, and version rules.
 package goal
 
 import (
@@ -15,27 +10,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Status is where a goal sits in the autonomous loop.
+// Status is one Goal's durable lifecycle state.
 //
-// StatusComplete is transient: the model reports it through the terminal-outcome boundary,
-// the driver observes it once and clears the goal. It is never a durable
-// resting state — a stored complete goal only exists in the window between the
-// tool call and the driver's next read (or a crash in that window, which the
-// boot reconcile clears).
+// StatusComplete is a transient committed state: the owning drive observes it,
+// publishes completion, settles the terminal Run, and conditionally clears it.
 type Status string
 
 const (
-	StatusActive   Status = "active"   // the loop is (or should be) driving runs
-	StatusPaused   Status = "paused"   // the user stopped it, or a restart degraded it
-	StatusBlocked  Status = "blocked"  // a deadlock the user must resolve (budget / model-declared)
-	StatusComplete Status = "complete" // transient: announced, then cleared
+	StatusActive   Status = "active"
+	StatusPaused   Status = "paused"
+	StatusBlocked  Status = "blocked"
+	StatusComplete Status = "complete"
+	firstRevision  int64  = 1
 )
 
-// Valid reports whether s is a recognized status.
 func (s Status) Valid() bool {
 	switch s {
 	case StatusActive, StatusPaused, StatusBlocked, StatusComplete:
@@ -45,75 +39,139 @@ func (s Status) Valid() bool {
 	}
 }
 
-// Budget is the opt-in cross-Run cap. A zero field is unbounded on that axis;
-// an all-zero Budget lets the loop run until the model declares done or the user
-// stops it (the entry gate makes that an explicit choice).
+// Budget is the immutable cross-Run spending policy. Its zero value is invalid;
+// callers must choose [UnlimitedBudget] or construct explicit positive limits
+// with [NewBudget].
 type Budget struct {
-	MaxRuns    int     // total autonomous Runs
-	MaxCostUSD float64 // summed USD across Runs
-	MaxSteps   int     // summed model calls across Runs
+	maxRuns      int
+	maxCostUSD   float64
+	maxSteps     int
+	runsLimited  bool
+	costLimited  bool
+	stepsLimited bool
+	initialized  bool
 }
 
-// Validate reports whether every configured budget ceiling is finite and
-// non-negative.
+// BudgetLimits is the construction boundary for a limited Budget. Every
+// present value is a real positive cap; absence means that axis is not capped.
+// At least one axis must be present.
+type BudgetLimits struct {
+	MaxRuns    *int
+	MaxCostUSD *float64
+	MaxSteps   *int
+}
+
+// UnlimitedBudget explicitly selects a Goal with no cross-Run cap.
+func UnlimitedBudget() Budget {
+	return Budget{initialized: true}
+}
+
+// NewBudget constructs a Budget with at least one explicit positive limit.
+func NewBudget(limits BudgetLimits) (Budget, error) {
+	budget := Budget{initialized: true}
+	if limits.MaxRuns != nil {
+		if *limits.MaxRuns <= 0 {
+			return Budget{}, fmt.Errorf("%w: maximum runs must be positive", ErrInvalid)
+		}
+		budget.maxRuns, budget.runsLimited = *limits.MaxRuns, true
+	}
+	if limits.MaxCostUSD != nil {
+		if *limits.MaxCostUSD <= 0 || math.IsNaN(*limits.MaxCostUSD) || math.IsInf(*limits.MaxCostUSD, 0) {
+			return Budget{}, fmt.Errorf("%w: maximum cost must be finite and positive", ErrInvalid)
+		}
+		budget.maxCostUSD, budget.costLimited = *limits.MaxCostUSD, true
+	}
+	if limits.MaxSteps != nil {
+		if *limits.MaxSteps <= 0 {
+			return Budget{}, fmt.Errorf("%w: maximum steps must be positive", ErrInvalid)
+		}
+		budget.maxSteps, budget.stepsLimited = *limits.MaxSteps, true
+	}
+	if budget.Unlimited() {
+		return Budget{}, fmt.Errorf("%w: limited budget requires at least one limit", ErrInvalid)
+	}
+	return budget, nil
+}
+
 func (b Budget) Validate() error {
-	if b.MaxRuns < 0 || b.MaxSteps < 0 || b.MaxCostUSD < 0 ||
-		math.IsNaN(b.MaxCostUSD) || math.IsInf(b.MaxCostUSD, 0) {
-		return errors.New("goal: budget limits must be finite and non-negative")
+	if !b.initialized {
+		return fmt.Errorf("%w: budget must be constructed explicitly", ErrInvalid)
+	}
+	if b.maxRuns < 0 || b.maxSteps < 0 ||
+		b.runsLimited != (b.maxRuns > 0) || b.stepsLimited != (b.maxSteps > 0) {
+		return fmt.Errorf("%w: count limit presence and value disagree", ErrInvalid)
+	}
+	if b.maxCostUSD < 0 || b.costLimited != (b.maxCostUSD > 0) ||
+		math.IsNaN(b.maxCostUSD) || math.IsInf(b.maxCostUSD, 0) {
+		return fmt.Errorf("%w: cost limit presence and value disagree", ErrInvalid)
 	}
 	return nil
 }
 
-// Usage accumulates what the loop has spent across its Runs so far.
+// Unlimited reports whether no budget axis is capped.
+func (b Budget) Unlimited() bool {
+	return b.initialized && !b.runsLimited && !b.costLimited && !b.stepsLimited
+}
+
+func (b Budget) MaxRuns() (int, bool)        { return b.maxRuns, b.runsLimited }
+func (b Budget) MaxCostUSD() (float64, bool) { return b.maxCostUSD, b.costLimited }
+func (b Budget) MaxSteps() (int, bool)       { return b.maxSteps, b.stepsLimited }
+
+// Usage is the immutable accounting value accumulated across Goal-owned Runs.
 type Usage struct {
 	Runs    int
 	CostUSD float64
 	Steps   int
 }
 
-// Version identifies one durable revision of a Goal. IncarnationID names the
-// immutable objective incarnation; Revision advances on every persisted
-// mutation inside it. Together they prevent an old Run or drive from writing a
-// fresh Goal that replaced the prior objective after its row was cleared.
-type Version struct {
-	IncarnationID string
-	Revision      int64
+func (u Usage) validate() error {
+	if u.Runs < 0 || u.Steps < 0 || u.CostUSD < 0 ||
+		math.IsNaN(u.CostUSD) || math.IsInf(u.CostUSD, 0) {
+		return errors.New("goal: usage must be finite and non-negative")
+	}
+	return nil
 }
 
-// BudgetLimit identifies the cross-Run cap that stopped a goal.
+func (u Usage) add(record RunRecord) (Usage, error) {
+	if u.Runs == math.MaxInt || record.Steps > math.MaxInt-u.Steps {
+		return Usage{}, errors.New("goal: usage counter overflow")
+	}
+	next := Usage{
+		Runs:    u.Runs + 1,
+		CostUSD: u.CostUSD + record.CostUSD,
+		Steps:   u.Steps + record.Steps,
+	}
+	if err := next.validate(); err != nil {
+		return Usage{}, err
+	}
+	return next, nil
+}
+
 type BudgetLimit string
 
 const (
-	BudgetLimitNone  BudgetLimit = ""
 	BudgetLimitRuns  BudgetLimit = "runs"
 	BudgetLimitCost  BudgetLimit = "cost"
 	BudgetLimitSteps BudgetLimit = "steps"
 )
 
-// Valid reports whether b identifies a supported budget axis or no limit.
 func (b BudgetLimit) Valid() bool {
-	return b == BudgetLimitNone || b == BudgetLimitRuns || b == BudgetLimitCost || b == BudgetLimitSteps
+	return b == BudgetLimitRuns || b == BudgetLimitCost || b == BudgetLimitSteps
 }
 
-// Exceeded reports the first budget limit u has reached, or (BudgetLimitNone,
-// false) when the goal is still within budget. Checked after each Run commits
-// its usage.
-func (b Budget) Exceeded(u Usage) (limit BudgetLimit, exceeded bool) {
+func (b Budget) exceeded(u Usage) (BudgetLimit, bool) {
 	switch {
-	case b.MaxRuns > 0 && u.Runs >= b.MaxRuns:
+	case b.runsLimited && u.Runs >= b.maxRuns:
 		return BudgetLimitRuns, true
-	case b.MaxCostUSD > 0 && u.CostUSD >= b.MaxCostUSD:
+	case b.costLimited && u.CostUSD >= b.maxCostUSD:
 		return BudgetLimitCost, true
-	case b.MaxSteps > 0 && u.Steps >= b.MaxSteps:
+	case b.stepsLimited && u.Steps >= b.maxSteps:
 		return BudgetLimitSteps, true
 	default:
-		return BudgetLimitNone, false
+		return BudgetLimit(""), false
 	}
 }
 
-// ReasonCode classifies why a paused or blocked goal stopped. Its stable string
-// value is safe to persist and project across process boundaries; presentation
-// layers decide how to explain it to their audience.
 type ReasonCode string
 
 const (
@@ -130,7 +188,6 @@ const (
 	ReasonBlockedByModel         ReasonCode = "blockedByModel"
 )
 
-// Valid reports whether r is a recognized stopping reason.
 func (r ReasonCode) Valid() bool {
 	switch r {
 	case ReasonNone,
@@ -150,63 +207,166 @@ func (r ReasonCode) Valid() bool {
 	}
 }
 
-// Reason is the typed stopping context stored with a paused or blocked goal.
-// Detail is allowed only for model-authored explanations and stable domain
-// values such as an Outcome string. Operational errors belong in logs and
-// traces, never in durable goal state.
+// Reason is immutable stopping context. Operational diagnostics never belong
+// here; Detail is reserved for a Run outcome or model-authored explanation.
 type Reason struct {
-	Code   ReasonCode
-	Detail string
+	code   ReasonCode
+	detail string
 }
 
-// Goal is one session's autonomous objective and loop state.
-type Goal struct {
+func (r Reason) Code() ReasonCode { return r.code }
+func (r Reason) Detail() string   { return r.detail }
+func (r Reason) IsNone() bool     { return r.code == ReasonNone }
+
+func newReason(status Status, code ReasonCode, detail string) (Reason, error) {
+	if !code.Valid() || code == ReasonNone {
+		return Reason{}, fmt.Errorf("%w: %s reason %q is invalid", ErrInvalid, status, code)
+	}
+	if detail != strings.TrimSpace(detail) {
+		return Reason{}, fmt.Errorf("%w: stop reason detail has surrounding whitespace", ErrInvalid)
+	}
+	switch status {
+	case StatusPaused:
+		switch code {
+		case ReasonStoppedByUser, ReasonRuntimeRestarted, ReasonRunStartFailed,
+			ReasonAwaitingInput, ReasonTerminalOutcomeMissing:
+			if detail != "" {
+				return Reason{}, fmt.Errorf("%w: reason %q must not carry detail", ErrInvalid, code)
+			}
+		case ReasonRunNotCompleted:
+			if detail == "" {
+				return Reason{}, fmt.Errorf("%w: reason %q requires a terminal outcome", ErrInvalid, code)
+			}
+		default:
+			return Reason{}, fmt.Errorf("%w: reason %q cannot pause a Goal", ErrInvalid, code)
+		}
+	case StatusBlocked:
+		switch code {
+		case ReasonRunBudgetReached, ReasonCostBudgetReached, ReasonStepBudgetReached:
+			if detail != "" {
+				return Reason{}, fmt.Errorf("%w: reason %q must not carry detail", ErrInvalid, code)
+			}
+		case ReasonBlockedByModel:
+			if detail == "" {
+				return Reason{}, fmt.Errorf("%w: model block requires an explanation", ErrInvalid)
+			}
+		default:
+			return Reason{}, fmt.Errorf("%w: reason %q cannot block a Goal", ErrInvalid, code)
+		}
+	default:
+		return Reason{}, fmt.Errorf("%w: status %q cannot carry a stop reason", ErrInvalid, status)
+	}
+	return Reason{code: code, detail: detail}, nil
+}
+
+// Snapshot is the technical reconstruction boundary, not a mutation surface.
+type Snapshot struct {
 	SessionID      string
 	Objective      string
 	Status         Status
-	Reason         Reason             // why it is paused or blocked; zero while active
-	ModelSelection modelref.Selection // model the loop runs each Run against
-	// Capabilities is the client contract frozen when this objective incarnation
-	// starts. Every autonomous Run uses the same set; a later resume may prove it
-	// can cover the set but cannot renegotiate it.
-	Capabilities run.Capabilities
-	Budget       Budget
-	Used         Usage
-	// IncarnationID names this objective incarnation. Pausing and resuming do not
-	// replace the objective, so every Run already admitted for it keeps the same
-	// identity until a fresh Goal replaces the aggregate.
-	IncarnationID string
-	// Revision is the durable optimistic-concurrency version of this session's
-	// goal row. Persistence, not callers, assigns and advances it.
-	Revision  int64
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ReasonCode     ReasonCode
+	ReasonDetail   string
+	ModelSelection modelref.Selection
+	Capabilities   run.Capabilities
+	Budget         Budget
+	Used           Usage
+	IncarnationID  string
+	Revision       int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// Goal is one committed autonomous objective. Private fields make every next
+// committed value pass through a domain transition.
+type Goal struct {
+	sessionID     string
+	objective     string
+	status        Status
+	reason        Reason
+	selection     modelref.Selection
+	capabilities  run.Capabilities
+	budget        Budget
+	used          Usage
+	incarnationID goalref.IncarnationID
+	revision      int64
+	createdAt     time.Time
+	updatedAt     time.Time
+}
+
+// Current is the explicit optional Goal value for one Session. Its zero value
+// is invalid rather than ambiguously meaning "not found"; use [Unwritten].
+type Current struct {
+	sessionID string
+	goal      *Goal
+}
+
+// Version is the typed CAS identity of a Current Goal. Presence is explicit;
+// revision zero and an empty incarnation are not absence sentinels.
+type Version struct {
+	sessionID     string
+	incarnationID goalref.IncarnationID
+	revision      int64
+	committed     bool
 }
 
 var (
-	errSessionRequired   = errors.New("goal: session ID is required")
-	errObjectiveRequired = errors.New("goal: objective is required")
-	errInvalidSnapshot   = errors.New("goal: invalid snapshot")
-	// ErrBudgetExhausted rejects a resume that would start work beyond the
-	// durable cross-Run budget. Changing a budget is a separate intent, never
-	// an implicit side effect of resuming a blocked goal.
-	ErrBudgetExhausted = errors.New("goal: budget exhausted")
-	// ErrNotResumable rejects a lifecycle transition from a terminal/transient
-	// status. A complete goal is cleared rather than revived.
-	ErrNotResumable = errors.New("goal: status is not resumable")
-	// ErrNotEditable rejects an objective edit during the transient completion
-	// settlement window. The owning drive must finish accounting and clear it.
-	ErrNotEditable = errors.New("goal: status is not editable")
-	// ErrRunIdentityConflict reports an attempt to reuse one Run identity for a
-	// different immutable Goal accounting fact. Exact retries are idempotent;
-	// conflicting retries are corruption and must never be silently accepted.
+	errSessionRequired     = errors.New("goal: session ID is required")
+	errObjectiveRequired   = errors.New("goal: objective is required")
+	ErrInvalid             = errors.New("goal: invalid Goal")
+	ErrInvalidTransition   = errors.New("goal: invalid lifecycle transition")
+	ErrBudgetExhausted     = errors.New("goal: budget exhausted")
+	ErrNotResumable        = errors.New("goal: status is not resumable")
+	ErrNotEditable         = errors.New("goal: status is not editable")
 	ErrRunIdentityConflict = errors.New("goal: Run identity conflict")
 )
 
-// New builds a fresh active objective incarnation for sessionID. The
-// incarnation is part of the aggregate rather than a follow-up mutation, so an
-// admitted Run can always carry exact Goal provenance. Persistence assigns the
-// first durable revision.
+// Unwritten constructs the explicit absent Goal value for sessionID.
+func Unwritten(sessionID string) (Current, error) {
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return Current{}, err
+	}
+	return Current{sessionID: sessionID}, nil
+}
+
+// CurrentOf owns one validated committed Goal as its Session's latest value.
+func CurrentOf(value Goal) (Current, error) {
+	if err := value.ValidateSnapshot(); err != nil {
+		return Current{}, err
+	}
+	owned := value.Clone()
+	return Current{sessionID: owned.sessionID, goal: &owned}, nil
+}
+
+func (c Current) Validate() error {
+	if err := validateSessionIdentity(c.sessionID); err != nil {
+		return err
+	}
+	if c.goal == nil {
+		return nil
+	}
+	if c.goal.sessionID != c.sessionID {
+		return fmt.Errorf("%w: Current Session identity does not match Goal", ErrInvalid)
+	}
+	return c.goal.ValidateSnapshot()
+}
+
+func (c Current) Goal() (Goal, bool) {
+	if c.goal == nil {
+		return Goal{}, false
+	}
+	return c.goal.Clone(), true
+}
+
+func (c Current) SessionID() string { return c.sessionID }
+
+func (c Current) Version() Version {
+	if c.goal == nil {
+		return Version{sessionID: c.sessionID}
+	}
+	return c.goal.Version()
+}
+
+// New constructs revision one of a fresh objective incarnation.
 func New(
 	sessionID, objective string,
 	selection modelref.Selection,
@@ -215,97 +375,327 @@ func New(
 	incarnationID string,
 	now time.Time,
 ) (Goal, error) {
-	if sessionID == "" {
-		return Goal{}, errSessionRequired
-	}
-	if objective == "" {
-		return Goal{}, errObjectiveRequired
-	}
-	if incarnationID == "" {
-		return Goal{}, fmt.Errorf("%w: incarnation ID is required", errInvalidSnapshot)
-	}
-	if err := budget.Validate(); err != nil {
-		return Goal{}, err
-	}
-	capabilities = capabilities.Normalized()
-	if err := capabilities.Validate(); err != nil {
-		return Goal{}, fmt.Errorf("goal: capabilities: %w", err)
-	}
-	return Goal{
+	return Restore(Snapshot{
 		SessionID:      sessionID,
 		Objective:      objective,
 		Status:         StatusActive,
 		ModelSelection: selection,
-		Capabilities:   capabilities,
+		Capabilities:   capabilities.Normalized(),
 		Budget:         budget,
 		IncarnationID:  incarnationID,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}, nil
+		Revision:       firstRevision,
+		CreatedAt:      canonicalTime(now),
+		UpdatedAt:      canonicalTime(now),
+	})
 }
 
-// ValidateSnapshot verifies the invariants of one durable goal state. It does
-// not validate a lifecycle transition; persistence reconstruction uses it so
-// corrupt or obsolete rows cannot become a Goal.
-func (g Goal) ValidateSnapshot() error {
-	if g.SessionID == "" {
-		return errSessionRequired
+// Restore reconstructs one committed Goal from a technical snapshot.
+func Restore(snapshot Snapshot) (Goal, error) {
+	incarnationID, err := goalref.ParseIncarnation(snapshot.IncarnationID)
+	if err != nil {
+		return Goal{}, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
-	if g.Objective == "" {
+	reason := Reason{}
+	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonDetail != "" {
+		var err error
+		reason, err = newReason(snapshot.Status, snapshot.ReasonCode, snapshot.ReasonDetail)
+		if err != nil {
+			return Goal{}, err
+		}
+	}
+	value := Goal{
+		sessionID:     snapshot.SessionID,
+		objective:     snapshot.Objective,
+		status:        snapshot.Status,
+		reason:        reason,
+		selection:     snapshot.ModelSelection,
+		capabilities:  snapshot.Capabilities.Clone(),
+		budget:        snapshot.Budget,
+		used:          snapshot.Used,
+		incarnationID: incarnationID,
+		revision:      snapshot.Revision,
+		createdAt:     canonicalTime(snapshot.CreatedAt),
+		updatedAt:     canonicalTime(snapshot.UpdatedAt),
+	}
+	if err := value.ValidateSnapshot(); err != nil {
+		return Goal{}, err
+	}
+	return value, nil
+}
+
+func (g Goal) ValidateSnapshot() error {
+	if err := validateSessionIdentity(g.sessionID); err != nil {
+		return err
+	}
+	if strings.TrimSpace(g.objective) == "" {
 		return errObjectiveRequired
 	}
-	if g.IncarnationID == "" {
-		return fmt.Errorf("%w: incarnation ID is required", errInvalidSnapshot)
+	if g.objective != strings.TrimSpace(g.objective) {
+		return fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
 	}
-	if g.Revision <= 0 {
-		return fmt.Errorf("%w: revision must be positive", errInvalidSnapshot)
+	if err := g.incarnationID.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
-	if !g.Status.Valid() {
-		return fmt.Errorf("%w: unknown status %q", errInvalidSnapshot, g.Status)
+	if g.revision <= 0 {
+		return fmt.Errorf("%w: revision must be positive", ErrInvalid)
 	}
-	if !g.Reason.Code.Valid() {
-		return fmt.Errorf("%w: unknown reason code %q", errInvalidSnapshot, g.Reason.Code)
+	if !g.status.Valid() {
+		return fmt.Errorf("%w: unknown status %q", ErrInvalid, g.status)
 	}
-	if err := g.Budget.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", errInvalidSnapshot, err)
+	if err := g.selection.Validate(); err != nil {
+		return fmt.Errorf("%w: model selection: %v", ErrInvalid, err)
 	}
-	if err := g.Capabilities.Validate(); err != nil {
-		return fmt.Errorf("%w: capabilities: %w", errInvalidSnapshot, err)
+	if !g.selection.Configured() {
+		return fmt.Errorf("%w: exact model selection is required", ErrInvalid)
 	}
-	if g.Used.Runs < 0 || g.Used.CostUSD < 0 || g.Used.Steps < 0 ||
-		math.IsNaN(g.Used.CostUSD) || math.IsInf(g.Used.CostUSD, 0) {
-		return fmt.Errorf("%w: usage must be finite and non-negative", errInvalidSnapshot)
+	if err := g.capabilities.Validate(); err != nil {
+		return fmt.Errorf("%w: capabilities: %v", ErrInvalid, err)
 	}
-	switch g.Status {
+	if err := g.budget.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if err := g.used.validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if g.createdAt.IsZero() || g.updatedAt.IsZero() {
+		return fmt.Errorf("%w: creation and update times are required", ErrInvalid)
+	}
+	if g.createdAt.Location() != time.UTC || g.updatedAt.Location() != time.UTC {
+		return fmt.Errorf("%w: times must be UTC", ErrInvalid)
+	}
+	if g.updatedAt.Before(g.createdAt) {
+		return fmt.Errorf("%w: update time precedes creation", ErrInvalid)
+	}
+	switch g.status {
 	case StatusActive, StatusComplete:
-		if g.Reason.Code != ReasonNone || g.Reason.Detail != "" {
-			return fmt.Errorf("%w: %s goal must not carry a stop reason", errInvalidSnapshot, g.Status)
+		if !g.reason.IsNone() || g.reason.detail != "" {
+			return fmt.Errorf("%w: %s Goal must not carry a stop reason", ErrInvalid, g.status)
 		}
 	case StatusPaused, StatusBlocked:
-		if g.Reason.Code == ReasonNone {
-			return fmt.Errorf("%w: %s goal requires a stop reason", errInvalidSnapshot, g.Status)
+		validated, err := newReason(g.status, g.reason.code, g.reason.detail)
+		if err != nil || validated != g.reason {
+			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, g.status, err)
+		}
+	}
+	if g.status == StatusActive {
+		if limit, exhausted := g.budget.exceeded(g.used); exhausted {
+			return fmt.Errorf("%w: active Goal has exhausted %s budget", ErrInvalid, limit)
 		}
 	}
 	return nil
 }
 
-// Clone returns an ownership-isolated Goal value.
+func (g Goal) Snapshot() Snapshot {
+	return Snapshot{
+		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
+		ReasonCode: g.reason.code, ReasonDetail: g.reason.detail,
+		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
+		Budget: g.budget, Used: g.used, IncarnationID: g.incarnationID.String(),
+		Revision: g.revision, CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
+	}
+}
+
 func (g Goal) Clone() Goal {
-	g.Capabilities = g.Capabilities.Clone()
+	g.capabilities = g.capabilities.Clone()
 	return g
 }
 
-// AddRun folds one completed Run's usage into the accumulator.
-func (g *Goal) AddRun(costUSD float64, steps int, now time.Time) {
-	g.Used.Runs++
-	g.Used.CostUSD += costUSD
-	g.Used.Steps += steps
-	g.UpdatedAt = now
+func (g Goal) SessionID() string                  { return g.sessionID }
+func (g Goal) Objective() string                  { return g.objective }
+func (g Goal) Status() Status                     { return g.status }
+func (g Goal) Reason() Reason                     { return g.reason }
+func (g Goal) ModelSelection() modelref.Selection { return g.selection }
+func (g Goal) Capabilities() run.Capabilities     { return g.capabilities.Clone() }
+func (g Goal) Budget() Budget                     { return g.budget }
+func (g Goal) Used() Usage                        { return g.used }
+func (g Goal) IncarnationID() string              { return g.incarnationID.String() }
+func (g Goal) Revision() int64                    { return g.revision }
+func (g Goal) CreatedAt() time.Time               { return g.createdAt }
+func (g Goal) UpdatedAt() time.Time               { return g.updatedAt }
+
+func (g Goal) Version() Version {
+	return Version{sessionID: g.sessionID, incarnationID: g.incarnationID, revision: g.revision, committed: true}
 }
 
-// RunRecord is the immutable accounting fact emitted when one goal-owned Run
-// terminalizes. RunID makes the store-level recording idempotent;
-// IncarnationID keeps a Run from charging a later objective incarnation.
+func (v Version) IsUnwritten() bool             { return !v.committed }
+func (v Version) SessionID() string             { return v.sessionID }
+func (v Version) IncarnationID() (string, bool) { return v.incarnationID.String(), v.committed }
+func (v Version) Revision() (int64, bool)       { return v.revision, v.committed }
+
+func (v Version) Validate() error {
+	if err := validateSessionIdentity(v.sessionID); err != nil {
+		return err
+	}
+	if !v.committed {
+		if v.incarnationID.String() != "" || v.revision != 0 {
+			return fmt.Errorf("%w: unwritten Version carries committed identity", ErrInvalid)
+		}
+		return nil
+	}
+	if err := v.incarnationID.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if v.revision <= 0 {
+		return fmt.Errorf("%w: committed Version revision must be positive", ErrInvalid)
+	}
+	return nil
+}
+
+// AdvancesTo accepts revision one for a fresh incarnation and exactly one
+// revision of advancement inside an existing incarnation.
+func (v Version) AdvancesTo(next Goal) error {
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if err := next.ValidateSnapshot(); err != nil {
+		return err
+	}
+	if next.sessionID != v.sessionID {
+		return fmt.Errorf("%w: replacement belongs to another Session", ErrInvalid)
+	}
+	if !v.committed || next.incarnationID != v.incarnationID {
+		if next.revision != firstRevision {
+			return fmt.Errorf("%w: fresh incarnation must start at revision %d", ErrInvalid, firstRevision)
+		}
+		return nil
+	}
+	if v.revision == math.MaxInt64 {
+		return fmt.Errorf("%w: revision exhausted", ErrInvalid)
+	}
+	if next.revision != v.revision+1 {
+		return fmt.Errorf("%w: replacement revision %d does not follow %s", ErrInvalid, next.revision, v)
+	}
+	return nil
+}
+
+func (v Version) String() string {
+	if !v.committed {
+		return fmt.Sprintf("%s/unwritten", v.sessionID)
+	}
+	return fmt.Sprintf("%s/%s@%d", v.sessionID, v.incarnationID.String(), v.revision)
+}
+
+func (g Goal) Complete(now time.Time) (Goal, error) {
+	if g.status != StatusActive {
+		return Goal{}, fmt.Errorf("%w: cannot complete %s Goal", ErrInvalidTransition, g.status)
+	}
+	next, err := g.next(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next.status, next.reason = StatusComplete, Reason{}
+	return next, next.ValidateSnapshot()
+}
+
+func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error) {
+	if g.status != StatusActive {
+		return Goal{}, fmt.Errorf("%w: cannot pause %s Goal", ErrInvalidTransition, g.status)
+	}
+	reason, err := newReason(StatusPaused, code, detail)
+	if err != nil {
+		return Goal{}, err
+	}
+	next, err := g.next(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next.status, next.reason = StatusPaused, reason
+	return next, next.ValidateSnapshot()
+}
+
+// Stop returns the user-authored paused state after an owned drive has been
+// quiesced. The terminal Run may already have derived a pause, block, or
+// transient completion while quiescing; the explicit user command is the final
+// lifecycle decision and replaces that reason without losing its accounting.
+func (g Goal) Stop(now time.Time) (Goal, error) {
+	next, err := g.next(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next.status = StatusPaused
+	next.reason, err = newReason(StatusPaused, ReasonStoppedByUser, "")
+	if err != nil {
+		return Goal{}, err
+	}
+	return next, next.ValidateSnapshot()
+}
+
+func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error) {
+	if g.status != StatusActive {
+		return Goal{}, fmt.Errorf("%w: cannot block %s Goal", ErrInvalidTransition, g.status)
+	}
+	reason, err := newReason(StatusBlocked, code, detail)
+	if err != nil {
+		return Goal{}, err
+	}
+	next, err := g.next(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next.status, next.reason = StatusBlocked, reason
+	return next, next.ValidateSnapshot()
+}
+
+func (g Goal) Resume(now time.Time) (Goal, error) {
+	if g.status != StatusPaused && g.status != StatusBlocked {
+		return Goal{}, ErrNotResumable
+	}
+	if _, exhausted := g.budget.exceeded(g.used); exhausted {
+		return Goal{}, ErrBudgetExhausted
+	}
+	next, err := g.next(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next.status, next.reason = StatusActive, Reason{}
+	return next, next.ValidateSnapshot()
+}
+
+func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (Goal, error) {
+	return g.reviseObjective(objective, incarnationID, false, now)
+}
+
+// ReviseObjectiveAndResume keeps edit+reactivation to one durable replacement.
+func (g Goal) ReviseObjectiveAndResume(objective, incarnationID string, now time.Time) (Goal, error) {
+	if g.status != StatusPaused {
+		return Goal{}, fmt.Errorf("%w: only a paused Goal can revise and resume", ErrInvalidTransition)
+	}
+	if _, exhausted := g.budget.exceeded(g.used); exhausted {
+		return Goal{}, ErrBudgetExhausted
+	}
+	return g.reviseObjective(objective, incarnationID, true, now)
+}
+
+func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now time.Time) (Goal, error) {
+	if g.status == StatusComplete {
+		return Goal{}, ErrNotEditable
+	}
+	if strings.TrimSpace(objective) == "" {
+		return Goal{}, errObjectiveRequired
+	}
+	if objective != strings.TrimSpace(objective) {
+		return Goal{}, fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
+	}
+	parsedIncarnationID, err := goalref.ParseIncarnation(incarnationID)
+	if err != nil {
+		return Goal{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if parsedIncarnationID == g.incarnationID {
+		return Goal{}, fmt.Errorf("%w: revised objective requires a fresh incarnation", ErrInvalid)
+	}
+	updatedAt, err := g.transitionTime(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next := g.Clone()
+	next.objective, next.incarnationID = objective, parsedIncarnationID
+	next.revision, next.updatedAt = firstRevision, updatedAt
+	if resume {
+		next.status, next.reason = StatusActive, Reason{}
+	}
+	return next, next.ValidateSnapshot()
+}
+
 type RunRecord struct {
 	SessionID     string
 	IncarnationID string
@@ -316,23 +706,15 @@ type RunRecord struct {
 	CompletedAt   time.Time
 }
 
-// Validate reports whether this immutable Goal accounting fact is complete and
-// numerically representable before it reaches the idempotency ledger.
 func (r RunRecord) Validate() error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "session ID", value: r.SessionID},
-		{name: "incarnation ID", value: r.IncarnationID},
-		{name: "Run ID", value: r.RunID},
-	} {
-		if strings.TrimSpace(identity.value) == "" {
-			return fmt.Errorf("goal: Run %s is required", identity.name)
-		}
-		if identity.value != strings.TrimSpace(identity.value) {
-			return fmt.Errorf("goal: Run %s has surrounding whitespace", identity.name)
-		}
+	if err := validateSessionIdentity(r.SessionID); err != nil {
+		return fmt.Errorf("goal: Run: %w", err)
+	}
+	if _, err := goalref.ParseIncarnation(r.IncarnationID); err != nil {
+		return fmt.Errorf("%w: Run: %v", ErrInvalid, err)
+	}
+	if _, err := resourceid.ParseRun(r.RunID); err != nil {
+		return fmt.Errorf("%w: Run ID: %v", ErrInvalid, err)
 	}
 	if _, ok := run.ParseOutcome(r.Outcome.String()); !ok {
 		return fmt.Errorf("goal: Run has unknown outcome %q", r.Outcome)
@@ -349,90 +731,64 @@ func (r RunRecord) Validate() error {
 	return nil
 }
 
-// RecordRun folds one terminal Run into the matching Goal incarnation. It
-// always records work that incarnation performed; a model report may already have
-// changed Active to Complete or Blocked before the Run terminalizes, and that
-// transition must not erase the Run's cost. Only an active goal derives a new
-// lifecycle state from the terminal outcome or budget — an earlier explicit
-// stop/report remains authoritative.
-//
-// Callers persist this mutation in the same transaction that terminalizes the
-// Run, so a completed Run and its budget charge cannot diverge.
-func (g *Goal) RecordRun(record RunRecord) {
-	g.AddRun(record.CostUSD, record.Steps, record.CompletedAt)
-	if g.Status != StatusActive {
-		return
+// RecordRun returns one replacement revision even when accounting also derives
+// a pause or budget block.
+func (g Goal) RecordRun(record RunRecord) (Goal, error) {
+	if err := record.Validate(); err != nil {
+		return Goal{}, err
 	}
-	if record.Outcome != run.OutcomeCompleted {
-		g.Pause(ReasonRunNotCompleted, record.Outcome.String(), record.CompletedAt)
-		return
+	if record.SessionID != g.sessionID || record.IncarnationID != g.incarnationID.String() {
+		return Goal{}, fmt.Errorf("%w: Run belongs to another Goal", ErrRunIdentityConflict)
 	}
-	if limit, over := g.Budget.Exceeded(g.Used); over {
-		g.Block(reasonForBudgetLimit(limit), "", record.CompletedAt)
+	next, err := g.next(record.CompletedAt)
+	if err != nil {
+		return Goal{}, err
 	}
+	next.used, err = g.used.add(record)
+	if err != nil {
+		return Goal{}, err
+	}
+	if g.status == StatusActive {
+		if record.Outcome != run.OutcomeCompleted {
+			next.status = StatusPaused
+			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, record.Outcome.String())
+		} else if limit, exhausted := g.budget.exceeded(next.used); exhausted {
+			next.status = StatusBlocked
+			next.reason, err = newReason(StatusBlocked, reasonForBudgetLimit(limit), "")
+		}
+		if err != nil {
+			return Goal{}, err
+		}
+	}
+	return next, next.ValidateSnapshot()
 }
 
-// Complete marks the objective done. It is a transient state: the driver
-// observes it once, announces, and clears the goal — a completed goal is never a
-// durable resting state (see [Status]).
-func (g *Goal) Complete(now time.Time) {
-	g.Status = StatusComplete
-	g.Reason = Reason{}
-	g.UpdatedAt = now
+func (g Goal) next(now time.Time) (Goal, error) {
+	if err := g.ValidateSnapshot(); err != nil {
+		return Goal{}, err
+	}
+	if g.revision == math.MaxInt64 {
+		return Goal{}, fmt.Errorf("%w: revision exhausted", ErrInvalid)
+	}
+	updatedAt, err := g.transitionTime(now)
+	if err != nil {
+		return Goal{}, err
+	}
+	next := g.Clone()
+	next.revision++
+	next.updatedAt = updatedAt
+	return next, nil
 }
 
-// Pause stops the loop with a typed reason (user stop, restart degrade, a run
-// that parked for HITL, or a transient run error). A paused goal can be resumed.
-func (g *Goal) Pause(code ReasonCode, detail string, now time.Time) {
-	g.Status = StatusPaused
-	g.Reason = Reason{Code: code, Detail: detail}
-	g.UpdatedAt = now
-}
-
-// Block records a typed deadlock the user must resolve (budget spent, or the
-// model declared itself stuck). Model-declared blocks may be resumed; a spent
-// budget is deliberately not resumable because another Run would exceed the
-// configured cap before it could be accounted.
-func (g *Goal) Block(code ReasonCode, detail string, now time.Time) {
-	g.Status = StatusBlocked
-	g.Reason = Reason{Code: code, Detail: detail}
-	g.UpdatedAt = now
-}
-
-// Resume returns a paused or blocked goal to active so the driver drives it
-// again. A spent budget is not resumable: starting another Run would violate
-// the aggregate's durable cap before any later accounting can stop it.
-func (g *Goal) Resume(now time.Time) error {
-	if g.Status != StatusPaused && g.Status != StatusBlocked {
-		return ErrNotResumable
+func (g Goal) transitionTime(now time.Time) (time.Time, error) {
+	now = canonicalTime(now)
+	if now.IsZero() {
+		return time.Time{}, fmt.Errorf("%w: transition time is required", ErrInvalid)
 	}
-	if _, exhausted := g.Budget.Exceeded(g.Used); exhausted {
-		return ErrBudgetExhausted
+	if now.Before(g.updatedAt) {
+		return time.Time{}, fmt.Errorf("%w: transition time precedes current state", ErrInvalid)
 	}
-	g.Status = StatusActive
-	g.Reason = Reason{}
-	g.UpdatedAt = now
-	return nil
-}
-
-// ReviseObjective replaces only the user-authored objective while preserving
-// the Goal's lifecycle, frozen execution settings, accounting and creation
-// time. A fresh incarnation severs any stale Run provenance from the prior
-// objective; persistence assigns the next durable revision.
-func (g *Goal) ReviseObjective(objective, incarnationID string, now time.Time) error {
-	if objective == "" {
-		return errObjectiveRequired
-	}
-	if incarnationID == "" {
-		return fmt.Errorf("%w: incarnation ID is required", errInvalidSnapshot)
-	}
-	if g.Status == StatusComplete {
-		return ErrNotEditable
-	}
-	g.Objective = objective
-	g.IncarnationID = incarnationID
-	g.UpdatedAt = now
-	return nil
+	return now, nil
 }
 
 func reasonForBudgetLimit(limit BudgetLimit) ReasonCode {
@@ -444,11 +800,23 @@ func reasonForBudgetLimit(limit BudgetLimit) ReasonCode {
 	case BudgetLimitSteps:
 		return ReasonStepBudgetReached
 	default:
-		return ReasonNone
+		panic("goal: impossible budget limit")
 	}
 }
 
-// Version returns the value a caller must use to condition its next mutation.
-func (g Goal) Version() Version {
-	return Version{IncarnationID: g.IncarnationID, Revision: g.Revision}
+func validateSessionIdentity(value string) error {
+	if value == "" {
+		return errSessionRequired
+	}
+	if _, err := resourceid.ParseSession(value); err != nil {
+		return fmt.Errorf("%w: session ID: %v", ErrInvalid, err)
+	}
+	return nil
+}
+
+func canonicalTime(value time.Time) time.Time {
+	if value.IsZero() {
+		return time.Time{}
+	}
+	return value.UTC()
 }

@@ -58,7 +58,8 @@ func TestRuntimeCompactionKeepsOnlyTheCurrentSessionPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(currentPlan.Steps) != 1 || currentPlan.Steps[0].Description != currentPlanText {
+	if currentPlan.State == nil || len(currentPlan.State.Steps) != 1 ||
+		currentPlan.State.Steps[0].Description != currentPlanText {
 		t.Fatalf("durable Plan = %+v, want current replacement", currentPlan)
 	}
 }
@@ -81,13 +82,13 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 		t.Fatalf("started Goal = %+v", startedGoal)
 	}
 	waitForSignal(t, model.openingCallArrived, "Goal-owned opening model call")
-	durableGoal, found, err := stores.Goals.Get(ctx, sessionID)
+	durableGoal, found, err := readBootstrapGoal(ctx, stores.Goals, sessionID)
 	if err != nil || !found {
 		t.Fatalf("durable active Goal found=%t error=%v", found, err)
 	}
-	if durableGoal.Objective != goalAcrossCompactionObjective ||
-		string(durableGoal.Status) != string(protocol.GoalActive) ||
-		durableGoal.IncarnationID == "" {
+	if durableGoal.Objective() != goalAcrossCompactionObjective ||
+		string(durableGoal.Status()) != string(protocol.GoalActive) ||
+		durableGoal.IncarnationID() == "" {
 		t.Fatalf("durable active Goal = %+v", durableGoal)
 	}
 	model.releaseOpeningCall()
@@ -123,8 +124,9 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	steps := planState.Steps()
-	if planState.Revision() != 2 || len(steps) != 1 || steps[0].Description != currentPlanText {
-		t.Fatalf("durable Plan state = revision:%d steps:%+v", planState.Revision(), steps)
+	committedPlan, committed := planState.State()
+	if !committed || committedPlan.Revision() != 2 || len(steps) != 1 || steps[0].Description != currentPlanText {
+		t.Fatalf("durable Plan state = version:%s steps:%+v", planState.Version(), steps)
 	}
 }
 
@@ -153,7 +155,7 @@ func newSessionStateE2ERuntime(
 	cfg := ComposeConfig(
 		config.Settings{Provider: "anthropic", Model: "claude-test"},
 		stores,
-		client,
+		testChatResolver(client),
 		stores.Providers,
 		NewHookResolver(stores.DataDirectory, stores.Trust),
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",

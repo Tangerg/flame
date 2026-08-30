@@ -2,15 +2,9 @@ import {
   useAgentSessionSharedMaterial,
   type AgentProjectionMaterial,
 } from "@/plugins/builtin/agent/public/sessionMaterial";
+import type { GoalBudget } from "./goalBudget";
 
 export type GoalStatus = "active" | "paused" | "blocked" | "completing";
-
-// A zero field is uncapped on that axis (matches the wire's omit-when-zero).
-export interface GoalBudget {
-  maxRuns: number;
-  maxCostUsd: number;
-  maxSteps: number;
-}
 
 export interface GoalUsage {
   runs: number;
@@ -49,7 +43,8 @@ export interface GoalReadModel {
   status: GoalStatus;
   /** Absent while the goal is still running. */
   stop: GoalStop | null;
-  budget: GoalBudget;
+  /** Null means the Goal has no budget boundary. */
+  budget: GoalBudget | null;
   used: GoalUsage;
   provider: string;
   model: string;

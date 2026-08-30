@@ -174,6 +174,7 @@ func TestArgumentsAreStrictAndBounded(t *testing.T) {
 	tool := newSearch(t, catalog())
 	for _, arguments := range []string{
 		`{"query":"issue","unknown":true}`,
+		`{"query":"issue","limit":0}`,
 		`{"query":"issue","limit":21}`,
 		`{}`,
 	} {

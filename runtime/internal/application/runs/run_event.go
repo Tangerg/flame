@@ -3,11 +3,13 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -15,6 +17,10 @@ import (
 
 type RunEvent interface {
 	runEvent()
+	// validate makes publication safety a compile-time obligation of the closed
+	// event family. A new variant cannot enter projection without defining what a
+	// well-formed value means.
+	validate() error
 	Replayable() bool
 	Terminal() bool
 	// retainedBytes reports the approximate heap retained by this value. Keeping
@@ -68,6 +74,33 @@ type PlanSnapshot struct {
 	UpdatedAt time.Time
 }
 
+// validate proves this is a Plan replacement that may be published. The zero
+// Plan state is useful to a cold query, but it is not a change and therefore is
+// never a plan.updated event.
+func (p PlanSnapshot) validate() error {
+	if _, err := resourceid.ParseSession(p.SessionID); err != nil {
+		return fmt.Errorf("runs: Plan snapshot: %w", err)
+	}
+	if p.Revision == 0 {
+		return errors.New("runs: Plan snapshot revision must be positive")
+	}
+	if p.UpdatedAt.IsZero() {
+		return errors.New("runs: Plan snapshot update time is required")
+	}
+	if p.UpdatedAt.Location() != time.UTC {
+		return errors.New("runs: Plan snapshot update time must be canonical UTC")
+	}
+	if err := plan.ValidateSteps(p.Steps); err != nil {
+		return fmt.Errorf("runs: Plan snapshot: %w", err)
+	}
+	return nil
+}
+
+func (p PlanSnapshot) clone() PlanSnapshot {
+	p.Steps = slices.Clone(p.Steps)
+	return p
+}
+
 func (SegmentStarted) runEvent()    {}
 func (SegmentProgressed) runEvent() {}
 func (SegmentFinished) runEvent()   {}
@@ -75,6 +108,50 @@ func (ItemStarted) runEvent()       {}
 func (ItemChanged) runEvent()       {}
 func (ItemCompleted) runEvent()     {}
 func (PlanSnapshot) runEvent()      {}
+
+func (s SegmentStarted) validate() error {
+	if err := s.Run.Validate(); err != nil {
+		return fmt.Errorf("runs: started Segment Run: %w", err)
+	}
+	if s.Run.State() != run.Running {
+		return fmt.Errorf("runs: started Segment carries %s Run", s.Run.State())
+	}
+	return nil
+}
+
+func (s SegmentProgressed) validate() error { return s.Progress.validate() }
+
+func (s SegmentFinished) validate() error {
+	if err := s.Run.Validate(); err != nil {
+		return fmt.Errorf("runs: finished Segment Run: %w", err)
+	}
+	if s.Run.State() == run.Running {
+		return errors.New("runs: finished Segment carries a running Run")
+	}
+	if s.Run.State().IsTerminal() && len(s.Interrupts) != 0 {
+		return errors.New("runs: terminal Segment carries pending interrupts")
+	}
+	seen := make(map[string]struct{}, len(s.Interrupts))
+	for index, pending := range s.Interrupts {
+		if err := validateInterrupt(pending); err != nil {
+			return fmt.Errorf("runs: finished Segment interrupt %d: %w", index, err)
+		}
+		if _, duplicate := seen[pending.ItemID]; duplicate {
+			return fmt.Errorf("runs: finished Segment repeats interrupt Item %q", pending.ItemID)
+		}
+		seen[pending.ItemID] = struct{}{}
+	}
+	return nil
+}
+
+func (i ItemStarted) validate() error { return i.Item.validate() }
+
+func (i ItemCompleted) validate() error {
+	if err := i.Item.Validate(); err != nil {
+		return fmt.Errorf("runs: completed Item: %w", err)
+	}
+	return nil
+}
 
 func (SegmentStarted) Replayable() bool    { return true }
 func (SegmentProgressed) Replayable() bool { return false }
@@ -110,28 +187,114 @@ type RunProgress struct {
 	Step          *int
 	Usage         *accounting.Usage
 	ContextTokens *int64
-	ToolName      string
 	Activity      string
 }
 
-type ItemDeltaKind string
-
-const (
-	ContentDelta       ItemDeltaKind = "content"
-	ReasoningDeltaKind ItemDeltaKind = "reasoning"
-	ToolArgumentsDelta ItemDeltaKind = "toolArguments"
-	ToolOutputDelta    ItemDeltaKind = "toolOutput"
-)
-
-func (i ItemDeltaKind) Valid() bool {
-	return i == ContentDelta || i == ReasoningDeltaKind || i == ToolArgumentsDelta || i == ToolOutputDelta
+// validate proves a segment.progress event carries at least one real preview
+// fact. Its fields are independent because one executor report may advance
+// several at once; the value is not a bag of arbitrary metadata.
+func (p RunProgress) validate() error {
+	if p.Step == nil && p.Usage == nil && p.ContextTokens == nil && p.Activity == "" {
+		return errors.New("runs: progress carries no facts")
+	}
+	if p.Step != nil && *p.Step < 0 {
+		return errors.New("runs: progress step must not be negative")
+	}
+	if p.Usage != nil {
+		if err := p.Usage.Validate(); err != nil {
+			return fmt.Errorf("runs: progress usage: %w", err)
+		}
+	}
+	if p.ContextTokens != nil && *p.ContextTokens < 0 {
+		return errors.New("runs: progress context tokens must not be negative")
+	}
+	if p.Activity != strings.TrimSpace(p.Activity) {
+		return errors.New("runs: progress activity must not have surrounding whitespace")
+	}
+	return nil
 }
 
-type ItemDelta struct {
-	Kind               ItemDeltaKind
-	Index              *int
-	Text               string
-	ArgumentsTextDelta string
+// ItemDelta is the closed family of provisional Item changes. Each concrete
+// value owns exactly the payload its kind can carry, so Application code cannot
+// construct the impossible field combinations the flat wire union must use.
+type ItemDelta interface {
+	itemDelta()
+	validate() error
+}
+
+// ContentItemDelta appends text to one provisional AgentMessage.
+type ContentItemDelta struct{ text string }
+
+// ReasoningItemDelta appends text to one provisional Reasoning Item.
+type ReasoningItemDelta struct{ text string }
+
+// ToolArgumentsItemDelta appends partial JSON text to a ToolCall preview.
+type ToolArgumentsItemDelta struct{ text string }
+
+// ToolOutputItemDelta appends human-readable Tool output to a ToolCall preview.
+type ToolOutputItemDelta struct{ text string }
+
+func newContentItemDelta(text string) (ContentItemDelta, error) {
+	delta := ContentItemDelta{text: text}
+	return delta, delta.validate()
+}
+
+func newReasoningItemDelta(text string) (ReasoningItemDelta, error) {
+	delta := ReasoningItemDelta{text: text}
+	return delta, delta.validate()
+}
+
+func newToolArgumentsItemDelta(text string) (ToolArgumentsItemDelta, error) {
+	delta := ToolArgumentsItemDelta{text: text}
+	return delta, delta.validate()
+}
+
+func newToolOutputItemDelta(text string) (ToolOutputItemDelta, error) {
+	delta := ToolOutputItemDelta{text: text}
+	return delta, delta.validate()
+}
+
+func (ContentItemDelta) itemDelta()       {}
+func (ReasoningItemDelta) itemDelta()     {}
+func (ToolArgumentsItemDelta) itemDelta() {}
+func (ToolOutputItemDelta) itemDelta()    {}
+
+func (d ContentItemDelta) validate() error {
+	return validateItemDeltaText("content", d.text)
+}
+
+func (d ReasoningItemDelta) validate() error {
+	return validateItemDeltaText("reasoning", d.text)
+}
+
+func (d ToolArgumentsItemDelta) validate() error {
+	return validateItemDeltaText("Tool arguments", d.text)
+}
+
+func (d ToolOutputItemDelta) validate() error {
+	return validateItemDeltaText("Tool output", d.text)
+}
+
+func validateItemDeltaText(kind, text string) error {
+	if text == "" {
+		return fmt.Errorf("runs: %s Item delta is empty", kind)
+	}
+	return nil
+}
+
+func (d ContentItemDelta) Text() string       { return d.text }
+func (d ReasoningItemDelta) Text() string     { return d.text }
+func (d ToolArgumentsItemDelta) Text() string { return d.text }
+func (d ToolOutputItemDelta) Text() string    { return d.text }
+
+func (i ItemChanged) validate() error {
+	if _, err := resourceid.ParseItem(i.ItemID); err != nil {
+		return fmt.Errorf("runs: changed Item: %w", err)
+	}
+	if i.Delta == nil {
+		return errors.New("runs: changed Item delta is required")
+	}
+	return i.Delta.validate()
 }
 
 func newTransientItemStart(identity transcript.ItemIdentity, kind transcript.ItemKind) (ItemStart, error) {

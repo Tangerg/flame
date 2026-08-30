@@ -8,7 +8,9 @@
 
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import {
+  MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   NOTIFICATIONS_RUN_EVENT,
+  RUN_EVENT_ID_PREFIX,
   runEventReliability,
   type ProblemData,
   type RequestMeta,
@@ -37,6 +39,7 @@ import {
 } from "@flame/runtime-contract/validate";
 import type { RpcId, RpcMessage } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
   next(params: WireNotificationParams[M], requestRpcId: RpcId): void;
@@ -103,10 +106,10 @@ interface Pending {
 }
 
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
-  // Monotonic integer counter, stringified at allocation — the wire id is
-  // always a string (RpcId, §1.1), but an integer counter is the cheapest
-  // way to keep every in-flight request's id unique so responses correlate.
-  let nextId = 1;
+  // The wire id is always a decimal string (RpcId, §1.1). Arbitrary precision
+  // keeps it unique for the full client lifetime instead of eventually
+  // repeating at JavaScript's safe-integer boundary.
+  const requestIds = new ExactSequence();
   const pending = new Map<RpcId, Pending>();
   // method → handlers. We allow multiple subscribers per method so multiple
   // UI consumers can listen to the same stream.
@@ -300,8 +303,18 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       if (requiresIdempotency && callOptions.idempotencyKey === undefined) {
         throw new TypeError("A run command replay cursor requires an idempotency key");
       }
+      if (callOptions.lastEventId !== "") {
+        if (callOptions.lastEventId.length > MAXIMUM_RUN_EVENT_ID_CHARACTERS) {
+          throw new TypeError(
+            `Run replay cursor exceeds ${MAXIMUM_RUN_EVENT_ID_CHARACTERS} characters`,
+          );
+        }
+        if (!callOptions.lastEventId.startsWith(RUN_EVENT_ID_PREFIX)) {
+          throw new TypeError("Run replay cursor has invalid event-id framing");
+        }
+      }
     }
-    const id = String(nextId++);
+    const id = requestIds.issue().toString();
     callOptions.onRequestRpcId?.(id);
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,

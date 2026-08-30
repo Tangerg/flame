@@ -21,10 +21,15 @@ type Group struct {
 	mu       sync.Mutex
 	closed   bool
 	finished bool
-	nextID   uint64
-	active   int
-	cancels  map[uint64]context.CancelFunc
+	tasks    map[*registeredTask]struct{}
 	allDone  chan struct{}
+}
+
+// registeredTask is the identity and cancellation capability of one attached
+// task. It never leaves the owning Group, so object identity is the exact
+// registry key; a process-local numeric ID would only add a wraparound alias.
+type registeredTask struct {
+	cancel context.CancelFunc
 }
 
 // Start launches task with parent values but without parent cancellation. It
@@ -86,27 +91,24 @@ func (g *Group) attach(parent context.Context) (ctx context.Context, release fun
 		cancel()
 		return nil, nil, false
 	}
-	if g.cancels == nil {
-		g.cancels = map[uint64]context.CancelFunc{}
+	if g.tasks == nil {
+		g.tasks = map[*registeredTask]struct{}{}
 	}
-	g.nextID++
-	id := g.nextID
-	g.cancels[id] = cancel
-	g.active++
+	registered := &registeredTask{cancel: cancel}
+	g.tasks[registered] = struct{}{}
 	g.mu.Unlock()
 
 	var once sync.Once
 	release = func() {
-		once.Do(func() { g.finish(id, cancel) })
+		once.Do(func() { g.finish(registered) })
 	}
 	return ctx, release, true
 }
 
-func (g *Group) finish(id uint64, cancel context.CancelFunc) {
-	cancel()
+func (g *Group) finish(registered *registeredTask) {
+	registered.cancel()
 	g.mu.Lock()
-	delete(g.cancels, id)
-	g.active--
+	delete(g.tasks, registered)
 	g.finishCloseLocked()
 	g.mu.Unlock()
 }
@@ -117,12 +119,12 @@ func (g *Group) finish(id uint64, cancel context.CancelFunc) {
 func (g *Group) Cancel() {
 	g.mu.Lock()
 	g.closed = true
-	cancels := slices.Collect(maps.Values(g.cancels))
+	tasks := slices.Collect(maps.Keys(g.tasks))
 	g.finishCloseLocked()
 	g.mu.Unlock()
 
-	for _, cancel := range cancels {
-		cancel()
+	for _, registered := range tasks {
+		registered.cancel()
 	}
 }
 
@@ -154,7 +156,7 @@ func (g *Group) doneLocked() chan struct{} {
 }
 
 func (g *Group) finishCloseLocked() {
-	if !g.closed || g.active != 0 || g.finished {
+	if !g.closed || len(g.tasks) != 0 || g.finished {
 		return
 	}
 	if g.allDone == nil {

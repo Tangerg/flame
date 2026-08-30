@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/usage"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -20,7 +21,15 @@ func (s *Server) SessionUsage(ctx context.Context, sessionID string) (*protocol.
 // UsageSummary projects the application-owned aggregate usage report onto the
 // usage.summary wire contract.
 func (s *Server) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
-	report, err := s.usage.Summary(ctx, in.SinceDays)
+	period := usage.AllTime()
+	if in.SinceDays != nil {
+		recent, periodErr := usage.RecentDays(*in.SinceDays)
+		if periodErr != nil {
+			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, periodErr)
+		}
+		period = recent
+	}
+	report, err := s.usage.Summary(ctx, period)
 	if err != nil {
 		return nil, err
 	}

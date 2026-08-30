@@ -316,7 +316,7 @@
             },
             {
               "name": "ListSessions",
-              "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Session], error)"
+              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options CallOptions) (*protocol.Page[protocol.Session], error)"
             },
             {
               "name": "ListSkillProposals",
@@ -1125,6 +1125,11 @@
           "value": "\"run_\""
         },
         {
+          "name": "IDPrefixSchedule",
+          "type": "untyped string",
+          "value": "\"sch_\""
+        },
+        {
           "name": "IDPrefixSegment",
           "type": "untyped string",
           "value": "\"seg_\""
@@ -1255,6 +1260,16 @@
           "value": "\"succeeded\""
         },
         {
+          "name": "MCPHandshakeBounded",
+          "type": "MCPHandshakeTimeoutType",
+          "value": "\"bounded\""
+        },
+        {
+          "name": "MCPHandshakeUnbounded",
+          "type": "MCPHandshakeTimeoutType",
+          "value": "\"unbounded\""
+        },
+        {
           "name": "MCPSecretClear",
           "type": "MCPSecretChangeType",
           "value": "\"clear\""
@@ -1313,6 +1328,46 @@
           "name": "MaxSubscriptionWatches",
           "type": "untyped int",
           "value": "32"
+        },
+        {
+          "name": "MaximumExactJSONInteger",
+          "type": "untyped int",
+          "value": "9007199254740991"
+        },
+        {
+          "name": "MaximumModelIdentityCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumPaginationCursorCharacters",
+          "type": "untyped int",
+          "value": "65536"
+        },
+        {
+          "name": "MaximumProviderIdentityCharacters",
+          "type": "untyped int",
+          "value": "64"
+        },
+        {
+          "name": "MaximumReasoningEffortIdentityCharacters",
+          "type": "untyped int",
+          "value": "32"
+        },
+        {
+          "name": "MaximumResourceIdentityCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumRunEventIDCharacters",
+          "type": "int",
+          "value": "65540"
+        },
+        {
+          "name": "MaximumRuntimeEventSequence",
+          "type": "untyped int",
+          "value": "9007199254740991"
         },
         {
           "name": "MessagePhaseCommentary",
@@ -1492,7 +1547,17 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-08-28\""
+          "value": "\"2026-08-30\""
+        },
+        {
+          "name": "ProviderAPIKeyOptional",
+          "type": "ProviderCredentialRequirement",
+          "value": "\"apiKeyOptional\""
+        },
+        {
+          "name": "ProviderAPIKeyRequired",
+          "type": "ProviderCredentialRequirement",
+          "value": "\"apiKeyRequired\""
         },
         {
           "name": "ProviderConfigClear",
@@ -1787,7 +1852,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "24"
+          "value": "27"
         },
         {
           "name": "SessionStatusIdle",
@@ -2897,17 +2962,17 @@
           "fields": [
             {
               "name": "MaxTotalTokens",
-              "type": "int64",
+              "type": "*int64",
               "tag": "json:\"maxTotalTokens,omitempty\""
             },
             {
               "name": "MaxSteps",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxSteps,omitempty\""
             },
             {
               "name": "MaxBudgetUSD",
-              "type": "float64",
+              "type": "*float64",
               "tag": "json:\"maxBudgetUsd,omitempty\""
             }
           ],
@@ -3056,6 +3121,12 @@
               "name": "CreatedAt",
               "type": "time.Time",
               "tag": "json:\"createdAt\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -3535,6 +3606,12 @@
               "type": "string",
               "tag": "json:\"model,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -3956,7 +4033,7 @@
             },
             {
               "name": "Limit",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"limit,omitempty\""
             }
           ],
@@ -3983,7 +4060,7 @@
             },
             {
               "name": "Lines",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"lines,omitempty\""
             }
           ],
@@ -4081,6 +4158,12 @@
               "type": "bool",
               "tag": "json:\"includeDescendants,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4124,8 +4207,8 @@
             },
             {
               "name": "Budget",
-              "type": "GoalBudget",
-              "tag": "json:\"budget\""
+              "type": "*GoalBudget",
+              "tag": "json:\"budget,omitempty\""
             },
             {
               "name": "Used",
@@ -4142,6 +4225,12 @@
               "type": "time.Time",
               "tag": "json:\"updatedAt\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4150,17 +4239,17 @@
           "fields": [
             {
               "name": "MaxRuns",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxRuns,omitempty\""
             },
             {
               "name": "MaxCostUSD",
-              "type": "float64",
+              "type": "*float64",
               "tag": "json:\"maxCostUsd,omitempty\""
             },
             {
               "name": "MaxSteps",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxSteps,omitempty\""
             }
           ],
@@ -4277,7 +4366,7 @@
             },
             {
               "name": "Limit",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"limit,omitempty\""
             }
           ],
@@ -4508,6 +4597,12 @@
               "type": "InterruptResponseValue",
               "tag": "json:\"response\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4704,11 +4799,6 @@
               "name": "Type",
               "type": "ItemDeltaType",
               "tag": "json:\"type\""
-            },
-            {
-              "name": "Index",
-              "type": "*int",
-              "tag": "json:\"index,omitempty\""
             },
             {
               "name": "Text",
@@ -4973,6 +5063,12 @@
               "type": "[]RunSummary",
               "tag": "json:\"runs\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4983,6 +5079,12 @@
               "name": "Provider",
               "type": "string",
               "tag": "json:\"provider,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5008,6 +5110,32 @@
             {
               "name": "PageQuery",
               "type": "PageQuery"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ListSessionsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
+            },
+            {
+              "name": "Search",
+              "type": "string",
+              "tag": "json:\"search,omitempty\""
+            },
+            {
+              "name": "Workspace",
+              "type": "*WorkspaceRef",
+              "tag": "json:\"workspace,omitempty\""
             }
           ],
           "methods": [
@@ -5264,6 +5392,33 @@
           ]
         },
         {
+          "name": "MCPHandshakeTimeout",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "MCPHandshakeTimeoutType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Seconds",
+              "type": "*int",
+              "tag": "json:\"seconds,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "MCPHandshakeTimeoutType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "MCPHeadersChange",
           "kind": "struct",
           "fields": [
@@ -5294,6 +5449,12 @@
               "type": "string",
               "tag": "json:\"server,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -5321,9 +5482,9 @@
               "tag": "json:\"connection\""
             },
             {
-              "name": "TimeoutSeconds",
-              "type": "int",
-              "tag": "json:\"timeoutSeconds,omitempty\""
+              "name": "HandshakeTimeout",
+              "type": "MCPHandshakeTimeout",
+              "tag": "json:\"handshakeTimeout\""
             },
             {
               "name": "DisabledTools",
@@ -5339,6 +5500,12 @@
               "name": "Status",
               "type": "MCPServerState",
               "tag": "json:\"status\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5367,9 +5534,9 @@
               "tag": "json:\"connection\""
             },
             {
-              "name": "TimeoutSeconds",
-              "type": "int",
-              "tag": "json:\"timeoutSeconds,omitempty\""
+              "name": "HandshakeTimeout",
+              "type": "MCPHandshakeTimeout",
+              "tag": "json:\"handshakeTimeout\""
             },
             {
               "name": "DisabledTools",
@@ -5478,6 +5645,12 @@
               "type": "map[string]any",
               "tag": "json:\"inputSchema,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -5536,19 +5709,9 @@
               "tag": "json:\"displayName,omitempty\""
             },
             {
-              "name": "ContextWindow",
-              "type": "int",
-              "tag": "json:\"contextWindow,omitempty\""
-            },
-            {
-              "name": "MaxInputTokens",
-              "type": "int",
-              "tag": "json:\"maxInputTokens,omitempty\""
-            },
-            {
-              "name": "MaxOutputTokens",
-              "type": "int",
-              "tag": "json:\"maxOutputTokens,omitempty\""
+              "name": "TokenLimits",
+              "type": "*ModelTokenLimits",
+              "tag": "json:\"tokenLimits,omitempty\""
             },
             {
               "name": "KnowledgeCutoff",
@@ -5569,6 +5732,12 @@
               "name": "Pricing",
               "type": "*ModelPricing",
               "tag": "json:\"pricing,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5616,6 +5785,12 @@
               "type": "bool",
               "tag": "json:\"structuredOutput,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -5641,6 +5816,33 @@
               "name": "CacheWriteUSDPerMillionTokens",
               "type": "float64",
               "tag": "json:\"cacheWriteUsdPerMillionTokens,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "ModelTokenLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ContextWindow",
+              "type": "*int64",
+              "tag": "json:\"contextWindow,omitempty\""
+            },
+            {
+              "name": "MaxInputTokens",
+              "type": "*int64",
+              "tag": "json:\"maxInputTokens,omitempty\""
+            },
+            {
+              "name": "MaxOutputTokens",
+              "type": "*int64",
+              "tag": "json:\"maxOutputTokens,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5678,6 +5880,12 @@
               "type": "*float64",
               "tag": "json:\"costUsd,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -5690,9 +5898,31 @@
               "tag": "json:\"data\""
             },
             {
+              "name": "PageContinuation",
+              "type": "PageContinuation"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PageContinuation",
+          "kind": "struct",
+          "fields": [
+            {
               "name": "NextCursor",
               "type": "string",
               "tag": "json:\"nextCursor,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5702,7 +5932,7 @@
           "fields": [
             {
               "name": "Limit",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"limit,omitempty\""
             },
             {
@@ -5760,6 +5990,23 @@
               "tag": "json:\"sessionId\""
             },
             {
+              "name": "State",
+              "type": "*PlanState",
+              "tag": "json:\"state,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PlanState",
+          "kind": "struct",
+          "fields": [
+            {
               "name": "Revision",
               "type": "uint64",
               "tag": "json:\"revision\""
@@ -5772,7 +6019,13 @@
             {
               "name": "UpdatedAt",
               "type": "time.Time",
-              "tag": "json:\"updatedAt,omitzero\""
+              "tag": "json:\"updatedAt\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5799,6 +6052,12 @@
               "name": "Status",
               "type": "PlanStatus",
               "tag": "json:\"status\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5874,18 +6133,23 @@
             },
             {
               "name": "BaseURL",
-              "type": "string",
+              "type": "*string",
               "tag": "json:\"baseUrl,omitempty\""
             },
             {
-              "name": "APIKeyMasked",
-              "type": "string",
-              "tag": "json:\"apiKeyMasked\""
+              "name": "Credential",
+              "type": "*ProviderCredential",
+              "tag": "json:\"credential,omitempty\""
             },
             {
-              "name": "KeySource",
-              "type": "ProviderKeySource",
-              "tag": "json:\"keySource,omitempty\""
+              "name": "Configured",
+              "type": "bool",
+              "tag": "json:\"configured\""
+            },
+            {
+              "name": "CredentialRequirement",
+              "type": "ProviderCredentialRequirement",
+              "tag": "json:\"credentialRequirement\""
             },
             {
               "name": "RequiresBaseURL",
@@ -5899,8 +6163,14 @@
             },
             {
               "name": "DefaultEmbeddingModel",
-              "type": "string",
+              "type": "*string",
               "tag": "json:\"defaultEmbeddingModel,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5928,6 +6198,27 @@
         },
         {
           "name": "ProviderConfigChangeType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ProviderCredential",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Masked",
+              "type": "string",
+              "tag": "json:\"masked\""
+            },
+            {
+              "name": "Source",
+              "type": "ProviderKeySource",
+              "tag": "json:\"source\""
+            }
+          ]
+        },
+        {
+          "name": "ProviderCredentialRequirement",
           "kind": "defined",
           "underlying": "string"
         },
@@ -6064,17 +6355,17 @@
             },
             {
               "name": "StartLine",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"startLine,omitempty\""
             },
             {
               "name": "EndLine",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"endLine,omitempty\""
             },
             {
               "name": "MaxBytes",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxBytes,omitempty\""
             }
           ],
@@ -6316,6 +6607,12 @@
               "type": "StreamEvent",
               "tag": "json:\"event\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -6324,17 +6621,17 @@
           "fields": [
             {
               "name": "MaxTotalTokens",
-              "type": "int64",
+              "type": "*int64",
               "tag": "json:\"maxTotalTokens,omitempty\""
             },
             {
               "name": "MaxSteps",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxSteps,omitempty\""
             },
             {
               "name": "MaxBudgetUSD",
-              "type": "float64",
+              "type": "*float64",
               "tag": "json:\"maxBudgetUsd,omitempty\""
             }
           ],
@@ -6363,6 +6660,12 @@
               "name": "ActiveDurationMillis",
               "type": "int64",
               "tag": "json:\"activeDurationMillis\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -6421,6 +6724,12 @@
               "name": "Activity",
               "type": "string",
               "tag": "json:\"activity,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -6554,6 +6863,12 @@
               "name": "RunID",
               "type": "string",
               "tag": "json:\"runId\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -6728,7 +7043,7 @@
           "fields": [
             {
               "name": "MaxConcurrentRuns",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"maxConcurrentRuns,omitempty\""
             },
             {
@@ -6750,6 +7065,12 @@
               "name": "RuntimeSubscription",
               "type": "SubscriptionLimits",
               "tag": "json:\"runtimeSubscription\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -6857,6 +7178,12 @@
               "name": "Revision",
               "type": "uint64",
               "tag": "json:\"revision\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7332,8 +7659,8 @@
             },
             {
               "name": "Budget",
-              "type": "GoalBudget",
-              "tag": "json:\"budget,omitzero\""
+              "type": "*GoalBudget",
+              "tag": "json:\"budget,omitempty\""
             }
           ],
           "methods": [
@@ -7373,19 +7700,9 @@
               "tag": "json:\"reasoningEffort,omitempty\""
             },
             {
-              "name": "MaxTotalTokens",
-              "type": "int64",
-              "tag": "json:\"maxTotalTokens,omitempty\""
-            },
-            {
-              "name": "MaxSteps",
-              "type": "int",
-              "tag": "json:\"maxSteps,omitempty\""
-            },
-            {
-              "name": "MaxBudgetUSD",
-              "type": "float64",
-              "tag": "json:\"maxBudgetUsd,omitempty\""
+              "name": "Limits",
+              "type": "*RunLimits",
+              "tag": "json:\"limits,omitempty\""
             },
             {
               "name": "Params",
@@ -7562,8 +7879,14 @@
             },
             {
               "name": "HeadEventID",
-              "type": "string",
+              "type": "*string",
               "tag": "json:\"headEventId,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7672,6 +7995,12 @@
               "type": "string",
               "tag": "json:\"objective\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -7731,9 +8060,9 @@
               "tag": "json:\"connection,omitempty\""
             },
             {
-              "name": "TimeoutSeconds",
-              "type": "*int",
-              "tag": "json:\"timeoutSeconds,omitempty\""
+              "name": "HandshakeTimeout",
+              "type": "*MCPHandshakeTimeout",
+              "tag": "json:\"handshakeTimeout,omitempty\""
             },
             {
               "name": "DisabledTools",
@@ -7912,6 +8241,12 @@
               "type": "map[string]ModelUsage",
               "tag": "json:\"byModel,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -7931,6 +8266,12 @@
               "name": "Runs",
               "type": "int",
               "tag": "json:\"runs,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7976,7 +8317,7 @@
           "fields": [
             {
               "name": "SinceDays",
-              "type": "int",
+              "type": "*int",
               "tag": "json:\"sinceDays,omitempty\""
             }
           ],
@@ -8000,6 +8341,12 @@
               "name": "Model",
               "type": "string",
               "tag": "json:\"model,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

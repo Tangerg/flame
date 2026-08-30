@@ -16,7 +16,10 @@ func TestWaitHonorsCancellation(t *testing.T) {
 }
 
 func TestBackoffBoundsAnOperationOwnedRetrySchedule(t *testing.T) {
-	backoff := Backoff{Base: 100 * time.Millisecond, Maximum: 5 * time.Second}
+	backoff, err := NewBackoff(100*time.Millisecond, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for failure, want := range []time.Duration{
 		100 * time.Millisecond,
 		200 * time.Millisecond,
@@ -27,8 +30,25 @@ func TestBackoffBoundsAnOperationOwnedRetrySchedule(t *testing.T) {
 		5 * time.Second,
 		5 * time.Second,
 	} {
-		if got := backoff.Delay(failure + 1); got != want {
+		if got, err := backoff.Delay(failure + 1); err != nil || got != want {
 			t.Fatalf("failure %d delay = %s, want %s", failure+1, got, want)
+		}
+	}
+}
+
+func TestBackoffRequiresNamedImmediateOrBoundedPolicy(t *testing.T) {
+	t.Parallel()
+	if delay, err := ImmediateBackoff().Delay(1); err != nil || delay != 0 {
+		t.Fatalf("immediate delay = (%s, %v)", delay, err)
+	}
+	for _, backoff := range []Backoff{{}, {mode: backoffImmediate, base: time.Second}} {
+		if _, err := backoff.Delay(1); !errors.Is(err, ErrInvalidBackoff) {
+			t.Fatalf("invalid backoff %+v = %v", backoff, err)
+		}
+	}
+	for _, bounds := range [][2]time.Duration{{0, time.Second}, {time.Second, time.Millisecond}} {
+		if _, err := NewBackoff(bounds[0], bounds[1]); !errors.Is(err, ErrInvalidBackoff) {
+			t.Fatalf("NewBackoff(%s, %s) = %v", bounds[0], bounds[1], err)
 		}
 	}
 }

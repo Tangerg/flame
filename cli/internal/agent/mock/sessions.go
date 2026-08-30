@@ -4,14 +4,84 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/exactint"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
+
+var errSessionRevisionExhausted = errors.New("mock: session revision is exhausted")
+
+type sessionRevisionChanges uint64
+
+func sessionEventRevisionChange() sessionRevisionChanges {
+	return 1
+}
+
+func sessionEventRevisionChanges(count int) sessionRevisionChanges {
+	if count < 0 {
+		panic("mock: negative session event revision count")
+	}
+	return sessionRevisionChanges(count)
+}
+
+func sessionStatusRevisionChanges(session *sessionState, status agent.SessionStatus) sessionRevisionChanges {
+	if session.meta.Status == status {
+		return 0
+	}
+	return 1
+}
+
+func (c sessionRevisionChanges) plus(other sessionRevisionChanges) sessionRevisionChanges {
+	if uint64(other) > math.MaxUint64-uint64(c) {
+		panic("mock: session revision change count overflow")
+	}
+	return c + other
+}
+
+func (s *sessionState) requireRevisionCapacity(changes sessionRevisionChanges) error {
+	current, err := exactint.Restore(s.meta.Revision)
+	if err != nil {
+		return fmt.Errorf("mock: session revision: %w", err)
+	}
+	_, err = current.Advance(uint64(changes))
+	return classifySessionRevisionAdvance(err)
+}
+
+func (s *sessionState) commitMeta(candidate agent.Session) error {
+	committed, err := nextSessionMeta(s.meta, candidate)
+	if err != nil {
+		return err
+	}
+	s.meta = committed
+	return nil
+}
+
+func nextSessionMeta(current, candidate agent.Session) (agent.Session, error) {
+	revision, err := exactint.Restore(current.Revision)
+	if err != nil {
+		return agent.Session{}, fmt.Errorf("mock: session revision: %w", err)
+	}
+	next, err := revision.Next()
+	if err := classifySessionRevisionAdvance(err); err != nil {
+		return agent.Session{}, err
+	}
+	candidate.Revision = next.Value()
+	return candidate, nil
+}
+
+func classifySessionRevisionAdvance(err error) error {
+	if errors.Is(err, exactint.ErrExhausted) {
+		return errSessionRevisionExhausted
+	}
+	return err
+}
 
 func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {
 	if err := context.Cause(ctx); err != nil {
@@ -50,11 +120,10 @@ func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (a
 	if err != nil {
 		return agent.SessionPage{}, err
 	}
-	limit := query.Limit
-	if limit <= 0 {
-		limit = defaultPageSize
+	limit, err := query.PageSize.Rows()
+	if err != nil {
+		return agent.SessionPage{}, fmt.Errorf("mock: %w", err)
 	}
-	limit = min(limit, maxPageSize)
 	end := min(offset+limit, len(items))
 	page := agent.SessionPage{Items: slices.Clone(items[offset:end])}
 	if end < len(items) {
@@ -85,11 +154,10 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 		return agent.SessionSnapshot{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, id)
 	}
 	snapshot := agent.SessionSnapshot{
-		Session:      state.meta,
-		Transcript:   make([]agent.Block, len(state.items)),
-		Runs:         make([]agent.Run, 0, len(state.runs)),
-		Plan:         slices.Clone(state.plan),
-		PlanRevision: state.planRevision,
+		Session:    state.meta,
+		Transcript: make([]agent.Block, len(state.items)),
+		Runs:       make([]agent.Run, 0, len(state.runs)),
+		Plan:       cloneCommittedPlan(state.plan),
 	}
 	for i, item := range state.items {
 		snapshot.Transcript[i] = item.block.Clone()
@@ -118,14 +186,14 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.next++
+	id := r.identities.next(sessionIdentity)
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
 		title = "Untitled session"
 	}
 	now := r.now()
 	session := agent.Session{
-		ID: fmt.Sprintf("ses_mock_%d", r.next), Title: title, Status: agent.SessionIdle,
+		ID: id, Title: title, Status: agent.SessionIdle,
 		Provider: defaultProvider, Model: defaultModel,
 		Workspace: availableWorkspace(workspace), CreatedAt: now, UpdatedAt: now, Revision: 1,
 	}
@@ -149,25 +217,28 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 	if in.ExpectedRevision != state.meta.Revision {
 		return agent.Session{}, fmt.Errorf("%w: session %s is at revision %d", agent.ErrRevisionConflict, in.SessionID, state.meta.Revision)
 	}
+	candidate := state.meta
 	if in.Title != nil {
 		title := strings.TrimSpace(*in.Title)
 		if title == "" {
 			return agent.Session{}, errors.New("mock: session title is empty")
 		}
-		state.meta.Title = title
+		candidate.Title = title
 	}
 	if in.Workspace != nil {
-		state.meta.Workspace = availableWorkspace(strings.TrimSpace(*in.Workspace))
+		candidate.Workspace = availableWorkspace(strings.TrimSpace(*in.Workspace))
 	}
 	if in.Model != nil {
-		state.meta.Provider = in.Model.Provider
-		state.meta.Model = in.Model.Model
+		candidate.Provider = in.Model.Provider
+		candidate.Model = in.Model.Model
 	}
 	if in.Favorite != nil {
-		state.meta.Favorite = *in.Favorite
+		candidate.Favorite = *in.Favorite
 	}
-	state.meta.Revision++
-	state.meta.UpdatedAt = r.now()
+	candidate.UpdatedAt = r.now()
+	if err := state.commitMeta(candidate); err != nil {
+		return agent.Session{}, err
+	}
 	return state.meta, nil
 }
 
@@ -189,17 +260,19 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	if err != nil {
 		return agent.Session{}, err
 	}
-	r.next++
-	id := fmt.Sprintf("ses_mock_%d", r.next)
+	id := r.identities.next(sessionIdentity)
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
 		title = source.meta.Title + " (fork)"
 	}
 	now := r.now()
 	meta := agent.Session{ID: id, Title: title, Status: agent.SessionIdle, Provider: source.meta.Provider, Model: source.meta.Model, Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1}
-	state := &sessionState{meta: meta, plan: slices.Clone(boundary.plan)}
-	if len(boundary.plan) != 0 {
-		state.planRevision = 1
+	state := &sessionState{meta: meta}
+	if boundary.plan != nil {
+		state.plan, err = commitInitialPlan(boundary.plan.Content())
+		if err != nil {
+			return agent.Session{}, fmt.Errorf("mock: fork plan: %w", err)
+		}
 	}
 	r.sessions[id] = state
 	return meta, nil
@@ -234,6 +307,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	droppedIDs := slices.Clone(state.runs[keep+1:])
 	droppedSet := make(map[string]struct{}, len(droppedIDs))
 	result := agent.RollbackResult{Dropped: make([]agent.DroppedRun, 0, len(droppedIDs))}
+	planAtRun := maps.Clone(state.planAtRun)
 	for _, runID := range droppedIDs {
 		droppedSet[runID] = struct{}{}
 		dropped := agent.DroppedRun{RunID: runID}
@@ -244,30 +318,49 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 			}
 		}
 		result.Dropped = append(result.Dropped, dropped)
-		delete(r.runs, runID)
-		delete(state.planAtRun, runID)
+		delete(planAtRun, runID)
 	}
-	state.runs = slices.Clone(state.runs[:keep+1])
-	state.items = slices.DeleteFunc(state.items, func(item durableItem) bool {
+	runs := slices.Clone(state.runs[:keep+1])
+	items := slices.DeleteFunc(slices.Clone(state.items), func(item durableItem) bool {
 		_, dropped := droppedSet[item.runID]
 		return dropped
 	})
-	state.plan = nil
-	if in.ToRunID != "" {
-		state.plan = slices.Clone(state.planAtRun[in.ToRunID])
+	content, err := agent.NewPlanContent(nil)
+	if err != nil {
+		return agent.RollbackResult{}, fmt.Errorf("mock: empty rollback Plan: %w", err)
 	}
-	state.planRevision++
-	state.meta.Revision++
-	state.meta.UpdatedAt = r.now()
-	result.Session = state.meta
+	if in.ToRunID != "" {
+		if boundary := state.planAtRun[in.ToRunID]; boundary != nil {
+			content = boundary.Content()
+		}
+	}
+	plan, err := commitNextPlan(state.plan, content)
+	if err != nil {
+		return agent.RollbackResult{}, fmt.Errorf("mock: rollback Plan: %w", err)
+	}
+	meta := state.meta
+	meta.UpdatedAt = r.now()
+	meta, err = nextSessionMeta(state.meta, meta)
+	if err != nil {
+		return agent.RollbackResult{}, err
+	}
+	result.Session = meta
 	if err := result.Validate(); err != nil {
 		return agent.RollbackResult{}, fmt.Errorf("mock: %w", err)
 	}
+	for _, runID := range droppedIDs {
+		delete(r.runs, runID)
+	}
+	state.runs = runs
+	state.items = items
+	state.planAtRun = planAtRun
+	state.plan = plan
+	state.meta = meta
 	return result, nil
 }
 
 type forkBoundary struct {
-	plan []agent.PlanItem
+	plan *agent.Plan
 }
 
 // resolveForkBoundary mirrors the runtime's durable boundary rule: an explicit
@@ -293,7 +386,7 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	}
 
 	boundaryRunID := source.runs[boundaryIndex]
-	return forkBoundary{plan: slices.Clone(source.planAtRun[boundaryRunID])}, nil
+	return forkBoundary{plan: cloneCommittedPlan(source.planAtRun[boundaryRunID])}, nil
 }
 
 func (r *Runtime) DeleteSession(ctx context.Context, in agent.DeleteSession) error {
@@ -323,7 +416,8 @@ func (r *Runtime) seedHistory() {
 	}
 	run := &runState{
 		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
-		status: agent.RunStatusFinished, segments: make(map[string]*segmentState),
+		lineage: agent.RootRunLineage(),
+		limits:  agent.UnlimitedRunLimits(), status: agent.RunStatusFinished, segments: make(map[string]*segmentState),
 		outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		usage:   agent.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
 	}
@@ -334,5 +428,25 @@ func (r *Runtime) seedHistory() {
 		durableItem{runID: run.id, block: agent.Block{ID: "demo_prompt", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockUser, Text: "Why is the cache expiry test flaky?"}},
 		durableItem{runID: run.id, block: agent.Block{ID: "demo_answer", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "The fixed sleep races the janitor. Wait for its sweep signal instead."}},
 	)
-	state.planAtRun = map[string][]agent.PlanItem{run.id: nil}
+	state.planAtRun = map[string]*agent.Plan{run.id: nil}
+}
+
+func cloneCommittedPlan(plan *agent.Plan) *agent.Plan {
+	if plan == nil {
+		return nil
+	}
+	cloned := plan.Clone()
+	return &cloned
+}
+
+func commitInitialPlan(content agent.PlanContent) (*agent.Plan, error) {
+	return commitNextPlan(nil, content)
+}
+
+func commitNextPlan(previous *agent.Plan, content agent.PlanContent) (*agent.Plan, error) {
+	committed, err := agent.CommitNextPlan(previous, content)
+	if err != nil {
+		return nil, err
+	}
+	return &committed, nil
 }

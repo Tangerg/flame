@@ -2,9 +2,10 @@ package plan
 
 import (
 	"errors"
-	"math"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 )
 
 func TestValidateSteps(t *testing.T) {
@@ -38,7 +39,7 @@ func TestValidateSteps(t *testing.T) {
 func TestStateReplaceOwnsRevisionTimeAndClear(t *testing.T) {
 	firstTime := time.Date(2026, 8, 10, 1, 2, 3, 4, time.FixedZone("offset", 8*60*60))
 	input := []Step{{Description: "inspect", Status: StatusInProgress}}
-	first, err := (State{}).Replace(input, firstTime)
+	first, err := (Current{}).Replace(input, firstTime)
 	if err != nil {
 		t.Fatalf("first Replace: %v", err)
 	}
@@ -95,6 +96,53 @@ func TestRestoreRejectsImpossibleState(t *testing.T) {
 	}
 }
 
+func TestCurrentDistinguishesUnwrittenFromCommittedClear(t *testing.T) {
+	unwritten := Current{}
+	if _, committed := unwritten.State(); committed || !unwritten.Version().IsUnwritten() {
+		t.Fatal("zero Current did not remain explicitly unwritten")
+	}
+	cleared, err := unwritten.Replace(nil, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := CurrentOf(cleared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, committed := current.State(); !committed || current.Version().IsUnwritten() {
+		t.Fatal("committed empty Plan collapsed back to unwritten")
+	}
+}
+
+func TestCurrentAndVersionRejectContradictoryState(t *testing.T) {
+	now := time.Now().UTC()
+
+	if _, err := CurrentOf(State{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("CurrentOf zero State error = %v, want ErrInvalid", err)
+	}
+
+	for _, test := range []struct {
+		name    string
+		version Version
+	}{
+		{name: "committed without revision", version: Version{committed: true}},
+		{name: "unwritten with revision", version: Version{revision: exactint.First()}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.version.Validate(); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("Validate error = %v, want ErrInvalid", err)
+			}
+			valid, restoreErr := Restore(Snapshot{Revision: 1, UpdatedAt: now})
+			if restoreErr != nil {
+				t.Fatal(restoreErr)
+			}
+			if err := test.version.AdvancesTo(valid); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("AdvancesTo error = %v, want ErrInvalid", err)
+			}
+		})
+	}
+}
+
 func TestReplaceRejectsTimeTravelAndRevisionOverflow(t *testing.T) {
 	now := time.Now().UTC()
 	state, err := Restore(Snapshot{Revision: 7, UpdatedAt: now})
@@ -104,11 +152,14 @@ func TestReplaceRejectsTimeTravelAndRevisionOverflow(t *testing.T) {
 	if _, replaceErr := state.Replace(nil, now.Add(-time.Nanosecond)); !errors.Is(replaceErr, ErrInvalid) {
 		t.Fatalf("time-travel error = %v, want ErrInvalid", replaceErr)
 	}
-	overflow, err := Restore(Snapshot{Revision: math.MaxUint64, UpdatedAt: now})
+	overflow, err := Restore(Snapshot{Revision: exactint.Maximum, UpdatedAt: now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := overflow.Replace(nil, now); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("overflow error = %v, want ErrInvalid", err)
+	}
+	if _, err := Restore(Snapshot{Revision: exactint.Maximum + 1, UpdatedAt: now}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("inexact restore error = %v, want ErrInvalid", err)
 	}
 }

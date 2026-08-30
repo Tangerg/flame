@@ -3,10 +3,11 @@ package run
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // ErrSessionBusy reports that admitting a root Run was rejected because the
@@ -49,17 +50,21 @@ type Draft struct {
 
 // Validate checks the complete fresh Run value before it enters the lifecycle.
 func (d Draft) Validate() error {
+	if _, err := resourceid.ParseRun(d.RunID); err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
+	if _, err := resourceid.ParseSession(d.SessionID); err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
+	if _, err := resourceid.ParseSegment(d.SegmentID); err != nil {
+		return fmt.Errorf("run: opening %w", err)
+	}
+	if _, _, err := goalref.ParseOptionalIncarnation(d.GoalIncarnationID); err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
 	switch {
-	case strings.TrimSpace(d.RunID) == "" || d.RunID != strings.TrimSpace(d.RunID):
-		return errors.New("run: Run ID is required without surrounding whitespace")
-	case strings.TrimSpace(d.SessionID) == "" || d.SessionID != strings.TrimSpace(d.SessionID):
-		return errors.New("run: Session ID is required without surrounding whitespace")
-	case strings.TrimSpace(d.SegmentID) == "" || d.SegmentID != strings.TrimSpace(d.SegmentID):
-		return errors.New("run: opening Segment ID is required without surrounding whitespace")
 	case d.CreatedAt.IsZero():
 		return errors.New("run: admission time is required")
-	case d.GoalIncarnationID != strings.TrimSpace(d.GoalIncarnationID):
-		return errors.New("run: Goal incarnation ID has surrounding whitespace")
 	}
 	lineage := d.Lineage()
 	if err := lineage.Validate(d.RunID); err != nil {

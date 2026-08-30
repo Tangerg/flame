@@ -2,35 +2,30 @@ package modelclient
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"fmt"
-	"sync"
 
 	"github.com/Tangerg/scope/core/embeddingclient"
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 	"github.com/Tangerg/flame/runtime/internal/infra/llm"
 )
 
-// EmbeddingResolver builds + caches embedding clients from provider-registry
-// credentials, keyed by everything that changes the built client (so a
-// credential mutation is picked up). Mirrors [ChatResolver] for the optional
-// agent-memory embedding role.
+// EmbeddingResolver builds embedding clients from the current provider-registry
+// snapshot. Construction is intentionally uncached so credential generations
+// do not accumulate for the process lifetime. Persisted vector identity remains
+// provider/model/endpoint-owned and deliberately excludes credential rotation.
 type EmbeddingResolver struct {
 	providers CredentialLookup
-	mu        sync.Mutex
-	cache     map[string]agentmemoryapp.Embedder
 }
 
 // NewEmbeddingResolver returns a resolver over the provider credential lookup.
 func NewEmbeddingResolver(providers CredentialLookup) *EmbeddingResolver {
-	return &EmbeddingResolver{providers: providers, cache: map[string]agentmemoryapp.Embedder{}}
+	return &EmbeddingResolver{providers: providers}
 }
 
-// Resolve builds (or returns a cached) embedder for selection.
+// Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
 	if !selection.Configured() {
 		return nil, errors.New("modelclient: explicit model selection is required")
@@ -40,21 +35,21 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	if !ok || !entry.Enabled() {
-		return nil, fmt.Errorf("modelclient: provider %q is not configured (set its API key first)", providerID)
+	if !ok {
+		entry, err = provider.New(providerID)
+		if err != nil {
+			return nil, err
+		}
 	}
-	key := providerID + "\x00" + model + "\x00" + entry.APIKey + "\x00" + entry.BaseURL
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if cached, ok := e.cache[key]; ok {
-		return cached, nil
+	inputs, err := resolveProviderClientInputs(providerID, entry)
+	if err != nil {
+		return nil, err
 	}
-	m, err := llm.BuildEmbeddingModel(llm.ClientSpec{
-		Provider: llm.Provider(providerID),
-		Model:    model,
-		APIKey:   entry.APIKey,
-		BaseURL:  entry.BaseURL,
-	})
+	spec, err := inputs.clientSpec(providerID, model)
+	if err != nil {
+		return nil, err
+	}
+	m, err := llm.BuildEmbeddingModel(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -62,19 +57,8 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	created := &embedder{id: embeddingSpaceID(providerID, model, entry.BaseURL), client: client}
-	e.cache[key] = created
+	created := &embedder{id: inputs.embeddingSpaceID(providerID, model), client: client}
 	return created, nil
-}
-
-// embeddingSpaceID fingerprints every non-secret client input that can select
-// a different vector coordinate system. In particular, two compatible
-// endpoints may expose the same model name while serving unrelated models.
-// Credentials are deliberately excluded: rotating an API key does not by
-// itself invalidate vectors, and no credential-derived material is persisted.
-func embeddingSpaceID(providerID, model, baseURL string) string {
-	digest := sha256.Sum256([]byte(providerID + "\x00" + model + "\x00" + baseURL))
-	return "embedding-v1:" + hex.EncodeToString(digest[:])
 }
 
 // ValidateEmbeddingModel implements the application role-validation port while

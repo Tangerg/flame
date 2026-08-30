@@ -18,7 +18,7 @@ export {
   questionDraftAnswers,
   questionDraftComplete,
   questionSettled,
+  setQuestionOptions,
   setQuestionText,
-  toggleQuestionOption,
 } from "../presentation/questionPresentation";
 export type { QuestionAnswers, QuestionDraft } from "../presentation/questionPresentation";

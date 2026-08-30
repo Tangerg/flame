@@ -148,7 +148,7 @@ func presentAgentMemoryItem(item agentmemory.Item) (protocol.AgentMemoryItem, er
 		return protocol.AgentMemoryItem{}, err
 	}
 	return protocol.AgentMemoryItem{
-		ID:        item.ID,
+		ID:        item.ID.String(),
 		Scope:     scope,
 		Content:   item.Content,
 		Origin:    origin,

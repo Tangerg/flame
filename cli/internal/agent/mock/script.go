@@ -16,10 +16,40 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
-// Step is one scripted emission: wait, then send.
+// Step is one scripted action: wait, then either emit an already committed
+// event or ask the mock Runtime to commit a Plan replacement. Plan content is a
+// separate action because only the Runtime owns its durable revision.
 type Step struct {
 	Delay time.Duration
 	Event agent.Event
+	plan  *planReplacementAction
+}
+
+type planReplacementAction struct {
+	content agent.PlanContent
+	err     error
+}
+
+func eventStep(delay time.Duration, event agent.Event) Step {
+	return Emit(delay, event)
+}
+
+func replacePlanStep(delay time.Duration, items []agent.PlanItem) Step {
+	return ReplacePlan(delay, items)
+}
+
+// Emit creates a scripted event action. PlanChanged is intentionally rejected:
+// use ReplacePlan so the mock Runtime, rather than the fixture, owns revisioning.
+func Emit(delay time.Duration, event agent.Event) Step {
+	return Step{Delay: delay, Event: event}
+}
+
+// ReplacePlan creates a scripted whole-list Plan replacement without inventing
+// a revision. The mock Runtime assigns the next durable revision when it plays
+// the step.
+func ReplacePlan(delay time.Duration, items []agent.PlanItem) Step {
+	content, err := agent.NewPlanContent(items)
+	return Step{Delay: delay, plan: &planReplacementAction{content: content, err: err}}
 }
 
 // Script is one run's worth of events. Prelude plays first; Interactions, when
@@ -85,32 +115,42 @@ func validateSteps(steps []Step, requireFinish bool) error {
 		if step.Delay < 0 {
 			return fmt.Errorf("step %d has a negative delay", i+1)
 		}
-		event := step.Event
-		switch item := event.(type) {
-		case agent.BlockStarted:
-			item.Block.RunID = "fixture"
-			item.Block.Status = agent.BlockStatusRunning
-			event = item
-		case agent.BlockCompleted:
-			item.Block.RunID = "fixture"
-			item.Block.Status = completedBlockStatus(item.Block)
-			event = item
-		}
-		if changed, ok := event.(agent.PlanChanged); ok && changed.Revision == 0 {
-			changed.Revision = 1 // Runtime assigns the durable revision at emission.
-			event = changed
-		}
-		if err := agent.ValidateEvent(event); err != nil {
-			return fmt.Errorf("step %d: %w", i+1, err)
-		}
-		switch step.Event.(type) {
-		case agent.SegmentStarted, agent.RunInterrupted:
-			return fmt.Errorf("step %d contains a runtime-owned control event", i+1)
-		case agent.RunFinished:
-			if i != len(steps)-1 {
-				return fmt.Errorf("step %d finishes before the script ends", i+1)
+		switch {
+		case step.Event != nil && step.plan == nil:
+			event := step.Event
+			switch item := event.(type) {
+			case agent.BlockStarted:
+				item.Block.RunID = "fixture"
+				item.Block.Status = agent.BlockStatusRunning
+				event = item
+			case agent.BlockCompleted:
+				item.Block.RunID = "fixture"
+				item.Block.Status = completedBlockStatus(item.Block)
+				event = item
 			}
-			finished = true
+			if err := agent.ValidateEvent(event); err != nil {
+				return fmt.Errorf("step %d: %w", i+1, err)
+			}
+			switch step.Event.(type) {
+			case agent.SegmentStarted, agent.RunInterrupted, agent.PlanChanged:
+				return fmt.Errorf("step %d contains a runtime-owned event", i+1)
+			case agent.RunFinished:
+				if i != len(steps)-1 {
+					return fmt.Errorf("step %d finishes before the script ends", i+1)
+				}
+				finished = true
+			}
+		case step.Event == nil && step.plan != nil:
+			if step.plan.err != nil {
+				return fmt.Errorf("step %d: %w", i+1, step.plan.err)
+			}
+			if err := step.plan.content.Validate(); err != nil {
+				return fmt.Errorf("step %d: %w", i+1, err)
+			}
+		case step.Event == nil && step.plan == nil:
+			return fmt.Errorf("step %d has no action", i+1)
+		default:
+			return fmt.Errorf("step %d mixes an event with a Plan replacement", i+1)
 		}
 	}
 	if requireFinish && !finished {
@@ -137,6 +177,11 @@ func cloneSteps(steps []Step) []Step {
 	cloned := slices.Clone(steps)
 	for i := range cloned {
 		cloned[i].Event = agent.CloneEvent(cloned[i].Event)
+		if cloned[i].plan != nil {
+			plan := *cloned[i].plan
+			plan.content = plan.content.Clone()
+			cloned[i].plan = &plan
+		}
 	}
 	return cloned
 }
@@ -276,20 +321,20 @@ func newDefaultScenario() defaultScenario {
 
 func (d defaultScenario) prelude() []Step {
 	prelude := make([]Step, 0, 32)
-	prelude = append(prelude, Step{Delay: beat, Event: agent.PlanChanged{Items: []agent.PlanItem{
+	prelude = append(prelude, replacePlanStep(beat, []agent.PlanItem{
 		{Title: "Reproduce the flake", Status: agent.PlanActive},
 		{Title: "Find what the test is really waiting for", Status: agent.PlanPending},
 		{Title: "Replace the sleep and re-run", Status: agent.PlanPending},
-	}}})
+	}))
 	prelude = append(prelude, stream("rsn_1", agent.BlockReasoning, d.reasoning)...)
 	prelude = append(prelude, tool("tool_1", agent.ToolShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
 		agent.ToolOK, d.testOutput, "", 3*time.Second+412*time.Millisecond)...)
-	prelude = append(prelude, Step{Delay: beat, Event: agent.PlanChanged{Items: []agent.PlanItem{
+	prelude = append(prelude, replacePlanStep(beat, []agent.PlanItem{
 		{Title: "Reproduce the flake", Status: agent.PlanDone},
 		{Title: "Find what the test is really waiting for", Status: agent.PlanDone},
 		{Title: "Replace the sleep and re-run", Status: agent.PlanActive},
-	}}})
+	}))
 	return append(prelude, stream("msg_1", agent.BlockAssistant, d.explanation)...)
 }
 
@@ -298,29 +343,29 @@ func (d defaultScenario) approved() []Step {
 		"go test ./internal/store -run TestCacheExpiry -count=50",
 		agent.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", agent.BlockAssistant, d.summary)...)
-	approved = append(approved, Step{Delay: beat, Event: agent.RunFinished{
+	approved = append(approved, eventStep(beat, agent.RunFinished{
 		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		Usage: agent.Usage{
 			InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800,
 			CostUSD: new(0.0412), Duration: 21 * time.Second,
 		},
-	}})
+	}))
 	return approved
 }
 
 func (d defaultScenario) denied() []Step {
 	denied := make([]Step, 0, 16)
-	denied = append(denied, Step{Delay: beat, Event: agent.BlockCompleted{Block: agent.Block{
+	denied = append(denied, eventStep(beat, agent.BlockCompleted{Block: agent.Block{
 		ID: "note_1", Kind: agent.BlockNotice, Text: "Edit declined — internal/store/cache_test.go left unchanged.",
-	}}})
+	}}))
 	denied = append(denied, stream("msg_3", agent.BlockAssistant, d.declined)...)
-	denied = append(denied, Step{Delay: beat, Event: agent.RunFinished{
+	denied = append(denied, eventStep(beat, agent.RunFinished{
 		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		Usage: agent.Usage{
 			InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800,
 			CostUSD: new(0.0291), Duration: 14 * time.Second,
 		},
-	}})
+	}))
 	return denied
 }
 
@@ -355,11 +400,11 @@ func (d defaultScenario) script() Script {
 // stream renders one body as a started block, a delta per word, and a completed
 // block — the shape a real streaming item takes.
 func stream(id string, kind agent.BlockKind, text string) []Step {
-	steps := []Step{{Delay: beat, Event: agent.BlockStarted{Block: agent.Block{ID: id, Kind: kind}}}}
+	steps := []Step{eventStep(beat, agent.BlockStarted{Block: agent.Block{ID: id, Kind: kind}})}
 	for _, w := range words(text) {
-		steps = append(steps, Step{Delay: tick, Event: agent.BlockDelta{BlockID: id, Text: w}})
+		steps = append(steps, eventStep(tick, agent.BlockDelta{BlockID: id, Text: w}))
 	}
-	return append(steps, Step{Event: agent.BlockCompleted{Block: agent.Block{ID: id, Kind: kind, Text: text}}})
+	return append(steps, eventStep(0, agent.BlockCompleted{Block: agent.Block{ID: id, Kind: kind, Text: text}}))
 }
 
 // tool renders one call as running, then finished with its result.
@@ -388,17 +433,17 @@ func tool(id string, kind agent.ToolKind, name, summary string, status agent.Too
 		// These kinds do not project a specialized primary field.
 	default:
 	}
-	steps := []Step{{Delay: beat, Event: agent.BlockStarted{Block: running}}}
+	steps := []Step{eventStep(beat, agent.BlockStarted{Block: running})}
 	for _, chunk := range strings.SplitAfter(output, "\n") {
 		if chunk != "" {
-			steps = append(steps, Step{Delay: 3 * tick, Event: agent.BlockDelta{BlockID: id, Text: chunk}})
+			steps = append(steps, eventStep(3*tick, agent.BlockDelta{BlockID: id, Text: chunk}))
 		}
 	}
 	completionDelay := 3 * beat
 	if output != "" {
 		completionDelay = beat
 	}
-	return append(steps, Step{Delay: completionDelay, Event: agent.BlockCompleted{Block: done}})
+	return append(steps, eventStep(completionDelay, agent.BlockCompleted{Block: done}))
 }
 
 // words splits text so that concatenating the pieces reproduces it exactly.

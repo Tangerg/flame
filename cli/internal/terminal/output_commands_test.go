@@ -81,7 +81,7 @@ func (outputTransferStub) ImportSession(context.Context, sessiontransfer.ImportR
 
 func runUIWithCopyHost(t *testing.T, backend agent.Runtime, workspace string) (*copyTestHost, func()) {
 	t.Helper()
-	host := &copyTestHost{Host: programtest.New(t, 96, 28), copied: make(chan string, 8)}
+	host := &copyTestHost{Host: programtest.New(t, programtest.Config{Width: 96, Height: 28}), copied: make(chan string, 8)}
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -148,9 +148,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	opened, err := backend.StartRun(t.Context(), agent.StartRun{
-		SessionID: session.ID, Message: agent.Message{Text: "create export history"},
-	})
+	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "create export history"))
 	if err != nil {
 		t.Fatal(err)
 	}

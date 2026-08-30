@@ -42,9 +42,24 @@ func BuildLSP(ci *codeintel.Analyzer, defaultCWD string) ([]toolcontract.Tool, e
 type lspInput struct {
 	Operation lspOperation `json:"operation" jsonschema:"enum=definition,enum=references,enum=implementation,enum=hover,enum=incoming_calls,enum=outgoing_calls,enum=document_symbols,enum=workspace_symbols,enum=diagnostics" jsonschema_description:"Language-server query to run."`
 	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace_symbols."`
-	Line      int          `json:"line,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations."`
-	Character int          `json:"character,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations."`
+	Line      *int         `json:"line,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
+	Character *int         `json:"character,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
 	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace_symbols."`
+}
+
+// lspPosition is the validated, complete coordinate used inside the adapter.
+// Pointer presence belongs only to the model-facing DTO above; incomplete or
+// non-positive coordinates never reach the analyzer.
+type lspPosition struct {
+	line      int
+	character int
+}
+
+type lspQuery struct {
+	operation   lspOperation
+	path        string
+	position    lspPosition
+	symbolQuery string
 }
 
 type lspOperation string
@@ -61,37 +76,60 @@ const (
 	lspDiagnostics      lspOperation = "diagnostics"
 )
 
-func (l lspInput) validate() error {
+func (l lspInput) normalize() (lspQuery, error) {
+	position, hasPosition, err := l.position()
+	if err != nil {
+		return lspQuery{}, err
+	}
+	query := lspQuery{
+		operation:   l.Operation,
+		path:        l.Path,
+		position:    position,
+		symbolQuery: l.Query,
+	}
 	switch l.Operation {
 	case lspDefinition, lspReferences, lspImplementation, lspHover,
 		lspIncomingCalls, lspOutgoingCalls:
 		if strings.TrimSpace(l.Path) == "" {
-			return fmt.Errorf("lsp %s: path is required", l.Operation)
+			return lspQuery{}, fmt.Errorf("lsp %s: path is required", l.Operation)
 		}
-		if l.Line < 1 || l.Character < 1 {
-			return fmt.Errorf("lsp %s: line and character must both be at least 1", l.Operation)
+		if !hasPosition {
+			return lspQuery{}, fmt.Errorf("lsp %s: line and character are required", l.Operation)
 		}
 		if strings.TrimSpace(l.Query) != "" {
-			return fmt.Errorf("lsp %s: query is not used for position operations", l.Operation)
+			return lspQuery{}, fmt.Errorf("lsp %s: query is not used for position operations", l.Operation)
 		}
 	case lspDocumentSymbols, lspDiagnostics:
 		if strings.TrimSpace(l.Path) == "" {
-			return fmt.Errorf("lsp %s: path is required", l.Operation)
+			return lspQuery{}, fmt.Errorf("lsp %s: path is required", l.Operation)
 		}
-		if l.Line != 0 || l.Character != 0 || strings.TrimSpace(l.Query) != "" {
-			return fmt.Errorf("lsp %s: only path is accepted", l.Operation)
+		if hasPosition || strings.TrimSpace(l.Query) != "" {
+			return lspQuery{}, fmt.Errorf("lsp %s: only path is accepted", l.Operation)
 		}
 	case lspWorkspaceSymbols:
 		if strings.TrimSpace(l.Query) == "" {
-			return errors.New("lsp workspace_symbols: query is required")
+			return lspQuery{}, errors.New("lsp workspace_symbols: query is required")
 		}
-		if strings.TrimSpace(l.Path) != "" || l.Line != 0 || l.Character != 0 {
-			return errors.New("lsp workspace_symbols: only query is accepted")
+		if strings.TrimSpace(l.Path) != "" || hasPosition {
+			return lspQuery{}, errors.New("lsp workspace_symbols: only query is accepted")
 		}
 	default:
-		return fmt.Errorf("lsp: unknown operation %q", l.Operation)
+		return lspQuery{}, fmt.Errorf("lsp: unknown operation %q", l.Operation)
 	}
-	return nil
+	return query, nil
+}
+
+func (l lspInput) position() (lspPosition, bool, error) {
+	switch {
+	case l.Line == nil && l.Character == nil:
+		return lspPosition{}, false, nil
+	case l.Line == nil || l.Character == nil:
+		return lspPosition{}, false, errors.New("lsp: line and character must be provided together")
+	case *l.Line < 1 || *l.Character < 1:
+		return lspPosition{}, false, errors.New("lsp: line and character must both be at least 1")
+	default:
+		return lspPosition{line: *l.Line, character: *l.Character}, true, nil
+	}
 }
 
 const lspDesc = "Query the language server (LSP) about code at a position or across the workspace. " +
@@ -113,30 +151,31 @@ func newQuery(ci *codeintel.Analyzer, defaultCWD string) (toolcontract.Tool, err
 }
 
 func (l *lspRunner) query(ctx context.Context, in lspInput) (string, error) {
-	if err := in.validate(); err != nil {
+	query, err := in.normalize()
+	if err != nil {
 		return "", err
 	}
 	root := executionctx.CWD(ctx, l.defaultCWD)
-	switch in.Operation {
+	switch query.operation {
 	case lspDefinition:
-		return l.analyzer.Definition(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.Definition(ctx, root, query.path, query.position.line, query.position.character)
 	case lspReferences:
-		return l.analyzer.References(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.References(ctx, root, query.path, query.position.line, query.position.character)
 	case lspImplementation:
-		return l.analyzer.Implementation(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.Implementation(ctx, root, query.path, query.position.line, query.position.character)
 	case lspHover:
-		return l.analyzer.Hover(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.Hover(ctx, root, query.path, query.position.line, query.position.character)
 	case lspIncomingCalls:
-		return l.analyzer.IncomingCalls(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.IncomingCalls(ctx, root, query.path, query.position.line, query.position.character)
 	case lspOutgoingCalls:
-		return l.analyzer.OutgoingCalls(ctx, root, in.Path, in.Line, in.Character)
+		return l.analyzer.OutgoingCalls(ctx, root, query.path, query.position.line, query.position.character)
 	case lspDocumentSymbols:
-		return l.analyzer.DocumentSymbols(ctx, root, in.Path)
+		return l.analyzer.DocumentSymbols(ctx, root, query.path)
 	case lspDiagnostics:
-		return l.analyzer.Diagnostics(ctx, root, in.Path)
+		return l.analyzer.Diagnostics(ctx, root, query.path)
 	case lspWorkspaceSymbols:
-		return l.analyzer.WorkspaceSymbols(ctx, root, in.Query)
+		return l.analyzer.WorkspaceSymbols(ctx, root, query.symbolQuery)
 	default:
-		return "", fmt.Errorf("lsp: unknown operation %q", in.Operation)
+		return "", fmt.Errorf("lsp: unknown operation %q", query.operation)
 	}
 }

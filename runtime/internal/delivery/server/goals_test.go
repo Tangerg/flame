@@ -5,53 +5,51 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestGoalPtrProjectsMachineReadableReason(t *testing.T) {
+func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		domain goal.ReasonCode
+		status goal.Status
+		detail string
 		wire   protocol.GoalReasonCode
 	}{
-		{goal.ReasonStoppedByUser, protocol.GoalReasonStoppedByUser},
-		{goal.ReasonRuntimeRestarted, protocol.GoalReasonRuntimeRestarted},
-		{goal.ReasonRunStartFailed, protocol.GoalReasonRunStartFailed},
-		{goal.ReasonAwaitingInput, protocol.GoalReasonAwaitingInput},
-		{goal.ReasonTerminalOutcomeMissing, protocol.GoalReasonTerminalOutcomeMissing},
-		{goal.ReasonRunNotCompleted, protocol.GoalReasonRunNotCompleted},
-		{goal.ReasonRunBudgetReached, protocol.GoalReasonRunBudgetReached},
-		{goal.ReasonCostBudgetReached, protocol.GoalReasonCostBudgetReached},
-		{goal.ReasonStepBudgetReached, protocol.GoalReasonStepBudgetReached},
-		{goal.ReasonBlockedByModel, protocol.GoalReasonBlockedByModel},
+		{goal.ReasonStoppedByUser, goal.StatusPaused, "", protocol.GoalReasonStoppedByUser},
+		{goal.ReasonRuntimeRestarted, goal.StatusPaused, "", protocol.GoalReasonRuntimeRestarted},
+		{goal.ReasonRunStartFailed, goal.StatusPaused, "", protocol.GoalReasonRunStartFailed},
+		{goal.ReasonAwaitingInput, goal.StatusPaused, "", protocol.GoalReasonAwaitingInput},
+		{goal.ReasonTerminalOutcomeMissing, goal.StatusPaused, "", protocol.GoalReasonTerminalOutcomeMissing},
+		{goal.ReasonRunNotCompleted, goal.StatusPaused, "failed", protocol.GoalReasonRunNotCompleted},
+		{goal.ReasonRunBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonRunBudgetReached},
+		{goal.ReasonCostBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonCostBudgetReached},
+		{goal.ReasonStepBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonStepBudgetReached},
+		{goal.ReasonBlockedByModel, goal.StatusBlocked, "safe context", protocol.GoalReasonBlockedByModel},
 	}
 
 	for _, test := range tests {
 		t.Run(string(test.domain), func(t *testing.T) {
 			t.Parallel()
-			presented, err := presentGoal(goal.Goal{
-				SessionID: "session-1",
-				Objective: "finish the migration",
-				Status:    goal.StatusBlocked,
-				Reason:    goal.Reason{Code: test.domain, Detail: "safe context"},
-				CreatedAt: time.Unix(1, 0),
-				UpdatedAt: time.Unix(2, 0),
-			})
+			value := serverGoalWithState(t, test.status, test.domain, test.detail)
+			presented, err := presentGoal(value)
 			if err != nil {
 				t.Fatalf("presentGoal: %v", err)
 			}
-			if presented.Reason == nil || presented.Reason.Code != test.wire || presented.Reason.Detail != "safe context" {
-				t.Fatalf("reason = %+v, want code %q and preserved detail", presented.Reason, test.wire)
+			if presented.Reason == nil || presented.Reason.Code != test.wire || presented.Reason.Detail != test.detail {
+				t.Fatalf("reason = %+v, want code %q detail %q", presented.Reason, test.wire, test.detail)
 			}
 		})
 	}
 }
 
-func TestGoalPtrOmitsReasonForActiveGoal(t *testing.T) {
+func TestGoalOmitsReasonForActiveGoal(t *testing.T) {
 	t.Parallel()
 
-	presented, err := presentGoal(goal.Goal{Status: goal.StatusActive})
+	presented, err := presentGoal(serverGoalWithState(t, goal.StatusActive, goal.ReasonNone, ""))
 	if err != nil {
 		t.Fatalf("presentGoal: %v", err)
 	}
@@ -60,10 +58,10 @@ func TestGoalPtrOmitsReasonForActiveGoal(t *testing.T) {
 	}
 }
 
-func TestGoalPtrProjectsCompletingGoalDuringSettlement(t *testing.T) {
+func TestGoalProjectsCompletingStateDuringSettlement(t *testing.T) {
 	t.Parallel()
 
-	presented, err := presentGoal(goal.Goal{Status: goal.StatusComplete})
+	presented, err := presentGoal(serverGoalWithState(t, goal.StatusComplete, goal.ReasonNone, ""))
 	if err != nil {
 		t.Fatalf("presentGoal: %v", err)
 	}
@@ -72,14 +70,20 @@ func TestGoalPtrProjectsCompletingGoalDuringSettlement(t *testing.T) {
 	}
 }
 
-func TestGoalPtrRejectsUnknownReasonCode(t *testing.T) {
-	t.Parallel()
-
-	_, err := presentGoal(goal.Goal{
-		Status: goal.StatusPaused,
-		Reason: goal.Reason{Code: goal.ReasonCode("futureReason")},
-	})
-	if err == nil {
-		t.Fatal("presentGoal accepted an unpublished reason code")
+func serverGoalWithState(t *testing.T, status goal.Status, reason goal.ReasonCode, detail string) goal.Goal {
+	t.Helper()
+	selection, err := modelref.New("provider", "model")
+	if err != nil {
+		t.Fatal(err)
 	}
+	value, err := goal.Restore(goal.Snapshot{
+		SessionID: "session-1", Objective: "finish the migration", Status: status,
+		ReasonCode: reason, ReasonDetail: detail, ModelSelection: selection,
+		Capabilities: run.Capabilities{}, Budget: goal.UnlimitedBudget(), IncarnationID: "incarnation-1", Revision: 1,
+		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(2, 0).UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
 }

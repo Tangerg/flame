@@ -26,18 +26,18 @@ const (
 
 type mcpFormDraft struct {
 	name              string
-	enabled           string
+	enabled           bool
 	description       string
-	connectionMode    string
-	transport         string
+	replaceConnection bool
+	transport         mcp.Transport
 	url               string
-	authorizationMode string
+	authorizationMode formChange
 	authorization     string
-	headersMode       string
+	headersMode       formChange
 	headers           string
 	command           string
 	arguments         string
-	environmentMode   string
+	environmentMode   formChange
 	environment       string
 	directory         string
 	timeoutSeconds    string
@@ -47,20 +47,19 @@ type mcpFormDraft struct {
 
 func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 	draft := mcpFormDraft{
-		enabled: "enabled", connectionMode: "replace", transport: string(mcp.StreamableHTTP),
-		authorizationMode: "none", headersMode: "none", environmentMode: "none",
+		enabled: true, replaceConnection: true, transport: mcp.StreamableHTTP,
+		authorizationMode: formChangeKeep, headersMode: formChangeKeep, environmentMode: formChangeKeep,
 	}
 	if mode != mcpFormUpdate {
 		return draft
 	}
-	draft.authorizationMode, draft.headersMode, draft.environmentMode = "keep", "keep", "keep"
 	draft.name = server.Name
 	if server.State.Type == mcp.Disabled {
-		draft.enabled = "disabled"
+		draft.enabled = false
 	}
 	draft.description = server.Description
-	draft.connectionMode = "keep"
-	draft.transport = string(server.Connection.Transport)
+	draft.replaceConnection = false
+	draft.transport = server.Connection.Transport
 	draft.url = server.Connection.URL
 	draft.command = server.Connection.Command
 	if len(server.Connection.Args) > 0 {
@@ -68,17 +67,8 @@ func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 		draft.arguments = string(encoded)
 	}
 	draft.directory = server.Connection.Directory
-	if server.Connection.AuthorizationMasked != "" {
-		draft.authorizationMode = "keep"
-	}
-	if len(server.Connection.HeadersMasked) > 0 {
-		draft.headersMode = "keep"
-	}
-	if len(server.Connection.EnvironmentMasked) > 0 {
-		draft.environmentMode = "keep"
-	}
-	if server.TimeoutSeconds > 0 {
-		draft.timeoutSeconds = strconv.Itoa(server.TimeoutSeconds)
+	if seconds, bounded := server.HandshakeTimeout.Seconds(); bounded {
+		draft.timeoutSeconds = strconv.Itoa(seconds)
 	}
 	draft.disabledTools = strings.Join(server.DisabledTools, ", ")
 	draft.autoApproveTools = strings.Join(server.AutoApproveTools, ", ")
@@ -86,6 +76,9 @@ func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 }
 
 func (m mcpFormDraft) candidate() (mcp.Candidate, error) {
+	if err := m.validateSelections(); err != nil {
+		return mcp.Candidate{}, err
+	}
 	connection, err := m.connection()
 	if err != nil {
 		return mcp.Candidate{}, err
@@ -95,21 +88,24 @@ func (m mcpFormDraft) candidate() (mcp.Candidate, error) {
 		return mcp.Candidate{}, err
 	}
 	candidate := mcp.Candidate{
-		Name: strings.TrimSpace(m.name), Enabled: m.enabled == "enabled",
+		Name: strings.TrimSpace(m.name), Enabled: m.enabled,
 		Description: strings.TrimSpace(m.description), Connection: connection,
-		TimeoutSeconds: timeout, DisabledTools: parseMCPToolNames(m.disabledTools),
+		HandshakeTimeout: timeout, DisabledTools: parseMCPToolNames(m.disabledTools),
 		AutoApproveTools: parseMCPToolNames(m.autoApproveTools),
 	}
 	return candidate, candidate.Validate()
 }
 
 func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error) {
+	if err := m.validateSelections(); err != nil {
+		return mcp.ServerUpdate{}, false, err
+	}
 	timeout, err := parseMCPTimeout(m.timeoutSeconds)
 	if err != nil {
 		return mcp.ServerUpdate{}, false, err
 	}
 	update := mcp.ServerUpdate{Server: original.Name}
-	enabled := m.enabled == "enabled"
+	enabled := m.enabled
 	if enabled != (original.State.Type != mcp.Disabled) {
 		update.Enabled = &enabled
 	}
@@ -117,8 +113,8 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 	if description != original.Description {
 		update.Description = &description
 	}
-	if timeout != original.TimeoutSeconds {
-		update.TimeoutSeconds = &timeout
+	if !timeout.Equal(original.HandshakeTimeout) {
+		update.HandshakeTimeout = &timeout
 	}
 	disabledTools := parseMCPToolNames(m.disabledTools)
 	if !slices.Equal(disabledTools, original.DisabledTools) {
@@ -128,7 +124,7 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 	if !slices.Equal(autoApproveTools, original.AutoApproveTools) {
 		update.AutoApproveTools = &autoApproveTools
 	}
-	if m.connectionMode == "replace" {
+	if m.replaceConnection {
 		connection, err := m.connection()
 		if err != nil {
 			return mcp.ServerUpdate{}, false, err
@@ -145,7 +141,7 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 }
 
 func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
-	connection := mcp.ConnectionInput{Transport: mcp.Transport(m.transport)}
+	connection := mcp.ConnectionInput{Transport: m.transport}
 	switch connection.Transport {
 	case mcp.StreamableHTTP:
 		connection.URL = strings.TrimSpace(m.url)
@@ -176,13 +172,25 @@ func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 	return connection, connection.Validate()
 }
 
+func (m mcpFormDraft) validateSelections() error {
+	if err := m.transport.Validate(); err != nil {
+		return err
+	}
+	for _, change := range []formChange{m.authorizationMode, m.headersMode, m.environmentMode} {
+		if err := change.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *app) openMCPServerForm(mode mcpFormMode, server mcp.Server) {
 	a.showMCPFormStep(newMCPFormFlow(mode, server))
 }
 
 func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	if a.mcpDialog != nil {
-		a.mcpDialog.Dismiss()
+		a.mcpDialog.Controller().Dismiss()
 		a.mcpDialog = nil
 	}
 	fields, secretFields := a.mcpFormFields(flow)
@@ -230,7 +238,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	})
 	dialog.Controller().SetDescription(label)
 	a.mcpDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func (a *app) submitMCPForm(flow *mcpFormFlow) {
@@ -265,7 +273,7 @@ func (a *app) submitMCPForm(flow *mcpFormFlow) {
 func (a *app) closeMCPForm(flow *mcpFormFlow) {
 	flow.clearSecrets()
 	if a.mcpDialog != nil {
-		a.mcpDialog.Dismiss()
+		a.mcpDialog.Controller().Dismiss()
 		a.mcpDialog = nil
 	}
 }
@@ -280,40 +288,45 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		fields = append(fields, field)
 		return field
 	}
-	selectField := func(label string, value *string, options []headless.Option[string]) {
-		field := &headless.Select[string]{Label: label, Value: headless.Bind(value), Rows: min(len(options), 3)}
-		field.SetOptions(options)
-		fields = append(fields, field)
-	}
 	switch flow.step {
 	case mcpFormGeneral:
 		if flow.mode != mcpFormUpdate {
 			textField("Server name", "docs", &draft.name, requiredText)
 		}
-		selectField("Enabled", &draft.enabled, []headless.Option[string]{{Label: "Enabled", Value: "enabled"}, {Label: "Disabled", Value: "disabled"}})
+		enabled := &headless.Select[bool]{Label: "Enabled", Value: headless.Bind(&draft.enabled), Rows: 2}
+		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
+		fields = append(fields, enabled)
 		textField("Description", "Optional description", &draft.description, nil)
 		if flow.mode == mcpFormUpdate {
-			selectField("Connection change", &draft.connectionMode, []headless.Option[string]{{Label: "Keep current connection", Value: "keep"}, {Label: "Replace connection", Value: "replace"}})
+			connection := &headless.Select[bool]{Label: "Connection change", Value: headless.Bind(&draft.replaceConnection), Rows: 2}
+			connection.SetOptions([]headless.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}})
+			fields = append(fields, connection)
 		}
 		transportLabel := "Transport"
 		if flow.mode == mcpFormUpdate {
 			transportLabel = "Replacement transport"
 		}
-		selectField(transportLabel, &draft.transport, []headless.Option[string]{{Label: "Streamable HTTP", Value: string(mcp.StreamableHTTP)}, {Label: "stdio process", Value: string(mcp.Stdio)}})
+		transport := &headless.Select[mcp.Transport]{Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2}
+		transport.SetOptions([]headless.Option[mcp.Transport]{{Label: "Streamable HTTP", Value: mcp.StreamableHTTP}, {Label: "stdio process", Value: mcp.Stdio}})
+		fields = append(fields, transport)
 	case mcpFormHTTP:
 		textField("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
 		secretOptions := mcpSecretOptions(flow.mode)
-		selectField("Authorization change", &draft.authorizationMode, secretOptions)
+		authorizationMode := &headless.Select[formChange]{Label: "Authorization change", Value: headless.Bind(&draft.authorizationMode), Rows: len(secretOptions)}
+		authorizationMode.SetOptions(secretOptions)
+		fields = append(fields, authorizationMode)
 		authorization := textField("Authorization value", "Bearer …", &draft.authorization, func(value string) error {
-			if draft.authorizationMode == "set" {
+			if draft.authorizationMode.SetsValue() {
 				return requiredText(value)
 			}
 			return nil
 		})
 		authorization.Editor().SetMask("•")
-		selectField("Headers change", &draft.headersMode, secretOptions)
+		headersMode := &headless.Select[formChange]{Label: "Headers change", Value: headless.Bind(&draft.headersMode), Rows: len(secretOptions)}
+		headersMode.SetOptions(secretOptions)
+		fields = append(fields, headersMode)
 		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
-			if draft.headersMode != "set" {
+			if !draft.headersMode.SetsValue() {
 				return nil
 			}
 			_, err := parseMCPStringMap(value)
@@ -327,9 +340,12 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			_, err := parseMCPArguments(value)
 			return err
 		})
-		selectField("Environment change", &draft.environmentMode, mcpSecretOptions(flow.mode))
+		secretOptions := mcpSecretOptions(flow.mode)
+		environmentMode := &headless.Select[formChange]{Label: "Environment change", Value: headless.Bind(&draft.environmentMode), Rows: len(secretOptions)}
+		environmentMode.SetOptions(secretOptions)
+		fields = append(fields, environmentMode)
 		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
-			if draft.environmentMode != "set" {
+			if !draft.environmentMode.SetsValue() {
 				return nil
 			}
 			_, err := parseMCPStringMap(value)
@@ -339,7 +355,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		secretFields = append(secretFields, environment)
 		textField("Working directory", "Optional absolute path", &draft.directory, nil)
 	case mcpFormPolicy:
-		textField("Timeout seconds", "0 uses runtime default", &draft.timeoutSeconds, func(value string) error {
+		textField("Handshake timeout seconds", "Blank leaves the handshake unbounded", &draft.timeoutSeconds, func(value string) error {
 			_, err := parseMCPTimeout(value)
 			return err
 		})
@@ -349,34 +365,41 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 	return fields, secretFields
 }
 
-func mcpSecretOptions(mode mcpFormMode) []headless.Option[string] {
+func mcpSecretOptions(mode mcpFormMode) []headless.Option[formChange] {
 	if mode == mcpFormUpdate {
-		return []headless.Option[string]{
-			{Label: "Keep current secret", Value: "keep"},
-			{Label: "Set replacement", Value: "set"},
-			{Label: "Clear secret", Value: "clear"},
+		return []headless.Option[formChange]{
+			{Label: "Keep current secret", Value: formChangeKeep},
+			{Label: "Set replacement", Value: formChangeSet},
+			{Label: "Clear secret", Value: formChangeClear},
 		}
 	}
-	return []headless.Option[string]{{Label: "No secret", Value: "none"}, {Label: "Set secret", Value: "set"}}
+	return []headless.Option[formChange]{{Label: "No secret", Value: formChangeKeep}, {Label: "Set secret", Value: formChangeSet}}
 }
 
-func mcpAuthorizationChange(mode, value string) (*mcp.AuthorizationChange, error) {
+func mcpAuthorizationChange(mode formChange, value string) (*mcp.AuthorizationChange, error) {
+	if err := mode.Validate(); err != nil {
+		return nil, err
+	}
 	switch mode {
-	case "set":
+	case formChangeSet:
 		change := &mcp.AuthorizationChange{Kind: mcp.Set, Value: strings.TrimSpace(value)}
 		return change, change.Validate()
-	case "clear":
+	case formChangeClear:
 		return &mcp.AuthorizationChange{Kind: mcp.Clear}, nil
-	default:
+	case formChangeKeep:
 		return nil, nil
 	}
+	panic("validated form change became unreachable")
 }
 
-func mcpHeadersChange(mode, value string) (*mcp.HeadersChange, error) {
-	if mode == "clear" {
+func mcpHeadersChange(mode formChange, value string) (*mcp.HeadersChange, error) {
+	if err := mode.Validate(); err != nil {
+		return nil, err
+	}
+	if mode.ClearsValue() {
 		return &mcp.HeadersChange{Kind: mcp.Clear}, nil
 	}
-	if mode != "set" {
+	if !mode.SetsValue() {
 		return nil, nil
 	}
 	values, err := parseMCPStringMap(value)
@@ -387,11 +410,14 @@ func mcpHeadersChange(mode, value string) (*mcp.HeadersChange, error) {
 	return change, change.Validate()
 }
 
-func mcpEnvironmentChange(mode, value string) (*mcp.EnvironmentChange, error) {
-	if mode == "clear" {
+func mcpEnvironmentChange(mode formChange, value string) (*mcp.EnvironmentChange, error) {
+	if err := mode.Validate(); err != nil {
+		return nil, err
+	}
+	if mode.ClearsValue() {
 		return &mcp.EnvironmentChange{Kind: mcp.Clear}, nil
 	}
-	if mode != "set" {
+	if !mode.SetsValue() {
 		return nil, nil
 	}
 	values, err := parseMCPStringMap(value)
@@ -434,16 +460,16 @@ func parseMCPArguments(value string) ([]string, error) {
 	return arguments, nil
 }
 
-func parseMCPTimeout(value string) (int, error) {
+func parseMCPTimeout(value string) (mcp.HandshakeTimeout, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return 0, nil
+		return mcp.HandshakeTimeout{}, nil
 	}
 	seconds, err := strconv.Atoi(value)
-	if err != nil || seconds < 0 {
-		return 0, errors.New("timeout must be a non-negative integer")
+	if err != nil {
+		return mcp.HandshakeTimeout{}, errors.New("handshake timeout must be a positive integer")
 	}
-	return seconds, nil
+	return mcp.NewHandshakeTimeout(seconds)
 }
 
 func parseMCPToolNames(value string) []string {

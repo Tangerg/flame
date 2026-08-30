@@ -29,6 +29,16 @@ type Session struct {
 	Revision        uint64        `json:"revision"`
 }
 
+// ListSessionsRequest identifies one stable Session catalog collection.
+// Search is a case-insensitive literal match over durable title/workspace text;
+// Workspace selects one exact admitted Session workspace. Both optional filters
+// are part of the cursor identity and may be composed.
+type ListSessionsRequest struct {
+	PageQuery
+	Search    string        `json:"search,omitempty"`
+	Workspace *WorkspaceRef `json:"workspace,omitempty"`
+}
+
 // GetSessionRequest identifies the session returned by sessions.get.
 type GetSessionRequest struct {
 	SessionID string `json:"sessionId"`
@@ -164,10 +174,9 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 24 preserves the Session and Run exact provider/model/reasoning
-// selections in addition
-// to the complete durable material introduced by earlier versions.
-const SessionArtifactVersion = 24
+// Version 27 makes provider, model, and reasoning-effort identities bounded,
+// printable canonical values everywhere they occur, including usage-map keys.
+const SessionArtifactVersion = 27
 
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
@@ -248,11 +257,13 @@ type ArtifactRun struct {
 	MessageMark     int                 `json:"messageMark"`
 }
 
-// ArtifactRunLimits is the allowance a portable run was admitted under.
+// ArtifactRunLimits is the bounded allowance a portable run was admitted under.
+// Every present field is strictly positive and at least one is present; an
+// omitted ArtifactRun.limits means unlimited.
 type ArtifactRunLimits struct {
-	MaxTotalTokens int64   `json:"maxTotalTokens,omitempty"`
-	MaxSteps       int     `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   float64 `json:"maxBudgetUsd,omitempty"`
+	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty"`
+	MaxSteps       *int     `json:"maxSteps,omitempty"`
+	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
 }
 
 // ArtifactRunMetrics is what a portable run consumed.
@@ -305,7 +316,10 @@ type ArtifactModelUsage struct {
 
 // ArtifactItem is the durable transcript representation. It is not the live
 // Item response DTO: archive tool results remain canonical rather than being
-// transformed for a particular client presentation.
+// transformed for a particular client presentation. Portable snapshots contain
+// terminal Runs only, so non-ToolCall variants are completed and ToolCall is
+// completed or incomplete; a running Item is process-local state, not an
+// artifact fact.
 type ArtifactItem struct {
 	ID        string     `json:"id"`
 	RunID     string     `json:"runId"`

@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 type Format string
@@ -93,8 +94,8 @@ type ExportRequest struct {
 }
 
 func (e ExportRequest) Validate() error {
-	if strings.TrimSpace(e.SessionID) == "" {
-		return errors.New("export session: session id is empty")
+	if _, err := sessionidentity.Parse(e.SessionID); err != nil {
+		return fmt.Errorf("export session: %w", err)
 	}
 	if err := e.Format.Validate(); err != nil {
 		return fmt.Errorf("export session: %w", err)

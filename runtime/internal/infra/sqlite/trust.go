@@ -63,7 +63,7 @@ func (t *TrustStore) List(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list trusted: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []string
 	for rows.Next() {
 		var root string

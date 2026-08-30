@@ -8,7 +8,7 @@ import (
 )
 
 type fileReadPort struct {
-	input      FileReadInput
+	input      FileReadPlan
 	result     FileReadResult
 	grepInput  GrepPlan
 	grepResult GrepResult
@@ -19,7 +19,7 @@ func (f *fileReadPort) List(context.Context, string, FileListOptions) ([]FileEnt
 	return nil, nil
 }
 
-func (f *fileReadPort) Read(_ context.Context, _ string, input FileReadInput) (FileReadResult, error) {
+func (f *fileReadPort) Read(_ context.Context, _ string, input FileReadPlan) (FileReadResult, error) {
 	f.input = input
 	return f.result, nil
 }
@@ -96,7 +96,7 @@ func TestFilesHeadRejectsByteTruncatedPortResult(t *testing.T) {
 	}}
 	files := NewFiles(NewScope(t.TempDir(), "", fileReadPaths{}), port)
 
-	_, err := files.Head(t.Context(), "", "file.txt", 1)
+	_, err := files.Head(t.Context(), "", "file.txt", mustHeadLineLimit(t, 1))
 	if !errors.Is(err, ErrFileReadTooLarge) {
 		t.Fatalf("Head error = %v, want ErrFileReadTooLarge", err)
 	}
@@ -131,7 +131,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		port := &fileReadPort{}
 		files := NewFiles(NewScope(t.TempDir(), "", fileReadPaths{}), port)
 
-		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: 100_000}); err != nil {
+		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, 100_000)}); err != nil {
 			t.Fatal(err)
 		}
 		if port.grepInput.Limit != 1000 {
@@ -149,7 +149,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		}}
 		files := NewFiles(NewScope(t.TempDir(), "", fileReadPaths{}), port)
 
-		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: 1}); err == nil {
+		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, 1)}); err == nil {
 			t.Fatal("Grep published a direct-port result beyond its match limit and total")
 		}
 	})
@@ -163,7 +163,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		port := &fileReadPort{grepResult: GrepResult{Matches: matches, Total: len(matches)}}
 		files := NewFiles(NewScope(t.TempDir(), "", fileReadPaths{}), port)
 
-		_, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: len(matches)})
+		_, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, len(matches))})
 		if !errors.Is(err, ErrGrepResultTooLarge) {
 			t.Fatalf("Grep oversized direct result error = %v, want ErrGrepResultTooLarge", err)
 		}
@@ -179,4 +179,22 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 			t.Fatal("Grep published a direct-port path outside the workspace")
 		}
 	})
+}
+
+func mustHeadLineLimit(t *testing.T, lines int) HeadLineLimit {
+	t.Helper()
+	limit, err := NewHeadLineLimit(lines)
+	if err != nil {
+		t.Fatalf("NewHeadLineLimit(%d): %v", lines, err)
+	}
+	return limit
+}
+
+func mustGrepResultLimit(t *testing.T, matches int) GrepResultLimit {
+	t.Helper()
+	limit, err := NewGrepResultLimit(matches)
+	if err != nil {
+		t.Fatalf("NewGrepResultLimit(%d): %v", matches, err)
+	}
+	return limit
 }

@@ -36,14 +36,19 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 		r.mu.Unlock()
 		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrSessionHasActiveRun, in.SessionID)
 	}
+	if err := session.requireRevisionCapacity(startRunRevisionChanges(session)); err != nil {
+		r.mu.Unlock()
+		return agent.SegmentStream{}, err
+	}
 	fault, err := r.takeFaultLocked()
 	if err != nil {
 		r.mu.Unlock()
 		return agent.SegmentStream{}, err
 	}
-	r.next++
+	runID := r.identities.next(runIdentity)
 	run := &runState{
-		id: fmt.Sprintf("run_mock_%d", r.next), sessionID: in.SessionID,
+		id: runID, sessionID: in.SessionID,
+		lineage:  agent.RootRunLineage(),
 		provider: in.Options.Provider, model: in.Options.Model, limits: in.Options.Limits, status: agent.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
 	}
@@ -56,18 +61,32 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	r.runOrder = append(r.runOrder, run.id)
 	session.active = run.id
 	session.runs = append(session.runs, run.id)
-	r.setSessionStatusLocked(session, agent.SessionRunning)
-	r.emitLocked(run, agent.SegmentStarted{Run: projectRun(run)})
-	r.next++
-	userItemID := fmt.Sprintf("item_mock_%d", r.next)
-	r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
+	if err := r.setSessionStatusLocked(session, agent.SessionRunning); err != nil {
+		r.mu.Unlock()
+		return agent.SegmentStream{}, err
+	}
+	if err := r.emitLocked(run, agent.SegmentStarted{Run: projectRun(run)}); err != nil {
+		r.mu.Unlock()
+		return agent.SegmentStream{}, err
+	}
+	userItemID := r.identities.next(itemIdentity)
+	if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
 		ID: userItemID, Kind: agent.BlockUser, Text: strings.TrimSpace(in.Message.Text), Attachments: slices.Clone(in.Message.Attachments),
-	}})
+	}}); err != nil {
+		r.mu.Unlock()
+		return agent.SegmentStream{}, err
+	}
 	stream := r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault)
 	r.mu.Unlock()
 
 	go r.play(run, run.script.Prelude, run.script.interrupts())
 	return stream, nil
+}
+
+func startRunRevisionChanges(session *sessionState) sessionRevisionChanges {
+	return sessionStatusRevisionChanges(session, agent.SessionRunning).
+		plus(sessionEventRevisionChange()).
+		plus(sessionEventRevisionChange())
 }
 
 func (r *Runtime) ResumeRun(ctx context.Context, in agent.ResumeRun) (agent.SegmentStream, error) {
@@ -136,26 +155,50 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Messa
 	if run.status != agent.RunStatusWaiting {
 		return agent.SegmentStream{}, fmt.Errorf("%w: run %s", agent.ErrInterruptNotOpen, run.id)
 	}
-	fault, err := r.takeFaultLocked()
+	answeredQuestions, err := r.acceptedQuestionBlocksLocked(run, prepared.answers)
 	if err != nil {
 		return agent.SegmentStream{}, err
 	}
-	answeredQuestions, err := r.acceptedQuestionBlocksLocked(run, prepared.answers)
+	approvalEvents := approvalCompletionEvents(run, prepared.answers)
+	session := r.sessions[run.sessionID]
+	if err := session.requireRevisionCapacity(resumeRunRevisionChanges(session, message, len(approvalEvents))); err != nil {
+		return agent.SegmentStream{}, err
+	}
+	fault, err := r.takeFaultLocked()
 	if err != nil {
 		return agent.SegmentStream{}, err
 	}
 	r.recordAnswersLocked(run, prepared.answers)
 	for _, block := range answeredQuestions {
-		persistBlock(r.sessions[run.sessionID], run.id, block)
+		persistBlock(session, run.id, block)
 	}
 	run.interactions = nil
 	run.status = agent.RunStatusRunning
 	segment := r.openSegmentLocked(run)
-	r.setSessionStatusLocked(r.sessions[run.sessionID], agent.SessionRunning)
-	r.emitLocked(run, agent.SegmentStarted{Run: projectRun(run)})
-	userItemID := r.emitResumeMessageLocked(run, message)
-	r.completeApprovalItemsLocked(run, prepared.answers)
+	if err := r.setSessionStatusLocked(session, agent.SessionRunning); err != nil {
+		return agent.SegmentStream{}, err
+	}
+	if err := r.emitLocked(run, agent.SegmentStarted{Run: projectRun(run)}); err != nil {
+		return agent.SegmentStream{}, err
+	}
+	userItemID, err := r.emitResumeMessageLocked(run, message)
+	if err != nil {
+		return agent.SegmentStream{}, err
+	}
+	if err := r.emitAllLocked(run, approvalEvents); err != nil {
+		return agent.SegmentStream{}, err
+	}
 	return r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault), nil
+}
+
+func resumeRunRevisionChanges(session *sessionState, message *agent.Message, approvalEvents int) sessionRevisionChanges {
+	changes := sessionStatusRevisionChanges(session, agent.SessionRunning).
+		plus(sessionEventRevisionChange()).
+		plus(sessionEventRevisionChanges(approvalEvents))
+	if message != nil {
+		changes = changes.plus(sessionEventRevisionChange())
+	}
+	return changes
 }
 
 // acceptedQuestionBlocksLocked mirrors the production runtime's resume
@@ -198,16 +241,17 @@ func (r *Runtime) recordAnswersLocked(run *runState, answers []agent.InterruptAn
 	}
 }
 
-func (r *Runtime) emitResumeMessageLocked(run *runState, message *agent.Message) string {
+func (r *Runtime) emitResumeMessageLocked(run *runState, message *agent.Message) (string, error) {
 	if message == nil {
-		return ""
+		return "", nil
 	}
-	r.next++
-	itemID := fmt.Sprintf("item_mock_%d", r.next)
-	r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
+	itemID := r.identities.next(itemIdentity)
+	if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
 		ID: itemID, Kind: agent.BlockUser, Text: strings.TrimSpace(message.Text), Attachments: slices.Clone(message.Attachments),
-	}})
-	return itemID
+	}}); err != nil {
+		return "", err
+	}
+	return itemID, nil
 }
 
 func completeScriptAnswers(run *runState, provided []agent.InterruptAnswer) ([]agent.InterruptAnswer, error) {
@@ -294,8 +338,10 @@ func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunC
 	if run.status == agent.RunStatusFinished {
 		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunFinished, run.id)
 	}
+	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
+		return agent.RunCancellation{}, err
+	}
 	run.cancelOnce.Do(func() { close(run.cancel) })
-	r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}})
 	projected := projectRun(run)
 	return agent.RunCancellation{Canceled: projected, Root: projected.Clone()}, nil
 }
@@ -316,10 +362,12 @@ func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
 	if run.status != agent.RunStatusRunning || run.active != in.SegmentID {
 		return fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
-	r.next++
-	r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
-		ID: fmt.Sprintf("item_mock_%d", r.next), Kind: agent.BlockUser,
+	if err := r.sessions[run.sessionID].requireRevisionCapacity(sessionEventRevisionChange()); err != nil {
+		return err
+	}
+	itemID := r.identities.next(itemIdentity)
+	return r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
+		ID: itemID, Kind: agent.BlockUser,
 		Text: strings.TrimSpace(in.Message.Text), Attachments: slices.Clone(in.Message.Attachments),
 	}})
-	return nil
 }

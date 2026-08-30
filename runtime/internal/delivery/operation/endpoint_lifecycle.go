@@ -18,15 +18,20 @@ type invocationGroup struct {
 	mu       sync.Mutex
 	stopping bool
 	finished bool
-	nextID   uint64
-	active   map[uint64]context.CancelFunc
+	active   map[*invocation]struct{}
 	done     chan struct{}
+}
+
+// invocation is one accepted binding call and its cancellation capability.
+// It is process-local, so its object identity is the registry key.
+type invocation struct {
+	cancel context.CancelFunc
 }
 
 func newInvocationGroup(lifetime context.Context) *invocationGroup {
 	group := &invocationGroup{
 		lifetime: lifetime,
-		active:   make(map[uint64]context.CancelFunc),
+		active:   make(map[*invocation]struct{}),
 		done:     make(chan struct{}),
 	}
 	context.AfterFunc(lifetime, group.BeginShutdown)
@@ -41,17 +46,16 @@ func (i *invocationGroup) Attach(parent context.Context) (context.Context, func(
 		cancel()
 		return nil, nil, false
 	}
-	i.nextID++
-	id := i.nextID
-	i.active[id] = cancel
+	registered := &invocation{cancel: cancel}
+	i.active[registered] = struct{}{}
 	i.mu.Unlock()
 
 	var once sync.Once
 	release := func() {
 		once.Do(func() {
-			cancel()
+			registered.cancel()
 			i.mu.Lock()
-			delete(i.active, id)
+			delete(i.active, registered)
 			i.finishShutdownLocked()
 			i.mu.Unlock()
 		})
@@ -65,15 +69,15 @@ func (i *invocationGroup) Attach(parent context.Context) (context.Context, func(
 func (i *invocationGroup) BeginShutdown() {
 	i.mu.Lock()
 	i.stopping = true
-	cancels := make([]context.CancelFunc, 0, len(i.active))
-	for _, cancel := range i.active {
-		cancels = append(cancels, cancel)
+	invocations := make([]*invocation, 0, len(i.active))
+	for registered := range i.active {
+		invocations = append(invocations, registered)
 	}
 	i.finishShutdownLocked()
 	i.mu.Unlock()
 
-	for _, cancel := range cancels {
-		cancel()
+	for _, registered := range invocations {
+		registered.cancel()
 	}
 }
 

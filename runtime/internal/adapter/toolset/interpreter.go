@@ -17,7 +17,7 @@ type Interpreter struct {
 }
 
 type planStateReader interface {
-	State(ctx context.Context, sessionID string) (plan.State, error)
+	State(ctx context.Context, sessionID string) (plan.Current, error)
 }
 
 // NewInterpreter binds projections that require canonical application state. A
@@ -92,9 +92,13 @@ func (i Interpreter) ProjectOutcome(
 	if !succeeded || !known || descriptor.outcome != planOutcomeProjection || i.plans == nil {
 		return nil, nil
 	}
-	state, err := i.plans.State(ctx, sessionID)
+	current, err := i.plans.State(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("toolset: project Plan replacement: %w", err)
+	}
+	state, committed := current.State()
+	if !committed {
+		return nil, fmt.Errorf("toolset: successful Plan replacement left no committed state")
 	}
 	return runs.PlanUpdated{State: state}, nil
 }

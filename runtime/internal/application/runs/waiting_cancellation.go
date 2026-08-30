@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -28,8 +29,8 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	canceledMembers := make(map[string]struct{}, len(p.CanceledMemberIDs))
 	seenMembers := make(map[string]struct{}, len(p.CanceledMemberIDs)+len(p.PausedMemberIDs))
 	for _, memberID := range p.CanceledMemberIDs {
-		if strings.TrimSpace(memberID) == "" || memberID != strings.TrimSpace(memberID) {
-			return errors.New("runs: prepared waiting subtree cancellation has an invalid canceled member ID")
+		if _, err := executoridentity.ParseMember(memberID); err != nil {
+			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation repeats member %q", memberID)
@@ -38,21 +39,21 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		seenMembers[memberID] = struct{}{}
 	}
 	for _, memberID := range p.PausedMemberIDs {
-		if strings.TrimSpace(memberID) == "" || memberID != strings.TrimSpace(memberID) {
-			return errors.New("runs: prepared waiting subtree cancellation has an invalid paused member ID")
+		if _, err := executoridentity.ParseMember(memberID); err != nil {
+			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation repeats member %q", memberID)
 		}
 		seenMembers[memberID] = struct{}{}
 	}
-	requests := make(map[string]struct{}, len(p.PendingInterruptions))
+	requests := make(map[inputRequestKey]struct{}, len(p.PendingInterruptions))
 	for index, interruption := range p.PendingInterruptions {
-		if strings.TrimSpace(interruption.MemberID) == "" ||
-			interruption.MemberID != strings.TrimSpace(interruption.MemberID) ||
-			strings.TrimSpace(interruption.RequestID) == "" ||
-			interruption.RequestID != strings.TrimSpace(interruption.RequestID) {
-			return fmt.Errorf("runs: prepared waiting subtree interruption[%d] has invalid identity", index)
+		if _, err := executoridentity.ParseMember(interruption.MemberID); err != nil {
+			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
+		}
+		if _, err := executoridentity.ParseRequest(interruption.RequestID); err != nil {
+			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
 		if _, canceled := canceledMembers[interruption.MemberID]; canceled {
 			return fmt.Errorf(
@@ -66,7 +67,11 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		}
 		identity := inputRequestIdentity(interruption.MemberID, interruption.RequestID)
 		if _, duplicate := requests[identity]; duplicate {
-			return fmt.Errorf("runs: prepared waiting subtree cancellation repeats interruption %q", identity)
+			return fmt.Errorf(
+				"runs: prepared waiting subtree cancellation repeats interruption %q/%q",
+				identity.memberID,
+				identity.requestID,
+			)
 		}
 		requests[identity] = struct{}{}
 	}
@@ -395,7 +400,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 	canceledMembers map[string]struct{},
 	continuations []Continuation,
 ) ([]transcript.Interrupt, []InterruptBinding, error) {
-	oldBindingByKey := make(map[string]int, len(w.plan.pending.Bindings))
+	oldBindingByKey := make(map[inputRequestKey]int, len(w.plan.pending.Bindings))
 	for index, binding := range w.plan.pending.Bindings {
 		oldBindingByKey[inputRequestIdentity(binding.MemberID, binding.RequestID)] = index
 	}
@@ -519,13 +524,18 @@ func canceledWaitingRun(run rundomain.Run, reason string, finishedAt time.Time) 
 	return terminal, nil
 }
 
-func inputRequestIdentity(memberID, requestID string) string {
-	return memberID + "\x00" + requestID
+type inputRequestKey struct {
+	memberID  string
+	requestID string
+}
+
+func inputRequestIdentity(memberID, requestID string) inputRequestKey {
+	return inputRequestKey{memberID: memberID, requestID: requestID}
 }
 
 func (w waitingCancellationTransformation) durableCommit(
 	expected Pending,
-	commitID string,
+	commitID commitidentity.ID,
 ) WaitingSubtreeCancellationCommit {
 	return WaitingSubtreeCancellationCommit{
 		CommitID:             commitID,

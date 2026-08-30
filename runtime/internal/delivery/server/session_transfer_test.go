@@ -631,8 +631,10 @@ func TestSessionExportImportCarriesThePlanForward(t *testing.T) {
 	if len(afterSteps) != 2 || afterSteps[0].Description != "split the outcome" {
 		t.Fatalf("restored plan = %+v, want the archived plan", afterSteps)
 	}
-	if after.Revision() <= before.Revision() {
-		t.Fatalf("restored revision = %d, want greater than the %d it replaced", after.Revision(), before.Revision())
+	afterState, afterCommitted := after.State()
+	beforeState, beforeCommitted := before.State()
+	if !afterCommitted || !beforeCommitted || afterState.Revision() <= beforeState.Revision() {
+		t.Fatalf("restored Plan = %s, want newer than %s", after.Version(), before.Version())
 	}
 }
 

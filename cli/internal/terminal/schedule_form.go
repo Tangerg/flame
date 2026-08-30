@@ -9,8 +9,11 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 )
+
+const defaultScheduleCron = "0 9 * * 1-5"
 
 type scheduleFormMode uint8
 
@@ -26,28 +29,24 @@ type scheduleFormDraft struct {
 	provider     string
 	model        string
 	cron         string
-	enabled      string
+	enabled      bool
 }
 
 func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.Schedule, defaultWorkspace string) scheduleFormDraft {
 	if mode == scheduleFormUpdate {
-		enabled := "disabled"
-		if scheduled.Enabled {
-			enabled = "enabled"
-		}
 		return scheduleFormDraft{
 			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.Workspace,
-			provider: scheduled.Provider, model: scheduled.Model, cron: scheduled.Cron, enabled: enabled,
+			provider: scheduled.Provider, model: scheduled.Model, cron: scheduled.Cron, enabled: scheduled.Enabled,
 		}
 	}
-	return scheduleFormDraft{workspace: defaultWorkspace, cron: "0 9 * * 1-5", enabled: "enabled"}
+	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
 }
 
 func (s scheduleFormDraft) candidate() (schedule.Candidate, error) {
 	candidate := schedule.Candidate{
 		Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions),
-		Workspace: strings.TrimSpace(s.workspace), Provider: strings.TrimSpace(s.provider),
-		Model: strings.TrimSpace(s.model), Cron: strings.TrimSpace(s.cron),
+		Workspace: strings.TrimSpace(s.workspace), Provider: s.provider,
+		Model: s.model, Cron: strings.TrimSpace(s.cron),
 	}
 	return candidate, candidate.Validate()
 }
@@ -70,7 +69,7 @@ func (s scheduleFormDraft) patch(original schedule.Schedule) (schedule.Patch, bo
 			patch.Workspace = schedule.BindWorkspace(workspace)
 		}
 	}
-	provider, model := strings.TrimSpace(s.provider), strings.TrimSpace(s.model)
+	provider, model := s.provider, s.model
 	if provider != original.Provider || model != original.Model {
 		patch.Provider, patch.Model = &provider, &model
 	}
@@ -78,7 +77,7 @@ func (s scheduleFormDraft) patch(original schedule.Schedule) (schedule.Patch, bo
 	if cron != original.Cron {
 		patch.Cron = &cron
 	}
-	enabled := s.enabled == "enabled"
+	enabled := s.enabled
 	if enabled != original.Enabled {
 		patch.Enabled = &enabled
 	}
@@ -93,7 +92,7 @@ func (s scheduleFormDraft) patch(original schedule.Schedule) (schedule.Patch, bo
 
 func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedule) {
 	if a.scheduleDialog != nil {
-		a.scheduleDialog.Dismiss()
+		a.scheduleDialog.Controller().Dismiss()
 		a.scheduleDialog = nil
 	}
 	generation := a.sessionContext
@@ -106,7 +105,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 	fields := []headless.Field{
 		textField("Title", "Optional name", &draft.title, nil),
 		textField("Instructions", "Prompt sent when this schedule fires", &draft.instructions, requiredText),
-		textField("Cron", "0 9 * * 1-5", &draft.cron, validateCronShape),
+		textField("Cron", defaultScheduleCron, &draft.cron, validateCronShape),
 		textField("Workspace", "Empty uses the runtime default", &draft.workspace, nil),
 		textField("Provider", "Optional; set together with model", &draft.provider, nil),
 		textField("Model", "Optional; set together with provider", &draft.model, func(string) error {
@@ -114,8 +113,8 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 		}),
 	}
 	if mode == scheduleFormUpdate {
-		enabled := &headless.Select[string]{Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2}
-		enabled.SetOptions([]headless.Option[string]{{Label: "Enabled", Value: "enabled"}, {Label: "Disabled", Value: "disabled"}})
+		enabled := &headless.Select[bool]{Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2}
+		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
 		fields = append(fields, enabled)
 	}
 	form := headless.NewForm(fields...)
@@ -123,12 +122,12 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 	var dialog *kit.Dialog
 	dismiss := func() {
 		if a.scheduleDialog == dialog {
-			dialog.Dismiss()
+			dialog.Controller().Dismiss()
 			a.scheduleDialog = nil
 		}
 	}
 	form.Done = func() {
-		if a.scheduleDialog != dialog || generation != a.sessionContext {
+		if a.scheduleDialog != dialog || !a.sessionContext.current(generation) {
 			return
 		}
 		switch mode {
@@ -169,7 +168,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.Measure(84), len(fields), 24)},
 	})
 	a.scheduleDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func validateCronShape(value string) error {
@@ -181,8 +180,10 @@ func validateCronShape(value string) error {
 }
 
 func validateScheduleModelPair(provider, model string) error {
-	if (strings.TrimSpace(provider) == "") != (strings.TrimSpace(model) == "") {
+	if err := modelidentity.Selection(provider, model, ""); errors.Is(err, modelidentity.ErrIncompleteSelection) {
 		return errors.New("provider and model must both be set or both be empty")
+	} else if err != nil {
+		return err
 	}
 	return nil
 }

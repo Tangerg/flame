@@ -7,9 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -26,9 +29,20 @@ func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemI
 }
 
 func (r *reducer) appendText(text string) ([]RunEvent, error) {
+	if text == "" {
+		return nil, nil
+	}
+	delta, err := newContentItemDelta(text)
+	if err != nil {
+		return nil, err
+	}
 	var out []RunEvent
 	if r.text == nil {
-		r.text = &openText{id: r.nextItemID(), createdAt: r.now()}
+		id, identityErr := r.nextItemID()
+		if identityErr != nil {
+			return nil, identityErr
+		}
+		r.text = &openText{id: id, createdAt: r.now()}
 		start, err := newTransientItemStart(r.itemIdentity(r.text.id, r.text.createdAt), transcript.AgentMessage)
 		if err != nil {
 			return nil, err
@@ -36,17 +50,27 @@ func (r *reducer) appendText(text string) ([]RunEvent, error) {
 		out = append(out, ItemStarted{Item: start})
 	}
 	r.text.buf.WriteString(text)
-	index := 0
 	return append(out, ItemChanged{
 		ItemID: r.text.id,
-		Delta:  ItemDelta{Kind: ContentDelta, Index: &index, Text: text},
+		Delta:  delta,
 	}), nil
 }
 
 func (r *reducer) appendReasoning(text string) ([]RunEvent, error) {
+	if text == "" {
+		return nil, nil
+	}
+	delta, err := newReasoningItemDelta(text)
+	if err != nil {
+		return nil, err
+	}
 	var out []RunEvent
 	if r.reasoning == nil {
-		r.reasoning = &openText{id: r.nextItemID(), createdAt: r.now()}
+		id, identityErr := r.nextItemID()
+		if identityErr != nil {
+			return nil, identityErr
+		}
+		r.reasoning = &openText{id: id, createdAt: r.now()}
 		start, err := newTransientItemStart(r.itemIdentity(r.reasoning.id, r.reasoning.createdAt), transcript.Reasoning)
 		if err != nil {
 			return nil, err
@@ -56,7 +80,7 @@ func (r *reducer) appendReasoning(text string) ([]RunEvent, error) {
 	r.reasoning.buf.WriteString(text)
 	return append(out, ItemChanged{
 		ItemID: r.reasoning.id,
-		Delta:  ItemDelta{Kind: ReasoningDeltaKind, Text: text},
+		Delta:  delta,
 	}), nil
 }
 
@@ -114,6 +138,9 @@ func (r *reducer) completeAssistantMessage(
 	if err := message.Validate(); err != nil {
 		return nil, err
 	}
+	if err := conversation.ValidateMessageIdentities(message); err != nil {
+		return nil, err
+	}
 
 	var reasoning strings.Builder
 	content := make([]transcript.ContentBlock, 0, len(message.Parts))
@@ -158,6 +185,9 @@ func (r *reducer) completeModelMessage(
 	if err := message.Validate(); err != nil {
 		return nil, err
 	}
+	if err := conversation.ValidateMessageIdentities(message); err != nil {
+		return nil, err
+	}
 	semantic := corechat.Message{Role: message.Role}
 	for _, part := range message.Parts {
 		if part.Kind != corechat.PartToolCall {
@@ -195,12 +225,17 @@ func (r *reducer) completeReasoning(text string) ([]RunEvent, error) {
 		return r.closeReasoning()
 	}
 	createdAt := r.now()
-	id := r.nextItemID()
-	started := true
+	var id string
+	started := r.reasoning == nil
 	if r.reasoning != nil {
 		createdAt = r.reasoning.createdAt
 		id = r.reasoning.id
-		started = false
+	} else {
+		var err error
+		id, err = r.nextItemID()
+		if err != nil {
+			return nil, err
+		}
 	}
 	r.reasoning = nil
 	out := make([]RunEvent, 0, 2)
@@ -227,12 +262,17 @@ func (r *reducer) completeMessageContent(
 		return r.closeText(phase)
 	}
 	createdAt := r.now()
-	id := r.nextItemID()
-	started := true
+	var id string
+	started := r.text == nil
 	if r.text != nil {
 		createdAt = r.text.createdAt
 		id = r.text.id
-		started = false
+	} else {
+		var err error
+		id, err = r.nextItemID()
+		if err != nil {
+			return nil, err
+		}
 	}
 	r.text = nil
 	out := make([]RunEvent, 0, 2)
@@ -252,14 +292,15 @@ func (r *reducer) completeMessageContent(
 }
 
 func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
-	if strings.TrimSpace(e.CallID) == "" || e.CallID != strings.TrimSpace(e.CallID) {
-		return nil, errors.New("tool call id is required")
+	if _, err := executoridentity.ParseEffect(e.CallID); err != nil {
+		return nil, err
 	}
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
 		return nil, errors.New("tool name is required")
 	}
-	if e.SourceCallID != strings.TrimSpace(e.SourceCallID) {
-		return nil, errors.New("tool source call id has surrounding whitespace")
+	_, sourceCallPresent, err := conversation.ParseOptionalToolCallIdentity(e.SourceCallID)
+	if err != nil {
+		return nil, err
 	}
 	if e.Activity != strings.TrimSpace(e.Activity) {
 		return nil, errors.New("tool activity has surrounding whitespace")
@@ -267,7 +308,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
 	if e.ModelCallSequence == 0 && e.ToolCallIndex != 0 {
 		return nil, errors.New("tool call index requires a model call sequence")
 	}
-	if e.ModelCallSequence > 0 && e.SourceCallID == "" {
+	if e.ModelCallSequence > 0 && !sourceCallPresent {
 		return nil, errors.New("model-attributed tool call requires a source call id")
 	}
 	if _, duplicate := r.toolCallIDs[e.CallID]; duplicate {
@@ -299,7 +340,6 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.toolOrder++
 	// The step number previews the Run's accounting, so it counts the same thing
 	// the committed metrics do. Reporting the segment's own count would make a
 	// resumed Run appear to start over at step 1.
@@ -309,11 +349,14 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
 	}
 	step := metrics.Steps()
 	out = append(out, SegmentProgressed{Progress: RunProgress{
-		Step: &step, ToolName: e.ToolName, Activity: e.Activity,
+		Step: &step, Activity: e.Activity,
 	}})
-	identity, reused := r.reuseOrCreateToolItem(e.CallID, e.ToolName, arguments)
+	identity, reused, err := r.reuseOrCreateToolItem(e.CallID, e.ToolName, arguments)
+	if err != nil {
+		return nil, err
+	}
 	ref := &openTool{
-		callID: e.CallID, sourceCallID: e.SourceCallID, arrivalOrder: r.toolOrder,
+		callID: e.CallID, sourceCallID: e.SourceCallID,
 		modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex,
 		id: identity.id, occurredAt: identity.occurredAt, attemptStartedAt: r.now(),
 		name: e.ToolName, arguments: arguments, safetyClass: e.SafetyClass,
@@ -339,9 +382,13 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
 		out = append(out, ItemStarted{Item: start})
 	}
 	if e.Arguments != "" {
+		delta, err := newToolArgumentsItemDelta(e.Arguments)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, ItemChanged{
 			ItemID: ref.id,
-			Delta:  ItemDelta{Kind: ToolArgumentsDelta, ArgumentsTextDelta: e.Arguments},
+			Delta:  delta,
 		})
 	}
 	return out, nil
@@ -360,7 +407,7 @@ func (r *reducer) runningToolItem(ref *openTool) (transcript.Item, error) {
 }
 
 func (r *reducer) openToolItemID(callID string) (string, bool) {
-	ref, open := r.tools[callID]
+	ref, open := r.tools.get(callID)
 	if !open || ref == nil {
 		return "", false
 	}
@@ -374,11 +421,11 @@ func (r *reducer) openToolItemID(callID string) (string, bool) {
 // that Item in the same transaction as the child's lineage edge. Ambiguity is
 // rejected rather than resolved by ordering.
 func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
-	if strings.TrimSpace(sourceCallID) == "" {
-		return transcript.Item{}, errors.New("spawning source call id is required")
+	if _, err := conversation.NewToolCallIdentity(sourceCallID); err != nil {
+		return transcript.Item{}, err
 	}
 	var match *openTool
-	for _, candidate := range r.tools {
+	for _, candidate := range r.tools.byCallID {
 		if candidate.sourceCallID != sourceCallID {
 			continue
 		}
@@ -394,7 +441,10 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 }
 
 func (r *reducer) toolEnd(e ToolCallFinished) ([]RunEvent, []ToolInvocationCommit, []corechat.Message, error) {
-	ref, ok := r.tools[e.CallID]
+	if _, err := executoridentity.ParseEffect(e.CallID); err != nil {
+		return nil, nil, nil, err
+	}
+	ref, ok := r.tools.get(e.CallID)
 	if !ok {
 		if consumed, err := r.resume.consumeCommittedTool(e); consumed {
 			return nil, nil, nil, err
@@ -445,7 +495,7 @@ func (r *reducer) flushEndedTools() ([]RunEvent, []ToolInvocationCommit, []corec
 		if ref.end == nil {
 			break
 		}
-		delete(r.tools, ref.callID)
+		r.tools.remove(ref.callID)
 		completed, err := r.completeTool(ref, *ref.end)
 		if err != nil {
 			return nil, nil, nil, err
@@ -493,7 +543,7 @@ func conversationToolResult(ref *openTool, finished ToolCallFinished) corechat.T
 // incomplete calls rather than publishing results that persistence rejected.
 func (r *reducer) forgetToolEnds(callIDs []string) {
 	for _, callID := range callIDs {
-		ref := r.tools[callID]
+		ref, _ := r.tools.get(callID)
 		if ref == nil {
 			continue
 		}
@@ -505,9 +555,13 @@ func (r *reducer) forgetToolEnds(callIDs []string) {
 func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]RunEvent, error) {
 	var out []RunEvent
 	if e.OutputText != "" {
+		delta, err := newToolOutputItemDelta(e.OutputText)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, ItemChanged{
 			ItemID: ref.id,
-			Delta:  ItemDelta{Kind: ToolOutputDelta, Text: e.OutputText},
+			Delta:  delta,
 		})
 	}
 	arguments := ref.arguments
@@ -571,8 +625,12 @@ func (r *reducer) usageProgress(e UsageReported) ([]RunEvent, error) {
 
 func (r *reducer) compaction(e CompactionBoundary) ([]RunEvent, error) {
 	dropped := max(e.MessagesBefore-e.MessagesAfter, 0)
-	id, now := r.nextItemID(), r.now()
-	item, err := transcript.NewCompaction(r.itemIdentity(id, now), "", dropped)
+	id, err := r.nextItemID()
+	if err != nil {
+		return nil, err
+	}
+	now := r.now()
+	item, err := transcript.NewCompaction(r.itemIdentity(id, now), e.Summary, dropped)
 	if err != nil {
 		return nil, err
 	}
@@ -618,12 +676,16 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]RunEvent, erro
 			}
 		}
 		if applied.ProjectedItemID != "" {
-			if applied.ProjectedItemID != strings.TrimSpace(applied.ProjectedItemID) {
-				return nil, fmt.Errorf("applied steer message %d projected Item identity is not canonical", messageIndex)
+			if _, err := resourceid.ParseItem(applied.ProjectedItemID); err != nil {
+				return nil, fmt.Errorf("applied steer message %d projected Item: %w", messageIndex, err)
 			}
 			continue
 		}
-		id, now := r.nextItemID(), r.now()
+		id, identityErr := r.nextItemID()
+		if identityErr != nil {
+			return nil, identityErr
+		}
+		now := r.now()
 		content := transcript.CloneContent(message)
 		item, err := transcript.NewUserMessage(r.itemIdentity(id, now), content)
 		if err != nil {

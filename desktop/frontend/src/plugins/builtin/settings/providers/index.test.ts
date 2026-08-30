@@ -4,10 +4,16 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { updateProvider } from "./application/providerConfig";
 import { PROVIDERS_KEY } from "./application/providerQueries";
-import type { ProviderConfiguration } from "./application/providerModels";
+import {
+  ProviderConfiguration,
+  type ProviderConfigurationSnapshot,
+} from "./application/providerModels";
 import providersPlugin from "./index";
 
 afterEach(async () => {
@@ -23,7 +29,7 @@ describe("providers plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ providers: { update } }) as unknown as FlameClient,
     });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -47,12 +53,12 @@ describe("providers plugin Runtime generation wiring", () => {
     const command = rejected(
       updateProvider({
         provider: "openai-compatible",
-        baseUrl: "https://retired.example.test/v1",
+        baseUrl: { type: "set", value: "https://retired.example.test/v1" },
       }),
     );
     await vi.waitFor(() => expect(update).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
       message: "provider_mutation_generation_retired",
@@ -64,16 +70,16 @@ describe("providers plugin Runtime generation wiring", () => {
   });
 });
 
-function provider(overrides: Partial<ProviderConfiguration> = {}): ProviderConfiguration {
-  return {
+function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): ProviderConfiguration {
+  return ProviderConfiguration.restore({
     id: "openai-compatible",
-    baseUrl: "",
-    apiKeyMasked: "",
+    configured: false,
+    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     embeddingCapable: true,
     defaultEmbeddingModel: "embed-1",
     ...overrides,
-  };
+  });
 }
 
 function deferred<T>() {

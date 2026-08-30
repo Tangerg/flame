@@ -25,9 +25,9 @@ type RootResolver interface {
 // Extraction and search declare their own narrower consumer views.
 type Store interface {
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
-	Review(ctx context.Context, id string, decision domain.ReviewDecision, now time.Time) error
-	Update(ctx context.Context, id string, content *string, pinned *bool, now time.Time) (domain.Item, error)
-	Delete(ctx context.Context, id string) error
+	Review(ctx context.Context, id domain.ItemID, decision domain.ReviewDecision, now time.Time) error
+	Update(ctx context.Context, id domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error)
+	Delete(ctx context.Context, id domain.ItemID) error
 	Add(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (item domain.Item, changed bool, err error)
 }
 
@@ -82,7 +82,11 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 	if _, err := decision.Result(); err != nil {
 		return err
 	}
-	if err := c.store.Review(ctx, id, decision, c.now()); err != nil {
+	itemID, err := domain.ParseItemID(id)
+	if err != nil {
+		return err
+	}
+	if err := c.store.Review(ctx, itemID, decision, c.now()); err != nil {
 		return err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
@@ -95,7 +99,11 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if !c.Available() {
 		return domain.Item{}, ErrUnavailable
 	}
-	item, err := c.store.Update(ctx, id, content, pinned, c.now())
+	itemID, err := domain.ParseItemID(id)
+	if err != nil {
+		return domain.Item{}, err
+	}
+	item, err := c.store.Update(ctx, itemID, content, pinned, c.now())
 	if err != nil {
 		return domain.Item{}, err
 	}
@@ -108,7 +116,11 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if !c.Available() {
 		return ErrUnavailable
 	}
-	if err := c.store.Delete(ctx, id); err != nil {
+	itemID, err := domain.ParseItemID(id)
+	if err != nil {
+		return err
+	}
+	if err := c.store.Delete(ctx, itemID); err != nil {
 		return err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})

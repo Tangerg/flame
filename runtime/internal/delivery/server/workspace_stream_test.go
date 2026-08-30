@@ -26,7 +26,7 @@ func allTopics() map[protocol.RuntimeTopic]bool {
 // subscribe registers a test consumer for every topic — a hub test is about the
 // fan-out, not about what one subscription asked for.
 func (w *workspaceHub) subscribe() (<-chan protocol.RuntimeEvent, func()) {
-	ch := make(chan protocol.RuntimeEvent, 64)
+	ch := make(chan protocol.RuntimeEvent, runtimeSubscriptionQueueCapacity)
 	_, unregister, ok := w.register(ch, allTopics(), nil)
 	if !ok {
 		close(ch)
@@ -62,6 +62,55 @@ func TestWorkspaceHubSequencesEventsPerSubscription(t *testing.T) {
 	assertWorkspaceEvent(first, protocol.RuntimeResync, 1)
 	assertWorkspaceEvent(first, protocol.RuntimeSkillsChanged, 2)
 	assertWorkspaceEvent(second, protocol.RuntimeSkillsChanged, 1)
+}
+
+func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t *testing.T) {
+	hub := newWorkspaceHub()
+	exhaustingEvents := make(chan protocol.RuntimeEvent, 2)
+	healthyEvents := make(chan protocol.RuntimeEvent, 3)
+	exhausting, unregisterExhausting, _ := hub.register(exhaustingEvents, allTopics(), nil)
+	healthy, unregisterHealthy, _ := hub.register(healthyEvents, allTopics(), nil)
+	defer func() {
+		unregisterHealthy()
+		close(healthyEvents)
+	}()
+
+	exhausting.sequence = runtimeEventSequence(protocol.MaximumRuntimeEventSequence - 1)
+	hub.publish(protocol.RuntimeEvent{Type: protocol.RuntimeSkillsChanged})
+	// The first frame owns the final exact JSON identity. A later signal must end
+	// this subscription rather than wrapping to zero or panicking in resync repair.
+	hub.publish(protocol.RuntimeEvent{Type: protocol.RuntimeSessionsChanged})
+
+	releases := 0
+	delivered := slices.Collect(subscriptionEventSequence(
+		exhaustingEvents,
+		exhausting.exhausted,
+		func() { hub.drained(exhausting) },
+		func() {
+			releases++
+			unregisterExhausting()
+		},
+	))
+	close(exhaustingEvents)
+	if releases != 1 {
+		t.Fatalf("exhausted subscription releases = %d, want 1", releases)
+	}
+	if len(delivered) != 1 || delivered[0].Type != protocol.RuntimeSkillsChanged ||
+		delivered[0].Sequence != protocol.MaximumRuntimeEventSequence {
+		t.Fatalf("exhausted subscription delivered = %+v, want final exact frame", delivered)
+	}
+	if exhausting.sequence.wire() != protocol.MaximumRuntimeEventSequence || !exhausting.sequenceExhausted {
+		t.Fatalf("exhausted state = sequence %d exhausted %t", exhausting.sequence.wire(), exhausting.sequenceExhausted)
+	}
+
+	first, second := <-healthyEvents, <-healthyEvents
+	if first.Sequence != 1 || second.Sequence != 2 {
+		t.Fatalf("healthy subscription sequences = %d, %d; want 1, 2", first.Sequence, second.Sequence)
+	}
+	hub.publish(protocol.RuntimeEvent{Type: protocol.RuntimeModelsChanged})
+	if third := <-healthyEvents; third.Sequence != 3 || healthy.sequence.wire() != 3 {
+		t.Fatalf("healthy subscription after peer exhaustion = %+v / %d", third, healthy.sequence.wire())
+	}
 }
 
 func TestWorkspaceHubScopesResyncToEachSubscriptionsDeclaredTopics(t *testing.T) {

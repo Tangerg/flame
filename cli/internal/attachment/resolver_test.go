@@ -3,6 +3,7 @@ package attachment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,7 +101,7 @@ func TestCompleteRanksFilesAndSkipsDependencyInternals(t *testing.T) {
 		}
 	}
 	resolver, _ := New(root)
-	got, err := resolver.Complete(t.Context(), "cache", 10)
+	got, err := resolver.Complete(t.Context(), "cache")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +119,37 @@ func TestCompleteHonorsCanceledContext(t *testing.T) {
 	resolver, _ := New(t.TempDir())
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := resolver.Complete(ctx, "", 10); !errors.Is(err, context.Canceled) {
+	if _, err := resolver.Complete(ctx, ""); !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+}
+
+func TestCompleteOwnsOneFiniteProductResultBudget(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	for index := range completionResultLimit + 10 {
+		name := filepath.Join(root, fmt.Sprintf("match-%03d.txt", index))
+		if err := os.WriteFile(name, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	resolver, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err := resolver.Complete(t.Context(), "match")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != completionResultLimit {
+		t.Fatalf("completion returned %d matches, want %d", len(matches), completionResultLimit)
+	}
+}
+
+func TestAttachmentIdentityPreservesFieldBoundaries(t *testing.T) {
+	left := (attachmentIdentity{canonicalPath: "a", size: 12, modifiedAt: 3}).digest()
+	right := (attachmentIdentity{canonicalPath: "a1", size: 2, modifiedAt: 3}).digest()
+	if left == right {
+		t.Fatal("different attachment identity fields produced the same digest")
 	}
 }

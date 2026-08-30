@@ -16,6 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"golang.org/x/oauth2"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
@@ -23,9 +24,9 @@ import (
 // MCP infrastructure owns the opaque payload; storage implementations only
 // bind it to one configured server and normalized HTTP origin.
 type OAuthSessionStore interface {
-	LoadOAuthSession(ctx context.Context, server, origin string) (payload []byte, found bool, err error)
-	SaveOAuthSession(ctx context.Context, server, origin string, payload []byte) error
-	RemoveOAuthSession(ctx context.Context, server string) error
+	LoadOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string) (payload []byte, found bool, err error)
+	SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string, payload []byte) error
+	RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName) error
 }
 
 const oauthSessionVersion = 1
@@ -165,7 +166,7 @@ func validateStoredOAuthURL(field, raw string) error {
 	return nil
 }
 
-func persistOAuthSession(ctx context.Context, store OAuthSessionStore, server, origin string, cfg *oauth2.Config, token *oauth2.Token) error {
+func persistOAuthSession(ctx context.Context, store OAuthSessionStore, server mcpserver.ServerName, origin string, cfg *oauth2.Config, token *oauth2.Token) error {
 	payload, err := encodeOAuthSession(cfg, token)
 	if err != nil {
 		return err
@@ -189,7 +190,7 @@ type invalidatingTokenSource struct {
 	source      oauth2.TokenSource
 	lifetime    context.Context
 	store       OAuthSessionStore
-	server      string
+	server      mcpserver.ServerName
 	invalidated bool
 }
 
@@ -271,7 +272,7 @@ func invalidateRejectedTokens(
 	source oauth2.TokenSource,
 	lifetime context.Context,
 	store OAuthSessionStore,
-	server string,
+	server mcpserver.ServerName,
 ) oauth2.TokenSource {
 	if store == nil {
 		return source
@@ -288,7 +289,7 @@ type restoredOAuthHandler struct {
 	mu     sync.RWMutex
 	source oauth2.TokenSource
 	store  OAuthSessionStore
-	server string
+	server mcpserver.ServerName
 }
 
 var _ auth.OAuthHandler = (*restoredOAuthHandler)(nil)
@@ -316,7 +317,8 @@ func restoreOAuthHandler(
 	ctx context.Context,
 	lifetime context.Context,
 	store OAuthSessionStore,
-	server, endpoint string,
+	server mcpserver.ServerName,
+	endpoint string,
 ) (auth.OAuthHandler, error) {
 	if store == nil {
 		return nil, nil

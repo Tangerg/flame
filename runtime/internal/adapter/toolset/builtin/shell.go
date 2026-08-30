@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/exec"
 )
@@ -36,9 +38,9 @@ const defaultAutoBackgroundSeconds = 60
 type shellArgs struct {
 	Command                    string `json:"command" jsonschema:"minLength=1" jsonschema_description:"Shell command line, run by /bin/sh -c. Each call starts a fresh shell; directory changes, variables, and shell options do not persist."`
 	Description                string `json:"description" jsonschema:"minLength=1,maxLength=120" jsonschema_description:"Concise action phrase shown while the command runs, such as Run backend tests. Describe the command's purpose; do not copy the command or predict its result."`
-	TimeoutMillis              int    `json:"timeout_millis,omitempty" jsonschema:"minimum=1" jsonschema_description:"Hard execution timeout in milliseconds. Omit for no hard timeout."`
+	TimeoutMillis              *int   `json:"timeout_millis,omitempty" jsonschema:"minimum=1" jsonschema_description:"Hard execution timeout in milliseconds. Omit for no hard timeout."`
 	RunInBackground            bool   `json:"run_in_background,omitempty" jsonschema_description:"Return immediately with a shell_id while the command keeps running. Use for servers and watchers."`
-	AutoBackgroundAfterSeconds int    `json:"auto_background_after_seconds,omitempty" jsonschema:"minimum=1" jsonschema_description:"Move a foreground command to the background after this many seconds. Defaults to 60."`
+	AutoBackgroundAfterSeconds *int   `json:"auto_background_after_seconds,omitempty" jsonschema:"minimum=1" jsonschema_description:"Move a foreground command to the background after this many seconds. Defaults to 60."`
 }
 
 func (s shellArgs) validate() error {
@@ -51,35 +53,38 @@ func (s shellArgs) validate() error {
 	if strings.TrimSpace(s.Description) != s.Description {
 		return errors.New("shell: description must not have surrounding whitespace")
 	}
-	if s.RunInBackground && s.AutoBackgroundAfterSeconds > 0 {
+	if s.RunInBackground && s.AutoBackgroundAfterSeconds != nil {
 		return errors.New("shell: auto_background_after_seconds cannot be used when run_in_background=true")
 	}
 	return nil
 }
 
-func (s shellArgs) timeout() time.Duration {
-	return time.Duration(s.TimeoutMillis) * time.Millisecond
+func (s shellArgs) timeout() (exec.Timeout, error) {
+	return optionalShellTimeout(s.TimeoutMillis, time.Millisecond, "timeout_millis")
 }
 
-func (s shellArgs) autoBackgroundAfter() time.Duration {
-	after := s.AutoBackgroundAfterSeconds
-	if after <= 0 {
-		after = defaultAutoBackgroundSeconds
+func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
+	after, err := toolarg.PositiveInt(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds, 0, "auto_background_after_seconds")
+	if err != nil {
+		return 0, err
 	}
-	return time.Duration(after) * time.Second
+	if int64(after) > math.MaxInt64/int64(time.Second) {
+		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
+	}
+	return time.Duration(after) * time.Second, nil
 }
 
 type shellOutputArgs struct {
 	ShellID       string `json:"shell_id" jsonschema:"required" jsonschema_description:"Background shell id returned by shell when a long-running command was moved to the background."`
 	Wait          bool   `json:"wait,omitempty" jsonschema_description:"Wait for the shell to exit before returning new output. Use this instead of sleep polling; avoid waiting indefinitely on a server or watcher."`
-	TimeoutMillis int    `json:"timeout_millis,omitempty" jsonschema:"minimum=1" jsonschema_description:"When wait=true, maximum milliseconds to wait before returning current output. Omit to wait until exit. Do not pass when wait=false."`
+	TimeoutMillis *int   `json:"timeout_millis,omitempty" jsonschema:"minimum=1" jsonschema_description:"When wait=true, maximum milliseconds to wait before returning current output. Omit to wait until exit. Do not pass when wait=false."`
 }
 
 func (s shellOutputArgs) validate() error {
 	if s.ShellID == "" {
 		return errors.New("read_shell_output: shell_id is required")
 	}
-	if !s.Wait && s.TimeoutMillis > 0 {
+	if !s.Wait && s.TimeoutMillis != nil {
 		return errors.New("read_shell_output: timeout_millis requires wait=true")
 	}
 	return nil
@@ -148,8 +153,16 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if err := a.validate(); err != nil {
 		return "", err
 	}
+	timeout, err := a.timeout()
+	if err != nil {
+		return "", err
+	}
+	autoBackgroundAfter, err := a.autoBackgroundAfter()
+	if err != nil {
+		return "", err
+	}
 
-	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), executionctx.CWD(ctx, c.defaultCWD), a.Command, a.timeout(), executionctx.Isolated(ctx))
+	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), executionctx.CWD(ctx, c.defaultCWD), a.Command, timeout, executionctx.Isolated(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -161,7 +174,7 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if !ok { // just launched — unreachable
 		return "", fmt.Errorf("shell: background shell %s vanished", id)
 	}
-	timer := time.NewTimer(a.autoBackgroundAfter())
+	timer := time.NewTimer(autoBackgroundAfter)
 	defer timer.Stop()
 	select {
 	case <-sh.Done():
@@ -211,7 +224,11 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
 	}
 	if a.Wait {
-		if err := waitForShell(ctx, sh, a.TimeoutMillis); err != nil {
+		timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
+		if err != nil {
+			return "", err
+		}
+		if err := waitForShell(ctx, sh, timeout); err != nil {
 			return "", err
 		}
 	}
@@ -284,13 +301,14 @@ func backgroundedJSON(id string) (string, error) {
 	return string(b), nil
 }
 
-// waitForShell blocks until sh exits, ctx is canceled, or — when timeoutMillis > 0
-// — the timeout elapses. It reuses the same per-shell done channel the shell
+// waitForShell blocks until sh exits, ctx is canceled, or an enabled timeout
+// elapses. It reuses the same per-shell done channel the shell
 // foreground path selects on (no polling). A timeout is NOT an error: the
 // caller then reports the current still-running output, just as if wait were
 // off. Returns ctx.Err() only on cancellation (Run cancel / budget timeout).
-func waitForShell(ctx context.Context, sh *exec.Shell, timeoutMillis int) error {
-	if timeoutMillis <= 0 {
+func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) error {
+	duration, enabled := timeout.Duration()
+	if !enabled {
 		select {
 		case <-sh.Done():
 		case <-ctx.Done():
@@ -298,7 +316,7 @@ func waitForShell(ctx context.Context, sh *exec.Shell, timeoutMillis int) error 
 		}
 		return nil
 	}
-	timer := time.NewTimer(time.Duration(timeoutMillis) * time.Millisecond)
+	timer := time.NewTimer(duration)
 	defer timer.Stop()
 	select {
 	case <-sh.Done():
@@ -307,4 +325,21 @@ func waitForShell(ctx context.Context, sh *exec.Shell, timeoutMillis int) error 
 		return ctx.Err()
 	}
 	return nil
+}
+
+func optionalShellTimeout(value *int, unit time.Duration, field string) (exec.Timeout, error) {
+	if value == nil {
+		return exec.Timeout{}, nil
+	}
+	if *value <= 0 {
+		return exec.Timeout{}, fmt.Errorf("shell: %s must be positive", field)
+	}
+	if int64(*value) > math.MaxInt64/int64(unit) {
+		return exec.Timeout{}, fmt.Errorf("shell: %s exceeds duration range", field)
+	}
+	timeout, err := exec.NewTimeout(time.Duration(*value) * unit)
+	if err != nil {
+		return exec.Timeout{}, fmt.Errorf("shell: %s: %w", field, err)
+	}
+	return timeout, nil
 }

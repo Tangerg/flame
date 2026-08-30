@@ -9,17 +9,25 @@ import (
 )
 
 func presentProvider(info modelapp.ProviderSummary) (protocol.Provider, error) {
-	keySource, err := presentProviderKeySource(info.KeySource)
-	if err != nil {
-		return protocol.Provider{}, err
+	var credential *protocol.ProviderCredential
+	if info.Credential != nil {
+		keySource, err := presentProviderKeySource(info.Credential.Source)
+		if err != nil {
+			return protocol.Provider{}, err
+		}
+		credential = &protocol.ProviderCredential{
+			Masked: info.Credential.Masked,
+			Source: keySource,
+		}
+	}
+	credentialRequirement := protocol.ProviderAPIKeyOptional
+	if info.RequiresAPIKey {
+		credentialRequirement = protocol.ProviderAPIKeyRequired
 	}
 	return protocol.Provider{
-		ID:                    info.ID,
-		BaseURL:               info.BaseURL,
-		APIKeyMasked:          info.APIKeyMasked,
-		KeySource:             keySource,
-		RequiresBaseURL:       info.RequiresBaseURL,
-		EmbeddingCapable:      info.EmbeddingCapable,
+		ID: info.ID, BaseURL: info.BaseURL, Credential: credential,
+		Configured: info.Configured, CredentialRequirement: credentialRequirement,
+		RequiresBaseURL: info.RequiresBaseURL, EmbeddingCapable: info.EmbeddingCapable,
 		DefaultEmbeddingModel: info.DefaultEmbeddingModel,
 	}, nil
 }
@@ -28,10 +36,8 @@ func presentProviderKeySource(source provider.KeySource) (protocol.ProviderKeySo
 	switch source {
 	case provider.KeyStored:
 		return protocol.ProviderKeySourceStored, nil
-	case provider.KeyEnv:
+	case provider.KeyEnvironment:
 		return protocol.ProviderKeySourceEnv, nil
-	case provider.KeyNone:
-		return "", nil
 	default:
 		return "", fmt.Errorf("providers: unsupported key source %q", source)
 	}

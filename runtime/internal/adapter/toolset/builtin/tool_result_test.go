@@ -122,6 +122,7 @@ func TestRead_RejectsRemovedAndOversizedPagingArguments(t *testing.T) {
 		`{"id":"ABCDE234"}`,
 		`{"result_id":"ABCDE234","offset":1}`,
 		`{"result_id":"ABCDE234","limit":1}`,
+		`{"result_id":"ABCDE234","limit_bytes":0}`,
 		`{"result_id":"ABCDE234","limit_bytes":20001}`,
 	} {
 		if _, err := tool.Call(sessionCtx("s"), arguments); err == nil {
@@ -140,7 +141,7 @@ func TestWindow(t *testing.T) {
 		{"slice", "ABCDEFGHIJ", 2, 3, 2, 5},
 		{"offset past end clamps", "ABC", 10, 5, 3, 3},
 		{"negative offset floored", "ABC", -1, 2, 0, 2},
-		{"zero limit uses default window", "ABCDE", 0, 0, 0, 5},
+		{"resolved default window", "ABCDE", 0, defaultReadWindow, 0, 5},
 		{"limit past end clamps", "ABCDE", 1, 99, 1, 5},
 	}
 	for _, tt := range tests {

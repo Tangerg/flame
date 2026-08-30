@@ -42,7 +42,7 @@ func builtinCommands() []localCommand {
 		),
 		commandGroup(commandCategorySessions,
 			localCommand{Descriptor: CommandDescriptor{Name: "sessions", Title: "search and switch sessions", Aliases: []string{"resume"}}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.ShowSessions(); return nil }},
-			localCommand{Descriptor: CommandDescriptor{Name: "timeline", Title: "browse runs in the current session"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.ShowTimeline(); return nil }},
+			localCommand{Descriptor: CommandDescriptor{Name: "timeline", Title: "browse runs and live subagents in the current session"}, Run: func(a *app, _ string) error { a.ShowTimeline(); return nil }},
 			localCommand{Descriptor: CommandDescriptor{Name: "new", Title: "start a new session"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.NewSession(); return nil }},
 			localCommand{Descriptor: CommandDescriptor{Name: "workspace", Title: "start a session in a recent or specified workspace", Arguments: OptionalArguments}, Available: availableWithoutActiveRun, Run: func(a *app, path string) error { return a.chooseWorkspace(path) }},
 			localCommand{Descriptor: CommandDescriptor{Name: "relocate", Title: "move the current session to another workspace", Arguments: RequiredArguments}, Available: availableForRelocation, Run: func(a *app, path string) error { return a.RelocateSession(path) }},

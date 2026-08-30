@@ -9,7 +9,7 @@ function goal(patch: Partial<GoalReadModel> = {}): GoalReadModel {
     objective: "Ship the retry fix",
     status: "active",
     stop: null,
-    budget: { maxRuns: 20, maxCostUsd: 5, maxSteps: 0 },
+    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 7, costUsd: 4.5, steps: 31 },
     provider: "openai",
     model: "gpt-5",

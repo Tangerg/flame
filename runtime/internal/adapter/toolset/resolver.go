@@ -251,10 +251,15 @@ func mcpToolRef(tool toolcontract.Tool) (mcpserver.ToolRef, bool) {
 		return mcpserver.ToolRef{}, false
 	}
 	server, remote := identity.MCPToolIdentity()
-	if server == "" || remote == "" {
+	parsedServer, err := mcpserver.ParseServerName(server)
+	if err != nil {
 		return mcpserver.ToolRef{}, false
 	}
-	return mcpserver.ToolRef{Server: server, Tool: remote}, true
+	parsedRemote, err := mcpserver.ParseRemoteToolName(remote)
+	if err != nil {
+		return mcpserver.ToolRef{}, false
+	}
+	return mcpserver.ToolRef{Server: parsedServer, Tool: parsedRemote}, true
 }
 
 // cwdFor reads the per-Run working directory, falling back to the

@@ -9,26 +9,31 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 )
 
-const conversationSearchDefaultLimit = 8
+const (
+	conversationSearchDefaultLimit = 8
+	conversationSearchMaxLimit     = 20
+)
 
 type conversationSearchRequest struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Keywords that should appear in earlier conversation transcripts."`
-	Limit int    `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum matching excerpts to return. Defaults to 8."`
+	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum matching excerpts to return. Defaults to 8."`
 }
 
-func (c conversationSearchRequest) normalize() (conversationSearchRequest, error) {
-	c.Query = strings.TrimSpace(c.Query)
-	if c.Query == "" {
-		return conversationSearchRequest{}, errors.New("query is required")
+func (c conversationSearchRequest) normalized() (query string, limit int, err error) {
+	query = strings.TrimSpace(c.Query)
+	if query == "" {
+		return "", 0, errors.New("query is required")
 	}
-	if c.Limit <= 0 {
-		c.Limit = conversationSearchDefaultLimit
+	limit, err = toolarg.PositiveInt(c.Limit, conversationSearchDefaultLimit, conversationSearchMaxLimit, "limit")
+	if err != nil {
+		return "", 0, err
 	}
-	return c, nil
+	return query, limit, nil
 }
 
 // ConversationSearch is the transcript full-text search capability this tool consumes.
@@ -60,11 +65,11 @@ func conversationSearchDefinition() toolcontract.FuncConfig {
 }
 
 func (c *conversationSearcher) run(ctx context.Context, req conversationSearchRequest) (string, error) {
-	req, err := req.normalize()
+	query, limit, err := req.normalized()
 	if err != nil {
 		return "", fmt.Errorf("search_conversations: %w", err)
 	}
-	hits, err := c.search.SearchTranscript(ctx, req.Query, req.Limit)
+	hits, err := c.search.SearchTranscript(ctx, query, limit)
 	if err != nil {
 		return "", err
 	}

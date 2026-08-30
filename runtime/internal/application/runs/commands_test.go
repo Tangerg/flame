@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -45,12 +45,16 @@ func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	t.Parallel()
 
-	for name, options := range map[string]corechat.Options{
-		"model":            {Model: "model-inside-options"},
-		"reasoning effort": {ReasoningEffort: "high"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			err := (RootExecutionStart{Message: "hello", Options: &options}).Validate()
+	tests := []struct {
+		name    string
+		options corechat.Options
+	}{
+		{name: "model", options: corechat.Options{Model: "model-inside-options"}},
+		{name: "reasoning effort", options: corechat.Options{ReasoningEffort: "high"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := (RootExecutionStart{Message: "hello", Options: &test.options}).Validate()
 			if !errors.Is(err, ErrInvalidRunOptions) {
 				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
 			}
@@ -61,27 +65,34 @@ func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) {
 	t.Parallel()
 
-	for name, execution := range map[string]RootExecutionStart{
-		"negative token limit": {
-			Message: "hello", Limits: run.Limits{MaxTotalTokens: -1},
-		},
-		"non-finite budget": {
-			Message: "hello", Limits: run.Limits{MaxBudgetUSD: math.Inf(1)},
-		},
-		"duplicate interrupt kind": {
+	tests := []struct {
+		name      string
+		execution RootExecutionStart
+	}{
+		{name: "duplicate interrupt kind", execution: RootExecutionStart{
 			Message: "hello",
 			InterruptKinds: []interrupt.Kind{
 				interrupt.Approval,
 				interrupt.Approval,
 			},
-		},
-		"goal incarnation whitespace": {
+		}},
+		{name: "goal incarnation surrounding whitespace", execution: RootExecutionStart{
 			Message: "hello", GoalIncarnationID: " lease",
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
+		}},
+		{name: "goal incarnation interior whitespace", execution: RootExecutionStart{
+			Message: "hello", GoalIncarnationID: "goal incarnation",
+		}},
+		{name: "goal incarnation non-printing", execution: RootExecutionStart{
+			Message: "hello", GoalIncarnationID: "goal\u200bincarnation",
+		}},
+		{name: "goal incarnation oversized", execution: RootExecutionStart{
+			Message: "hello", GoalIncarnationID: strings.Repeat("界", goalref.MaximumIncarnationCharacters+1),
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if err := execution.Validate(); err == nil {
+			if err := test.execution.Validate(); err == nil {
 				t.Fatal("Validate accepted non-canonical admission policy")
 			}
 		})

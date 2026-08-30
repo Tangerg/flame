@@ -16,9 +16,36 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
+
+func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
+	owner := newOperationOwner(context.Background())
+	t.Cleanup(owner.Close)
+	leaseReady := make(chan operationLease, 1)
+	if !owner.Go(streamOperation, false, func(ctx context.Context, lease operationLease) {
+		leaseReady <- lease
+		<-ctx.Done()
+	}) {
+		t.Fatal("could not establish stream ownership")
+	}
+	application := &app{operations: owner, following: true}
+	retired := streamFollower{app: application, lease: <-leaseReady}
+	if !retired.current() {
+		t.Fatal("new stream follower did not own its operation")
+	}
+
+	application.dropStream()
+
+	if retired.current() {
+		t.Fatal("dropping the stream left its follower authorized to commit")
+	}
+	if application.following {
+		t.Fatal("dropping a stream left the application in following state")
+	}
+}
 
 type sessionReadFailureRuntime struct {
 	*mock.Runtime
@@ -242,9 +269,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
-	_, err := base.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "recover attach"},
-	})
+	_, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "recover attach"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +346,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 		if refused.SessionID == "" {
 			return false
 		}
-		store, err := workbench.Open(stateDirectory, workbench.Config{})
+		store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if err != nil {
 			return false
 		}
@@ -345,7 +370,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("cancel malformed accepted start")
 	host.Press(input.Enter)
@@ -355,7 +380,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		if len(starts) != 1 || len(cancellations) != 1 {
 			return false
 		}
-		reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+		reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0 && host.Repaint()
 	})
 	starts, cancellations := runtime.attempts()
@@ -363,7 +388,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		cancellations[0].Reason != "runtime returned an invalid start receipt" {
 		t.Fatalf("malformed receipt cleanup = starts %+v, cancellations %+v", starts, cancellations)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +450,7 @@ func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t 
 		if len(starts) != 1 || len(cancellations) != 2 {
 			return false
 		}
-		reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+		reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0 && host.Repaint()
 	})
 	_, cancellations := runtime.attempts()
@@ -443,23 +468,24 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	base.Instant = true
 	base.Script = stableCompletedScript
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_0123456789abcdef0123456789abcdef"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "replay after launch"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &recordingRuntime{Runtime: base}
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "stable answer")
 	host.Shows(t, "complete")
 	if started := runtime.startInput(); started.CommandID != command.CommandID || started.Message.Text != command.Message.Text {
 		t.Fatalf("replayed start = %+v, want %+v", started, command)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,25 +503,26 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "already accepted"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	runtime := &idempotentStartRuntime{Runtime: base}
 	if _, err := runtime.StartRun(t.Context(), command); err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stageDispatchingRun(t, store, command)
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "already accepted")
 	host.Shows(t, "reconnected")
 	attempts := runtime.attempts()
 	if len(attempts) != 2 || attempts[0].CommandID != attempts[1].CommandID {
 		t.Fatalf("launch reconciliation attempts = %+v", attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,22 +539,23 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
-	active := agent.StartRun{SessionID: "ses_demo_1", Message: agent.Message{Text: "already active"}}
+	active := testUnlimitedStartRun("ses_demo_1", "already active")
 	if _, err := base.StartRun(t.Context(), active); err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	original := agent.CommandID("cli_22222222222222222222222222222222")
 	command := agent.StartRun{
 		CommandID: original, SessionID: active.SessionID, Message: agent.Message{Text: "queue after recovery"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan agent.StartRun, 1), conflict: original}
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "already active")
 	host.Shows(t, "1 queued")
 	select {
@@ -540,7 +568,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	}
 	var pending []workbench.PendingRun
 	host.Until(t, "the refused command to become an ordinary queued intent", func() bool {
-		reopened, openErr := workbench.Open(stateDirectory, workbench.Config{})
+		reopened, openErr := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if openErr != nil {
 			return false
 		}
@@ -564,6 +592,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel after restart"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	idempotent := &idempotentStartRuntime{Runtime: base}
 	runtime := &heldCancellationResultRuntime{
@@ -577,19 +606,19 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stageDispatchingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, workbench.ReplayGuard{})
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, durableCommandReplayGuard(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	awaitSignal(t, runtime.settled, "runtime cancellation settlement")
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +628,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	}
 	release()
 	host.Until(t, "the canceled opening command to leave the durable outbox", func() bool {
-		current, openErr := workbench.Open(stateDirectory, workbench.Config{})
+		current, openErr := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0 && host.Repaint()
 	})
 	if cancelID == "" {
@@ -618,6 +647,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_99999999999999999999999999999999"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "recover canceled start ownership"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	runtime := &heldCancellationResultRuntime{
 		idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
@@ -630,17 +660,17 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stageDispatchingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, workbench.ReplayGuard{})
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, durableCommandReplayGuard(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	awaitSignal(t, runtime.settled, "runtime cancellation before failed local settlement")
 	states, err := os.ReadDir(filepath.Join(stateDirectory, "sessions"))
 	if err != nil || len(states) != 1 {
@@ -671,7 +701,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	host.Until(t, "the canceled opening ownership to settle after storage recovers", func() bool {
-		reopened, openErr := workbench.Open(stateDirectory, workbench.Config{})
+		reopened, openErr := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0 && host.Repaint()
 	})
 	host.Hides(t, "workbench:")
@@ -691,22 +721,23 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel malformed start after restart"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stageDispatchingRun(t, store, command)
-	if _, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, workbench.ReplayGuard{}); markPendingRunCancelingErr != nil {
+	if _, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, durableCommandReplayGuard(t)); markPendingRunCancelingErr != nil {
 		t.Fatal(markPendingRunCancelingErr)
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base}
 
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "canceled")
 	host.Until(t, "the invalid recovered start to leave the durable outbox", func() bool {
-		reopened, openErr := workbench.Open(stateDirectory, workbench.Config{})
+		reopened, openErr := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0 && host.Repaint()
 	})
 	starts, cancellations := runtime.attempts()
@@ -726,19 +757,22 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 
 func stageDispatchingRun(t *testing.T, store *workbench.Store, command agent.StartRun) {
 	t.Helper()
-	if err := store.StagePendingRun(workbench.PendingRun{State: workbench.PendingRunQueued, Command: command}); err != nil {
+	if err := store.StagePendingRun(workbench.PendingRun{
+		State: workbench.PendingRunQueued, Command: command,
+		Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, workbench.ReplayGuard{}); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, durableCommandReplayGuard(t)); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	deadline := time.Date(2026, 8, 13, 10, 1, 0, 0, time.UTC)
-	profile := steerReplayTestProfile("/workspace")
-	profile.Limits.IdempotencyNamespace = "runtime-a"
-	guard := workbench.ReplayGuard{Namespace: "runtime-a", Until: deadline}
+	profile := steerReplayTestProfile(t, "/workspace")
+	profile.Limits.CommandReplay = testCommandReplay(t, "runtime-a", 10*time.Minute)
+	guard := protectedCommandReplayGuard(t, "runtime-a", deadline)
 	if commandReplaySafeAt(guard, &profile, deadline) {
 		t.Fatal("run command replay remained safe at its retention deadline")
 	}
@@ -746,17 +780,17 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 
 func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	base := mock.New()
-	profile := steerReplayTestProfile("/tmp/flame-cli-test")
-	profile.Limits.IdempotencyNamespace = "runtime-a"
+	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
+	profile.Limits.CommandReplay = testCommandReplay(t, "runtime-a", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
-	runtime.afterFirst = func() { profile.Limits.IdempotencyNamespace = "runtime-b" }
+	runtime.afterFirst = func() { profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute) }
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
-		Message: agent.Message{Text: "do not replay outside the owning store"},
+		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	_, err := openStartRunWithBackoff(
 		t.Context(), runtime, command,
-		workbench.ReplayGuard{Namespace: "runtime-a", Until: time.Now().UTC().Add(time.Hour)},
+		protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
 		&profile, runtimeRecoveryBackoff,
 	)
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
@@ -778,16 +812,18 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			stage: func(t *testing.T, store *workbench.Store) {
 				command := agent.StartRun{
 					CommandID: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SessionID: "ses_demo_1",
-					Message: agent.Message{Text: "do not replay across stores"},
+					Message: agent.Message{Text: "do not replay across stores"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 				}
 				if err := store.StagePendingRun(workbench.PendingRun{
 					State: workbench.PendingRunQueued, Command: command,
+					Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
 				}); err != nil {
 					t.Fatal(err)
 				}
-				if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, workbench.ReplayGuard{
-					Namespace: "runtime-a", Until: time.Now().UTC().Add(time.Hour),
-				}); err != nil {
+				if err := store.MarkPendingRunDispatching(
+					command.SessionID, command.CommandID,
+					protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
+				); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -808,9 +844,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 						}},
 					},
 					Interactions: []agent.Interaction{approval},
-					Replay: workbench.ReplayGuard{
-						Namespace: "runtime-a", Until: time.Now().UTC().Add(time.Hour),
-					},
+					Replay:       protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
 				}
 				if err := store.StagePendingResume("ses_demo_1", pending); err != nil {
 					t.Fatal(err)
@@ -821,15 +855,15 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stateDirectory := t.TempDir()
-			store, err := workbench.Open(stateDirectory, workbench.Config{})
+			store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			test.stage(t, store)
 			base := mock.New()
 			runtime := &recordingRuntime{Runtime: base}
-			profile := steerReplayTestProfile("/tmp/flame-cli-test")
-			profile.Limits.IdempotencyNamespace = "runtime-b"
+			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
+			profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute)
 			host, stop := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 				Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
@@ -838,7 +872,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			if runtime.startCount() != 0 {
 				t.Fatalf("cross-store recovery opened %d runs", runtime.startCount())
 			}
-			reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+			reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}

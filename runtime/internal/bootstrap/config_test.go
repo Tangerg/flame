@@ -10,6 +10,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
+func TestResolveProviderConfigAllowsOptionalAPIKey(t *testing.T) {
+	t.Setenv("OLLAMA_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	settings, err := resolveProviderConfig(config.Settings{Provider: "ollama", Model: "local-model"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.APIKey != "" || settings.Provider != "ollama" || settings.Model != "local-model" {
+		t.Fatalf("settings = %+v", settings)
+	}
+	if _, err := resolveProviderConfig(config.Settings{Provider: "openai", Model: "gpt-5.6-sol"}); err == nil {
+		t.Fatal("required API key provider was accepted without a key")
+	}
+}
+
 func TestMCPServersProjectsConfig(t *testing.T) {
 	got, err := MCPServers([]config.MCPServer{{
 		Name:          "fs",
@@ -24,7 +39,7 @@ func TestMCPServersProjectsConfig(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 	want := mcpserver.Server{
-		Name:          "fs",
+		Name:          testMCPServerName("fs"),
 		Transport:     mcpserver.TransportStreamableHTTP,
 		Enabled:       true,
 		URL:           "https://mcp.example",
@@ -54,24 +69,25 @@ func TestSeedConfiguredProvider(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name   string
-		stored map[string]provider.Provider
-		cfg    config.Settings
-		want   provider.Provider
+		name        string
+		stored      map[string]provider.Provider
+		cfg         config.Settings
+		wantKey     string
+		wantBaseURL string
 	}{
 		{
-			name:   "new provider is configured",
-			stored: map[string]provider.Provider{},
-			cfg:    config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
-			want:   provider.Provider{ID: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
+			name:    "new provider is configured",
+			stored:  map[string]provider.Provider{},
+			cfg:     config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
+			wantKey: "sk-new", wantBaseURL: "https://api",
 		},
 		{
 			name: "enabled provider wins over config",
 			stored: map[string]provider.Provider{
-				"anthropic": {ID: "anthropic", APIKey: "sk-stored", BaseURL: "https://stored"},
+				"anthropic": bootstrapProvider(t, "anthropic", "sk-stored", "https://stored"),
 			},
-			cfg:  config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
-			want: provider.Provider{ID: "anthropic", APIKey: "sk-stored", BaseURL: "https://stored"},
+			cfg:     config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
+			wantKey: "sk-stored", wantBaseURL: "https://stored",
 		},
 	}
 
@@ -85,16 +101,39 @@ func TestSeedConfiguredProvider(t *testing.T) {
 			if err != nil || !ok {
 				t.Fatalf("Get: ok=%v err=%v", ok, err)
 			}
-			if got != tt.want {
-				t.Fatalf("provider = %+v, want %+v", got, tt.want)
-			}
+			assertBootstrapProvider(t, got, tt.wantKey, tt.wantBaseURL)
 		})
+	}
+}
+
+func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T) {
+	registry := &providerRegistry{stored: map[string]provider.Provider{}}
+	if err := SeedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "ollama"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(registry.stored) != 0 {
+		t.Fatalf("optional provider seed wrote %+v", registry.stored)
+	}
+
+	settings := config.Settings{Provider: "ollama", BaseURL: "http://127.0.0.1:22434"}
+	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+		t.Fatal(err)
+	}
+	stored, found := registry.stored["ollama"]
+	if !found {
+		t.Fatal("explicit endpoint was not persisted")
+	}
+	if _, configured := stored.Credential(); configured {
+		t.Fatal("optional provider seed invented a credential")
 	}
 }
 
 func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoint(t *testing.T) {
 	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	registry := providerregistry.WithEnvironmentKeys(inner, map[string]string{"openai-compatible": "sk-env"})
+	registry, err := providerregistry.WithEnvironmentKeys(inner, map[string]string{"openai-compatible": "sk-env"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	cfg := config.Settings{
 		Provider: "openai-compatible",
 		APIKey:   "sk-env",
@@ -105,12 +144,22 @@ func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoin
 		t.Fatal(err)
 	}
 	stored := inner.stored[cfg.Provider]
-	if stored.APIKey != "" || stored.BaseURL != cfg.BaseURL {
-		t.Fatalf("stored provider = %+v, want endpoint without environment key", stored)
+	if _, configured := stored.Credential(); configured {
+		t.Fatal("environment credential was persisted")
+	}
+	storedBaseURL, present := stored.BaseURL()
+	if !present || storedBaseURL.String() != cfg.BaseURL {
+		t.Fatalf("stored base URL = (%q, %v), want %q", storedBaseURL.String(), present, cfg.BaseURL)
 	}
 	effective, ok, err := registry.Get(t.Context(), cfg.Provider)
-	if err != nil || !ok || effective.KeySource != provider.KeyEnv || effective.APIKey != cfg.APIKey {
-		t.Fatalf("effective provider = %+v, ok=%v, err=%v", effective, ok, err)
+	if err != nil || !ok {
+		t.Fatalf("effective provider ok=%v, err=%v", ok, err)
+	}
+	effectiveCredential, _ := effective.Credential()
+	effectiveKey, _ := effectiveCredential.APIKey()
+	effectiveSource, _ := effectiveCredential.Source()
+	if effectiveSource != provider.KeyEnvironment || effectiveKey.Reveal() != cfg.APIKey {
+		t.Fatalf("effective credential = (%q, %q)", effectiveKey.Reveal(), effectiveSource)
 	}
 }
 
@@ -132,9 +181,58 @@ func (p *providerRegistry) Get(_ context.Context, id string) (provider.Provider,
 }
 
 func (p *providerRegistry) Update(_ context.Context, id string, patch provider.Patch) (provider.Provider, error) {
-	stored := p.stored[id]
-	stored.ID = id
-	stored = stored.Apply(patch)
+	stored, found := p.stored[id]
+	if !found {
+		var err error
+		stored, err = provider.New(id)
+		if err != nil {
+			return provider.Provider{}, err
+		}
+	}
+	stored, err := stored.Apply(patch)
+	if err != nil {
+		return provider.Provider{}, err
+	}
 	p.stored[id] = stored
 	return stored, nil
+}
+
+func bootstrapProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
+	t.Helper()
+	entry, err := provider.New(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := provider.Patch{}
+	if rawKey != "" {
+		key, keyErr := provider.NewAPIKey(rawKey)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		patch.APIKey = provider.Set(key)
+	}
+	if rawBaseURL != "" {
+		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
+		if baseURLErr != nil {
+			t.Fatal(baseURLErr)
+		}
+		patch.BaseURL = provider.Set(baseURL)
+	}
+	entry, err = entry.Apply(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
+}
+
+func assertBootstrapProvider(t *testing.T, entry provider.Provider, wantKey, wantBaseURL string) {
+	t.Helper()
+	key, configured := entry.APIKey()
+	if !configured || key.Reveal() != wantKey {
+		t.Fatalf("credential = (%q, %v), want %q", key.Reveal(), configured, wantKey)
+	}
+	baseURL, present := entry.BaseURL()
+	if !present || baseURL.String() != wantBaseURL {
+		t.Fatalf("base URL = (%q, %v), want %q", baseURL.String(), present, wantBaseURL)
+	}
 }

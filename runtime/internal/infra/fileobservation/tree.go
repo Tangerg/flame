@@ -1,10 +1,8 @@
 package fileobservation
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -65,7 +63,12 @@ type treeTarget struct {
 
 func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
 	out := make([]treeTarget, 0, len(targets))
-	seen := make(map[string]struct{}, len(targets))
+	type targetKey struct {
+		name     string
+		path     string
+		fileName string
+	}
+	seen := make(map[targetKey]struct{}, len(targets))
 	for index, candidate := range targets {
 		if candidate.Key == "" {
 			return nil, fmt.Errorf("observe trees: target %d key is required", index)
@@ -77,7 +80,7 @@ func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
 			return nil, fmt.Errorf("observe trees: target %d filename must be one path element", index)
 		}
 		path := filepath.Clean(candidate.Path)
-		identity := candidate.Key + "\x00" + path + "\x00" + candidate.FileName
+		identity := targetKey{name: candidate.Key, path: path, fileName: candidate.FileName}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
@@ -298,22 +301,25 @@ func fingerprintTreeFile(logical, physical, boundary string) (fingerprint, strin
 		return fingerprint{}, "", fmt.Errorf("observe trees: inspect file %q: %w", logical, err)
 	}
 	if !info.Mode().IsRegular() {
-		hash := sha256.New()
-		_, _ = fmt.Fprintf(hash, "%s\x00%s\x00type=%d", logical, resolved, info.Mode().Type())
-		return sum(hash), resolved, nil
+		encoder := newFingerprintEncoder()
+		encoder.field(fingerprintFieldLogicalPath, logical)
+		encoder.field(fingerprintFieldPhysicalPath, resolved)
+		encoder.fileInfo(fingerprintFieldTreeInfo, info)
+		return encoder.sum(), resolved, nil
 	}
 	file, err := os.Open(resolved)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe trees: open %q: %w", logical, err)
 	}
-	hash := sha256.New()
-	_, _ = io.WriteString(hash, logical+"\x00"+resolved+"\x00")
-	_, copyErr := io.Copy(hash, file)
+	encoder := newFingerprintEncoder()
+	encoder.field(fingerprintFieldLogicalPath, logical)
+	encoder.field(fingerprintFieldPhysicalPath, resolved)
+	copyErr := encoder.content(file)
 	closeErr := file.Close()
 	if copyErr != nil || closeErr != nil {
 		return fingerprint{}, "", fmt.Errorf("observe trees: read %q: %w", logical, errors.Join(copyErr, closeErr))
 	}
-	return sum(hash), resolved, nil
+	return encoder.sum(), resolved, nil
 }
 
 func acceptTreeChanges(candidate treeTarget, baseline, current treeSnapshot, accepted acceptance) treeSnapshot {

@@ -16,7 +16,7 @@ type segmentLifecycle struct {
 	releases     ExecutionReleaser
 	finalizer    SegmentFinalizer
 	retention    Retention
-	epoch        string
+	epoch        replayEpoch
 	tasks        taskgroup.Group
 	registry     registry
 }
@@ -49,10 +49,12 @@ func (s *segmentLifecycle) observe(
 	return s.observations.Observe(ctx, ref)
 }
 
-func (s *segmentLifecycle) newJournal(runID, segmentID string) *journal {
-	return newJournal(streamScope{
-		Epoch: s.epoch, RunID: runID, SegmentID: segmentID,
-	}, s.retention)
+func (s *segmentLifecycle) newJournal(runID, segmentID string) (*journal, error) {
+	scope, err := newStreamScope(s.epoch, runID, segmentID)
+	if err != nil {
+		return nil, err
+	}
+	return newJournal(scope, s.retention)
 }
 
 func (s *segmentLifecycle) open(record Record, owner *runTreeOwner) {

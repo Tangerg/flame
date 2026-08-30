@@ -8,6 +8,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/schedule"
@@ -28,8 +29,13 @@ type deleteScheduleArgs struct {
 	ScheduleID string `json:"schedule_id" jsonschema:"minLength=1" jsonschema_description:"Exact id returned by list_schedules or create_schedule."`
 }
 
+type listScheduleArgs struct {
+	Cursor string `json:"cursor,omitempty" jsonschema_description:"Opaque continuation returned by a previous list_schedules call. Omit for the first page."`
+}
+
 type scheduleListResponse struct {
-	Schedules []scheduleView `json:"schedules"`
+	Schedules  []scheduleView `json:"schedules"`
+	NextCursor string         `json:"next_cursor,omitempty"`
 }
 
 type scheduleResponse struct {
@@ -58,7 +64,8 @@ type scheduleView struct {
 // ScheduleManagement is the schedule family's narrow application use case.
 // It intentionally excludes revisioned updates and firing operations.
 type ScheduleManagement interface {
-	List(ctx context.Context) ([]scheduledomain.Schedule, error)
+	Available() bool
+	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
 	Create(ctx context.Context, cmd scheduleapp.CreateCommand) (scheduledomain.Schedule, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -68,11 +75,11 @@ type scheduleManagementTools struct{ coordinator ScheduleManagement }
 // BuildSchedules constructs one tool per schedule action. Each schema therefore contains
 // only fields that action can consume. A nil coordinator disables the family.
 func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error) {
-	if coordinator == nil {
+	if coordinator == nil || !coordinator.Available() {
 		return nil, nil
 	}
 	t := &scheduleManagementTools{coordinator: coordinator}
-	list, err := toolcontract.NewFunc[struct{}, scheduleListResponse](
+	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
 			Name:        tool.ListSchedules,
 			Description: "List recurring Agent Run schedules and their ids, instructions, cron expressions, model choices, and next-run state. Use this before deleting or replacing a schedule when its exact id is unknown.",
@@ -106,16 +113,16 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 	return []toolcontract.Tool{list, create, deleteSchedule}, nil
 }
 
-func (s *scheduleManagementTools) list(ctx context.Context, _ struct{}) (scheduleListResponse, error) {
-	items, err := s.coordinator.List(ctx)
+func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs) (scheduleListResponse, error) {
+	page, err := s.coordinator.ListPage(ctx, in.Cursor, pagination.DefaultLimit())
 	if err != nil {
 		return scheduleListResponse{}, fmt.Errorf("list_schedules: %w", err)
 	}
-	views := make([]scheduleView, len(items))
-	for i, sc := range items {
+	views := make([]scheduleView, len(page.Rows))
+	for i, sc := range page.Rows {
 		views[i] = viewSchedule(sc)
 	}
-	return scheduleListResponse{Schedules: views}, nil
+	return scheduleListResponse{Schedules: views, NextCursor: page.NextCursor}, nil
 }
 
 func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleArgs) (scheduleResponse, error) {
@@ -146,18 +153,18 @@ func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleA
 
 func viewSchedule(sc scheduledomain.Schedule) scheduleView {
 	return scheduleView{
-		ScheduleID:      sc.ID,
-		Title:           sc.Title,
-		Instructions:    sc.Instructions,
-		WorkspacePath:   sc.CWD,
-		Provider:        sc.ModelSelection.Provider(),
-		Model:           sc.ModelSelection.Model(),
-		ReasoningEffort: sc.ModelSelection.ReasoningEffort(),
-		Cron:            sc.Cron,
-		Enabled:         sc.Enabled,
-		LastRunAt:       formatScheduleTime(sc.LastRunAt),
-		NextRunAt:       formatScheduleTime(sc.NextRunAt),
-		CreatedAt:       formatScheduleTime(sc.CreatedAt),
+		ScheduleID:      sc.ID(),
+		Title:           sc.Title(),
+		Instructions:    sc.Instructions(),
+		WorkspacePath:   sc.CWD(),
+		Provider:        sc.ModelSelection().Provider(),
+		Model:           sc.ModelSelection().Model(),
+		ReasoningEffort: sc.ModelSelection().ReasoningEffort(),
+		Cron:            sc.Cron(),
+		Enabled:         sc.Enabled(),
+		LastRunAt:       formatScheduleTime(sc.LastRunAt()),
+		NextRunAt:       formatScheduleTime(sc.NextRunAt()),
+		CreatedAt:       formatScheduleTime(sc.CreatedAt()),
 	}
 }
 

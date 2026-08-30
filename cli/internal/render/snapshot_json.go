@@ -10,11 +10,11 @@ import (
 )
 
 type sessionSnapshotRecord struct {
-	Session      sessionFrame      `json:"session"`
-	Transcript   []blockFrame      `json:"transcript"`
-	Runs         []runFrame        `json:"runs"`
-	Plan         planSnapshotFrame `json:"plan"`
-	Interactions []interactionJSON `json:"interactions,omitempty"`
+	Session      sessionFrame       `json:"session"`
+	Transcript   []blockFrame       `json:"transcript"`
+	Runs         []runFrame         `json:"runs"`
+	Plan         *planSnapshotFrame `json:"plan,omitempty"`
+	Interactions []interactionJSON  `json:"interactions,omitempty"`
 }
 
 type sessionPageRecord struct {
@@ -53,16 +53,16 @@ type runFrame struct {
 	ActiveSegmentID  string           `json:"activeSegmentId,omitempty"`
 	CreatedAt        time.Time        `json:"createdAt,omitzero"`
 	FinishedAt       time.Time        `json:"finishedAt,omitzero"`
-	Limits           *runLimitsFrame  `json:"limits,omitempty"`
+	Limits           *runLimitsJSON   `json:"limits,omitempty"`
 	Outcome          *outcomeJSON     `json:"outcome,omitempty"`
 	Usage            usageJSON        `json:"usage"`
 	ProtocolProfile  *runContractJSON `json:"protocolProfile,omitempty"`
 }
 
-type runLimitsFrame struct {
-	MaxTotalTokens int64   `json:"maxTotalTokens,omitempty"`
-	MaxSteps       int     `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   float64 `json:"maxBudgetUsd,omitempty"`
+type runLimitsJSON struct {
+	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty"`
+	MaxSteps       *int     `json:"maxSteps,omitempty"`
+	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
 }
 
 type runContractJSON struct {
@@ -73,6 +73,13 @@ type runContractJSON struct {
 type planSnapshotFrame struct {
 	Revision uint64      `json:"revision"`
 	Items    []planFrame `json:"items"`
+}
+
+func encodePlanSnapshot(plan *agent.Plan) *planSnapshotFrame {
+	if plan == nil {
+		return nil
+	}
+	return &planSnapshotFrame{Revision: plan.Revision(), Items: encodePlan(plan.Items())}
 }
 
 type runPageRecord struct {
@@ -118,7 +125,7 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error
 		Session:      encodeSession(snapshot.Session),
 		Transcript:   make([]blockFrame, 0, len(snapshot.Transcript)),
 		Runs:         make([]runFrame, 0, len(snapshot.Runs)),
-		Plan:         planSnapshotFrame{Revision: snapshot.PlanRevision, Items: encodePlan(snapshot.Plan)},
+		Plan:         encodePlanSnapshot(snapshot.Plan),
 		Interactions: encodeInteractions(snapshot.Interactions),
 	}
 	for _, block := range snapshot.Transcript {
@@ -175,16 +182,14 @@ func WriteRunCancellationJSON(w io.Writer, result agent.RunCancellation) error {
 func encodeRun(run agent.Run) runFrame {
 	encoded := runFrame{
 		ID: run.ID, SessionID: run.SessionID,
-		SpawnedByBlockID: run.Lineage.SpawnedByBlockID,
-		ParentRunID:      run.Lineage.ParentRunID, RootRunID: run.Lineage.RootRunID,
+		SpawnedByBlockID: run.Lineage.SpawnedByBlockID(),
+		ParentRunID:      run.Lineage.ParentRunID(), RootRunID: run.Lineage.RootRunID(),
 		Provider: run.Provider, Model: run.Model,
 		Status: string(run.Status), ActiveSegmentID: run.ActiveSegmentID,
 		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
 		Usage: *encodeUsage(run.Usage),
 	}
-	if run.Limits != (agent.RunLimits{}) {
-		encoded.Limits = &runLimitsFrame{MaxTotalTokens: run.Limits.MaxTotalTokens, MaxSteps: run.Limits.MaxSteps, MaxBudgetUSD: run.Limits.MaxBudgetUSD}
-	}
+	encoded.Limits = encodeRunLimits(run.Limits)
 	if run.Status == agent.RunStatusFinished {
 		encoded.Outcome = encodeOutcome(run.Outcome)
 	}

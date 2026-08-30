@@ -17,7 +17,7 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	application.stack.SetBase(transcript)
 	flow := newMCPFormFlow(mcpFormCreate, mcp.Server{})
 	flow.draft.name = "docs"
-	flow.draft.transport = string(mcp.StreamableHTTP)
+	flow.draft.transport = mcp.StreamableHTTP
 	application.showMCPFormStep(flow)
 	drawRoot(t, &application.stack, 96, 28)
 
@@ -27,7 +27,7 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	if flow.step != mcpFormGeneral {
 		t.Fatalf("stale form advanced to step %d", flow.step)
 	}
-	if application.mcpDialog == oldDialog || !application.mcpDialog.Open() {
+	if application.mcpDialog == oldDialog || !application.mcpDialog.Controller().Open() {
 		t.Fatal("stale form replaced or dismissed the current dialog")
 	}
 
@@ -42,25 +42,23 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 func TestMCPFormFlowRoutesOnlyThroughRelevantConnection(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		mode           mcpFormMode
-		transport      mcp.Transport
-		connectionMode string
-		want           []mcpFormStep
+		name              string
+		mode              mcpFormMode
+		transport         mcp.Transport
+		replaceConnection bool
+		want              []mcpFormStep
 	}{
 		{name: "create HTTP", mode: mcpFormCreate, transport: mcp.StreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormHTTP, mcpFormPolicy}},
 		{name: "create stdio", mode: mcpFormCreate, transport: mcp.Stdio, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
-		{name: "update keeping connection", mode: mcpFormUpdate, transport: mcp.StreamableHTTP, connectionMode: "keep", want: []mcpFormStep{mcpFormGeneral, mcpFormPolicy}},
-		{name: "update replacing connection", mode: mcpFormUpdate, transport: mcp.Stdio, connectionMode: "replace", want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
+		{name: "update keeping connection", mode: mcpFormUpdate, transport: mcp.StreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormPolicy}},
+		{name: "update replacing connection", mode: mcpFormUpdate, transport: mcp.Stdio, replaceConnection: true, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			flow := newMCPFormFlow(test.mode, mcp.Server{})
-			flow.draft.transport = string(test.transport)
-			if test.connectionMode != "" {
-				flow.draft.connectionMode = test.connectionMode
-			}
+			flow.draft.transport = test.transport
+			flow.draft.replaceConnection = test.replaceConnection
 			visited := []mcpFormStep{flow.step}
 			for flow.advance() {
 				visited = append(visited, flow.step)
@@ -111,5 +109,22 @@ func TestMCPToolNameValidationRejectsDuplicates(t *testing.T) {
 	}
 	if err := validateMCPToolNames("read, write"); err != nil {
 		t.Fatalf("unique tool names were rejected: %v", err)
+	}
+}
+
+func TestParseMCPTimeoutDistinguishesUnboundedFromPositiveDeadline(t *testing.T) {
+	unbounded, err := parseMCPTimeout("")
+	if err != nil || unbounded.IsBounded() {
+		t.Fatalf("blank timeout = (%v, %v), want unbounded", unbounded, err)
+	}
+	bounded, err := parseMCPTimeout("15")
+	seconds, ok := bounded.Seconds()
+	if err != nil || !ok || seconds != 15 {
+		t.Fatalf("positive timeout = (%v, %v), want 15s", bounded, err)
+	}
+	for _, invalid := range []string{"0", "-1", "1.5", "word"} {
+		if _, err := parseMCPTimeout(invalid); err == nil {
+			t.Errorf("parseMCPTimeout(%q) accepted", invalid)
+		}
 	}
 }

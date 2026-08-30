@@ -2,8 +2,9 @@ import type { ContentBlock } from "@/rpc";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { OPTIMISTIC_USER_MESSAGE_PREFIX } from "../application/view/optimisticMessageIdentity";
 import { userContentBlocks } from "../application/fold/projections";
+import { ExactSequence } from "@/foundation/exactSequence";
 
-let localSeq = 0;
+const optimisticMessageIds = new ExactSequence();
 
 export interface OptimisticUserMessage {
   localId: string;
@@ -11,7 +12,7 @@ export interface OptimisticUserMessage {
 }
 
 export function createOptimisticUserMessage(content: ContentBlock[]): OptimisticUserMessage {
-  const localId = `${OPTIMISTIC_USER_MESSAGE_PREFIX}${++localSeq}`;
+  const localId = `${OPTIMISTIC_USER_MESSAGE_PREFIX}${optimisticMessageIds.issue()}`;
   return {
     localId,
     message: {

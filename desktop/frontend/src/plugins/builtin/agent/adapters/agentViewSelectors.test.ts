@@ -26,10 +26,10 @@ import {
 function seed(commandError: AgentProblem | null, shared: Record<string, unknown>) {
   return {
     view: { ...EMPTY_AGENT_SESSION_VIEW, commandError, shared },
-    viewEpoch: 0,
-    viewRevision: 0,
-    authoritativeRevision: 0,
-    refreshSequence: 0,
+    viewEpoch: 0n,
+    viewRevision: 0n,
+    authoritativeRevision: 0n,
+    refreshSequence: 0n,
     stop: null,
     send: null,
     resume: null,
@@ -61,16 +61,16 @@ describe("agent view selectors react to session switch", () => {
     useAgentStore.setState({
       sessions: {
         a: seed(null, { k: "A" }),
-        b: { ...seed(null, { k: "B" }), viewEpoch: 4 },
+        b: { ...seed(null, { k: "B" }), viewEpoch: 4n },
       },
     });
     navigator().go({ session: "a" });
 
     const { result } = renderHook(() => useAgentSharedMaterial<string>("k"));
-    expect(result.current).toEqual({ generation: 0, value: "A" });
+    expect(result.current).toEqual({ generation: 0n, value: "A" });
 
     act(() => navigator().go({ session: "b" }));
-    expect(result.current).toEqual({ generation: 4, value: "B" });
+    expect(result.current).toEqual({ generation: 4n, value: "B" });
   });
 
   it("keeps the exact root Run referentially stable between unchanged renders", () => {
@@ -156,7 +156,7 @@ describe("agent view selectors react to session switch", () => {
             a: {
               ...current,
               view: { ...current.view, shared: { unrelated: true } },
-              viewRevision: current.viewRevision + 1,
+              viewRevision: current.viewRevision + 1n,
             },
           },
         };

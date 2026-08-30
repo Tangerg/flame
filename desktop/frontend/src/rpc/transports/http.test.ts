@@ -73,6 +73,149 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 describe("HTTPTransport — streamable HTTP", () => {
+  it("rejects an invalid event-stream frame capacity before opening transport resources", () => {
+    const fetchStub = vi.fn<typeof fetch>();
+
+    expect(() =>
+      createHttpTransport({
+        baseUrl: "http://x",
+        fetch: fetchStub,
+        maximumEventStreamFrameCharacters: 0,
+      }),
+    ).toThrow("event-stream frame capacity must be a positive safe integer");
+    expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  it("terminates an SSE response whose unfinished frame exceeds its resource envelope", async () => {
+    const fetchStub = (async () =>
+      sseResponse([
+        frame({
+          jsonrpc: "2.0",
+          id: "1",
+          result: { runId: "run_01", padding: "x".repeat(128) },
+        }),
+      ])) as unknown as typeof fetch;
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: fetchStub,
+      maximumEventStreamFrameCharacters: 64,
+    });
+    const iterator = transport.recv()[Symbol.asyncIterator]();
+
+    await transport.send(req("1", "runs.start"));
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: {
+        type: "requestError",
+        rpcId: "1",
+        error: { message: "event-stream frame exceeds 64 characters" },
+      },
+      done: false,
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: {
+        type: "streamEnd",
+        requestRpcId: "1",
+        error: { message: "event-stream frame exceeds 64 characters" },
+      },
+      done: false,
+    });
+
+    await transport.close();
+  });
+
+  it("paces every frame in one network chunk against the sole recv consumer", async () => {
+    const responseFrame = frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } });
+    const liveFrames = Array.from({ length: 64 }, (_, index) =>
+      frame({
+        jsonrpc: "2.0",
+        method: "notifications.run.event",
+        params: {
+          runId: "run_01",
+          segmentId: "seg_01",
+          eventId: `evt_${index}`,
+          occurredAt: "2026-08-30T00:00:00Z",
+          event: { type: "item.delta", itemId: "itm_01", delta: String(index) },
+        },
+      }),
+    );
+    const parse = vi.spyOn(JSON, "parse");
+    const parsedFrameCount = (): number =>
+      parse.mock.calls.filter(
+        ([input]) => typeof input === "string" && input.startsWith('{"jsonrpc":"2.0"'),
+      ).length;
+    const fetchStub = (async () =>
+      sseResponse([responseFrame + liveFrames.join("")])) as unknown as typeof fetch;
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: fetchStub });
+
+    await transport.send(req("1", "runs.start"));
+    await vi.waitFor(() => expect(parsedFrameCount()).toBeGreaterThan(0));
+    await Promise.resolve();
+
+    // The body is already one giant chunk, but parsing must stop at the first
+    // frame until RpcClient's sole receive loop accepts it. Otherwise this layer
+    // recreates an unbounded queue before the Run-specific lossy policy can act.
+    expect(parsedFrameCount()).toBe(1);
+
+    const iterator = transport.recv()[Symbol.asyncIterator]();
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: "message", requestRpcId: "1", message: { id: "1" } },
+      done: false,
+    });
+    await vi.waitFor(() => expect(parsedFrameCount()).toBe(2));
+
+    await transport.close();
+    expect(parsedFrameCount()).toBe(2);
+  });
+
+  it("does not pull another body chunk until recv accepts the current frame", async () => {
+    const chunks = [
+      frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } }),
+      frame({
+        jsonrpc: "2.0",
+        method: "notifications.run.event",
+        params: { event: { type: "item.delta" } },
+      }),
+      frame({
+        jsonrpc: "2.0",
+        method: "notifications.run.event",
+        params: { event: { type: "segment.progress" } },
+      }),
+    ];
+    const encoder = new TextEncoder();
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          const chunk = chunks[pulls++];
+          if (chunk === undefined) controller.close();
+          else controller.enqueue(encoder.encode(chunk));
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const fetchStub = (async () =>
+      new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      })) as unknown as typeof fetch;
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: fetchStub });
+
+    await transport.send(req("1", "runs.start"));
+    await vi.waitFor(() => expect(pulls).toBe(1));
+    await Promise.resolve();
+    expect(pulls).toBe(1);
+
+    const iterator = transport.recv()[Symbol.asyncIterator]();
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: "message", requestRpcId: "1", message: { id: "1" } },
+      done: false,
+    });
+    await vi.waitFor(() => expect(pulls).toBe(2));
+    expect(pulls).toBe(2);
+
+    await transport.close();
+  });
+
   it("streaming method: POST response stream yields the call response then its events", async () => {
     const responseFrame = frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } }); // no SSE id
     const started = frame(
@@ -140,8 +283,9 @@ describe("HTTPTransport — streamable HTTP", () => {
     const transport = createHttpTransport({ baseUrl: "http://x", fetch: fetchStub });
     const it = transport.recv()[Symbol.asyncIterator]();
 
+    const receiving = it.next();
     await transport.send(req("2", "sessions.get"));
-    const r = await it.next();
+    const r = await receiving;
     await transport.close();
 
     expect(r.value).toMatchObject({
@@ -173,11 +317,12 @@ describe("HTTPTransport — streamable HTTP", () => {
     const transport = createHttpTransport({ baseUrl: "http://x", fetch: fetchStub });
     const it = transport.recv()[Symbol.asyncIterator]();
 
+    const receiving = it.next();
     await transport.send(req("2", "sessions.create"), undefined, {
       idempotencyKey: "operation-key-1",
       idempotencyNamespace: "idp_store_a",
     });
-    await it.next();
+    await receiving;
     await transport.close();
 
     const headers = fetchStub.mock.calls[0]?.[1]?.headers as Record<string, string>;

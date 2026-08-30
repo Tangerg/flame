@@ -10,7 +10,9 @@ import { fmtCost, fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
   USAGE_RANGES,
+  UsageRange,
   type UsageBreakdownBucket,
+  usagePeriodForRange,
   usageTokens,
   useUsageReport,
 } from "../application/usageConfig";
@@ -55,8 +57,8 @@ function BreakdownSection({
 
 export function UsagePane() {
   const t = useT();
-  const [sinceDays, setSinceDays] = useState(0);
-  const { data, isLoading, isError } = useUsageReport(sinceDays);
+  const [range, setRange] = useState<UsageRange>(UsageRange.AllTime);
+  const { data, isLoading, isError } = useUsageReport(usagePeriodForRange(range));
 
   const total = data?.total;
   const totalTokens = total ? usageTokens(total) : 0;
@@ -66,9 +68,9 @@ export function UsagePane() {
     <div className="flex flex-col gap-4">
       <div className="self-end">
         <Segmented
-          value={sinceDays}
-          options={USAGE_RANGES.map((r) => ({ value: r.days, label: t(r.label) }))}
-          onChange={setSinceDays}
+          value={range}
+          options={USAGE_RANGES.map((item) => ({ value: item.value, label: t(item.label) }))}
+          onChange={setRange}
           ariaLabel={t("usage.rangeAria")}
         />
       </div>

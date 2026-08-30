@@ -43,8 +43,19 @@ func (s *Server) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffReques
 	default:
 		return nil, fmt.Errorf("%w: unknown mode %q", protocol.ErrInvalidParams, in.Mode)
 	}
+	if in.Format == protocol.DiffFormatRaw && in.Limit != nil {
+		return nil, fmt.Errorf("%w: limit is only valid for rows format", protocol.ErrInvalidParams)
+	}
+	rowLimit := workspaceapp.DefaultDiffRowLimit()
+	if in.Limit != nil {
+		explicit, limitErr := workspaceapp.NewDiffRowLimit(*in.Limit)
+		if limitErr != nil {
+			return nil, wireWorkspaceError(limitErr)
+		}
+		rowLimit = explicit
+	}
 	diff, err := s.workspaceVCS.Diff(ctx, workspaceapp.DiffInput{
-		CWD: in.Workspace.Path, Path: in.Path, Base: base, Raw: in.Format == protocol.DiffFormatRaw, Limit: in.Limit,
+		CWD: in.Workspace.Path, Path: in.Path, Base: base, Raw: in.Format == protocol.DiffFormatRaw, RowLimit: rowLimit,
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)

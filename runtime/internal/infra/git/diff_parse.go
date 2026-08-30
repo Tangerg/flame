@@ -16,98 +16,168 @@ func parseUnifiedDiff(patch []byte, maxFiles, maxRows int) ([]DiffFile, bool, er
 	if maxFiles <= 0 || maxRows <= 0 {
 		return nil, false, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
 	}
-	var files []DiffFile
-	var cur *DiffFile
-	var leftLine, rightLine, rows int
-	flush := func() bool {
-		if cur == nil {
-			return true
+	parser := unifiedDiffParser{maxFiles: maxFiles, maxRows: maxRows}
+	for encoded := range bytes.SplitSeq(patch, []byte{'\n'}) {
+		stop, err := parser.consume(string(encoded))
+		if err != nil {
+			return nil, false, err
 		}
-		if len(files) >= maxFiles || rows+len(cur.Rows) > maxRows {
-			return false
+		if stop {
+			return parser.files, true, nil
 		}
-		rows += len(cur.Rows)
-		files = append(files, *cur)
+	}
+	if !parser.flush() {
+		return parser.files, true, nil
+	}
+	return parser.files, false, nil
+}
+
+const (
+	diffFileHeader        = "diff --git "
+	newFileModeHeader     = "new file mode"
+	deletedFileModeHeader = "deleted file mode"
+	renameFromHeader      = "rename from "
+	renameToHeader        = "rename to "
+	binaryFilesHeader     = "Binary files "
+	oldFileHeader         = "--- "
+	newFileHeader         = "+++ "
+	hunkHeader            = "@@"
+	oldPathPrefix         = "a/"
+	newPathPrefix         = "b/"
+	nullPatchPath         = "/dev/null"
+)
+
+type unifiedDiffParser struct {
+	maxFiles  int
+	maxRows   int
+	files     []DiffFile
+	current   *DiffFile
+	leftLine  int
+	rightLine int
+	rows      int
+}
+
+func (parser *unifiedDiffParser) consume(line string) (bool, error) {
+	if strings.HasPrefix(line, diffFileHeader) {
+		return parser.startFile(strings.TrimPrefix(line, diffFileHeader)), nil
+	}
+	if parser.current == nil {
+		return false, nil
+	}
+	if parser.applyMetadata(line) {
+		return false, nil
+	}
+	if strings.HasPrefix(line, hunkHeader) {
+		return parser.appendHunk(line)
+	}
+	return parser.appendRow(line), nil
+}
+
+func (parser *unifiedDiffParser) startFile(header string) bool {
+	if !parser.flush() || len(parser.files) >= parser.maxFiles {
 		return true
 	}
+	parser.current = &DiffFile{
+		Path:   diffHeaderPath(header),
+		Status: StatusModified,
+	}
+	parser.leftLine = 0
+	parser.rightLine = 0
+	return false
+}
 
-	for encoded := range bytes.SplitSeq(patch, []byte{'\n'}) {
-		switch {
-		case bytes.HasPrefix(encoded, []byte("diff --git ")):
-			if !flush() {
-				return files, true, nil
-			}
-			if len(files) >= maxFiles {
-				return files, true, nil
-			}
-			cur = &DiffFile{
-				Path:   diffHeaderPath(strings.TrimPrefix(string(encoded), "diff --git ")),
-				Status: StatusModified,
-			}
-			leftLine, rightLine = 0, 0
-		case cur == nil:
-			continue
-		case bytes.HasPrefix(encoded, []byte("new file mode")):
-			cur.Status = StatusAdded
-		case bytes.HasPrefix(encoded, []byte("deleted file mode")):
-			cur.Status = StatusDeleted
-		case bytes.HasPrefix(encoded, []byte("rename from ")):
-			cur.PreviousPath = parsePatchPath(strings.TrimPrefix(string(encoded), "rename from "), "")
-			cur.Status = StatusRenamed
-		case bytes.HasPrefix(encoded, []byte("rename to ")):
-			cur.Path = parsePatchPath(strings.TrimPrefix(string(encoded), "rename to "), "")
-			cur.Status = StatusRenamed
-		case bytes.HasPrefix(encoded, []byte("Binary files ")):
-			cur.Binary = true
-			if path := binaryPatchPath(string(encoded)); path != "" {
-				cur.Path = path
-			}
-		case bytes.HasPrefix(encoded, []byte("--- ")):
-			if path := parsePatchPath(strings.TrimPrefix(string(encoded), "--- "), "a/"); cur.Path == "" && path != "/dev/null" {
-				cur.Path = path
-			}
-		case bytes.HasPrefix(encoded, []byte("+++ ")):
-			if path := parsePatchPath(strings.TrimPrefix(string(encoded), "+++ "), "b/"); path != "/dev/null" {
-				cur.Path = path
-			}
-		case bytes.HasPrefix(encoded, []byte("@@")):
-			if rows+len(cur.Rows) >= maxRows {
-				return files, true, nil
-			}
-			var err error
-			line := string(encoded)
-			leftLine, rightLine, err = parseHunkHeader(line)
-			if err != nil {
-				return nil, false, err
-			}
-			cur.Rows = append(cur.Rows, Row{Type: RowHunk, Text: line})
-		case len(encoded) > 0 && encoded[0] == '+':
-			if rows+len(cur.Rows) >= maxRows {
-				return files, true, nil
-			}
-			cur.Rows = append(cur.Rows, Row{Type: RowAdded, RightLine: rightLine, Code: string(encoded[1:])})
-			rightLine++
-			cur.Added++
-		case len(encoded) > 0 && encoded[0] == '-':
-			if rows+len(cur.Rows) >= maxRows {
-				return files, true, nil
-			}
-			cur.Rows = append(cur.Rows, Row{Type: RowDeleted, LeftLine: leftLine, Code: string(encoded[1:])})
-			leftLine++
-			cur.Removed++
-		case len(encoded) > 0 && encoded[0] == ' ':
-			if rows+len(cur.Rows) >= maxRows {
-				return files, true, nil
-			}
-			cur.Rows = append(cur.Rows, Row{Type: RowContext, LeftLine: leftLine, RightLine: rightLine, Code: string(encoded[1:])})
-			leftLine++
-			rightLine++
+func (parser *unifiedDiffParser) flush() bool {
+	if parser.current == nil {
+		return true
+	}
+	if len(parser.files) >= parser.maxFiles || parser.rows+len(parser.current.Rows) > parser.maxRows {
+		return false
+	}
+	parser.rows += len(parser.current.Rows)
+	parser.files = append(parser.files, *parser.current)
+	parser.current = nil
+	return true
+}
+
+func (parser *unifiedDiffParser) applyMetadata(line string) bool {
+	switch {
+	case strings.HasPrefix(line, newFileModeHeader):
+		parser.current.Status = StatusAdded
+	case strings.HasPrefix(line, deletedFileModeHeader):
+		parser.current.Status = StatusDeleted
+	case strings.HasPrefix(line, renameFromHeader):
+		parser.current.PreviousPath = parsePatchPath(strings.TrimPrefix(line, renameFromHeader), "")
+		parser.current.Status = StatusRenamed
+	case strings.HasPrefix(line, renameToHeader):
+		parser.current.Path = parsePatchPath(strings.TrimPrefix(line, renameToHeader), "")
+		parser.current.Status = StatusRenamed
+	case strings.HasPrefix(line, binaryFilesHeader):
+		parser.current.Binary = true
+		if path := binaryPatchPath(line); path != "" {
+			parser.current.Path = path
 		}
+	case strings.HasPrefix(line, oldFileHeader):
+		path := parsePatchPath(strings.TrimPrefix(line, oldFileHeader), oldPathPrefix)
+		if parser.current.Path == "" && path != nullPatchPath {
+			parser.current.Path = path
+		}
+	case strings.HasPrefix(line, newFileHeader):
+		path := parsePatchPath(strings.TrimPrefix(line, newFileHeader), newPathPrefix)
+		if path != nullPatchPath {
+			parser.current.Path = path
+		}
+	default:
+		return false
 	}
-	if !flush() {
-		return files, true, nil
+	return true
+}
+
+func (parser *unifiedDiffParser) appendHunk(line string) (bool, error) {
+	if parser.rowBudgetExhausted() {
+		return true, nil
 	}
-	return files, false, nil
+	left, right, err := parseHunkHeader(line)
+	if err != nil {
+		return false, err
+	}
+	parser.leftLine = left
+	parser.rightLine = right
+	parser.current.Rows = append(parser.current.Rows, Row{Type: RowHunk, Text: line})
+	return false, nil
+}
+
+func (parser *unifiedDiffParser) appendRow(line string) bool {
+	if line == "" {
+		return false
+	}
+	marker := line[0]
+	if marker != '+' && marker != '-' && marker != ' ' {
+		return false
+	}
+	if parser.rowBudgetExhausted() {
+		return true
+	}
+	var row Row
+	switch marker {
+	case '+':
+		row = Row{Type: RowAdded, RightLine: parser.rightLine, Code: line[1:]}
+		parser.rightLine++
+		parser.current.Added++
+	case '-':
+		row = Row{Type: RowDeleted, LeftLine: parser.leftLine, Code: line[1:]}
+		parser.leftLine++
+		parser.current.Removed++
+	case ' ':
+		row = Row{Type: RowContext, LeftLine: parser.leftLine, RightLine: parser.rightLine, Code: line[1:]}
+		parser.leftLine++
+		parser.rightLine++
+	}
+	parser.current.Rows = append(parser.current.Rows, row)
+	return false
+}
+
+func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
+	return parser.rows+len(parser.current.Rows) >= parser.maxRows
 }
 
 func parsePatchPath(value, prefix string) string {

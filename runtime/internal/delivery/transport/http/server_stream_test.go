@@ -18,9 +18,9 @@ import (
 // end-to-end.
 func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
 	events := slices.Values([]protocol.RunEvent{
-		{RunID: "run_x", EventID: "evt_00000000001",
+		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001",
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_x", SessionID: in.SessionID}, ActiveSegmentID: "seg_x"}}},
-		{RunID: "run_x", EventID: "evt_00000000002",
+		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002",
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentOutcomeType(protocol.OutcomeCompleted)}, Metrics: &protocol.RunMetrics{}}},
 	})
 	return &protocol.StartRunResponse{
@@ -62,7 +62,7 @@ func TestStreamableRunStart(t *testing.T) {
 
 	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
 	r0, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
-	r0.Body.Close()
+	_ = r0.Body.Close()
 
 	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.start","params":{"sessionId":"ses_1","input":[{"type":"text","text":"hi"}]}}`)
 	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
@@ -72,7 +72,7 @@ func TestStreamableRunStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
@@ -113,7 +113,7 @@ func TestSubscribeCarriesLastEventID(t *testing.T) {
 
 	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
 	r0, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
-	r0.Body.Close()
+	_ = r0.Body.Close()
 
 	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.subscribe","params":{"runId":"run_1","segmentId":"seg_1"}}`)
 	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
@@ -124,7 +124,7 @@ func TestSubscribeCarriesLastEventID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if api.gotLastEventID != "evt_00000000042" {
 		t.Fatalf("SubscribeRun saw Last-Event-Id %q, want evt_00000000042", api.gotLastEventID)

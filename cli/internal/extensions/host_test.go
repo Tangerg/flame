@@ -32,7 +32,7 @@ func TestCapabilityProtectedPointDefaultsRestrictedPluginsToDeny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer loaded.Dispose()
+	defer func() { _ = loaded.Dispose() }()
 	if values := registry.Values(point); len(values) != 1 || values[0].ID != "hello" {
 		t.Fatalf("values = %+v", values)
 	}
@@ -70,7 +70,7 @@ func TestHostRejectsDuplicatePluginIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer host.Close()
+	defer func() { _ = host.Close() }()
 	plugin := manifest("test.duplicate", func(*Scope) error { return nil })
 	results, err := host.Activate([]Plugin{plugin, plugin})
 	if err != nil {
@@ -117,7 +117,7 @@ func TestHostOrdersDependenciesAndReloadsTheirClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer host.Close()
+	defer func() { _ = host.Close() }()
 	point := NewMultiPoint[string]("test.lifecycle")
 	var lifecycle []string
 	results, err := host.Activate([]Plugin{
@@ -195,7 +195,7 @@ func TestHostSkipsMissingCyclesAndDependentsOfFailedSetup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer host.Close()
+	defer func() { _ = host.Close() }()
 	results, err := host.Activate([]Plugin{dependent, broken, missing, cycleA, cycleB})
 	if err != nil {
 		t.Fatal(err)
@@ -363,7 +363,7 @@ func TestHostDoesNotHoldStateLockWhileCallingPluginCode(t *testing.T) {
 	go func() {
 		_, err := host.Activate([]Plugin{plugin})
 		if err == nil {
-			host.Close()
+			_ = host.Close()
 		}
 		done <- err
 	}()

@@ -331,7 +331,7 @@ func (emptyMaterialSnapshotReader) ReadMaterialSnapshot(context.Context, string)
 type emptySessionStore struct{}
 
 func (emptySessionStore) List(context.Context) ([]session.Session, error) { return nil, nil }
-func (emptySessionStore) ListPage(context.Context, bool, int64, string, int) ([]session.Session, error) {
+func (emptySessionStore) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
 	return nil, nil
 }
 func (emptySessionStore) Get(context.Context, string) (session.Session, error) {

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -97,7 +98,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 
 func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	openNamespace := func() (*sql.DB, string) {
+	openNamespace := func() (*sql.DB, idempotencynamespace.ID) {
 		db, err := sqlite.Open(t.Context(), path)
 		if err != nil {
 			t.Fatalf("open: %v", err)
@@ -116,7 +117,7 @@ func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	}
 	db, reopened := openNamespace()
 	if reopened != first {
-		t.Fatalf("reopened namespace = %q, want %q", reopened, first)
+		t.Fatalf("reopened namespace = %q, want %q", reopened.String(), first.String())
 	}
 	if err := db.Close(); err != nil {
 		t.Fatalf("close reopened: %v", err)
@@ -130,7 +131,7 @@ func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	db, replaced := openNamespace()
 	t.Cleanup(func() { _ = db.Close() })
 	if replaced == first {
-		t.Fatalf("replacement store reused namespace %q", replaced)
+		t.Fatalf("replacement store reused namespace %q", replaced.String())
 	}
 }
 

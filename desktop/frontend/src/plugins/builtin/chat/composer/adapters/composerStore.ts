@@ -102,11 +102,11 @@ const HISTORY_CAP = 50;
 export const useComposerStore = create<ComposerState & ComposerActions>()(
   persist(
     (set, get) => {
-      // Bumped on every clear() (i.e. every submit). addImageFiles captures it
+      // Replaced on every clear() (i.e. every submit). addImageFiles captures it
       // when its decode starts and drops the result if it advanced — so an
       // image still decoding when the user submits is discarded rather than
       // leaking into the NEXT message.
-      let stagingGen = 0;
+      let stagingLease: object = {};
       return {
         value: "",
         images: [],
@@ -121,7 +121,7 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         setValue: (value) => set((s) => ({ ...mirrorComposerDraft(s, { value }), histIndex: -1 })),
         setModel: (modelPreference) => set({ modelPreference }),
         clear: () => {
-          stagingGen++;
+          stagingLease = {};
           set((s) => ({ ...mirrorComposerDraft(s, emptyComposerDraft()), histIndex: -1 }));
         },
         addImages: (imgs) =>
@@ -131,16 +131,16 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
             }),
           ),
         addImageFiles: (files) => {
-          const gen = stagingGen;
+          const lease = stagingLease;
           const sid = get().activeSid;
           // allSettled, not all: one unreadable file must not discard the whole
           // batch, and the chain must never reject (no global rejection handler).
           void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
-            // Discard if the composer was cleared/submitted (gen bumped) OR the
+            // Discard if the composer was cleared/submitted (lease replaced) OR the
             // active session changed during decode — a late image must leak
             // neither into the next message NOR into another conversation's
             // draft (addImages writes the CURRENT activeSid's mirror).
-            if (gen !== stagingGen || get().activeSid !== sid) return;
+            if (lease !== stagingLease || get().activeSid !== sid) return;
             const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
             if (ok.length > 0) get().addImages(ok);
             const failed = results.length - ok.length;

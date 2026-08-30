@@ -19,15 +19,17 @@
 //     toolArguments delta (the live-preview channel). Args are AUTHORITATIVE
 //     from the structured object at the terminal state, so the redundant delta
 //     can't make streaming diverge from replay — see writeToolCall.
-// One payload is protocol-asymmetric BY DESIGN and is therefore NOT in the
-// fixture: commandExecution stdout rides a single item.delta{toolOutput} at
-// tool-end and is NOT carried on the completed Item (scope translator.go /
-// runtime/doc/API.md §4.4), so history replay genuinely cannot reconstruct it — an
-// information gap in the wire, not divergent fold logic. Exercising the
-// symmetric core keeps this invariant an apples-to-apples comparison.
+// Command output exercises the same invariant separately: toolOutput is only a
+// live preview, while the completed command result owns `{output, exitCode}`.
+// History hydration and reconnect therefore recover the exact output without
+// relying on a non-replayable delta.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
+import type {
+  AgentItem as Item,
+  AgentItemDelta,
+  AgentStreamEvent as StreamEvent,
+} from "@/plugins/sdk";
 import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
 import { foldTestEvent as reduce } from "./reducer.fixtures";
 import { appendToTurn } from "./fold";
@@ -40,21 +42,52 @@ beforeEach(async () => {
   await loadPluginsForTest(spec);
 });
 
-function item(partial: Record<string, unknown>): Item {
-  return {
-    runId: "run_1",
-    status: "completed",
-    createdAt: "2026-06-03T00:00:00Z",
-    ...partial,
-  } as Item;
-}
-const started = (i: Item): StreamEvent => ({
-  type: "item.started",
-  item: { ...i, status: "running" },
-});
+type StartableItem = Extract<Item, { type: "agentMessage" | "reasoning" | "toolCall" }>;
+
+const started = (item: StartableItem): StreamEvent => {
+  switch (item.type) {
+    case "agentMessage":
+      return {
+        type: "item.started",
+        item: {
+          type: item.type,
+          id: item.id,
+          runId: item.runId,
+          createdAt: item.createdAt,
+          status: "running",
+        },
+      };
+    case "reasoning":
+      return {
+        type: "item.started",
+        item: {
+          type: item.type,
+          id: item.id,
+          runId: item.runId,
+          createdAt: item.createdAt,
+          status: "running",
+        },
+      };
+    case "toolCall":
+      return {
+        type: "item.started",
+        item: {
+          type: item.type,
+          id: item.id,
+          runId: item.runId,
+          startedAt: item.startedAt,
+          status: "running",
+          tool: { name: item.tool.name, arguments: item.tool.arguments },
+        },
+      };
+  }
+};
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
-const delta = (itemId: string, d: Record<string, unknown>): StreamEvent =>
-  ({ type: "item.delta", itemId, delta: d }) as StreamEvent;
+const delta = (itemId: string, value: AgentItemDelta): StreamEvent => ({
+  type: "item.delta",
+  itemId,
+  delta: value,
+});
 
 const foldAll = (events: StreamEvent[]): AgentSessionView =>
   events.reduce((state, ev) => reduce(state, ev), EMPTY_AGENT_SESSION_VIEW);
@@ -87,29 +120,63 @@ function snapshotOnly(events: StreamEvent[], ids: Set<string>): StreamEvent[] {
 // concatenate to the completed snapshot; the tool is call-and-result — its args
 // arrive as the parsed object AND a redundant whole toolArguments delta (as the
 // real backend sends), and its result whole on completion.
-const u1 = item({ id: "u1", type: "userMessage", content: [{ type: "text", text: "delete it" }] });
-const r1 = item({ id: "r1", type: "reasoning", text: "Weighing the risk carefully." });
-const m1 = item({
+const u1: Extract<Item, { type: "userMessage" }> = {
+  id: "u1",
+  runId: "run_1",
+  type: "userMessage",
+  status: "completed",
+  createdAt: "2026-06-03T00:00:00Z",
+  content: [{ type: "text", text: "delete it" }],
+};
+const r1: Extract<Item, { type: "reasoning" }> = {
+  id: "r1",
+  runId: "run_1",
+  type: "reasoning",
+  status: "completed",
+  createdAt: "2026-06-03T00:00:00Z",
+  text: "Weighing the risk carefully.",
+};
+const m1: Extract<Item, { type: "agentMessage" }> = {
   id: "m1",
+  runId: "run_1",
   type: "agentMessage",
+  status: "completed",
+  createdAt: "2026-06-03T00:00:00Z",
   phase: "commentary",
   content: [{ type: "text", text: "Removing the file." }],
-});
-const t1 = item({
+};
+const t1: Extract<Item, { type: "toolCall" }> = {
   id: "t1",
+  runId: "run_1",
   type: "toolCall",
+  status: "completed",
+  startedAt: "2026-06-03T00:00:00Z",
   tool: { name: "fs.delete", arguments: { path: "x" }, result: "ok" },
-});
-const m2 = item({
+};
+const t2: Extract<Item, { type: "toolCall" }> = {
+  id: "t2",
+  runId: "run_1",
+  type: "toolCall",
+  status: "completed",
+  startedAt: "2026-06-03T00:00:00Z",
+  tool: {
+    name: "shell",
+    arguments: { command: "rm x" },
+    result: { output: "removed\n", exitCode: 0 },
+  },
+};
+const m2: Extract<Item, { type: "agentMessage" }> = {
   id: "m2",
+  runId: "run_1",
   type: "agentMessage",
+  status: "completed",
+  createdAt: "2026-06-03T00:00:00Z",
   phase: "finalAnswer",
   content: [{ type: "text", text: "Done." }],
-});
+};
 
 const FULL_STREAM: StreamEvent[] = [
   { type: "segment.started", run: { id: "run_1", sessionId: "ses_1" } as never },
-  started(u1), // user bubble (boundary) — backend sends started(inProgress)+completed
   completed(u1),
   started(r1),
   delta("r1", { type: "reasoning", text: "Weighing the risk " }),
@@ -122,6 +189,10 @@ const FULL_STREAM: StreamEvent[] = [
   started(t1),
   delta("t1", { type: "toolArguments", argumentsTextDelta: '{"path":"x"}' }),
   completed(t1),
+  started(t2),
+  delta("t2", { type: "toolArguments", argumentsTextDelta: '{"command":"rm x"}' }),
+  delta("t2", { type: "toolOutput", text: "removed\n" }),
+  completed(t2),
   started(m2),
   delta("m2", { type: "content", text: "Done." }),
   completed(m2),
@@ -143,8 +214,8 @@ describe("reducer — render convergence across delivery modes", () => {
     // History replay: the item.completed-only subset (no run.* / started / delta).
     const replay = foldAll(FULL_STREAM.filter((e) => e.type === "item.completed"));
 
-    // Mixed: m1 + t1 arrive as completed snapshots, the rest stream live.
-    const mixed = foldAll(snapshotOnly(FULL_STREAM, new Set(["m1", "t1"])));
+    // Mixed: m1 + both tools arrive as completed snapshots, the rest stream live.
+    const mixed = foldAll(snapshotOnly(FULL_STREAM, new Set(["m1", "t1", "t2"])));
 
     // Same bubbles, same blocks, same order, same content.
     expect(strip(replay.messages)).toEqual(strip(streaming.messages));
@@ -163,7 +234,13 @@ describe("reducer — render convergence across delivery modes", () => {
     // becomes its own stable message so it alone owns terminal message actions.
     expect(streaming.messages).toHaveLength(3);
     expect(streaming.messages[0]!.role).toBe("user");
-    expect(streaming.messages[1]!.blocks.map((b) => b.kind)).toEqual(["reasoning", "text", "tool"]);
+    expect(streaming.messages[1]!.blocks.map((b) => b.kind)).toEqual([
+      "reasoning",
+      "text",
+      "tool",
+      "tool",
+    ]);
+    expect(streaming.toolCalls.t2).toMatchObject({ result: "removed\n", exitCode: 0 });
     expect(streaming.messages[1]!.phase).toBe("commentary");
     expect(streaming.messages[2]).toMatchObject({
       id: "final:m2",

@@ -14,8 +14,10 @@ import (
 // first page.
 func TestWirePageErrorMapsRefusedPageRequests(t *testing.T) {
 	for name, err := range map[string]error{
-		"cursor": pagination.ErrInvalidCursor,
-		"limit":  pagination.ErrInvalidLimit,
+		"cursor":           pagination.ErrInvalidCursor,
+		"cursor material":  pagination.ErrInvalidCursorMaterial,
+		"cursor too large": pagination.ErrCursorTooLarge,
+		"limit":            pagination.ErrInvalidLimit,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if got := wirePageError(err); !errors.Is(got, protocol.ErrInvalidParams) {

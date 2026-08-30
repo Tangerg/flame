@@ -47,11 +47,11 @@ export interface AgentToolInvocation {
 export type AgentItem =
   | {
       type: "userMessage";
-      content?: AgentMessagePart[];
+      content: AgentMessagePart[];
       createdAt: string;
       id: string;
       runId: string;
-      status: AgentItemStatus;
+      status: "completed";
     }
   | {
       type: "agentMessage";
@@ -61,7 +61,7 @@ export type AgentItem =
       /** Absent only on the provisional item.started shell. */
       phase?: AgentMessagePhase;
       runId: string;
-      status: AgentItemStatus;
+      status: "running" | "completed";
     }
   | {
       type: "reasoning";
@@ -69,16 +69,16 @@ export type AgentItem =
       id: string;
       redacted?: boolean;
       runId: string;
-      status: AgentItemStatus;
+      status: "running" | "completed";
       text?: string;
     }
   | {
       type: "question";
       createdAt: string;
       id: string;
-      question?: AgentQuestion;
+      question: AgentQuestion;
       runId: string;
-      status: AgentItemStatus;
+      status: "completed";
     }
   | {
       type: "toolCall";
@@ -91,7 +91,7 @@ export type AgentItem =
       safetyClass?: AgentSafetyClass;
       startedAt: string;
       status: AgentItemStatus;
-      tool?: AgentToolInvocation;
+      tool: AgentToolInvocation;
     }
   | {
       type: "compaction";
@@ -99,12 +99,12 @@ export type AgentItem =
       droppedMessages?: number;
       id: string;
       runId: string;
-      status: AgentItemStatus;
-      summary?: string;
+      status: "completed";
+      summary: string;
     };
 
 export type AgentItemDelta =
-  | { type: "content"; index?: number; text: string }
+  | { type: "content"; text: string }
   | { type: "reasoning"; text: string }
   | { type: "toolArguments"; argumentsTextDelta: string }
   | { type: "toolOutput"; text: string };

@@ -3,6 +3,10 @@ import type { RunEvent } from "@/rpc";
 type ScheduleFrame = (flush: () => void) => number;
 type CancelFrame = (handle: number) => void;
 
+/** A hidden WebView may suspend animation frames while Runtime streaming stays
+ * active. This is the maximum material kept waiting for one visual frame. */
+export const MAXIMUM_RUN_EVENTS_PER_FRAME = 256;
+
 export interface RunEventBatcher {
   enqueue(event: RunEvent): void;
   /** Apply the queued stream tail synchronously. Projection synchronization
@@ -13,20 +17,28 @@ export interface RunEventBatcher {
 }
 
 interface RunEventBatcherOptions {
-  readEpoch: () => number;
-  apply: (batch: RunEvent[]) => void;
+  readEpoch: () => bigint;
+  /** True only when the whole batch was folded into the current projection. */
+  apply: (batch: RunEvent[]) => boolean;
+  onApplied?: (lastEvent: RunEvent) => void;
   onRunFinished?: () => void;
   scheduleFrame?: ScheduleFrame;
   cancelFrame?: CancelFrame;
+  maximumQueuedEvents?: number;
 }
 
 export function createRunEventBatcher({
   readEpoch,
   apply,
+  onApplied,
   onRunFinished,
   scheduleFrame = requestAnimationFrame,
   cancelFrame = cancelAnimationFrame,
+  maximumQueuedEvents = MAXIMUM_RUN_EVENTS_PER_FRAME,
 }: RunEventBatcherOptions): RunEventBatcher {
+  if (!Number.isSafeInteger(maximumQueuedEvents) || maximumQueuedEvents <= 0) {
+    throw new RangeError("run event frame capacity must be a positive safe integer");
+  }
   let queue: RunEvent[] = [];
   let frame: number | null = null;
   let queueEpoch = readEpoch();
@@ -42,7 +54,8 @@ export function createRunEventBatcher({
       return;
     }
 
-    apply(batch);
+    if (!apply(batch)) return;
+    onApplied?.(batch[batch.length - 1]!);
     if (batch.some((entry) => entry.event.type === "segment.finished")) onRunFinished?.();
   };
 
@@ -64,6 +77,10 @@ export function createRunEventBatcher({
         queueEpoch = epoch;
       }
       queue.push(event);
+      if (queue.length >= maximumQueuedEvents) {
+        flush();
+        return;
+      }
       if (frame === null)
         frame = scheduleFrame(() => {
           frame = null;

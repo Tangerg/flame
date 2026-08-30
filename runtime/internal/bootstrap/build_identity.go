@@ -2,10 +2,11 @@ package bootstrap
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.
@@ -22,11 +23,13 @@ func buildIDFromFile(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: open executable for build identity: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return "", fmt.Errorf("bootstrap: hash executable for build identity: %w", err)
 	}
-	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
+	var digest [sha256.Size]byte
+	copy(digest[:], hash.Sum(nil))
+	return buildidentity.FromSHA256(digest).String(), nil
 }

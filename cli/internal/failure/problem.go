@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
 )
 
 type problemCarrier interface {
@@ -107,8 +109,8 @@ func (p Problem) Validate() error {
 		seen[requirement] = struct{}{}
 	}
 	if p.ActiveRun != nil {
-		if strings.TrimSpace(p.ActiveRun.RunID) == "" {
-			problems = append(problems, errors.New("active run id is empty"))
+		if _, err := runidentity.ParseRun(p.ActiveRun.RunID); err != nil {
+			problems = append(problems, err)
 		}
 		switch p.ActiveRun.Status {
 		case "running", "waiting", "finished":

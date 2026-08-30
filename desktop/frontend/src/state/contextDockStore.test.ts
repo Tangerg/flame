@@ -87,14 +87,22 @@ describe("what a re-open returns to", () => {
 });
 
 describe("per-session scopes", () => {
+  it("keeps repeated file-focus intents distinct beyond the safe-integer boundary", () => {
+    const boundary = WorkspaceFileFocus.restore("a.ts", BigInt(Number.MAX_SAFE_INTEGER));
+    const first = boundary.moveTo("a.ts");
+    const second = first.moveTo("a.ts");
+
+    expect(second.revision).toBeGreaterThan(first.revision);
+  });
+
   it("gives repeated file-focus intents distinct revisions", () => {
     dock().focusFile("a.ts");
     const first = dock().fileFocus;
 
     dock().focusFile("a.ts");
 
-    expect(first).toMatchObject({ path: "a.ts", revision: 1 });
-    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 2 });
+    expect(first).toMatchObject({ path: "a.ts", revision: 1n });
+    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 2n });
     expect(dock().fileFocus).not.toBe(first);
   });
 
@@ -106,11 +114,11 @@ describe("per-session scopes", () => {
 
     expect(dock().activateSessionScope("s2")).toBeNull();
     expect(dock().dockViewIds).toEqual([]);
-    expect(dock().fileFocus).toMatchObject({ path: "", revision: 0 });
+    expect(dock().fileFocus).toMatchObject({ path: "", revision: 0n });
 
     expect(dock().activateSessionScope("s1")).toBe("diff");
     expect(dock().dockViewIds).toEqual(["diff"]);
-    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 1 });
+    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 1n });
   });
 
   it("is a no-op for the session already in scope", () => {
@@ -163,6 +171,12 @@ describe("per-session scopes", () => {
     dock().revealTool("call-from-retired-renderer");
 
     await vi.waitFor(() => expect(localStorage.getItem("flame.context-dock")).not.toBeNull());
+    const persisted = JSON.parse(localStorage.getItem("flame.context-dock") ?? "null") as {
+      version: number;
+      state: { sessionScopes: [string, { fileFocus: { revision: string } }][] };
+    };
+    expect(persisted.version).toBe(2);
+    expect(persisted.state.sessionScopes[0]?.[1].fileFocus.revision).toBe("1");
 
     vi.resetModules();
     const replacementModule = await import("./contextDockStore");
@@ -176,7 +190,7 @@ describe("per-session scopes", () => {
     expect(replacement.getState()).toMatchObject({
       dockViewIds: ["explorer", "diff", "file"],
       lastViewId: "diff",
-      fileFocus: { path: "src/runtime.ts", revision: 1 },
+      fileFocus: { path: "src/runtime.ts", revision: 1n },
       fileViewer: { path: "src/runtime.ts", line: 42 },
       selectedToolId: "",
       expandedToolIds: new Set(),

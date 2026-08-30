@@ -20,12 +20,12 @@ type questionBlock struct {
 	theme    kit.Theme
 	glyphs   kit.Glyphs
 	question agent.Question
-	message  kit.Message
+	message  kit.Entry
 }
 
 var (
-	_ headless.Block    = (*questionBlock)(nil)
-	_ headless.Copyable = (*questionBlock)(nil)
+	_ headless.Block         = (*questionBlock)(nil)
+	_ headless.TextProjector = (*questionBlock)(nil)
 )
 
 func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question agent.Question) *questionBlock {
@@ -81,8 +81,8 @@ func (q *questionBlock) Rows(width int) []text.Row {
 
 func (q *questionBlock) setQuestion(question agent.Question) {
 	q.question = question.Clone()
-	q.message = kit.Message{
-		Theme: q.theme, Speaker: question.Title,
+	q.message = kit.Entry{
+		Theme: q.theme, Label: question.Title,
 		Body: presentQuestionBody(q.glyphs, question),
 	}
 }

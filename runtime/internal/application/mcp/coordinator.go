@@ -18,7 +18,7 @@ type StatusReader interface {
 
 // ToolCatalog reads tools advertised by live MCP connections.
 type ToolCatalog interface {
-	Tools(ctx context.Context, server string) ([]mcpserver.AdvertisedTool, error)
+	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
 }
 
 // ConnectionControl reconnects and authorizes configured servers.
@@ -28,23 +28,23 @@ type ToolCatalog interface {
 // until its live status has settled and honors ctx cancellation; the application
 // owns detachment, lifecycle, and asynchronous result publication.
 type ConnectionControl interface {
-	Reconnect(ctx context.Context, name string) error
-	Authorize(ctx context.Context, name string) error
+	Reconnect(ctx context.Context, name mcpserver.ServerName) error
+	Authorize(ctx context.Context, name mcpserver.ServerName) error
 }
 
 // ConnectionLifecycle projects durable server changes into live connections.
 type ConnectionLifecycle interface {
 	Probe(ctx context.Context, server mcpserver.Server) error
 	Configure(ctx context.Context, server mcpserver.Server) error
-	Detach(name string) error
+	Detach(name mcpserver.ServerName) error
 }
 
 // Registry is the durable server configuration owned by this application boundary.
 type Registry interface {
 	List(ctx context.Context) ([]mcpserver.Server, error)
-	Get(ctx context.Context, name string) (mcpserver.Server, bool, error)
+	Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
 	Save(ctx context.Context, server mcpserver.Server) error
-	Remove(ctx context.Context, name string) error
+	Remove(ctx context.Context, name mcpserver.ServerName) error
 }
 
 // Coordinator owns durable server configuration, live connections, and the
@@ -62,11 +62,10 @@ type Coordinator struct {
 	policy                *ToolPolicyState
 	mutationMu            sync.Mutex
 	dialMu                sync.Mutex
-	dials                 map[string]*activeDial
-	statusSequence        uint64
+	dials                 map[mcpserver.ServerName]*activeDial
 	statusQueue           *statusQueue
 	statusMu              sync.RWMutex
-	statusOverrides       map[string]ServerStatus
+	statusOverrides       map[mcpserver.ServerName]ServerStatus
 	authorizationAttempts *authorizationAttemptStore
 	invalidations         invalidation.Publish
 
@@ -100,8 +99,8 @@ func New(cfg Config) *Coordinator {
 		connectionControl:     cfg.ConnectionControl,
 		connectionLifecycle:   cfg.ConnectionLifecycle,
 		policy:                cfg.Policy,
-		dials:                 make(map[string]*activeDial),
-		statusOverrides:       make(map[string]ServerStatus),
+		dials:                 make(map[mcpserver.ServerName]*activeDial),
+		statusOverrides:       make(map[mcpserver.ServerName]ServerStatus),
 		authorizationAttempts: newAuthorizationAttemptStore(),
 		invalidations:         cfg.Invalidations,
 	}

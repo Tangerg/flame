@@ -10,13 +10,26 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 )
 
-var errScopeClosed = errors.New("extensions: plugin scope is closed")
+var (
+	errScopeClosed                   = errors.New("extensions: plugin scope is closed")
+	errRegistrationSequenceExhausted = errors.New("extensions: registration sequence is exhausted")
+)
+
+type registrationSequence uint64
+
+func (s registrationSequence) successor() (registrationSequence, bool) {
+	if s == registrationSequence(math.MaxUint64) {
+		return 0, false
+	}
+	return s + 1, true
+}
 
 // Keying says whether a point has one contribution per stable key or permits
 // multiple independent contributions.
@@ -73,8 +86,8 @@ func (p Point[T]) Capability() Capability { return p.capability }
 type Registry struct {
 	mu      sync.RWMutex
 	points  map[string]pointState
-	plugins map[string]uint64
-	next    uint64
+	plugins map[string]registrationSequence
+	next    registrationSequence
 }
 
 type pointState struct {
@@ -86,7 +99,7 @@ type pointState struct {
 type entry struct {
 	plugin string
 	order  int
-	seq    uint64
+	seq    registrationSequence
 	value  any
 }
 
@@ -260,14 +273,18 @@ func capabilitySet(plugin Plugin) map[Capability]struct{} {
 func (r *Registry) claim(plugin string) (Disposable, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.plugins == nil {
-		r.plugins = make(map[string]uint64)
-	}
 	if _, exists := r.plugins[plugin]; exists {
 		return nil, fmt.Errorf("extensions: plugin %q is already loaded", plugin)
 	}
-	r.next++
-	token := r.next
+	next, ok := r.next.successor()
+	if !ok {
+		return nil, errRegistrationSequenceExhausted
+	}
+	if r.plugins == nil {
+		r.plugins = make(map[string]registrationSequence)
+	}
+	r.next = next
+	token := next
 	r.plugins[plugin] = token
 	return &disposal{do: func() error {
 		r.mu.Lock()
@@ -349,18 +366,17 @@ func (r *Registry) insertContribution[T any](
 	key string,
 	value T,
 	order int,
-) (string, uint64, error) {
+) (string, registrationSequence, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.points == nil {
-		r.points = make(map[string]pointState)
-	}
 	state, err := r.pointStateFor(point)
 	if err != nil {
 		return "", 0, err
 	}
-	r.next++
-	sequence := r.next
+	sequence, ok := r.next.successor()
+	if !ok {
+		return "", 0, errRegistrationSequenceExhausted
+	}
 	if point.keying == Multi {
 		key = fmt.Sprintf("%s:%d", plugin, sequence)
 	}
@@ -368,6 +384,10 @@ func (r *Registry) insertContribution[T any](
 		return "", 0, fmt.Errorf("extensions: plugin %q cannot contribute key %q to point %q; owned by %q",
 			plugin, key, point.id, previous.plugin)
 	}
+	if r.points == nil {
+		r.points = make(map[string]pointState)
+	}
+	r.next = sequence
 	state.entries[key] = entry{plugin: plugin, order: order, seq: sequence, value: value}
 	r.points[point.id] = state
 	return key, sequence, nil
@@ -385,7 +405,7 @@ func (r *Registry) pointStateFor[T any](point Point[T]) (pointState, error) {
 	return state, nil
 }
 
-func (r *Registry) removeContribution(pointID, key string, sequence uint64) {
+func (r *Registry) removeContribution(pointID, key string, sequence registrationSequence) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	state, ok := r.points[pointID]

@@ -92,6 +92,15 @@ Domain package 是否成立只看以下证据：
 
 `modelref`、`knowledge`、`feedback`、`interrupt`、`provider`、`toolresult` 等 package 不因方法少而自动判为贫血。只要它们拥有稳定值、不变量或纯算法，并且被真实消费者共享，就保持独立。
 
+`modelref.TokenLimits` 是这一裁决的典型：它以私有 value/presence 对持有 provider
+发布的 context、max input 与 max output，零值只表示“完全未知”，任何数值 `0`
+都不是业务状态。构造器拒绝 present non-positive 与 max-input 越过 context；
+`OutputReservation` 用自己的可选富值表达调用方是否明确请求 generation ceiling，
+`InputCeiling` 统一负责 admission 与 compaction 的输入上限计算。对
+`maxOutput > contextWindow` 的 streaming/multimodal 目录项，context 是输入 envelope，
+不得误当 shared input+output window；这条反例属于领域行为，不允许散落成 provider
+分支或 UI/TUI 猜测。
+
 不得为这些值对象添加无意义的 setter、Manager、Service 或 Repository，使代码看起来“更 DDD”。没有状态转换的概念不需要伪造状态转换。
 
 ### 4.3 必须精修的区域
@@ -175,6 +184,17 @@ Run 的外部可用行为应使用领域动作，而不是暴露字段修改顺�
 
 禁止新增 `SetState`、`SetOutcome`、`MarkDone(bool)`、通用 `Update(fields)` 或接收 map/option bag 的状态 API。
 
+#### 5.2.1 Run limits 值
+
+`run.Limits` 是冻结且不可变的 Run-tree policy。它的有用零值与 `UnlimitedLimits` 都表示 typed unlimited；这个
+语义不通过任何公开数字字段表达。有限策略只能由 `NewLimits(LimitValues)` 构造，至少一个轴存在，并且每个存在
+的 token、step 或 USD 上限都必须有限且严格为正。调用方只能通过返回 `(value, present)` 的访问器读取某一轴，
+不能比较数字 `0` 来猜存在性。
+
+Protocol 用整个 `StartRunRequest.limits` / `RunRef.limits` 缺席表示 unlimited；SQLite 用 NULL 表示各轴缺席，
+Pending continuation 与 executor policy 用判别式 record。所有 adapter 只投影存在性，不重新解释数字，也不读取
+旧扁平全零 shape。
+
 ### 5.3 Run failure 与 accounting
 
 当前同时承载 Run 和 Tool 问题的通用 Problem 必须按 owner 拆开：
@@ -239,7 +259,7 @@ Question、message、reasoning、compaction 等一次形成即完成的事实，
 
 ### 7.1 Plan aggregate
 
-`domain/plan.State` 继续表示一个 Session 当前完整 Plan，拥有：
+`domain/plan.Current` 表示一个 Session 的可选最新 Plan：零值是显式的 unwritten；一旦提交，则持有一个 `State`。`domain/plan.State` 只表示已提交的完整 Plan，拥有：
 
 - 有序 Steps；
 - revision；
@@ -251,7 +271,7 @@ Question、message、reasoning、compaction 等一次形成即完成的事实，
 
 Step 必须通过领域构造或 Plan replacement 验证进入 aggregate；外部不能构造未验证的 Step 切片后直接写 Store。切片跨边界 defensive copy，读取者不能修改 aggregate 内部状态。
 
-revision 是 optimistic concurrency 的领域事实，但 CAS 和事务仍属于 Application/Persistence。Application 读取当前 State，Domain 计算下一 State，Persistence 以 expected revision 原子保存；数据库不得自行发明另一套 Plan transition。
+revision 是 optimistic concurrency 的领域事实，但 CAS 和事务仍属于 Application/Persistence。`Current.Version()` 返回与 Plan 是否存在绑定的 typed CAS identity；Application 读取 `Current`，Domain 计算下一 `State`，Persistence 以 expected `Version` 原子保存。SQLite 不得靠裸 revision `0` 决定 insert/update，也不得自行发明另一套 Plan transition。
 
 ### 7.2 Application 用例
 
@@ -265,6 +285,17 @@ revision 是 optimistic concurrency 的领域事实，但 CAS 和事务仍属于
 6. 返回应用结果供 Tool/Delivery 展示。
 
 Tool Adapter 只负责模型参数 decode、从 Tool execution context 提取 Session identity、调用 Application 用例和结果 presentation。Application 不 import Adapter 的 execution context。Tool Adapter 不得 import persistence writer、直接调用 Plan Store、决定 revision 或成为业务错误 owner。
+
+### 7.3 Goal aggregate 与预算值
+
+`domain/goal.Goal` 是 Session 唯一拥有的 autonomous objective aggregate。identity、objective incarnation、lifecycle、
+停止原因、冻结模型选择、能力、累计 usage、budget、version 与时间都只能经领域构造和行为推进；Application 负责跨 Run
+事务、drive ownership 与 CAS，Store 只持久化领域已经决定的下一状态。
+
+`Budget` 是显式构造的不可变值：`UnlimitedBudget` 表示无边界；`NewBudget` 表示至少一个严格正且有限的 runs、cost 或
+steps 上限。零值非法，数值 `0` 不是 unlimited，也不是“该轴缺席”。wire 用整个 `budget` 缺席表达 unlimited，SQLite 用
+判别式 `unlimited | limited` record 表达，两者都只投影该值而不重新解释数字。这样 Domain、Protocol、模型 Tool、CLI 与
+Desktop 共享一个语义，同时各自保有自己的边界类型。
 
 ## 8. Session 的目标模型
 

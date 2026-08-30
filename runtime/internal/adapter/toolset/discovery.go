@@ -21,6 +21,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -28,7 +29,10 @@ import (
 // defaultLimit caps how many tools one search returns (and promotes). Kept small
 // so the model loads what it needs incrementally rather than re-flooding the
 // manifest with a whole catalog.
-const discoveryDefaultLimit = 5
+const (
+	discoveryDefaultLimit = 5
+	discoveryMaxLimit     = 20
+)
 
 // selectPrefix switches search_tools from keyword search to exact selection:
 // query "select:a,b,c" loads those tools by name, no scoring.
@@ -36,7 +40,7 @@ const discoverySelectPrefix = "select:"
 
 type discoveryArgs struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Describe the capability you need, or use select:name1,name2 to load exact tool names. Prefix a keyword with + to require it."`
-	Limit int    `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
+	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
 }
 
 // searchableTool is one withheld tool with its precomputed match terms.
@@ -168,9 +172,9 @@ func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, err
 	if query == "" {
 		return "", ErrEmptyQuery
 	}
-	limit := args.Limit
-	if limit <= 0 {
-		limit = discoveryDefaultLimit
+	limit, err := toolarg.PositiveInt(args.Limit, discoveryDefaultLimit, discoveryMaxLimit, "limit")
+	if err != nil {
+		return "", err
 	}
 
 	var matches []discoverableTool

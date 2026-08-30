@@ -7,6 +7,7 @@ import {
   questionDraftAnswers,
   questionDraftComplete,
   questionSettled,
+  setQuestionOptions,
   setQuestionText,
   toggleQuestionOption,
 } from "./questionPresentation";
@@ -70,6 +71,11 @@ describe("questionPresentation", () => {
     draft = toggleQuestionOption(draft, 0, multi, "B");
     draft = setQuestionText(draft, 0, multi, "other");
     expect(questionDraftAnswers([multi], draft)).toEqual([["A", "B", "other"]]);
+  });
+
+  it("admits only unique options owned by the question", () => {
+    const draft = setQuestionOptions(createQuestionDraft([multi]), 0, multi, ["B", "B", "other"]);
+    expect(draft[0]).toEqual({ selected: ["B"], text: "" });
   });
 
   it("does not duplicate a selected option entered as custom text", () => {

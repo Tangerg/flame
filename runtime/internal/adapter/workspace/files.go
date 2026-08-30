@@ -182,7 +182,7 @@ func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
-	defer dir.Close()
+	defer func() { _ = dir.Close() }()
 
 	// Read one sentinel entry beyond the contract limit. os.ReadDir(directory)
 	// would materialize an unbounded directory before the safety policy had a

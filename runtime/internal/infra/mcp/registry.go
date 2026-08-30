@@ -16,7 +16,7 @@ import (
 // toolListTarget is a connected server/session pair snapshotted under the lock
 // so live tools/list RPCs can run outside it.
 type toolListTarget struct {
-	name    string
+	name    mcpserver.ServerName
 	session *sdkmcp.ClientSession
 }
 
@@ -42,7 +42,7 @@ func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
 // Tools lists the tools advertised by the connected servers, scoped to server
 // when non-empty. It queries each session's tools/list live, ordered by
 // (server, tool name) as dialed. Nil-safe.
-func (c *Connections) Tools(ctx context.Context, serverName string) ([]mcpserver.AdvertisedTool, error) {
+func (c *Connections) Tools(ctx context.Context, serverName *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func (c *Connections) Tools(ctx context.Context, serverName string) ([]mcpserver
 	c.mu.Lock()
 	var targets []toolListTarget
 	for _, configuredServer := range c.servers {
-		if configuredServer.session == nil || (serverName != "" && configuredServer.name() != serverName) {
+		if configuredServer.session == nil || (serverName != nil && configuredServer.name() != *serverName) {
 			continue
 		}
 		targets = append(targets, toolListTarget{configuredServer.name(), configuredServer.session})
@@ -61,16 +61,20 @@ func (c *Connections) Tools(ctx context.Context, serverName string) ([]mcpserver
 
 	var out []mcpserver.AdvertisedTool
 	for _, t := range targets {
-		seen := make(map[string]struct{})
+		seen := make(map[mcpserver.RemoteToolName]struct{})
 		for descriptor, err := range t.session.Tools(ctx, nil) {
 			if err != nil {
 				return nil, fmt.Errorf("mcp: list tools from server %q: %w", t.name, err)
 			}
-			if descriptor == nil || descriptor.Name == "" {
+			if descriptor == nil {
 				return nil, fmt.Errorf("%w: server %q returned a nil or unnamed tool", mcpserver.ErrInvalidRemoteToolCatalog, t.name)
 			}
-			if _, duplicate := seen[descriptor.Name]; duplicate {
-				return nil, fmt.Errorf("%w: server %q returned duplicate tool %q", mcpserver.ErrInvalidRemoteToolCatalog, t.name, descriptor.Name)
+			toolName, nameErr := mcpserver.ParseRemoteToolName(descriptor.Name)
+			if nameErr != nil {
+				return nil, fmt.Errorf("%w: server %q: %w", mcpserver.ErrInvalidRemoteToolCatalog, t.name, nameErr)
+			}
+			if _, duplicate := seen[toolName]; duplicate {
+				return nil, fmt.Errorf("%w: server %q returned duplicate tool %q", mcpserver.ErrInvalidRemoteToolCatalog, t.name, toolName)
 			}
 			if err := mcpserver.ValidateRemoteToolCount(len(seen) + 1); err != nil {
 				return nil, fmt.Errorf("mcp: validate tools from server %q: %w", t.name, err)
@@ -87,10 +91,10 @@ func (c *Connections) Tools(ctx context.Context, serverName string) ([]mcpserver
 					err,
 				)
 			}
-			seen[descriptor.Name] = struct{}{}
+			seen[toolName] = struct{}{}
 			out = append(out, mcpserver.AdvertisedTool{
 				Server:      t.name,
-				Name:        descriptor.Name,
+				Name:        toolName,
 				Description: descriptor.Description,
 				InputSchema: schema,
 			})
@@ -102,7 +106,7 @@ func (c *Connections) Tools(ctx context.Context, serverName string) ([]mcpserver
 // Detach removes a server from the live projection and starts retiring its
 // session. Session teardown remains owned by Connections and is joined by
 // Shutdown; it never delays the application control-plane mutation.
-func (c *Connections) Detach(name string) error {
+func (c *Connections) Detach(name mcpserver.ServerName) error {
 	if c == nil {
 		return ErrConnectionsUnavailable
 	}
@@ -115,11 +119,10 @@ func (c *Connections) Detach(name string) error {
 	if index := slices.IndexFunc(c.servers, func(configuredServer *server) bool { return configuredServer.name() == name }); index >= 0 {
 		target := c.servers[index]
 		detachedSession = target.session
-		if target.cancel != nil {
-			target.cancel()
-			target.cancel = nil
+		if target.attempt != nil {
+			target.attempt.cancel()
+			target.attempt = nil
 		}
-		target.generation++
 		// slices.Delete clears the vacated pointer, so the long-lived backing
 		// array cannot retain the removed session and its verified tool wrappers.
 		c.servers = slices.Delete(c.servers, index, index+1)
@@ -186,9 +189,9 @@ func (c *Connections) Shutdown(ctx context.Context) error {
 	if !c.closed {
 		c.closed = true
 		for _, configuredServer := range c.servers {
-			if configuredServer.cancel != nil {
-				configuredServer.cancel()
-				configuredServer.cancel = nil
+			if configuredServer.attempt != nil {
+				configuredServer.attempt.cancel()
+				configuredServer.attempt = nil
 			}
 		}
 		c.servers = nil
@@ -197,9 +200,9 @@ func (c *Connections) Shutdown(ctx context.Context) error {
 	if attempt != nil {
 		select {
 		case <-attempt.done:
-			// Every session close owned by the completed generation reached its
+			// Every session close owned by the completed shutdown attempt reached its
 			// terminal state. Its diagnostic was reported to callers that joined
-			// that generation; repeating Shutdown is an idempotent no-op.
+			// that attempt; repeating Shutdown is an idempotent no-op.
 			c.mu.Unlock()
 			return nil
 		default:

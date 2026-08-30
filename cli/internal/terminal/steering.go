@@ -50,7 +50,7 @@ func (a *app) steerRun(instruction string) error {
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	pending, err := steeringoutbox.Stage(
-		a.workbench, a.session.ID, request, sourceDraft, steeringReplayWindow(a.runtimeProfile),
+		a.workbench, a.session.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile),
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("save steer command journal: %w", err))
@@ -64,7 +64,7 @@ func (a *app) steerRun(instruction string) error {
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (steeringoutbox.Result, error) {
 			return steeringoutbox.Deliver(
-				ctx, a.runtime, pending, steeringReplayWindow(a.runtimeProfile), runtimeRecoveryBackoff,
+				ctx, a.runtime, pending, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
 		},
 		func(result steeringoutbox.Result, deliveryErr error) {
@@ -95,7 +95,7 @@ func (a *app) settleSteer(result steeringoutbox.Result, deliveryErr error, runID
 	case mutation.Rejected:
 		recovered, err := a.rejectSteer(result.Pending)
 		if err != nil {
-			a.restoreComposer(workbenchMergeSteerAttachments(a, result.Pending.Command.Message.Attachments))
+			a.restoreComposer(workbenchMergeSteerAttachments(a, result.Pending.Message().Attachments))
 			a.message("steer run failed; restored attachments were not saved: " + err.Error())
 			return
 		}
@@ -119,12 +119,12 @@ func (a *app) acknowledgeSteer(pending workbench.PendingSteer) error {
 		return fmt.Errorf("save current session draft: %w", err)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
-	if err := a.workbench.AcknowledgePendingSteer(a.session.ID, pending.Command.CommandID); err != nil {
+	if err := a.workbench.AcknowledgePendingSteer(a.session.ID, pending.CommandID()); err != nil {
 		a.history.Load(a.workbench.History())
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle accepted steer command: %w", err))
 		return fmt.Errorf("retire accepted steer command: %w", err)
 	}
-	a.history.Add(pending.Command.Message)
+	a.history.Add(pending.Message())
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	a.reportWorkbenchIssue(workbenchHistory, nil)
 	return nil
@@ -141,7 +141,7 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (agent.Message, error)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	recovered, err := a.workbench.RejectPendingSteer(
-		a.session.ID, pending.Command.CommandID, current,
+		a.session.ID, pending.CommandID(), current,
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle rejected steer command: %w", err))

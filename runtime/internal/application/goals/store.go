@@ -11,13 +11,22 @@ import (
 // workflows decide when those values are read, persisted, cleared, or
 // reconciled.
 type Store interface {
-	Get(ctx context.Context, sessionID string) (goal.Goal, bool, error)
-	// Save atomically assigns the next durable revision and returns the saved
-	// snapshot. Revision on g is ignored: expected is the sole CAS authority.
-	// A lost compare-and-swap returns the zero Goal with applied=false.
+	Get(ctx context.Context, sessionID string) (goal.Current, error)
+	// Save executes the domain-decided next durable revision. Expected is the
+	// sole CAS authority; persistence never assigns or rewrites Goal identity.
+	// A lost compare-and-swap returns applied=false.
 	Save(ctx context.Context, g goal.Goal, expected goal.Version) (saved goal.Goal, applied bool, err error)
 	ClearIf(ctx context.Context, sessionID string, expected goal.Version) (applied bool, err error)
 	List(ctx context.Context) ([]goal.Goal, error)
+}
+
+func loadGoal(ctx context.Context, store Store, sessionID string) (goal.Goal, bool, error) {
+	current, err := store.Get(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, false, err
+	}
+	value, exists := current.Goal()
+	return value, exists, nil
 }
 
 // RunRecorder records one terminal goal-owned Run exactly once. It joins the

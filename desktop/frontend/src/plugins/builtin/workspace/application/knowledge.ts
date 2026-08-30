@@ -1,5 +1,6 @@
 import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
+import { tupleKey } from "@/lib/tupleKey";
 import { queryClient } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import {
@@ -224,8 +225,7 @@ export function workspaceKnowledgeWasRetired(error: unknown): boolean {
 }
 
 function knowledgeIdentity(input: WorkspaceKnowledgeReadInput): string {
-  if (input.scope === "home") return "home";
-  return `${input.cwd ?? ""}\u0000${input.scope}`;
+  return tupleKey(input.scope, input.scope === "home" ? "" : (input.cwd ?? ""));
 }
 
 function knowledgeQuery(cwd: string | undefined): WorkspaceKnowledgeQuery {

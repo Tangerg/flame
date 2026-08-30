@@ -24,8 +24,8 @@ type scheduleBindingStub struct {
 
 func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options embedded.CallOptions) (*protocol.Page[protocol.Schedule], error) {
 	s.assertMeta(options.RequestMeta)
-	if query.Limit != schedulePageLimit {
-		s.t.Fatalf("schedule page limit = %d", query.Limit)
+	if query.Limit == nil || *query.Limit != schedulePageLimit {
+		s.t.Fatalf("schedule page limit = %v", query.Limit)
 	}
 	first := wireSchedule(s.now, "sch_1")
 	if query.Cursor == "" {

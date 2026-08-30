@@ -28,6 +28,7 @@ const (
 	maxManifestBytes      = 1 << 20
 	defaultCommandTimeout = 10 * time.Second
 	maxCommandTimeout     = 60 * time.Second
+	processWaitDelay      = 250 * time.Millisecond
 	maxManifestCommands   = 128
 	maxCommandAliases     = 16
 	maxCommandNameBytes   = 64
@@ -165,11 +166,51 @@ type manifestContributions struct {
 }
 
 type commandManifest struct {
-	Name           string   `json:"name"`
-	Title          string   `json:"title"`
-	Aliases        []string `json:"aliases"`
-	Arguments      string   `json:"arguments"`
-	TimeoutSeconds int      `json:"timeoutSeconds"`
+	Name      string                    `json:"name"`
+	Title     string                    `json:"title"`
+	Aliases   []string                  `json:"aliases"`
+	Arguments string                    `json:"arguments"`
+	Timeout   commandTimeoutDeclaration `json:"timeoutSeconds,omitzero"`
+}
+
+type commandTimeoutDeclaration struct {
+	present bool
+	seconds int
+}
+
+func (d commandTimeoutDeclaration) IsZero() bool { return !d.present }
+
+func (d commandTimeoutDeclaration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.seconds)
+}
+
+func (d *commandTimeoutDeclaration) UnmarshalJSON(encoded []byte) error {
+	if d == nil {
+		return errors.New("plugin command timeout destination is nil")
+	}
+	if string(encoded) == "null" {
+		return errors.New("plugin command timeout must be an integer")
+	}
+	var seconds int
+	if err := json.Unmarshal(encoded, &seconds); err != nil {
+		return fmt.Errorf("plugin command timeout: %w", err)
+	}
+	d.present, d.seconds = true, seconds
+	return nil
+}
+
+func (d commandTimeoutDeclaration) Resolve(name string) (time.Duration, error) {
+	if !d.present {
+		if d.seconds != 0 {
+			return 0, fmt.Errorf("command %q absent timeout carries seconds", name)
+		}
+		return defaultCommandTimeout, nil
+	}
+	timeout := time.Duration(d.seconds) * time.Second
+	if timeout <= 0 || timeout > maxCommandTimeout {
+		return 0, fmt.Errorf("command %q timeout must be between 1 and %.0f seconds", name, maxCommandTimeout.Seconds())
+	}
+	return timeout, nil
 }
 
 func readPlugin(directory string) (extensions.Plugin, bool, error) {
@@ -181,7 +222,7 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if err != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("open plugin manifest %q: %w", path, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("inspect plugin manifest %q: %w", path, err)
@@ -358,7 +399,7 @@ func compileCommand(
 	if err != nil {
 		return terminal.SlashCommand{}, err
 	}
-	timeout, err := commandTimeout(name, declared.TimeoutSeconds)
+	timeout, err := declared.Timeout.Resolve(name)
 	if err != nil {
 		return terminal.SlashCommand{}, err
 	}
@@ -425,17 +466,6 @@ func compileAliases(name string, declared []string, seen map[string]struct{}) ([
 		aliases[i] = alias
 	}
 	return aliases, nil
-}
-
-func commandTimeout(name string, seconds int) (time.Duration, error) {
-	timeout := defaultCommandTimeout
-	if seconds != 0 {
-		timeout = time.Duration(seconds) * time.Second
-	}
-	if timeout <= 0 || timeout > maxCommandTimeout {
-		return 0, fmt.Errorf("command %q timeout must be between 1 and %.0f seconds", name, maxCommandTimeout.Seconds())
-	}
-	return timeout, nil
 }
 
 var _ extensions.Source = DirectorySource{}

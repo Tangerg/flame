@@ -3,6 +3,7 @@ package runtimeembedded
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/embedded"
@@ -43,7 +44,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		},
 		list: func(_ context.Context, request protocol.ListRunsRequest, options embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			if request.SessionID != "ses_1" || len(request.Statuses) != 1 || request.Statuses[0] != protocol.RunStatusFinished ||
-				!request.IncludeDescendants || request.Cursor != "opaque" || request.Limit != maximumRunPageSize ||
+				!request.IncludeDescendants || request.Cursor != "opaque" || request.Limit == nil || *request.Limit != agent.MaximumPageRows ||
 				options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 				t.Fatalf("list = (%+v, %+v)", request, options)
 			}
@@ -64,11 +65,57 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "ses_1", Statuses: []agent.RunStatus{agent.RunStatusFinished},
-		IncludeDescendants: true, Cursor: "opaque", Limit: maximumRunPageSize + 20,
+		IncludeDescendants: true, Cursor: "opaque", PageSize: agent.MaximumPageSize(),
 	})
 	if err != nil || len(page.Items) != 1 || page.Items[0].ID != "run_1" || page.NextCursor != "next" {
 		t.Fatalf("ListRuns = %+v, %v", page, err)
 	}
+}
+
+func TestRunCatalogPublishesTheCLIPageDefaultAsPositiveWireIntent(t *testing.T) {
+	t.Parallel()
+	runtime := &Runtime{runCatalog: runCatalogBindingStub{list: func(
+		_ context.Context,
+		request protocol.ListRunsRequest,
+		_ embedded.CallOptions,
+	) (*protocol.Page[protocol.RunRef], error) {
+		if request.Limit == nil || *request.Limit != agent.DefaultPageRows {
+			t.Fatalf("default run page limit = %v, want %d", request.Limit, agent.DefaultPageRows)
+		}
+		return protocol.NewPage([]protocol.RunRef{}), nil
+	}}}
+
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{PageSize: agent.DefaultPageSize()}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRunCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T) {
+	t.Parallel()
+	oversized := strings.Repeat("x", maximumPaginationCursorBytes+1)
+	called := false
+	runtime := &Runtime{runCatalog: runCatalogBindingStub{list: func(
+		context.Context,
+		protocol.ListRunsRequest,
+		embedded.CallOptions,
+	) (*protocol.Page[protocol.RunRef], error) {
+		called = true
+		return protocol.NewPage([]protocol.RunRef{}), nil
+	}}}
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		PageSize: agent.DefaultPageSize(), Cursor: oversized,
+	}); err == nil || !strings.Contains(err.Error(), "transport limit") {
+		t.Fatalf("oversized request cursor error = %v", err)
+	}
+	if called {
+		t.Fatal("oversized request cursor reached the Runtime binding")
+	}
+
+	_, err := projectRunPage(protocol.NewPageWithCursor([]protocol.RunRef{}, oversized), agent.RunQuery{}, agent.DefaultPageRows)
+	if err == nil || !strings.Contains(err.Error(), "continuation cursor larger") {
+		t.Fatalf("oversized response cursor error = %v", err)
+	}
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T) {
@@ -80,7 +127,9 @@ func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T
 			return protocol.NewPage([]protocol.RunRef{}), nil
 		},
 	}}
-	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{IncludeDescendants: true}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
+	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("ListRuns error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if called {
@@ -104,7 +153,7 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 	} else {
 		requireRuntimeContractViolation(t, err)
 	}
-	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{}); err == nil {
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{PageSize: agent.DefaultPageSize()}); err == nil {
 		t.Fatal("ListRuns accepted nil response")
 	} else {
 		requireRuntimeContractViolation(t, err)
@@ -112,7 +161,9 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 	if _, err := runtime.GetRun(t.Context(), " "); err == nil {
 		t.Fatal("GetRun accepted empty id")
 	}
-	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{Statuses: []agent.RunStatus{"paused"}}); err == nil {
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{"paused"},
+	}); err == nil {
 		t.Fatal("ListRuns accepted invalid status")
 	}
 
@@ -128,7 +179,9 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 	if _, err := runtime.GetRun(t.Context(), "missing"); !errors.Is(err, agent.ErrRunNotFound) {
 		t.Fatalf("GetRun error = %v", err)
 	}
-	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{SessionID: "missing"}); !errors.Is(err, agent.ErrSessionNotFound) {
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		SessionID: "missing", PageSize: agent.DefaultPageSize(),
+	}); !errors.Is(err, agent.ErrSessionNotFound) {
 		t.Fatalf("ListRuns error = %v", err)
 	}
 }
@@ -153,9 +206,11 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 		query agent.RunQuery
 		value protocol.RunRef
 	}{
-		{name: "session", query: agent.RunQuery{SessionID: "ses_1"}, value: base},
-		{name: "status", query: agent.RunQuery{Statuses: []agent.RunStatus{agent.RunStatusRunning}}, value: base},
-		{name: "descendant", value: func() protocol.RunRef {
+		{name: "session", query: agent.RunQuery{SessionID: "ses_1", PageSize: agent.DefaultPageSize()}, value: base},
+		{name: "status", query: agent.RunQuery{PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{agent.RunStatusRunning}}, value: base},
+		{name: "descendant", query: agent.RunQuery{
+			IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
+		}, value: func() protocol.RunRef {
 			value := base
 			value.SessionID = "ses_1"
 			value.SpawnedByItemID, value.ParentRunID, value.RootRunID = "item_1", "run_root", "run_root"
@@ -191,7 +246,9 @@ func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 		},
 	}
 	runtime := &Runtime{runCatalog: stub, meta: requestMeta("test")}
-	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{Statuses: []agent.RunStatus{}}); err != nil {
+	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
+		PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{},
+	}); err != nil {
 		t.Fatalf("ListRuns: %v", err)
 	}
 }

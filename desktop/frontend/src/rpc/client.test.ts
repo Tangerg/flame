@@ -7,6 +7,7 @@ import type { Transport } from "./transport";
 import type { RpcMessage } from "./types";
 import { JSONRPC_VERSION, RPC_METHOD_NOT_FOUND } from "./types";
 import session from "@flame/runtime-contract/samples/session.json";
+import { MAXIMUM_RUN_EVENT_ID_CHARACTERS, RUN_EVENT_ID_PREFIX } from "@flame/runtime-contract/wire";
 
 const SOME_BUSINESS_CODE = -32002;
 
@@ -35,6 +36,31 @@ describe("RpcClient", () => {
         { lastEventId: "evt_cursor" },
       ),
     ).rejects.toThrow("A run command replay cursor requires an idempotency key");
+
+    expect(transport.outbox()).toHaveLength(0);
+    await client.close();
+  });
+
+  it("rejects malformed or oversized run replay cursors before send", async () => {
+    const transport = createMemoryTransport();
+    const client = createRpcClient(transport);
+
+    await expect(
+      client.call(
+        "runs.subscribe",
+        { runId: "run_01", segmentId: "seg_01" },
+        { lastEventId: "opaque" },
+      ),
+    ).rejects.toThrow("Run replay cursor has invalid event-id framing");
+    await expect(
+      client.call(
+        "runs.subscribe",
+        { runId: "run_01", segmentId: "seg_01" },
+        {
+          lastEventId: RUN_EVENT_ID_PREFIX + "x".repeat(MAXIMUM_RUN_EVENT_ID_CHARACTERS),
+        },
+      ),
+    ).rejects.toThrow(`Run replay cursor exceeds ${MAXIMUM_RUN_EVENT_ID_CHARACTERS} characters`);
 
     expect(transport.outbox()).toHaveLength(0);
     await client.close();

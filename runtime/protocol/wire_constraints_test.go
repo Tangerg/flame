@@ -2,11 +2,25 @@ package protocol
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 )
+
+func agentMemoryWireItemID(digit byte) string {
+	return agentmemory.ItemIDPrefix + strings.Repeat(
+		string(digit),
+		agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix),
+	)
+}
 
 func TestRuntimeEventWireConstraints(t *testing.T) {
 	t.Parallel()
@@ -74,6 +88,55 @@ func TestRuntimeEventWireConstraints(t *testing.T) {
 	}
 }
 
+func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
+	t.Parallel()
+
+	assertConstraintField(
+		t,
+		(RunProgress{}).ValidateWire(),
+		"RunProgress",
+		"step|usage|contextTokens|activity",
+	)
+	negativeStep, negativeContext := -1, int64(-1)
+	assertConstraintField(t, (RunProgress{Step: &negativeStep}).ValidateWire(), "RunProgress", "step")
+	assertConstraintField(t, (RunProgress{ContextTokens: &negativeContext}).ValidateWire(), "RunProgress", "contextTokens")
+
+	zeroStep, zeroContext := 0, int64(0)
+	for _, progress := range []RunProgress{
+		{Step: &zeroStep},
+		{Usage: &Usage{}},
+		{ContextTokens: &zeroContext},
+		{Activity: "Calling model"},
+	} {
+		if err := progress.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected valid progress %+v: %v", progress, err)
+		}
+	}
+}
+
+func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
+	t.Parallel()
+
+	unwritten := Plan{SessionID: "ses_1"}
+	if err := unwritten.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected unwritten Plan: %v", err)
+	}
+	assertConstraintField(t, (PlanState{}).ValidateWire(), "PlanState", "revision")
+
+	committed := Plan{
+		SessionID: "ses_1",
+		State: &PlanState{
+			Revision: 1, Steps: []PlanStep{}, UpdatedAt: time.Unix(1, 0).UTC(),
+		},
+	}
+	if err := ValidateWireTree(committed); err != nil {
+		t.Fatalf("ValidateWireTree rejected committed empty Plan: %v", err)
+	}
+
+	updatedWithoutState := StreamEvent{Type: StreamPlanUpdated, Plan: &unwritten}
+	assertConstraintField(t, updatedWithoutState.ValidateWire(), "StreamEvent", "plan.state")
+}
+
 func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
 	t.Parallel()
 
@@ -110,8 +173,7 @@ func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
 func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	t.Parallel()
 
-	const maximum = 4096
-	content := strings.Repeat("界", maximum)
+	content := strings.Repeat("界", agentmemory.MaxContentCharacters)
 	if err := (AgentMemoryAddRequest{
 		Scope: AgentMemoryScopeUser, Content: content,
 	}).ValidateWire(); err != nil {
@@ -127,26 +189,66 @@ func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	)
 	assertConstraintField(
 		t,
-		(AgentMemoryUpdateRequest{ID: "mem_1", Content: &content}).ValidateWire(),
+		(AgentMemoryUpdateRequest{ID: agentMemoryWireItemID('1'), Content: &content}).ValidateWire(),
 		"AgentMemoryUpdateRequest",
 		"content",
 	)
 	blank := ""
 	assertConstraintField(
 		t,
-		(AgentMemoryUpdateRequest{ID: "mem_1", Content: &blank}).ValidateWire(),
+		(AgentMemoryUpdateRequest{ID: agentMemoryWireItemID('1'), Content: &blank}).ValidateWire(),
 		"AgentMemoryUpdateRequest",
 		"content",
 	)
 	assertConstraintField(
 		t,
 		(AgentMemoryItem{
-			ID: "mem_1", Scope: AgentMemoryScopeUser, Content: content,
+			ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: content,
 			Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
 		}).ValidateWire(),
 		"AgentMemoryItem",
 		"content",
 	)
+}
+
+func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
+	t.Parallel()
+
+	validID := agentMemoryWireItemID('a')
+	pinned := true
+	valid := []struct {
+		name     string
+		shape    string
+		validate func(string) error
+	}{
+		{name: "delete request", shape: "AgentMemoryItemRequest", validate: func(id string) error {
+			return (AgentMemoryItemRequest{ID: id}).ValidateWire()
+		}},
+		{name: "review request", shape: "AgentMemoryReviewRequest", validate: func(id string) error {
+			return (AgentMemoryReviewRequest{ID: id, Decision: AgentMemoryReviewApprove}).ValidateWire()
+		}},
+		{name: "update request", shape: "AgentMemoryUpdateRequest", validate: func(id string) error {
+			return (AgentMemoryUpdateRequest{ID: id, Pinned: &pinned}).ValidateWire()
+		}},
+		{name: "item projection", shape: "AgentMemoryItem", validate: func(id string) error {
+			return (AgentMemoryItem{
+				ID: id, Scope: AgentMemoryScopeUser, Content: "fact",
+				Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
+			}).ValidateWire()
+		}},
+	}
+	for _, shape := range valid {
+		if err := shape.validate(validID); err != nil {
+			t.Errorf("%s rejected canonical identity: %v", shape.name, err)
+		}
+		for _, id := range []string{
+			"mem_1",
+			agentmemory.ItemIDPrefix + strings.Repeat("A", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
+			" " + validID,
+		} {
+			assertConstraintField(t, shape.validate(id), shape.shape, "id")
+		}
+	}
 }
 
 func TestOutputCollectionWireConstraints(t *testing.T) {
@@ -235,7 +337,10 @@ func TestUpdateScheduleWorkspaceModesAreUnambiguous(t *testing.T) {
 func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	t.Parallel()
 
+	seconds := 30
 	valid := []WireValidator{
+		MCPHandshakeTimeout{Type: MCPHandshakeUnbounded},
+		MCPHandshakeTimeout{Type: MCPHandshakeBounded, Seconds: &seconds},
 		MCPConnection{Type: MCPTransportStreamableHTTP, URL: "https://example.com/mcp"},
 		MCPConnection{Type: MCPTransportStdio, Command: "mcp-server"},
 		MCPConnectionInput{Type: MCPTransportStreamableHTTP, URL: "https://example.com/mcp"},
@@ -253,7 +358,8 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 
 	stdioCandidate := MCPServerCandidate{
 		Name: "filesystem", Enabled: false,
-		Connection: MCPConnectionInput{Type: MCPTransportStdio, Command: "mcp-server"},
+		Connection:       MCPConnectionInput{Type: MCPTransportStdio, Command: "mcp-server"},
+		HandshakeTimeout: MCPHandshakeTimeout{Type: MCPHandshakeUnbounded},
 	}
 	if err := ValidateWireTree(stdioCandidate); err != nil {
 		t.Fatalf("ValidateWireTree rejected a legal stdio candidate: %v", err)
@@ -270,6 +376,104 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	assertConstraintField(t,
 		(MCPAuthorizationChange{Type: MCPSecretSet}).ValidateWire(),
 		"MCPAuthorizationChange", "value",
+	)
+}
+
+func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
+	request := MCPAuthorizationAttemptRequest{AttemptID: identityfixture.MCPAuthorizationAttemptID}
+	if err := request.ValidateWire(); err != nil {
+		t.Fatalf("canonical request identity: %v", err)
+	}
+	request.AttemptID = "mcpauth_missing"
+	assertConstraintField(t, request.ValidateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
+
+	attempt := MCPAuthorizationAttempt{ID: identityfixture.MCPAuthorizationAttemptID, Server: "github"}
+	if err := attempt.ValidateWire(); err != nil {
+		t.Fatalf("canonical response identity: %v", err)
+	}
+	attempt.ID = "mcpauth_missing"
+	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "id")
+	attempt.ID = identityfixture.MCPAuthorizationAttemptID
+	attempt.Server = "GitHub"
+	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "server")
+}
+
+func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
+	maximum := strings.Repeat("a", mcpserver.MaximumServerNameCharacters)
+	valid := []WireValidator{
+		MCPServerRequest{Server: maximum},
+		CreateMCPAuthorizationAttemptRequest{Server: maximum},
+		MCPListToolsRequest{Server: maximum},
+		MCPServerCandidate{Name: maximum},
+		UpdateMCPServerRequest{Server: maximum},
+		MCPServer{Name: maximum},
+		MCPTool{Server: maximum, Name: "read"},
+	}
+	for _, value := range valid {
+		if err := value.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected canonical %T identity: %v", value, err)
+		}
+	}
+	if err := (MCPListToolsRequest{}).ValidateWire(); err != nil {
+		t.Fatalf("optional all-server filter rejected omission: %v", err)
+	}
+
+	invalid := strings.Repeat("a", mcpserver.MaximumServerNameCharacters+1)
+	tests := []struct {
+		shape string
+		field string
+		err   error
+	}{
+		{"MCPServerRequest", "server", (MCPServerRequest{Server: invalid}).ValidateWire()},
+		{"CreateMCPAuthorizationAttemptRequest", "server", (CreateMCPAuthorizationAttemptRequest{Server: "GitHub"}).ValidateWire()},
+		{"MCPListToolsRequest", "server", (MCPListToolsRequest{Server: "with space"}).ValidateWire()},
+		{"MCPServerCandidate", "name", (MCPServerCandidate{Name: "server/name"}).ValidateWire()},
+		{"UpdateMCPServerRequest", "server", (UpdateMCPServerRequest{Server: invalid}).ValidateWire()},
+		{"MCPServer", "name", (MCPServer{Name: "UPPER"}).ValidateWire()},
+		{"MCPTool", "server", (MCPTool{Server: " server"}).ValidateWire()},
+	}
+	for _, test := range tests {
+		assertConstraintField(t, test.err, test.shape, test.field)
+	}
+}
+
+func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
+	maximum := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters)
+	valid := []WireValidator{
+		MCPServerCandidate{Name: "files", DisabledTools: []string{maximum}},
+		MCPServer{Name: "files", AutoApproveTools: []string{maximum}},
+		MCPTool{Server: "files", Name: maximum},
+	}
+	for _, value := range valid {
+		if err := value.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected canonical %T remote tool identity: %v", value, err)
+		}
+	}
+
+	invalidUpdate := []string{"tool/name"}
+	tests := []struct {
+		shape string
+		field string
+		err   error
+	}{
+		{"MCPServerCandidate", "disabledTools[0]", (MCPServerCandidate{Name: "files", DisabledTools: []string{"with space"}}).ValidateWire()},
+		{"UpdateMCPServerRequest", "autoApproveTools[0]", (UpdateMCPServerRequest{Server: "files", AutoApproveTools: &invalidUpdate}).ValidateWire()},
+		{"MCPServer", "disabledTools[0]", (MCPServer{Name: "files", DisabledTools: []string{"工具"}}).ValidateWire()},
+		{"MCPTool", "name", (MCPTool{Server: "files", Name: strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)}).ValidateWire()},
+	}
+	for _, test := range tests {
+		assertConstraintField(t, test.err, test.shape, test.field)
+	}
+
+	tooMany := make([]string, mcpserver.MaxRemoteToolsPerServer+1)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("tool_%d", i)
+	}
+	assertConstraintField(
+		t,
+		(MCPServerCandidate{Name: "files", DisabledTools: tooMany}).ValidateWire(),
+		"MCPServerCandidate",
+		"disabledTools",
 	)
 }
 
@@ -472,6 +676,7 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	message := Item{
 		ID: "item_message", RunID: "run_1", Status: ItemStatusCompleted,
 		Type: ItemTypeUserMessage, CreatedAt: at,
+		Content: []ContentBlock{{Type: ContentBlockText, Text: "hello"}},
 	}
 	if err := message.ValidateWire(); err != nil {
 		t.Fatalf("message timing: %v", err)
@@ -482,6 +687,7 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	toolCall := Item{
 		ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning,
 		Type: ItemTypeToolCall, StartedAt: at,
+		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
 	if err := toolCall.ValidateWire(); err != nil {
 		t.Fatalf("tool-call timing: %v", err)
@@ -493,6 +699,7 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	toolCall = Item{
 		ID: "item_tool", RunID: "run_1", Status: ItemStatusIncomplete,
 		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: finishedAt,
+		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
 	if err := toolCall.ValidateWire(); err != nil {
 		t.Fatalf("terminal tool-call with unknown execution duration: %v", err)
@@ -504,14 +711,138 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	}
 
 	artifactToolCall := ArtifactItem{
-		ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning,
-		Type: ItemTypeToolCall, StartedAt: at,
+		ID: "item_tool", RunID: "run_1", Status: ItemStatusIncomplete,
+		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: finishedAt,
+		Tool: &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
 	if err := artifactToolCall.ValidateWire(); err != nil {
 		t.Fatalf("artifact tool-call timing: %v", err)
 	}
 	artifactToolCall.CreatedAt = at
 	assertConstraintField(t, artifactToolCall.ValidateWire(), "ArtifactItem", "createdAt")
+}
+
+func TestItemPayloadsMatchTheirLifecycleFacts(t *testing.T) {
+	t.Parallel()
+
+	at := time.Date(2026, 8, 29, 10, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		name  string
+		shape string
+		field string
+		value WireValidator
+	}{
+		{
+			name:  "runtime user message owns content",
+			shape: "Item", field: "content",
+			value: Item{ID: "item_user", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeUserMessage, CreatedAt: at},
+		}, {
+			name:  "runtime terminal agent message owns phase",
+			shape: "Item", field: "phase",
+			value: Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeAgentMessage, CreatedAt: at},
+		}, {
+			name:  "runtime terminal reasoning owns text",
+			shape: "Item", field: "text",
+			value: Item{ID: "item_reasoning", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeReasoning, CreatedAt: at},
+		}, {
+			name:  "runtime question owns its form",
+			shape: "Item", field: "question",
+			value: Item{ID: "item_question", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeQuestion, CreatedAt: at},
+		}, {
+			name:  "runtime tool call owns its invocation",
+			shape: "Item", field: "tool",
+			value: Item{ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeToolCall, StartedAt: at},
+		}, {
+			name:  "runtime compaction owns its summary",
+			shape: "Item", field: "summary",
+			value: Item{ID: "item_compaction", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeCompaction, CreatedAt: at},
+		}, {
+			name:  "artifact user message owns content",
+			shape: "ArtifactItem", field: "content",
+			value: ArtifactItem{ID: "item_user", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeUserMessage, CreatedAt: at},
+		}, {
+			name:  "artifact agent message owns phase",
+			shape: "ArtifactItem", field: "phase",
+			value: ArtifactItem{ID: "item_agent", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeAgentMessage, CreatedAt: at},
+		}, {
+			name:  "artifact reasoning owns text",
+			shape: "ArtifactItem", field: "text",
+			value: ArtifactItem{ID: "item_reasoning", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeReasoning, CreatedAt: at},
+		}, {
+			name:  "artifact question owns its form",
+			shape: "ArtifactItem", field: "question",
+			value: ArtifactItem{ID: "item_question", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeQuestion, CreatedAt: at},
+		}, {
+			name:  "artifact tool call owns its invocation",
+			shape: "ArtifactItem", field: "tool",
+			value: ArtifactItem{ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeToolCall, StartedAt: at},
+		}, {
+			name:  "artifact compaction owns its summary",
+			shape: "ArtifactItem", field: "summary",
+			value: ArtifactItem{ID: "item_compaction", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeCompaction, CreatedAt: at},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		})
+	}
+}
+
+func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
+	t.Parallel()
+
+	at := time.Date(2026, 8, 29, 11, 0, 0, 0, time.UTC)
+	content := []ContentBlock{{Type: ContentBlockText, Text: "hello"}}
+	for _, test := range []struct {
+		name  string
+		shape string
+		field string
+		value WireValidator
+	}{
+		{
+			name:  "user message has no running lifecycle",
+			shape: "Item", field: "status",
+			value: Item{ID: "item_user", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeUserMessage, CreatedAt: at, Content: content},
+		}, {
+			name:  "agent message has no incomplete durable state",
+			shape: "Item", field: "status",
+			value: Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeAgentMessage, CreatedAt: at, Phase: MessagePhaseCommentary, Content: content},
+		}, {
+			name:  "reasoning has no incomplete durable state",
+			shape: "Item", field: "status",
+			value: Item{ID: "item_reasoning", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeReasoning, CreatedAt: at, Text: "thinking"},
+		}, {
+			name:  "question is a complete prompt fact",
+			shape: "Item", field: "status",
+			value: Item{ID: "item_question", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeQuestion, CreatedAt: at, Question: &Question{Fields: []QuestionField{{Type: QuestionFieldText, Prompt: "Continue?"}}}},
+		}, {
+			name:  "compaction is a complete boundary",
+			shape: "Item", field: "status",
+			value: Item{ID: "item_compaction", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeCompaction, CreatedAt: at, Summary: "Earlier work"},
+		}, {
+			name:  "portable artifact has no running tool",
+			shape: "ArtifactItem", field: "status",
+			value: ArtifactItem{ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeToolCall, StartedAt: at, Tool: &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		})
+	}
+
+	startedUser := StreamEvent{
+		Type: StreamItemStarted,
+		Item: &Item{ID: "item_user", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeUserMessage, CreatedAt: at, Content: content},
+	}
+	assertConstraintField(t, startedUser.ValidateWire(), "StreamEvent", "item.type")
+
+	completedAnchor := StreamEvent{
+		Type: StreamItemCompleted,
+		Item: &Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeAgentMessage, CreatedAt: at},
+	}
+	assertConstraintField(t, completedAnchor.ValidateWire(), "StreamEvent", "item.status")
 }
 
 func TestPublishedLimitWireConstraints(t *testing.T) {
@@ -525,21 +856,44 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 	assertConstraintField(t, err, "SubscriptionLimits", "maxTopics")
 	assertConstraintField(t, err, "SubscriptionLimits", "maxWatches")
 
-	start := StartRunRequest{
-		Input:          []ContentBlock{{Type: ContentBlockText, Text: "go"}},
-		MaxTotalTokens: -1,
+	validRuntimeLimits := func(maxConcurrentRuns *int) RuntimeLimits {
+		return RuntimeLimits{
+			MaxConcurrentRuns: maxConcurrentRuns,
+			Idempotency:       IdempotencyLimits{RetentionSeconds: 1, Namespace: identityfixture.IdempotencyNamespace},
+			RunReplay: RunReplayLimits{
+				Scope: ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
+			},
+			MCPAuthorizationAttempts: MCPAuthorizationAttemptLimits{RetentionSeconds: 1},
+			RuntimeSubscription:      SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
+		}
 	}
-	assertConstraintField(t, start.ValidateWire(), "StartRunRequest", "maxTotalTokens")
+	if err := validRuntimeLimits(nil).ValidateWire(); err != nil {
+		t.Fatalf("unbounded Runtime limits: %v", err)
+	}
+	positiveConcurrentRuns := 1
+	if err := validRuntimeLimits(&positiveConcurrentRuns).ValidateWire(); err != nil {
+		t.Fatalf("bounded Runtime limits: %v", err)
+	}
+	invalidNamespace := validRuntimeLimits(nil)
+	invalidNamespace.Idempotency.Namespace = "idp_test"
+	assertConstraintField(t, invalidNamespace.Idempotency.ValidateWire(), "IdempotencyLimits", "namespace")
+	zeroConcurrentRuns := 0
+	assertConstraintField(t, validRuntimeLimits(&zeroConcurrentRuns).ValidateWire(), "RuntimeLimits", "maxConcurrentRuns")
 
-	run := RunLimits{MaxSteps: -1}
+	negativeTokens, negativeSteps, negativeBudget := int64(-1), -1, -0.01
+	start := StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Limits: &RunLimits{MaxTotalTokens: &negativeTokens}}
+	assertConstraintField(t, ValidateWireTree(start), "StartRunRequest", "limits.maxTotalTokens")
+
+	run := RunLimits{MaxSteps: &negativeSteps}
 	assertConstraintField(t, run.ValidateWire(), "RunLimits", "maxSteps")
 
-	artifact := ArtifactRunLimits{MaxBudgetUSD: -0.01}
+	artifact := ArtifactRunLimits{MaxBudgetUSD: &negativeBudget}
 	assertConstraintField(t, artifact.ValidateWire(), "ArtifactRunLimits", "maxBudgetUsd")
 
-	if err := (RunLimits{}).ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected uncapped RunLimits: %v", err)
-	}
+	assertConstraintField(t, (RunLimits{}).ValidateWire(), "RunLimits", "maxTotalTokens|maxSteps|maxBudgetUsd")
+	zeroContext := int64(0)
+	assertConstraintField(t, (ModelTokenLimits{}).ValidateWire(), "ModelTokenLimits", "contextWindow|maxInputTokens|maxOutputTokens")
+	assertConstraintField(t, (ModelTokenLimits{ContextWindow: &zeroContext}).ValidateWire(), "ModelTokenLimits", "contextWindow")
 }
 
 func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
@@ -565,6 +919,72 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 	assertConstraintField(t, update.ValidateWire(), "UpdateSessionRequest", "provider")
 }
 
+func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
+	t.Parallel()
+
+	valid := StartRunRequest{
+		SessionID:       "ses_1",
+		Input:           []ContentBlock{{Type: ContentBlockText, Text: "go"}},
+		Provider:        strings.Repeat("提", modelref.MaximumProviderIdentityCharacters),
+		Model:           strings.Repeat("模", modelref.MaximumModelIdentityCharacters),
+		ReasoningEffort: strings.Repeat("强", modelref.MaximumReasoningEffortCharacters),
+	}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("identity boundaries: %v", err)
+	}
+
+	for _, test := range []struct {
+		name  string
+		shape string
+		field string
+		value WireValidator
+	}{
+		{
+			name: "provider whitespace", shape: "StartRunRequest", field: "provider",
+			value: StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Provider: "open ai", Model: "gpt-5"},
+		},
+		{
+			name: "model too long", shape: "StartRunRequest", field: "model",
+			value: StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Provider: "openai", Model: strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1)},
+		},
+		{
+			name: "reasoning control", shape: "StartRunRequest", field: "reasoningEffort",
+			value: StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Provider: "openai", Model: "gpt-5", ReasoningEffort: "high\t"},
+		},
+		{
+			name: "provider result control", shape: "Provider", field: "id",
+			value: Provider{ID: "openai\x00shadow", CredentialRequirement: ProviderAPIKeyRequired},
+		},
+		{
+			name: "catalog model id too long", shape: "Model", field: "id",
+			value: Model{ID: strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1), Provider: "openai"},
+		},
+		{
+			name: "reasoning level whitespace", shape: "ModelCapabilities", field: "reasoningLevels[0]",
+			value: ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"very high"}},
+		},
+		{
+			name: "reasoning level too long", shape: "ModelCapabilities", field: "reasoningLevels[0]",
+			value: ModelCapabilities{Reasoning: true, ReasoningLevels: []string{strings.Repeat("e", modelref.MaximumReasoningEffortCharacters+1)}},
+		},
+		{
+			name: "usage model key whitespace", shape: "Usage", field: "byModel[\"bad model\"]",
+			value: Usage{ByModel: map[string]ModelUsage{"bad model": {}}},
+		},
+		{
+			name: "artifact model key too long", shape: "ArtifactUsage", field: "byModel[\"" + strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1) + "\"]",
+			value: ArtifactUsage{ByModel: map[string]ArtifactModelUsage{
+				strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1): {},
+			}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		})
+	}
+}
+
 func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -573,14 +993,30 @@ func TestRequestBoundsAreWireConstraints(t *testing.T) {
 		field string
 		value WireValidator
 	}{
-		{shape: "PageQuery", field: "limit", value: PageQuery{Limit: -1}},
-		{shape: "GetDiffRequest", field: "limit", value: GetDiffRequest{Limit: -1}},
-		{shape: "GetFileHeadRequest", field: "lines", value: GetFileHeadRequest{Path: "README.md", Lines: -1}},
-		{shape: "GrepRequest", field: "limit", value: GrepRequest{Query: "needle", Limit: -1}},
-		{shape: "ReadFileRequest", field: "startLine", value: ReadFileRequest{Path: "README.md", StartLine: -1}},
-		{shape: "ReadFileRequest", field: "endLine", value: ReadFileRequest{Path: "README.md", EndLine: -1}},
-		{shape: "ReadFileRequest", field: "maxBytes", value: ReadFileRequest{Path: "README.md", MaxBytes: -1}},
-		{shape: "UsageSummaryRequest", field: "sinceDays", value: UsageSummaryRequest{SinceDays: -1}},
+		{shape: "PageQuery", field: "limit", value: PageQuery{Limit: wireIntPointer(-1)}},
+		{shape: "PageQuery", field: "limit", value: PageQuery{Limit: wireIntPointer(0)}},
+		{shape: "PageQuery", field: "cursor", value: PageQuery{Cursor: strings.Repeat("x", MaximumPaginationCursorCharacters+1)}},
+		{shape: "ListSessionsRequest", field: "cursor", value: ListSessionsRequest{PageQuery: PageQuery{Cursor: strings.Repeat("x", MaximumPaginationCursorCharacters+1)}}},
+		{shape: "ListSessionsRequest", field: "search", value: ListSessionsRequest{Search: strings.Repeat("x", 1025)}},
+		{shape: "RunEvent", field: "eventId", value: RunEvent{RunID: "run_1", SegmentID: "seg_1", EventID: IDPrefixEvent + strings.Repeat("x", MaximumRunEventIDCharacters)}},
+		{shape: "RunEvent", field: "eventId", value: RunEvent{RunID: "run_1", SegmentID: "seg_1", EventID: "opaque"}},
+		{shape: "SubscribeRunResponse", field: "headEventId", value: SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1", HeadEventID: wireStringPointer(IDPrefixEvent + strings.Repeat("x", MaximumRunEventIDCharacters))}},
+		{shape: "SubscribeRunResponse", field: "headEventId", value: SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1", HeadEventID: wireStringPointer("opaque")}},
+		{shape: "GetDiffRequest", field: "limit", value: GetDiffRequest{Limit: wireIntPointer(-1)}},
+		{shape: "GetDiffRequest", field: "limit", value: GetDiffRequest{Limit: wireIntPointer(0)}},
+		{shape: "GetFileHeadRequest", field: "lines", value: GetFileHeadRequest{Path: "README.md", Lines: wireIntPointer(-1)}},
+		{shape: "GetFileHeadRequest", field: "lines", value: GetFileHeadRequest{Path: "README.md", Lines: wireIntPointer(0)}},
+		{shape: "GrepRequest", field: "limit", value: GrepRequest{Query: "needle", Limit: wireIntPointer(-1)}},
+		{shape: "GrepRequest", field: "limit", value: GrepRequest{Query: "needle", Limit: wireIntPointer(0)}},
+		{shape: "ReadFileRequest", field: "startLine", value: ReadFileRequest{Path: "README.md", StartLine: wireIntPointer(-1)}},
+		{shape: "ReadFileRequest", field: "startLine", value: ReadFileRequest{Path: "README.md", StartLine: wireIntPointer(0)}},
+		{shape: "ReadFileRequest", field: "endLine", value: ReadFileRequest{Path: "README.md", EndLine: wireIntPointer(-1)}},
+		{shape: "ReadFileRequest", field: "endLine", value: ReadFileRequest{Path: "README.md", EndLine: wireIntPointer(0)}},
+		{shape: "ReadFileRequest", field: "maxBytes", value: ReadFileRequest{Path: "README.md", MaxBytes: wireIntPointer(-1)}},
+		{shape: "ReadFileRequest", field: "maxBytes", value: ReadFileRequest{Path: "README.md", MaxBytes: wireIntPointer(0)}},
+		{shape: "UsageSummaryRequest", field: "sinceDays", value: UsageSummaryRequest{SinceDays: wireIntPointer(-1)}},
+		{shape: "UsageSummaryRequest", field: "sinceDays", value: UsageSummaryRequest{SinceDays: wireIntPointer(0)}},
+		{shape: "RuntimeEvent", field: "sequence", value: RuntimeEvent{Type: RuntimeSkillsChanged, Sequence: MaximumRuntimeEventSequence + 1}},
 	} {
 		t.Run(test.shape+"."+test.field, func(t *testing.T) {
 			t.Parallel()
@@ -589,12 +1025,161 @@ func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	}
 }
 
+func TestIntegerBoundsCompareWithoutFloat64Rounding(t *testing.T) {
+	t.Parallel()
+
+	// Adjacent uint64 values above JavaScript's exact-integer envelope collapse
+	// to the same float64. The shared primitive must still distinguish them so a
+	// future generated integer bound cannot become weaker than its schema.
+	const lower uint64 = 1 << 53
+	const upper uint64 = lower + 1
+	if err := maximumNumber("value", upper, lower); err.Field != "value" {
+		t.Fatalf("maximumNumber(%d, %d) = %+v, want violation", upper, lower, err)
+	}
+	if err := minimumNumber("value", lower, upper); err.Field != "value" {
+		t.Fatalf("minimumNumber(%d, %d) = %+v, want violation", lower, upper, err)
+	}
+}
+
+func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
+	t.Parallel()
+
+	for name, value := range map[string]WireValidator{
+		"Session": Session{
+			ID: "ses_1", Status: SessionStatusIdle, Provider: "provider", Model: "model",
+			Revision: MaximumExactJSONInteger,
+		},
+		"UpdateSessionRequest": UpdateSessionRequest{
+			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger,
+		},
+		"Schedule": Schedule{ID: "sch_1", Revision: MaximumExactJSONInteger},
+		"UpdateScheduleRequest": UpdateScheduleRequest{
+			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
+		},
+		"PlanState": PlanState{Revision: MaximumExactJSONInteger},
+	} {
+		if err := value.ValidateWire(); err != nil {
+			t.Fatalf("%s exact boundary: %v", name, err)
+		}
+	}
+
+	for _, test := range []struct {
+		name  string
+		field string
+		value WireValidator
+	}{
+		{name: "Session", field: "revision", value: Session{
+			Status: SessionStatusIdle, Provider: "provider", Model: "model",
+			Revision: MaximumExactJSONInteger + 1,
+		}},
+		{name: "UpdateSessionRequest", field: "expectedRevision", value: UpdateSessionRequest{
+			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger + 1,
+		}},
+		{name: "Schedule", field: "revision", value: Schedule{ID: "sch_1", Revision: MaximumExactJSONInteger + 1}},
+		{name: "UpdateScheduleRequest", field: "expectedRevision", value: UpdateScheduleRequest{
+			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger + 1,
+		}},
+		{name: "PlanState", field: "revision", value: PlanState{Revision: MaximumExactJSONInteger + 1}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			assertConstraintField(t, test.value.ValidateWire(), test.name, test.field)
+		})
+	}
+}
+
+func TestPageContinuationBoundIsPromotedToEveryPageInstantiation(t *testing.T) {
+	t.Parallel()
+
+	boundary := strings.Repeat("x", MaximumPaginationCursorCharacters)
+	if err := (Page[string]{PageContinuation: PageContinuation{NextCursor: boundary}}).ValidateWire(); err != nil {
+		t.Fatalf("boundary page continuation: %v", err)
+	}
+
+	oversized := boundary + "x"
+	for _, page := range []WireValidator{
+		Page[string]{PageContinuation: PageContinuation{NextCursor: oversized}},
+		Page[int]{PageContinuation: PageContinuation{NextCursor: oversized}},
+	} {
+		assertConstraintField(t, page.ValidateWire(), "PageContinuation", "nextCursor")
+	}
+}
+
+func TestRunEventIdentityFramingDistinguishesAbsentFromMalformed(t *testing.T) {
+	t.Parallel()
+
+	if err := (RunEvent{RunID: "run_1", SegmentID: "seg_1", EventID: IDPrefixEvent + "opaque"}).ValidateWire(); err != nil {
+		t.Fatalf("valid RunEvent identity: %v", err)
+	}
+	if err := (SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1"}).ValidateWire(); err != nil {
+		t.Fatalf("absent head event identity: %v", err)
+	}
+	assertConstraintField(t,
+		(SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1", HeadEventID: wireStringPointer("")}).ValidateWire(),
+		"SubscribeRunResponse", "headEventId",
+	)
+}
+
+func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		shape string
+		field string
+		value WireValidator
+	}{
+		{name: "session padding", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: " ses_1"}},
+		{name: "run whitespace", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: "run\n1"}},
+		{name: "segment padding", shape: "SubscribeRunRequest", field: "segmentId", value: SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1 "}},
+		{name: "session oversized", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: strings.Repeat("界", MaximumResourceIdentityCharacters+1)}},
+		{name: "run oversized", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: strings.Repeat("r", MaximumResourceIdentityCharacters+1)}},
+		{name: "schedule prefix", shape: "DeleteScheduleRequest", field: "id", value: DeleteScheduleRequest{ID: "other_1"}},
+		{name: "schedule whitespace", shape: "RunScheduleNowRequest", field: "id", value: RunScheduleNowRequest{ID: "sch_bad id"}},
+		{name: "schedule oversized", shape: "UpdateScheduleRequest", field: "id", value: UpdateScheduleRequest{ID: IDPrefixSchedule + strings.Repeat("x", MaximumResourceIdentityCharacters), ExpectedRevision: 1}},
+		{name: "schedule event prefix", shape: "RuntimeEvent", field: "scheduleIds[0]", value: RuntimeEvent{Type: RuntimeSchedulesChanged, Sequence: 1, ScheduleIDs: []string{"other_1"}}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		})
+	}
+	assertConstraintField(t, ValidateWireTree(ResumeRunRequest{
+		RunID: "run_1",
+		Responses: []InterruptResponse{{
+			ItemID: " item_1",
+			Response: InterruptResponseValue{
+				Type: InterruptResponseApproval, Decision: ApprovalApprove,
+			},
+		}},
+	}), "ResumeRunRequest", "responses[0].itemId")
+}
+
+func TestWorkspaceReadWindowAndDiffFormatRejectMeaninglessFieldCombinations(t *testing.T) {
+	t.Parallel()
+
+	assertConstraintField(t, (ReadFileRequest{
+		Path:    "README.md",
+		EndLine: wireIntPointer(4),
+	}).ValidateWire(), "ReadFileRequest", "startLine")
+	assertConstraintField(t, (GetDiffRequest{
+		Format: DiffFormatRaw,
+		Limit:  wireIntPointer(4),
+	}).ValidateWire(), "GetDiffRequest", "limit")
+}
+
+func wireIntPointer(value int) *int { return &value }
+
+func wireStringPointer(value string) *string { return &value }
+
 func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	temperature := 2.1
 	topP := 1.1
 	zeroTokens := int64(0)
+	zeroRuns := 0
+	zeroCost := 0.0
+	zeroSteps := 0
 	for _, test := range []struct {
 		field string
 		value GenerationParams
@@ -607,12 +1192,16 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 		assertConstraintField(t, test.value.ValidateWire(), "GenerationParams", test.field)
 	}
 
-	assertConstraintField(
-		t,
-		(GoalBudget{MaxCostUSD: -0.01}).ValidateWire(),
-		"GoalBudget",
-		"maxCostUsd",
-	)
+	assertConstraintField(t, (GoalBudget{}).ValidateWire(), "GoalBudget", "maxRuns|maxCostUsd|maxSteps")
+	assertConstraintField(t, (GoalBudget{MaxRuns: &zeroRuns}).ValidateWire(), "GoalBudget", "maxRuns")
+	assertConstraintField(t, (GoalBudget{MaxCostUSD: &zeroCost}).ValidateWire(), "GoalBudget", "maxCostUsd")
+	assertConstraintField(t, (GoalBudget{MaxSteps: &zeroSteps}).ValidateWire(), "GoalBudget", "maxSteps")
+	positiveFractionalCost := 0.25
+	if err := (GoalBudget{MaxCostUSD: &positiveFractionalCost}).ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a positive fractional cost: %v", err)
+	}
+	nonFiniteCost := math.Inf(1)
+	assertConstraintField(t, (GoalBudget{MaxCostUSD: &nonFiniteCost}).ValidateWire(), "GoalBudget", "maxCostUsd")
 }
 
 func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
@@ -651,11 +1240,10 @@ func TestOptionalMCPUpdateConstraintsPreserveAndValidatePresentValues(t *testing
 	}
 
 	negative := -1
-	request.TimeoutSeconds = &negative
-	assertConstraintField(t, request.ValidateWire(), "UpdateMCPServerRequest", "timeoutSeconds")
+	timeout := MCPHandshakeTimeout{Type: MCPHandshakeBounded, Seconds: &negative}
+	assertConstraintField(t, timeout.ValidateWire(), "MCPHandshakeTimeout", "seconds")
 
 	repeated := []string{"read", "read"}
-	request.TimeoutSeconds = nil
 	request.DisabledTools = &repeated
 	assertConstraintField(t, request.ValidateWire(), "UpdateMCPServerRequest", "disabledTools")
 }

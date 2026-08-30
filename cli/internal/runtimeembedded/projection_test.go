@@ -57,6 +57,52 @@ func TestProjectUnknownToolPreservesCompleteArgumentsAndResult(t *testing.T) {
 	}
 }
 
+func TestProjectToolMaterialIsolatesMalformedOptionalFields(t *testing.T) {
+	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
+		Name: "custom_tool",
+		Arguments: map[string]any{
+			"command": 7, "path": "input.txt", "description": false,
+		},
+		Result: map[string]any{
+			"output": []any{"not presentation text"}, "exitCode": "0",
+			"changes": []any{"invalid", map[string]any{"path": 4}, map[string]any{"path": "src/main.go"}},
+		},
+	}, status: protocol.ItemStatusCompleted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool.Command != "" || tool.Path != "input.txt" || tool.ExitCode != nil || tool.Output != "src/main.go" {
+		t.Fatalf("tool material = %+v", tool)
+	}
+	if !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":7`)) ||
+		!bytes.Contains(tool.ResultJSON, []byte(`"exitCode":"0"`)) {
+		t.Fatalf("complete wire material was not retained: arguments=%s result=%s", tool.ArgumentsJSON, tool.ResultJSON)
+	}
+}
+
+func TestToolKindUsesOnlyCurrentRuntimeVocabulary(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected agent.ToolKind
+	}{
+		{name: "shell", expected: agent.ToolShell},
+		{name: "apply_patch", expected: agent.ToolEdit},
+		{name: "read", expected: agent.ToolRead},
+		{name: "grep", expected: agent.ToolSearch},
+		{name: "web_search", expected: agent.ToolWeb},
+		{name: "delegate_task", expected: agent.ToolTask},
+		{name: "write_file", expected: agent.ToolUnknown},
+		{name: "edit_file", expected: agent.ToolUnknown},
+		{name: "read_file", expected: agent.ToolUnknown},
+		{name: "mcp_custom_tool", expected: agent.ToolUnknown},
+	}
+	for _, test := range tests {
+		if actual := kindForTool(test.name); actual != test.expected {
+			t.Errorf("kindForTool(%q) = %q, want %q", test.name, actual, test.expected)
+		}
+	}
+}
+
 func TestProjectAssistantMessagePreservesInlineImages(t *testing.T) {
 	data := []byte("generated image bytes")
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
@@ -92,13 +138,24 @@ func TestProjectItemPreservesReasoningAndCompactionMetadata(t *testing.T) {
 
 	compaction, err := projectItem(protocol.Item{
 		ID: "compaction", RunID: "run_1", Status: protocol.ItemStatusCompleted,
-		Type: protocol.ItemTypeCompaction, CreatedAt: created, DroppedMessages: 17,
+		Type: protocol.ItemTypeCompaction, CreatedAt: created,
+		Summary: "Retained architectural decisions", DroppedMessages: 17,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if compaction.DroppedMessages != 17 || !strings.Contains(compaction.Text, "17 messages") {
+	if compaction.DroppedMessages != 17 || compaction.Text != "Retained architectural decisions" {
 		t.Fatalf("compaction = %+v", compaction)
+	}
+}
+
+func TestProjectItemRejectsCompactionWithoutSummary(t *testing.T) {
+	_, err := projectItem(protocol.Item{
+		ID: "compaction", RunID: "run_1", Status: protocol.ItemStatusCompleted,
+		Type: protocol.ItemTypeCompaction, CreatedAt: time.Now(), DroppedMessages: 17,
+	})
+	if err == nil || !strings.Contains(err.Error(), "empty compaction summary") {
+		t.Fatalf("projectItem error = %v", err)
 	}
 }
 
@@ -322,7 +379,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 	at := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	project := func(eventID string, event protocol.StreamEvent) (agent.RunEvent, bool, error) {
 		return projectEvent(protocol.RunEvent{
-			EventID: eventID, RunID: "run_1", SegmentID: "segment_1", Timestamp: at, Event: event,
+			EventID: protocol.IDPrefixEvent + eventID, RunID: "run_1", SegmentID: "segment_1", Timestamp: at, Event: event,
 		})
 	}
 	progressEvent, include, err := project("progress", protocol.StreamEvent{
@@ -350,21 +407,16 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 		t.Fatalf("tool arguments = %#v, include %v, error %v", arguments.Event, include, err)
 	}
 
-	contentIndex := 2
 	content, include, err := project("content", protocol.StreamEvent{
 		Type: protocol.StreamItemDelta, ItemID: "answer",
-		Delta: &protocol.ItemDelta{Type: protocol.DeltaContent, Index: &contentIndex, Text: "third block"},
+		Delta: &protocol.ItemDelta{Type: protocol.DeltaContent, Text: "third block"},
 	})
 	if err != nil || !include {
 		t.Fatalf("content = (include %v, error %v)", include, err)
 	}
 	delta, ok := content.Event.(agent.BlockDelta)
-	if !ok || delta.BlockID != "answer" || delta.Text != "third block" || delta.ContentIndex == nil || *delta.ContentIndex != contentIndex {
+	if !ok || delta.BlockID != "answer" || delta.Text != "third block" {
 		t.Fatalf("content delta = %#v", content.Event)
-	}
-	*delta.ContentIndex = 9
-	if contentIndex != 2 {
-		t.Fatal("projected content index aliases the runtime event")
 	}
 
 	streamError := errors.New("broken stream")
@@ -417,12 +469,15 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 		{
 			name: "plan updated",
 			event: protocol.StreamEvent{Type: protocol.StreamPlanUpdated, Plan: &protocol.Plan{
-				SessionID: "session_1", Revision: 2, UpdatedAt: at,
-				Steps: []protocol.PlanStep{{ID: "step_1", Description: "verify", Status: protocol.PlanStatusInProgress}},
+				SessionID: "session_1", State: &protocol.PlanState{
+					Revision: 2, UpdatedAt: at,
+					Steps: []protocol.PlanStep{{ID: "step_1", Description: "verify", Status: protocol.PlanStatusInProgress}},
+				},
 			}},
 			assert: func(t *testing.T, event agent.RunEvent) {
 				plan, ok := event.Event.(agent.PlanChanged)
-				if !ok || plan.Revision != 2 || len(plan.Items) != 1 || plan.Items[0].Title != "verify" || plan.Items[0].Status != agent.PlanActive {
+				items := plan.Plan.Items()
+				if !ok || plan.Plan.Revision() != 2 || len(items) != 1 || items[0].Title != "verify" || items[0].Status != agent.PlanActive {
 					t.Fatalf("plan.updated = %#v", event.Event)
 				}
 			},
@@ -432,12 +487,12 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			event, included, err := projectEvent(protocol.RunEvent{
-				EventID: "event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: at, Event: test.event,
+				EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: at, Event: test.event,
 			})
 			if err != nil || !included {
 				t.Fatalf("projectEvent = (%+v, %v, %v)", event, included, err)
 			}
-			if event.EventID != "event_1" || event.RunID != "run_1" || event.SegmentID != "segment_1" || !event.At.Equal(at) {
+			if event.EventID != "evt_event_1" || event.RunID != "run_1" || event.SegmentID != "segment_1" || !event.At.Equal(at) {
 				t.Fatalf("event envelope = %+v", event)
 			}
 			test.assert(t, event)
@@ -450,13 +505,13 @@ func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 
 	for _, event := range []protocol.RunEvent{
 		{
-			EventID: "event_1", RunID: "run_1", SegmentID: "segment_1",
+			EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1",
 			Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
 				ID: "answer", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
 			}},
 		},
 		{
-			EventID: "event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: time.Now(),
+			EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: time.Now(),
 			Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
 				ID: "answer", RunID: "another_run", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
 			}},
@@ -495,13 +550,27 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectRun: %v", err)
 	}
-	want := agent.RunLineage{SpawnedByBlockID: "item_delegate", ParentRunID: "run_root", RootRunID: "run_root"}
+	want, err := agent.NewChildRunLineage("run_child", "item_delegate", "run_root", "run_root")
+	if err != nil {
+		t.Fatal(err)
+	}
 	wantContract := &agent.RunContract{
 		RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
 		InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},
 	}
 	if projected.Lineage != want || !projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.Contract, wantContract) {
 		t.Fatalf("projected run = %+v", projected)
+	}
+}
+
+func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
+	t.Parallel()
+	_, err := projectRun(protocol.RunRef{RunSummary: protocol.RunSummary{
+		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
+		ParentRunID: "run_root",
+	}})
+	if err == nil || !strings.Contains(err.Error(), "spawn block") {
+		t.Fatalf("projectRun partial lineage error = %v", err)
 	}
 }
 
@@ -540,6 +609,7 @@ func TestProjectSnapshotKeepsPendingApprovalIdenticalToToolItem(t *testing.T) {
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
 			Provider: testSessionProvider, Model: testSessionModel,
 			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+			Revision:  1,
 		},
 		runs: []protocol.RunRef{{
 			RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting},
@@ -552,7 +622,7 @@ func TestProjectSnapshotKeepsPendingApprovalIdenticalToToolItem(t *testing.T) {
 			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusRunning,
 			Type: protocol.ItemTypeToolCall, Tool: tool,
 		}},
-		plan: &protocol.Plan{SessionID: "ses_1", Steps: []protocol.PlanStep{}},
+		plan: &protocol.Plan{SessionID: "ses_1"},
 		interrupts: []protocol.PendingInterruptSet{{
 			RootRunID: "run_1", SessionID: "ses_1",
 			Interrupts: []protocol.Interrupt{{

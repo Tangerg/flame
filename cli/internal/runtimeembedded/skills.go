@@ -37,22 +37,13 @@ func (r *Runtime) Discover(ctx context.Context, workspace string) ([]skills.Disc
 	if err != nil {
 		return nil, err
 	}
-	projected := make([]skills.Discovered, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		skill := skills.Discovered{
+	return projectUniqueValues("list discovered skills", values, func(value protocol.Skill) skills.Discovered {
+		return skills.Discovered{
 			Name: value.Name, Description: value.Description, Scope: skills.Scope(value.Scope),
 		}
-		if err := skill.Validate(); err != nil {
-			return nil, runtimeContractViolation("list discovered skills item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[skill.Key()]; duplicate {
-			return nil, runtimeContractViolation("list discovered skills repeats %q", skill.Key())
-		}
-		seen[skill.Key()] = struct{}{}
-		projected = append(projected, skill)
-	}
-	return projected, nil
+	}, func(skill skills.Discovered) string {
+		return skill.Key()
+	})
 }
 
 func (r *Runtime) Managed(ctx context.Context) ([]skills.Managed, error) {
@@ -64,22 +55,13 @@ func (r *Runtime) Managed(ctx context.Context) ([]skills.Managed, error) {
 	if err != nil {
 		return nil, err
 	}
-	projected := make([]skills.Managed, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		skill := skills.Managed{
+	return projectUniqueValues("list managed skills", values, func(value protocol.ManagedSkill) skills.Managed {
+		return skills.Managed{
 			Name: value.Name, Description: value.Description, Lifecycle: skills.Lifecycle(value.Lifecycle),
 		}
-		if err := skill.Validate(); err != nil {
-			return nil, runtimeContractViolation("list managed skills item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[skill.Name]; duplicate {
-			return nil, runtimeContractViolation("list managed skills repeats %q", skill.Name)
-		}
-		seen[skill.Name] = struct{}{}
-		projected = append(projected, skill)
-	}
-	return projected, nil
+	}, func(skill skills.Managed) string {
+		return skill.Name
+	})
 }
 
 func (r *Runtime) Proposals(ctx context.Context, workspace string) ([]skills.Proposal, error) {

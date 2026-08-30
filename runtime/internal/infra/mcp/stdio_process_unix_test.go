@@ -38,15 +38,16 @@ func TestMain(m *testing.M) {
 func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	pidFile := t.TempDir() + "/descendant.pid"
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
+	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
-		Name:      "process-owner-test",
+		Name:      testMCPServerName("process-owner-test"),
 		Transport: TransportStdio,
 		Command:   os.Args[0],
 		Env: withStdioProcessEnv(os.Environ(), map[string]string{
 			stdioProcessRoleEnv: "server",
 			stdioDescendantPID:  pidFile,
 		}),
-		Timeout: 2 * time.Second,
+		HandshakeTimeout: &timeout,
 	})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)

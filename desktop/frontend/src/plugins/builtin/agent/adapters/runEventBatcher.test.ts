@@ -48,14 +48,19 @@ function frameScheduler() {
   };
 }
 
+const collectBatch = (target: RunEvent[][]) => (batch: RunEvent[]) => {
+  target.push(batch);
+  return true;
+};
+
 describe("createRunEventBatcher", () => {
   it("coalesces queued events into one frame and reports finished runs", () => {
     const applied: RunEvent[][] = [];
     const onRunFinished = vi.fn();
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
-      readEpoch: () => 0,
-      apply: (batch) => applied.push(batch),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
       onRunFinished,
       scheduleFrame: frames.scheduleFrame,
       cancelFrame: frames.cancelFrame,
@@ -83,8 +88,8 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
-      readEpoch: () => epoch,
-      apply: (batch) => applied.push(batch),
+      readEpoch: () => BigInt(epoch),
+      apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
       cancelFrame: frames.cancelFrame,
     });
@@ -102,12 +107,50 @@ describe("createRunEventBatcher", () => {
     expect(applied[0]![0]!.event.type).toBe("segment.finished");
   });
 
+  it("does not publish a cursor or terminal effect for a rejected fold", () => {
+    const frames = frameScheduler();
+    const onApplied = vi.fn();
+    const onRunFinished = vi.fn();
+    const batcher = createRunEventBatcher({
+      readEpoch: () => 0n,
+      apply: () => false,
+      onApplied,
+      onRunFinished,
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runFinished());
+    frames.flushNext();
+
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(onRunFinished).not.toHaveBeenCalled();
+  });
+
+  it("bounds a hidden-window queue when animation frames do not run", () => {
+    const applied: RunEvent[][] = [];
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+      maximumQueuedEvents: 2,
+    });
+
+    for (let event = 0; event < 5; event++) batcher.enqueue(runStarted());
+
+    expect(applied.map((batch) => batch.length)).toEqual([2, 2]);
+    batcher.flush();
+    expect(applied.map((batch) => batch.length)).toEqual([2, 2, 1]);
+  });
+
   it("can land the queued tail synchronously before a durable snapshot", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
-      readEpoch: () => 0,
-      apply: (batch) => applied.push(batch),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
       cancelFrame: frames.cancelFrame,
     });
@@ -133,8 +176,8 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
-      readEpoch: () => 0,
-      apply: (batch) => applied.push(batch),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
       cancelFrame: frames.cancelFrame,
     });

@@ -16,7 +16,7 @@ const model = vi.hoisted(() => ({
     objective: "Ship alpha",
     status: "active",
     stop: null,
-    budget: { maxRuns: 10, maxCostUsd: 0, maxSteps: 0 },
+    budget: { maxRuns: 10 },
     used: { runs: 1, costUsd: 0, steps: 2 },
     provider: "openai",
     model: "gpt-5",
@@ -58,7 +58,7 @@ describe("Goal status surface", () => {
       objective: "Ship alpha",
       status: "active",
       stop: null,
-      budget: { maxRuns: 10, maxCostUsd: 0, maxSteps: 0 },
+      budget: { maxRuns: 10 },
       used: { runs: 1, costUsd: 0, steps: 2 },
       provider: "openai",
       model: "gpt-5",
@@ -81,7 +81,7 @@ describe("Goal status surface", () => {
     expect(model.resumeGoal).not.toHaveBeenCalled();
   });
 
-  it("offers Codex Goal management actions in clear, lifecycle, edit order", () => {
+  it("offers Flame Goal management actions in clear, lifecycle, edit order", () => {
     const { container } = render(<GoalStatusSurface />);
 
     const row = container.querySelector<HTMLElement>('[data-slot="goal-status-row"]');

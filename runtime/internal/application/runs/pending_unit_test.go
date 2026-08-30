@@ -25,7 +25,7 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 		}
 	}
 	claim := ResumeClaimCommit{
-		CommitID: "run_commit_approval", Expected: pending, Answers: answers,
+		CommitID: testCommitID("run_commit_approval"), Expected: pending, Answers: answers,
 		ClaimedAt: pending.CreatedAt.Add(time.Second),
 	}
 	if err := claim.Validate(); err != nil {
@@ -93,35 +93,35 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			mutate: func(p *Pending) {
 				p.ExecutorID = " turn_1"
 			},
-			want: "pending executor ID has surrounding whitespace",
+			want: "executor identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "continuation identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Continuations[0].MemberID += " "
 			},
-			want: "member id has surrounding whitespace",
+			want: "executor member identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "input request identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Bindings[0].RequestID += " "
 			},
-			want: "input request id has surrounding whitespace",
+			want: "executor request identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "approval Tool call identity is missing",
 			mutate: func(p *Pending) {
 				p.Bindings[0].ToolCallID = ""
 			},
-			want: "approval Tool call id is required",
+			want: "executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "approval Tool call identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Bindings[0].ToolCallID += " "
 			},
-			want: "approval Tool call id has surrounding whitespace",
+			want: "executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "approval Tool call is also drained",
@@ -148,7 +148,7 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			mutate: func(p *Pending) {
 				p.Interrupts[0].ItemID += " "
 			},
-			want: "item id has surrounding whitespace",
+			want: "item identity contains whitespace or a non-printing character",
 		},
 		{
 			name: "interrupt item occurrence is missing",

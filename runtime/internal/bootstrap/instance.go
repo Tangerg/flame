@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/Tangerg/flame/runtime/internal/adapter/modelclient"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runtimeownership"
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -44,10 +45,10 @@ type Instance struct {
 	closeMu  sync.Mutex
 	stopping bool
 	closed   bool
-	// shutdownTimeout bounds each Close caller's wait. Zero uses the process
-	// default; tests may shorten it without changing the owner generation.
-	shutdownTimeout time.Duration
-	shutdown        *instanceShutdownAttempt
+	// shutdownWait bounds each Close caller without changing the owner
+	// generation. It is concrete at construction rather than defaulted by zero.
+	shutdownWait shutdownWaitPolicy
+	shutdown     *instanceShutdownAttempt
 }
 
 type instanceShutdownAttempt struct {
@@ -55,8 +56,6 @@ type instanceShutdownAttempt struct {
 	err       error
 	completed bool
 }
-
-const instanceShutdownTimeout = 10 * time.Second
 
 // OpenInstance serializes canonical data-directory setup, opens persistence,
 // then releases that setup boundary before assembling and recovering one Host.
@@ -89,11 +88,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	client, err := DefaultClient(settings)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
-
 	stores, err := persistence.Open(ctx, persistence.Config{
 		DataDirectory:        cfg.DataDirectory,
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
@@ -101,7 +95,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	idempotencyNamespace := stores.IdempotencyNamespace
+	idempotencyNamespace := stores.IdempotencyNamespace.String()
 	storesOwned := true
 	defer func() {
 		if storesOwned {
@@ -109,10 +103,14 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 
-	providers := ProviderRegistry(stores.Providers)
+	providers, err := ProviderRegistry(stores.Providers)
+	if err != nil {
+		return nil, config.Settings{}, err
+	}
 	if err = SeedConfiguredProvider(ctx, providers, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
+	chatResolver := modelclient.NewChatResolver(providers)
 	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -129,7 +127,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	setupOwned = false
 
 	hookResolver := NewHookResolver(cfg.UserHome, stores.Trust)
-	assemblyConfig := ComposeConfig(settings, stores, client, providers, hookResolver, buildID)
+	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, hookResolver, buildID)
 	ownership, err := runtimeownership.New(stores.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err
@@ -165,9 +163,9 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 
 	serverInfo := cfg.ServerInfo
-	serverInfo.InstanceID = "runtime_" + uuid.NewString()
+	serverInfo.InstanceID = runtimeinstanceidentity.New().String()
 	if serverInfo.Name == "" {
-		serverInfo.Name = "runtime"
+		serverInfo.Name = productidentity.Name
 	}
 	if serverInfo.Version == "" {
 		serverInfo.Version = "dev"
@@ -189,7 +187,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		stopRuntime()
 		delivery.beginShutdown()
-		rollbackCtx, cancelRollback := context.WithTimeout(context.Background(), instanceShutdownTimeout)
+		rollbackCtx, cancelRollback := context.WithTimeout(context.Background(), defaultShutdownWaitTimeout)
 		defer cancelRollback()
 		return nil, config.Settings{}, errors.Join(err, delivery.awaitShutdown(rollbackCtx))
 	}
@@ -203,6 +201,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		schedulerDone:       workerJoins.scheduler,
 		databaseChangesDone: databaseChangesDone,
 		recoveryDone:        workerJoins.recovery,
+		shutdownWait:        defaultShutdownWaitPolicy(),
 	}
 	runtimeOwned = false
 	hostOwned = false
@@ -233,6 +232,11 @@ func (i InstanceConfig) validate() error {
 			return errors.New("runtime: config directories must be non-empty absolute paths")
 		}
 	}
+	if i.BuildID != "" {
+		if _, err := buildidentity.Parse(i.BuildID); err != nil {
+			return fmt.Errorf("runtime: BuildID: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -260,6 +264,10 @@ func (i *Instance) Close() error {
 	if i == nil {
 		return nil
 	}
+	timeout, err := shutdownWaitTimeout(i.shutdownWait)
+	if err != nil {
+		return err
+	}
 	i.closeMu.Lock()
 	if i.closed {
 		i.closeMu.Unlock()
@@ -275,11 +283,7 @@ func (i *Instance) Close() error {
 		}
 		go runInstanceShutdown(ownerCtx, i, attempt)
 	}
-	timeout := i.shutdownTimeout
 	i.closeMu.Unlock()
-	if timeout <= 0 {
-		timeout = instanceShutdownTimeout
-	}
 	waitContext, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := completion.Wait(waitContext, attempt.done); err != nil {

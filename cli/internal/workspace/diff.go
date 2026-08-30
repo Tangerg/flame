@@ -88,7 +88,48 @@ type DiffRequest struct {
 	Path      string
 	Mode      DiffMode
 	Format    DiffFormat
-	Limit     int
+	RowLimit  DiffRowLimit
+}
+
+// DiffRowLimit is the optional positive row budget for a structured diff. Its
+// zero value is invalid; callers explicitly choose an absent default or a
+// present positive budget.
+type DiffRowLimit struct {
+	kind requestLimitKind
+	rows int
+}
+
+func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{kind: defaultRequestLimit} }
+
+func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
+	if rows <= 0 {
+		return DiffRowLimit{}, errors.New("workspace diff row limit must be positive")
+	}
+	return DiffRowLimit{kind: explicitRequestLimit, rows: rows}, nil
+}
+
+func (l DiffRowLimit) Rows() (int, bool, error) {
+	if err := l.Validate(); err != nil {
+		return 0, false, err
+	}
+	return l.rows, l.kind == explicitRequestLimit, nil
+}
+
+func (l DiffRowLimit) Validate() error {
+	switch l.kind {
+	case explicitRequestLimit:
+		if l.rows <= 0 {
+			return errors.New("workspace diff row limit must be positive")
+		}
+		return nil
+	case defaultRequestLimit:
+		if l.rows != 0 {
+			return errors.New("workspace diff default row limit carries a value")
+		}
+		return nil
+	default:
+		return errors.New("workspace diff row limit kind is unknown")
+	}
 }
 
 func (d DiffRequest) Validate() error {
@@ -101,10 +142,11 @@ func (d DiffRequest) Validate() error {
 	if d.Format != "" && d.Format != DiffFormatRows && d.Format != DiffFormatRaw {
 		return fmt.Errorf("workspace diff format %q is invalid", d.Format)
 	}
-	if d.Limit < 0 {
-		return errors.New("workspace diff limit is negative")
+	if err := d.RowLimit.Validate(); err != nil {
+		return err
 	}
-	if d.Limit > 0 && d.Format != DiffFormatRows {
+	_, explicit, _ := d.RowLimit.Rows()
+	if explicit && d.Format != DiffFormatRows {
 		return errors.New("workspace diff limit requires structured rows")
 	}
 	return nil

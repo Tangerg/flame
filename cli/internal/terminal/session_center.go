@@ -139,7 +139,7 @@ func (s *sessionCenterPane) drawPreview(view grid.View) {
 	}
 	view.Text(0, 0, text.Truncate(displayTitle(session), width, s.glyphs.Ellipsis), s.theme.Strong)
 	view.Text(0, 1, text.Truncate(displayWorkspace(session.Workspace), width, s.glyphs.Ellipsis), s.theme.Context)
-	detail := strings.TrimSpace(session.Model)
+	detail := session.Model
 	if detail != "" {
 		detail += " · "
 	}

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -85,10 +85,6 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	client *chatclient.Client,
 	maxModelCalls uint32,
 ) (*interactionDeploymentBuilder, error) {
-	delegationConfig, err := effectiveDelegation(i.config.Delegation)
-	if err != nil {
-		return nil, err
-	}
 	instructions, err := interactionInstructionContext(start.WorkingContext)
 	if err != nil {
 		return nil, err
@@ -99,7 +95,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	}
 	builder := &interactionDeploymentBuilder{
 		executor: i, session: session, start: start, client: client,
-		maxModelCalls: maxModelCalls, delegation: delegationConfig,
+		maxModelCalls: maxModelCalls, delegation: i.policy.delegation,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
 			byRef:             make(map[agent.DeploymentRef]agent.Deployment),
@@ -109,8 +105,8 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		},
 	}
 	if start.ChildRunAdmissionEnabled {
-		builder.maxDepth = delegationConfig.treeLimits.MaxDepth
-		builder.deployments.treeLimits = delegationConfig.treeLimits
+		builder.maxDepth = builder.delegation.treeLimits.MaxDepth
+		builder.deployments.treeLimits = builder.delegation.treeLimits
 	}
 	if builder.maxDepth > 0 {
 		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated)
@@ -157,7 +153,13 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction definition at depth %d: %w", depth, err)
 	}
-	visible, deferred := wrapInteractionTools(manifest, i.session, i.executor.config, i.start)
+	visible, deferred := wrapInteractionTools(
+		manifest,
+		i.session,
+		i.executor.config,
+		i.executor.policy.toolResultOffload,
+		i.start,
+	)
 	var contextReducer interaction.ModelContextReducer
 	if i.executor.config.ModelContextCompactor != nil {
 		var counter ModelContextInputTokenCounter
@@ -175,7 +177,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	}
 	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{
 		Client: i.client, Tools: visible, DeferredTools: deferred,
-		MaxConcurrentToolCalls: i.executor.config.MaxConcurrentToolCalls,
+		MaxConcurrentToolCalls: i.executor.policy.maxConcurrentToolCalls,
 		StreamModelResponses:   i.executor.config.StreamModelResponses,
 		ModelContextReducer:    contextReducer,
 	})
@@ -200,7 +202,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	deployment, err := agent.NewDeployment(agent.DeploymentConfig{
 		Definition:           deploymentDefinition,
 		Dispatcher:           &interactionDispatcher{inner: dispatcher, session: i.session},
-		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.config.ImplementationIdentity)),
+		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
 		ConfigurationDigest:  agent.ComputeDigest(configuration),
 	})
 	if err != nil {

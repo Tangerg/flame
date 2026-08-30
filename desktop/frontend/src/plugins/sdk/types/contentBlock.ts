@@ -55,7 +55,7 @@ interface ContentBlockMap {
     answered?: boolean;
     answers?: string[][];
   };
-  compaction: { kind: "compaction"; summary?: string; droppedMessages?: number };
+  compaction: { kind: "compaction"; summary: string; droppedMessages?: number };
 }
 
 export type ContentBlock = ContentBlockMap[keyof ContentBlockMap];

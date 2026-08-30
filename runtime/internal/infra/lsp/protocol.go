@@ -101,10 +101,10 @@ type Symbol struct {
 // --- params (unexported: only marshaled outward) ---
 
 type initializeParams struct {
-	ProcessID        int               `json:"processId"`
-	RootURI          string            `json:"rootUri"`
-	Capabilities     map[string]any    `json:"capabilities"`
-	WorkspaceFolders []workspaceFolder `json:"workspaceFolders,omitempty"`
+	ProcessID        int                `json:"processId"`
+	RootURI          string             `json:"rootUri"`
+	Capabilities     clientCapabilities `json:"capabilities"`
+	WorkspaceFolders []workspaceFolder  `json:"workspaceFolders,omitempty"`
 }
 
 type workspaceFolder struct {
@@ -297,27 +297,65 @@ type documentSymbol struct {
 	Children       []documentSymbol `json:"children"`
 }
 
-// defaultCapabilities is the minimal client capability set. The capabilities
-// object is a sprawling optional bag, so a map is the honest, low-ceremony
-// shape here — we declare only what we use. hierarchicalDocumentSymbolSupport
-// is false so documentSymbol comes back as flat SymbolInformation (each
-// carries a Location, which is all the tool layer formats).
-func defaultCapabilities() map[string]any {
-	return map[string]any{
-		"textDocument": map[string]any{
-			"synchronization":    map[string]any{"dynamicRegistration": false, "didSave": false},
-			"definition":         map[string]any{},
-			"references":         map[string]any{},
-			"implementation":     map[string]any{},
-			"hover":              map[string]any{"contentFormat": []string{"markdown", "plaintext"}},
-			"documentSymbol":     map[string]any{"hierarchicalDocumentSymbolSupport": false},
-			"callHierarchy":      map[string]any{},
-			"publishDiagnostics": map[string]any{},
+type markupKind string
+
+const (
+	markupMarkdown  markupKind = "markdown"
+	markupPlaintext markupKind = "plaintext"
+)
+
+// supportedCapability emits an explicit empty object for one LSP capability
+// whose optional subfeatures Flame does not advertise.
+type supportedCapability struct{}
+
+type clientCapabilities struct {
+	TextDocument textDocumentClientCapabilities `json:"textDocument"`
+	Workspace    workspaceClientCapabilities    `json:"workspace"`
+}
+
+type textDocumentClientCapabilities struct {
+	Synchronization    synchronizationClientCapabilities `json:"synchronization"`
+	Definition         supportedCapability               `json:"definition"`
+	References         supportedCapability               `json:"references"`
+	Implementation     supportedCapability               `json:"implementation"`
+	Hover              hoverClientCapabilities           `json:"hover"`
+	DocumentSymbol     documentSymbolClientCapabilities  `json:"documentSymbol"`
+	CallHierarchy      supportedCapability               `json:"callHierarchy"`
+	PublishDiagnostics supportedCapability               `json:"publishDiagnostics"`
+}
+
+type synchronizationClientCapabilities struct {
+	DynamicRegistration bool `json:"dynamicRegistration"`
+	DidSave             bool `json:"didSave"`
+}
+
+type hoverClientCapabilities struct {
+	ContentFormat []markupKind `json:"contentFormat"`
+}
+
+type documentSymbolClientCapabilities struct {
+	HierarchicalDocumentSymbolSupport bool `json:"hierarchicalDocumentSymbolSupport"`
+}
+
+type workspaceClientCapabilities struct {
+	Symbol           supportedCapability `json:"symbol"`
+	Configuration    bool                `json:"configuration"`
+	WorkspaceFolders bool                `json:"workspaceFolders"`
+}
+
+// defaultCapabilities is the exact minimal capability set Flame advertises.
+// HierarchicalDocumentSymbolSupport stays false so documentSymbol comes back
+// as flat SymbolInformation carrying the Location consumed by the tool layer.
+func defaultCapabilities() clientCapabilities {
+	return clientCapabilities{
+		TextDocument: textDocumentClientCapabilities{
+			Hover: hoverClientCapabilities{
+				ContentFormat: []markupKind{markupMarkdown, markupPlaintext},
+			},
 		},
-		"workspace": map[string]any{
-			"symbol":           map[string]any{},
-			"configuration":    true,
-			"workspaceFolders": true,
+		Workspace: workspaceClientCapabilities{
+			Configuration:    true,
+			WorkspaceFolders: true,
 		},
 	}
 }

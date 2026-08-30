@@ -56,7 +56,11 @@ func (s *Server) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, budgetFromWire(in.Budget), capabilities)
+	budget, err := budgetFromWire(in.Budget)
+	if err != nil {
+		return nil, mapGoalErr(err, "goals.start")
+	}
+	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, budget, capabilities)
 	if err != nil {
 		return nil, mapGoalErr(err, "goals.start")
 	}
@@ -119,6 +123,8 @@ func mapGoalErr(err error, method string) error {
 		return fmt.Errorf("%w: this goal is finishing and cannot be edited", protocol.ErrInvalidParams)
 	case modelref.IsInvalid(err):
 		return protocol.ErrInvalidParams
+	case errors.Is(err, goal.ErrInvalid):
+		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	case errors.Is(err, modelref.ErrUnsupported):
 		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	default:
@@ -126,31 +132,54 @@ func mapGoalErr(err error, method string) error {
 	}
 }
 
-func budgetFromWire(b protocol.GoalBudget) goal.Budget {
-	return goal.Budget{MaxRuns: b.MaxRuns, MaxCostUSD: b.MaxCostUSD, MaxSteps: b.MaxSteps}
+func budgetFromWire(b *protocol.GoalBudget) (goal.Budget, error) {
+	if b == nil {
+		return goal.UnlimitedBudget(), nil
+	}
+	return goal.NewBudget(goal.BudgetLimits{
+		MaxRuns: b.MaxRuns, MaxCostUSD: b.MaxCostUSD, MaxSteps: b.MaxSteps,
+	})
+}
+
+func presentGoalBudget(budget goal.Budget) *protocol.GoalBudget {
+	if budget.Unlimited() {
+		return nil
+	}
+	wire := &protocol.GoalBudget{}
+	if value, limited := budget.MaxRuns(); limited {
+		wire.MaxRuns = &value
+	}
+	if value, limited := budget.MaxCostUSD(); limited {
+		wire.MaxCostUSD = &value
+	}
+	if value, limited := budget.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	return wire
 }
 
 func presentGoal(g goal.Goal) (*protocol.Goal, error) {
-	status, ok := presentGoalStatus(g.Status)
+	status, ok := presentGoalStatus(g.Status())
 	if !ok {
-		return nil, fmt.Errorf("goals: unsupported status %q", g.Status)
+		return nil, fmt.Errorf("goals: unsupported status %q", g.Status())
 	}
-	reason, err := presentGoalReason(g.Reason)
+	reason, err := presentGoalReason(g.Reason())
 	if err != nil {
 		return nil, err
 	}
+	selection, budget, used := g.ModelSelection(), g.Budget(), g.Used()
 	w := protocol.Goal{
-		SessionID:       g.SessionID,
-		Objective:       g.Objective,
+		SessionID:       g.SessionID(),
+		Objective:       g.Objective(),
 		Status:          status,
 		Reason:          reason,
-		Provider:        g.ModelSelection.Provider(),
-		Model:           g.ModelSelection.Model(),
-		ReasoningEffort: g.ModelSelection.ReasoningEffort(),
-		Budget:          protocol.GoalBudget{MaxRuns: g.Budget.MaxRuns, MaxCostUSD: g.Budget.MaxCostUSD, MaxSteps: g.Budget.MaxSteps},
-		Used:            protocol.GoalUsage{Runs: g.Used.Runs, CostUSD: g.Used.CostUSD, Steps: g.Used.Steps},
-		CreatedAt:       g.CreatedAt,
-		UpdatedAt:       g.UpdatedAt,
+		Provider:        selection.Provider(),
+		Model:           selection.Model(),
+		ReasoningEffort: selection.ReasoningEffort(),
+		Budget:          presentGoalBudget(budget),
+		Used:            protocol.GoalUsage{Runs: used.Runs, CostUSD: used.CostUSD, Steps: used.Steps},
+		CreatedAt:       g.CreatedAt(),
+		UpdatedAt:       g.UpdatedAt(),
 	}
 	return &w, nil
 }
@@ -172,7 +201,7 @@ func presentGoalStatus(status goal.Status) (protocol.GoalStatus, bool) {
 
 func presentGoalReason(reason goal.Reason) (*protocol.GoalReason, error) {
 	var code protocol.GoalReasonCode
-	switch reason.Code {
+	switch reason.Code() {
 	case goal.ReasonNone:
 		return nil, nil
 	case goal.ReasonStoppedByUser:
@@ -196,7 +225,7 @@ func presentGoalReason(reason goal.Reason) (*protocol.GoalReason, error) {
 	case goal.ReasonBlockedByModel:
 		code = protocol.GoalReasonBlockedByModel
 	default:
-		return nil, fmt.Errorf("goals: unsupported reason code %q", reason.Code)
+		return nil, fmt.Errorf("goals: unsupported reason code %q", reason.Code())
 	}
-	return &protocol.GoalReason{Code: code, Detail: reason.Detail}, nil
+	return &protocol.GoalReason{Code: code, Detail: reason.Detail()}, nil
 }

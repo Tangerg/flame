@@ -129,7 +129,7 @@ func (r *readerPane) replace(document readerDocument, preserveScroll, follow boo
 		}
 	}
 	if r.content.Len() == 0 {
-		id := r.content.Append(&kit.Message{Theme: r.theme, Body: "No content is available for this entry."})
+		id := r.content.Append(&kit.Entry{Theme: r.theme, Body: "No content is available for this entry."})
 		r.content.Finish(id)
 	}
 	if follow {
@@ -194,30 +194,8 @@ func (r *readerPane) footer(window int) string {
 }
 
 func (r *readerPane) Handle(event input.Event) bool {
-	if key, ok := event.(input.Key); ok && key.Down() {
-		r.interruptSelectionGesture()
-		action, _ := r.keys.Action(key.Chord())
-		switch action {
-		case readerFind:
-			if r.openSearch != nil {
-				r.openSearch()
-			}
-			return true
-		case readerNext:
-			r.StepMatch(1)
-			return true
-		case readerPrevious:
-			r.StepMatch(-1)
-			return true
-		case readerCopy:
-			r.copy()
-			return true
-		case readerClose:
-			if r.dismiss != nil {
-				r.dismiss()
-			}
-			return true
-		}
+	if r.handleShortcut(event) {
+		return true
 	}
 	switch event.(type) {
 	case input.Paste, input.FocusOut:
@@ -225,30 +203,66 @@ func (r *readerPane) Handle(event input.Event) bool {
 	}
 	handled := r.view.Handle(event)
 	if mouse, ok := event.(input.Mouse); ok {
-		switch mouse.Action {
-		case input.MouseDown:
-			if mouse.Button == input.ButtonLeft && handled {
-				r.selectionGesture.begin()
-			} else {
-				r.interruptSelectionGesture()
-			}
-		case input.MouseDrag:
-			if mouse.Button != input.ButtonLeft {
-				r.interruptSelectionGesture()
-			}
-		case input.MouseUp:
-			owned := mouse.Button == input.ButtonLeft && r.selectionGesture.release()
-			if mouse.Button != input.ButtonLeft {
-				r.interruptSelectionGesture()
-			}
-			if owned && r.selection.Active() {
-				r.copy()
-			}
-		case input.WheelUp, input.WheelDown:
-			r.interruptSelectionGesture()
-		}
+		r.handleMouse(mouse, handled)
 	}
 	return handled
+}
+
+func (r *readerPane) handleShortcut(event input.Event) bool {
+	key, ok := event.(input.Key)
+	if !ok || !key.Down() {
+		return false
+	}
+	r.interruptSelectionGesture()
+	action, _ := r.keys.Action(key.Chord())
+	switch action {
+	case readerFind:
+		if r.openSearch != nil {
+			r.openSearch()
+		}
+		return true
+	case readerNext:
+		r.StepMatch(1)
+		return true
+	case readerPrevious:
+		r.StepMatch(-1)
+		return true
+	case readerCopy:
+		r.copy()
+		return true
+	case readerClose:
+		if r.dismiss != nil {
+			r.dismiss()
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func (r *readerPane) handleMouse(mouse input.Mouse, handled bool) {
+	switch mouse.Action {
+	case input.MouseDown:
+		if mouse.Button == input.ButtonLeft && handled {
+			r.selectionGesture.begin()
+		} else {
+			r.interruptSelectionGesture()
+		}
+	case input.MouseDrag:
+		if mouse.Button != input.ButtonLeft {
+			r.interruptSelectionGesture()
+		}
+	case input.MouseUp:
+		owned := mouse.Button == input.ButtonLeft && r.selectionGesture.release()
+		if mouse.Button != input.ButtonLeft {
+			r.interruptSelectionGesture()
+		}
+		if owned && r.selection.Active() {
+			r.copy()
+		}
+	case input.WheelUp, input.WheelDown:
+		r.interruptSelectionGesture()
+	}
 }
 
 func (r *readerPane) interruptSelectionGesture() {
@@ -336,7 +350,7 @@ type readerSectionBlock struct {
 	content headless.Block
 }
 
-var _ headless.Copyable = (*readerSectionBlock)(nil)
+var _ headless.TextProjector = (*readerSectionBlock)(nil)
 
 func newReaderSectionBlock(theme kit.Theme, title string, content headless.Block) *readerSectionBlock {
 	return &readerSectionBlock{theme: theme, title: strings.TrimSpace(title), content: content}
@@ -372,7 +386,7 @@ func (r *readerSectionBlock) Rows(width int) []text.Row {
 	if r.title != "" {
 		rows = append(rows, text.Row{Text: r.title})
 	}
-	if copyable, ok := r.content.(headless.Copyable); ok {
+	if copyable, ok := r.content.(headless.TextProjector); ok {
 		rows = append(rows, copyable.Rows(width)...)
 	} else {
 		rows = append(rows, make([]text.Row, r.content.Measure(width))...)

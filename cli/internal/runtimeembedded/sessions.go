@@ -3,7 +3,6 @@ package runtimeembedded
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/embedded"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -14,89 +13,37 @@ import (
 )
 
 type sessionCatalogBinding interface {
-	ListSessions(context.Context, protocol.PageQuery, embedded.CallOptions) (*protocol.Page[protocol.Session], error)
+	ListSessions(context.Context, protocol.ListSessionsRequest, embedded.CallOptions) (*protocol.Page[protocol.Session], error)
 	CreateSession(context.Context, protocol.CreateSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
 	UpdateSession(context.Context, protocol.UpdateSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
 	ForkSession(context.Context, protocol.ForkSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
 	DeleteSession(context.Context, protocol.DeleteSessionRequest, embedded.CommandOptions) error
 }
 
-const (
-	defaultSessionPageSize = 20
-	maximumSessionPageSize = 100
-)
-
 func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {
 	query, err := query.Normalize()
 	if err != nil {
 		return agent.SessionPage{}, err
 	}
-	limit := query.Limit
-	if limit <= 0 {
-		limit = defaultSessionPageSize
+	limit, err := query.PageSize.Rows()
+	if err != nil {
+		return agent.SessionPage{}, err
 	}
-	if limit > maximumSessionPageSize {
-		limit = maximumSessionPageSize
+	if err := validateRequestCursor("list sessions", query.Cursor); err != nil {
+		return agent.SessionPage{}, err
 	}
-
-	search := strings.ToLower(query.Search)
-	workspace := query.Workspace
-	if search == "" && workspace == "" {
-		page, err := r.sessionCatalog.ListSessions(ctx, protocol.PageQuery{Limit: limit, Cursor: query.Cursor}, r.callOptions())
-		if err != nil {
-			return agent.SessionPage{}, classifyError(err)
-		}
-		return projectSessionPage(page, query.Cursor, limit)
+	request := protocol.ListSessionsRequest{
+		PageQuery: protocol.PageQuery{Limit: protocolPositiveInt(limit), Cursor: query.Cursor},
+		Search:    query.Search,
 	}
-
-	// Search and workspace are CLI projections absent from the runtime protocol.
-	// Walk opaque cursors one row at a time so NextCursor remains the exact
-	// continuation after the last examined runtime row, including filtered rows.
-	result := agent.SessionPage{Items: make([]agent.Session, 0, limit)}
-	cursors := newCursorTraversal("list sessions", query.Cursor)
-	for len(result.Items) < limit {
-		cursor := cursors.Current()
-		page, err := r.sessionCatalog.ListSessions(ctx, protocol.PageQuery{Limit: 1, Cursor: cursor}, r.callOptions())
-		if err != nil {
-			return agent.SessionPage{}, classifyError(err)
-		}
-		if page == nil {
-			return agent.SessionPage{}, runtimeContractViolation("list sessions returned a nil page")
-		}
-		if len(page.Data) > 1 {
-			return agent.SessionPage{}, runtimeContractViolation("list sessions exceeded the requested one-row page")
-		}
-		for _, value := range page.Data {
-			projected, projectSessionErr := projectSession(value)
-			if projectSessionErr != nil {
-				return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid session: %v", projectSessionErr)
-			}
-			if matchesSession(projected, search, workspace) {
-				result.Items = append(result.Items, projected)
-			}
-		}
-		more, err := cursors.Advance(page.NextCursor)
-		if err != nil {
-			return agent.SessionPage{}, err
-		}
-		if !more {
-			break
-		}
+	if query.Workspace != "" {
+		request.Workspace = &protocol.WorkspaceRef{Path: query.Workspace}
 	}
-	result.NextCursor = cursors.Current()
-	if err := result.Validate(); err != nil {
-		return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid projection: %v", err)
+	page, err := r.sessionCatalog.ListSessions(ctx, request, r.callOptions())
+	if err != nil {
+		return agent.SessionPage{}, classifyError(err)
 	}
-	return result, nil
-}
-
-func matchesSession(session agent.Session, search, workspace string) bool {
-	if workspace != "" && session.Workspace.Path != workspace {
-		return false
-	}
-	return search == "" || strings.Contains(strings.ToLower(session.Title), search) ||
-		strings.Contains(strings.ToLower(session.Workspace.Path), search) ||
-		strings.Contains(strings.ToLower(session.Workspace.ProjectRoot), search)
+	return projectSessionPage(page, query.Cursor, limit)
 }
 
 func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, limit int) (agent.SessionPage, error) {
@@ -106,8 +53,8 @@ func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, li
 	if len(page.Data) > limit {
 		return agent.SessionPage{}, runtimeContractViolation("list sessions returned %d rows for limit %d", len(page.Data), limit)
 	}
-	if page.NextCursor != "" && page.NextCursor == cursor {
-		return agent.SessionPage{}, runtimeContractViolation("list sessions returned its request cursor as the continuation")
+	if err := validateContinuationCursor("list sessions", cursor, page.NextCursor); err != nil {
+		return agent.SessionPage{}, err
 	}
 	result := agent.SessionPage{Items: make([]agent.Session, 0, len(page.Data)), NextCursor: page.NextCursor}
 	for _, value := range page.Data {

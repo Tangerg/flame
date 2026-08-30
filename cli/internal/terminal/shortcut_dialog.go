@@ -76,6 +76,7 @@ func collectShortcutRows(applicationKeys, transcriptKeys, guideKeys *keymap.Map)
 		{area: "Application", action: commandPalette, description: "open command palette", keys: applicationKeys},
 		{area: "Application", action: showShortcuts, description: "open this shortcut guide", keys: applicationKeys},
 		{area: "Application", action: showSessions, description: "search and switch sessions", keys: applicationKeys},
+		{area: "Application", action: showTimeline, description: "inspect runs and live subagents", keys: applicationKeys},
 		{area: "Application", action: searchTranscript, description: "find text in the live transcript", keys: applicationKeys},
 		{area: "Application", action: manageQueue, description: "manage queued follow-ups", keys: applicationKeys},
 		{area: "Application", action: toggleDetails, description: "expand or collapse all tool details", keys: applicationKeys},

@@ -1,6 +1,7 @@
 package agentmemory
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -9,10 +10,34 @@ import (
 	"time"
 )
 
+func testItemID(t *testing.T, digit byte) ItemID {
+	t.Helper()
+	id, err := ParseItemID(ItemIDPrefix + strings.Repeat(
+		string(digit),
+		MaximumItemIDCharacters-len(ItemIDPrefix),
+	))
+	if err != nil {
+		t.Fatalf("test Item identity: %v", err)
+	}
+	return id
+}
+
+func TestItemIdentityIsCanonicalAndBounded(t *testing.T) {
+	id, err := NewItemID()
+	if err != nil || id.Validate() != nil || len(id.String()) != MaximumItemIDCharacters {
+		t.Fatalf("NewItemID = %q, %v", id.String(), err)
+	}
+	for _, raw := range []string{"", "mem_1", "mem_" + strings.Repeat("A", 32), " mem_" + strings.Repeat("a", 32)} {
+		if _, err := ParseItemID(raw); !errors.Is(err, ErrInvalidItemID) {
+			t.Fatalf("ParseItemID(%q) error = %v", raw, err)
+		}
+	}
+}
+
 func TestFactBatchNormalizeValidatesIdentity(t *testing.T) {
 	batch := FactBatch{
 		Project:    " /repo ",
-		SessionID:  " session ",
+		SessionID:  "session",
 		Day:        "2026-07-19",
 		Facts:      []string{"one", "one", "two", " "},
 		CapturedAt: time.Now(),
@@ -23,6 +48,11 @@ func TestFactBatchNormalizeValidatesIdentity(t *testing.T) {
 	}
 	if normalized.Project != "/repo" || normalized.SessionID != "session" || !slices.Equal(normalized.Facts, []string{"one", "two"}) {
 		t.Fatalf("normalized batch = %+v", normalized)
+	}
+	padded := batch
+	padded.SessionID = " session "
+	if _, err := padded.Normalize(); err == nil {
+		t.Fatal("non-exact Session identity was accepted")
 	}
 	batch.Day = "2026-7-19"
 	if _, err := batch.Normalize(); err == nil {
@@ -94,18 +124,45 @@ func TestReviewDecisionOwnsResultingStatus(t *testing.T) {
 
 func TestItemConstructionRejectsInvalidPartition(t *testing.T) {
 	now := time.Now()
-	if _, err := NewProposal("mem_1", "", "fact", now); err == nil {
+	if _, err := NewProposal(testItemID(t, '1'), "", "fact", now); err == nil {
 		t.Fatal("project proposal without project was accepted")
 	}
-	if _, err := NewUserItem("mem_2", ScopeUser, "/repo", "fact", now); err == nil {
+	if _, err := NewUserItem(testItemID(t, '2'), ScopeUser, "/repo", "fact", now); err == nil {
 		t.Fatal("user item with project was accepted")
+	}
+}
+
+func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.T) {
+	createdAt := time.Date(2026, time.August, 20, 9, 0, 0, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Hour)
+	proposal, err := NewProposal(testItemID(t, 'a'), "/repo", "old fact", createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal.Status = StatusRejected
+	proposal.Pinned = true
+	proposal.SessionID = "session"
+	proposal.EmbeddingSpace = "provider:model"
+	proposal.Embedding = []float32{1, 2}
+	activated, err := proposal.ActivateFromUser("new fact", updatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if activated.ID != proposal.ID || !activated.CreatedAt.Equal(proposal.CreatedAt) {
+		t.Fatalf("activation changed stable identity: %+v", activated)
+	}
+	if activated.Content != "new fact" || activated.Origin != OriginUser || activated.Status != StatusActive {
+		t.Fatalf("activation did not adopt user authorship: %+v", activated)
+	}
+	if activated.Pinned || activated.SessionID != "" || activated.EmbeddingSpace != "" || activated.Embedding != nil {
+		t.Fatalf("activation retained proposal or derived state: %+v", activated)
 	}
 }
 
 func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 	now := time.Now()
 	if _, err := NewUserItem(
-		"mem_boundary",
+		testItemID(t, 'b'),
 		ScopeUser,
 		"",
 		strings.Repeat("界", MaxContentCharacters),
@@ -114,7 +171,7 @@ func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 		t.Fatalf("boundary content was rejected: %v", err)
 	}
 	if _, err := NewUserItem(
-		"mem_oversized",
+		testItemID(t, 'c'),
 		ScopeUser,
 		"",
 		strings.Repeat("界", MaxContentCharacters+1),
@@ -123,7 +180,7 @@ func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 		t.Fatal("content larger than one context-safe memory item was accepted")
 	}
 	if _, err := NewUserItem(
-		"mem_invalid_utf8",
+		testItemID(t, 'd'),
 		ScopeUser,
 		"",
 		string([]byte{0xff}),
@@ -142,7 +199,7 @@ func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 }
 
 func TestEmbeddingUpdateBindsContentAndDefensivelyCopiesVector(t *testing.T) {
-	item := Item{ID: "mem_1", Content: "current content"}
+	item := Item{ID: testItemID(t, 'e'), Content: "current content"}
 	vector := []float32{1, 2}
 	update, err := NewEmbeddingUpdate(item, "provider:model", vector)
 	if err != nil {

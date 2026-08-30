@@ -30,11 +30,11 @@ func newMCPFormFlow(mode mcpFormMode, server mcp.Server) *mcpFormFlow {
 }
 
 func (m *mcpFormFlow) replacesConnection() bool {
-	return m.mode != mcpFormUpdate || m.draft.connectionMode == "replace"
+	return m.mode != mcpFormUpdate || m.draft.replaceConnection
 }
 
 func (m *mcpFormFlow) connectionStep() mcpFormStep {
-	if m.draft.transport == string(mcp.Stdio) {
+	if m.draft.transport == mcp.Stdio {
 		return mcpFormStdio
 	}
 	return mcpFormHTTP

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 type Totals struct {
@@ -51,8 +53,8 @@ type SessionReport struct {
 }
 
 func (s SessionReport) Validate() error {
-	if strings.TrimSpace(s.SessionID) == "" {
-		return errors.New("session usage report id is empty")
+	if _, err := sessionidentity.Parse(s.SessionID); err != nil {
+		return fmt.Errorf("session usage report: %w", err)
 	}
 	if err := s.Total.Validate(); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
@@ -61,7 +63,7 @@ func (s SessionReport) Validate() error {
 }
 
 type Summary struct {
-	SinceDays  int
+	Period     SummaryPeriod
 	Total      Totals
 	ByProvider []Bucket
 	ByModel    []Bucket
@@ -71,8 +73,11 @@ type Summary struct {
 }
 
 func (s Summary) Validate() error {
-	if s.SinceDays < 0 || s.Sessions < 0 || s.Runs < 0 {
+	if s.Sessions < 0 || s.Runs < 0 {
 		return errors.New("usage summary contains a negative count")
+	}
+	if err := s.Period.Validate(); err != nil {
+		return err
 	}
 	if err := s.Total.Validate(); err != nil {
 		return fmt.Errorf("usage summary: %w", err)
@@ -108,5 +113,5 @@ func validateBuckets(context string, buckets []Bucket) error {
 
 type Service interface {
 	SessionUsage(context.Context, string) (SessionReport, error)
-	Summary(context.Context, int) (Summary, error)
+	Summary(context.Context, SummaryPeriod) (Summary, error)
 }

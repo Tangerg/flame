@@ -20,29 +20,33 @@ type memStore struct{ goals map[string]goalstate.Goal }
 
 func newMemStore() *memStore { return &memStore{goals: map[string]goalstate.Goal{}} }
 
-func (m *memStore) Get(_ context.Context, id string) (goalstate.Goal, bool, error) {
+func (m *memStore) Get(_ context.Context, id string) (goalstate.Current, error) {
 	g, ok := m.goals[id]
-	return g, ok, nil
+	if !ok {
+		return goalstate.Unwritten(id)
+	}
+	return goalstate.CurrentOf(g)
 }
 
 // put seeds a goal directly (test setup), bypassing the CAS.
-func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID] = g }
+func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID()] = g }
 
 func (m *memStore) Save(_ context.Context, g goalstate.Goal, expected goalstate.Version) (goalstate.Goal, bool, error) {
-	cur, ok := m.goals[g.SessionID]
-	if expected == (goalstate.Version{}) {
+	if err := expected.AdvancesTo(g); err != nil {
+		return goalstate.Goal{}, false, err
+	}
+	cur, ok := m.goals[g.SessionID()]
+	if expected.IsUnwritten() {
 		if ok {
 			return goalstate.Goal{}, false, nil
 		}
-		g.Revision = 1
-		m.goals[g.SessionID] = g
+		m.goals[g.SessionID()] = g
 		return g, true, nil
 	}
 	if !ok || cur.Version() != expected {
 		return goalstate.Goal{}, false, nil
 	}
-	g.Revision = expected.Revision + 1
-	m.goals[g.SessionID] = g
+	m.goals[g.SessionID()] = g
 	return g, true, nil
 }
 func (m *memStore) Clear(_ context.Context, id string) error { delete(m.goals, id); return nil }
@@ -58,8 +62,13 @@ func (m *memStore) List(context.Context) ([]goalstate.Goal, error) { return nil,
 
 // testSessionActiveGoal builds a stored active goal with an opaque current incarnation.
 func testSessionActiveGoal() goalstate.Goal {
-	g, _ := goalstate.New("s1", "obj", modelref.Selection{}, goalstate.Budget{}, run.Capabilities{}, "lease-active", time.Unix(0, 0))
+	g, _ := goalstate.New("s1", "obj", testSelection(), goalstate.UnlimitedBudget(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
 	return g
+}
+
+func testSelection() modelref.Selection {
+	selection, _ := modelref.New("provider", "model")
+	return selection
 }
 
 func testSessionContext() context.Context {
@@ -95,8 +104,8 @@ func TestReportGoalOutcomeCompleted(t *testing.T) {
 	if !strings.Contains(out, "completed") {
 		t.Fatalf("output = %q", out)
 	}
-	if got := store.goals["s1"]; got.Status != goalstate.StatusComplete {
-		t.Fatalf("stored status = %q, want complete", got.Status)
+	if got := store.goals["s1"]; got.Status() != goalstate.StatusComplete {
+		t.Fatalf("stored status = %q, want complete", got.Status())
 	}
 }
 
@@ -109,7 +118,7 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	if !strings.Contains(out, "reason") {
 		t.Fatalf("blocked without reason = %q, want a reason prompt", out)
 	}
-	if store.goals["s1"].Status != goalstate.StatusActive {
+	if store.goals["s1"].Status() != goalstate.StatusActive {
 		t.Fatal("goal should stay active when blocked reason is missing")
 	}
 
@@ -118,8 +127,8 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	if !strings.Contains(out, "blocked") {
 		t.Fatalf("output = %q", out)
 	}
-	if got := store.goals["s1"]; got.Status != goalstate.StatusBlocked || got.Reason != (goalstate.Reason{Code: goalstate.ReasonBlockedByModel, Detail: "needs a key"}) {
-		t.Fatalf("stored = (%q, %+v)", got.Status, got.Reason)
+	if got := store.goals["s1"]; got.Status() != goalstate.StatusBlocked || got.Reason().Code() != goalstate.ReasonBlockedByModel || got.Reason().Detail() != "needs a key" {
+		t.Fatalf("stored = (%q, %+v)", got.Status(), got.Reason())
 	}
 }
 
@@ -134,7 +143,7 @@ func TestReportGoalOutcomeCompletedRejectsReason(t *testing.T) {
 	if !strings.Contains(out, "Omit reason") {
 		t.Fatalf("completed with reason = %q, want precise field guidance", out)
 	}
-	if store.goals["s1"].Status != goalstate.StatusActive {
+	if store.goals["s1"].Status() != goalstate.StatusActive {
 		t.Fatal("completed reason must be rejected before Goal state changes")
 	}
 }
@@ -153,14 +162,14 @@ func TestReportGoalOutcomeNoActiveGoal(t *testing.T) {
 func TestReportGoalOutcomeDoesNotTouchPausedGoal(t *testing.T) {
 	store := newMemStore()
 	g := testSessionActiveGoal()
-	g.Pause(goalstate.ReasonStoppedByUser, "", time.Unix(0, 0))
+	g, _ = g.Pause(goalstate.ReasonStoppedByUser, "", time.Unix(0, 0))
 	store.put(g)
 
 	out, _ := newReporter(t, store).report(testSessionContext(), reportArgs{Outcome: "completed"})
 	if !strings.Contains(out, "No active Goal") {
 		t.Fatalf("paused goal should be untouchable via report_goal_outcome, got %q", out)
 	}
-	if store.goals["s1"].Status != goalstate.StatusPaused {
+	if store.goals["s1"].Status() != goalstate.StatusPaused {
 		t.Fatal("paused goal must not be flipped to complete")
 	}
 }
@@ -171,7 +180,6 @@ func TestReportGoalOutcomeDoesNotTouchPausedGoal(t *testing.T) {
 func TestReportGoalOutcomeSupersededStampRefused(t *testing.T) {
 	store := newMemStore()
 	current := testSessionActiveGoal()
-	current.IncarnationID = "lease-current"
 	store.put(current)
 
 	// The Run carries the incarnation it was launched under, since superseded.
@@ -187,7 +195,7 @@ func TestReportGoalOutcomeSupersededStampRefused(t *testing.T) {
 	if !strings.Contains(out, "superseded") {
 		t.Fatalf("output = %q, want a superseded-goal refusal", out)
 	}
-	if store.goals["s1"].Status != goalstate.StatusActive {
+	if store.goals["s1"].Status() != goalstate.StatusActive {
 		t.Fatal("a straggler run must not flip the current goal to complete")
 	}
 }
@@ -205,16 +213,18 @@ func TestReportGoalOutcomeNoSession(t *testing.T) {
 func TestGetGoalReturnsActionableViewWithoutOwnershipInternals(t *testing.T) {
 	store := newMemStore()
 	g := testSessionActiveGoal()
-	g.Revision = 42
-	g.Budget = goalstate.Budget{MaxRuns: 3}
-	g.Used = goalstate.Usage{Runs: 1, Steps: 5}
+	snapshot := g.Snapshot()
+	snapshot.Revision = 42
+	snapshot.Budget = testLimitedBudget(t, goalstate.BudgetLimits{MaxRuns: intLimit(3)})
+	snapshot.Used = goalstate.Usage{Runs: 1, Steps: 5}
+	g, _ = goalstate.Restore(snapshot)
 	store.put(g)
 
 	result, err := newGetter(t, store).get(testSessionContext(), getArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Goal == nil || result.Goal.Objective != "obj" || result.Goal.Budget.MaxRuns != 3 || result.Goal.Usage.Steps != 5 {
+	if result.Goal == nil || result.Goal.Objective != "obj" || result.Goal.Budget == nil || result.Goal.Budget.MaxRuns == nil || *result.Goal.Budget.MaxRuns != 3 || result.Goal.Usage.Steps != 5 {
 		t.Fatalf("goal view = %+v", result.Goal)
 	}
 	if result.Goal.SessionID != "s1" || result.Goal.Status != "active" {
@@ -246,14 +256,14 @@ func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, sele
 	f.selection = selection
 	f.budget = budget
 	f.capabilities = capabilities.Clone()
-	return goalstate.New(sessionID, objective, selection, budget, capabilities, "lease", time.Unix(1, 0))
+	return goalstate.New(sessionID, objective, testSelection(), budget, capabilities, "lease", time.Unix(1, 0))
 }
 
 func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 	starter := &fakeStarter{}
 	result, err := (&creator{goals: starter}).create(testSessionContext(), createArgs{
 		Objective: "  finish the migration  ",
-		Budget:    &createBudget{MaxRuns: 4, MaxCostUSD: 2.5, MaxSteps: 20},
+		Budget:    &createBudget{MaxRuns: intLimit(4), MaxCostUSD: costLimit(2.5), MaxSteps: intLimit(20)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -264,7 +274,8 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 	if starter.selection.Configured() {
 		t.Fatal("create_goal must use the runtime's surrounding model default")
 	}
-	if starter.budget != (goalstate.Budget{MaxRuns: 4, MaxCostUSD: 2.5, MaxSteps: 20}) {
+	wantBudget := testLimitedBudget(t, goalstate.BudgetLimits{MaxRuns: intLimit(4), MaxCostUSD: costLimit(2.5), MaxSteps: intLimit(20)})
+	if starter.budget != wantBudget {
 		t.Fatalf("budget = %+v", starter.budget)
 	}
 	if !starter.capabilities.Equal(testGoalRunCapabilities()) {
@@ -274,6 +285,19 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 }
+
+func testLimitedBudget(t *testing.T, limits goalstate.BudgetLimits) goalstate.Budget {
+	t.Helper()
+	budget, err := goalstate.NewBudget(limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return budget
+}
+
+func intLimit(value int) *int { return &value }
+
+func costLimit(value float64) *float64 { return &value }
 
 func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 	mem := newMemStore()
@@ -302,7 +326,7 @@ func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 		t.Fatalf("report name = %q", got)
 	}
 	createSchema := string(create.Definition().InputSchema)
-	for _, want := range []string{`"objective"`, `"budget"`, `"max_runs"`, `"max_cost_usd"`, `"max_steps"`} {
+	for _, want := range []string{`"objective"`, `"budget"`, `"max_runs"`, `"max_cost_usd"`, `"max_steps"`, `"anyOf"`, `"exclusiveMinimum":0`} {
 		if !strings.Contains(createSchema, want) {
 			t.Errorf("create_goal schema %s missing %s", createSchema, want)
 		}

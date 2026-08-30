@@ -18,6 +18,24 @@ type interactionSummaryPane struct {
 	form     *kit.Form
 }
 
+type interactionReviewDecision uint8
+
+const (
+	interactionReviewSubmit interactionReviewDecision = iota + 1
+	interactionReviewBack
+	interactionReviewCancel
+	interactionReviewCancellationReason = "interactions canceled during terminal review"
+)
+
+func (d interactionReviewDecision) Validate() error {
+	switch d {
+	case interactionReviewSubmit, interactionReviewBack, interactionReviewCancel:
+		return nil
+	default:
+		return fmt.Errorf("interaction review decision %d is invalid", d)
+	}
+}
+
 func (i *interactionSummaryPane) Draw(frame headless.Frame) {
 	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
 		{Size: layout.Flex(1)},
@@ -45,14 +63,14 @@ func (a *app) openInteractionSummary() {
 		a.fail(fmt.Errorf("review interactions: %w", err))
 		return
 	}
-	decision := "submit"
-	choice := &headless.Select[string]{
+	decision := interactionReviewSubmit
+	choice := &headless.Select[interactionReviewDecision]{
 		Label: "Review complete", Value: headless.Bind(&decision), Rows: 3,
 	}
-	choice.SetOptions([]headless.Option[string]{
-		{Label: "Submit all decisions", Value: "submit"},
-		{Label: "Go back and edit", Value: "back"},
-		{Label: "Cancel the run", Value: "cancel"},
+	choice.SetOptions([]headless.Option[interactionReviewDecision]{
+		{Label: "Submit all decisions", Value: interactionReviewSubmit},
+		{Label: "Go back and edit", Value: interactionReviewBack},
+		{Label: "Cancel the run", Value: interactionReviewCancel},
 	})
 	form := headless.NewForm(choice)
 	form.Keys = headless.DefaultFormKeys()
@@ -62,16 +80,20 @@ func (a *app) openInteractionSummary() {
 		if settled || a.interactionReview != review || a.reviewDialog != dialog {
 			return
 		}
+		if err := decision.Validate(); err != nil {
+			a.fail(err)
+			return
+		}
 		settled = true
-		dialog.Dismiss()
+		dialog.Controller().Dismiss()
 		a.reviewDialog = nil
 		switch decision {
-		case "submit":
+		case interactionReviewSubmit:
 			a.resumeInteractions()
-		case "back":
+		case interactionReviewBack:
 			a.backInteraction()
-		default:
-			a.abortInteractions("interactions canceled during terminal review")
+		case interactionReviewCancel:
+			a.abortInteractions(interactionReviewCancellationReason)
 		}
 	}
 	form.GaveUp = func() {
@@ -79,10 +101,10 @@ func (a *app) openInteractionSummary() {
 			return
 		}
 		settled = true
-		dialog.Dismiss()
+		dialog.Controller().Dismiss()
 		a.reviewDialog = nil
 		if !a.backInteraction() {
-			a.abortInteractions("interactions canceled during terminal review")
+			a.abortInteractions(interactionReviewCancellationReason)
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
@@ -99,7 +121,7 @@ func (a *app) openInteractionSummary() {
 		Where: layout.Placement{Width: 88, Height: 22},
 	})
 	a.reviewDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func interactionSummary(review *interactionReview) string {

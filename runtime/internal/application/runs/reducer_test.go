@@ -45,7 +45,7 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	if commit == nil || commit.GoalRun == nil {
 		t.Fatal("terminal commit did not carry Goal Run accounting")
 	}
-	if commit.CommitID == "" {
+	if commit.CommitID.IsZero() {
 		t.Fatal("terminal commit did not carry an immutable write-set identity")
 	}
 	combined, err := combineTerminalEventCommit(reductionBatch{events: reductions})
@@ -310,6 +310,29 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	result := toolMessages[0].Parts[0].ToolResult
 	if result == nil || result.ID != call.ID || result.Name != call.Name || result.Result != "contents" || result.IsError {
 		t.Fatalf("Tool result = %#v, want provider identity and successful output", result)
+	}
+}
+
+func TestReducerRejectsInvalidProviderToolCallIdentityBeforeProjection(t *testing.T) {
+	invalid := []string{
+		" provider_call",
+		"provider\u200bcall",
+		strings.Repeat("x", conversation.MaximumToolCallIdentityCharacters+1),
+	}
+	for _, identity := range invalid {
+		reducer := newReducer(testReducerConfig())
+		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+		message := corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
+			ID: identity, Name: "inspect", Arguments: `{}`,
+		}))
+		if _, err := reducer.reduce(ModelCallCompleted{
+			CallID: "model_call_1", Message: message, Steps: 1,
+		}); !errors.Is(err, errExecutorContract) {
+			t.Errorf("identity %q error = %v, want executor contract failure", identity, err)
+		}
+		if reducer.toolContext.Count() != 0 {
+			t.Errorf("identity %q entered model Tool context", identity)
+		}
 	}
 }
 
@@ -1020,8 +1043,11 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 		t.Fatalf("plan snapshot identity = %+v, want session ses_1 at revision 3", state)
 	}
 
-	compaction := mustReduce(t, reducer, CompactionBoundary{MessagesBefore: 20, MessagesAfter: 6})
-	if item := completedItem(t, compaction); item.Kind() != transcript.Compaction || item.DroppedMessages() != 14 {
+	compaction := mustReduce(t, reducer, CompactionBoundary{
+		Summary: "Retained architectural decisions", MessagesBefore: 20, MessagesAfter: 6,
+	})
+	if item := completedItem(t, compaction); item.Kind() != transcript.Compaction ||
+		item.Summary() != "Retained architectural decisions" || item.DroppedMessages() != 14 {
 		t.Fatalf("compaction item = %+v", item)
 	}
 
@@ -1157,7 +1183,7 @@ func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *test
 	reducer := newReducer(testReducerConfig())
 	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
-			ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
+			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
 		}},
 		{Kind: interrupt.Question, Question: &QuestionPrompt{
 			ToolName: "ask_user", Arguments: `{"questions":[{"question":"Continue?"}]}`,
@@ -1353,8 +1379,8 @@ func TestReducerRejectsMalformedToolArguments(t *testing.T) {
 		if !errors.Is(err, errExecutorContract) || !errors.Is(err, tool.ErrInvalidArguments) {
 			t.Fatalf("tool start error = %v, want executor protocol + invalid arguments", err)
 		}
-		if len(reducer.tools) != 0 || reducer.step != 0 {
-			t.Fatalf("malformed start mutated reducer: tools=%d step=%d", len(reducer.tools), reducer.step)
+		if reducer.tools.count() != 0 || reducer.step != 0 {
+			t.Fatalf("malformed start mutated reducer: tools=%d step=%d", reducer.tools.count(), reducer.step)
 		}
 	})
 
@@ -1376,7 +1402,7 @@ func TestReducerRejectsInvalidToolLifecycle(t *testing.T) {
 		event ExecutionFact
 		want  string
 	}{
-		{name: "missing call id", event: ToolCallStarted{ToolName: "shell"}, want: "id is required"},
+		{name: "missing call id", event: ToolCallStarted{ToolName: "shell"}, want: "executor effect identity"},
 		{name: "missing tool name", event: ToolCallStarted{CallID: "call_1"}, want: "name is required"},
 		{name: "end without start", event: ToolCallFinished{CallID: "call_1"}, want: "without an open start"},
 	}
@@ -1705,8 +1731,8 @@ func TestReducerDrainsToolsInStartOrder(t *testing.T) {
 	if !slices.Equal(got, []string{"first", "second", "third"}) {
 		t.Fatalf("completed tools = %v, want start order", got)
 	}
-	if len(reducer.tools) != 0 {
-		t.Fatalf("open tools after drain = %d, want 0", len(reducer.tools))
+	if reducer.tools.count() != 0 {
+		t.Fatalf("open tools after drain = %d, want 0", reducer.tools.count())
 	}
 }
 
@@ -1802,7 +1828,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 
 	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
-			ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
+			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
 		}},
 	}})
 	if batch.parkCommit.Run == nil {
@@ -1829,8 +1855,8 @@ func assertFrozenCapabilities(t *testing.T, got, want run.Capabilities, where st
 // value because the value is the event immediately before it.
 //
 // The second half matters as much: a segment that changed nothing publishes NO
-// fence. An empty snapshot at revision 0 does not read as "unchanged" to a client
-// that folds by revision — it reads as "the list was cleared".
+// fence. Plan absence is represented outside PlanSnapshot; every snapshot is a
+// committed value, so an empty one means "the list was cleared", not "unchanged".
 func TestSegmentFencesItsFinalPlanBeforeFinishing(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, PlanUpdated{State: testPlanState(t, plan.Snapshot{

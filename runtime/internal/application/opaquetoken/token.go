@@ -11,22 +11,41 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 )
 
+// ErrTooLarge reports that an encoded token would exceed its authority's
+// declared resource envelope.
+var ErrTooLarge = errors.New("opaque token exceeds maximum encoded size")
+
 // Encode frames value as unpadded URL-safe Base64 around its JSON encoding.
-func Encode(value any) (string, error) {
+// maximumCharacters is mandatory: the mechanism refuses to mint a token whose
+// encoded output would exceed its authority's public or internal envelope.
+func Encode(value any, maximumCharacters int) (string, error) {
+	if maximumCharacters <= 0 {
+		return "", errors.New("opaque token maximum must be positive")
+	}
 	payload, err := json.Marshal(value)
 	if err != nil {
 		return "", err
 	}
+	if base64.RawURLEncoding.EncodedLen(len(payload)) > maximumCharacters {
+		return "", fmt.Errorf("%w: maximum is %d characters", ErrTooLarge, maximumCharacters)
+	}
 	return base64.RawURLEncoding.EncodeToString(payload), nil
 }
 
-// Decode strictly decodes token into target. Unknown fields, trailing JSON
-// values, malformed Base64, and invalid JSON are rejected. Payload-specific
-// validation remains the caller's responsibility.
-func Decode(token string, target any) error {
+// Decode strictly decodes a bounded token into target. Unknown fields,
+// trailing JSON values, malformed Base64, and invalid JSON are rejected.
+// Payload-specific validation remains the caller's responsibility.
+func Decode(token string, maximumCharacters int, target any) error {
+	if maximumCharacters <= 0 {
+		return errors.New("opaque token maximum must be positive")
+	}
+	if len(token) > maximumCharacters {
+		return fmt.Errorf("%w: maximum is %d characters", ErrTooLarge, maximumCharacters)
+	}
 	payload, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
 		return err

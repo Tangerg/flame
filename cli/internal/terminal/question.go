@@ -154,54 +154,58 @@ func (q *questionnaire) Answer() (agent.QuestionAnswer, error) {
 func (q *questionResponse) values() ([]string, error) {
 	switch q.field.Kind {
 	case agent.QuestionText:
-		value := strings.TrimSpace(q.text)
-		if err := requiredText(value); err != nil {
-			return nil, err
-		}
-		return []string{value}, nil
+		return requiredQuestionValue(q.text)
 	case agent.QuestionSingle:
-		if !q.single.custom {
-			if q.single.value == "" {
-				return nil, errors.New("choose an option")
-			}
-			return []string{q.single.value}, nil
-		}
-		value := strings.TrimSpace(q.custom)
-		if err := requiredText(value); err != nil {
-			return nil, err
-		}
-		return []string{value}, nil
+		return q.singleValue()
 	case agent.QuestionMulti:
-		values := make([]string, 0, len(q.multiple))
-		seen := make(map[string]struct{}, len(q.multiple))
-		for _, choice := range q.multiple {
-			if choice.custom {
-				custom, err := parseCustomChoices(q.custom)
-				if err != nil {
-					return nil, err
-				}
-				for _, value := range custom {
-					if _, duplicate := seen[value]; duplicate {
-						return nil, fmt.Errorf("choice %q is duplicated", value)
-					}
-					seen[value] = struct{}{}
-					values = append(values, value)
-				}
-				continue
-			}
-			if _, duplicate := seen[choice.value]; duplicate {
-				return nil, fmt.Errorf("choice %q is duplicated", choice.value)
-			}
-			seen[choice.value] = struct{}{}
-			values = append(values, choice.value)
-		}
-		if len(values) == 0 {
-			return nil, errors.New("choose at least one option")
-		}
-		return values, nil
+		return q.multipleValues()
 	default:
 		return nil, errors.New("runtime returned an unsupported question field kind")
 	}
+}
+
+func requiredQuestionValue(value string) ([]string, error) {
+	value = strings.TrimSpace(value)
+	if err := requiredText(value); err != nil {
+		return nil, err
+	}
+	return []string{value}, nil
+}
+
+func (q *questionResponse) singleValue() ([]string, error) {
+	if q.single.custom {
+		return requiredQuestionValue(q.custom)
+	}
+	if q.single.value == "" {
+		return nil, errors.New("choose an option")
+	}
+	return []string{q.single.value}, nil
+}
+
+func (q *questionResponse) multipleValues() ([]string, error) {
+	values := make([]string, 0, len(q.multiple))
+	seen := make(map[string]struct{}, len(q.multiple))
+	for _, choice := range q.multiple {
+		choiceValues := []string{choice.value}
+		if choice.custom {
+			custom, err := parseCustomChoices(q.custom)
+			if err != nil {
+				return nil, err
+			}
+			choiceValues = custom
+		}
+		for _, value := range choiceValues {
+			if _, duplicate := seen[value]; duplicate {
+				return nil, fmt.Errorf("choice %q is duplicated", value)
+			}
+			seen[value] = struct{}{}
+			values = append(values, value)
+		}
+	}
+	if len(values) == 0 {
+		return nil, errors.New("choose at least one option")
+	}
+	return values, nil
 }
 
 func (a *app) openQuestion(question agent.Question) {
@@ -340,7 +344,7 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.Measure(80), len(fields), 18)},
 	})
 	a.questionDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func (a *app) advanceQuestionnaire() {
@@ -348,7 +352,7 @@ func (a *app) advanceQuestionnaire() {
 	if review == nil {
 		return
 	}
-	a.questionDialog.Dismiss()
+	a.questionDialog.Controller().Dismiss()
 	a.questionDialog = nil
 	if review.Advance() {
 		a.openQuestionField()
@@ -362,7 +366,7 @@ func (a *app) backOrCancelQuestionnaire() {
 	if review == nil {
 		return
 	}
-	a.questionDialog.Dismiss()
+	a.questionDialog.Controller().Dismiss()
 	a.questionDialog = nil
 	if review.Back() {
 		a.openQuestionField()
@@ -377,7 +381,7 @@ func (a *app) finishQuestionnaire(canceled bool) {
 		return
 	}
 	if a.questionDialog != nil {
-		a.questionDialog.Dismiss()
+		a.questionDialog.Controller().Dismiss()
 		a.questionDialog = nil
 	}
 	if canceled {

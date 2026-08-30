@@ -15,6 +15,7 @@ import (
 
 type sessionCatalogStub struct {
 	pages  map[string]*protocol.Page[protocol.Session]
+	list   func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)
 	create func(protocol.CreateSessionRequest) (*protocol.Session, error)
 	update func(protocol.UpdateSessionRequest) (*protocol.Session, error)
 	fork   func(protocol.ForkSessionRequest) (*protocol.Session, error)
@@ -32,8 +33,49 @@ const (
 	testSessionModel    = "balanced"
 )
 
-func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.PageQuery, _ embedded.CallOptions) (*protocol.Page[protocol.Session], error) {
+func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.ListSessionsRequest, _ embedded.CallOptions) (*protocol.Page[protocol.Session], error) {
+	if s.list != nil {
+		return s.list(query)
+	}
 	return s.pages[query.Cursor], nil
+}
+
+func TestSessionCatalogPublishesTheCLIPageDefaultAsPositiveWireIntent(t *testing.T) {
+	t.Parallel()
+	runtime := &Runtime{sessionCatalog: sessionCatalogStub{list: func(query protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+		if query.Limit == nil || *query.Limit != agent.DefaultPageRows {
+			t.Fatalf("default session page limit = %v, want %d", query.Limit, agent.DefaultPageRows)
+		}
+		return protocol.NewPage([]protocol.Session{}), nil
+	}}}
+
+	if _, err := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T) {
+	t.Parallel()
+	oversized := strings.Repeat("x", maximumPaginationCursorBytes+1)
+	called := false
+	runtime := &Runtime{sessionCatalog: sessionCatalogStub{list: func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+		called = true
+		return protocol.NewPage([]protocol.Session{}), nil
+	}}}
+	if _, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
+		PageSize: agent.DefaultPageSize(), Cursor: oversized,
+	}); err == nil || !strings.Contains(err.Error(), "transport limit") {
+		t.Fatalf("oversized request cursor error = %v", err)
+	}
+	if called {
+		t.Fatal("oversized request cursor reached the Runtime binding")
+	}
+
+	_, err := projectSessionPage(protocol.NewPageWithCursor([]protocol.Session{}, oversized), "", agent.DefaultPageRows)
+	if err == nil || !strings.Contains(err.Error(), "continuation cursor larger") {
+		t.Fatalf("oversized response cursor error = %v", err)
+	}
+	requireRuntimeContractViolation(t, err)
 }
 
 func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ embedded.CommandOptions) (*protocol.Session, error) {
@@ -301,6 +343,7 @@ func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
+		Revision:  1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -308,9 +351,6 @@ func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
 	if projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
 		projected.Workspace.IsAvailable() {
 		t.Fatalf("workspace = %+v", projected.Workspace)
-	}
-	if !matchesSession(projected, "repo", "") || !matchesSession(projected, "", "/repo/work") {
-		t.Fatalf("resolved workspace is not searchable: %+v", projected.Workspace)
 	}
 }
 
@@ -355,7 +395,7 @@ func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 		}
 		return nil
 	}}, meta: requestMeta("test"), profile: runtimeprofile.Profile{
-		Limits: runtimeprofile.Limits{IdempotencyNamespace: namespace},
+		Limits: runtimeprofile.Limits{CommandReplay: testCommandReplay(t, namespace)},
 	}}
 	if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{CommandID: commandID, SessionID: "ses_1"}); err != nil {
 		t.Fatal(err)
@@ -365,19 +405,24 @@ func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 	}
 }
 
-func TestFilteredSessionCatalogRejectsMultiStepCursorCycle(t *testing.T) {
+func TestSessionCatalogProjectsFiltersWithoutClientSideCursorScanning(t *testing.T) {
 	t.Parallel()
-	runtime := &Runtime{sessionCatalog: sessionCatalogStub{pages: map[string]*protocol.Page[protocol.Session]{
-		"":       protocol.NewPageWithCursor([]protocol.Session{}, "first"),
-		"first":  protocol.NewPageWithCursor([]protocol.Session{}, "second"),
-		"second": protocol.NewPageWithCursor([]protocol.Session{}, "first"),
+	calls := 0
+	runtime := &Runtime{sessionCatalog: sessionCatalogStub{list: func(request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+		calls++
+		if request.Search != "Needle" || request.Workspace == nil || request.Workspace.Path != "/workspace" ||
+			request.Cursor != "current" || request.Limit == nil || *request.Limit != agent.DefaultPageRows {
+			t.Fatalf("filtered sessions request = %+v", request)
+		}
+		return protocol.NewPageWithCursor([]protocol.Session{}, "next"), nil
 	}}, meta: requestMeta("test")}
 
-	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{Search: "needle"})
-	if err == nil || !strings.Contains(err.Error(), "cyclic continuation cursor") {
-		t.Fatalf("ListSessions error = %v, want cursor cycle failure", err)
+	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
+		PageSize: agent.DefaultPageSize(), Search: "  Needle  ", Workspace: "/workspace", Cursor: "current",
+	})
+	if err != nil || page.NextCursor != "next" || calls != 1 {
+		t.Fatalf("ListSessions = (%+v, %v), calls=%d", page, err, calls)
 	}
-	requireRuntimeContractViolation(t, err)
 }
 
 func TestSessionCatalogRejectsAStalledCursorAndMutationIdentity(t *testing.T) {
@@ -395,10 +440,10 @@ func TestSessionCatalogRejectsAStalledCursorAndMutationIdentity(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{Cursor: "stalled"})
+	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{Cursor: "stalled", PageSize: agent.DefaultPageSize()})
 	requireRuntimeContractViolation(t, err)
 	title := "Renamed"
-	_, err = runtime.UpdateSession(t.Context(), agent.UpdateSession{SessionID: "ses_1", Title: &title})
+	_, err = runtime.UpdateSession(t.Context(), agent.UpdateSession{SessionID: "ses_1", Title: &title, ExpectedRevision: 1})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -407,8 +452,7 @@ func TestSessionCatalogRejectsInvalidLocalFiltersBeforeCallingRuntime(t *testing
 
 	runtime := &Runtime{sessionCatalog: sessionCatalogStub{}, meta: requestMeta("test")}
 	for _, query := range []agent.SessionQuery{
-		{Limit: -1},
-		{Workspace: "relative/workspace"},
+		{PageSize: agent.DefaultPageSize(), Workspace: "relative/workspace"},
 	} {
 		if _, err := runtime.ListSessions(t.Context(), query); err == nil {
 			t.Fatalf("ListSessions accepted %+v", query)

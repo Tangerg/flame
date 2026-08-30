@@ -85,6 +85,7 @@ export type {
   CreateScheduleRequest,
   AgentMemoryItem,
   MCPServer,
+  MCPHandshakeTimeout,
   MCPAuthorizationAttempt,
   MCPConnectionInput,
   MCPAuthorizationChange,

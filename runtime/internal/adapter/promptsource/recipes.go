@@ -29,74 +29,95 @@ const (
 // directory convention and the Markdown/YAML format; malformed frontmatter is
 // preserved as a plain prompt rather than discarding user-authored content.
 func listRecipes(ctx context.Context, projectDir, globalDir string) ([]workspaceapp.Recipe, error) {
-	seen := make(map[string]struct{})
-	var out []workspaceapp.Recipe
-	totalBytes := 0
-	add := func(dir string, scope workspaceapp.RecipeScope) error {
-		entries, err := readRecipeDirectory(ctx, dir)
-		if err != nil {
+	cascade := recipeCascade{
+		ctx:  ctx,
+		seen: make(map[string]struct{}),
+	}
+	if err := cascade.addDirectory(projectDir, workspaceapp.RecipeScopeProject); err != nil {
+		return nil, err
+	}
+	if err := cascade.addDirectory(globalDir, workspaceapp.RecipeScopeGlobal); err != nil {
+		return nil, err
+	}
+	slices.SortFunc(cascade.recipes, func(a, b workspaceapp.Recipe) int { return strings.Compare(a.Name, b.Name) })
+	if err := workspaceapp.ValidateRecipeCascade(cascade.recipes); err != nil {
+		return nil, err
+	}
+	return cascade.recipes, nil
+}
+
+type recipeCascade struct {
+	ctx        context.Context
+	seen       map[string]struct{}
+	recipes    []workspaceapp.Recipe
+	totalBytes int
+}
+
+func (cascade *recipeCascade) addDirectory(dir string, scope workspaceapp.RecipeScope) error {
+	entries, err := readRecipeDirectory(cascade.ctx, dir)
+	if err != nil {
+		return err
+	}
+	scopeCount := 0
+	for _, entry := range entries {
+		if err := cascade.ctx.Err(); err != nil {
 			return err
 		}
-		scopeCount := 0
-		for _, entry := range entries {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if entry.IsDir() {
-				continue
-			}
-			name, ok := recipeName(entry.Name())
-			if !ok {
-				continue
-			}
-			scopeCount++
-			if scopeCount > workspaceapp.MaxRecipesPerScope {
-				return fmt.Errorf(
-					"%w: recipe scope %q has more than %d recipes",
-					workspaceapp.ErrPromptSourceTooLarge,
-					scope,
-					workspaceapp.MaxRecipesPerScope,
-				)
-			}
-			if _, dup := seen[name]; dup {
-				continue // a higher-precedence (project) source already provided it
-			}
-			path := filepath.Join(dir, entry.Name())
-			data, err := readAuthoredPromptFile(ctx, path)
-			if err != nil {
-				return fmt.Errorf("promptsource: read recipe %q: %w", name, err)
-			}
-			if len(out) >= workspaceapp.MaxRecipeCascade {
-				return fmt.Errorf(
-					"%w: recipe cascade has more than %d recipes",
-					workspaceapp.ErrPromptSourceTooLarge,
-					workspaceapp.MaxRecipeCascade,
-				)
-			}
-			if len(data) > workspaceapp.MaxRecipeCascadeBytes-totalBytes {
-				return fmt.Errorf(
-					"%w: recipe cascade exceeds %d bytes",
-					workspaceapp.ErrPromptSourceTooLarge,
-					workspaceapp.MaxRecipeCascadeBytes,
-				)
-			}
-			seen[name] = struct{}{}
-			totalBytes += len(data)
-			out = append(out, parseRecipe(name, scope, path, data))
+		if entry.IsDir() {
+			continue
 		}
-		return nil
+		name, recipe := recipeName(entry.Name())
+		if !recipe {
+			continue
+		}
+		scopeCount++
+		if scopeCount > workspaceapp.MaxRecipesPerScope {
+			return fmt.Errorf(
+				"%w: recipe scope %q has more than %d recipes",
+				workspaceapp.ErrPromptSourceTooLarge,
+				scope,
+				workspaceapp.MaxRecipesPerScope,
+			)
+		}
+		if _, duplicate := cascade.seen[name]; duplicate {
+			continue // a higher-precedence (project) source already provided it
+		}
+		if err := cascade.addFile(dir, entry.Name(), name, scope); err != nil {
+			return err
+		}
 	}
-	if err := add(projectDir, workspaceapp.RecipeScopeProject); err != nil {
-		return nil, err
+	return nil
+}
+
+func (cascade *recipeCascade) addFile(
+	dir string,
+	filename string,
+	name string,
+	scope workspaceapp.RecipeScope,
+) error {
+	path := filepath.Join(dir, filename)
+	data, err := readAuthoredPromptFile(cascade.ctx, path)
+	if err != nil {
+		return fmt.Errorf("promptsource: read recipe %q: %w", name, err)
 	}
-	if err := add(globalDir, workspaceapp.RecipeScopeGlobal); err != nil {
-		return nil, err
+	if len(cascade.recipes) >= workspaceapp.MaxRecipeCascade {
+		return fmt.Errorf(
+			"%w: recipe cascade has more than %d recipes",
+			workspaceapp.ErrPromptSourceTooLarge,
+			workspaceapp.MaxRecipeCascade,
+		)
 	}
-	slices.SortFunc(out, func(a, b workspaceapp.Recipe) int { return strings.Compare(a.Name, b.Name) })
-	if err := workspaceapp.ValidateRecipeCascade(out); err != nil {
-		return nil, err
+	if len(data) > workspaceapp.MaxRecipeCascadeBytes-cascade.totalBytes {
+		return fmt.Errorf(
+			"%w: recipe cascade exceeds %d bytes",
+			workspaceapp.ErrPromptSourceTooLarge,
+			workspaceapp.MaxRecipeCascadeBytes,
+		)
 	}
-	return out, nil
+	cascade.seen[name] = struct{}{}
+	cascade.totalBytes += len(data)
+	cascade.recipes = append(cascade.recipes, parseRecipe(name, scope, path, data))
+	return nil
 }
 
 func readRecipeDirectory(ctx context.Context, directory string) ([]os.DirEntry, error) {
@@ -113,7 +134,7 @@ func readRecipeDirectory(ctx context.Context, directory string) ([]os.DirEntry, 
 	if err != nil {
 		return nil, fmt.Errorf("promptsource: open recipe directory %q: %w", directory, err)
 	}
-	defer dir.Close()
+	defer func() { _ = dir.Close() }()
 	entries, err := dir.ReadDir(maxRecipeDirectoryEntries + 1)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("promptsource: read recipe directory %q: %w", directory, err)

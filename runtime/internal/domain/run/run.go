@@ -3,10 +3,11 @@ package run
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable Run identity for a
@@ -25,7 +26,7 @@ type Run struct {
 	id                string
 	lineage           Lineage
 	modelSelection    modelref.Selection
-	goalIncarnationID string
+	goalIncarnationID goalref.IncarnationID
 	state             State
 	activeSegmentID   string
 	outcome           *Outcome
@@ -82,9 +83,13 @@ func Admit(draft Draft) (Run, error) {
 
 // Restore rebuilds a Run from durable values and rejects an invalid snapshot.
 func Restore(snapshot Snapshot) (Run, error) {
+	goalIncarnationID, _, err := goalref.ParseOptionalIncarnation(snapshot.GoalIncarnationID)
+	if err != nil {
+		return Run{}, fmt.Errorf("run: %w", err)
+	}
 	run := Run{
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
-		modelSelection: snapshot.ModelSelection, goalIncarnationID: snapshot.GoalIncarnationID,
+		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
 		outcome: cloneOutcome(snapshot.Outcome), detail: snapshot.Detail,
 		failure: cloneFailure(snapshot.Failure), metrics: snapshot.Metrics,
@@ -103,7 +108,7 @@ func Restore(snapshot Snapshot) (Run, error) {
 func (r Run) Snapshot() Snapshot {
 	return Snapshot{
 		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
-		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID,
+		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
 		Outcome: cloneOutcome(r.outcome), Detail: r.detail,
 		Failure: cloneFailure(r.failure), Metrics: r.metrics,
@@ -179,11 +184,13 @@ func cloneFailure(failure *Failure) *Failure {
 // Validate reports whether all lifecycle, identity, accounting, and terminal
 // facts agree.
 func (r Run) Validate() error {
+	if _, err := resourceid.ParseRun(r.id); err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
+	if _, err := resourceid.ParseSession(r.sessionID); err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
 	switch {
-	case strings.TrimSpace(r.id) == "" || r.id != strings.TrimSpace(r.id):
-		return errors.New("run: ID is required without surrounding whitespace")
-	case strings.TrimSpace(r.sessionID) == "" || r.sessionID != strings.TrimSpace(r.sessionID):
-		return errors.New("run: Session ID is required without surrounding whitespace")
 	case r.createdAt.IsZero():
 		return errors.New("run: creation time is required")
 	case r.updatedAt.IsZero():
@@ -197,11 +204,16 @@ func (r Run) Validate() error {
 	if err := r.modelSelection.Validate(); err != nil {
 		return fmt.Errorf("run: model selection: %w", err)
 	}
-	if r.goalIncarnationID != strings.TrimSpace(r.goalIncarnationID) {
-		return errors.New("run: goal incarnation ID has surrounding whitespace")
+	if _, _, err := goalref.ParseOptionalIncarnation(r.goalIncarnationID.String()); err != nil {
+		return fmt.Errorf("run: %w", err)
 	}
-	if r.lineage.IsChild() && r.goalIncarnationID != "" {
+	if r.lineage.IsChild() && r.goalIncarnationID.String() != "" {
 		return errors.New("run: child carries a root Goal incarnation")
+	}
+	if r.activeSegmentID != "" {
+		if _, err := resourceid.ParseSegment(r.activeSegmentID); err != nil {
+			return fmt.Errorf("run: active %w", err)
+		}
 	}
 	if (r.state == Running) != (r.activeSegmentID != "") {
 		return fmt.Errorf("run: %s Run has active Segment %q", r.state, r.activeSegmentID)
@@ -328,8 +340,8 @@ func (r Run) Resume(segmentID string, resumedAt time.Time) (Run, error) {
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot resume %s Run", r.state)
 	}
-	if strings.TrimSpace(segmentID) == "" || segmentID != strings.TrimSpace(segmentID) {
-		return Run{}, errors.New("run: continuation Segment ID is required without surrounding whitespace")
+	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+		return Run{}, fmt.Errorf("run: continuation %w", err)
 	}
 	if err := r.validateTransitionTime(resumedAt); err != nil {
 		return Run{}, err
@@ -424,7 +436,7 @@ func (r Run) ID() string                         { return r.id }
 func (r Run) SessionID() string                  { return r.sessionID }
 func (r Run) Lineage() Lineage                   { return r.lineage }
 func (r Run) ModelSelection() modelref.Selection { return r.modelSelection }
-func (r Run) GoalIncarnationID() string          { return r.goalIncarnationID }
+func (r Run) GoalIncarnationID() string          { return r.goalIncarnationID.String() }
 func (r Run) State() State                       { return r.state }
 func (r Run) ActiveSegmentID() string            { return r.activeSegmentID }
 func (r Run) Outcome() (Outcome, bool) {

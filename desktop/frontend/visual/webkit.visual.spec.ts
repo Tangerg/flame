@@ -68,6 +68,18 @@ test("WebKit agent HITL remains keyboard-operable", async ({ page }) => {
   await expectNoPageOverflow(page);
 });
 
+test("WebKit question radio navigation advances through Base UI semantics", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "question", theme: "dark" });
+
+  const first = page.getByRole("radio", { name: /Race detector/ });
+  await first.focus();
+  await page.keyboard.press("ArrowDown");
+
+  await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toBeVisible();
+  await expect(page.getByText("2 of 2", { exact: true })).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
 test("WebKit renders long CJK and highlighted content at maximum UI text size", async ({
   page,
 }) => {

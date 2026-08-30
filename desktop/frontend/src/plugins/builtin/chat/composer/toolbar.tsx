@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-import { Button, DropdownMenu, HiddenFileInput, Icon, IconButton, ProviderIcon } from "@/ui";
+import { Button, DropdownMenu, HiddenFileInput, Icon, IconButton } from "@/ui";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useSelectedModel, useSelectedModelSelection } from "./public/selectedModel";
 import {
@@ -10,156 +10,14 @@ import {
   useApprovalMode,
   type ApprovalMode,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
-import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { fmtTokens } from "@/lib/format";
 import { cn } from "@/lib/classNames";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
 import { useSetComposerModelPreference } from "./public/modelPreference";
-
-function ModelCapabilities({ model }: { model: NonNullable<ReturnType<typeof useSelectedModel>> }) {
-  const t = useT();
-  const primary = [
-    model.contextWindow
-      ? t("composer.model.contextWindow", { tokens: fmtTokens(model.contextWindow) })
-      : null,
-    model.inputModalities.length > 0
-      ? t("composer.model.inputModalities", { modalities: model.inputModalities.join(" + ") })
-      : null,
-    model.reasoning
-      ? model.reasoningLevels.length > 0
-        ? t("composer.model.reasoningLevels", { levels: model.reasoningLevels.join(" / ") })
-        : t("composer.model.reasoning")
-      : null,
-  ].filter((value): value is string => value !== null);
-  const secondary = [
-    model.maxInputTokens && model.maxInputTokens !== model.contextWindow
-      ? t("composer.model.maxInput", { tokens: fmtTokens(model.maxInputTokens) })
-      : null,
-    model.maxOutputTokens
-      ? t("composer.model.maxOutput", { tokens: fmtTokens(model.maxOutputTokens) })
-      : null,
-    model.outputModalities.length > 0
-      ? t("composer.model.outputModalities", { modalities: model.outputModalities.join(" + ") })
-      : null,
-    model.toolUse ? t("composer.model.toolUse") : null,
-    model.structuredOutput ? t("composer.model.structuredOutput") : null,
-    model.knowledgeCutoff
-      ? t("composer.model.knowledgeCutoff", { cutoff: model.knowledgeCutoff })
-      : null,
-  ].filter((value): value is string => value !== null);
-  if (primary.length === 0 && secondary.length === 0) return null;
-  const title = [...primary, ...secondary].join(" · ");
-  return (
-    <span
-      className="block min-w-0 text-ui-xs font-normal text-fg-faint"
-      title={title}
-      aria-label={title}
-    >
-      {primary.length > 0 && <span className="block truncate">{primary.join(" · ")}</span>}
-      {secondary.length > 0 && (
-        <span className="block truncate opacity-80">{secondary.join(" · ")}</span>
-      )}
-    </span>
-  );
-}
-
-// The trigger wears the selected model's provider mark. Provider health is not
-// part of this app's state, so the control carries no status indicator.
-function ModelPicker() {
-  const t = useT();
-  const { data: models = [], isLoading, isError } = useModels();
-  const setModel = useSetComposerModelPreference();
-  const selection = useSelectedModelSelection();
-  const selected = selection?.model;
-
-  if (models.length === 0) {
-    if (isError) {
-      return (
-        <Button
-          variant="ghost"
-          disabled
-          title={t("providers.models.error")}
-          className="gap-1.5 px-2 text-ui-sm text-negative"
-        >
-          <Icon name="alert" size="sm" />
-          <span>{t("providers.models.error")}</span>
-        </Button>
-      );
-    }
-    if (!isLoading) return null;
-    return (
-      <div
-        className="inline-flex h-[var(--control-height-md)] shrink-0 items-center gap-1.5 rounded-md px-2.5 opacity-60"
-        aria-hidden
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-surface-2" />
-        <span className="h-3 w-16 rounded-sm bg-surface-2" />
-      </div>
-    );
-  }
-  // An active Session id can be available one query tick before its summary.
-  // Keep the placeholder for that tick instead of showing a catalog model
-  // which would disagree with the Session's durable model.
-  if (!selected) {
-    return (
-      <div
-        className="inline-flex h-[var(--control-height-md)] shrink-0 items-center gap-1.5 rounded-md px-2.5 opacity-60"
-        aria-hidden
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-surface-2" />
-        <span className="h-3 w-16 rounded-sm bg-surface-2" />
-      </div>
-    );
-  }
-
-  return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger
-        render={
-          <Button
-            variant="ghost"
-            aria-label={t("composer.switchModel")}
-            className="gap-1.5 whitespace-nowrap px-2 text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg"
-          >
-            <ProviderIcon provider={selected.provider} size="sm" />
-            <span className="max-w-[168px] truncate">{selected.label}</span>
-            <Icon name="chevron-down" size="sm" className="shrink-0 text-fg-faint" />
-          </Button>
-        }
-      />
-      <DropdownMenu.Content align="start" sideOffset={6} className="min-w-[280px]">
-        {models.map((m) => (
-          <DropdownMenu.Item
-            key={`${m.provider}:${m.id}`}
-            onClick={() => {
-              const reasoningEffort = m.reasoningLevelOrDefault(selection?.reasoningEffort);
-              setModel({
-                kind: "explicit",
-                provider: m.provider,
-                model: m.id,
-                ...(reasoningEffort ? { reasoningEffort } : {}),
-              });
-            }}
-            className="grid min-h-11 grid-cols-[16px_minmax(0,1fr)_14px] items-center px-2"
-          >
-            <ProviderIcon provider={m.provider} size="md" />
-            <span className="min-w-0 text-pretty">
-              <span className="block truncate">{m.label}</span>
-              <ModelCapabilities model={m} />
-            </span>
-            {m.provider === selected.provider && m.id === selected.id && (
-              <Icon name="check" size="xs" className="text-accent" />
-            )}
-          </DropdownMenu.Item>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
-  );
-}
+import { ModelPicker } from "./ui/ModelPicker";
 
 function ReasoningEffortPicker() {
   const t = useT();

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -22,12 +23,6 @@ type TranscriptStore struct{ db *sql.DB }
 func NewTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
 
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
-	if item.SessionID() == "" {
-		return errors.New("sqlite: history item sessionId is required")
-	}
-	if item.ID() == "" {
-		return errors.New("sqlite: history item id is required")
-	}
 	if err := item.Validate(); err != nil {
 		return fmt.Errorf("sqlite: history item %q: %w", item.ID(), err)
 	}
@@ -128,8 +123,8 @@ func (t *TranscriptStore) explainItemAppendError(
 // Item resolves one durable transcript Item by its globally unique identity.
 // The returned value is the same fully hydrated projection as List/Page reads.
 func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.Item, bool, error) {
-	if strings.TrimSpace(itemID) == "" {
-		return transcript.Item{}, false, errors.New("sqlite: history item id is required")
+	if _, err := resourceid.ParseItem(itemID); err != nil {
+		return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
 	}
 	row := conn(ctx, t.db).QueryRowContext(ctx,
 		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
@@ -296,8 +291,11 @@ func (t *TranscriptStore) indexForSearch(ctx context.Context, item transcript.It
 // DeleteRun removes one run's items from a session's history. The Run's own row
 // belongs to the run store; this store owns the item log.
 func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string) error {
-	if sessionID == "" || runID == "" {
-		return errors.New("sqlite: delete history run requires sessionId + runId")
+	if err := validateSessionResource("delete history Run", sessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("delete history Run", runID); err != nil {
+		return err
 	}
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
 		q := conn(ctx, t.db)
@@ -329,8 +327,8 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 }
 
 func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID string) error {
-	if sessionID == "" {
-		return errors.New("sqlite: delete history session requires sessionId")
+	if err := validateSessionResource("delete history Session", sessionID); err != nil {
+		return err
 	}
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
 		q := conn(ctx, t.db)
@@ -370,6 +368,9 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID string) ([]transcr
 // stopping at a limit is what keeps a long session's history out of memory when
 // only a page of it was asked for.
 func (t *TranscriptStore) PageSessionItems(ctx context.Context, sessionID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
+	if err := validateSessionResource("page Session history", sessionID); err != nil {
+		return nil, err
+	}
 	return t.pageItems(ctx, `h.session_id = ?`, sessionID, order, fromSequence, limit)
 }
 
@@ -377,6 +378,9 @@ func (t *TranscriptStore) PageSessionItems(ctx context.Context, sessionID string
 // session beside it: it identifies exactly one run, and a run belongs to one
 // session.
 func (t *TranscriptStore) PageRunItems(ctx context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
+	if err := validateRunResource("page Run history", runID); err != nil {
+		return nil, err
+	}
 	return t.pageItems(ctx, `h.run_id = ?`, runID, order, fromSequence, limit)
 }
 
@@ -384,6 +388,9 @@ func (t *TranscriptStore) PageRunItems(ctx context.Context, runID string, order 
 // durable parent edge as the subtree authority. The transcript never infers
 // lineage from event order or spawning-item contents.
 func (t *TranscriptStore) PageRunTreeItems(ctx context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
+	if err := validateRunResource("page Run-tree history", runID); err != nil {
+		return nil, err
+	}
 	return t.pageItems(ctx, `h.run_id IN (
 		WITH RECURSIVE subtree(run_id) AS (
 			SELECT run_id
@@ -431,7 +438,7 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list history items: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []transcript.SequencedItem
 	for rows.Next() {
@@ -475,7 +482,7 @@ func (t *TranscriptStore) SearchTranscript(ctx context.Context, query string, li
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: search transcripts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []transcript.SearchHit
 	for rows.Next() {
@@ -485,17 +492,18 @@ func (t *TranscriptStore) SearchTranscript(ctx context.Context, query string, li
 		if err := rows.Scan(&sessionID, &runID, &itemID, &kind, &createdAt, &snippet); err != nil {
 			return nil, fmt.Errorf("sqlite: scan transcript search hit: %w", err)
 		}
-		if !kind.Valid() {
-			return nil, fmt.Errorf("sqlite: scan transcript search hit: unknown item kind %q", kind)
-		}
-		out = append(out, transcript.SearchHit{
+		hit := transcript.SearchHit{
 			SessionID: sessionID,
 			RunID:     runID,
 			ItemID:    itemID,
 			Kind:      kind,
 			CreatedAt: time.Unix(0, createdAt).UTC(),
 			Snippet:   snippet,
-		})
+		}
+		if err := hit.Validate(); err != nil {
+			return nil, fmt.Errorf("sqlite: scan transcript search hit: %w", err)
+		}
+		out = append(out, hit)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("sqlite: search transcripts: %w", err)

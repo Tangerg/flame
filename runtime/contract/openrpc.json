@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-08-28",
+    "version": "2026-08-30",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -53,13 +53,27 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
+          }
+        },
+        {
+          "name": "search",
+          "schema": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        {
+          "name": "workspace",
+          "schema": {
+            "$ref": "schema.json#/$defs/WorkspaceRef"
           }
         },
         {
@@ -84,7 +98,7 @@
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/PageQuery"
+            "$ref": "schema.json#/$defs/ListSessionsRequest"
           },
           {
             "type": "object",
@@ -106,7 +120,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -158,7 +174,10 @@
           "name": "sessionId",
           "required": true,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -294,7 +313,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -302,7 +323,8 @@
           "required": true,
           "schema": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 9007199254740991
           }
         },
         {
@@ -321,20 +343,26 @@
           "name": "provider",
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "reasoningEffort",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -421,7 +449,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -474,13 +504,17 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "fromRunId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -543,13 +577,17 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "toRunId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -653,7 +691,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -788,7 +828,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -805,40 +847,31 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "reasoningEffort",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
-          "name": "maxTotalTokens",
+          "name": "limits",
           "schema": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        {
-          "name": "maxSteps",
-          "schema": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        {
-          "name": "maxBudgetUsd",
-          "schema": {
-            "type": "number",
-            "minimum": 0
+            "$ref": "schema.json#/$defs/RunLimits"
           }
         },
         {
@@ -916,7 +949,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1000,7 +1035,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1008,7 +1045,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1092,7 +1131,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1164,7 +1205,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1172,7 +1215,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1252,7 +1297,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1307,7 +1354,9 @@
         {
           "name": "sessionId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1331,13 +1380,14 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
           }
         },
         {
@@ -1404,26 +1454,31 @@
         {
           "name": "sessionId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "rootRunId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
           }
         },
         {
@@ -1480,7 +1535,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -1559,13 +1616,14 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
           }
         },
         {
@@ -1826,7 +1884,7 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
@@ -1915,7 +1973,7 @@
           "name": "lines",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
@@ -1992,7 +2050,7 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
@@ -2079,13 +2137,14 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
           }
         },
         {
@@ -2156,21 +2215,21 @@
           "name": "startLine",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "endLine",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "maxBytes",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
@@ -2950,7 +3009,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -2974,19 +3034,22 @@
           }
         },
         {
-          "name": "timeoutSeconds",
+          "name": "handshakeTimeout",
+          "required": true,
           "schema": {
-            "type": "integer",
-            "minimum": 0
+            "$ref": "schema.json#/$defs/MCPHandshakeTimeout"
           }
         },
         {
           "name": "disabledTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -2994,9 +3057,12 @@
           "name": "autoApproveTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -3064,7 +3130,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3086,19 +3153,21 @@
           }
         },
         {
-          "name": "timeoutSeconds",
+          "name": "handshakeTimeout",
           "schema": {
-            "type": "integer",
-            "minimum": 0
+            "$ref": "schema.json#/$defs/MCPHandshakeTimeout"
           }
         },
         {
           "name": "disabledTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -3106,9 +3175,12 @@
           "name": "autoApproveTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -3176,7 +3248,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3243,7 +3316,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3267,19 +3341,22 @@
           }
         },
         {
-          "name": "timeoutSeconds",
+          "name": "handshakeTimeout",
+          "required": true,
           "schema": {
-            "type": "integer",
-            "minimum": 0
+            "$ref": "schema.json#/$defs/MCPHandshakeTimeout"
           }
         },
         {
           "name": "disabledTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -3287,9 +3364,12 @@
           "name": "autoApproveTools",
           "schema": {
             "type": "array",
+            "maxItems": 2048,
             "uniqueItems": true,
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
             }
           }
         },
@@ -3351,7 +3431,9 @@
         {
           "name": "server",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3414,7 +3496,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3485,7 +3568,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 32,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
           }
         },
         {
@@ -3556,7 +3640,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^mcpauth_[A-Z2-7]{26,64}$"
           }
         },
         {
@@ -3814,7 +3898,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -3907,13 +3993,14 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 65536
           }
         },
         {
@@ -3994,19 +4081,25 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "reasoningEffort",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4077,7 +4170,14 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$",
+            "allOf": [
+              {
+                "pattern": "^sch_"
+              }
+            ]
           }
         },
         {
@@ -4085,7 +4185,8 @@
           "required": true,
           "schema": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 9007199254740991
           }
         },
         {
@@ -4116,19 +4217,25 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "reasoningEffort",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4208,7 +4315,14 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$",
+            "allOf": [
+              {
+                "pattern": "^sch_"
+              }
+            ]
           }
         },
         {
@@ -4271,7 +4385,14 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$",
+            "allOf": [
+              {
+                "pattern": "^sch_"
+              }
+            ]
           }
         },
         {
@@ -4334,7 +4455,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4348,19 +4471,25 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "reasoningEffort",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4432,7 +4561,10 @@
           "name": "sessionId",
           "required": true,
           "schema": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4506,7 +4638,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4573,7 +4707,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4647,7 +4783,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4714,7 +4852,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4820,7 +4960,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4879,7 +5021,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -4924,7 +5068,9 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -5008,13 +5154,17 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -5098,13 +5248,17 @@
         {
           "name": "provider",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "model",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -5259,7 +5413,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
@@ -5311,7 +5467,7 @@
           "name": "sinceDays",
           "schema": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           }
         },
         {
@@ -5667,7 +5823,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 36,
+            "pattern": "^mem_[0-9a-f]{32}$"
           }
         },
         {
@@ -5737,7 +5895,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 36,
+            "pattern": "^mem_[0-9a-f]{32}$"
           }
         },
         {
@@ -5814,7 +5974,9 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 36,
+            "pattern": "^mem_[0-9a-f]{32}$"
           }
         },
         {
@@ -5952,19 +6114,25 @@
         {
           "name": "sessionId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "runId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {
           "name": "itemId",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
         {

@@ -11,7 +11,7 @@ import (
 
 func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	if renameErr := os.Rename(backupPath, sourcePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,9 +74,21 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	}
 }
 
+func TestDraftTransferDoesNotNormalizeSessionIdentity(t *testing.T) {
+	transfer := DraftTransfer{
+		SourceSessionID:      " source",
+		DestinationSessionID: "destination",
+		SourceBefore:         agent.Message{Text: "before"},
+		SourceAfter:          agent.Message{Text: "after"},
+	}
+	if err := transfer.validate(); err == nil {
+		t.Fatal("DraftTransfer accepted an identity that requires trimming")
+	}
+}
+
 func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +110,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 		t.Fatal(saveDraftErr)
 	}
 
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +120,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 
 func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) {
 	directory := t.TempDir()
-	store, err := Open(directory, Config{})
+	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,13 +142,13 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 		t.Fatal(saveDraftErr)
 	}
 
-	if _, openErr := Open(directory, Config{}); openErr == nil || !strings.Contains(openErr.Error(), "source draft changed") {
+	if _, openErr := OpenDirectory(directory, Config{}); openErr == nil || !strings.Contains(openErr.Error(), "source draft changed") {
 		t.Fatalf("open with conflicting draft transfer = %v", openErr)
 	}
 	if removeErr := os.Remove(store.path(sessionDraftTransferName)); removeErr != nil {
 		t.Fatal(removeErr)
 	}
-	reopened, err := Open(directory, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

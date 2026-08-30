@@ -43,11 +43,10 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		DefaultClient:          client,
-		DefaultSelection:       testDefaultSelection(),
+		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: identity + "-build",
 		ConfigurationIdentity:  identity + "-config",
-		DefaultMaxModelCalls:   4,
+		DefaultMaxModelCalls:   uint32Pointer(4),
 		BuildID:                interactionTestBuildID,
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},

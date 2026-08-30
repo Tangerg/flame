@@ -64,7 +64,7 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
     const runPump = createAgentRunPump({
       sessionId,
       isCancelled: () => cancelled,
-      readEpoch: () => store().sessions[sessionId]?.viewEpoch ?? 0,
+      readEpoch: () => store().sessions[sessionId]?.viewEpoch ?? 0n,
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
       applyRunSnapshot: (run) => store().applyRunSnapshot(sessionId, run),

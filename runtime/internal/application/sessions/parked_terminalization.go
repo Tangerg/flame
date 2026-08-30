@@ -201,87 +201,130 @@ func waitingRunMatchesContinuation(
 }
 
 func (p parkedRunTerminalization) terminalItems() ([]transcript.Item, error) {
-	interruptItems := make(map[string]transcript.Interrupt, len(p.pending.Interrupts))
-	for _, interruption := range p.pending.Interrupts {
-		interruptItems[interruption.ItemID] = interruption
-	}
-	pendingRunIDs := make(map[string]struct{}, len(p.pending.Continuations))
-	drainedItems := make(map[string]runs.DrainedTool)
-	for _, continuation := range p.pending.Continuations {
-		pendingRunIDs[continuation.RunID] = struct{}{}
-		for _, drained := range continuation.DrainedTools {
-			drainedItems[drained.ItemID] = drained
-		}
-	}
-	items := make([]transcript.Item, 0, len(interruptItems)+len(drainedItems))
+	projection := newParkedTerminalItemProjection(p)
 	for _, item := range p.snapshot.Items {
-		request, found := interruptItems[item.ID()]
-		if !found {
-			if drained, drainedFound := drainedItems[item.ID()]; drainedFound {
-				settled, changed, err := p.terminalDrainedItem(item, drained)
-				if err != nil {
-					return nil, err
-				}
-				if changed {
-					items = append(items, settled)
-				}
-				delete(drainedItems, item.ID())
-				continue
-			}
-			if _, pending := pendingRunIDs[item.RunID()]; pending && item.Status() == transcript.ItemRunning {
-				return nil, fmt.Errorf(
-					"sessions: terminalize parked Run tree %q: Running Item %q has no matching interrupt",
-					p.rootRunID,
-					item.ID(),
-				)
-			}
-			continue
+		if err := projection.project(item); err != nil {
+			return nil, err
 		}
-		if item.SessionID() != p.sessionID || item.RunID() != request.RunID {
-			return nil, fmt.Errorf(
-				"sessions: terminalize parked Run tree %q: interrupt Item %q is not owned by Run %q",
-				p.rootRunID,
+	}
+	if err := projection.validateComplete(); err != nil {
+		return nil, err
+	}
+	return projection.items, nil
+}
+
+type parkedTerminalItemProjection struct {
+	owner         parkedRunTerminalization
+	interrupts    map[string]transcript.Interrupt
+	pendingRunIDs map[string]struct{}
+	drained       map[string]runs.DrainedTool
+	items         []transcript.Item
+}
+
+func newParkedTerminalItemProjection(owner parkedRunTerminalization) *parkedTerminalItemProjection {
+	interrupts := make(map[string]transcript.Interrupt, len(owner.pending.Interrupts))
+	for _, interruption := range owner.pending.Interrupts {
+		interrupts[interruption.ItemID] = interruption
+	}
+	pendingRunIDs := make(map[string]struct{}, len(owner.pending.Continuations))
+	drained := make(map[string]runs.DrainedTool)
+	for _, continuation := range owner.pending.Continuations {
+		pendingRunIDs[continuation.RunID] = struct{}{}
+		for _, tool := range continuation.DrainedTools {
+			drained[tool.ItemID] = tool
+		}
+	}
+	return &parkedTerminalItemProjection{
+		owner:         owner,
+		interrupts:    interrupts,
+		pendingRunIDs: pendingRunIDs,
+		drained:       drained,
+		items:         make([]transcript.Item, 0, len(interrupts)+len(drained)),
+	}
+}
+
+func (projection *parkedTerminalItemProjection) project(item transcript.Item) error {
+	if request, found := projection.interrupts[item.ID()]; found {
+		return projection.projectInterrupt(item, request)
+	}
+	if drained, found := projection.drained[item.ID()]; found {
+		return projection.projectDrained(item, drained)
+	}
+	if _, pending := projection.pendingRunIDs[item.RunID()]; pending && item.Status() == transcript.ItemRunning {
+		return fmt.Errorf(
+			"sessions: terminalize parked Run tree %q: Running Item %q has no matching interrupt",
+			projection.owner.rootRunID,
+			item.ID(),
+		)
+	}
+	return nil
+}
+
+func (projection *parkedTerminalItemProjection) projectDrained(
+	item transcript.Item,
+	drained runs.DrainedTool,
+) error {
+	settled, changed, err := projection.owner.terminalDrainedItem(item, drained)
+	if err != nil {
+		return err
+	}
+	if changed {
+		projection.items = append(projection.items, settled)
+	}
+	delete(projection.drained, item.ID())
+	return nil
+}
+
+func (projection *parkedTerminalItemProjection) projectInterrupt(
+	item transcript.Item,
+	request transcript.Interrupt,
+) error {
+	owner := projection.owner
+	if item.SessionID() != owner.sessionID || item.RunID() != request.RunID {
+		return fmt.Errorf(
+			"sessions: terminalize parked Run tree %q: interrupt Item %q is not owned by Run %q",
+			owner.rootRunID,
+			item.ID(),
+			request.RunID,
+		)
+	}
+	switch request.Kind {
+	case interrupt.Question:
+		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted {
+			return fmt.Errorf("sessions: parked question Item %q is not a complete prompt", item.ID())
+		}
+	case interrupt.Approval:
+		settled, err := item.AbandonToolCall(owner.abandonmentFailure(), owner.finishedAt)
+		if err != nil {
+			return fmt.Errorf(
+				"sessions: terminalize parked ToolCall %q: %w",
 				item.ID(),
-				request.RunID,
+				err,
 			)
 		}
-		switch request.Kind {
-		case interrupt.Question:
-			if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted {
-				return nil, fmt.Errorf("sessions: parked question Item %q is not a complete prompt", item.ID())
-			}
-		case interrupt.Approval:
-			var failure *tool.Failure
-			if p.outcome == rundomain.OutcomeLost {
-				failure = &tool.Failure{
-					Kind:   tool.FailureExecution,
-					Detail: "tool call abandoned because its run could not be resumed",
-				}
-			}
-			settled, err := item.AbandonToolCall(failure, p.finishedAt)
-			if err != nil {
-				return nil, fmt.Errorf("sessions: terminalize parked ToolCall %q: %w", item.ID(), err)
-			}
-			items = append(items, settled)
-		default:
-			return nil, fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.Kind)
-		}
-		delete(interruptItems, item.ID())
+		projection.items = append(projection.items, settled)
+	default:
+		return fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.Kind)
 	}
-	if len(interruptItems) != 0 {
-		return nil, fmt.Errorf(
+	delete(projection.interrupts, item.ID())
+	return nil
+}
+
+func (projection *parkedTerminalItemProjection) validateComplete() error {
+	if len(projection.interrupts) != 0 {
+		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: transcript is missing an interrupt Item",
-			p.rootRunID,
+			projection.owner.rootRunID,
 		)
 	}
-	if len(drainedItems) != 0 {
-		return nil, fmt.Errorf(
+	if len(projection.drained) != 0 {
+		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: transcript is missing %d drained Tool Items",
-			p.rootRunID,
-			len(drainedItems),
+			projection.owner.rootRunID,
+			len(projection.drained),
 		)
 	}
-	return items, nil
+	return nil
 }
 
 func (p parkedRunTerminalization) terminalDrainedItem(
@@ -300,14 +343,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(
 	}
 	switch item.Status() {
 	case transcript.ItemRunning:
-		var failure *tool.Failure
-		if p.outcome == rundomain.OutcomeLost {
-			failure = &tool.Failure{
-				Kind:   tool.FailureExecution,
-				Detail: "tool call abandoned because its run could not be resumed",
-			}
-		}
-		settled, err := item.AbandonToolCall(failure, p.finishedAt)
+		settled, err := item.AbandonToolCall(p.abandonmentFailure(), p.finishedAt)
 		if err != nil {
 			return transcript.Item{}, false, fmt.Errorf(
 				"sessions: terminalize parked ToolCall %q: %w",
@@ -323,6 +359,16 @@ func (p parkedRunTerminalization) terminalDrainedItem(
 			item.ID(),
 			item.Status(),
 		)
+	}
+}
+
+func (p parkedRunTerminalization) abandonmentFailure() *tool.Failure {
+	if p.outcome != rundomain.OutcomeLost {
+		return nil
+	}
+	return &tool.Failure{
+		Kind:   tool.FailureExecution,
+		Detail: "tool call abandoned because its run could not be resumed",
 	}
 }
 

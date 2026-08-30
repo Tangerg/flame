@@ -3,10 +3,28 @@
 
 import { service } from "dougong";
 
+/** Process-local capability for one admitted Runtime connection.
+ *
+ * Identity is deliberately object identity: it is never serialized, counted,
+ * or reconstructed from display text. A healthy inspection of the same
+ * process keeps the same instance; reconnecting creates a successor instance.
+ */
+export class RuntimeConnectionGeneration {
+  private constructor(readonly processGeneration: string) {}
+
+  static forProcess(processGeneration: string): RuntimeConnectionGeneration {
+    return new RuntimeConnectionGeneration(processGeneration);
+  }
+
+  belongsTo(processGeneration: string): boolean {
+    return this.processGeneration === processGeneration;
+  }
+}
+
 export interface RuntimeStreamPorts {
-  connectionGeneration: () => string | null;
+  connectionGeneration: () => RuntimeConnectionGeneration | null;
   subscribeConnection: (onChange: () => void) => () => void;
-  reportConnectionLoss: (expectedGeneration: string) => Promise<void>;
+  reportConnectionLoss: (expectedGeneration: RuntimeConnectionGeneration) => Promise<void>;
 }
 
 export const RUNTIME_STREAM_PORTS = service<RuntimeStreamPorts>("flame.runtime.streamPorts");

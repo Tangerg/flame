@@ -2,24 +2,45 @@
 
 package protocol
 
-func (p PageQuery) ValidateWire() error {
-	return collectWireViolations("PageQuery",
-		nonNegativeNumber("limit", p.Limit),
+func (l ListSessionsRequest) ValidateWire() error {
+	return collectWireViolations("ListSessionsRequest",
+		maxLength("search", l.Search, 1024),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 	)
 }
 
 func (g GetSessionRequest) ValidateWire() error {
 	return collectWireViolations("GetSessionRequest",
 		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+	)
+}
+
+func (g GetSessionSnapshotRequest) ValidateWire() error {
+	return collectWireViolations("GetSessionSnapshotRequest",
+		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
 	)
 }
 
 func (u UpdateSessionRequest) ValidateWire() error {
 	return collectWireViolations("UpdateSessionRequest",
 		requiredText("sessionId", u.SessionID),
+		identity("sessionId", u.SessionID),
+		maxLength("sessionId", u.SessionID, 256),
 		positiveNumber("expectedRevision", u.ExpectedRevision),
+		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
 		optionalText("provider", u.Provider),
 		optionalText("model", u.Model),
+		optionalIdentity("provider", u.Provider),
+		optionalMaxLength("provider", u.Provider, 64),
+		optionalIdentity("model", u.Model),
+		optionalMaxLength("model", u.Model, 256),
+		optionalIdentity("reasoningEffort", u.ReasoningEffort),
+		optionalMaxLength("reasoningEffort", u.ReasoningEffort, 32),
 		requiredWhen(wireFieldPresent(u, "provider"), "model", u),
 		requiredWhen(wireFieldPresent(u, "model"), "provider", u),
 	)
@@ -28,18 +49,28 @@ func (u UpdateSessionRequest) ValidateWire() error {
 func (d DeleteSessionRequest) ValidateWire() error {
 	return collectWireViolations("DeleteSessionRequest",
 		requiredText("sessionId", d.SessionID),
+		identity("sessionId", d.SessionID),
+		maxLength("sessionId", d.SessionID, 256),
 	)
 }
 
 func (f ForkSessionRequest) ValidateWire() error {
 	return collectWireViolations("ForkSessionRequest",
 		requiredText("sessionId", f.SessionID),
+		identity("sessionId", f.SessionID),
+		maxLength("sessionId", f.SessionID, 256),
+		identity("fromRunId", f.FromRunID),
+		maxLength("fromRunId", f.FromRunID, 256),
 	)
 }
 
 func (r RollbackSessionRequest) ValidateWire() error {
 	return collectWireViolations("RollbackSessionRequest",
 		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("toRunId", r.ToRunID),
+		maxLength("toRunId", r.ToRunID, 256),
 		closedEnum("restoreType", string(r.RestoreType), []string{"history", "files", "both"}, true),
 	)
 }
@@ -47,6 +78,8 @@ func (r RollbackSessionRequest) ValidateWire() error {
 func (e ExportSessionRequest) ValidateWire() error {
 	return collectWireViolations("ExportSessionRequest",
 		requiredText("sessionId", e.SessionID),
+		identity("sessionId", e.SessionID),
+		maxLength("sessionId", e.SessionID, 256),
 		closedEnum("format", string(e.Format), []string{"md", "json"}, true),
 	)
 }
@@ -54,16 +87,23 @@ func (e ExportSessionRequest) ValidateWire() error {
 func (i ImportSessionRequest) ValidateWire() error {
 	return collectWireViolations("ImportSessionRequest",
 		requiredText("artifact.session.id", i.Artifact.Session.ID),
+		identity("artifact.session.id", i.Artifact.Session.ID),
+		maxLength("artifact.session.id", i.Artifact.Session.ID, 256),
 	)
 }
 
 func (s StartRunRequest) ValidateWire() error {
 	return collectWireViolations("StartRunRequest",
 		requiredText("sessionId", s.SessionID),
+		identity("sessionId", s.SessionID),
+		maxLength("sessionId", s.SessionID, 256),
 		requiredItems("input", s.Input),
-		nonNegativeNumber("maxTotalTokens", s.MaxTotalTokens),
-		nonNegativeNumber("maxSteps", s.MaxSteps),
-		nonNegativeNumber("maxBudgetUsd", s.MaxBudgetUSD),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
 		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
 		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
 	)
@@ -72,6 +112,8 @@ func (s StartRunRequest) ValidateWire() error {
 func (r ResumeRunRequest) ValidateWire() error {
 	return collectWireViolations("ResumeRunRequest",
 		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
 		nonEmptyItems("input", r.Input),
 	)
 }
@@ -79,13 +121,19 @@ func (r ResumeRunRequest) ValidateWire() error {
 func (s SubscribeRunRequest) ValidateWire() error {
 	return collectWireViolations("SubscribeRunRequest",
 		requiredText("runId", s.RunID),
+		identity("runId", s.RunID),
+		maxLength("runId", s.RunID, 256),
 		requiredText("segmentId", s.SegmentID),
+		identity("segmentId", s.SegmentID),
+		maxLength("segmentId", s.SegmentID, 256),
 	)
 }
 
 func (c CancelRunRequest) ValidateWire() error {
 	return collectWireViolations("CancelRunRequest",
 		requiredText("runId", c.RunID),
+		identity("runId", c.RunID),
+		maxLength("runId", c.RunID, 256),
 		maxLength("reason", c.Reason, 1024),
 	)
 }
@@ -93,7 +141,11 @@ func (c CancelRunRequest) ValidateWire() error {
 func (s SteerRunRequest) ValidateWire() error {
 	return collectWireViolations("SteerRunRequest",
 		requiredText("runId", s.RunID),
+		identity("runId", s.RunID),
+		maxLength("runId", s.RunID, 256),
 		requiredText("expectedSegmentId", s.ExpectedSegmentID),
+		identity("expectedSegmentId", s.ExpectedSegmentID),
+		maxLength("expectedSegmentId", s.ExpectedSegmentID, 256),
 		requiredItems("input", s.Input),
 	)
 }
@@ -101,58 +153,88 @@ func (s SteerRunRequest) ValidateWire() error {
 func (g GetRunRequest) ValidateWire() error {
 	return collectWireViolations("GetRunRequest",
 		requiredText("runId", g.RunID),
+		identity("runId", g.RunID),
+		maxLength("runId", g.RunID, 256),
 	)
 }
 
 func (l ListRunsRequest) ValidateWire() error {
 	return collectWireViolations("ListRunsRequest",
+		identity("sessionId", l.SessionID),
+		maxLength("sessionId", l.SessionID, 256),
 		nonEmptyItems("statuses", l.Statuses),
 		uniqueItems("statuses", l.Statuses),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 		closedEnumItems("statuses", l.Statuses, []string{"running", "waiting", "finished"}),
+	)
+}
+
+func (l ListInterruptsRequest) ValidateWire() error {
+	return collectWireViolations("ListInterruptsRequest",
+		identity("sessionId", l.SessionID),
+		maxLength("sessionId", l.SessionID, 256),
+		identity("rootRunId", l.RootRunID),
+		maxLength("rootRunId", l.RootRunID, 256),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 	)
 }
 
 func (g GetPlanRequest) ValidateWire() error {
 	return collectWireViolations("GetPlanRequest",
 		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
 	)
 }
 
 func (l ListItemsRequest) ValidateWire() error {
 	return collectWireViolations("ListItemsRequest",
 		requiredText("scope.type", string(l.Scope.Type)),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 		closedEnum("order", string(l.Order), []string{"asc", "desc"}, true),
 	)
 }
 
 func (g GetDiffRequest) ValidateWire() error {
 	return collectWireViolations("GetDiffRequest",
-		nonNegativeNumber("limit", g.Limit),
+		optionalPositiveNumber("limit", g.Limit),
 		closedEnum("mode", string(g.Mode), []string{"worktree", "base"}, true),
 		closedEnum("format", string(g.Format), []string{"rows", "raw"}, true),
+		forbiddenWhen(wireFieldEquals(g, "format", "raw"), "limit", g),
 	)
 }
 
 func (g GetFileHeadRequest) ValidateWire() error {
 	return collectWireViolations("GetFileHeadRequest",
 		requiredText("path", g.Path),
-		nonNegativeNumber("lines", g.Lines),
+		optionalPositiveNumber("lines", g.Lines),
 	)
 }
 
 func (g GrepRequest) ValidateWire() error {
 	return collectWireViolations("GrepRequest",
 		requiredText("query", g.Query),
-		nonNegativeNumber("limit", g.Limit),
+		optionalPositiveNumber("limit", g.Limit),
+	)
+}
+
+func (l ListFilesRequest) ValidateWire() error {
+	return collectWireViolations("ListFilesRequest",
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 	)
 }
 
 func (r ReadFileRequest) ValidateWire() error {
 	return collectWireViolations("ReadFileRequest",
 		requiredText("path", r.Path),
-		nonNegativeNumber("startLine", r.StartLine),
-		nonNegativeNumber("endLine", r.EndLine),
-		nonNegativeNumber("maxBytes", r.MaxBytes),
+		optionalPositiveNumber("startLine", r.StartLine),
+		optionalPositiveNumber("endLine", r.EndLine),
+		optionalPositiveNumber("maxBytes", r.MaxBytes),
+		requiredWhen(wireFieldPresent(r, "endLine"), "startLine", r),
 	)
 }
 
@@ -180,37 +262,58 @@ func (s SkillProposalRef) ValidateWire() error {
 
 func (m MCPServerCandidate) ValidateWire() error {
 	return collectWireViolations("MCPServerCandidate",
-		requiredText("name", m.Name),
-		nonNegativeNumber("timeoutSeconds", m.TimeoutSeconds),
+		maxLength("name", m.Name, 32),
+		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
+		maxItemLength("disabledTools", m.DisabledTools, 128),
+		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
+		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
 		uniqueItems("autoApproveTools", m.AutoApproveTools),
+		maxItemLength("autoApproveTools", m.AutoApproveTools, 128),
+		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (u UpdateMCPServerRequest) ValidateWire() error {
 	return collectWireViolations("UpdateMCPServerRequest",
-		requiredText("server", u.Server),
-		optionalNonNegativeNumber("timeoutSeconds", u.TimeoutSeconds),
+		maxLength("server", u.Server, 32),
+		requiredTextPattern("server", u.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		optionalMaxItems("disabledTools", u.DisabledTools, 2048),
 		optionalUniqueItems("disabledTools", u.DisabledTools),
+		optionalMaxItemLength("disabledTools", u.DisabledTools, 128),
+		optionalTextPatternItems("disabledTools", u.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
+		optionalMaxItems("autoApproveTools", u.AutoApproveTools, 2048),
 		optionalUniqueItems("autoApproveTools", u.AutoApproveTools),
+		optionalMaxItemLength("autoApproveTools", u.AutoApproveTools, 128),
+		optionalTextPatternItems("autoApproveTools", u.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (m MCPServerRequest) ValidateWire() error {
 	return collectWireViolations("MCPServerRequest",
-		requiredText("server", m.Server),
+		maxLength("server", m.Server, 32),
+		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+	)
+}
+
+func (m MCPListToolsRequest) ValidateWire() error {
+	return collectWireViolations("MCPListToolsRequest",
+		maxLength("server", m.Server, 32),
+		optionalTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
 func (c CreateMCPAuthorizationAttemptRequest) ValidateWire() error {
 	return collectWireViolations("CreateMCPAuthorizationAttemptRequest",
-		requiredText("server", c.Server),
+		maxLength("server", c.Server, 32),
+		requiredTextPattern("server", c.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
 func (m MCPAuthorizationAttemptRequest) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptRequest",
-		requiredText("attemptId", m.AttemptID),
+		requiredTextPattern("attemptId", m.AttemptID, "^mcpauth_[A-Z2-7]{26,64}$"),
 	)
 }
 
@@ -229,6 +332,8 @@ func (s SetApprovalModeRequest) ValidateWire() error {
 func (l ListApprovalRulesRequest) ValidateWire() error {
 	return collectWireViolations("ListApprovalRulesRequest",
 		requiredText("sessionId", l.SessionID),
+		identity("sessionId", l.SessionID),
+		maxLength("sessionId", l.SessionID, 256),
 	)
 }
 
@@ -238,19 +343,42 @@ func (f ForgetApprovalRuleRequest) ValidateWire() error {
 	)
 }
 
+func (p PageQuery) ValidateWire() error {
+	return collectWireViolations("PageQuery",
+		optionalPositiveNumber("limit", p.Limit),
+		maxLength("cursor", p.Cursor, 65536),
+	)
+}
+
 func (c CreateScheduleRequest) ValidateWire() error {
 	return collectWireViolations("CreateScheduleRequest",
 		requiredText("instructions", c.Instructions),
 		requiredText("cron", c.Cron),
+		identity("provider", c.Provider),
+		maxLength("provider", c.Provider, 64),
+		identity("model", c.Model),
+		maxLength("model", c.Model, 256),
+		identity("reasoningEffort", c.ReasoningEffort),
+		maxLength("reasoningEffort", c.ReasoningEffort, 32),
 	)
 }
 
 func (u UpdateScheduleRequest) ValidateWire() error {
 	return collectWireViolations("UpdateScheduleRequest",
 		requiredText("id", u.ID),
+		identity("id", u.ID),
+		maxLength("id", u.ID, 256),
+		requiredTextPrefix("id", u.ID, "sch_"),
 		positiveNumber("expectedRevision", u.ExpectedRevision),
+		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
 		optionalText("instructions", u.Instructions),
 		optionalText("cron", u.Cron),
+		optionalIdentity("provider", u.Provider),
+		optionalMaxLength("provider", u.Provider, 64),
+		optionalIdentity("model", u.Model),
+		optionalMaxLength("model", u.Model, 256),
+		optionalIdentity("reasoningEffort", u.ReasoningEffort),
+		optionalMaxLength("reasoningEffort", u.ReasoningEffort, 32),
 		closedEnum("workspaceMode", string(u.WorkspaceMode), []string{"default"}, true),
 		forbiddenWhen(wireFieldEquals(u, "workspaceMode", "default"), "workspace", u),
 	)
@@ -259,37 +387,90 @@ func (u UpdateScheduleRequest) ValidateWire() error {
 func (d DeleteScheduleRequest) ValidateWire() error {
 	return collectWireViolations("DeleteScheduleRequest",
 		requiredText("id", d.ID),
+		identity("id", d.ID),
+		maxLength("id", d.ID, 256),
+		requiredTextPrefix("id", d.ID, "sch_"),
 	)
 }
 
 func (r RunScheduleNowRequest) ValidateWire() error {
 	return collectWireViolations("RunScheduleNowRequest",
 		requiredText("id", r.ID),
+		identity("id", r.ID),
+		maxLength("id", r.ID, 256),
+		requiredTextPrefix("id", r.ID, "sch_"),
 	)
 }
 
 func (s StartGoalRequest) ValidateWire() error {
 	return collectWireViolations("StartGoalRequest",
 		requiredText("sessionId", s.SessionID),
+		identity("sessionId", s.SessionID),
+		maxLength("sessionId", s.SessionID, 256),
 		requiredText("objective", s.Objective),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+	)
+}
+
+func (u UpdateGoalRequest) ValidateWire() error {
+	return collectWireViolations("UpdateGoalRequest",
+		requiredText("sessionId", u.SessionID),
+		identity("sessionId", u.SessionID),
+		maxLength("sessionId", u.SessionID, 256),
 	)
 }
 
 func (g GoalRequest) ValidateWire() error {
 	return collectWireViolations("GoalRequest",
 		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
 	)
 }
 
 func (u UpdateProviderRequest) ValidateWire() error {
 	return collectWireViolations("UpdateProviderRequest",
 		requiredText("provider", u.Provider),
+		identity("provider", u.Provider),
+		maxLength("provider", u.Provider, 64),
 	)
 }
 
 func (t TestProviderRequest) ValidateWire() error {
 	return collectWireViolations("TestProviderRequest",
 		requiredText("provider", t.Provider),
+		identity("provider", t.Provider),
+		maxLength("provider", t.Provider, 64),
+	)
+}
+
+func (l ListModelsRequest) ValidateWire() error {
+	return collectWireViolations("ListModelsRequest",
+		identity("provider", l.Provider),
+		maxLength("provider", l.Provider, 64),
+	)
+}
+
+func (u UtilityRole) ValidateWire() error {
+	return collectWireViolations("UtilityRole",
+		identity("provider", u.Provider),
+		maxLength("provider", u.Provider, 64),
+		identity("model", u.Model),
+		maxLength("model", u.Model, 256),
+	)
+}
+
+func (e EmbeddingRole) ValidateWire() error {
+	return collectWireViolations("EmbeddingRole",
+		identity("provider", e.Provider),
+		maxLength("provider", e.Provider, 64),
+		identity("model", e.Model),
+		maxLength("model", e.Model, 256),
 	)
 }
 
@@ -302,12 +483,14 @@ func (i InvokeToolRequest) ValidateWire() error {
 func (s SessionUsageRequest) ValidateWire() error {
 	return collectWireViolations("SessionUsageRequest",
 		requiredText("sessionId", s.SessionID),
+		identity("sessionId", s.SessionID),
+		maxLength("sessionId", s.SessionID, 256),
 	)
 }
 
 func (u UsageSummaryRequest) ValidateWire() error {
 	return collectWireViolations("UsageSummaryRequest",
-		nonNegativeNumber("sinceDays", u.SinceDays),
+		optionalPositiveNumber("sinceDays", u.SinceDays),
 	)
 }
 
@@ -335,6 +518,8 @@ func (a AgentMemoryListRequest) ValidateWire() error {
 func (a AgentMemoryReviewRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryReviewRequest",
 		requiredText("id", a.ID),
+		maxLength("id", a.ID, 36),
+		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		closedEnum("decision", string(a.Decision), []string{"approve", "reject"}, false),
 	)
 }
@@ -342,6 +527,8 @@ func (a AgentMemoryReviewRequest) ValidateWire() error {
 func (a AgentMemoryUpdateRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryUpdateRequest",
 		requiredText("id", a.ID),
+		maxLength("id", a.ID, 36),
+		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		optionalText("content", a.Content),
 		optionalMaxLength("content", a.Content, 4096),
 	)
@@ -350,6 +537,8 @@ func (a AgentMemoryUpdateRequest) ValidateWire() error {
 func (a AgentMemoryItemRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItemRequest",
 		requiredText("id", a.ID),
+		maxLength("id", a.ID, 36),
+		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 	)
 }
 
@@ -365,6 +554,12 @@ func (a AgentMemoryAddRequest) ValidateWire() error {
 
 func (f FeedbackRequest) ValidateWire() error {
 	return collectWireViolations("FeedbackRequest",
+		identity("sessionId", f.SessionID),
+		maxLength("sessionId", f.SessionID, 256),
+		identity("runId", f.RunID),
+		maxLength("runId", f.RunID, 256),
+		identity("itemId", f.ItemID),
+		maxLength("itemId", f.ItemID, 256),
 		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
 	)
 }
@@ -656,6 +851,12 @@ func (s SegmentOutcome) ValidateWire() error {
 
 func (i Item) ValidateWire() error {
 	return collectWireViolations("Item",
+		requiredText("id", i.ID),
+		identity("id", i.ID),
+		maxLength("id", i.ID, 256),
+		requiredText("runId", i.RunID),
+		identity("runId", i.RunID),
+		maxLength("runId", i.RunID, 256),
 		optionalNonNegativeNumber("durationMillis", i.DurationMillis),
 		closedEnum("status", string(i.Status), []string{"running", "completed", "incomplete"}, false),
 		closedEnum("type", string(i.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
@@ -666,19 +867,21 @@ func (i Item) ValidateWire() error {
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "status", i),
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "createdAt", i),
+		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "content", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "phase", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "text", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "redacted", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "startedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "safetyClass", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "approvalDecision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "error", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "droppedMessages", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "userMessage"), "status", i, []string{"completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "status", i),
@@ -687,14 +890,15 @@ func (i Item) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "redacted", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "startedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "safetyClass", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "approvalDecision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "error", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "droppedMessages", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "agentMessage"), "status", i, []string{"running", "completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "status", i),
@@ -703,35 +907,39 @@ func (i Item) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "phase", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "startedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "safetyClass", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "approvalDecision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "error", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "droppedMessages", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "reasoning"), "status", i, []string{"running", "completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "question"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "question"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "question"), "status", i),
 		requiredWhen(wireFieldEquals(i, "type", "question"), "createdAt", i),
+		requiredWhen(wireFieldEquals(i, "type", "question"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "content", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "phase", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "text", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "redacted", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "startedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "question"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "safetyClass", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "approvalDecision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "error", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "question"), "droppedMessages", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "question"), "status", i, []string{"completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "status", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "startedAt", i),
+		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "createdAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "content", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "phase", i),
@@ -740,29 +948,33 @@ func (i Item) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "droppedMessages", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "toolCall"), "status", i, []string{"running", "completed", "incomplete"}),
 		requiredWhen(wireFieldEquals(i, "type", "compaction"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "compaction"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "compaction"), "status", i),
 		requiredWhen(wireFieldEquals(i, "type", "compaction"), "createdAt", i),
+		requiredWhen(wireFieldEquals(i, "type", "compaction"), "summary", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "content", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "phase", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "text", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "redacted", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "question", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "startedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "tool", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "safetyClass", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "approvalDecision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "error", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "durationMillis", i),
+		allowedValuesWhen(wireFieldEquals(i, "type", "compaction"), "status", i, []string{"completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "finishedAt", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "incomplete"), "finishedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "finishedAt", i),
+		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "durationMillis", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "running"), "phase", i),
 		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "completed"), "phase", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "incomplete"), "phase", i),
+		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "completed"), "content", i),
+		requiredWhen(wireFieldEquals(i, "type", "reasoning") && wireFieldEquals(i, "status", "completed"), "text", i),
 	)
 }
 
@@ -772,13 +984,10 @@ func (i ItemDelta) ValidateWire() error {
 		requiredWhen(wireFieldEquals(i, "type", "content"), "text", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "content"), "argumentsTextDelta", i),
 		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "index", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "argumentsTextDelta", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolArguments"), "argumentsTextDelta", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolArguments"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolArguments"), "index", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolOutput"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolOutput"), "index", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolOutput"), "argumentsTextDelta", i),
 	)
 }
@@ -795,6 +1004,10 @@ func (c CapabilityRequirement) ValidateWire() error {
 
 func (i ItemListScope) ValidateWire() error {
 	return collectWireViolations("ItemListScope",
+		identity("sessionId", i.SessionID),
+		maxLength("sessionId", i.SessionID, 256),
+		identity("runId", i.RunID),
+		maxLength("runId", i.RunID, 256),
 		closedEnum("type", string(i.Type), []string{"session", "run"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "session"), "sessionId", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "session"), "runId", i),
@@ -852,6 +1065,15 @@ func (p ProviderConfigChange) ValidateWire() error {
 		closedEnum("type", string(p.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "set"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "clear"), "value", p),
+	)
+}
+
+func (m MCPHandshakeTimeout) ValidateWire() error {
+	return collectWireViolations("MCPHandshakeTimeout",
+		optionalPositiveNumber("seconds", m.Seconds),
+		closedEnum("type", string(m.Type), []string{"unbounded", "bounded"}, false),
+		forbiddenWhen(wireFieldEquals(m, "type", "unbounded"), "seconds", m),
+		requiredWhen(wireFieldEquals(m, "type", "bounded"), "seconds", m),
 	)
 }
 
@@ -942,7 +1164,11 @@ func (m MCPAuthorizationAttemptStatus) ValidateWire() error {
 func (i Interrupt) ValidateWire() error {
 	return collectWireViolations("Interrupt",
 		requiredText("itemId", i.ItemID),
+		identity("itemId", i.ItemID),
+		maxLength("itemId", i.ItemID, 256),
 		requiredText("runId", i.RunID),
+		identity("runId", i.RunID),
+		maxLength("runId", i.RunID, 256),
 		closedEnum("type", string(i.Type), []string{"approval", "question"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "itemId", i),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "runId", i),
@@ -975,6 +1201,8 @@ func (i InterruptResponseValue) ValidateWire() error {
 
 func (s StreamEvent) ValidateWire() error {
 	return collectWireViolations("StreamEvent",
+		identity("itemId", s.ItemID),
+		maxLength("itemId", s.ItemID, 256),
 		closedEnum("type", string(s.Type), []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}, false),
 		requiredWhen(wireFieldEquals(s, "type", "segment.started"), "run", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "progress", s),
@@ -1032,12 +1260,17 @@ func (s StreamEvent) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "item", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "itemId", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "delta", s),
+		allowedValuesWhen(wireFieldEquals(s, "type", "item.started"), "item.type", s, []string{"agentMessage", "reasoning", "toolCall"}),
+		allowedValuesWhen(wireFieldEquals(s, "type", "item.started"), "item.status", s, []string{"running"}),
+		allowedValuesWhen(wireFieldEquals(s, "type", "item.completed"), "item.status", s, []string{"completed", "incomplete"}),
+		requiredWhen(wireFieldEquals(s, "type", "plan.updated"), "plan.state", s),
 	)
 }
 
 func (r RuntimeEvent) ValidateWire() error {
 	return collectWireViolations("RuntimeEvent",
 		positiveNumber("sequence", r.Sequence),
+		maximumNumber("sequence", r.Sequence, 9007199254740991),
 		nonEmptyItems("paths", r.Paths),
 		uniqueItems("paths", r.Paths),
 		nonEmptyItems("names", r.Names),
@@ -1054,6 +1287,13 @@ func (r RuntimeEvent) ValidateWire() error {
 		uniqueItems("topics", r.Topics),
 		nonEmptyItems("watchIds", r.WatchIDs),
 		uniqueItems("watchIds", r.WatchIDs),
+		identityItems("scheduleIds", r.ScheduleIDs),
+		maxItemLength("scheduleIds", r.ScheduleIDs, 256),
+		textPrefixItems("scheduleIds", r.ScheduleIDs, "sch_"),
+		identityItems("sessionIds", r.SessionIDs),
+		maxItemLength("sessionIds", r.SessionIDs, 256),
+		identityItems("runIds", r.RunIDs),
+		maxItemLength("runIds", r.RunIDs, 256),
 		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"}, false),
 		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
@@ -1236,6 +1476,12 @@ func (a ArtifactOutcome) ValidateWire() error {
 
 func (a ArtifactItem) ValidateWire() error {
 	return collectWireViolations("ArtifactItem",
+		requiredText("id", a.ID),
+		identity("id", a.ID),
+		maxLength("id", a.ID, 256),
+		requiredText("runId", a.RunID),
+		identity("runId", a.RunID),
+		maxLength("runId", a.RunID, 256),
 		nonNegativeNumber("droppedMessages", a.DroppedMessages),
 		optionalNonNegativeNumber("durationMillis", a.DurationMillis),
 		closedEnum("status", string(a.Status), []string{"running", "completed", "incomplete"}, false),
@@ -1247,73 +1493,82 @@ func (a ArtifactItem) ValidateWire() error {
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "createdAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "phase", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "redacted", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "startedAt", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "finishedAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "safetyClass", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "approvalDecision", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "droppedMessages", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "userMessage"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "createdAt", a),
 		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "phase", a),
+		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "redacted", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "startedAt", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "finishedAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "safetyClass", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "approvalDecision", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "droppedMessages", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "agentMessage"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "createdAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "phase", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "startedAt", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "finishedAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "safetyClass", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "approvalDecision", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "droppedMessages", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "reasoning"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "question"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "question"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "question"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "question"), "createdAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "question"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "phase", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "redacted", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "startedAt", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "question"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "finishedAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "safetyClass", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "approvalDecision", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "question"), "droppedMessages", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "question"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "startedAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "createdAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "phase", a),
@@ -1322,24 +1577,25 @@ func (a ArtifactItem) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "droppedMessages", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "toolCall"), "status", a, []string{"completed", "incomplete"}),
 		requiredWhen(wireFieldEquals(a, "type", "compaction"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "compaction"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "compaction"), "status", a),
 		requiredWhen(wireFieldEquals(a, "type", "compaction"), "createdAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "compaction"), "summary", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "content", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "phase", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "redacted", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "question", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "startedAt", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "finishedAt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "safetyClass", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "approvalDecision", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "running"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "running"), "durationMillis", a),
+		allowedValuesWhen(wireFieldEquals(a, "type", "compaction"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "finishedAt", a),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "incomplete"), "finishedAt", a),
 	)
@@ -1379,10 +1635,55 @@ func (d DiffRow) ValidateWire() error {
 	)
 }
 
+func (g GoalBudget) ValidateWire() error {
+	return collectWireViolations("GoalBudget",
+		optionalPositiveNumber("maxRuns", g.MaxRuns),
+		optionalPositiveNumber("maxCostUsd", g.MaxCostUSD),
+		optionalPositiveNumber("maxSteps", g.MaxSteps),
+		requiredAnyWhen(true, []string{"maxRuns", "maxCostUsd", "maxSteps"}, g),
+	)
+}
+
+func (r RunLimits) ValidateWire() error {
+	return collectWireViolations("RunLimits",
+		optionalPositiveNumber("maxTotalTokens", r.MaxTotalTokens),
+		optionalPositiveNumber("maxSteps", r.MaxSteps),
+		optionalPositiveNumber("maxBudgetUsd", r.MaxBudgetUSD),
+		requiredAnyWhen(true, []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}, r),
+	)
+}
+
+func (a ArtifactRunLimits) ValidateWire() error {
+	return collectWireViolations("ArtifactRunLimits",
+		optionalPositiveNumber("maxTotalTokens", a.MaxTotalTokens),
+		optionalPositiveNumber("maxSteps", a.MaxSteps),
+		optionalPositiveNumber("maxBudgetUsd", a.MaxBudgetUSD),
+		requiredAnyWhen(true, []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}, a),
+	)
+}
+
+func (m ModelTokenLimits) ValidateWire() error {
+	return collectWireViolations("ModelTokenLimits",
+		optionalPositiveNumber("contextWindow", m.ContextWindow),
+		optionalPositiveNumber("maxInputTokens", m.MaxInputTokens),
+		optionalPositiveNumber("maxOutputTokens", m.MaxOutputTokens),
+		requiredAnyWhen(true, []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, m),
+	)
+}
+
+func (r RunProgress) ValidateWire() error {
+	return collectWireViolations("RunProgress",
+		optionalNonNegativeNumber("step", r.Step),
+		optionalNonNegativeNumber("contextTokens", r.ContextTokens),
+		requiredAnyWhen(true, []string{"step", "usage", "contextTokens", "activity"}, r),
+	)
+}
+
 func (m MCPAuthorizationAttempt) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
-		requiredText("id", m.ID),
-		requiredText("server", m.Server),
+		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
+		maxLength("server", m.Server, 32),
+		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "succeeded"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "failed"), "finishedAt", m),
@@ -1392,6 +1693,24 @@ func (m MCPAuthorizationAttempt) ValidateWire() error {
 
 func (r RunSummary) ValidateWire() error {
 	return collectWireViolations("RunSummary",
+		requiredText("id", r.ID),
+		identity("id", r.ID),
+		maxLength("id", r.ID, 256),
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("spawnedByItemId", r.SpawnedByItemID),
+		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		identity("parentRunId", r.ParentRunID),
+		maxLength("parentRunId", r.ParentRunID, 256),
+		identity("rootRunId", r.RootRunID),
+		maxLength("rootRunId", r.RootRunID, 256),
+		identity("provider", r.Provider),
+		maxLength("provider", r.Provider, 64),
+		identity("model", r.Model),
+		maxLength("model", r.Model, 256),
+		identity("reasoningEffort", r.ReasoningEffort),
+		maxLength("reasoningEffort", r.ReasoningEffort, 32),
 		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, true),
 		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
 		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
@@ -1410,7 +1729,27 @@ func (r RunSummary) ValidateWire() error {
 
 func (r RunRef) ValidateWire() error {
 	return collectWireViolations("RunRef",
+		identity("activeSegmentId", r.ActiveSegmentID),
+		maxLength("activeSegmentId", r.ActiveSegmentID, 256),
 		nonNegativeNumber("contextTokens", r.ContextTokens),
+		requiredText("id", r.ID),
+		identity("id", r.ID),
+		maxLength("id", r.ID, 256),
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("spawnedByItemId", r.SpawnedByItemID),
+		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		identity("parentRunId", r.ParentRunID),
+		maxLength("parentRunId", r.ParentRunID, 256),
+		identity("rootRunId", r.RootRunID),
+		maxLength("rootRunId", r.RootRunID, 256),
+		identity("provider", r.Provider),
+		maxLength("provider", r.Provider, 64),
+		identity("model", r.Model),
+		maxLength("model", r.Model, 256),
+		identity("reasoningEffort", r.ReasoningEffort),
+		maxLength("reasoningEffort", r.ReasoningEffort, 32),
 		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, true),
 		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
 		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
@@ -1433,7 +1772,11 @@ func (r RunRef) ValidateWire() error {
 func (p PendingInterruptSet) ValidateWire() error {
 	return collectWireViolations("PendingInterruptSet",
 		requiredText("rootRunId", p.RootRunID),
+		identity("rootRunId", p.RootRunID),
+		maxLength("rootRunId", p.RootRunID, 256),
 		requiredText("sessionId", p.SessionID),
+		identity("sessionId", p.SessionID),
+		maxLength("sessionId", p.SessionID, 256),
 		requiredItems("interrupts", p.Interrupts),
 		requiredWhen(true, "rootRunId", p),
 		requiredWhen(true, "sessionId", p),
@@ -1444,6 +1787,24 @@ func (p PendingInterruptSet) ValidateWire() error {
 
 func (a ArtifactRun) ValidateWire() error {
 	return collectWireViolations("ArtifactRun",
+		requiredText("id", a.ID),
+		identity("id", a.ID),
+		maxLength("id", a.ID, 256),
+		requiredText("sessionId", a.SessionID),
+		identity("sessionId", a.SessionID),
+		maxLength("sessionId", a.SessionID, 256),
+		identity("spawnedByItemId", a.SpawnedByItemID),
+		maxLength("spawnedByItemId", a.SpawnedByItemID, 256),
+		identity("parentRunId", a.ParentRunID),
+		maxLength("parentRunId", a.ParentRunID, 256),
+		identity("rootRunId", a.RootRunID),
+		maxLength("rootRunId", a.RootRunID, 256),
+		identity("provider", a.Provider),
+		maxLength("provider", a.Provider, 64),
+		identity("model", a.Model),
+		maxLength("model", a.Model, 256),
+		identity("reasoningEffort", a.ReasoningEffort),
+		maxLength("reasoningEffort", a.ReasoningEffort, 32),
 		nonNegativeNumber("messageMark", a.MessageMark),
 		nonNegativeNumber("contextTokens", a.ContextTokens),
 		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "protocolProfile", a),
@@ -1456,25 +1817,59 @@ func (a ArtifactRun) ValidateWire() error {
 	)
 }
 
+func (p PageContinuation) ValidateWire() error {
+	return collectWireViolations("PageContinuation",
+		maxLength("nextCursor", p.NextCursor, 65536),
+	)
+}
+
 func (s Session) ValidateWire() error {
 	return collectWireViolations("Session",
+		requiredText("id", s.ID),
+		identity("id", s.ID),
+		maxLength("id", s.ID, 256),
 		requiredText("provider", s.Provider),
 		requiredText("model", s.Model),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		positiveNumber("revision", s.Revision),
+		maximumNumber("revision", s.Revision, 9007199254740991),
 		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
 	)
 }
 
 func (a ArtifactSession) ValidateWire() error {
 	return collectWireViolations("ArtifactSession",
+		requiredText("id", a.ID),
+		identity("id", a.ID),
+		maxLength("id", a.ID, 256),
 		requiredText("provider", a.Provider),
 		requiredText("model", a.Model),
+		identity("provider", a.Provider),
+		maxLength("provider", a.Provider, 64),
+		identity("model", a.Model),
+		maxLength("model", a.Model, 256),
+		identity("reasoningEffort", a.ReasoningEffort),
+		maxLength("reasoningEffort", a.ReasoningEffort, 32),
+	)
+}
+
+func (a ArtifactToolResult) ValidateWire() error {
+	return collectWireViolations("ArtifactToolResult",
+		requiredText("itemId", a.ItemID),
+		identity("itemId", a.ItemID),
+		maxLength("itemId", a.ItemID, 256),
 	)
 }
 
 func (s SessionArtifact) ValidateWire() error {
 	return collectWireViolations("SessionArtifact",
-		minimumNumber("version", s.Version, 24),
-		maximumNumber("version", s.Version, 24),
+		minimumNumber("version", s.Version, 27),
+		maximumNumber("version", s.Version, 27),
 	)
 }
 
@@ -1493,6 +1888,8 @@ func (a ArtifactUsage) ValidateWire() error {
 		nonNegativeNumber("cacheWriteTokens", a.CacheWriteTokens),
 		nonNegativeNumber("reasoningTokens", a.ReasoningTokens),
 		optionalNonNegativeNumber("costUsd", a.CostUSD),
+		identityPropertyNames("byModel", a.ByModel),
+		maxPropertyNameLength("byModel", a.ByModel, 256),
 	)
 }
 
@@ -1514,6 +1911,73 @@ func (a ArtifactProblem) ValidateWire() error {
 	)
 }
 
+func (r RunEvent) ValidateWire() error {
+	return collectWireViolations("RunEvent",
+		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
+		requiredText("segmentId", r.SegmentID),
+		identity("segmentId", r.SegmentID),
+		maxLength("segmentId", r.SegmentID, 256),
+		identity("eventId", r.EventID),
+		requiredTextPrefix("eventId", r.EventID, "evt_"),
+		maxLength("eventId", r.EventID, 65540),
+	)
+}
+
+func (s SubscribeRunResponse) ValidateWire() error {
+	return collectWireViolations("SubscribeRunResponse",
+		requiredText("runId", s.RunID),
+		identity("runId", s.RunID),
+		maxLength("runId", s.RunID, 256),
+		requiredText("segmentId", s.SegmentID),
+		identity("segmentId", s.SegmentID),
+		maxLength("segmentId", s.SegmentID, 256),
+		optionalIdentity("headEventId", s.HeadEventID),
+		optionalTextPointerPrefix("headEventId", s.HeadEventID, "evt_"),
+		optionalMaxLength("headEventId", s.HeadEventID, 65540),
+	)
+}
+
+func (i InterruptResponse) ValidateWire() error {
+	return collectWireViolations("InterruptResponse",
+		requiredText("itemId", i.ItemID),
+		identity("itemId", i.ItemID),
+		maxLength("itemId", i.ItemID, 256),
+	)
+}
+
+func (r RunMetrics) ValidateWire() error {
+	return collectWireViolations("RunMetrics",
+		nonNegativeNumber("steps", r.Steps),
+		nonNegativeNumber("activeDurationMillis", r.ActiveDurationMillis),
+	)
+}
+
+func (m ModelUsage) ValidateWire() error {
+	return collectWireViolations("ModelUsage",
+		nonNegativeNumber("inputTokens", m.InputTokens),
+		nonNegativeNumber("outputTokens", m.OutputTokens),
+		nonNegativeNumber("cacheReadTokens", m.CacheReadTokens),
+		nonNegativeNumber("cacheWriteTokens", m.CacheWriteTokens),
+		nonNegativeNumber("reasoningTokens", m.ReasoningTokens),
+		optionalNonNegativeNumber("costUsd", m.CostUSD),
+	)
+}
+
+func (u Usage) ValidateWire() error {
+	return collectWireViolations("Usage",
+		identityPropertyNames("byModel", u.ByModel),
+		maxPropertyNameLength("byModel", u.ByModel, 256),
+		nonNegativeNumber("inputTokens", u.InputTokens),
+		nonNegativeNumber("outputTokens", u.OutputTokens),
+		nonNegativeNumber("cacheReadTokens", u.CacheReadTokens),
+		nonNegativeNumber("cacheWriteTokens", u.CacheWriteTokens),
+		nonNegativeNumber("reasoningTokens", u.ReasoningTokens),
+		optionalNonNegativeNumber("costUsd", u.CostUSD),
+	)
+}
+
 func (r RunProtocolProfile) ValidateWire() error {
 	return collectWireViolations("RunProtocolProfile",
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
@@ -1532,22 +1996,6 @@ func (g GenerationParams) ValidateWire() error {
 		optionalMaximumNumber("topP", g.TopP, 1),
 		nonEmptyItems("stop", g.Stop),
 		uniqueItems("stop", g.Stop),
-	)
-}
-
-func (r RunLimits) ValidateWire() error {
-	return collectWireViolations("RunLimits",
-		nonNegativeNumber("maxTotalTokens", r.MaxTotalTokens),
-		nonNegativeNumber("maxSteps", r.MaxSteps),
-		nonNegativeNumber("maxBudgetUsd", r.MaxBudgetUSD),
-	)
-}
-
-func (a ArtifactRunLimits) ValidateWire() error {
-	return collectWireViolations("ArtifactRunLimits",
-		nonNegativeNumber("maxTotalTokens", a.MaxTotalTokens),
-		nonNegativeNumber("maxSteps", a.MaxSteps),
-		nonNegativeNumber("maxBudgetUsd", a.MaxBudgetUSD),
 	)
 }
 
@@ -1578,22 +2026,114 @@ func (a ArtifactQuestionOption) ValidateWire() error {
 func (s StartRunResponse) ValidateWire() error {
 	return collectWireViolations("StartRunResponse",
 		requiredText("runId", s.RunID),
+		identity("runId", s.RunID),
+		maxLength("runId", s.RunID, 256),
 		requiredText("segmentId", s.SegmentID),
+		identity("segmentId", s.SegmentID),
+		maxLength("segmentId", s.SegmentID, 256),
 		requiredText("userItemId", s.UserItemID),
+		identity("userItemId", s.UserItemID),
+		maxLength("userItemId", s.UserItemID, 256),
 	)
 }
 
 func (r ResumeRunResponse) ValidateWire() error {
 	return collectWireViolations("ResumeRunResponse",
 		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
 		requiredText("segmentId", r.SegmentID),
+		identity("segmentId", r.SegmentID),
+		maxLength("segmentId", r.SegmentID, 256),
 		optionalText("userItemId", r.UserItemID),
+		optionalIdentity("userItemId", r.UserItemID),
+		optionalMaxLength("userItemId", r.UserItemID, 256),
+	)
+}
+
+func (p Plan) ValidateWire() error {
+	return collectWireViolations("Plan",
+		requiredText("sessionId", p.SessionID),
+		identity("sessionId", p.SessionID),
+		maxLength("sessionId", p.SessionID, 256),
+	)
+}
+
+func (p PlanState) ValidateWire() error {
+	return collectWireViolations("PlanState",
+		positiveNumber("revision", p.Revision),
+		maximumNumber("revision", p.Revision, 9007199254740991),
+	)
+}
+
+func (p PlanStep) ValidateWire() error {
+	return collectWireViolations("PlanStep",
+		requiredText("id", p.ID),
+		requiredText("description", p.Description),
+		closedEnum("status", string(p.Status), []string{"pending", "in_progress", "completed"}, false),
 	)
 }
 
 func (w WorkspaceRef) ValidateWire() error {
 	return collectWireViolations("WorkspaceRef",
 		requiredText("path", w.Path),
+	)
+}
+
+func (m MCPServer) ValidateWire() error {
+	return collectWireViolations("MCPServer",
+		maxLength("name", m.Name, 32),
+		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		maxItems("disabledTools", m.DisabledTools, 2048),
+		uniqueItems("disabledTools", m.DisabledTools),
+		maxItemLength("disabledTools", m.DisabledTools, 128),
+		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
+		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
+		uniqueItems("autoApproveTools", m.AutoApproveTools),
+		maxItemLength("autoApproveTools", m.AutoApproveTools, 128),
+		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
+	)
+}
+
+func (m MCPTool) ValidateWire() error {
+	return collectWireViolations("MCPTool",
+		maxLength("server", m.Server, 32),
+		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		maxLength("name", m.Name, 128),
+		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+	)
+}
+
+func (p Provider) ValidateWire() error {
+	return collectWireViolations("Provider",
+		requiredText("id", p.ID),
+		identity("id", p.ID),
+		maxLength("id", p.ID, 64),
+		optionalIdentity("defaultEmbeddingModel", p.DefaultEmbeddingModel),
+		optionalMaxLength("defaultEmbeddingModel", p.DefaultEmbeddingModel, 256),
+		closedEnum("credentialRequirement", string(p.CredentialRequirement), []string{"apiKeyRequired", "apiKeyOptional"}, false),
+	)
+}
+
+func (m Model) ValidateWire() error {
+	return collectWireViolations("Model",
+		requiredText("id", m.ID),
+		requiredText("provider", m.Provider),
+		identity("id", m.ID),
+		maxLength("id", m.ID, 256),
+		identity("provider", m.Provider),
+		maxLength("provider", m.Provider, 64),
+	)
+}
+
+func (m ModelCapabilities) ValidateWire() error {
+	return collectWireViolations("ModelCapabilities",
+		identityItems("reasoningLevels", m.ReasoningLevels),
+		maxItemLength("reasoningLevels", m.ReasoningLevels, 32),
+		identity("reasoningDefaultLevel", m.ReasoningDefaultLevel),
+		maxLength("reasoningDefaultLevel", m.ReasoningDefaultLevel, 32),
+		closedEnumItems("inputModalities", m.InputModalities, []string{"text", "image", "audio", "video", "pdf"}),
+		closedEnumItems("outputModalities", m.OutputModalities, []string{"text", "image", "audio", "video", "pdf"}),
 	)
 }
 
@@ -1606,6 +2146,11 @@ func (k KnowledgeEntry) ValidateWire() error {
 
 func (a AgentMemoryItem) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItem",
+		requiredText("id", a.ID),
+		maxLength("id", a.ID, 36),
+		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
+		identity("sessionId", a.SessionID),
+		maxLength("sessionId", a.SessionID, 256),
 		requiredText("content", a.Content),
 		maxLength("content", a.Content, 4096),
 		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
@@ -1614,11 +2159,46 @@ func (a AgentMemoryItem) ValidateWire() error {
 	)
 }
 
-func (g GoalBudget) ValidateWire() error {
-	return collectWireViolations("GoalBudget",
-		nonNegativeNumber("maxRuns", g.MaxRuns),
-		nonNegativeNumber("maxCostUsd", g.MaxCostUSD),
-		nonNegativeNumber("maxSteps", g.MaxSteps),
+func (s Schedule) ValidateWire() error {
+	return collectWireViolations("Schedule",
+		requiredText("id", s.ID),
+		identity("id", s.ID),
+		maxLength("id", s.ID, 256),
+		requiredTextPrefix("id", s.ID, "sch_"),
+		positiveNumber("revision", s.Revision),
+		maximumNumber("revision", s.Revision, 9007199254740991),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+	)
+}
+
+func (r RunScheduleNowResponse) ValidateWire() error {
+	return collectWireViolations("RunScheduleNowResponse",
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
+	)
+}
+
+func (g Goal) ValidateWire() error {
+	return collectWireViolations("Goal",
+		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		identity("provider", g.Provider),
+		maxLength("provider", g.Provider, 64),
+		identity("model", g.Model),
+		maxLength("model", g.Model, 256),
+		identity("reasoningEffort", g.ReasoningEffort),
+		maxLength("reasoningEffort", g.ReasoningEffort, 32),
+		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
 	)
 }
 
@@ -1626,6 +2206,12 @@ func (c ClientInfo) ValidateWire() error {
 	return collectWireViolations("ClientInfo",
 		requiredText("name", c.Name),
 		requiredText("version", c.Version),
+	)
+}
+
+func (r RuntimeLimits) ValidateWire() error {
+	return collectWireViolations("RuntimeLimits",
+		optionalPositiveNumber("maxConcurrentRuns", r.MaxConcurrentRuns),
 	)
 }
 
@@ -1647,6 +2233,8 @@ func (m MCPAuthorizationAttemptLimits) ValidateWire() error {
 func (a ActiveRunRef) ValidateWire() error {
 	return collectWireViolations("ActiveRunRef",
 		requiredText("runId", a.RunID),
+		identity("runId", a.RunID),
+		maxLength("runId", a.RunID, 256),
 		closedEnum("status", string(a.Status), []string{"running", "waiting", "finished"}, false),
 	)
 }
@@ -1669,7 +2257,7 @@ func (r RunReplayLimits) ValidateWire() error {
 func (i IdempotencyLimits) ValidateWire() error {
 	return collectWireViolations("IdempotencyLimits",
 		positiveNumber("retentionSeconds", i.RetentionSeconds),
-		requiredText("namespace", i.Namespace),
+		requiredTextPattern("namespace", i.Namespace, "^idp_[0-9a-f]{32}$"),
 	)
 }
 

@@ -11,9 +11,6 @@ import {
 } from "@/plugins/builtin/agent/public/session";
 import { RECIPES_KEY, type RecipesQuery } from "./recipeQueries";
 
-const RECIPE_SIGNATURE_FIELD_SEPARATOR = "\u0000";
-const RECIPE_SIGNATURE_ROW_SEPARATOR = "\u0001";
-
 interface Recipe {
   name: string;
   description?: string;
@@ -53,9 +50,7 @@ function fetchRecipes(query: RecipesQuery): Promise<Recipe[]> {
 }
 
 function recipeSignature(recipes: Recipe[]): string {
-  return recipes
-    .map((recipe) => `${recipe.name}${RECIPE_SIGNATURE_FIELD_SEPARATOR}${recipe.body}`)
-    .join(RECIPE_SIGNATURE_ROW_SEPARATOR);
+  return JSON.stringify(recipes.map((recipe) => [recipe.name, recipe.body]));
 }
 
 export function installRecipeSlashCommands(
@@ -83,9 +78,9 @@ export function installRecipeSlashCommands(
     });
   };
 
-  let generation = 0;
+  let refreshLease: object = {};
   const refresh = () => {
-    const current = ++generation;
+    const lease = (refreshLease = {});
     const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
     const query = recipeWorkspaceQuery(sessionPorts.activeSessionId(), sessions);
     // Remove commands from the previous project immediately. An active id whose
@@ -97,10 +92,10 @@ export function installRecipeSlashCommands(
     }
     void fetchRecipes(query)
       .then((recipes) => {
-        if (current === generation) rebuild(recipes);
+        if (lease === refreshLease) rebuild(recipes);
       })
       .catch(() => {
-        if (current === generation) rebuild([]);
+        if (lease === refreshLease) rebuild([]);
       });
   };
 
@@ -109,7 +104,7 @@ export function installRecipeSlashCommands(
   const unsubscribeQuery = subscribeAgentSessionProjection(sessionWorkspaceRevision, refresh);
 
   return () => {
-    generation += 1;
+    refreshLease = {};
     unsubscribeSession();
     unsubscribeQuery();
     for (const disposable of dynamic) disposable.dispose();

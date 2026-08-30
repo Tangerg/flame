@@ -16,7 +16,6 @@ func TestOllamaOpenAIBaseURL(t *testing.T) {
 		configured string
 		want       string
 	}{
-		{name: "default", want: defaultOllamaOpenAIBaseURL},
 		{name: "daemon root", configured: "http://host:11434", want: "http://host:11434/v1"},
 		{name: "trailing slash", configured: "http://host:11434/", want: "http://host:11434/v1"},
 		{name: "already compatible", configured: "http://host:11434/v1/", want: "http://host:11434/v1"},
@@ -35,8 +34,8 @@ func TestOllamaCompatibleChatUsesProviderScopedV1Protocol(t *testing.T) {
 		if request.URL.Path != "/v1/chat/completions" {
 			t.Errorf("path = %q, want /v1/chat/completions", request.URL.Path)
 		}
-		if authorization := request.Header.Get("Authorization"); authorization != "Bearer ollama" {
-			t.Errorf("Authorization = %q, want fallback Ollama credential", authorization)
+		if authorization := request.Header.Get("Authorization"); authorization != "" {
+			t.Errorf("Authorization = %q, want absent for unauthenticated Ollama", authorization)
 		}
 		var body struct {
 			Model string `json:"model"`
@@ -55,7 +54,7 @@ func TestOllamaCompatibleChatUsesProviderScopedV1Protocol(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	model, err := buildOllamaChatModel(
-		ClientSpec{Provider: ProviderOllama, Model: "qwen3:8b", BaseURL: server.URL},
+		mustClientSpec(t, ProviderOllama, "qwen3:8b", "", server.URL),
 		chat.Options{Model: "qwen3:8b"},
 	)
 	if err != nil {
@@ -95,7 +94,7 @@ func TestOllamaCompatibleEmbeddingUsesV1Protocol(t *testing.T) {
 		t.Fatalf("NewOptions: %v", err)
 	}
 	model, err := buildOllamaEmbeddingModel(
-		ClientSpec{Provider: ProviderOllama, Model: "nomic-embed-text", APIKey: "configured-key", BaseURL: server.URL + "/v1/"},
+		mustClientSpec(t, ProviderOllama, "nomic-embed-text", "configured-key", server.URL+"/v1/"),
 		opts,
 	)
 	if err != nil {

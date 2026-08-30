@@ -2,7 +2,7 @@
 
 > 状态：Runtime Protocol Baseline 2
 >
-> 基线日期：2026-08-28
+> 基线日期：2026-08-30
 >
 > 适用范围：Runtime Protocol 制品、持久化 shape、Agent Framework 消费边界和重构期间的内部防腐合同
 
@@ -49,16 +49,194 @@ P196 将模型选择从 exact provider/model pair 一次性扩展为 exact provi
 
 P197 不改变 Runtime Protocol Baseline 2、Artifact v24、SQLite epoch 84、Desktop binding、Agent Framework 或 CLI/TUI。它 breaking 删除通用 tools module 的六方法 `fs.Executor`、公开 mutable `LocalExecutor.Root` 以及 Glob/Grep backend input 的 authority-replacing `Root`；新的六个单操作端口与 `Path` 子树语义由所有仓库消费者同批迁移。Local backend 的构造根经 `os.Root` 成为不可扩张 capability，默认空参数冻结构造时 CWD，不再授予无限 host filesystem；Runtime model mutations 不再因 non-isolated mode 扩张到 workspace 外。共享 scanner 从 Runtime internal 移到 `tools/textread`，不产生 wire/storage shape，也不为旧 Go API 保留 alias/shim；本批不创建 release tag。
 
+P198 将 compaction summary 从“仅写回模型上下文、用户 transcript 为空”的重复表示收敛为一个 canonical 领域值。Run-boundary 与每次主模型调用前的长上下文压缩都发布同一原始摘要；模型专用 `[Earlier conversation summary]` 前缀只停留在 adapter 写回消息中。`CompactionResult` 不再暴露可矛盾的布尔/计数字段，语义压缩由非空摘要派生；Application/Transcript、SQLite、Artifact、Protocol、Desktop 与 CLI 投影共同拒绝空白或非 canonical 摘要，CLI 不再编造 fallback 文案。Item union 同批把领域已证明必有的载荷与状态收回各变体：UserMessage/Question/Compaction 只有 completed，AgentMessage/Reasoning 只有 provisional running 与 durable completed，ToolCall 独占 running/completed/incomplete；started/completed StreamEvent 进一步约束其嵌套 Item lifecycle。UserMessage/Question/ToolCall 始终携带 content/question/tool，terminal AgentMessage/Reasoning 携带完整 phase+content/text，durable Artifact 六个变体不再发布可缺省主体且完全禁止 running；Desktop 只为真正的 AgentMessage/Reasoning 流式 anchor 保留 provisional optionality。Application 的 Item delta 同批由可矛盾的扁平字段袋收敛为四个封闭值对象，空 chunk 不再制造 anchor 或无效帧；上游不提供 content block position，因此 Runtime、Protocol、Desktop 与 CLI 一次性删除固定写成 `0` 的伪 index 及其稀疏排序分支，并删除不存在的 plan-delta 叙述。Application 的 `RunProgress` 同批删除从未投影的 `ToolName` 假事实，拒绝空进度、负数、非法 usage 与非 canonical activity；`PlanSnapshot` 在发布前拒绝 revision 0、缺失/非 UTC 时间、非法步骤与 session identity，并在终态 fence 复制步骤所有权。wire `Plan` 同批把 revision/steps/updatedAt 收进可选的 committed `PlanState`：缺席表示从未写入，存在的空 steps 表示显式清空，`plan.updated` 强制携带 state，彻底删除 revision 0 的双重语义；Runtime Domain 同步拆为表示 unwritten/committed 的 `Current`、只表示已提交值的 `State` 与 typed `Version` CAS，SQLite 不再以 expected revision `0` 选择 insert；CLI 用同一不可变富模型持有版本与内容，mock 脚本只声明 `PlanContent`，由 Runtime 提交单调版本并拒绝溢出，Desktop presentation identity 也显式区分 unwritten/committed。契约注册表新增 typed allowed-value set 与 `requiredAny` 交叉字段约束，从同一声明生成 Go validator、JSON Schema、manifest 与 TypeScript validator；wire `RunProgress` 至少携带 step/usage/contextTokens/activity 之一，计量、Plan identity/step text 同时获得生成的值约束，不由消费者复制状态矩阵或接受无意义 `{}`。该 breaking shape 将 Protocol 精确前移到 `2026-08-29`、Artifact 前移到 v25、SQLite 前移到 epoch 85；旧版本确定性拒绝，不迁移、不双读、不保留 optional payload/status 兼容路径。
+
+P198 后续把 Goal budget 从三个“`0` 等于无限”的可矛盾数字收敛为显式领域值。Domain 零值非法，只允许明确的 unlimited 或至少一个严格正、有限上限；Protocol/模型 Tool 以整个 `budget` 缺席表达 unlimited，present object 由 `requiredAny` 与 positive constraints 共同拒绝空对象、零和负数；Desktop 与 CLI 不再补零。SQLite epoch 86 只接受 `unlimited | limited` 判别 record，旧全零 JSON 不迁移、不双读。该变更不改 Protocol 日期、Artifact v25、method/topic 集合或 Agent Framework shape。
+
+P198 Run-limits 子批继续删除另一套跨层数字哨兵。Domain `run.Limits` 与 CLI `agent.RunLimits` 只通过私有值/存在性对和行为访问器表达策略；有限值必须至少含一个严格正、有限轴，typed unlimited 不再等于三组公开数字 `0`。`runs.start` 删除三个扁平限额字段并改为可缺席的 `limits` 对象；RunRef 与 Artifact 同样以整个字段缺席表示 unlimited，present object 由 `requiredAny` 和 positive constraints 拒绝空对象、零、负数与非有限数。SQLite epoch 87 以 NULL 保存缺席轴并加正数约束，Pending continuation 与 executor application-policy schema v4 使用严格判别 record；旧 shape 不迁移、不双读。Artifact 前移到 v26；Protocol 日期、method/topic 集合与 Agent Framework shape 不变。
+
+P199 将 provider model 的三项 token-limit fact 从扁平数字哨兵收敛为显式存在性模型。Runtime Domain `modelref.TokenLimits` 与 CLI `ModelTokenLimits` 都以私有 value/presence 对持有事实；Application 只传递富值，Protocol `Model` 删除 flat `contextWindow` / `maxInputTokens` / `maxOutputTokens`，改为可缺席的 `tokenLimits`。present `ModelTokenLimits` 必须至少含一项严格正整数，unknown 只由整个对象缺席表达。Desktop 同步使用不可变 nested value，不再依赖 truthiness 或补零。最新 catalog 的 streaming/multimodal 反例允许 `maxOutputTokens > contextWindow`，Domain 只在该事实未证明 output 独立时才从 shared window 扣显式 reservation，始终以已知 max input 封顶。该 breaking cutover 不改变 Protocol 日期、Artifact v26、SQLite epoch 87、checkpoint 或 method/topic 集合。
+
+P203 将 MCP server handshake deadline 从 `timeoutSeconds == 0` 的双义字段切换为必有的 `handshakeTimeout` 闭合联合：`unbounded` 不携带 seconds，`bounded` 必须携带可表示为 Go duration 的正整数秒。Runtime Domain、Application、adapter、SQLite、CLI 和 Desktop 一次性迁移，不保留旧字段、补零、双读或 compatibility projection。SQLite 前移到 epoch 88，以 NULL 表示 unbounded、positive nanoseconds 表示 bounded；Protocol 日期与 Artifact v26 保持不变。P204 只把 Bootstrap Host/Instance 的 internal shutdown caller wait 收进 concrete policy，不改变任何公共或持久合同。
+
+P205 将所有 cursor-paginated read 共享的 `PageQuery.limit` 从“可省略 scalar、数字 0 代表默认”的双义字段切换为 pointer-backed optional positive integer。wire 中缺席明确表示采用各 read 自己的命名 ceiling，present 必须严格大于 0；Delivery 只负责把存在性投影为 Application `pagination.RequestedLimit`，sessions/items/runs/interrupts/schedules/workspace files 的 Application 入口不再接收裸 `int`。该 breaking cutover 不改变 JSON 字段名、Protocol 日期、Artifact v26、SQLite epoch 88 或 method/topic 集合。
+
+P206 将 structured workspace diff 的 row budget 从 generic `Limit int` 收敛为 unit-bearing `DiffRowLimit`。Protocol `GetDiffRequest.limit` 只允许缺席或 strictly positive integer；Application rich value 拥有 default、clamp 与非法状态拒绝，raw diff 携带 row limit 会作为无意义组合被拒绝。CLI/TUI 同样以私有存在性值表达 default/explicit rows，不再把数字 0 跨过 adapter。该 breaking cutover 不改变 JSON 字段名、Protocol 日期、Artifact v26、SQLite epoch 88 或 method/topic 集合。
+
+P207 将 workspace file head/search/read 的四种请求单位从 scalar zero sentinel 拆为各自富值：preview line count、retained grep match count、UTF-8 byte budget 与 closed whole/tail/bounded line range。Protocol 五个字段都改为 pointer-backed optional positive integer；`endLine` present 时 schema/validator 同源要求 `startLine`，present 0/negative 在 Delivery 之前拒绝。Application filesystem port 只接收已归一化 `FileReadPlan`，不再接收 caller DTO 或选择默认；CLI/TUI 使用同构但独立的 unit-bearing values，并显式发布自身 80 lines / 200 matches / 2 MiB 产品默认。该 breaking cutover 不改变 JSON 字段名、Protocol 日期、Artifact v26、SQLite epoch 88 或 method/topic 集合。
+
+P208 将 usage summary 的时间范围从 `sinceDays == 0` 双义数字切换为 pointer-backed optional positive integer：wire 字段缺席唯一表达 all-time，present 值唯一表达正数 recent calendar-day window。Runtime Application、CLI 与 Desktop 分别以自己的 rich period model 持有该区别；Delivery 只做 presence projection，Desktop gateway 不再用 truthiness 重建业务含义。该 breaking cutover 不改变 JSON 字段名、Protocol 日期、Artifact v26、SQLite epoch 88 或 method/topic 集合。
+
+P209 只改变 CLI 内部 consumer model：`SessionQuery` / `RunQuery` 以 `PageSize` 表达命名的 20-row 默认或显式 1–100 rows，embedded adapter 仍向既有 pointer-backed `PageQuery.limit` 发布正整数。Runtime Protocol、生成制品及其 digest、Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合均不变。
+
+P210 只改变 CLI internal retry/reconnect construction：bounded schedule、immediate test policy、disabled reconnect 与 configured reconnect 以私有不可变字段表达，invalid zero policy 在 mutation/Run I/O 前失败。Runtime Protocol、生成制品及其 digest、Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合均不变。
+
+P211 只删除 CLI attachment completion 从未生效的 caller limit 参数；Resolver 自己拥有固定 50-result budget。P212 只改变 CLI sideload private manifest decoder：`timeoutSeconds` 缺席采用 10-second default，present 必须为 1–60，`null` 非法。两批都不改变 Runtime Protocol、生成制品、持久化 shape 或 Desktop binding。
+
+P213 将 `RuntimeLimits.maxConcurrentRuns` 的 Go 表示从 omitempty scalar 改为 pointer-backed optional positive integer：JSON 字段缺席精确表示 Runtime 没有实施 process-wide Run cap，present 只允许 admission owner 实际强制的正整数。字段名与 JSON optional shape 不变，但 schema/validator 现在同源发布 `minimum: 1`，公共 Go API 不再暴露 zero sentinel。CLI 立即投影为自己的 `unbounded | bounded(maximum)` immutable value，`runtime info --json` 使用显式 `runConcurrency` union；不保留 `runtime default` 文案或旧 CLI JSON shape。Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合不变。
+
+P214 只删除 CLI TUI prompt history 的 unused caller limit 与 zero-value fallback，retention capacity 仍为 1000 semantic messages 并由 aggregate 自己命名和执行。Runtime Protocol、生成制品及其 digest、持久化 shape 与 Desktop binding 均不变。
+
+P215 只收敛 CLI 自己的 Runtime discovery projection、durable outbox journal 与 mutation admission：公开 Flame Runtime Protocol、生成制品及其 digest、Artifact、SQLite 与 Desktop binding 均不变。CLI-local workbench persistence intentional breaking：旧的 primitive replay namespace/deadline/retention shape 不再读取，guard 只接受严格 `unprotected | protected(namespace, until)` 联合；仓库不保留兼容双读或 migration shim。
+
+P216 只收紧 CLI 对 `unprotected` guard 的执行语义，不修改 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding 或 CLI 持久化 JSON shape。AgentOnly 的新 mutation 仍可首发一次，但 Runtime 未发布 replay capability 时不再进行 uncertain retry 或 cold replay；这是 fail-closed 行为修正，不引入 legacy fallback。
+
+P229 将 `sessions.list` 从通用 `PageQuery` 前移为 Flame-owned `ListSessionsRequest`，新增可组合的 optional literal `search` 与 exact `workspace` filter。Application 的 `CatalogFilter` 统一做 Unicode lowercase、UTF-8/NUL/1024-character admission 并把 normalized predicate 固定进 cursor identity；`CatalogAnchor` 与 `CatalogRead` 替代 Store 的 favorite/timestamp/id/limit primitive 参数列。SQLite epoch 89 增加由同一 canonicalizer 写入并严格复验的 `title_search/workspace_search`，因此不依赖 SQLite ASCII-only `lower()`；LIKE wildcard 全部转义，filter 与 keyset 在一个有界查询内组合。CLI 删除逐 Session 一行一 RPC 的本地扫描，Desktop 与生成 TypeScript surface 消费同一请求类型；旧 Go signature 和 epoch 88 不迁移、不双读。
+
+P217 只删除 CLI consumer-local optional profile→policy projection；Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI command output 与 workbench persistence 均不变。
+
+P218 只删除 CLI embedded adapter 的 profile presence 推断；生产 embedded Runtime 本就只在 successful validated discovery 后构造，因此 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI output 与 persistence 均不变。invalid partial Runtime 现在在 Services validation 显式失败。
+
+P219 只改变 CLI 内部 Workbench construction/config API：generic `Open(directory, Config)` 与 primitive capacity fields 被显式 memory/directory constructors 和 `*Capacity` 取代。公开 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI command output 及已有 Workbench JSON envelope/records 均不变；空白或相对 durable root 现在 fail closed，不提供兼容 constructor、silent fallback 或 migration shim。
+
+P220 只收紧 CLI 内部 request value construction：catalog/workspace read policy 的 zero value 从 named default/whole 改为 invalid，所有真实 caller 使用既有命名 constructor。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/output 与 wire optional-positive shape 均不变；这是 intentional internal Go API breaking，不保留 zero-value fallback。
+
+P221 不改变 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/output 或 Runtime wire `limits` shape；它收紧 CLI internal `RunLimits` construction，并 intentional breaking CLI-local Workbench JSON：旧 `{}` 不再读取，新记录必须是 strict `{"type":"unlimited"}` 或 `{"type":"limited", ...positive caps...}`。不提供旧记录迁移、兼容双读或 silent unlimited fallback。
+
+P222 只收紧 CLI internal `SummaryPeriod` construction：zero value 从 all-time 改为 invalid，所有真实 caller 使用 `AllTime()` 或 `RecentDays(positive)`。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI `/usage` 语法/output、wire `sinceDays` optional-positive shape 与 Workbench persistence 均不变；不保留 zero-value fallback。
+
+P223 只 breaking 收紧 CLI internal `RunLineage` Go API：公开 child identity fields 被私有 closed value 与 root/child constructors 取代，zero value 不再表示 root。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/text/JSON/NDJSON output 与 Workbench persistence 均不变；embedded adapter 继续把 wire 的全缺席 tuple 精确投影为 root、完整 tuple 投影为 child，partial tuple fail closed，不提供旧 struct literal 兼容面。
+
+P224 只 breaking 收紧 CLI internal `modelconfig.Role` Go API 与 TUI auxiliary-role command grammar：公开 kind/provider/model bag 被 inherited-utility、disabled-embedding、configured-role constructors 取代，zero value 非法；`/utility off` 与 `/embedding inherit` 这两个跨语义别名删除，分别只保留 `inherit` 与 `off`。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、wire role shape、CLI 持久化与既有 role output 文案均不变。
+
+P225 只 breaking 收紧 CLI internal prompt-queue identity API：Entry/mutation/view action 的裸 `uint64` 改为 private-value `EntryID`，transaction State 的 scalar `DispatchingID` 改为 optional `Dispatching *EntryID`。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/output、Workbench durable command records与用户交互均不变；本地 queue identity 不持久化，overflow 现在 fail closed 且不回绕。
+
+P226 breaking 删除 CLI internal `promptqueue.Snapshot.Revision`；该字段从未进入 CLI output、Workbench persistence、Runtime wire、UI ownership 或任何生产判断。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、用户交互与 queue transactional State 均不变，不提供 replacement counter。
+
+P227 只改变 CLI internal changefeed consumer watermark；Runtime Protocol/wire `sequence`、生成制品/digest、Artifact、SQLite、Desktop binding、CLI output 与 persistence 均不变。stale/duplicate frame 现在被确定丢弃，gap 仍触发同一 authoritative resync；同一 subscription watermark 不倒退、不回绕，新 subscription 从空 tracker 重新建立序列。
+
+P231 breaking 收紧公共 pagination cursor 资源合同：`protocol.MaximumPaginationCursorCharacters = 65536` 是 wire 公开上限，`PageQuery.cursor` 及所有 flattened embedding request 的 Go validator、JSON Schema、OpenRPC 与 TypeScript validator 从同一 registry rule 生成。Application cursor authority 在 Base64 decode 前做大小准入，生成端以显式 error 拒绝过大 continuation；CLI 直接消费公共常量，不保留独立数值。公共 method/result shape、Protocol version、Artifact v24 与 SQLite epoch 89 不变；公共 Go API 只 additive 增加该常量，internal `pagination.Encode/PageOf` 允许 breaking change且无兼容 wrapper。
+
+P232 breaking 收紧 Run event replay cursor 的完整资源合同：Application opaque token 最大 65536 characters，公开 `evt_` event identity 最大 65540 characters；`RunEvent.eventId` 与可选 `SubscribeRunResponse.headEventId` 的 Go/Schema/TypeScript validator 同源发布限制。`AfterEventID` 继续是 binding metadata而非 params 字段，operation 在 handler 前校验资源与 framing；generated TypeScript 发布 prefix/limit，Desktop 与 CLI 不另写数值。Replay token format、公共 method/result shape、Protocol version、Artifact v26 与 SQLite epoch 89 不变；公共 Go API additive 增加 event-id 上限，internal replay encoder/journal constructors 允许 breaking error API且无兼容 wrapper。Contract generator 写 validator 后再扫描 public Go surface，因此单次 generation 即稳定，不再出现 exported `ValidateWire` method 的一轮滞后。
+
+P233 breaking 调整公共 Go `Page[T]` construction，但不改变其 JSON shape：新增 `PageContinuation` 值对象并由 generic Page 嵌入，使 `nextCursor` 的 65536-character maxLength 只在 Registry 声明一次，同时经 method promotion、Schema flattening 与 TypeScript schema compiler覆盖当前及未来全部 Page instantiation。该 owner只作为 Page 的组成值存在，不额外发布无消费者的独立 JSON frame/Schema definition。Runtime method/result、Protocol date、Artifact v26、SQLite epoch 89与 pagination token format不变；旧复合字面量不保留 compatibility shim。
+
+P234 breaking 把 Run event identity 的 `evt_` framing 收进正式 value-constraint vocabulary：Registry 的 `prefix("evt_")` 同源生成 Go validator、JSON Schema anchored pattern、manifest 与 TypeScript validator，覆盖 `RunEvent.eventId` 和 `SubscribeRunResponse.headEventId`；长度上限及 transport metadata preflight保持 P232 语义。公共 Go `SubscribeRunResponse.HeadEventID` 改为 `*string`，nil 唯一表示订阅建立时尚无 head，present empty/错误 prefix/oversized全部非法；JSON/TypeScript optional shape、Protocol date、Artifact v26、SQLite epoch 89与 replay token format不变，不保留 string-zero compatibility projection。
+
+P235 收紧 `RuntimeEvent.sequence` 为 JSON/JavaScript exact-integer envelope 1–9007199254740991；公开最大值及 generated Go/Schema/TypeScript validator同源，wire字段类型与 JSON shape不变。每个 connection-local subscription 在最终 exact sequence 后停止接收新 signal，排空已入队 frame再释放 watcher/hub/channel owner；不回绕为 0、不 panic、不影响其他 subscription。Protocol date、Artifact v26、SQLite epoch 89、method/topic集合与 replay/pagination token均不变。
+
+P236 breaking 将所有公开数字 revision/CAS identity 收紧到同一个 exact JSON integer envelope 1–9007199254740991。`MaximumExactJSONInteger` 与 cross-ring pure `exactint.Counter`分别是wire projection和transport-neutral advancement owner；Session、Schedule、Plan output及UpdateSession/UpdateSchedule expectedRevision的generated Go/Schema/OpenRPC/TypeScript validator同源发布上下界。Session/Plan Domain reconstruction与replacement、Schedule Edit/Claim/Accept/RecordRun、Application/SQLite successor proof均在持久化前拒绝耗尽或不精确值；当时的SQLite epoch 90为sessions/session_plans/schedules revision添加正数+exact maximum CHECK，旧epoch不迁移、不双读。字段名、JSON number shape、Protocol date、Artifact v26、method/topic集合与token格式不变。
+
+P237–P239 breaking 只收紧internal Schedule构造与firing生命周期，不改变公共或持久化shape。Schedule、Execution、Occurrence、Claim与RunRequest均以private state + named behavior持有；Draft/Snapshot是明确的边界值，manual run与durable occurrence不再共享残缺对象，pre-claim CAS只存在于Claim而不以Occurrence revision-zero哨兵表示。Application identity端口由adapter/composition root实现，SQLite继续写读同一`schedules/schedule_firings`列与状态值。Protocol date、Artifact v26、SQLite epoch 90、method/topic/JSON/schema/token格式及四份contract digest均不变。
+
+P240–P241 breaking 继续只收紧internal端口与模型Tool shape。Schedule firing stored state由单一private SQLite codec拥有，typed Acceptance替换occurrence/run primitive pair，run fact统一单调推进；表、列、CHECK取值与事务语义保持。无界internal Schedule List删除，模型`list_schedules`增加opaque cursor输入/continuation输出并以100 rows/page有界；公共Runtime `schedules.list`早已分页，其Protocol/Schema/SDK完全不变。Protocol date、Artifact v26、SQLite epoch 90与四份contract digest不变。
+
+P242 breaking 把Schedule所有durable timestamp统一为Domain-owned UTC millisecond precision，并以private RunRecord替换manual completion的schedule-id/time primitive pair；SQLite本就以Unix milliseconds存储，因此表shape、值域与epoch不变。公共Schedule time字段仍是相同RFC3339 JSON类型，只有此前不可恢复的亚毫秒尾数不再短暂出现在Create响应。Protocol date、Artifact v26、SQLite epoch 90与四份contract digest不变。
+
+P243–P244 breaking 只改变internal Schedule construction/identity端口：显式Disabled与error-producing constructors替换partial nil wiring，private Worker不再形成公共半构造面；ManagementIdentities/OccurrenceIdentities由同一production adapter实现并在composition root注入。公共Runtime、模型Tool JSON、SQLite、Protocol/Artifact版本与四份contract digest均不变。
+
+P245–P246 breaking 只改变CLI internal Goal projection construction：公开Goal/Reason/Usage字段袋改为private immutable values，embedded adapter经technical Snapshot与Restore形成合法值，TUI改读accessor；zero/regressing durable time、status/reason错配与active exhausted budget在进入CLI状态前拒绝。公共Flame Runtime Protocol JSON、生成合同、Desktop、SQLite epoch 90与Artifact v26均不变。
+
+P247 breaking 只改变CLI internal Steer outbox construction：`PendingSteer`公开持久字段袋改为private immutable aggregate，Workbench以private record编码同一`pendingSteer` JSON字段和值，format version 1不变；canonical instruction不再通过trimmed equality冒充exact source ownership。Flame Runtime Protocol、Runtime/SQLite/Artifact与Desktop合同不变。
+
+P248 breaking 只改变CLI internal TUI operation lease identity；unchecked uint64 wrap改为allocation-before-cancel的checked private successor，穷尽后拒绝新operation且保留当前owner。无wire、Workbench JSON、Runtime、Desktop、SQLite或Artifact合同变化。
+
+P249 breaking 只改变CLI internal TUI draft writer identity与错误表达：unchecked uint64 revision wrap改为checked private successor，`Schedule`从混装closed/exhausted/no-op的bool改为显式error；穷尽后保留最后pending snapshot并拒绝autosave/Flush。Workbench draft文件、Flame Runtime Protocol、Desktop、SQLite与Artifact合同均不变。
+
+P250 breaking 只改变CLI internal TUI stream callback ownership：删除与operation lease重复且可回绕的`streamSeq`，所有stream follower提交统一由exact operation lease裁决，owner allocation失败显式终止本地projection。Run event wire、Workbench、Flame Runtime Protocol、Desktop、SQLite与Artifact合同均不变。
+
+P251 breaking 只改变CLI internal plugin command operation tracking：primitive `commandSeq`与`map[uint64]`收敛为checked rich registry，identity穷尽显式拒绝新command并保留既有cancellation owners；dynamic slot仍是TUI内部operation namespace。Plugin API、Workbench、Flame Runtime Protocol、Desktop、SQLite与Artifact合同均不变。
+
+P252 breaking 只改变CLI internal Session presentation ownership：可回绕`sessionContextEpoch`替换为可退休private lease，所有跨Session异步UI commit按exact active lease裁决。无CLI命令、Plugin API、Workbench、Flame Runtime Protocol、Desktop、SQLite或Artifact合同变化。
+
+P253 breaking 只改变CLI internal Transcript frame/content ownership：可回绕`contentEpoch`替换为可退休private lease，Reset前frame不能解释Reset后复用的BlockID。无渲染文本、快捷键、CLI命令、Workbench、Flame Runtime Protocol、Desktop、SQLite或Artifact合同变化。
+
+P254 breaking 只改变CLI internal Tool/ToolGroup reader observer ownership：两套numeric observer maps收敛为non-reusable token registry，exact unsubscribe不再受identity wrap影响。Reader文档shape、Plugin presenter API、CLI命令、Workbench、Flame Runtime Protocol、Desktop、SQLite与Artifact合同均不变。
+
+P255 breaking 只改变CLI internal reusable presentation frame identity：numeric generation与exhaustion panic替换为retirable private identity，dialog/queue输入合同保持“active且current frame已展示”。无CLI命令、Plugin API、Workbench、Flame Runtime Protocol、Desktop、SQLite或Artifact合同变化。
+
+P256 breaking 只改变CLI internal Extension Registry registration identity与失败事务：unchecked shared sequence替换为checked private value，耗尽和duplicate均不推进sequence。Plugin manifest/contribution API、加载顺序语义、CLI命令、Workbench、Flame Runtime Protocol、Desktop、SQLite与Artifact合同均不变。
+
+P257 breaking 只改变CLI internal Conversation presentation bookkeeping：删除无消费者revision，local failure block ID改由现有block index安全派生并避让冲突。Runtime event/Session/Plan wire、Workbench、Desktop、SQLite与Artifact合同均不变。
+
+P258 breaking 只改变CLI production mock backend内部opaque identity representation：固定前缀numeric uint64改为typed namespace + arbitrary-precision sequence，既有低位ID shape保持，越过uint64后继续十进制增长。真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+
+P259 breaking 只改变CLI production mock backend的Session Update/Rollback失败原子性：revision exhaustion现在显式拒绝且candidate transaction零写入，成功返回shape与revision step保持。真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+
+P260 breaking 只改变CLI production mock backend的Run lifecycle失败事务与Segment错误投影：Start/park/Resume/Steer/Finish/Cancel在写入前预留完整revision容量，后台失败由同一Segment向当前及重连subscriber确定发布；失败finish不再被`sync.Once`永久吞掉。成功event顺序、Session/Run/Transcript projection、CLI命令与JSON shape保持；真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+
+P261 breaking 收紧CLI consumer-owned revision domain：Session、Plan、Schedule与production mock统一接受1–`2^53-1`，new/fork/create acknowledgement必须为首revision，CAS acknowledgement必须是expected的exact successor；越界值不再仅因Go `uint64`可表示而被接受。字段Go/JSON shape不变并与既有Flame Runtime Protocol exact-integer合同对齐；Runtime、Desktop、SQLite与Artifact不变。
+
+P262 breaking 只改变Desktop Agent Session的process-local投影身份表示：view epoch/revision、authoritative revision、refresh sequence与projection generation由JavaScript `number`改为`bigint`，Run pump换为对象lease；只在React presentation key边界显式编码，不进入RPC、持久化或导出制品。Flame Runtime Protocol、生成SDK、Wails binding、SQLite、Artifact、CLI与可见交互均不变。
+
+P263 breaking 只改变Desktop进程内生命周期身份：bootstrap、Workspace event loop与cwd retarget由number generation改为对象lease；Runtime stream port的connection generation由递增字符串改为持有process membership行为的名义对象，并删除connection projection中重复的process generation字段。该对象不跨JSON-RPC、Wails、storage或Artifact边界；Flame Runtime Protocol、operation/event shape、Runtime/CLI行为与可见交互均不变。
+
+P264 breaking 只改变Desktop process-local identity与invalidation representation：JSON-RPC request id仍是相同十进制字符串shape，但由任意精度sequence生成；anonymous contribution/log/optimistic identity保持既有前缀；UI async提交权由number revision改为对象lease，material snapshot改为对象或`bigint`。新增foundation层是纯内部依赖方向，不改变Flame Runtime Protocol字段、Wails binding、storage、Artifact、Runtime、CLI或可见交互。
+
+P265 breaking 只改变Desktop全局Task tracker内部生命周期：同id restart由exact `TaskLifecycle`对象身份而非毫秒时间戳区分，旧handle/timer永久失权；Task readout字段、状态、时间戳、linger时长与插件Task API不变。Flame Runtime Protocol、storage、Wails、Runtime与CLI不变。
+
+P266 breaking 只改变Desktop Context Dock本地偏好shape：文件focus revision由number改为`bigint`，localStorage版本前移到v2并以canonical non-negative decimal字符串保存；v1整体丢弃，不迁移、不双读。该revision不进入Flame Runtime Protocol、Wails、Artifact、SQLite或CLI，文件定位可见行为保持且在safe-integer边界后继续正确。
+
+P267 不改变Flame Runtime Protocol wire、Protocol version、Artifact、SQLite、Wails或CLI。生成TypeScript binding additive公开由Runtime `StreamEvent.Replayable()`同源投影的event-type replayability；Desktop SDK内部Run response ownership breaking删除历史事件推导的subagent membership，并以response request identity作为唯一stream scope。Replay ID记忆只保留可重放类型且服从已协商`runReplay.maxEvents/maxBytes`；公开method/result/event shape与可见交互不变。
+
+P268 只改变Desktop内部Run pump/batcher提交合同：projection adapter由void改为返回整批fold acceptance，replay cursor只在acceptance后推进；每个pump拥有独立process-local batcher。Flame Runtime Protocol、生成合同、Wails、storage、Artifact、SQLite、Runtime、CLI与可见交互均不变。
+
+P269 只改变Desktop内部Run batcher容量与pump I/O lease：后台frame queue采用命名256-event上限，到界同步fold；retired pump禁止reattach，迟到foreign stream显式关闭。Flame Runtime Protocol、生成合同、Wails、storage、Artifact、SQLite、Runtime、CLI与可见交互均不变。
+
+P270 breaking只改变Desktop SDK内部transport/channel资源与失败语义：HTTP recv改为rendezvous背压，SSE逐frame解析并拒绝超过命名decoded-character包络的frame；Run/runtime-event inbox有限，ephemeral overflow可丢，authoritative overflow显式结束当前response generation供既有replay/cold-read或resync恢复。`HttpTransportConfig.maximumEventStreamFrameCharacters`是进程内构造选项，不进入Flame Runtime Protocol；wire method/result/event、Protocol version、生成合同、Wails、storage、Artifact、SQLite、Runtime与CLI均不变。
+
+P271 breaking收紧多provider配置纵切的状态归属：Provider Domain以私有identity、opaque API key、validated Base URL、credential provenance和preserve/set/clear change富模型取代公开primitive字段、空字符串和`*string`更新哨兵；SQLite `providers.api_key/base_url`以NULL表达缺省并拒绝空文本，当时前移至epoch 91，不迁移、不双读旧shape。环境credential是启动时验证的immutable overlay，stored优先级由Domain保证且永不落库。Protocol精确前移到`2026-08-30`，Provider只发布可缺席`baseUrl`与可缺席嵌套redacted `credential:{masked,source}`；旧`apiKeyMasked/keySource`直接删除。Desktop与CLI各自以immutable rich model消费新shape，raw secret只在Runtime model-client adapter边界揭示，cache identity只携带digest。
+
+P272 breaking只收紧Runtime internal provider catalog/Application metadata/client construction，不改变Protocol `2026-08-30`、SQLite epoch 91、Artifact v26、generated binding、Desktop或CLI shape。Provider integration由validated catalog aggregate唯一拥有closed endpoint/model-source/embedding policy与builder；Application不再保存公开primitive capability bag。Client input以构造后的credential/endpoint presence表达，空字符串只允许在调用第三方SDK的最内层projection中表示该SDK自身的缺席约定。
+
+P273 breaking把provider readiness与credential presence拆成两个正交事实。Protocol `Provider`新增必有`configured`和闭合`credentialRequirement: apiKeyRequired | apiKeyOptional`；`credential`继续只投影真实stored/environment secret material，不能兼任可用状态。Ollama由catalog声明optional authentication与default local endpoint，因此即使registry无row且无key也可完成chat、embedding、model probe与`providers.test`；若用户显式配置key仍会正常发送。第三方OpenAI-compatible SDK构造器要求非空key时，Runtime最内层防腐适配器只用命名占位满足其本地validation，并在HTTP RoundTripper边界确定删除`Authorization`，占位值绝不离开进程。Desktop与CLI各自恢复rich authentication/readiness model并拒绝矛盾wire state；不保留credential-derived enabled、dummy provider key或provider-name UI分支。Protocol日期保持`2026-08-30`，SQLite epoch 91、Artifact v26及method/topic集合不变。
+
+P274 breaking只改变Runtime internal model-client composition与lifetime。Chat/Embedding resolver删除按credential digest永久累加的process cache；Bootstrap删除静态default client，fresh Run、utility fallback与embedding search均从当前ProviderRegistry解析，active Run仍保有自己staging时的client generation。它不改变Protocol `2026-08-30`、生成制品/digest、SQLite epoch 91、Artifact v26、Desktop或CLI shape。
+
+P275 breaking把provider/model/reasoning effort从跨层裸字符串收敛为Runtime Domain immutable identity value。provider最多64个Unicode code point、model最多256、reasoning effort最多32；configured identity必须是有效UTF-8、非空且不含Unicode whitespace、separator/control/format/private/unassigned等不可打印字符，不trim、不截断、不normalize。Remote model probe整批fail closed，Application catalog与Provider aggregate只能由rich constructor形成；Protocol generator把同一命名上限与identity pattern投影到字段、reasoning-level items及`Usage.byModel`/`ArtifactUsage.byModel` property names，CLI与Desktop在恢复和command admission时执行相同边界。Protocol保持本次尚未发布的`2026-08-30`，Artifact前移到v27，SQLite前移到epoch 92；旧归档和数据库不迁移、不双读。
+
+P276只收紧Runtime internal remote model probe的资源和文档合同。Endpoint response必须是最多1 MiB的完整有效UTF-8单一JSON文档，`data`在去重前最多4096项；overflow、第二JSON值、invalid UTF-8或任一非法model identity使整批probe失败，由既有Application policy回退bundled catalog。Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92、Desktop与CLI shape不变。
+
+P277只收紧model identity的内部admission和ownership。CLI command/schedule/role/provider路径、Runtime catalog/client/checkpoint/usage路径不再trim或大小写折叠identity；Interaction root与accounting只持有完整`modelref.Selection`，删除provider-only和`"unknown"` fallback。Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92及消费者shape不变。
+
+P278只收紧Runtime internal model discovery/provider test的取消与错误归属。Caller cancellation和Provider Registry读取故障保持为error；仅endpoint probe自身的不可达、内部timeout、空或非法目录可按既有策略fallback，provider test的真实远端失败仍投影稳定outcome。Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92及Desktop/CLI shape不变。
+
+P279只收紧CLI internal foreign Session identity admission与durable Workbench ownership。新增`sessionidentity.ID`，删除Session map key、journal恢复、状态文件hash和mutation path的`TrimSpace`修复；invalid UTF-8、NUL及non-exact值在Runtime I/O或durable publish前失败。Runtime Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92、Runtime与Desktop shape不变。
+
+P280只收紧CLI internal Run/Segment identity admission。Distinct `runidentity.RunID`/`SegmentID`覆盖Run projection/tree、subscription/stream/event、rollback journal、schedule/failure projection、Runtime adapter及TUI异常receipt；不trim、不repair。Runtime Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92、Runtime与Desktop shape不变。
+
+P281只收紧CLI internal Item/Event identity admission。`runidentity.ItemID`/`EventID`覆盖HITL answer、Interaction、Block/delta、child lineage、RunEvent、subscribe after/head checkpoint与可选feedback target；invalid UTF-8、NUL及non-exact值在Conversation恢复、Runtime command或durable publish前失败。Runtime Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92、Runtime与Desktop shape不变。
+
+P282 breaking收紧Runtime和CLI对Session/Run/Segment/Item/Event foreign identity的准入：普通资源最多256个Unicode code point，Event使用65540-character replay envelope；所有值必须是valid UTF-8、printable且不含Unicode whitespace，不trim、不repair。Runtime Domain富值贯通Application、SQLite、HTTP replay metadata和Protocol generated validation；Event wire同时要求`evt_`prefix，generator以`allOf`表达prefix与identity alphabet的合取，不再覆盖pattern。CLI rich identity持有同值Domain上限，并在runtimeembedded adapter测试中与Protocol锁定。Protocol日期保持`2026-08-30`，Artifact v27、SQLite epoch 92不变；生成制品digest按本批约束刷新。
+
+P283继续breaking收紧协调身份：Goal incarnation成为独立128-code-point exact富值并贯穿Goal/Run/HITL/checkpoint/SQLite；Schedule补入`sch_`framed 256-code-point公开资源合同，occurrence由Schedule identity与canonical due-millisecond cursor共同拥有，scheduled opening也解析同一occurrence而非只TrimSpace。executor instance/member/wait-request/effect严格区分并共享Agent Framework的256-byte URI-safe port合同；Executable build只接受canonical `sha256:<64 lowercase hex>`；deployment implementation/configuration分别持有最多256个exact printable non-whitespace code point，Framework digest不再读取未验证string；provider ToolCall correlation归Conversation Domain所有并在usage、working context、commit/recovery、普通/delegate Tool与Pending边界接受最多512个exact printable non-whitespace code point；top-level write-set commit统一为`run_commit_`framed、最多256-byte URI-safe技术身份，且富值从Application write-set贯穿adapter port和SQLite marker，不再在每层退化成裸string或保留双轨optional parser。Run replay cursor的process epoch、RunID和SegmentID也已作为独立富值保留在内存 authority 中，版本化JSON是唯一字符串编解码边界；分页的timestamp+Run anchor同样拒绝伪造Run identity。每个Bootstrap进程只发布canonical `runtime_<lowercase UUID>` incarnation；所有产品发射面消费唯一`productidentity.Name=flame`，不再把通用`runtime`当品牌。durable idempotency namespace由独立富值从SQLite贯穿Bootstrap，operation在业务准入前精确解析，HTTP不再trim身份；公开Go/Schema/TypeScript合同共同声明`^idp_[0-9a-f]{32}$`。process-local MCP OAuth attempt也由Application富值拥有并在lookup前解析，公开request/response共同发布`^mcpauth_[A-Z2-7]{26,64}$`。Agent Memory item同样由独立`ItemID`拥有`^mem_[0-9a-f]{32}$`，Domain、Application、SQLite strict codec与生成Go/Schema/TypeScript校验器共享精确语法；显式用户激活已有proposal时保留原身份且不再预先生成并丢弃随机ID。Protocol日期仍为`2026-08-30`，Artifact v27不变；持久准入CHECK使SQLite前移epoch 93，Go API surface未变，Manifest/OpenRPC/Schema digest按新增约束刷新。
+
+P283内部恢复合同继续收口：SQLite child-start、model/tool invocation和coarse Run lifecycle各自拥有私有持久状态类型，Run扫描统一拒绝未知状态，SQL边界显式投影durable spelling。该子批不改变公开协议、Artifact版本或SQLite schema epoch。
+
+P283后续把MCP server registry identity收敛为独立`ServerName`：唯一canonical spelling为1–32位lowercase ASCII `[a-z0-9._-]`且首位必须是字母或数字。同一富值贯穿durable registry、live connection supersession、OAuth owner、tool policy和tool namespace；Delivery、Scope SDK和SQL绑定才投影string。公开Go/Schema/TypeScript request与read model、Domain codec和fresh SQLite CHECK共同拒绝大小写、空白、路径字符和超长值。Protocol日期与Artifact v27不变，SQLite因持久准入变化前移epoch 94。
+
+P283再把MCP远端工具身份收敛为独立`RemoteToolName`：仅接受协议规定的1–128位ASCII `[A-Za-z0-9_.-]`，并与有损、64-byte的模型可见名严格分离。每台server的disabled/auto-approved平行数组在Domain入口合成为canonical `ServerToolPolicy`，重复、交叉矛盾和合计超过2048条均失败；SQLite删除两列opaque JSON，改由带server外键、tool-name CHECK、decision CHECK、唯一键和cardinality trigger的`mcp_server_tool_policies`关系表持有。公开Go/Schema/TypeScript对`MCPTool.name`和两类策略数组发布同一name grammar、item上限、unique与maxItems规则；Protocol日期与Artifact v27不变，SQLite前移epoch 95。
+
+Interaction组装现保留解析后的build与deployment富值并清除重复raw config；checkpoint写出才投影build文本，dispatch cancellation registry也直接使用Framework `ProcessID`/`EffectID`键。该内部收敛同样不改变公开wire合同。
+
+模型/工具invocation correlation现在由有界摘要富值生成。尤其模型路径不再把最大256-byte Framework EffectID继续拼接成超限CallID，从而避免“外部调用已发生、Application投影才拒绝”的unknown-effect故障。生成规则是内部实现合同，不改变公开wire schema。
+
+后台shell identity现在由process-local owner epoch与canonical nonzero uint64 sequence共同构成，内部ledger持有私有富值，Tool JSON边界保留字符串投影。Runtime重启后旧`shell_id`不会命中新进程中的另一条命令；sequence exhaustion显式失败，不回绕。该内部生命周期收紧不改变公开Tool字段shape、Protocol、Artifact或SQLite版本。
+
+纯进程registry现在直接以task、invocation、admission claim和stream subscriber registration对象为键，不再分配无协议含义且会回绕的整数身份。Segment生成的Item identity改为Segment摘要加canonical uint64 sequence，user opening占用独立discriminator；因此最大合法Segment不能通过复合字符串制造超限Item，sequence exhaustion也不会回绕或发布空身份。Item仍是既有opaque string字段，公开shape与版本不变。
+
+Run reducer的open Tool顺序现在由`openTools` aggregate直接拥有：direct Tool保持registration对象序列，provider Tool按已有model-call position排序，lookup/delete/drain/speculative clone不再依赖外置`int` arrival counter。该内部所有权收敛保持既有Tool事件、持久化和wire顺序。
+
+MCP status callback顺序由queue-owned linked registration表达，不再把`uint64`当作process identity或用pending map等待可能回绕的下一值；out-of-order ready与同步重入仍保持mutation registration顺序。HTTP `Request-Id`保持既有`req_` opaque header shape，但随机材料统一来自`crypto/rand.Text()`，删除时钟与全局原子计数fallback。
+
+MCP live connection的latest-operation-wins不再依赖每服务器`uint64 generation`。服务器直接持有当前`connectionAttempt` registration，supersession、detach与shutdown通过对象同一性判定并取消exact attempt；长时间运行不存在回绕后旧dial/OAuth completion重新取得提交权的路径。该process-local收敛不改变MCP wire、持久化或工具目录语义。
+
+Application `opaquetoken`机制不再暴露无界Encode/Decode入口：每个token authority必须传入自己的positive encoded-character envelope。Encode在分配Base64输出前比较精确长度，Decode在分配decoded payload前拒绝超限；pagination与Run replay继续分别拥有公开错误语义和同一64 KiB合同，不引入通用cursor领域类型。
+
+Agent Effect dispatch的外部副作用边界现在只保存`externalBoundaryCrossed`事实，不再用`uint32 externalCalls`表达不消费基数的布尔问题。任意次数调用都单调保持true，projection失败后的indeterminate恢复裁决不存在计数回绕为零的路径。
+
+Run session-change notifier以实际`sessionRunObserver` registration集合拥有等待者生命周期；stop closure删除exact registration，最后一个观察者退出才回收该Session generation。旧`int observers`派生计数已删除，notify仍一次关闭共享generation并允许后续观察创建全新generation。
+
 ## 2. Runtime Protocol Baseline 2
 
 机器真相源位于 [`../contract`](../contract)：
 
 | 制品 | SHA-256 |
 |---|---|
-| `contract/manifest.json` | `30918e3265162772af307e56eff2ec3b83241d1fba83739272d6f396adbf073a` |
-| `contract/openrpc.json` | `519802300fbfce9d1855a26ad692a5a95cb7fb8230d5c61dbd1403221c6214a9` |
-| `contract/schema.json` | `3ea98d082e7bd55972fecf18ffbec40e4c3e0b26d847317352f2c82193d6dce2` |
-| `contract/go-api.json` | `78ffa3ce1b70f711bdddcbfdb988e82d65ad5f502e371982fb54ee73bb254833` |
+| `contract/manifest.json` | `1608acd010d32cd6966a5b2d492ff54270b6d8787e401b46f7fad49299a9060d` |
+| `contract/openrpc.json` | `f73da812bbe749158344e838692bc1ae2fc2bf108423fdfef16eed5b53b35401` |
+| `contract/schema.json` | `02cb972c0d9db91a523f9acd7fa71e55f8decf8488b3ecf837e25d57c99706f8` |
+| `contract/go-api.json` | `f94730147cad2b1b24cc3b30a06c5833e597eafaff457b637ff5598c48fdfec8` |
 
 TypeScript generated files 是派生制品，不单独定义语义。它们必须由同一个 contract generator 产生且 diff-free；当前前端/TUI/CLI 是否已经消费最新 shape，由 P10/P12 的 consumer handoff 记录，不通过兼容字段掩盖。
 
@@ -72,7 +250,7 @@ TypeScript generated files 是派生制品，不单独定义语义。它们必�
 
 本文件不复制 method、field、error 或 example catalog。
 
-当前协议版本为精确值 `2026-08-28`，Artifact 为 v24，不存在兼容范围或旧归档 reader。Session 在 Domain、SQLite、Protocol 与生成消费者上只发布 exact provider/model/reasoning selection；省略 Run selection 时读取该 durable selection，不按 model id 推断 provider，也不从上一模型继承 reasoning effort。Session workspace 在 Domain 中是 exact value，SQLite 只保存 `workspace_path`；Protocol/Artifact 既有 `WorkspaceRef` shape 不因内部 owner 收敛虚增版本。RunEvent 只有七个 Runtime 实际生产的一等变体，Interrupt/response 只有 approval 与 question；没有 custom 旁路、clientTools feature 或 toolResult interrupt。Plan 是一等 `plan.updated` / `plan.changed` / `plan.get` / `SessionSnapshot.plan` / `SessionArtifact.plan` 合同，不再经过通用 state registry、key、scope/writer metadata 或 `states[]` union。Feature 与 Method 合同只发布能改变协商或消费决策的事实，不携带恒为 `stable` 的 stability 标签；method policy 同时发布 idempotency 与 run replay cursor applicability，只有 `runs.start`、`runs.resume`、`runs.subscribe` 接受 run cursor。唯一 replay scope 是 `runtimeInstanceRootSegment`：它准确表达一个 Runtime instance 内的一条 root Segment replay buffer；旧 `processRootSegment` 已直接删除。消费者 breaking surface 与未接线事实由 [`CONSUMER_HANDOFF.md`](CONSUMER_HANDOFF.md) 唯一记录。
+当前协议版本为精确值 `2026-08-30`，Artifact 为 v26，不存在兼容范围或旧归档 reader。Provider配置只发布可缺席`baseUrl`与可缺席嵌套redacted `credential`，不发布raw secret、空字符串presence或并列credential来源字段。Session 在 Domain、SQLite、Protocol 与生成消费者上只发布 exact provider/model/reasoning selection；省略 Run selection 时读取该 durable selection，不按 model id 推断 provider，也不从上一模型继承 reasoning effort。每个 compaction Item 必须携带 Runtime 实际写回的 canonical 人读摘要，消费者不得从 dropped count 或本地文案重建。Session workspace 在 Domain 中是 exact value，SQLite 只保存 `workspace_path`；Protocol/Artifact 既有 `WorkspaceRef` shape 不因内部 owner 收敛虚增版本。RunEvent 只有七个 Runtime 实际生产的一等变体，Interrupt/response 只有 approval 与 question；没有 custom 旁路、clientTools feature 或 toolResult interrupt。Plan 是一等 `plan.updated` / `plan.changed` / `plan.get` / `SessionSnapshot.plan` / `SessionArtifact.plan` 合同，不再经过通用 state registry、key、scope/writer metadata 或 `states[]` union。Feature 与 Method 合同只发布能改变协商或消费决策的事实，不携带恒为 `stable` 的 stability 标签；method policy 同时发布 idempotency 与 run replay cursor applicability，只有 `runs.start`、`runs.resume`、`runs.subscribe` 接受 run cursor。唯一 replay scope 是 `runtimeInstanceRootSegment`：它准确表达一个 Runtime instance 内的一条 root Segment replay buffer；旧 `processRootSegment` 已直接删除。消费者 breaking surface 与未接线事实由 [`CONSUMER_HANDOFF.md`](CONSUMER_HANDOFF.md) 唯一记录。
 
 P153 直接删除 Codebase semantic-index contract：公共 Go surface、三项 operation、feature、runtime topic、DTO/enum/sample 及 Desktop/CLI direct consumer 同批消失；不存在旧同日 Protocol shape reader、disabled capability 或 compatibility binding。当前 manifest 精确发布 86 个 methods、17 个 features 与 15 个 runtime topics。Embedding role 仍是 Agent Memory 的可选配置，不是被删除能力的残留别名。
 
@@ -162,7 +340,7 @@ identity 后才读写，域内 symlink 的 alias 本身保持不变；跨进程 
 
 ### 3.1 SQLite
 
-- 当前 `schemaEpoch = 84`；Session、Run、Goal、Schedule 与 Schedule occurrence 各自持久化严格解码的 `reasoning_effort`，不允许 identity/effort 分裂或旧 epoch 迁移；
+- 当前 `schemaEpoch = 95`；Provider credential/Base URL以NULL表达缺省且拒绝空文本，Session、Run、Goal、Schedule、Schedule occurrence及usage snapshot中的provider/model/reasoning identity都经同一bounded printable value object严格恢复，Agent Memory item identity由`mem_`加32位lowercase hex精确CHECK并经Domain codec恢复，MCP server name以1–32位canonical lowercase ASCII slug精确CHECK并经Domain codec恢复，MCP remote tool name以1–128位协议ASCII grammar恢复且策略存入规范化关系表，Session/Plan/Schedule revision受正数且JSON exact上界CHECK保护，Session catalog Unicode search material 由 Application canonicalizer 写入并严格复验，Transcript compaction 持久化 canonical 非空摘要，MCP 握手超时以 NULL/positive duration 区分 unbounded/bounded，Goal budget 与 Run limits 持久化显式 presence 语义；不允许 provider primitive sentinel、identity/effort 分裂、identity截断/normalization、search material 漂移、摘要缺失、预算哨兵或旧 epoch 迁移；
 - P183 将 Runtime 稳定领域枚举直接持久化为其命名文本，并把 `session_permission_modes.mode/restore_mode` 从 INTEGER 改为 TEXT；旧 ordinal/数字字符串与新领域值不兼容，故一次性提升 epoch，不迁移、不双读、不保留 codec 映射表；
 - P184 把 operation 注册/typed invocation 的 Go 1.27 泛型行为归还 `Registry` / `Endpoint`，让就近声明的 `operation.Name` 成为注册与 embedded binding 共用的唯一 method identity，并收紧 Hook verdict 与 Tool mutation scope 的 internal zero-value 边界；不改变 Protocol method text、Artifact 或 SQLite shape；
 - P185 迁移到 Agent Baseline 31 的 `SchemaFor` owner并整体升级 Runtime/Desktop/Frontend 依赖图；不改变 Protocol method text、Artifact、SQLite、checkpoint 或公共 Go surface；
@@ -204,7 +382,7 @@ P7 延续的 continuation payload baseline 是 Agent Framework TreeSnapshot v4 �
 
 ### 3.3 Artifact 与 Transcript
 
-Artifact、Transcript Item 和 ToolCall timing 的当前机器 shape 仍由 Runtime contract/store codec 拥有。Session Artifact 当前唯一版本为 24；其他版本在任何写入前确定性拒绝，不从旧 artifact 猜测缺失事实或改写版本号。Artifact 以显式 `plan` steps 携带 Plan 语义，并以必填 provider/model 与可选 `reasoningEffort` 保存 Session 的精确模型选择；每条 Artifact Run 也保存自己的 frozen exact selection。它不携带源 Runtime 的 revision/timestamp。Artifact Run 保留最新权威 prompt footprint，因此导入前后 Context gauge 的事实一致。AgentMessage 的 `phase` 是 Runtime 在模型调用边界写入的过程说明 / 最终回答语义，并随 Transcript、Artifact 与客户端恢复保持一致。Question Item 的 `answers` 是唯一已接受响应；未回答或取消保持字段缺失，claim 成功时与 pending/checkpoint 变更同事务写入 Transcript。ToolCall 的 `approvalDecision` 是该调用实际接受的人类决定，和 Pending consume/checkpoint invalidation/commit receipt 同事务写入，并随续跑终态与 artifact 保留；自动放行不伪造。ToolCall lifecycle 与可选 exact execution duration 是两个事实：后者排除审批等待，无法证明时保持 unknown。Tool failure taxonomy 将工具所属 Run 的取消导致的在途终止表示为 `toolCanceled`，不与执行失败、审批拒绝或父 Run 上的 `childRunCanceled` 合并。
+Artifact、Transcript Item 和 ToolCall timing 的当前机器 shape 仍由 Runtime contract/store codec 拥有。Session Artifact 当前唯一版本为 27；其他版本在任何写入前确定性拒绝，不从旧 artifact 猜测缺失事实或改写版本号。Artifact 以显式 `plan` steps 携带 Plan 语义，并以必填bounded canonical provider/model 与可选 `reasoningEffort` 保存 Session 的精确模型选择；每条 Artifact Run 也保存自己的 frozen exact selection，并只在有限策略存在时携带至少一个严格正的 limit 轴；usage map的model property name受同一model identity约束。它不携带源 Runtime 的 revision/timestamp。Artifact Run 保留最新权威 prompt footprint，因此导入前后 Context gauge 的事实一致；每个 compaction Item 保留 Runtime 生成的 canonical 非空摘要，不由消费者重建。AgentMessage 的 `phase` 是 Runtime 在模型调用边界写入的过程说明 / 最终回答语义，并随 Transcript、Artifact 与客户端恢复保持一致。Question Item 的 `answers` 是唯一已接受响应；未回答或取消保持字段缺失，claim 成功时与 pending/checkpoint 变更同事务写入 Transcript。ToolCall 的 `approvalDecision` 是该调用实际接受的人类决定，和 Pending consume/checkpoint invalidation/commit receipt 同事务写入，并随续跑终态与 artifact 保留；自动放行不伪造。ToolCall lifecycle 与可选 exact execution duration 是两个事实：后者排除审批等待，无法证明时保持 unknown。Tool failure taxonomy 将工具所属 Run 的取消导致的在途终止表示为 `toolCanceled`，不与执行失败、审批拒绝或父 Run 上的 `childRunCanceled` 合并。
 
 ## 4. Agent Framework 消费 Baseline
 

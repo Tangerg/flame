@@ -26,8 +26,8 @@ type TerminalResource interface {
 // reaching terminal is what records one.
 type PlanStore interface {
 	List(ctx context.Context, sessionID string) ([]plan.Step, error)
-	State(ctx context.Context, sessionID string) (plan.State, error)
-	Save(ctx context.Context, sessionID string, expectedRevision uint64, replacement plan.State) error
+	State(ctx context.Context, sessionID string) (plan.Current, error)
+	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
 	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
 	DeleteSession(ctx context.Context, sessionID string) error
 }
@@ -43,17 +43,16 @@ type ApprovalRuleStore interface {
 // run-now firing, and the due worker. The consumers retain their narrower
 // application-owned ports.
 type ScheduleStore interface {
-	List(ctx context.Context) ([]schedule.Schedule, error)
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
-	Create(ctx context.Context, sc schedule.Schedule) (schedule.Schedule, error)
+	Insert(ctx context.Context, sc schedule.Schedule) error
 	Update(ctx context.Context, sc schedule.Schedule, expectedRevision uint64) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) (bool, error)
 	Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error)
-	Claim(ctx context.Context, occurrence schedule.Occurrence) (bool, error)
+	Claim(ctx context.Context, claim schedule.Claim) (bool, error)
 	Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error)
-	Accept(ctx context.Context, occurrenceID, runID string) error
-	RecordRun(ctx context.Context, id string, ranAt time.Time) error
+	Accept(ctx context.Context, acceptance schedule.Acceptance) error
+	RecordRun(ctx context.Context, record schedule.RunRecord) error
 }
 
 // HookResolver is the runtime's consumer view of lifecycle-hook resolution.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
@@ -146,8 +147,8 @@ func (a *app) ShowRuntimeStatus() {
 				a.message("could not read runtime status: " + err.Error())
 				return
 			}
-			a.transcript.Append(&kit.Message{
-				Theme: a.transcript.theme, Speaker: "runtime options",
+			a.transcript.Append(&kit.Entry{
+				Theme: a.transcript.theme, Label: "runtime options",
 				Body: runtimeStatusText(a.runtimeProfile, a.options, mode),
 			})
 		},
@@ -173,9 +174,9 @@ func runtimeStatusText(profile *runtimeprofile.Profile, options agent.RunOptions
 		"default workspace: " + profile.Server.DefaultWorkspace,
 		"home: " + profile.Server.Home,
 		"available features: " + strings.Join(features, ", "),
-		fmt.Sprintf("run concurrency: %s", optionalLimit(limits.MaxConcurrentRuns)),
+		fmt.Sprintf("run concurrency: %s", runConcurrencyLabel(limits.RunConcurrency)),
 		fmt.Sprintf("run replay: %d events / %s / %s", limits.RunReplay.MaxEvents, formatRuntimeBytes(limits.RunReplay.MaxBytes), limits.RunReplay.Scope),
-		"command replay retention: " + formatRuntimeSeconds(limits.IdempotencyRetentionSeconds),
+		"command replay retention: " + formatRuntimeSeconds(int(limits.CommandReplay.Retention()/time.Second)),
 		"MCP authorization retention: " + formatRuntimeSeconds(limits.MCPAuthorizationRetentionSeconds),
 		fmt.Sprintf("runtime subscriptions: %d topics / %d watches", limits.RuntimeSubscription.MaxTopics, limits.RuntimeSubscription.MaxWatches),
 		fmt.Sprintf("surface: %d run events / %d topics / %d streaming methods", len(profile.RunEvents), len(profile.RuntimeTopics), len(profile.StreamingMethods)),
@@ -183,11 +184,12 @@ func runtimeStatusText(profile *runtimeprofile.Profile, options agent.RunOptions
 	return strings.Join(slices.Concat(profileLines, lines), "\n")
 }
 
-func optionalLimit(value int) string {
-	if value == 0 {
-		return "runtime default"
+func runConcurrencyLabel(limit runtimeprofile.RunConcurrencyLimit) string {
+	maximum, bounded := limit.Maximum()
+	if !bounded {
+		return "unbounded"
 	}
-	return fmt.Sprintf("%d runs", value)
+	return fmt.Sprintf("at most %d runs", maximum)
 }
 
 func formatRuntimeSeconds(value int) string {

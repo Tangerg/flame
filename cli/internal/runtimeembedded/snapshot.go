@@ -118,7 +118,7 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		snapshot.Runs = append(snapshot.Runs, run)
 	}
 	if read.plan != nil {
-		snapshot.Plan, snapshot.PlanRevision, err = projectPlan(read.plan)
+		snapshot.Plan, err = projectPlan(read.plan)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}

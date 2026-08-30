@@ -7,7 +7,7 @@
 // What each call MEANS lives in wireCheck.ts. This file only says which rule
 // applies where.
 
-import { absent, allOf, anything, array, enumOf, fields, flag, ifThen, integer, literal, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, record, ref, text, uniqueItems } from "./wireCheck";
+import { absent, allOf, anyOf, anything, array, enumOf, exclusiveMinimum, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "./wireCheck";
 import type { WireCheck, WireViolation } from "./wireCheck";
 
 import type { WireMethodName } from "./wire.methods.generated";
@@ -149,6 +149,7 @@ export type WireTypeName =
   | "ListItemsResponse"
   | "ListModelsRequest"
   | "ListRunsRequest"
+  | "ListSessionsRequest"
   | "LivenessState"
   | "LivenessStatus"
   | "MCPAuthorizationAttempt"
@@ -160,6 +161,8 @@ export type WireTypeName =
   | "MCPConnection"
   | "MCPConnectionInput"
   | "MCPEnvironmentChange"
+  | "MCPHandshakeTimeout"
+  | "MCPHandshakeTimeoutType"
   | "MCPHeadersChange"
   | "MCPListToolsRequest"
   | "MCPSecretChangeType"
@@ -177,6 +180,7 @@ export type WireTypeName =
   | "Model"
   | "ModelCapabilities"
   | "ModelPricing"
+  | "ModelTokenLimits"
   | "ModelUsage"
   | "PageOfAgentDoc"
   | "PageOfFileEntry"
@@ -200,12 +204,15 @@ export type WireTypeName =
   | "PatchResult"
   | "PendingInterruptSet"
   | "Plan"
+  | "PlanState"
   | "PlanStatus"
   | "PlanStep"
   | "ProblemData"
   | "Provider"
   | "ProviderConfigChange"
   | "ProviderConfigChangeType"
+  | "ProviderCredential"
+  | "ProviderCredentialRequirement"
   | "ProviderKeySource"
   | "ProviderTestResult"
   | "Question"
@@ -310,7 +317,7 @@ export type WireTypeName =
 
 const CHECKS: Record<WireTypeName, WireCheck> = {
   ActiveRunRef: object({
-    runId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     status: ref(() => CHECKS.RunStatus),
   }, ["runId", "status"]),
   AgentDoc: object({
@@ -344,16 +351,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     content: allOf([text(), minLength(1), maxLength(4096)]),
     createdAt: text(),
     day: text(),
-    id: text(),
+    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
     origin: ref(() => CHECKS.AgentMemoryOrigin),
     pinned: flag(),
     scope: ref(() => CHECKS.AgentMemoryScope),
-    sessionId: text(),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     status: ref(() => CHECKS.AgentMemoryStatus),
     updatedAt: text(),
   }, ["content", "createdAt", "id", "origin", "pinned", "scope", "status", "updatedAt"]),
   AgentMemoryItemRequest: object({
-    id: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["id"]),
   AgentMemoryList: object({
     items: array(ref(() => CHECKS.AgentMemoryItem)),
@@ -382,13 +389,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentMemoryReviewDecision: enumOf(["approve", "reject"]),
   AgentMemoryReviewRequest: object({
     decision: ref(() => CHECKS.AgentMemoryReviewDecision),
-    id: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["decision", "id"]),
   AgentMemoryScope: enumOf(["project", "user"]),
   AgentMemoryStatus: enumOf(["active", "pending"]),
   AgentMemoryUpdateRequest: object({
     content: allOf([text(), minLength(1), maxLength(4096)]),
-    id: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
     pinned: flag(),
   }, ["id"]),
   AppliedChange: object({
@@ -440,11 +447,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       durationMillis: allOf([integer(), minimum(0)]),
       error: ref(() => CHECKS.ArtifactProblem),
       finishedAt: text(),
-      id: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       phase: ref(() => CHECKS.MessagePhase),
       question: ref(() => CHECKS.ArtifactQuestion),
       redacted: flag(),
-      runId: text(),
+      runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       safetyClass: ref(() => CHECKS.SafetyClass),
       startedAt: text(),
       status: ref(() => CHECKS.ItemStatus),
@@ -465,11 +472,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
         type: literal("userMessage"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["content", "createdAt", "id", "runId", "status", "type"]),
       fields({
         approvalDecision: absent(),
         droppedMessages: absent(),
@@ -480,11 +488,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
         type: literal("agentMessage"),
-      }, ["createdAt", "id", "phase", "runId", "status", "type"]),
+      }, ["content", "createdAt", "id", "phase", "runId", "status", "type"]),
       fields({
         approvalDecision: absent(),
         content: absent(),
@@ -496,10 +505,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         question: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         tool: absent(),
         type: literal("reasoning"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["createdAt", "id", "runId", "status", "text", "type"]),
       fields({
         approvalDecision: absent(),
         content: absent(),
@@ -511,11 +521,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
         type: literal("question"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["createdAt", "id", "question", "runId", "status", "type"]),
       fields({
         content: absent(),
         createdAt: absent(),
@@ -523,10 +534,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         phase: absent(),
         question: absent(),
         redacted: absent(),
+        status: enumOf(["completed", "incomplete"]),
         summary: absent(),
         text: absent(),
         type: literal("toolCall"),
-      }, ["id", "runId", "startedAt", "status", "type"]),
+      }, ["id", "runId", "startedAt", "status", "tool", "type"]),
       fields({
         approvalDecision: absent(),
         content: absent(),
@@ -538,21 +550,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         text: absent(),
         tool: absent(),
         type: literal("compaction"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["createdAt", "id", "runId", "status", "summary", "type"]),
     ]),
-    ifThen(
-      fields({
-        status: literal("running"),
-        type: literal("toolCall"),
-      }, ["status", "type"]),
-      fields({
-        durationMillis: absent(),
-        finishedAt: absent(),
-      }, []),
-    ),
     ifThen(
       fields({
         status: literal("completed"),
@@ -681,19 +684,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       contextTokens: allOf([integer(), minimum(0)]),
       createdAt: text(),
       finishedAt: text(),
-      id: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       limits: ref(() => CHECKS.ArtifactRunLimits),
       messageMark: allOf([integer(), minimum(0)]),
       metrics: ref(() => CHECKS.ArtifactRunMetrics),
-      model: text(),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.ArtifactOutcome),
-      parentRunId: text(),
+      parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       protocolProfile: ref(() => CHECKS.RunProtocolProfile),
-      provider: text(),
-      reasoningEffort: text(),
-      rootRunId: text(),
-      sessionId: text(),
-      spawnedByItemId: text(),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       updatedAt: text(),
     }, ["createdAt", "finishedAt", "id", "messageMark", "metrics", "outcome", "sessionId", "updatedAt"]),
     ifThen(
@@ -715,11 +718,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({}, ["parentRunId", "spawnedByItemId"]),
     ),
   ]),
-  ArtifactRunLimits: object({
-    maxBudgetUsd: allOf([numeric(), minimum(0)]),
-    maxSteps: allOf([integer(), minimum(0)]),
-    maxTotalTokens: allOf([integer(), minimum(0)]),
-  }, []),
+  ArtifactRunLimits: allOf([
+    object({
+      maxBudgetUsd: allOf([numeric(), exclusiveMinimum(0)]),
+      maxSteps: allOf([integer(), minimum(1)]),
+      maxTotalTokens: allOf([integer(), minimum(1)]),
+    }, []),
+    anyOf([fields({}, ["maxTotalTokens"]), fields({}, ["maxSteps"]), fields({}, ["maxBudgetUsd"])]),
+  ]),
   ArtifactRunMetrics: object({
     activeDurationMillis: allOf([integer(), minimum(0)]),
     steps: allOf([integer(), minimum(0)]),
@@ -728,10 +734,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactSession: object({
     createdAt: text(),
     favorite: flag(),
-    id: text(),
-    model: allOf([text(), minLength(1)]),
-    provider: allOf([text(), minLength(1)]),
-    reasoningEffort: text(),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
     updatedAt: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -745,12 +751,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     body: text(),
     createdAt: text(),
     id: text(),
-    itemId: text(),
+    itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     preview: text(),
     toolName: text(),
   }, ["body", "createdAt", "id", "itemId", "preview", "toolName"]),
   ArtifactUsage: object({
-    byModel: record(ref(() => CHECKS.ArtifactModelUsage)),
+    byModel: allOf([record(ref(() => CHECKS.ArtifactModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
     cacheReadTokens: allOf([integer(), minimum(0)]),
     cacheWriteTokens: allOf([integer(), minimum(0)]),
     costUsd: allOf([numeric(), minimum(0)]),
@@ -760,7 +766,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   CancelRunRequest: object({
     reason: allOf([text(), maxLength(1024)]),
-    runId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
   CancelRunResponse: allOf([
     object({
@@ -832,14 +838,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ContentBlockType: enumOf(["text", "image"]),
   CreateMCPAuthorizationAttemptRequest: object({
-    server: allOf([text(), minLength(1)]),
+    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   CreateScheduleRequest: object({
     cron: allOf([text(), minLength(1)]),
     instructions: allOf([text(), minLength(1)]),
-    model: text(),
-    provider: text(),
-    reasoningEffort: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["cron", "instructions"]),
@@ -848,10 +854,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
   DeleteScheduleRequest: object({
-    id: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
   }, ["id"]),
   DeleteSessionRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   Diff: object({
     files: array(ref(() => CHECKS.FileDiff)),
@@ -902,13 +908,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     userInput: array(ref(() => CHECKS.ContentBlock)),
   }, ["run"]),
   EmbeddingRole: object({
-    model: text(),
-    provider: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   ExportFormat: enumOf(["md", "json"]),
   ExportSessionRequest: object({
     format: ref(() => CHECKS.ExportFormat),
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   ExportSessionResponse: object({
     artifact: ref(() => CHECKS.SessionArtifact),
@@ -925,10 +931,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["enabled"]),
   FeedbackRating: enumOf(["positive", "negative"]),
   FeedbackRequest: object({
-    itemId: text(),
+    itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     rating: ref(() => CHECKS.FeedbackRating),
-    runId: text(),
-    sessionId: text(),
+    runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     text: text(),
   }, []),
   FieldError: object({
@@ -974,8 +980,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     id: allOf([text(), minLength(1)]),
   }, ["id"]),
   ForkSessionRequest: object({
-    fromRunId: text(),
-    sessionId: allOf([text(), minLength(1)]),
+    fromRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
   }, ["sessionId"]),
   GenerationParams: object({
@@ -984,15 +990,25 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     temperature: allOf([numeric(), minimum(0), maximum(2)]),
     topP: allOf([numeric(), minimum(0), maximum(1)]),
   }, []),
-  GetDiffRequest: object({
-    format: ref(() => CHECKS.DiffFormat),
-    limit: allOf([integer(), minimum(0)]),
-    mode: ref(() => CHECKS.DiffMode),
-    path: text(),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["workspace"]),
+  GetDiffRequest: allOf([
+    object({
+      format: ref(() => CHECKS.DiffFormat),
+      limit: allOf([integer(), minimum(1)]),
+      mode: ref(() => CHECKS.DiffMode),
+      path: text(),
+      workspace: ref(() => CHECKS.WorkspaceRef),
+    }, ["workspace"]),
+    ifThen(
+      fields({
+        format: literal("raw"),
+      }, ["format"]),
+      fields({
+        limit: absent(),
+      }, []),
+    ),
+  ]),
   GetFileHeadRequest: object({
-    lines: allOf([integer(), minimum(0)]),
+    lines: allOf([integer(), minimum(1)]),
     path: allOf([text(), minLength(1)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["path", "workspace"]),
@@ -1001,43 +1017,46 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["scope"]),
   GetPlanRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   GetRunRequest: object({
-    runId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
   GetSessionRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   GetSessionSnapshotRequest: object({
     includeDescendants: flag(),
-    sessionId: text(),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   Goal: object({
     budget: ref(() => CHECKS.GoalBudget),
     createdAt: text(),
-    model: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     objective: text(),
-    provider: text(),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     reason: ref(() => CHECKS.GoalReason),
-    reasoningEffort: text(),
-    sessionId: text(),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     status: ref(() => CHECKS.GoalStatus),
     updatedAt: text(),
     used: ref(() => CHECKS.GoalUsage),
-  }, ["budget", "createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
-  GoalBudget: object({
-    maxCostUsd: allOf([numeric(), minimum(0)]),
-    maxRuns: allOf([integer(), minimum(0)]),
-    maxSteps: allOf([integer(), minimum(0)]),
-  }, []),
+  }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
+  GoalBudget: allOf([
+    object({
+      maxCostUsd: allOf([numeric(), exclusiveMinimum(0)]),
+      maxRuns: allOf([integer(), minimum(1)]),
+      maxSteps: allOf([integer(), minimum(1)]),
+    }, []),
+    anyOf([fields({}, ["maxRuns"]), fields({}, ["maxCostUsd"]), fields({}, ["maxSteps"])]),
+  ]),
   GoalReason: object({
     code: ref(() => CHECKS.GoalReasonCode),
     detail: text(),
   }, ["code"]),
   GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "blockedByModel"]),
   GoalRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   GoalStatus: enumOf(["active", "paused", "blocked", "completing"]),
   GoalUsage: object({
@@ -1051,7 +1070,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     text: text(),
   }, ["lineNumber", "path", "text"]),
   GrepRequest: object({
-    limit: allOf([integer(), minimum(0)]),
+    limit: allOf([integer(), minimum(1)]),
     path: text(),
     query: allOf([text(), minLength(1)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -1080,7 +1099,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     projectTrusted: flag(),
   }, ["hooks", "projectTrusted"]),
   IdempotencyLimits: object({
-    namespace: allOf([text(), minLength(1)]),
+    namespace: allOf([text(), pattern("^idp_[0-9a-f]{32}$")]),
     retentionSeconds: allOf([integer(), minimum(1)]),
   }, ["namespace", "retentionSeconds"]),
   ImportSessionRequest: allOf([
@@ -1094,15 +1113,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         }, []),
       }, []),
     }, []),
+    fields({
+      artifact: fields({
+        session: fields({
+          id: pattern("^[^\\p{C}\\p{Z}]*$"),
+        }, []),
+      }, []),
+    }, []),
+    fields({
+      artifact: fields({
+        session: fields({
+          id: maxLength(256),
+        }, []),
+      }, []),
+    }, []),
   ]),
   ImportSessionResponse: object({
     session: ref(() => CHECKS.Session),
   }, ["session"]),
   Interrupt: allOf([
     object({
-      itemId: allOf([text(), minLength(1)]),
+      itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       payload: ref(() => CHECKS.InterruptPayload),
-      runId: allOf([text(), minLength(1)]),
+      runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       type: ref(() => CHECKS.InterruptType),
     }, []),
     oneOf([
@@ -1131,7 +1164,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     tool: ref(() => CHECKS.ToolInvocation),
   }, []),
   InterruptResponse: object({
-    itemId: text(),
+    itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     response: ref(() => CHECKS.InterruptResponseValue),
   }, ["itemId", "response"]),
   InterruptResponseType: enumOf(["approval", "answer"]),
@@ -1173,11 +1206,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       durationMillis: allOf([integer(), minimum(0)]),
       error: ref(() => CHECKS.ProblemData),
       finishedAt: text(),
-      id: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       phase: ref(() => CHECKS.MessagePhase),
       question: ref(() => CHECKS.Question),
       redacted: flag(),
-      runId: text(),
+      runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       safetyClass: ref(() => CHECKS.SafetyClass),
       startedAt: text(),
       status: ref(() => CHECKS.ItemStatus),
@@ -1198,11 +1231,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
         type: literal("userMessage"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["content", "createdAt", "id", "runId", "status", "type"]),
       fields({
         approvalDecision: absent(),
         droppedMessages: absent(),
@@ -1213,6 +1247,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["running", "completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
@@ -1229,6 +1264,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         question: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["running", "completed"]),
         summary: absent(),
         tool: absent(),
         type: literal("reasoning"),
@@ -1244,11 +1280,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
         type: literal("question"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["createdAt", "id", "question", "runId", "status", "type"]),
       fields({
         content: absent(),
         createdAt: absent(),
@@ -1256,10 +1293,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         phase: absent(),
         question: absent(),
         redacted: absent(),
+        status: enumOf(["running", "completed", "incomplete"]),
         summary: absent(),
         text: absent(),
         type: literal("toolCall"),
-      }, ["id", "runId", "startedAt", "status", "type"]),
+      }, ["id", "runId", "startedAt", "status", "tool", "type"]),
       fields({
         approvalDecision: absent(),
         content: absent(),
@@ -1271,21 +1309,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
+        status: enumOf(["completed"]),
         text: absent(),
         tool: absent(),
         type: literal("compaction"),
-      }, ["createdAt", "id", "runId", "status", "type"]),
+      }, ["createdAt", "id", "runId", "status", "summary", "type"]),
     ]),
-    ifThen(
-      fields({
-        status: literal("running"),
-        type: literal("toolCall"),
-      }, ["status", "type"]),
-      fields({
-        durationMillis: absent(),
-        finishedAt: absent(),
-      }, []),
-    ),
     ifThen(
       fields({
         status: literal("completed"),
@@ -1299,6 +1328,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("toolCall"),
       }, ["status", "type"]),
       fields({}, ["finishedAt"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("running"),
+        type: literal("toolCall"),
+      }, ["status", "type"]),
+      fields({
+        durationMillis: absent(),
+        finishedAt: absent(),
+      }, []),
     ),
     ifThen(
       fields({
@@ -1314,20 +1353,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         status: literal("completed"),
         type: literal("agentMessage"),
       }, ["status", "type"]),
-      fields({}, ["phase"]),
+      fields({}, ["content", "phase"]),
     ),
     ifThen(
       fields({
-        status: literal("incomplete"),
-        type: literal("agentMessage"),
+        status: literal("completed"),
+        type: literal("reasoning"),
       }, ["status", "type"]),
-      fields({}, ["phase"]),
+      fields({}, ["text"]),
     ),
   ]),
   ItemDelta: allOf([
     object({
       argumentsTextDelta: text(),
-      index: integer(),
       text: text(),
       type: ref(() => CHECKS.ItemDeltaType),
     }, []),
@@ -1338,17 +1376,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["text", "type"]),
       fields({
         argumentsTextDelta: absent(),
-        index: absent(),
         type: literal("reasoning"),
       }, ["text", "type"]),
       fields({
-        index: absent(),
         text: absent(),
         type: literal("toolArguments"),
       }, ["argumentsTextDelta", "type"]),
       fields({
         argumentsTextDelta: absent(),
-        index: absent(),
         type: literal("toolOutput"),
       }, ["text", "type"]),
     ]),
@@ -1357,8 +1392,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ItemListScope: allOf([
     object({
       includeDescendants: flag(),
-      runId: text(),
-      sessionId: text(),
+      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       type: ref(() => CHECKS.ItemScopeType),
     }, []),
     oneOf([
@@ -1385,16 +1420,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["content", "revision", "scope"]),
   KnowledgeScope: enumOf(["cwd", "projectRoot", "home"]),
   ListApprovalRulesRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   ListApprovalRulesResult: object({
     rules: array(ref(() => CHECKS.ApprovalRule)),
   }, ["rules"]),
   ListFilesRequest: object({
-    cursor: text(),
+    cursor: allOf([text(), maxLength(65536)]),
     glob: text(),
     includeIgnored: flag(),
-    limit: allOf([integer(), minimum(0)]),
+    limit: allOf([integer(), minimum(1)]),
     path: text(),
     recursive: flag(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -1403,15 +1438,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["workspace"]),
   ListInterruptsRequest: object({
-    cursor: text(),
-    limit: allOf([integer(), minimum(0)]),
-    rootRunId: text(),
-    sessionId: text(),
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
+    rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   ListItemsRequest: allOf([
     object({
-      cursor: text(),
-      limit: allOf([integer(), minimum(0)]),
+      cursor: allOf([text(), maxLength(65536)]),
+      limit: allOf([integer(), minimum(1)]),
       order: ref(() => CHECKS.ItemOrder),
       scope: ref(() => CHECKS.ItemListScope),
     }, ["scope"]),
@@ -1423,18 +1458,24 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ListItemsResponse: object({
     data: array(ref(() => CHECKS.Item)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
     runs: array(ref(() => CHECKS.RunSummary)),
   }, ["data", "runs"]),
   ListModelsRequest: object({
-    provider: text(),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   ListRunsRequest: object({
-    cursor: text(),
+    cursor: allOf([text(), maxLength(65536)]),
     includeDescendants: flag(),
-    limit: allOf([integer(), minimum(0)]),
-    sessionId: text(),
+    limit: allOf([integer(), minimum(1)]),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     statuses: allOf([array(ref(() => CHECKS.RunStatus)), minItems(1), uniqueItems()]),
+  }, []),
+  ListSessionsRequest: object({
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
+    search: allOf([text(), maxLength(1024)]),
+    workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
   LivenessState: enumOf(["ok"]),
   LivenessStatus: object({
@@ -1445,8 +1486,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       createdAt: text(),
       finishedAt: text(),
-      id: allOf([text(), minLength(1)]),
-      server: allOf([text(), minLength(1)]),
+      id: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
+      server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
       status: ref(() => CHECKS.MCPAuthorizationAttemptStatus),
     }, ["createdAt", "id", "server", "status"]),
     ifThen(
@@ -1488,7 +1529,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     retentionSeconds: allOf([integer(), minimum(1)]),
   }, ["retentionSeconds"]),
   MCPAuthorizationAttemptRequest: object({
-    attemptId: allOf([text(), minLength(1)]),
+    attemptId: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
   }, ["attemptId"]),
   MCPAuthorizationAttemptStatus: allOf([
     object({
@@ -1598,6 +1639,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["type"]),
     ]),
   ]),
+  MCPHandshakeTimeout: allOf([
+    object({
+      seconds: allOf([integer(), minimum(1)]),
+      type: ref(() => CHECKS.MCPHandshakeTimeoutType),
+    }, []),
+    oneOf([
+      fields({
+        seconds: absent(),
+        type: literal("unbounded"),
+      }, ["type"]),
+      fields({
+        type: literal("bounded"),
+      }, ["seconds", "type"]),
+    ]),
+  ]),
+  MCPHandshakeTimeoutType: enumOf(["unbounded", "bounded"]),
   MCPHeadersChange: allOf([
     object({
       type: ref(() => CHECKS.MCPSecretChangeType),
@@ -1614,29 +1671,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   MCPListToolsRequest: object({
-    server: text(),
+    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, []),
   MCPSecretChangeType: enumOf(["set", "clear"]),
   MCPServer: object({
-    autoApproveTools: array(text()),
+    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnection),
     description: text(),
-    disabledTools: array(text()),
-    name: text(),
+    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
+    name: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
     status: ref(() => CHECKS.MCPServerState),
-    timeoutSeconds: integer(),
-  }, ["connection", "name", "status"]),
+  }, ["connection", "handshakeTimeout", "name", "status"]),
   MCPServerCandidate: object({
-    autoApproveTools: allOf([array(text()), uniqueItems()]),
+    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(text()), uniqueItems()]),
+    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
-    name: allOf([text(), minLength(1)]),
-    timeoutSeconds: allOf([integer(), minimum(0)]),
-  }, ["connection", "enabled", "name"]),
+    handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
+    name: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+  }, ["connection", "enabled", "handshakeTimeout", "name"]),
   MCPServerRequest: object({
-    server: allOf([text(), minLength(1)]),
+    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   MCPServerState: allOf([
     object({
@@ -1682,8 +1739,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPTool: object({
     description: text(),
     inputSchema: record(anything()),
-    name: text(),
-    server: text(),
+    name: allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
+    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["name", "server"]),
   MCPTransport: enumOf(["stdio", "streamableHttp"]),
   ManagedSkill: object({
@@ -1695,23 +1752,21 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   Modality: enumOf(["text", "image", "audio", "video", "pdf"]),
   Model: object({
     capabilities: ref(() => CHECKS.ModelCapabilities),
-    contextWindow: integer(),
     deprecated: flag(),
     displayName: text(),
-    id: text(),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     knowledgeCutoff: text(),
-    maxInputTokens: integer(),
-    maxOutputTokens: integer(),
     pricing: ref(() => CHECKS.ModelPricing),
-    provider: text(),
+    provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    tokenLimits: ref(() => CHECKS.ModelTokenLimits),
   }, ["id", "provider"]),
   ModelCapabilities: object({
     inputModalities: array(ref(() => CHECKS.Modality)),
     multimodal: flag(),
     outputModalities: array(ref(() => CHECKS.Modality)),
     reasoning: flag(),
-    reasoningDefaultLevel: text(),
-    reasoningLevels: array(text()),
+    reasoningDefaultLevel: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningLevels: array(allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")])),
     structuredOutput: flag(),
     toolUse: flag(),
   }, []),
@@ -1721,89 +1776,97 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     inputUsdPerMillionTokens: numeric(),
     outputUsdPerMillionTokens: numeric(),
   }, []),
+  ModelTokenLimits: allOf([
+    object({
+      contextWindow: allOf([integer(), minimum(1)]),
+      maxInputTokens: allOf([integer(), minimum(1)]),
+      maxOutputTokens: allOf([integer(), minimum(1)]),
+    }, []),
+    anyOf([fields({}, ["contextWindow"]), fields({}, ["maxInputTokens"]), fields({}, ["maxOutputTokens"])]),
+  ]),
   ModelUsage: object({
-    cacheReadTokens: integer(),
-    cacheWriteTokens: integer(),
-    costUsd: numeric(),
-    inputTokens: integer(),
-    outputTokens: integer(),
-    reasoningTokens: integer(),
+    cacheReadTokens: allOf([integer(), minimum(0)]),
+    cacheWriteTokens: allOf([integer(), minimum(0)]),
+    costUsd: allOf([numeric(), minimum(0)]),
+    inputTokens: allOf([integer(), minimum(0)]),
+    outputTokens: allOf([integer(), minimum(0)]),
+    reasoningTokens: allOf([integer(), minimum(0)]),
   }, []),
   PageOfAgentDoc: object({
     data: array(ref(() => CHECKS.AgentDoc)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfFileEntry: object({
     data: array(ref(() => CHECKS.FileEntry)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfKnowledgeEntry: object({
     data: array(ref(() => CHECKS.KnowledgeEntry)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfMCPServer: object({
     data: array(ref(() => CHECKS.MCPServer)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfMCPTool: object({
     data: array(ref(() => CHECKS.MCPTool)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfManagedSkill: object({
     data: array(ref(() => CHECKS.ManagedSkill)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfModel: object({
     data: array(ref(() => CHECKS.Model)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfPendingInterruptSet: object({
     data: array(ref(() => CHECKS.PendingInterruptSet)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfProvider: object({
     data: array(ref(() => CHECKS.Provider)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfRecipe: object({
     data: array(ref(() => CHECKS.Recipe)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfRunRef: object({
     data: array(ref(() => CHECKS.RunRef)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfSchedule: object({
     data: array(ref(() => CHECKS.Schedule)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfSession: object({
     data: array(ref(() => CHECKS.Session)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfSkill: object({
     data: array(ref(() => CHECKS.Skill)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfSkillProposal: object({
     data: array(ref(() => CHECKS.SkillProposal)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfToolSpec: object({
     data: array(ref(() => CHECKS.ToolSpec)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfWorkspaceFileChange: object({
     data: array(ref(() => CHECKS.WorkspaceFileChange)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfWorkspaceSummary: object({
     data: array(ref(() => CHECKS.WorkspaceSummary)),
-    nextCursor: text(),
+    nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageQuery: object({
-    cursor: text(),
-    limit: allOf([integer(), minimum(0)]),
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
   }, []),
   PatchResult: object({
     changes: array(ref(() => CHECKS.AppliedChange)),
@@ -1812,21 +1875,24 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       createdAt: text(),
       interrupts: allOf([array(ref(() => CHECKS.Interrupt)), minItems(1)]),
-      rootRunId: allOf([text(), minLength(1)]),
-      sessionId: allOf([text(), minLength(1)]),
+      rootRunId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     }, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
     fields({}, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
   ]),
   Plan: object({
-    revision: allOf([integer(), minimum(0)]),
-    sessionId: text(),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    state: ref(() => CHECKS.PlanState),
+  }, ["sessionId"]),
+  PlanState: object({
+    revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
     steps: array(ref(() => CHECKS.PlanStep)),
     updatedAt: text(),
-  }, ["revision", "sessionId", "steps"]),
+  }, ["revision", "steps", "updatedAt"]),
   PlanStatus: enumOf(["pending", "in_progress", "completed"]),
   PlanStep: object({
-    description: text(),
-    id: text(),
+    description: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1)]),
     status: ref(() => CHECKS.PlanStatus),
   }, ["description", "id", "status"]),
   ProblemData: allOf([
@@ -2188,14 +2254,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   Provider: object({
-    apiKeyMasked: text(),
     baseUrl: text(),
-    defaultEmbeddingModel: text(),
+    configured: flag(),
+    credential: ref(() => CHECKS.ProviderCredential),
+    credentialRequirement: ref(() => CHECKS.ProviderCredentialRequirement),
+    defaultEmbeddingModel: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     embeddingCapable: flag(),
-    id: text(),
-    keySource: ref(() => CHECKS.ProviderKeySource),
+    id: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     requiresBaseUrl: flag(),
-  }, ["apiKeyMasked", "id"]),
+  }, ["configured", "credentialRequirement", "id"]),
   ProviderConfigChange: allOf([
     object({
       type: ref(() => CHECKS.ProviderConfigChangeType),
@@ -2212,6 +2279,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   ProviderConfigChangeType: enumOf(["set", "clear"]),
+  ProviderCredential: object({
+    masked: text(),
+    source: ref(() => CHECKS.ProviderKeySource),
+  }, ["masked", "source"]),
+  ProviderCredentialRequirement: enumOf(["apiKeyRequired", "apiKeyOptional"]),
   ProviderKeySource: enumOf(["stored", "env"]),
   ProviderTestResult: object({
     error: ref(() => CHECKS.ProblemData),
@@ -2248,13 +2320,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     label: allOf([text(), minLength(1)]),
     preview: text(),
   }, ["label"]),
-  ReadFileRequest: object({
-    endLine: allOf([integer(), minimum(0)]),
-    maxBytes: allOf([integer(), minimum(0)]),
-    path: allOf([text(), minLength(1)]),
-    startLine: allOf([integer(), minimum(0)]),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["path", "workspace"]),
+  ReadFileRequest: allOf([
+    object({
+      endLine: allOf([integer(), minimum(1)]),
+      maxBytes: allOf([integer(), minimum(1)]),
+      path: allOf([text(), minLength(1)]),
+      startLine: allOf([integer(), minimum(1)]),
+      workspace: ref(() => CHECKS.WorkspaceRef),
+    }, ["path", "workspace"]),
+    ifThen(
+      fields({}, ["endLine"]),
+      fields({}, ["startLine"]),
+    ),
+  ]),
   ReadinessStatus: object({
     checks: record(ref(() => CHECKS.HealthStatus)),
     instanceId: text(),
@@ -2285,17 +2363,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ResumeRunRequest: object({
     input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
     responses: array(ref(() => CHECKS.InterruptResponse)),
-    runId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["responses", "runId"]),
   ResumeRunResponse: object({
-    runId: allOf([text(), minLength(1)]),
-    segmentId: allOf([text(), minLength(1)]),
-    userItemId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    userItemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId"]),
   RollbackSessionRequest: object({
     restoreType: ref(() => CHECKS.RestoreType),
-    sessionId: allOf([text(), minLength(1)]),
-    toRunId: text(),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    toRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   RollbackSessionResponse: object({
     droppedRuns: array(ref(() => CHECKS.DroppedRun)),
@@ -2303,19 +2381,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["droppedRuns", "session"]),
   RunEvent: object({
     event: ref(() => CHECKS.StreamEvent),
-    eventId: text(),
-    runId: text(),
-    segmentId: text(),
+    eventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     timestamp: text(),
   }, ["event", "eventId", "runId", "segmentId", "timestamp"]),
-  RunLimits: object({
-    maxBudgetUsd: allOf([numeric(), minimum(0)]),
-    maxSteps: allOf([integer(), minimum(0)]),
-    maxTotalTokens: allOf([integer(), minimum(0)]),
-  }, []),
+  RunLimits: allOf([
+    object({
+      maxBudgetUsd: allOf([numeric(), exclusiveMinimum(0)]),
+      maxSteps: allOf([integer(), minimum(1)]),
+      maxTotalTokens: allOf([integer(), minimum(1)]),
+    }, []),
+    anyOf([fields({}, ["maxTotalTokens"]), fields({}, ["maxSteps"]), fields({}, ["maxBudgetUsd"])]),
+  ]),
   RunMetrics: object({
-    activeDurationMillis: integer(),
-    steps: integer(),
+    activeDurationMillis: allOf([integer(), minimum(0)]),
+    steps: allOf([integer(), minimum(0)]),
     usage: ref(() => CHECKS.Usage),
   }, ["activeDurationMillis", "steps"]),
   RunOutcome: allOf([
@@ -2381,12 +2462,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   RunOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
-  RunProgress: object({
-    activity: text(),
-    contextTokens: integer(),
-    step: integer(),
-    usage: ref(() => CHECKS.Usage),
-  }, []),
+  RunProgress: allOf([
+    object({
+      activity: text(),
+      contextTokens: allOf([integer(), minimum(0)]),
+      step: allOf([integer(), minimum(0)]),
+      usage: ref(() => CHECKS.Usage),
+    }, []),
+    anyOf([fields({}, ["step"]), fields({}, ["usage"]), fields({}, ["contextTokens"]), fields({}, ["activity"])]),
+  ]),
   RunProtocolFeature: enumOf(["subagents"]),
   RunProtocolProfile: object({
     interruptTypes: allOf([array(ref(() => CHECKS.InterruptType)), uniqueItems()]),
@@ -2394,22 +2478,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["interruptTypes", "requiredFeatures"]),
   RunRef: allOf([
     object({
-      activeSegmentId: text(),
+      activeSegmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       contextTokens: allOf([integer(), minimum(0)]),
       createdAt: text(),
       finishedAt: text(),
-      id: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       limits: ref(() => CHECKS.RunLimits),
       metrics: ref(() => CHECKS.RunMetrics),
-      model: text(),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
-      parentRunId: text(),
+      parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       protocolProfile: ref(() => CHECKS.RunProtocolProfile),
-      provider: text(),
-      reasoningEffort: text(),
-      rootRunId: text(),
-      sessionId: text(),
-      spawnedByItemId: text(),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.RunStatus),
     }, ["id", "metrics", "protocolProfile", "sessionId"]),
     ifThen(
@@ -2478,26 +2562,26 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["maxBytes", "maxEvents", "scope"]),
   RunReplayScope: enumOf(["runtimeInstanceRootSegment"]),
   RunScheduleNowRequest: object({
-    id: allOf([text(), minLength(1)]),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
   }, ["id"]),
   RunScheduleNowResponse: object({
-    runId: text(),
-    sessionId: text(),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "sessionId"]),
   RunStatus: enumOf(["running", "waiting", "finished"]),
   RunSummary: allOf([
     object({
       createdAt: text(),
       finishedAt: text(),
-      id: text(),
-      model: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
-      parentRunId: text(),
-      provider: text(),
-      reasoningEffort: text(),
-      rootRunId: text(),
-      sessionId: text(),
-      spawnedByItemId: text(),
+      parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.RunStatus),
     }, ["id", "sessionId"]),
     ifThen(
@@ -2541,11 +2625,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       names: allOf([array(text()), minItems(1), uniqueItems()]),
       paths: allOf([array(text()), minItems(1), uniqueItems()]),
-      runIds: allOf([array(text()), minItems(1), uniqueItems()]),
-      scheduleIds: allOf([array(text()), minItems(1), uniqueItems()]),
-      sequence: allOf([integer(), minimum(1)]),
+      runIds: allOf([array(allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")])), minItems(1), uniqueItems()]),
+      scheduleIds: allOf([array(allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")])), minItems(1), uniqueItems()]),
+      sequence: allOf([integer(), minimum(1), maximum(9007199254740991)]),
       serverIds: allOf([array(text()), minItems(1), uniqueItems()]),
-      sessionIds: allOf([array(text()), minItems(1), uniqueItems()]),
+      sessionIds: allOf([array(allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")])), minItems(1), uniqueItems()]),
       topics: allOf([array(ref(() => CHECKS.RuntimeTopic)), minItems(1), uniqueItems()]),
       type: ref(() => CHECKS.RuntimeEventType),
       watchId: text(),
@@ -2753,7 +2837,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["info", "liveness", "readiness", "rpc"]),
   RuntimeLimits: object({
     idempotency: ref(() => CHECKS.IdempotencyLimits),
-    maxConcurrentRuns: integer(),
+    maxConcurrentRuns: allOf([integer(), minimum(1)]),
     mcpAuthorizationAttempts: ref(() => CHECKS.MCPAuthorizationAttemptLimits),
     runReplay: ref(() => CHECKS.RunReplayLimits),
     runtimeSubscription: ref(() => CHECKS.SubscriptionLimits),
@@ -2774,14 +2858,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     createdAt: text(),
     cron: text(),
     enabled: flag(),
-    id: text(),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
     instructions: text(),
     lastRunAt: text(),
-    model: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     nextRunAt: text(),
-    provider: text(),
-    reasoningEffort: text(),
-    revision: allOf([integer(), minimum(0)]),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["createdAt", "cron", "enabled", "id", "instructions", "revision", "title"]),
@@ -2912,11 +2996,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   Session: object({
     createdAt: text(),
     favorite: flag(),
-    id: text(),
-    model: allOf([text(), minLength(1)]),
-    provider: allOf([text(), minLength(1)]),
-    reasoningEffort: text(),
-    revision: allOf([integer(), minimum(0)]),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
     status: ref(() => CHECKS.SessionStatus),
     title: text(),
     updatedAt: text(),
@@ -2929,7 +3013,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(24), maximum(24)]),
+    version: allOf([integer(), minimum(27), maximum(27)]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
@@ -2940,7 +3024,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["interrupts", "items", "runs"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
   SessionUsageRequest: object({
-    sessionId: allOf([text(), minLength(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   SetApprovalModeRequest: object({
     mode: ref(() => CHECKS.ApprovalMode),
@@ -2978,23 +3062,21 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SkillScope: enumOf(["project", "user"]),
   StartGoalRequest: object({
     budget: ref(() => CHECKS.GoalBudget),
-    model: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     objective: allOf([text(), minLength(1)]),
-    provider: text(),
-    reasoningEffort: text(),
-    sessionId: allOf([text(), minLength(1)]),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
   StartRunRequest: allOf([
     object({
       input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
-      maxBudgetUsd: allOf([numeric(), minimum(0)]),
-      maxSteps: allOf([integer(), minimum(0)]),
-      maxTotalTokens: allOf([integer(), minimum(0)]),
-      model: text(),
+      limits: ref(() => CHECKS.RunLimits),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       params: ref(() => CHECKS.GenerationParams),
-      provider: text(),
-      reasoningEffort: text(),
-      sessionId: allOf([text(), minLength(1)]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     }, ["input", "sessionId"]),
     ifThen(
       fields({}, ["provider"]),
@@ -3006,20 +3088,20 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   StartRunResponse: object({
-    runId: allOf([text(), minLength(1)]),
-    segmentId: allOf([text(), minLength(1)]),
-    userItemId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    userItemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId", "userItemId"]),
   SteerRunRequest: object({
-    expectedSegmentId: allOf([text(), minLength(1)]),
+    expectedSegmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
-    runId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["expectedSegmentId", "input", "runId"]),
   StreamEvent: allOf([
     object({
       delta: ref(() => CHECKS.ItemDelta),
       item: ref(() => CHECKS.Item),
-      itemId: text(),
+      itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       metrics: ref(() => CHECKS.RunMetrics),
       outcome: ref(() => CHECKS.SegmentOutcome),
       plan: ref(() => CHECKS.Plan),
@@ -3104,16 +3186,45 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("plan.updated"),
       }, ["plan", "type"]),
     ]),
+    ifThen(
+      fields({
+        type: literal("item.started"),
+      }, ["type"]),
+      fields({
+        item: fields({
+          status: enumOf(["running"]),
+          type: enumOf(["agentMessage", "reasoning", "toolCall"]),
+        }, []),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("item.completed"),
+      }, ["type"]),
+      fields({
+        item: fields({
+          status: enumOf(["completed", "incomplete"]),
+        }, []),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("plan.updated"),
+      }, ["type"]),
+      fields({
+        plan: fields({}, ["state"]),
+      }, ["plan"]),
+    ),
   ]),
   StreamEventType: enumOf(["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"]),
   SubscribeRunRequest: object({
-    runId: allOf([text(), minLength(1)]),
-    segmentId: allOf([text(), minLength(1)]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId"]),
   SubscribeRunResponse: object({
-    headEventId: text(),
-    runId: text(),
-    segmentId: text(),
+    headEventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId"]),
   SubscriptionLimits: object({
     maxTopics: allOf([integer(), minimum(1)]),
@@ -3121,7 +3232,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["maxTopics", "maxWatches"]),
   SuppressibleRunEventType: enumOf(["segment.progress", "item.delta"]),
   TestProviderRequest: object({
-    provider: allOf([text(), minLength(1)]),
+    provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),
   ToolInvocation: object({
     arguments: record(anything()),
@@ -3136,7 +3247,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["name"]),
   UpdateGoalRequest: object({
     objective: text(),
-    sessionId: text(),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
   UpdateKnowledgeRequest: object({
     content: text(),
@@ -3145,29 +3256,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["content", "expectedRevision", "scope"]),
   UpdateMCPServerRequest: object({
-    autoApproveTools: allOf([array(text()), uniqueItems()]),
+    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(text()), uniqueItems()]),
+    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
-    server: allOf([text(), minLength(1)]),
-    timeoutSeconds: allOf([integer(), minimum(0)]),
+    handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
+    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   UpdateProviderRequest: object({
     apiKey: ref(() => CHECKS.ProviderConfigChange),
     baseUrl: ref(() => CHECKS.ProviderConfigChange),
-    provider: allOf([text(), minLength(1)]),
+    provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),
   UpdateScheduleRequest: allOf([
     object({
       cron: allOf([text(), minLength(1)]),
       enabled: flag(),
-      expectedRevision: allOf([integer(), minimum(1)]),
-      id: allOf([text(), minLength(1)]),
+      expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
       instructions: allOf([text(), minLength(1)]),
-      model: text(),
-      provider: text(),
-      reasoningEffort: text(),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       title: text(),
       workspace: ref(() => CHECKS.WorkspaceRef),
       workspaceMode: ref(() => CHECKS.ScheduleWorkspaceMode),
@@ -3183,12 +3294,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   UpdateSessionRequest: allOf([
     object({
-      expectedRevision: allOf([integer(), minimum(1)]),
+      expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
       favorite: flag(),
-      model: allOf([text(), minLength(1)]),
-      provider: allOf([text(), minLength(1)]),
-      reasoningEffort: text(),
-      sessionId: allOf([text(), minLength(1)]),
+      model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       title: text(),
       workspace: ref(() => CHECKS.WorkspaceRef),
     }, ["expectedRevision", "sessionId"]),
@@ -3202,22 +3313,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   Usage: object({
-    byModel: record(ref(() => CHECKS.ModelUsage)),
-    cacheReadTokens: integer(),
-    cacheWriteTokens: integer(),
-    costUsd: numeric(),
-    inputTokens: integer(),
-    outputTokens: integer(),
-    reasoningTokens: integer(),
+    byModel: allOf([record(ref(() => CHECKS.ModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
+    cacheReadTokens: allOf([integer(), minimum(0)]),
+    cacheWriteTokens: allOf([integer(), minimum(0)]),
+    costUsd: allOf([numeric(), minimum(0)]),
+    inputTokens: allOf([integer(), minimum(0)]),
+    outputTokens: allOf([integer(), minimum(0)]),
+    reasoningTokens: allOf([integer(), minimum(0)]),
   }, []),
   UsageBucket: object({
-    cacheReadTokens: integer(),
-    cacheWriteTokens: integer(),
-    costUsd: numeric(),
-    inputTokens: integer(),
+    cacheReadTokens: allOf([integer(), minimum(0)]),
+    cacheWriteTokens: allOf([integer(), minimum(0)]),
+    costUsd: allOf([numeric(), minimum(0)]),
+    inputTokens: allOf([integer(), minimum(0)]),
     key: text(),
-    outputTokens: integer(),
-    reasoningTokens: integer(),
+    outputTokens: allOf([integer(), minimum(0)]),
+    reasoningTokens: allOf([integer(), minimum(0)]),
     runs: integer(),
   }, ["key"]),
   UsageSummary: object({
@@ -3229,11 +3340,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     total: ref(() => CHECKS.ModelUsage),
   }, ["total"]),
   UsageSummaryRequest: object({
-    sinceDays: allOf([integer(), minimum(0)]),
+    sinceDays: allOf([integer(), minimum(1)]),
   }, []),
   UtilityRole: object({
-    model: text(),
-    provider: text(),
+    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   WatchSpec: object({
     watchId: text(),

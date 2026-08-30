@@ -8,13 +8,18 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMCPAuthorizationAttemptWire(t *testing.T) {
 	finishedAt := time.Date(2026, 8, 2, 12, 1, 0, 0, time.UTC)
+	attemptID, err := mcpapp.ParseAuthorizationAttemptID(identityfixture.MCPAuthorizationAttemptID)
+	if err != nil {
+		t.Fatalf("parse test authorization attempt identity: %v", err)
+	}
 	got := presentMCPAuthorizationAttempt(mcpapp.AuthorizationAttempt{
-		ID: "mcpauth_example", Server: "github",
+		ID: attemptID, Server: testMCPServerName("github"),
 		Status:    mcpapp.AuthorizationAttemptFailed,
 		CreatedAt: finishedAt.Add(-time.Minute), FinishedAt: &finishedAt,
 	})
@@ -31,11 +36,11 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 func TestListMCPServers(t *testing.T) {
 	s := serverWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{
 		statuses: []mcpserver.ConnectionStatus{
-			{Name: "fs", State: mcpserver.ConnectionConnected, ToolCount: 2},
-			{Name: "down", State: mcpserver.ConnectionFailed},
+			{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 2},
+			{Name: testMCPServerName("down"), State: mcpserver.ConnectionFailed},
 		},
 		tools: []mcpserver.AdvertisedTool{
-			{Server: "fs", Name: "read"}, {Server: "fs", Name: "write"},
+			{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}, {Server: testMCPServerName("fs"), Name: testRemoteToolName("write")},
 		},
 	}))
 	page, err := s.ListMCPServers(context.Background())
@@ -92,7 +97,7 @@ func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 		}
 	}()
 	_, _ = presentMCPServer(mcpapp.Server{
-		Name:       "broken",
+		Name:       testMCPServerName("broken"),
 		Connection: mcpapp.Connection{Transport: mcpserver.TransportStdio, Command: "broken"},
 		State:      mcpapp.ServerState{Type: mcpapp.ServerStateType("invalid")},
 	})
@@ -100,8 +105,8 @@ func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 
 func TestReconnectMCPServer(t *testing.T) {
 	s := serverWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{
-		statuses: []mcpserver.ConnectionStatus{{Name: "fs", State: mcpserver.ConnectionConnected, ToolCount: 1}},
-		tools:    []mcpserver.AdvertisedTool{{Server: "fs", Name: "read"}},
+		statuses: []mcpserver.ConnectionStatus{{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1}},
+		tools:    []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
 	}))
 	defer s.Close()
 	events, unsub := s.workspaceHub.subscribe()
@@ -131,9 +136,9 @@ func TestListMCPTools(t *testing.T) {
 		t.Fatalf("ParseInputSchema: %v", err)
 	}
 	s := serverWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
-		{Server: "fs", Name: "read", Description: "read a file", InputSchema: readSchema},
-		{Server: "fs", Name: "write"},
-		{Server: "git", Name: "log"},
+		{Server: testMCPServerName("fs"), Name: testRemoteToolName("read"), Description: "read a file", InputSchema: readSchema},
+		{Server: testMCPServerName("fs"), Name: testRemoteToolName("write")},
+		{Server: testMCPServerName("git"), Name: testRemoteToolName("log")},
 	}}))
 
 	all, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{})

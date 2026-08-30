@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
@@ -59,7 +60,10 @@ func wireCreateGoal(t *testing.T, resolver *Resolver) {
 // nothing to do with drift.
 type allWiredSchedules struct{}
 
-func (allWiredSchedules) List(context.Context) ([]schedule.Schedule, error) { return nil, nil }
+func (allWiredSchedules) Available() bool { return true }
+func (allWiredSchedules) ListPage(context.Context, string, pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
+	return pagination.Page[schedule.Schedule]{}, nil
+}
 func (allWiredSchedules) Create(context.Context, scheduleapp.CreateCommand) (schedule.Schedule, error) {
 	return schedule.Schedule{}, nil
 }

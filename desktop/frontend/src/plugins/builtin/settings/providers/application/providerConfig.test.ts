@@ -3,7 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { EMBEDDING_ROLE_KEY, PROVIDERS_KEY, UTILITY_ROLE_KEY } from "./providerQueries";
 import { setEmbeddingRole, setUtilityRole, updateProvider } from "./providerConfig";
 import type { ProviderGateway } from "./ports/providerGateway";
-import type { ProviderConfiguration, ProviderRole } from "./providerModels";
+import { ProviderConfiguration, type ProviderRole } from "./providerModels";
 import { ProviderMutationOwner } from "./providerMutationOwner";
 
 function deferred<T>() {
@@ -32,32 +32,69 @@ afterEach(() => {
 });
 
 describe("provider configuration", () => {
+  it("rejects invalid provider and embedding-model identities during restoration", () => {
+    expect(() =>
+      ProviderConfiguration.restore({
+        id: "open ai",
+        configured: false,
+        credentialRequirement: "apiKeyRequired",
+      }),
+    ).toThrow("provider_identity_not_canonical");
+    expect(() =>
+      ProviderConfiguration.restore({
+        id: "openai",
+        configured: false,
+        credentialRequirement: "apiKeyRequired",
+        embeddingCapable: true,
+        defaultEmbeddingModel: "embed\nshadow",
+      }),
+    ).toThrow("model_identity_not_canonical");
+  });
+
   it("commits the authoritative provider response", async () => {
     queryClient.setQueryData(
       [PROVIDERS_KEY],
       [
-        { id: "openai", baseUrl: "", apiKeyMasked: "" },
-        { id: "deepseek", baseUrl: "", apiKeyMasked: "ds****st" },
+        ProviderConfiguration.restore({
+          id: "openai",
+          configured: false,
+          credentialRequirement: "apiKeyRequired",
+        }),
+        ProviderConfiguration.restore({
+          id: "deepseek",
+          credential: { masked: "ds****st", source: "stored" },
+          configured: true,
+          credentialRequirement: "apiKeyRequired",
+        }),
       ],
     );
-    const saved = {
+    const saved = ProviderConfiguration.restore({
       id: "openai",
       baseUrl: "https://models.example.test/v1",
-      apiKeyMasked: "sk****st",
-      keySource: "stored" as const,
+      credential: { masked: "sk****st", source: "stored" },
+      configured: true,
+      credentialRequirement: "apiKeyRequired",
       embeddingCapable: true,
       defaultEmbeddingModel: "embed-1",
-    };
+    });
     installGateway({
       updateProvider: vi.fn().mockResolvedValue(saved),
     } as unknown as ProviderGateway);
 
-    await expect(updateProvider({ provider: "openai", baseUrl: saved.baseUrl })).resolves.toEqual(
-      saved,
-    );
+    await expect(
+      updateProvider({
+        provider: "openai",
+        baseUrl: { type: "set", value: saved.baseUrl! },
+      }),
+    ).resolves.toEqual(saved);
     expect(queryClient.getQueryData([PROVIDERS_KEY])).toEqual([
       saved,
-      { id: "deepseek", baseUrl: "", apiKeyMasked: "ds****st" },
+      ProviderConfiguration.restore({
+        id: "deepseek",
+        credential: { masked: "ds****st", source: "stored" },
+        configured: true,
+        credentialRequirement: "apiKeyRequired",
+      }),
     ]);
   });
 
@@ -119,11 +156,13 @@ describe("provider configuration", () => {
 
   it("continues provider changes after a rejected command", async () => {
     const first = deferred<ProviderConfiguration>();
-    const saved = {
+    const saved = ProviderConfiguration.restore({
       id: "deepseek",
       baseUrl: "https://api.deepseek.test",
-      apiKeyMasked: "ds****st",
-    };
+      credential: { masked: "ds****st", source: "stored" },
+      configured: true,
+      credentialRequirement: "apiKeyRequired",
+    });
     const updateProviderGateway = vi
       .fn()
       .mockReturnValueOnce(first.promise)
@@ -132,15 +171,21 @@ describe("provider configuration", () => {
       updateProvider: updateProviderGateway,
     } as unknown as ProviderGateway);
 
-    const rejected = updateProvider({ provider: "openai", baseUrl: "https://invalid.test" });
-    const accepted = updateProvider({ provider: "deepseek", baseUrl: saved.baseUrl });
+    const rejected = updateProvider({
+      provider: "openai",
+      baseUrl: { type: "set", value: "https://invalid.test" },
+    });
+    const accepted = updateProvider({
+      provider: "deepseek",
+      baseUrl: { type: "set", value: saved.baseUrl! },
+    });
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
     await expect(accepted).resolves.toEqual(saved);
     expect(updateProviderGateway).toHaveBeenNthCalledWith(2, {
       provider: "deepseek",
-      baseUrl: saved.baseUrl,
+      baseUrl: { type: "set", value: saved.baseUrl! },
     });
   });
 });

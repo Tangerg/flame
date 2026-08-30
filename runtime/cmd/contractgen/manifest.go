@@ -144,9 +144,15 @@ type patternVariantRow struct {
 }
 
 type variantRow struct {
-	Tag      string   `json:"tag"`
-	Required []string `json:"required,omitempty"`
-	Optional []string `json:"optional,omitempty"`
+	Tag           string            `json:"tag"`
+	Required      []string          `json:"required,omitempty"`
+	Optional      []string          `json:"optional,omitempty"`
+	AllowedValues []allowedValueRow `json:"allowedValues,omitempty"`
+}
+
+type allowedValueRow struct {
+	Field  string   `json:"field"`
+	Values []string `json:"values"`
 }
 
 type constraintEntry struct {
@@ -155,9 +161,11 @@ type constraintEntry struct {
 }
 
 type constraintRow struct {
-	When      []conditionRow `json:"when,omitempty"`
-	Required  []string       `json:"required,omitempty"`
-	Forbidden []string       `json:"forbidden,omitempty"`
+	When          []conditionRow    `json:"when,omitempty"`
+	Required      []string          `json:"required,omitempty"`
+	RequiredAny   []string          `json:"requiredAny,omitempty"`
+	Forbidden     []string          `json:"forbidden,omitempty"`
+	AllowedValues []allowedValueRow `json:"allowedValues,omitempty"`
 }
 
 type valueConstraintEntry struct {
@@ -365,6 +373,7 @@ func unions(shapes *dispatch.Shapes) []unionEntry {
 		for _, variant := range spec.Variants {
 			variants = append(variants, variantRow{
 				Tag: variant.Tag, Required: variant.Required, Optional: variant.Optional,
+				AllowedValues: allowedValues(variant.AllowedValues),
 			})
 		}
 		var pattern *patternVariantRow
@@ -391,10 +400,20 @@ func constraints(shapes *dispatch.Shapes) []constraintEntry {
 		rules := make([]constraintRow, 0, len(spec.Rules))
 		for _, rule := range spec.Rules {
 			rules = append(rules, constraintRow{
-				When: conditions(rule.When), Required: rule.Required, Forbidden: rule.Forbidden,
+				When: conditions(rule.When), Required: rule.Required, RequiredAny: rule.RequiredAny,
+				Forbidden:     rule.Forbidden,
+				AllowedValues: allowedValues(rule.AllowedValues),
 			})
 		}
 		out = append(out, constraintEntry{Type: spec.GoType.Name(), Rules: rules})
+	}
+	return out
+}
+
+func allowedValues(sets []dispatch.AllowedValueSet) []allowedValueRow {
+	out := make([]allowedValueRow, 0, len(sets))
+	for _, set := range sets {
+		out = append(out, allowedValueRow{Field: set.Field, Values: set.Values})
 	}
 	return out
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
@@ -15,8 +16,6 @@ import (
 )
 
 const cancellationTimeout = 5 * time.Second
-
-var acknowledgementBackoff = retry.Backoff{Base: 50 * time.Millisecond, Maximum: time.Second}
 
 type Renderer interface {
 	Begin(agent.Run, agent.RunOptions) error
@@ -36,7 +35,7 @@ type Invocation struct {
 	Start             agent.StartRun
 	ApproveAll        bool
 	ReconnectAttempts int
-	ReplayRetention   time.Duration
+	ReplayPolicy      commandreplay.Policy
 }
 
 // Execute drives one stable Run across as many Segments as its interrupts
@@ -58,11 +57,21 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err := invocation.Start.Validate(); err != nil {
 		return err
 	}
+	if err := invocation.ReplayPolicy.Validate(); err != nil {
+		return fmt.Errorf("one-shot command replay policy: %w", err)
+	}
+	reconnectPolicy, err := reconnect.New(invocation.ReconnectAttempts)
+	if err != nil {
+		return fmt.Errorf("one-shot reconnect policy: %w", err)
+	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
 
-	opened, err := openRun(
-		ctx, invocation.Runtime, invocation.Start, replayAdmission(invocation.ReplayRetention),
-	)
+	startReplay, err := invocation.ReplayPolicy.NewGuard()
+	if err != nil {
+		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
+	}
+	opened, err := openRun(ctx, invocation.Runtime, invocation.Start,
+		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
 		if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
@@ -73,7 +82,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	cancelOnExit := true
 	var watcher *cancellationWatcher
 	if opened.RunID != "" {
-		watcher = watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayRetention)
+		watcher = watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayPolicy)
 		defer func() { runErr = errors.Join(runErr, watcher.Finish(cancelOnExit)) }()
 	}
 	if err != nil {
@@ -84,6 +93,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	}
 	run := agent.Run{
 		ID: opened.RunID, SessionID: invocation.Start.SessionID,
+		Lineage:  agent.RootRunLineage(),
 		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
 		Status: agent.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
 	}
@@ -96,7 +106,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return beginErr
 	}
 
-	disposition, err := drive(ctx, invocation, opened)
+	disposition, err := drive(ctx, invocation, reconnectPolicy, opened)
 	if disposition.preservesRun() {
 		cancelOnExit = false
 	}
@@ -110,16 +120,9 @@ func openRun(
 	admit mutation.Admission,
 ) (agent.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
-		ctx, acknowledgementBackoff, admit,
+		ctx, mutation.AcknowledgementBackoff(), admit,
 		func(ctx context.Context) (agent.SegmentStream, error) { return runtime.StartRun(ctx, command) },
 	)
-}
-
-func replayAdmission(retention time.Duration) mutation.Admission {
-	if retention <= 0 {
-		return nil
-	}
-	return mutation.ReplayUntil(time.Now().UTC().Add(retention), nil)
 }
 
 type cancellationWatcher struct {
@@ -131,7 +134,7 @@ func watchCancellation(
 	ctx context.Context,
 	runtime agent.RunLifecycle,
 	runID string,
-	replayRetention time.Duration,
+	replayPolicy commandreplay.Policy,
 ) *cancellationWatcher {
 	watcher := &cancellationWatcher{exit: make(chan bool, 1), result: make(chan error, 1)}
 	go func() {
@@ -144,7 +147,7 @@ func watchCancellation(
 			watcher.result <- nil
 			return
 		}
-		watcher.result <- cancelAbandonedRun(ctx, runtime, runID, replayRetention)
+		watcher.result <- cancelAbandonedRun(ctx, runtime, runID, replayPolicy)
 	}()
 	return watcher
 }
@@ -158,7 +161,7 @@ func cancelAbandonedRun(
 	ctx context.Context,
 	runtime agent.RunLifecycle,
 	runID string,
-	replayRetention time.Duration,
+	replayPolicy commandreplay.Policy,
 ) error {
 	commandID, err := agent.NewCommandID()
 	if err != nil {
@@ -166,8 +169,12 @@ func cancelAbandonedRun(
 	}
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancellationTimeout)
 	defer cancel()
+	replay, err := replayPolicy.NewGuard()
+	if err != nil {
+		return fmt.Errorf("prepare abandoned run cancellation replay guard: %w", err)
+	}
 	result, err := mutation.ConfirmAdmitted(
-		cancelCtx, acknowledgementBackoff, replayAdmission(replayRetention),
+		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay),
 		func(ctx context.Context) (agent.RunCancellation, error) {
 			return runtime.CancelRun(ctx, agent.CancelRun{
 				CommandID: commandID, RunID: runID, Reason: "CLI execution ended before the run settled",
@@ -197,10 +204,10 @@ const (
 
 func (d disposition) preservesRun() bool { return d == settled || d == parked }
 
-func drive(ctx context.Context, invocation Invocation, opened agent.SegmentStream) (disposition, error) {
+func drive(ctx context.Context, invocation Invocation, policy reconnect.Policy, opened agent.SegmentStream) (disposition, error) {
 	driver := executionDriver{
 		invocation: invocation, openedRunID: opened.RunID,
-		conversation: agent.NewConversation(), policy: reconnect.New(invocation.ReconnectAttempts), current: opened,
+		conversation: agent.NewConversation(), policy: policy, current: opened,
 	}
 	return driver.run(ctx)
 }
@@ -250,8 +257,12 @@ func (e *executionDriver) resume(ctx context.Context, interactions []agent.Inter
 		return err
 	}
 	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
+	replay, err := e.invocation.ReplayPolicy.NewGuard()
+	if err != nil {
+		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
+	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, acknowledgementBackoff, replayAdmission(e.invocation.ReplayRetention),
+		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replay),
 		func(ctx context.Context) (agent.SegmentStream, error) {
 			return e.invocation.Runtime.ResumeRun(ctx, command)
 		},
@@ -277,7 +288,10 @@ func interactionDisposition(err error) disposition {
 func (e *executionDriver) reconnect(ctx context.Context, cause error) (disposition, error) {
 	for {
 		e.failures++
-		delay, shouldRetry := e.policy.Next(e.failures, cause)
+		delay, shouldRetry, policyErr := e.policy.Next(e.failures, cause)
+		if policyErr != nil {
+			return abandoned, policyErr
+		}
 		if !shouldRetry {
 			return abandoned, cause
 		}

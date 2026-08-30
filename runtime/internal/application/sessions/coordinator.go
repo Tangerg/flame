@@ -35,7 +35,7 @@ import (
 // inserts that initial value or saves an exact replacement with CAS.
 type Store interface {
 	List(ctx context.Context) ([]session.Session, error)
-	ListPage(ctx context.Context, afterFavorite bool, afterUpdatedAt int64, afterID string, limit int) ([]session.Session, error)
+	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
 	Get(ctx context.Context, id string) (session.Session, error)
 	Insert(ctx context.Context, value session.Session) error
 	Save(ctx context.Context, expectedRevision uint64, replacement session.Session) error

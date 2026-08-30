@@ -26,7 +26,7 @@ type GetDiffRequest struct {
 	Path      string       `json:"path,omitempty"`
 	Mode      DiffMode     `json:"mode,omitempty"`   // "worktree" (default) | "base"
 	Format    DiffFormat   `json:"format,omitempty"` // "rows" (default) | "raw"
-	Limit     int          `json:"limit,omitempty"`
+	Limit     *int         `json:"limit,omitempty"`
 }
 
 // Diff is the workspace.diff.get result (AUX_API §2.3) — a sum type: Files is

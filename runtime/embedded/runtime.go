@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -57,7 +58,7 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 		DataDirectory:        resolved.DataDirectory,
 		ConfigDirectories:    resolved.ConfigDirectories,
 		ServerInfo: protocol.ServerInfo{
-			Name:    "runtime",
+			Name:    productidentity.Name,
 			Version: embeddedVersion(),
 		},
 	})

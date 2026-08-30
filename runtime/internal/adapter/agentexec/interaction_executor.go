@@ -17,19 +17,22 @@ import (
 
 	"github.com/google/uuid"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
+	"github.com/Tangerg/flame/runtime/internal/deploymentidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -69,16 +72,14 @@ type InteractionExecutorConfig struct {
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
 	BuildID                   string
-	DefaultClient             *chatclient.Client
-	DefaultSelection          modelref.Selection
 	ChatResolver              InteractionChatResolver
 	RestoreScopeValidator     RestoreScopeValidator
 	ImplementationIdentity    string
 	ConfigurationIdentity     string
-	DefaultMaxModelCalls      uint32
+	DefaultMaxModelCalls      *uint32
 	StreamModelResponses      bool
-	DeltaBufferCapacity       int
-	MaxConcurrentToolCalls    int
+	DeltaBufferCapacity       *int
+	MaxConcurrentToolCalls    *int
 	ToolResolver              InteractionToolResolver
 	ToolInterpreter           InteractionToolInterpreter
 	ToolPresenter             InteractionToolPresenter
@@ -90,21 +91,23 @@ type InteractionExecutorConfig struct {
 	ModelContextState         InteractionModelContextState
 	LifecycleHooks            InteractionLifecycleHooks
 	ToolResultStore           toolResultOffloader
-	ToolResultThreshold       int
-	ToolResultReaderName      string
+	ToolResultOffload         ToolResultOffloadPolicyValues
 	Pricing                   accounting.Pricing
-	Provider                  string
-	UnknownEffectPollInterval time.Duration
-	StatePollInterval         time.Duration
-	Delegation                InteractionDelegationConfig
+	UnknownEffectPollInterval *time.Duration
+	StatePollInterval         *time.Duration
+	Delegation                InteractionDelegationPolicyValues
 }
 
 // InteractionExecutor is the Agent Framework root execution adapter. Each staged
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	lifetime context.Context
-	config   InteractionExecutorConfig
+	lifetime               context.Context
+	config                 InteractionExecutorConfig
+	policy                 interactionExecutionPolicy
+	buildID                buildidentity.ID
+	implementationIdentity deploymentidentity.Implementation
+	configurationIdentity  deploymentidentity.Configuration
 
 	mu       sync.Mutex
 	sessions map[string]*interactionSession
@@ -119,18 +122,12 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if config.Lifetime == nil {
 		return nil, errors.New("agentexec: Interaction lifetime is required")
 	}
-	if config.DefaultClient == nil && isNilInteractionCapability(config.ChatResolver) {
-		return nil, errors.New("agentexec: Interaction requires a chat client or resolver")
+	if isNilInteractionCapability(config.ChatResolver) {
+		return nil, errors.New("agentexec: Interaction requires a chat resolver")
 	}
 	if isNilInteractionCapability(config.ModelContextCompactor) !=
 		isNilInteractionCapability(config.ModelContextState) {
 		return nil, errors.New("agentexec: model-context compactor and state source must be configured together")
-	}
-	if err := config.DefaultSelection.Validate(); err != nil {
-		return nil, fmt.Errorf("agentexec: Interaction default model selection: %w", err)
-	}
-	if !config.DefaultSelection.Configured() {
-		return nil, errors.New("agentexec: Interaction requires an exact default model selection")
 	}
 	for _, capability := range []struct {
 		name  string
@@ -153,66 +150,48 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 			return nil, fmt.Errorf("agentexec: Interaction %s is typed nil", capability.name)
 		}
 	}
-	if strings.TrimSpace(config.ImplementationIdentity) == "" ||
-		config.ImplementationIdentity != strings.TrimSpace(config.ImplementationIdentity) {
-		return nil, errors.New("agentexec: Interaction implementation identity is required without surrounding whitespace")
+	implementationIdentity, err := deploymentidentity.ParseImplementation(config.ImplementationIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
-	if !validInteractionBuildID(config.BuildID) {
-		return nil, errors.New("agentexec: Interaction build ID must use sha256:<64 lowercase hexadecimal characters>")
+	buildID, err := buildidentity.Parse(config.BuildID)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: Interaction %w", err)
 	}
-	if strings.TrimSpace(config.ConfigurationIdentity) == "" ||
-		config.ConfigurationIdentity != strings.TrimSpace(config.ConfigurationIdentity) {
-		return nil, errors.New("agentexec: Interaction configuration identity is required without surrounding whitespace")
+	configurationIdentity, err := deploymentidentity.ParseConfiguration(config.ConfigurationIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
-	if config.DeltaBufferCapacity < 0 {
-		return nil, errors.New("agentexec: Interaction delta buffer capacity must not be negative")
-	}
-	if config.MaxConcurrentToolCalls < 0 {
-		return nil, errors.New("agentexec: Interaction Tool concurrency must not be negative")
-	}
-	if config.ToolResultThreshold < 0 {
-		return nil, errors.New("agentexec: Interaction Tool-result threshold must not be negative")
-	}
-	if !isNilInteractionCapability(config.ToolResultStore) && config.ToolResultThreshold > 0 {
-		if strings.TrimSpace(config.ToolResultReaderName) == "" ||
-			config.ToolResultReaderName != strings.TrimSpace(config.ToolResultReaderName) {
-			return nil, errors.New("agentexec: Interaction Tool-result reader name is required without surrounding whitespace when offload is enabled")
-		}
-	}
-	if config.UnknownEffectPollInterval < 0 {
-		return nil, errors.New("agentexec: Interaction unknown-Effect poll interval must not be negative")
-	}
-	if config.StatePollInterval < 0 {
-		return nil, errors.New("agentexec: Interaction state poll interval must not be negative")
-	}
-	if config.Provider != strings.TrimSpace(config.Provider) {
-		return nil, errors.New("agentexec: Interaction provider has surrounding whitespace")
-	}
-	if _, err := effectiveDelegation(config.Delegation); err != nil {
+	policy, err := newInteractionExecutionPolicy(config)
+	if err != nil {
 		return nil, err
-	}
-	if config.UnknownEffectPollInterval == 0 {
-		config.UnknownEffectPollInterval = defaultUnknownEffectPollInterval
-	}
-	if config.StatePollInterval == 0 {
-		config.StatePollInterval = defaultInteractionStatePoll
-	}
-	if config.DefaultMaxModelCalls == 0 {
-		config.DefaultMaxModelCalls = defaultInteractionModelCalls
 	}
 	lifetime := config.Lifetime
 	config.Lifetime = nil
+	config.BuildID = ""
+	config.ImplementationIdentity = ""
+	config.ConfigurationIdentity = ""
 	return &InteractionExecutor{
-		lifetime: lifetime,
-		config:   config,
-		sessions: make(map[string]*interactionSession),
+		lifetime: lifetime, config: config, policy: policy,
+		buildID:                buildID,
+		implementationIdentity: implementationIdentity,
+		configurationIdentity:  configurationIdentity,
+		sessions:               make(map[string]*interactionSession),
 	}, nil
+}
+
+func (i *InteractionExecutor) acceptsBuild(raw string) bool {
+	identity, err := buildidentity.Parse(raw)
+	return err == nil && identity == i.buildID
 }
 
 // ValidateRootStart rejects inputs the Interaction cannot represent.
 func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) error {
 	if err := start.Validate(); err != nil {
 		return err
+	}
+	if !start.ModelSelection.Configured() {
+		return errors.New("agentexec: Interaction requires an exact model selection")
 	}
 	if err := validateModelOutputReservation(start.ModelSelection, start.Options); err != nil {
 		return err
@@ -238,7 +217,11 @@ func validateModelOutputReservation(
 	if !found {
 		return nil
 	}
-	if _, _, err := limits.InputCeiling(*options.MaxTokens); err != nil {
+	reservation, err := modelref.NewOutputReservation(*options.MaxTokens)
+	if err != nil {
+		return fmt.Errorf("%w: %w", runs.ErrInvalidRunOptions, err)
+	}
+	if _, _, err := limits.InputCeiling(reservation); err != nil {
 		return fmt.Errorf("%w: %w", runs.ErrInvalidRunOptions, err)
 	}
 	return nil
@@ -253,8 +236,8 @@ func (i *InteractionExecutor) StageRoot(
 	if i == nil {
 		return runs.ExecutorRef{}, errors.New("agentexec: Interaction executor is nil")
 	}
-	if strings.TrimSpace(start.SessionID) == "" || start.SessionID != strings.TrimSpace(start.SessionID) {
-		return runs.ExecutorRef{}, errors.New("agentexec: Interaction session ID is required without surrounding whitespace")
+	if _, err := resourceid.ParseSession(start.SessionID); err != nil {
+		return runs.ExecutorRef{}, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
 	if err := i.ValidateRootStart(start); err != nil {
 		return runs.ExecutorRef{}, err
@@ -292,7 +275,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, err
 	}
-	session := newInteractionSession(i.lifetime, ref, start, i.config)
+	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
 	observedClient, err := newObservedInteractionClient(client, session)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: observe Interaction client: %w", err)
@@ -312,7 +295,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		ProcessStartOutcomeAcknowledger: agent.ProcessStartOutcomeAcknowledgerFunc(session.acknowledgeProcessStartOutcome),
 		EventListeners:                  []agent.EventListener{agent.EventListenerFunc(session.observeFrameworkEvent)},
 		DeltaListeners:                  []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
-		DeltaBufferCapacity:             i.config.DeltaBufferCapacity,
+		DeltaBufferCapacity:             i.policy.deltaBufferCapacity,
 		Limits:                          agent.DefaultLimits(),
 		TreeLimits:                      deployments.treeLimits,
 	})
@@ -360,30 +343,28 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := json.Marshal(struct {
-		Identity               string                    `json:"identity"`
-		Provider               string                    `json:"provider"`
-		Model                  string                    `json:"model"`
-		MaxModelCalls          uint32                    `json:"maxModelCalls"`
-		Streaming              bool                      `json:"streaming"`
-		MaxConcurrentToolCalls int                       `json:"maxConcurrentToolCalls"`
-		ToolResultThreshold    int                       `json:"toolResultThreshold"`
-		ToolResultReaderName   string                    `json:"toolResultReaderName,omitempty"`
-		InteractiveApproval    bool                      `json:"interactiveApproval"`
-		ContextCompaction      bool                      `json:"contextCompaction"`
-		VisibleTools           []corechat.ToolDefinition `json:"visibleTools,omitempty"`
-		DeferredTools          []corechat.ToolDefinition `json:"deferredTools,omitempty"`
-		Group                  domaintool.Group          `json:"group"`
-		Depth                  uint32                    `json:"depth"`
-		Delegate               string                    `json:"delegate,omitempty"`
-		DelegateBudget         agent.Budget              `json:"delegateBudget,omitzero"`
-		Instructions           []corechat.Message        `json:"instructions,omitempty"`
+		Identity               string                     `json:"identity"`
+		Provider               string                     `json:"provider"`
+		Model                  string                     `json:"model"`
+		MaxModelCalls          uint32                     `json:"maxModelCalls"`
+		Streaming              bool                       `json:"streaming"`
+		MaxConcurrentToolCalls int                        `json:"maxConcurrentToolCalls"`
+		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitempty"`
+		InteractiveApproval    bool                       `json:"interactiveApproval"`
+		ContextCompaction      bool                       `json:"contextCompaction"`
+		VisibleTools           []corechat.ToolDefinition  `json:"visibleTools,omitempty"`
+		DeferredTools          []corechat.ToolDefinition  `json:"deferredTools,omitempty"`
+		Group                  domaintool.Group           `json:"group"`
+		Depth                  uint32                     `json:"depth"`
+		Delegate               string                     `json:"delegate,omitempty"`
+		DelegateBudget         agent.Budget               `json:"delegateBudget,omitzero"`
+		Instructions           []corechat.Message         `json:"instructions,omitempty"`
 	}{
-		Identity: i.config.ConfigurationIdentity,
-		Provider: session.accounting.providerName(), Model: start.ModelSelection.Model(),
+		Identity: i.configurationIdentity.String(),
+		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		MaxModelCalls: maxModelCalls, Streaming: i.config.StreamModelResponses,
-		MaxConcurrentToolCalls: i.config.MaxConcurrentToolCalls,
-		ToolResultThreshold:    i.config.ToolResultThreshold,
-		ToolResultReaderName:   i.config.ToolResultReaderName,
+		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
+		ToolResultOffload:      i.policy.toolResultOffload.identity(),
 		InteractiveApproval:    i.config.ToolAuthorizer != nil,
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		VisibleTools:           toolDefinitions(manifest.Visible), DeferredTools: toolDefinitions(manifest.Deferred),
@@ -469,15 +450,6 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	return errors.Join(failures...)
 }
 
-func validInteractionBuildID(value string) bool {
-	digest, ok := strings.CutPrefix(value, "sha256:")
-	if !ok || len(digest) != sha256.Size*2 || digest != strings.ToLower(digest) {
-		return false
-	}
-	_, err := hex.DecodeString(digest)
-	return err == nil
-}
-
 func toolDefinitions(tools []toolcontract.Tool) []corechat.ToolDefinition {
 	definitions := make([]corechat.ToolDefinition, len(tools))
 	for index, executable := range tools {
@@ -559,12 +531,12 @@ func (i *InteractionExecutor) StageContinuation(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if continuation.Checkpoint.BuildID != i.config.BuildID {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
 			continuation.Checkpoint.BuildID,
-			i.config.BuildID,
+			i.buildID.String(),
 		)
 	}
 	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
@@ -599,12 +571,12 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if continuation.Checkpoint.BuildID != i.config.BuildID {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
 			continuation.Checkpoint.BuildID,
-			i.config.BuildID,
+			i.buildID.String(),
 		)
 	}
 	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
@@ -913,8 +885,8 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if input == nil {
 		return nil, nil
 	}
-	if strings.TrimSpace(input.ItemID) == "" || input.ItemID != strings.TrimSpace(input.ItemID) {
-		return nil, errors.New("agentexec: committed continuation input Item identity is invalid")
+	if _, err := resourceid.ParseItem(input.ItemID); err != nil {
+		return nil, fmt.Errorf("agentexec: committed continuation input: %w", err)
 	}
 	message, err := runs.MaterializeUserMessage(input.Content)
 	if err != nil {
@@ -1069,12 +1041,6 @@ func (i *InteractionExecutor) resolveClient(
 	if !selection.Configured() {
 		return nil, errors.New("agentexec: Interaction requires an exact model selection")
 	}
-	if selection == i.config.DefaultSelection && i.config.DefaultClient != nil {
-		return i.config.DefaultClient, nil
-	}
-	if i.config.ChatResolver == nil {
-		return nil, errors.New("agentexec: Interaction model selection requires a chat resolver")
-	}
 	client, err := i.config.ChatResolver.ResolveChat(ctx, selection)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: resolve Interaction chat client: %w", err)
@@ -1086,13 +1052,14 @@ func (i *InteractionExecutor) resolveClient(
 }
 
 func (i *InteractionExecutor) maxModelCalls(start runs.RootExecutionStart) (uint32, error) {
-	if start.Limits.MaxSteps == 0 {
-		return i.config.DefaultMaxModelCalls, nil
+	maxSteps, limited := start.Limits.MaxSteps()
+	if !limited {
+		return i.policy.defaultMaxModelCalls, nil
 	}
-	if uint64(start.Limits.MaxSteps) > math.MaxUint32 {
+	if uint64(maxSteps) > math.MaxUint32 {
 		return 0, fmt.Errorf("%w: max steps exceeds Interaction model-call range", runs.ErrInvalidRunLimit)
 	}
-	return uint32(start.Limits.MaxSteps), nil
+	return uint32(maxSteps), nil
 }
 
 func (i *InteractionExecutor) session(ref runs.ExecutorRef) (*interactionSession, error) {

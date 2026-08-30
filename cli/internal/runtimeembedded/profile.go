@@ -1,10 +1,13 @@
 package runtimeembedded
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
 
@@ -14,6 +17,14 @@ func projectRuntimeProfile(
 ) (runtimeprofile.Profile, error) {
 	if discovery == nil {
 		return runtimeprofile.Profile{}, fmt.Errorf("project runtime profile: discovery is nil")
+	}
+	runConcurrency, err := projectRunConcurrency(discovery.Capabilities.Limits.MaxConcurrentRuns)
+	if err != nil {
+		return runtimeprofile.Profile{}, fmt.Errorf("project runtime profile: %w", err)
+	}
+	commandReplay, err := projectCommandReplay(discovery.Capabilities.Limits.Idempotency)
+	if err != nil {
+		return runtimeprofile.Profile{}, fmt.Errorf("project runtime profile: %w", err)
 	}
 	profile := runtimeprofile.Profile{
 		Protocol: runtimeprofile.Protocol{Version: discovery.ProtocolVersion},
@@ -26,9 +37,8 @@ func projectRuntimeProfile(
 		StreamingMethods: append([]string(nil), discovery.Capabilities.StreamingMethods...),
 		Features:         make(map[runtimeprofile.FeatureName]runtimeprofile.Feature, len(discovery.Capabilities.Features)),
 		Limits: runtimeprofile.Limits{
-			MaxConcurrentRuns:           discovery.Capabilities.Limits.MaxConcurrentRuns,
-			IdempotencyRetentionSeconds: discovery.Capabilities.Limits.Idempotency.RetentionSeconds,
-			IdempotencyNamespace:        discovery.Capabilities.Limits.Idempotency.Namespace,
+			RunConcurrency: runConcurrency,
+			CommandReplay:  commandReplay,
 			RunReplay: runtimeprofile.ReplayLimits{
 				Scope:     string(discovery.Capabilities.Limits.RunReplay.Scope),
 				MaxEvents: discovery.Capabilities.Limits.RunReplay.MaxEvents,
@@ -59,4 +69,29 @@ func projectRuntimeProfile(
 		return runtimeprofile.Profile{}, fmt.Errorf("project runtime profile: %w", err)
 	}
 	return profile, nil
+}
+
+func projectCommandReplay(limits protocol.IdempotencyLimits) (commandreplay.Capability, error) {
+	if limits.RetentionSeconds <= 0 ||
+		int64(limits.RetentionSeconds) > int64((time.Duration(1<<63-1))/time.Second) {
+		return commandreplay.Capability{}, errors.New("command replay retention is outside the positive duration range")
+	}
+	capability, err := commandreplay.NewCapability(
+		limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second,
+	)
+	if err != nil {
+		return commandreplay.Capability{}, fmt.Errorf("command replay: %w", err)
+	}
+	return capability, nil
+}
+
+func projectRunConcurrency(maximum *int) (runtimeprofile.RunConcurrencyLimit, error) {
+	if maximum == nil {
+		return runtimeprofile.UnboundedRunConcurrencyLimit(), nil
+	}
+	limit, err := runtimeprofile.NewBoundedRunConcurrencyLimit(*maximum)
+	if err != nil {
+		return runtimeprofile.RunConcurrencyLimit{}, fmt.Errorf("run concurrency: %w", err)
+	}
+	return limit, nil
 }

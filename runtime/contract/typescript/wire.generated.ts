@@ -9,7 +9,32 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-08-28";
+export const PROTOCOL_VERSION = "2026-08-30";
+
+// The only Session Artifact version this runtime imports or exports.
+export const SESSION_ARTIFACT_VERSION = 27;
+
+// The maximum length of one opaque pagination cursor on the public wire.
+export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = 65536;
+
+// Public Unicode code-point ceilings for model-selection identities.
+export const MAXIMUM_PROVIDER_IDENTITY_CHARACTERS = 64;
+export const MAXIMUM_MODEL_IDENTITY_CHARACTERS = 256;
+export const MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS = 32;
+export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = 256;
+
+// Public framing of one opaque Schedule resource identity.
+export const SCHEDULE_ID_PREFIX = "sch_";
+
+// Public framing and maximum length of one opaque Run event identity.
+export const RUN_EVENT_ID_PREFIX = "evt_";
+export const MAXIMUM_RUN_EVENT_ID_CHARACTERS = 65540;
+
+// Largest integer identity represented exactly by every supported JSON consumer.
+export const MAXIMUM_EXACT_JSON_INTEGER = 9007199254740991;
+
+// Runtime subscriptions consume the shared exact-integer envelope.
+export const MAXIMUM_RUNTIME_EVENT_SEQUENCE = MAXIMUM_EXACT_JSON_INTEGER;
 
 // HTTP entrypoints implemented by this runtime build.
 export const HTTP_ENDPOINTS = {
@@ -159,12 +184,12 @@ export type ArtifactContentBlock =
   | { type: "image"; data: string; mime: string };
 
 export type ArtifactItem =
-  | { type: "userMessage"; content?: ArtifactContentBlock[]; createdAt: string; id: string; runId: string; status: ItemStatus }
-  | { type: "agentMessage"; content?: ArtifactContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: ItemStatus }
-  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: ItemStatus; text?: string }
-  | { type: "question"; createdAt: string; id: string; question?: ArtifactQuestion; runId: string; status: ItemStatus }
-  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ArtifactProblem; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: ItemStatus; tool?: ArtifactToolInvocation }
-  | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: ItemStatus; summary?: string };
+  | { type: "userMessage"; content: ArtifactContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
+  | { type: "agentMessage"; content: ArtifactContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
+  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed"; text: string }
+  | { type: "question"; createdAt: string; id: string; question: ArtifactQuestion; runId: string; status: "completed" }
+  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ArtifactProblem; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ArtifactToolInvocation }
+  | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
 export interface ArtifactModelUsage {
   cacheReadTokens?: number;
@@ -516,7 +541,7 @@ export interface GetSessionSnapshotRequest {
 }
 
 export interface Goal {
-  budget: GoalBudget;
+  budget?: GoalBudget;
   createdAt: string;
   model?: string;
   objective: string;
@@ -642,15 +667,15 @@ export interface InvokeToolRequest {
 }
 
 export type Item =
-  | { type: "userMessage"; content?: ContentBlock[]; createdAt: string; id: string; runId: string; status: ItemStatus }
-  | { type: "agentMessage"; content?: ContentBlock[]; createdAt: string; id: string; phase?: MessagePhase; runId: string; status: ItemStatus }
-  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: ItemStatus; text?: string }
-  | { type: "question"; createdAt: string; id: string; question?: Question; runId: string; status: ItemStatus }
-  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ProblemData; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: ItemStatus; tool?: ToolInvocation }
-  | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: ItemStatus; summary?: string };
+  | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
+  | { type: "agentMessage"; content?: ContentBlock[]; createdAt: string; id: string; phase?: MessagePhase; runId: string; status: "running" | "completed" }
+  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "running" | "completed"; text?: string }
+  | { type: "question"; createdAt: string; id: string; question: Question; runId: string; status: "completed" }
+  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ProblemData; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "running" | "completed" | "incomplete"; tool: ToolInvocation }
+  | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
 export type ItemDelta =
-  | { type: "content"; index?: number; text: string }
+  | { type: "content"; text: string }
   | { type: "reasoning"; text: string }
   | { type: "toolArguments"; argumentsTextDelta: string }
   | { type: "toolOutput"; text: string };
@@ -732,6 +757,13 @@ export interface ListRunsRequest {
   statuses?: RunStatus[];
 }
 
+export interface ListSessionsRequest {
+  cursor?: string;
+  limit?: number;
+  search?: string;
+  workspace?: WorkspaceRef;
+}
+
 export type LivenessState = "ok";
 
 export interface LivenessStatus {
@@ -779,6 +811,12 @@ export type MCPEnvironmentChange =
   | { type: "set"; value: Record<string, string> }
   | { type: "clear" };
 
+export type MCPHandshakeTimeout =
+  | { type: "unbounded" }
+  | { type: "bounded"; seconds: number };
+
+export type MCPHandshakeTimeoutType = "unbounded" | "bounded";
+
 export type MCPHeadersChange =
   | { type: "set"; value: Record<string, string> }
   | { type: "clear" };
@@ -794,9 +832,9 @@ export interface MCPServer {
   connection: MCPConnection;
   description?: string;
   disabledTools?: string[];
+  handshakeTimeout: MCPHandshakeTimeout;
   name: string;
   status: MCPServerState;
-  timeoutSeconds?: number;
 }
 
 export interface MCPServerCandidate {
@@ -805,8 +843,8 @@ export interface MCPServerCandidate {
   description?: string;
   disabledTools?: string[];
   enabled: boolean;
+  handshakeTimeout: MCPHandshakeTimeout;
   name: string;
-  timeoutSeconds?: number;
 }
 
 export interface MCPServerRequest {
@@ -849,15 +887,13 @@ export type Modality = "text" | "image" | "audio" | "video" | "pdf";
 
 export interface Model {
   capabilities?: ModelCapabilities;
-  contextWindow?: number;
   deprecated?: boolean;
   displayName?: string;
   id: string;
   knowledgeCutoff?: string;
-  maxInputTokens?: number;
-  maxOutputTokens?: number;
   pricing?: ModelPricing;
   provider: string;
+  tokenLimits?: ModelTokenLimits;
 }
 
 export interface ModelCapabilities {
@@ -876,6 +912,12 @@ export interface ModelPricing {
   cacheWriteUsdPerMillionTokens?: number;
   inputUsdPerMillionTokens?: number;
   outputUsdPerMillionTokens?: number;
+}
+
+export interface ModelTokenLimits {
+  contextWindow?: number;
+  maxInputTokens?: number;
+  maxOutputTokens?: number;
 }
 
 export interface ModelUsage {
@@ -940,10 +982,14 @@ export interface PendingInterruptSet {
 }
 
 export interface Plan {
-  revision: number;
   sessionId: string;
+  state?: PlanState;
+}
+
+export interface PlanState {
+  revision: number;
   steps: PlanStep[];
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 export type PlanStatus = "pending" | "in_progress" | "completed";
@@ -1006,12 +1052,13 @@ export type ProblemData =
   | { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: `plugin:${string}/${string}` };
 
 export interface Provider {
-  apiKeyMasked: string;
   baseUrl?: string;
+  configured: boolean;
+  credential?: ProviderCredential;
+  credentialRequirement: ProviderCredentialRequirement;
   defaultEmbeddingModel?: string;
   embeddingCapable?: boolean;
   id: string;
-  keySource?: ProviderKeySource;
   requiresBaseUrl?: boolean;
 }
 
@@ -1020,6 +1067,13 @@ export type ProviderConfigChange =
   | { type: "clear" };
 
 export type ProviderConfigChangeType = "set" | "clear";
+
+export interface ProviderCredential {
+  masked: string;
+  source: ProviderKeySource;
+}
+
+export type ProviderCredentialRequirement = "apiKeyRequired" | "apiKeyOptional";
 
 export type ProviderKeySource = "stored" | "env";
 
@@ -1422,9 +1476,7 @@ export interface StartGoalRequest {
 
 export interface StartRunRequest {
   input: ContentBlock[];
-  maxBudgetUsd?: number;
-  maxSteps?: number;
-  maxTotalTokens?: number;
+  limits?: RunLimits;
   model?: string;
   params?: GenerationParams;
   provider?: string;
@@ -1508,8 +1560,8 @@ export interface UpdateMCPServerRequest {
   description?: string;
   disabledTools?: string[];
   enabled?: boolean;
+  handshakeTimeout?: MCPHandshakeTimeout;
   server: string;
-  timeoutSeconds?: number;
 }
 
 export interface UpdateProviderRequest {
@@ -1671,6 +1723,7 @@ export const WIRE_ENUMS = {
   KnowledgeScope: ["cwd", "projectRoot", "home"],
   LivenessState: ["ok"],
   MCPAuthorizationAttemptStatusType: ["pending", "succeeded", "failed", "canceled"],
+  MCPHandshakeTimeoutType: ["unbounded", "bounded"],
   MCPSecretChangeType: ["set", "clear"],
   MCPServerStateType: ["disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"],
   MCPTransport: ["stdio", "streamableHttp"],
@@ -1678,6 +1731,7 @@ export const WIRE_ENUMS = {
   Modality: ["text", "image", "audio", "video", "pdf"],
   PlanStatus: ["pending", "in_progress", "completed"],
   ProviderConfigChangeType: ["set", "clear"],
+  ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],
   QuestionFieldType: ["text", "choice"],
   RecipeScope: ["project", "global"],
@@ -1716,4 +1770,20 @@ export const RUN_EVENT_RELIABILITY = {
 export function runEventReliability(value: unknown): RunEventReliability | undefined {
   if (typeof value !== "string") return undefined;
   return (RUN_EVENT_RELIABILITY as Partial<Record<string, RunEventReliability>>)[value];
+}
+
+/** Replay retention is owned by event type; live-only previews never consume the replay window. */
+export const RUN_EVENT_REPLAYABLE = {
+  "segment.started": true,
+  "segment.progress": false,
+  "segment.finished": true,
+  "item.started": true,
+  "item.delta": false,
+  "item.completed": true,
+  "plan.updated": true,
+} as const satisfies Record<StreamEventType, boolean>;
+
+export function runEventIsReplayable(value: unknown): boolean | undefined {
+  if (typeof value !== "string") return undefined;
+  return (RUN_EVENT_REPLAYABLE as Partial<Record<string, boolean>>)[value];
 }

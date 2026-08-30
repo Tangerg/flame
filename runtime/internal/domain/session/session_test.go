@@ -2,11 +2,13 @@ package session
 
 import (
 	"errors"
-	"math"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
+	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
 
 func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
@@ -68,6 +70,8 @@ func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 	tests := map[string]Draft{
 		"missing identity":   {Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
 		"spaced identity":    {ID: " ses_1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
+		"control identity":   {ID: "ses_\n1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
+		"oversized identity": {ID: strings.Repeat("界", resourceidentity.MaximumCharacters+1), Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
 		"missing workspace":  {ID: valid.ID, Selection: selection, StartedAt: valid.StartedAt},
 		"missing selection":  {ID: valid.ID, Workspace: valid.Workspace, StartedAt: valid.StartedAt},
 		"missing start time": {ID: valid.ID, Workspace: valid.Workspace, Selection: selection},
@@ -201,7 +205,7 @@ func TestSessionRevisionOverflow(t *testing.T) {
 	current, err := Restore(Snapshot{
 		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
 		Selection: mustModelSelection(t, "provider", "model"),
-		UpdatedAt: time.Unix(1, 0), Revision: math.MaxUint64,
+		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum,
 	})
 	if err != nil {
 		t.Fatalf("Restore: %v", err)
@@ -209,6 +213,14 @@ func TestSessionRevisionOverflow(t *testing.T) {
 	title := "Changed"
 	if _, _, err := current.Apply(Patch{Title: &title}, time.Unix(2, 0)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("overflow error = %v, want ErrInvalid", err)
+	}
+	_, err = Restore(Snapshot{
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		Selection: mustModelSelection(t, "provider", "model"),
+		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum + 1,
+	})
+	if !errors.Is(err, ErrInvalid) {
+		t.Fatalf("inexact restore error = %v, want ErrInvalid", err)
 	}
 }
 

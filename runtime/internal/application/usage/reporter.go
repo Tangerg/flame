@@ -95,17 +95,16 @@ func (r *Reporter) Session(ctx context.Context, sessionID string) (SessionReport
 	return report, nil
 }
 
-// Summary returns usage across user-facing sessions. A positive sinceDays
-// includes runs finished in the preceding calendar duration; zero means all
-// durable history.
-func (r *Reporter) Summary(ctx context.Context, sinceDays int) (Summary, error) {
-	sessions, err := r.sessions.List(ctx)
+// Summary returns usage across user-facing sessions under the requested
+// all-time or recent calendar-day period.
+func (r *Reporter) Summary(ctx context.Context, period SummaryPeriod) (Summary, error) {
+	since, err := period.Since(r.now())
 	if err != nil {
 		return Summary{}, err
 	}
-	var since time.Time
-	if sinceDays > 0 {
-		since = r.now().UTC().AddDate(0, 0, -sinceDays)
+	sessions, err := r.sessions.List(ctx)
+	if err != nil {
+		return Summary{}, err
 	}
 
 	total := usageAccumulator{}

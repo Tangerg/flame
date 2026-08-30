@@ -74,6 +74,20 @@ func TestDecideConflictDeny(t *testing.T) {
 	}
 }
 
+func TestSessionScopedApprovalIdentityIsExact(t *testing.T) {
+	if _, err := approval.NewRule(approval.ScopeSession, "ses_ one", "shell", "", approval.Allow); !errors.Is(err, approval.ErrInvalidRule) {
+		t.Fatalf("NewRule error = %v, want ErrInvalidRule", err)
+	}
+	if _, _, err := approval.Decide(nil, approval.Query{SessionID: "ses_\u200bhidden", Tool: "shell"}); !errors.Is(err, approval.ErrInvalidQuery) {
+		t.Fatalf("Decide error = %v, want ErrInvalidQuery", err)
+	}
+	if _, err := (approval.RememberRequest{
+		Scope: approval.ScopeSession, SessionID: " ses_1", Tool: "shell", Decision: approval.Allow,
+	}).Rule(); !errors.Is(err, approval.ErrInvalidRule) {
+		t.Fatalf("RememberRequest.Rule error = %v, want ErrInvalidRule", err)
+	}
+}
+
 func TestSessionModeValidation(t *testing.T) {
 	tests := []struct {
 		name  string

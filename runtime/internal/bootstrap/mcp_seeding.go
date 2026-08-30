@@ -7,7 +7,7 @@ import (
 )
 
 type mcpServerSeeder interface {
-	Get(ctx context.Context, name string) (mcpserver.Server, bool, error)
+	Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
 	Save(ctx context.Context, server mcpserver.Server) error
 }
 

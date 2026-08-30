@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceFileDiff } from "../application/diffViewModel";
 
 const projection = vi.hoisted(() => ({
-  fileFocus: { path: "src/a.ts", revision: 1 },
+  fileFocus: { path: "src/a.ts", revision: 1n },
   files: [] as WorkspaceFileDiff[],
 }));
 
@@ -55,7 +55,7 @@ let nativeScrollIntoView: typeof HTMLElement.prototype.scrollIntoView | undefine
 const scrolledPaths: string[] = [];
 
 beforeEach(() => {
-  projection.fileFocus = { path: "src/a.ts", revision: 1 };
+  projection.fileFocus = { path: "src/a.ts", revision: 1n };
   projection.files = initialFiles;
   scrolledPaths.length = 0;
   nativeScrollIntoView = HTMLElement.prototype.scrollIntoView;
@@ -75,7 +75,7 @@ describe("DiffWorkspaceSurface", () => {
     expect(scrolledPaths).toEqual(["src/a.ts"]);
 
     act(() => {
-      projection.fileFocus = { path: "src/b.ts", revision: 2 };
+      projection.fileFocus = { path: "src/b.ts", revision: 2n };
       view.rerender(<DiffWorkspaceSurface />);
     });
 
@@ -111,7 +111,7 @@ describe("DiffWorkspaceSurface", () => {
     const view = render(<DiffWorkspaceSurface />);
 
     act(() => {
-      projection.fileFocus = { path: "src/a.ts", revision: 2 };
+      projection.fileFocus = { path: "src/a.ts", revision: 2n };
       view.rerender(<DiffWorkspaceSurface />);
     });
 

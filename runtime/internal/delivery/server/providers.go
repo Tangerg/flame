@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -29,11 +30,11 @@ func (s *Server) ListProviders(ctx context.Context) (*protocol.Page[protocol.Pro
 // UpdateProvider validates and persists one provider through the application
 // use case, then projects its redacted result onto the wire.
 func (s *Server) UpdateProvider(ctx context.Context, in protocol.UpdateProviderRequest) (*protocol.Provider, error) {
-	apiKey, err := providerConfigValue(in.APIKey)
+	apiKey, err := providerConfigChange(in.APIKey, provider.NewAPIKey)
 	if err != nil {
 		return nil, err
 	}
-	baseURL, err := providerConfigValue(in.BaseURL)
+	baseURL, err := providerConfigChange(in.BaseURL, provider.NewBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -52,25 +53,28 @@ func (s *Server) UpdateProvider(ctx context.Context, in protocol.UpdateProviderR
 	return &out, nil
 }
 
-func providerConfigValue(change *protocol.ProviderConfigChange) (*string, error) {
+func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse func(string) (T, error)) (provider.Change[T], error) {
 	if change == nil {
-		return nil, nil
+		return provider.Preserve[T](), nil
 	}
-	var value string
 	switch change.Type {
 	case protocol.ProviderConfigSet:
-		if change.Value == nil || *change.Value == "" {
-			return nil, protocol.ErrInvalidParams
+		if change.Value == nil {
+			return provider.Change[T]{}, protocol.ErrInvalidParams
 		}
-		value = *change.Value
+		value, err := parse(*change.Value)
+		if err != nil {
+			return provider.Change[T]{}, protocol.ErrInvalidParams
+		}
+		return provider.Set(value), nil
 	case protocol.ProviderConfigClear:
 		if change.Value != nil {
-			return nil, protocol.ErrInvalidParams
+			return provider.Change[T]{}, protocol.ErrInvalidParams
 		}
+		return provider.Clear[T](), nil
 	default:
-		return nil, protocol.ErrInvalidParams
+		return provider.Change[T]{}, protocol.ErrInvalidParams
 	}
-	return &value, nil
 }
 
 // TestProvider returns an inline verdict for a supported, configured provider.

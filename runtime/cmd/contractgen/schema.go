@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ import (
 // Reflection alone would produce a schema that says `type: object` for a closed
 // union and `type: string` for a three-word enum — technically true, useless as a
 // contract, and laxer than the runtime. So the walk reads the SPECS for everything
-// reflection cannot see (discriminators, variant field lists, presence rules,
+// reflection cannot see (discriminators, variant field/value sets, conditional rules,
 // enum value sets) and reads the Go types for everything it can (field names,
 // optionality, nesting). Neither half guesses at the other's job.
 //
@@ -69,13 +70,16 @@ type schema struct {
 	Pattern          string         `json:"pattern,omitempty"`
 	TypeScriptType   string         `json:"-"`
 	Minimum          *int64         `json:"minimum,omitempty"`
+	ExclusiveMinimum *int64         `json:"exclusiveMinimum,omitempty"`
 	Maximum          *int64         `json:"maximum,omitempty"`
 	MinItems         *int           `json:"minItems,omitempty"`
+	MaxItems         *int           `json:"maxItems,omitempty"`
 	MinProperties    *int           `json:"minProperties,omitempty"`
 	UniqueItems      bool           `json:"uniqueItems,omitempty"`
 	Items            *schema        `json:"items,omitempty"`
 	Properties       map[string]any `json:"properties,omitempty"`
 	AdditionalProps  any            `json:"additionalProperties,omitempty"`
+	PropertyNames    *schema        `json:"propertyNames,omitempty"`
 	UnevaluatedProps *bool          `json:"unevaluatedProperties,omitempty"`
 	Required         []string       `json:"required,omitempty"`
 	OneOf            []*schema      `json:"oneOf,omitempty"`
@@ -98,7 +102,7 @@ type schemaSet struct {
 	enums  map[reflect.Type][]string
 
 	unions      map[reflect.Type]dispatch.UnionSpec
-	constraints map[reflect.Type][]dispatch.PresenceRule
+	constraints map[reflect.Type][]dispatch.ConditionalRule
 	values      map[reflect.Type][]dispatch.FieldConstraint
 }
 
@@ -108,7 +112,7 @@ func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 		origin:      make(map[string]reflect.Type),
 		enums:       make(map[reflect.Type][]string),
 		unions:      make(map[reflect.Type]dispatch.UnionSpec),
-		constraints: make(map[reflect.Type][]dispatch.PresenceRule),
+		constraints: make(map[reflect.Type][]dispatch.ConditionalRule),
 		values:      make(map[reflect.Type][]dispatch.FieldConstraint),
 	}
 	for _, union := range shapes.Unions() {
@@ -250,7 +254,7 @@ func (s *schemaSet) object(t reflect.Type) *schema {
 		out.OneOf = s.variants(t, union)
 	}
 	for _, rule := range s.constraints[t] {
-		out.AllOf = append(out.AllOf, s.presence(t, rule))
+		out.AllOf = append(out.AllOf, s.conditional(t, rule))
 	}
 	normalize(out)
 	return out
@@ -275,6 +279,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*schema
 		}
 		forbiddenFields := append(forbidden(t, union.Discriminator, roots, claimed), union.Forbidden...)
 		constrain(branch, t, variant.Required, forbiddenFields)
+		restrictAllowedValues(branch, t, variant.AllowedValues)
 		normalize(branch)
 		out = append(out, branch)
 	}
@@ -347,9 +352,15 @@ func forbidden(t reflect.Type, discriminator string, roots, claimed []string) []
 
 // presence renders one cross-field rule as `if/then`, or as a bare requirement
 // when the rule is unconditional.
-func (s *schemaSet) presence(t reflect.Type, rule dispatch.PresenceRule) *schema {
+func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *schema {
 	then := &schema{}
 	constrain(then, t, rule.Required, rule.Forbidden)
+	for _, field := range rule.RequiredAny {
+		alternative := &schema{}
+		constrain(alternative, t, []string{field}, nil)
+		then.AnyOf = append(then.AnyOf, alternative)
+	}
+	restrictAllowedValues(then, t, rule.AllowedValues)
 	normalize(then)
 	if len(rule.When) == 0 {
 		return then
@@ -378,6 +389,39 @@ func (s *schemaSet) presence(t reflect.Type, rule dispatch.PresenceRule) *schema
 	}
 	normalize(condition)
 	return &schema{If: condition, Then: then}
+}
+
+func restrictAllowedValues(node *schema, owner reflect.Type, sets []dispatch.AllowedValueSet) {
+	for _, set := range sets {
+		_, leaf, found := contractshape.GoPath(owner, set.Field)
+		if !found {
+			panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
+		}
+		fieldType := contractshape.Deref(leaf.Type)
+		if values, known := contractcatalog.EnumValues(fieldType); known {
+			for _, value := range set.Values {
+				if !slices.Contains(values, value) {
+					panic(fmt.Sprintf(
+						"contractgen: %s.%s allows %q outside enum %s",
+						owner.Name(), set.Field, value, fieldType.Name(),
+					))
+				}
+			}
+		}
+		parent, name := descend(node, owner, set.Field, false)
+		if parent.Properties == nil {
+			parent.Properties = make(map[string]any)
+		}
+		existing, present := parent.Properties[name]
+		if present {
+			if narrowed, ok := existing.(*schema); ok && narrowed.Const == "" && len(narrowed.Enum) == 0 {
+				narrowed.Enum = slices.Clone(set.Values)
+				continue
+			}
+			panic(fmt.Sprintf("contractgen: %s.%s has conflicting branch constraints", owner.Name(), set.Field))
+		}
+		parent.Properties[name] = &schema{Enum: slices.Clone(set.Values)}
+	}
 }
 
 // constrain applies required and forbidden JSON paths to a sub-schema, descending
@@ -476,7 +520,11 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 		case dispatch.ConstraintNonEmpty:
 			node.MinLength = new(1)
 		case dispatch.ConstraintPositive:
-			node.Minimum = new(int64(1))
+			if node.Type == schemaTypeNumber {
+				node.ExclusiveMinimum = new(int64(0))
+			} else {
+				node.Minimum = new(int64(1))
+			}
 		case dispatch.ConstraintNonNegative:
 			node.Minimum = new(int64(0))
 		case dispatch.ConstraintNonEmptyItems:
@@ -486,13 +534,33 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 		case dispatch.ConstraintUniqueItems:
 			node.UniqueItems = true
 		case dispatch.ConstraintMinItems:
-			node.MinItems = new(constraint.Limit)
+			node.MinItems = new(int(constraint.Limit))
+		case dispatch.ConstraintMaxItems:
+			node.MaxItems = new(int(constraint.Limit))
 		case dispatch.ConstraintMaxLength:
-			node.MaxLength = new(constraint.Limit)
+			node.MaxLength = new(int(constraint.Limit))
+		case dispatch.ConstraintMaxItemLength:
+			node.Items.MaxLength = new(int(constraint.Limit))
+		case dispatch.ConstraintIdentity:
+			addPattern(node, dispatch.IdentityPattern)
+		case dispatch.ConstraintIdentityItems:
+			addPattern(node.Items, dispatch.IdentityPattern)
+		case dispatch.ConstraintMaxPropertyNameLength:
+			propertyNames(node).MaxLength = new(int(constraint.Limit))
+		case dispatch.ConstraintIdentityPropertyNames:
+			addPattern(propertyNames(node), dispatch.IdentityPattern)
+		case dispatch.ConstraintPrefix:
+			addPattern(node, "^"+regexp.QuoteMeta(constraint.Value))
+		case dispatch.ConstraintPrefixItems:
+			addPattern(node.Items, "^"+regexp.QuoteMeta(constraint.Value))
+		case dispatch.ConstraintPatternItems:
+			addPattern(node.Items, constraint.Value)
+		case dispatch.ConstraintPattern:
+			addPattern(node, constraint.Value)
 		case dispatch.ConstraintMinimum:
-			node.Minimum = new(int64(constraint.Limit))
+			node.Minimum = new(constraint.Limit)
 		case dispatch.ConstraintMaximum:
-			node.Maximum = new(int64(constraint.Limit))
+			node.Maximum = new(constraint.Limit)
 		default:
 			panic(fmt.Sprintf(
 				"contractgen: unsupported value constraint %s",
@@ -500,4 +568,29 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 			))
 		}
 	}
+}
+
+// addPattern preserves every independently declared string predicate. JSON
+// Schema has a single pattern keyword, so a second predicate must become an
+// allOf member rather than silently replacing the first one. This matters for
+// framed identities: their prefix and printable identity alphabet are separate
+// public promises and both must survive into every generated artifact.
+func addPattern(node *schema, pattern string) {
+	if node.Pattern == "" {
+		node.Pattern = pattern
+		return
+	}
+	if node.Pattern == pattern || slices.ContainsFunc(node.AllOf, func(member *schema) bool {
+		return member.Pattern == pattern
+	}) {
+		return
+	}
+	node.AllOf = append(node.AllOf, &schema{Pattern: pattern})
+}
+
+func propertyNames(node *schema) *schema {
+	if node.PropertyNames == nil {
+		node.PropertyNames = &schema{}
+	}
+	return node.PropertyNames
 }

@@ -1,14 +1,43 @@
 package main
 
 import (
+	"reflect"
 	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/contractshape"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
+	t.Parallel()
+
+	set := walkWireTypes(operation.Contract(), dispatch.WireShapes())
+	pageFamily := genericBaseOf(reflect.TypeFor[protocol.Page[protocol.Session]]())
+	continuationFields := contractshape.Fields(reflect.TypeFor[protocol.PageContinuation]())
+	if len(continuationFields) != 1 {
+		t.Fatalf("PageContinuation fields = %v, want exactly one", continuationFields)
+	}
+	cursorField := continuationFields[0].Name
+
+	found := 0
+	for definition, origin := range set.origin {
+		if genericBaseOf(origin) != pageFamily {
+			continue
+		}
+		found++
+		cursor, ok := set.defs[definition].Properties[cursorField].(*schema)
+		if !ok || cursor.MaxLength == nil || *cursor.MaxLength != protocol.MaximumPaginationCursorCharacters {
+			t.Errorf("%s.%s = %#v, want maxLength %d", definition, cursorField, cursor, protocol.MaximumPaginationCursorCharacters)
+		}
+	}
+	if found < 2 {
+		t.Fatalf("walked Page instantiations = %d, want multiple independent members of the generic family", found)
+	}
+}
 
 func TestManifestPublishesToolsetPresentationContracts(t *testing.T) {
 	registry, shapes := operation.Contract(), dispatch.WireShapes()

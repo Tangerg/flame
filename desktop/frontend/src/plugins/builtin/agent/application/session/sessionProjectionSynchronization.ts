@@ -18,8 +18,6 @@ interface SessionProjectionSynchronizationOptions {
   synchronize: (signal: AbortSignal) => Promise<boolean>;
 }
 
-const ABORTED = Symbol("session-projection-synchronization.aborted");
-
 /**
  * Serializes the two fact channels which feed one mounted session projection.
  *
@@ -98,38 +96,4 @@ export function createSessionProjectionSynchronization({
   };
 }
 
-/** Observe a dependency that may ignore cancellation without allowing it to
- * retain synchronization ownership. Its late settlement remains handled. */
-function settleBeforeAbort<T>(
-  operation: Promise<T>,
-  signal: AbortSignal,
-): Promise<T | typeof ABORTED> {
-  if (signal.aborted) {
-    void operation.catch(() => undefined);
-    return Promise.resolve(ABORTED);
-  }
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const onAbort = () => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener("abort", onAbort);
-      resolve(ABORTED);
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    operation.then(
-      (value) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
-}
+import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";

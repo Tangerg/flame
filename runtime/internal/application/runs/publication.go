@@ -33,69 +33,87 @@ func (t treePublisher) publish(
 	route *executorRoute,
 	batch reductionBatch,
 ) (reductionPublication, error) {
+	if err := t.validateIncrementalPublication(route, batch); err != nil {
+		return reductionPublication{}, err
+	}
+	goalCharged := false
+	for _, reduced := range batch.events {
+		charged, err := t.commitIncrementalReduction(ctx, route, reduced)
+		if err != nil {
+			return reductionPublication{}, err
+		}
+		goalCharged = goalCharged || charged
+		if err := t.append(route, reduced); err != nil {
+			return reductionPublication{}, err
+		}
+	}
+	if goalCharged {
+		t.publications.publishGoalMoved(t.rootSpec.SessionID)
+	}
+	return reductionPublication{published: true}, nil
+}
+
+func (t treePublisher) validateIncrementalPublication(
+	route *executorRoute,
+	batch reductionBatch,
+) error {
 	if route == nil {
-		return reductionPublication{}, errors.New("runs: publish reductions without an executor route")
+		return errors.New("runs: publish reductions without an executor route")
 	}
 	if err := validateReductionBatch(batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if err := validateRouteReductionBatch(route, t.rootSpec.SessionID, batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if batch.parkCommit != nil {
-		return reductionPublication{}, fmt.Errorf(
+		return fmt.Errorf(
 			"runs: run %q produced a per-Run park outside the tree barrier",
 			route.runID,
 		)
 	}
 	for index, reduced := range batch.events {
 		if reduced.Event.Terminal() {
-			return reductionPublication{}, fmt.Errorf(
+			return fmt.Errorf(
 				"runs: terminal reduction[%d] requires atomic publication",
 				index,
 			)
 		}
 	}
-	publication := reductionPublication{published: true}
-	goalCharged := false
-	for _, reduced := range batch.events {
-		// Every durable projection lands before its event is delivered or retained
-		// for replay. A failed commit aborts execution instead of publishing an
-		// event the stores do not yet support.
-		if reduced.Commit != nil {
-			commit := *reduced.Commit
-			if commit.CommitID == "" {
-				commit.CommitID = newRunCommitID()
-			}
-			if commit.State == StateTerminalize && route.member.ParentID == "" {
-				commit.ObsoleteCheckpointRootID = route.member.MemberID
-			}
-			if err := t.publications.commitEvent(ctx, commit); err != nil {
-				return reductionPublication{}, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
-			}
-			if commit.State == StateTerminalize {
-				if commit.Run == nil {
-					return reductionPublication{}, errors.New("runs: terminal commit has no run snapshot")
-				}
-				t.owner.recordTerminalRun(*commit.Run)
-			}
-			for _, item := range commit.Items {
-				t.owner.recordChildCancellationItem(route.runID, item)
-			}
-			goalCharged = goalCharged || commit.GoalRun != nil
+	return nil
+}
+
+func (t treePublisher) commitIncrementalReduction(
+	ctx context.Context,
+	route *executorRoute,
+	reduced reduction,
+) (bool, error) {
+	if reduced.Commit == nil {
+		return false, nil
+	}
+	// Every durable projection lands before its event is delivered or retained
+	// for replay. A failed commit aborts execution instead of publishing an
+	// event the stores do not yet support.
+	commit := *reduced.Commit
+	if commit.CommitID.IsZero() {
+		commit.CommitID = newRunCommitID()
+	}
+	if commit.State == StateTerminalize && route.member.ParentID == "" {
+		commit.ObsoleteCheckpointRootID = route.member.MemberID
+	}
+	if err := t.publications.commitEvent(ctx, commit); err != nil {
+		return false, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
+	}
+	if commit.State == StateTerminalize {
+		if commit.Run == nil {
+			return false, errors.New("runs: terminal commit has no run snapshot")
 		}
-		if reduced.Event.Terminal() {
-			publication.finished = true
-		}
-		t.append(route, reduced)
+		t.owner.recordTerminalRun(*commit.Run)
 	}
-	if publication.finished {
-		t.publications.publishRunMoved(t.rootSpec.SessionID, route.runID)
+	for _, item := range commit.Items {
+		t.owner.recordChildCancellationItem(route.runID, item)
 	}
-	if goalCharged {
-		t.publications.publishGoalMoved(t.rootSpec.SessionID)
-	}
-	return publication, nil
+	return commit.GoalRun != nil, nil
 }
 
 // publishAuthoritativeAtomically commits every durable projection derived from
@@ -173,7 +191,9 @@ func (t treePublisher) publishAuthoritativeAtomically(
 		}
 	}
 	for _, reduced := range batch.events {
-		t.append(route, reduced)
+		if err := t.append(route, reduced); err != nil {
+			return reductionPublication{}, err
+		}
 	}
 	return reductionPublication{published: true}, nil
 }
@@ -217,7 +237,9 @@ func (t treePublisher) publishTerminalAtomically(
 	}
 	t.owner.recordTerminalRun(*combined.Run)
 	for _, reduced := range batch.events {
-		t.append(route, reduced)
+		if err := t.append(route, reduced); err != nil {
+			return reductionPublication{}, err
+		}
 	}
 	t.publications.publishRunMoved(t.rootSpec.SessionID, route.runID)
 	if combined.GoalRun != nil {
@@ -317,7 +339,9 @@ func (t treePublisher) publishTreeBarrier(
 		}
 		for _, projected := range projection.reductions {
 			for _, reduced := range projected.batch.events {
-				t.append(projected.route, reduced)
+				if appendErr := t.append(projected.route, reduced); appendErr != nil {
+					return appendErr
+				}
 			}
 		}
 		return nil
@@ -502,7 +526,7 @@ func suspendedInterrupts(events []RunEvent) []transcript.Interrupt {
 	return nil
 }
 
-func (t treePublisher) append(route *executorRoute, reduced reduction) {
+func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 	event := t.publications.event(route.runID, route.segmentID, reduced)
 	if route.runID == t.rootSpec.RunID && reduced.Event.Terminal() {
 		// The client uses root segment.finished as the stream/completion boundary.
@@ -510,9 +534,12 @@ func (t treePublisher) append(route *executorRoute, reduced reduction) {
 		// maintenance and admission release or an immediate next command sees busy.
 		t.owner.hub.deferCloseEvent(event)
 	} else {
-		t.owner.hub.append(event)
+		if err := t.owner.hub.append(event); err != nil {
+			return fmt.Errorf("runs: publish replay position: %w", err)
+		}
 	}
 	if reduced.Nudge != nil {
 		t.publications.nudge(reduced.Nudge.CWD, reduced.Nudge.Paths)
 	}
+	return nil
 }

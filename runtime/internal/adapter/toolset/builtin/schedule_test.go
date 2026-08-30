@@ -1,11 +1,14 @@
 package builtin
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -58,6 +61,56 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 	}
 }
 
+func TestSchedulesDisabledCapabilityBuildsNoTools(t *testing.T) {
+	tools, err := BuildSchedules(scheduleapp.Disabled())
+	if err != nil || len(tools) != 0 {
+		t.Fatalf("BuildSchedules(disabled) = (%d tools, %v), want none", len(tools), err)
+	}
+}
+
+func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
+	reg := newMemoryScheduleRegistry()
+	createdAt := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	for index := range 101 {
+		id := fmt.Sprintf("sch_%03d", index)
+		scheduled, err := scheduledomain.Restore(scheduledomain.Snapshot{
+			ID: id, Instructions: "review", Cron: "@daily",
+			CreatedAt: createdAt.Add(time.Duration(index) * time.Second), Revision: 1,
+		})
+		if err != nil {
+			t.Fatalf("restore %s: %v", id, err)
+		}
+		reg.items[id] = scheduled
+	}
+	tools, err := BuildSchedules(newTestScheduleCoordinator(reg))
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	list := scheduleByName(tools)["list_schedules"]
+	firstBody, err := list.Call(t.Context(), `{}`)
+	if err != nil {
+		t.Fatalf("first page: %v", err)
+	}
+	var first scheduleListResponse
+	if err := json.Unmarshal([]byte(firstBody), &first); err != nil {
+		t.Fatalf("decode first page: %v", err)
+	}
+	if len(first.Schedules) != 100 || first.NextCursor == "" {
+		t.Fatalf("first page = %d rows, cursor %q; want 100 and continuation", len(first.Schedules), first.NextCursor)
+	}
+	secondBody, err := list.Call(t.Context(), `{"cursor":`+strconv.Quote(first.NextCursor)+`}`)
+	if err != nil {
+		t.Fatalf("second page: %v", err)
+	}
+	var second scheduleListResponse
+	if err := json.Unmarshal([]byte(secondBody), &second); err != nil {
+		t.Fatalf("decode second page: %v", err)
+	}
+	if len(second.Schedules) != 1 || second.NextCursor != "" {
+		t.Fatalf("second page = %d rows, cursor %q; want final row", len(second.Schedules), second.NextCursor)
+	}
+}
+
 func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
 	tools, err := BuildSchedules(newTestScheduleCoordinator(reg))
@@ -102,7 +155,6 @@ func scheduleByName(tools []toolcontract.Tool) map[string]toolcontract.Tool {
 
 type memoryScheduleRegistry struct {
 	items map[string]scheduledomain.Schedule
-	next  int
 }
 
 func newMemoryScheduleRegistry() *memoryScheduleRegistry {
@@ -110,25 +162,47 @@ func newMemoryScheduleRegistry() *memoryScheduleRegistry {
 }
 
 func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Coordinator {
-	return scheduleapp.New(scheduleapp.Dependencies{
-		Store:  reg,
-		Paths:  workspacepath.Resolver{},
-		Models: scheduleModelAdmitter{},
+	value, err := scheduleapp.New(scheduleapp.Dependencies{
+		Store:      reg,
+		Paths:      workspacepath.Resolver{},
+		Models:     scheduleModelAdmitter{},
+		Identities: scheduleTestIdentities{},
 	})
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 type scheduleModelAdmitter struct{}
 
 func (scheduleModelAdmitter) AdmitSelection(modelref.Selection) error { return nil }
 
-func (m *memoryScheduleRegistry) ListPage(ctx context.Context, _ time.Time, _ string, _ int) ([]scheduledomain.Schedule, error) {
-	return m.List(ctx)
-}
+type scheduleTestIdentities struct{}
 
-func (m *memoryScheduleRegistry) List(context.Context) ([]scheduledomain.Schedule, error) {
+func (scheduleTestIdentities) NewScheduleID() string { return "sch_test_1" }
+
+func (m *memoryScheduleRegistry) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]scheduledomain.Schedule, error) {
 	out := make([]scheduledomain.Schedule, 0, len(m.items))
 	for _, sc := range m.items {
+		if !afterCreatedAt.IsZero() || afterID != "" {
+			if sc.CreatedAt().After(afterCreatedAt) || (sc.CreatedAt().Equal(afterCreatedAt) && sc.ID() >= afterID) {
+				continue
+			}
+		}
 		out = append(out, sc)
+	}
+	slices.SortFunc(out, func(left, right scheduledomain.Schedule) int {
+		if !left.CreatedAt().Equal(right.CreatedAt()) {
+			if left.CreatedAt().After(right.CreatedAt()) {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(right.ID(), left.ID())
+	})
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	return out, nil
 }
@@ -141,19 +215,16 @@ func (m *memoryScheduleRegistry) Get(_ context.Context, id string) (scheduledoma
 	return sc, nil
 }
 
-func (m *memoryScheduleRegistry) Create(_ context.Context, sc scheduledomain.Schedule) (scheduledomain.Schedule, error) {
-	m.next++
-	sc.ID = fmt.Sprintf("sch_test_%d", m.next)
-	sc.CreatedAt = time.Now().UTC()
-	m.items[sc.ID] = sc
-	return sc, nil
+func (m *memoryScheduleRegistry) Insert(_ context.Context, sc scheduledomain.Schedule) error {
+	m.items[sc.ID()] = sc
+	return nil
 }
 
 func (m *memoryScheduleRegistry) Update(_ context.Context, sc scheduledomain.Schedule, _ uint64) (scheduledomain.Schedule, error) {
-	if _, ok := m.items[sc.ID]; !ok {
+	if _, ok := m.items[sc.ID()]; !ok {
 		return scheduledomain.Schedule{}, scheduledomain.ErrNotFound
 	}
-	m.items[sc.ID] = sc
+	m.items[sc.ID()] = sc
 	return sc, nil
 }
 
@@ -167,6 +238,6 @@ func (m *memoryScheduleRegistry) Due(context.Context, time.Time, int) ([]schedul
 	return nil, nil
 }
 
-func (m *memoryScheduleRegistry) RecordRun(context.Context, string, time.Time) error {
+func (m *memoryScheduleRegistry) RecordRun(context.Context, scheduledomain.RunRecord) error {
 	return nil
 }

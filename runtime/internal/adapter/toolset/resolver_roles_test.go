@@ -22,10 +22,14 @@ type roleGoalStub struct{}
 type rolePlanStore struct{}
 
 func (rolePlanStore) Replace(_ context.Context, _ string, steps []plan.Step) (plan.State, error) {
-	return (plan.State{}).Replace(steps, time.Now())
+	return (plan.Current{}).Replace(steps, time.Now())
 }
-func (rolePlanStore) State(context.Context, string) (plan.State, error) {
-	return (plan.State{}).Replace([]plan.Step{{Description: "implement", Status: plan.StatusPending}}, time.Now())
+func (rolePlanStore) State(context.Context, string) (plan.Current, error) {
+	state, err := (plan.Current{}).Replace([]plan.Step{{Description: "implement", Status: plan.StatusPending}}, time.Now())
+	if err != nil {
+		return plan.Current{}, err
+	}
+	return plan.CurrentOf(state)
 }
 
 func (roleGoalStub) Current(context.Context, string) (goal.Goal, bool, error) {

@@ -1,8 +1,4 @@
-export interface GoalCommandBudget {
-  maxRuns?: number;
-  maxCostUsd?: number;
-  maxSteps?: number;
-}
+import type { GoalBudget } from "../goalBudget";
 
 export interface StartGoalInput {
   sessionId: string;
@@ -10,7 +6,8 @@ export interface StartGoalInput {
   provider?: string;
   model?: string;
   reasoningEffort?: string;
-  budget?: GoalCommandBudget;
+  /** Omitted means unlimited; a present budget has at least one finite limit. */
+  budget?: GoalBudget;
 }
 
 export interface UpdateGoalInput {

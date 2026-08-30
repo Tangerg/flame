@@ -13,11 +13,11 @@ import (
 func TestLaunchIsolatedWithoutBackendFailsClosed(t *testing.T) {
 	shells := NewShells(nil, false) // no confiner (no backend), global jail off
 	t.Cleanup(func() { _ = shells.KillAll() })
-	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", 0, true); err == nil {
+	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, true); err == nil {
 		t.Fatal("isolated launch without a sandbox backend must fail closed")
 	}
 	// A non-isolated command on the same set still runs (unconfined).
-	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", 0, false); err != nil {
+	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, false); err != nil {
 		t.Fatalf("non-isolated launch should succeed: %v", err)
 	}
 }
@@ -34,7 +34,7 @@ func TestShells_RunReadKill(t *testing.T) {
 	})
 
 	// A quick command: capture output + completion.
-	id, err := shells.Launch(context.Background(), "", "", "printf hello", 0, false)
+	id, err := shells.Launch(context.Background(), "", "", "printf hello", Timeout{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestShells_RunReadKill(t *testing.T) {
 	}
 
 	// A long-running command: kill it.
-	longID, err := shells.Launch(context.Background(), "", "", "sleep 30", 0, false)
+	longID, err := shells.Launch(context.Background(), "", "", "sleep 30", Timeout{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestShells_TimeoutKills(t *testing.T) {
 		}
 	})
 
-	id, err := shells.Launch(context.Background(), "", "", "sleep 30", 200*time.Millisecond, false)
+	id, err := shells.Launch(context.Background(), "", "", "sleep 30", testTimeout(t, 200*time.Millisecond), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestShells_TimeoutKills(t *testing.T) {
 
 func TestShellsKillAllJoinsProcesses(t *testing.T) {
 	shells := NewShells(nil, false)
-	id, err := shells.Launch(context.Background(), "", "", "sleep 30", 0, false)
+	id, err := shells.Launch(context.Background(), "", "", "sleep 30", Timeout{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestShellsRejectLaunchAfterKillAll(t *testing.T) {
 	if err := shells.KillAll(); err != nil {
 		t.Fatalf("KillAll: %v", err)
 	}
-	if _, err := shells.Launch(context.Background(), "", "", "printf late", 0, false); !errors.Is(err, ErrShellsClosed) {
+	if _, err := shells.Launch(context.Background(), "", "", "printf late", Timeout{}, false); !errors.Is(err, ErrShellsClosed) {
 		t.Fatalf("Launch after KillAll = %v, want ErrShellsClosed", err)
 	}
 }
@@ -137,9 +137,49 @@ func TestShellsKillMissingHasStableIdentity(t *testing.T) {
 	}
 }
 
+func TestShellIdentityDoesNotAliasAcrossOwners(t *testing.T) {
+	first := NewShells(nil, false)
+	second := NewShells(nil, false)
+	t.Cleanup(func() {
+		_ = first.KillAll()
+		_ = second.KillAll()
+	})
+	firstID, err := first.Launch(t.Context(), "", "", "true", Timeout{}, false)
+	if err != nil {
+		t.Fatalf("launch first owner: %v", err)
+	}
+	secondID, err := second.Launch(t.Context(), "", "", "true", Timeout{}, false)
+	if err != nil {
+		t.Fatalf("launch second owner: %v", err)
+	}
+	if firstID == secondID {
+		t.Fatalf("different Shells owners minted the same identity %q", firstID)
+	}
+	if _, found := second.Get(firstID); found {
+		t.Fatalf("second owner resolved first owner's identity %q", firstID)
+	}
+}
+
+func TestShellIdentityCodecAndExhaustion(t *testing.T) {
+	valid := newShellID(strings.Repeat("A", shellIDEpochBytes), 1)
+	if parsed, ok := parseShellID(valid.String()); !ok || parsed != valid {
+		t.Fatalf("parseShellID(%q) = %q, %t; want exact identity", valid.String(), parsed.String(), ok)
+	}
+	for _, invalid := range []string{"", "bg_1", "bg_" + strings.Repeat("A", shellIDEpochBytes) + "_0", "bg_" + strings.Repeat("a", shellIDEpochBytes) + "_1"} {
+		if parsed, ok := parseShellID(invalid); ok || parsed != (shellID{}) {
+			t.Errorf("parseShellID(%q) = %q, %t; want zero/false", invalid, parsed.String(), ok)
+		}
+	}
+	shells := NewShells(nil, false)
+	shells.nextID = ^uint64(0)
+	if _, err := shells.Launch(t.Context(), "", "", "true", Timeout{}, false); !errors.Is(err, ErrShellIdentityExhausted) {
+		t.Fatalf("Launch after identity exhaustion = %v, want ErrShellIdentityExhausted", err)
+	}
+}
+
 func TestShellsFailedLaunchCanBeShutDown(t *testing.T) {
 	shells := NewShells(nil, false)
-	id, err := shells.Launch(t.Context(), "", t.TempDir()+"/missing", "printf unreachable", 0, false)
+	id, err := shells.Launch(t.Context(), "", t.TempDir()+"/missing", "printf unreachable", Timeout{}, false)
 	if err != nil {
 		t.Fatalf("Launch: %v", err)
 	}
@@ -159,7 +199,7 @@ func TestShellsLaunchRacesKillAll(t *testing.T) {
 			err error
 		}, 1)
 		go func() {
-			id, err := shells.Launch(context.Background(), "", "", "sleep 30", 0, false)
+			id, err := shells.Launch(context.Background(), "", "", "sleep 30", Timeout{}, false)
 			result <- struct {
 				id  string
 				err error
@@ -204,13 +244,13 @@ func TestShells_RunningForSession(t *testing.T) {
 	shells := NewShells(nil, false)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
-	if _, err := shells.Launch(context.Background(), "sess-a", "", "sleep 30", 0, false); err != nil {
+	if _, err := shells.Launch(context.Background(), "sess-a", "", "sleep 30", Timeout{}, false); err != nil {
 		t.Fatalf("launch a1: %v", err)
 	}
-	if _, err := shells.Launch(context.Background(), "sess-a", "", "sleep 30", 0, false); err != nil {
+	if _, err := shells.Launch(context.Background(), "sess-a", "", "sleep 30", Timeout{}, false); err != nil {
 		t.Fatalf("launch a2: %v", err)
 	}
-	bID, err := shells.Launch(context.Background(), "sess-b", "", "sleep 30", 0, false)
+	bID, err := shells.Launch(context.Background(), "sess-b", "", "sleep 30", Timeout{}, false)
 	if err != nil {
 		t.Fatalf("launch b: %v", err)
 	}

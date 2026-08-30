@@ -7,13 +7,13 @@
 > promise and does not authorize dual fields or fallback decoding in the server.
 >
 > Last verified against the Runtime-owned server, public Go contracts, and
-> Desktop generated consumer: 2026-08-29, through the published P196 exact reasoning-selection cutover.
+> Desktop/CLI generated consumers: 2026-08-30, through the P275 model-identity cutover.
 > Other consumers migrate independently and do not change the Runtime contract.
 
 ## Current server baseline
 
-- Protocol version: exactly `2026-08-28`; there is no compatibility range.
-- Session artifact version: `24`; every other version is rejected before
+- Protocol version: exactly `2026-08-30`; there is no compatibility range.
+- Session artifact version: `27`; every other version is rejected before
   any import write.
 - Machine truth: [`../contract/`](../contract/) generated from the Go contract
   registry with `go generate ./...`; `go-api.json` freezes the complete public
@@ -34,7 +34,7 @@ use first-class Item or resource contracts for new facts.
 Plan is no longer the sole member of a speculative shared-state registry. The
 only spellings are `plan.updated`, `plan.changed`, `plan.get`,
 `SessionSnapshot.plan`, and `SessionArtifact.plan`; discovery has no
-`stateSnapshots`, RuntimeEvent has no state key, and Artifact v24 has no
+`stateSnapshots`, RuntimeEvent has no state key, and Artifact v27 has no
 `states[]` union. Consumers must not retain `state.snapshot`, `state.changed`,
 `StateSnapshot`, the old `states[]` archive shape, or a generic shared-state Plan
 reader. Desktop projects the Runtime Plan into the explicit `AgentSessionView.plan`;
@@ -49,6 +49,36 @@ The protocol and artifact version bumps are deliberate rejection boundaries.
 Consumers must not retry with an older version or rewrite an old artifact's
 version number: old artifacts must be re-exported by the build that owns their
 schema.
+
+Goal budget no longer uses zero-valued fields as an unlimited sentinel. In
+`goals.start`, omitting `budget` means unlimited; a present `GoalBudget` must
+contain at least one of `maxRuns`, `maxCostUsd`, or `maxSteps`, and every present
+value is finite and strictly positive. Goal projections omit `budget` when the
+Goal is unlimited. Consumers must not send `{}`, send explicit zeroes, or fill
+missing fields with zero. Runtime SQLite epoch 87 persists the same distinction
+as a strict discriminated record and deliberately rejects the former all-zero
+shape. Desktop maps unlimited to `null` in its application read model; CLI uses
+an explicit `UnlimitedBudget` value rather than a zero struct.
+
+Run-tree limits now follow the same presence rule without sharing Goal's domain
+type. `runs.start.limits`, `RunRef.limits`, and `ArtifactRun.limits` are omitted
+for unlimited; a present `RunLimits` / `ArtifactRunLimits` contains at least one
+finite strictly positive axis. The old flat `runs.start.maxTotalTokens`,
+`maxSteps`, and `maxBudgetUsd` fields are deleted. SQLite epoch 87 stores absent
+axes as NULL, executor policy schema v4 and parked continuations use strict
+discriminated records, and Artifact v27 rejects the old numeric-zero shape.
+Consumers must delete zero filling, flat request fields, and empty limit objects.
+
+Model catalog token facts now use one optional nested object. `Model.tokenLimits`
+is omitted when the provider publishes no facts; when present it contains at
+least one of `contextWindow`, `maxInputTokens`, or `maxOutputTokens`, and every
+present value is a strictly positive integer. The former flat fields on `Model`
+are deleted. Consumers must not recreate them, send/retain an empty object, or
+translate an absent fact to numeric zero. A streaming or multimodal model may
+legitimately publish `maxOutputTokens > contextWindow`; consumers must preserve
+those independent facts rather than reject the entire catalog. Desktop owns the
+nested immutable `SelectableModelTokenLimits`; CLI owns its own rich value and
+both render only fields whose presence is explicit.
 
 P153 removes the standalone Codebase semantic-index contract in full. Consumers
 must delete `GetCodebaseStatus`, `SearchCodebase`, `ReindexCodebase`, the
@@ -215,10 +245,10 @@ this list is not evidence that an out-of-tree consumer is compatible.
 A consumer migration is complete only when it:
 
 1. vendors or generates from the current Runtime-owned contract;
-2. sends `protocolVersion: "2026-08-28"` and rejects any different discovered
+2. sends `protocolVersion: "2026-08-29"` and rejects any different discovered
    range instead of guessing compatibility;
 3. accepts only `runtimeInstanceRootSegment` for `RunReplayScope`;
-4. imports/exports Session artifact v24 with required exact provider/model identity, optional model-owned reasoning effort on Session and every Run, and explicit `plan` field, including durable root-run context footprints, authored AgentMessage phases, accepted Question answers, and exact human ToolCall approval decisions, without rewriting prior documents;
+4. imports/exports Session artifact v27 with required exact bounded provider/model identity, optional model-owned reasoning effort on Session and every Run, bounded usage-map model keys, presence-based Run limits, explicit `plan`, and a required human-readable summary on every compaction Item, including durable root-run context footprints, authored AgentMessage phases, accepted Question answers, and exact human ToolCall approval decisions, without rewriting prior documents;
 5. passes its strict fixture validation and HTTP integration suite.
 
 An embedded Go consumer additionally passes an external-module compile test,

@@ -31,55 +31,57 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 	}
 }
 
-func TestTextBuffersLaterContentBlocksUntilAuthoritativeCompletion(t *testing.T) {
-	var output bytes.Buffer
-	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
+	unlimited, err := json.Marshal(encodeRunOptions(agent.RunOptions{Provider: "mock", Model: "balanced", Limits: agent.UnlimitedRunLimits()}))
+	if err != nil {
 		t.Fatal(err)
 	}
-	second, first := 1, 0
+	if got, want := string(unlimited), `{"provider":"mock","model":"balanced"}`; got != want {
+		t.Fatalf("unlimited options = %s, want %s", got, want)
+	}
+
+	maxSteps := 12
+	limits, err := agent.NewRunLimits(agent.RunLimitValues{MaxSteps: &maxSteps})
+	if err != nil {
+		t.Fatal(err)
+	}
+	limited, err := json.Marshal(encodeRunOptions(agent.RunOptions{Provider: "mock", Model: "balanced", Limits: limits}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(limited), `{"provider":"mock","model":"balanced","limits":{"maxSteps":12}}`; got != want {
+		t.Fatalf("limited options = %s, want %s", got, want)
+	}
+}
+
+func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
+	var output bytes.Buffer
+	renderer := NewText(&output)
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+		t.Fatal(err)
+	}
 	for _, event := range []agent.RunEvent{
 		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: "second", ContentIndex: &second}),
+		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first"}),
+		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " second"}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if strings.Contains(output.String(), "second") {
-		t.Fatalf("later content block streamed before its predecessor: %q", output.String())
-	}
-	if err := renderer.Render(testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first", ContentIndex: &first})); err != nil {
-		t.Fatal(err)
-	}
-	if got := output.String(); !strings.Contains(got, "first") || strings.Contains(got, "second") {
-		t.Fatalf("primary content stream = %q", got)
+	if got := output.String(); !strings.Contains(got, "first second") {
+		t.Fatalf("ordered content stream = %q", got)
 	}
 	if err := renderer.Render(testEvent("complete", agent.BlockCompleted{Block: agent.Block{
-		ID: "answer", Kind: agent.BlockAssistant, Text: "first\n\nsecond",
+		ID: "answer", Kind: agent.BlockAssistant, Text: "first second",
 	}})); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if got := output.String(); strings.Count(got, "first") != 1 || strings.Count(got, "second") != 1 || !strings.Contains(got, "first\n\nsecond") {
-		t.Fatalf("completed indexed output = %q", got)
-	}
-}
-
-func TestTextRejectsContentIndicesOnNonAssistantBlocks(t *testing.T) {
-	var output bytes.Buffer
-	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	index := 0
-	if err := renderer.Render(testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "reasoning", Kind: agent.BlockReasoning}})); err != nil {
-		t.Fatal(err)
-	}
-	if err := renderer.Render(testEvent("delta", agent.BlockDelta{BlockID: "reasoning", Text: "thought", ContentIndex: &index})); err == nil {
-		t.Fatal("text renderer accepted an indexed reasoning delta")
+	if got := output.String(); strings.Count(got, "first") != 1 || strings.Count(got, "second") != 1 {
+		t.Fatalf("completed output = %q", got)
 	}
 }
 
@@ -147,7 +149,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Render(event); err != nil {
@@ -162,7 +164,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 	var jsonOutput bytes.Buffer
 	jsonRenderer := NewNDJSON(&jsonOutput)
-	if err := jsonRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := jsonRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := jsonRenderer.Render(event); err != nil {
@@ -179,7 +181,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	step, contextTokens := 4, int64(16_384)
@@ -215,22 +217,24 @@ func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	}
 }
 
-func TestNDJSONPreservesContentBlockIndex(t *testing.T) {
+func TestNDJSONCarriesContentDelta(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
-	index := 2
-	if err := renderer.Render(testEvent("content", agent.BlockDelta{BlockID: "answer", Text: "third", ContentIndex: &index})); err != nil {
+	if err := renderer.Render(testEvent("content", agent.BlockDelta{BlockID: "answer", Text: "third"})); err != nil {
 		t.Fatal(err)
 	}
 	var frame map[string]any
 	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &frame); err != nil {
 		t.Fatal(err)
 	}
-	if frame["type"] != "block.delta" || frame["index"] != float64(index) || frame["text"] != "third" {
+	if frame["type"] != "block.delta" || frame["text"] != "third" {
 		t.Fatalf("content delta frame = %+v", frame)
+	}
+	if _, present := frame["index"]; present {
+		t.Fatalf("content delta published a fabricated index: %+v", frame)
 	}
 }
 
@@ -303,7 +307,7 @@ func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("progress", agent.RunProgress{Usage: &agent.Usage{InputTokens: 33, OutputTokens: 5}})); err != nil {
@@ -321,15 +325,14 @@ func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) 
 	}
 }
 
-func TestResultJSONUsesAuthoritativeAssistantCompletionAfterIndexedDeltas(t *testing.T) {
+func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	second, first := 1, 0
 	for _, event := range []agent.RunEvent{
 		testEvent("segment", agent.SegmentStarted{Run: testRun()}),
 		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: "provisional second", ContentIndex: &second}),
-		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "provisional first", ContentIndex: &first}),
+		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "provisional first"}),
+		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " provisional second"}),
 		testEvent("complete", agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "authoritative"}}),
 		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
 	} {
@@ -349,15 +352,14 @@ func TestResultJSONUsesAuthoritativeAssistantCompletionAfterIndexedDeltas(t *tes
 	}
 }
 
-func TestResultJSONOrdersPartialIndexedAssistantOutput(t *testing.T) {
+func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	second, first := 1, 0
 	for _, event := range []agent.RunEvent{
 		testEvent("segment", agent.SegmentStarted{Run: testRun()}),
 		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: "second", ContentIndex: &second}),
-		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first", ContentIndex: &first}),
+		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first"}),
+		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " second"}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -370,7 +372,7 @@ func TestResultJSONOrdersPartialIndexedAssistantOutput(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["status"] != "incomplete" || result["text"] != "first\n\nsecond" {
+	if result["status"] != "incomplete" || result["text"] != "first second" {
 		t.Fatalf("partial result = %s", output.String())
 	}
 }
@@ -407,7 +409,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var stream bytes.Buffer
 	ndjson := NewNDJSON(&stream)
-	if err := ndjson.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := ndjson.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ndjson.Render(completed); err != nil {
@@ -424,7 +426,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	result := NewResultJSON(&resultOutput)
-	if err := result.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := result.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := result.Render(completed); err != nil {
@@ -443,7 +445,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	plain := NewText(&textOutput)
-	if err := plain.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := plain.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := plain.Render(completed); err != nil {
@@ -457,7 +459,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	event := testEvent("tool", agent.BlockCompleted{Block: agent.Block{
@@ -484,7 +486,7 @@ func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	question := agent.Question{
@@ -517,7 +519,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Provider: "mock", Model: "balanced", Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range testEvents() {
@@ -538,11 +540,11 @@ func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 }
 
 func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
-	events := runTreeEvents()
+	events := runTreeEvents(t)
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -564,7 +566,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var streamOutput bytes.Buffer
 	streamRenderer := NewNDJSON(&streamOutput)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := streamRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -585,7 +587,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	resultRenderer := NewResultJSON(&resultOutput)
-	if err := resultRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := resultRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -606,28 +608,33 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 }
 
 func TestColdReconciliationKeepsOneShotOutputScopedToItsRun(t *testing.T) {
-	snapshot := reconciliationSnapshot()
+	snapshot := reconciliationSnapshot(t)
 	requireScopedResultJSON(t, snapshot)
 	requireScopedText(t, snapshot)
 	requireScopedStream(t, snapshot)
 }
 
-func reconciliationSnapshot() agent.SessionSnapshot {
+func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
+	t.Helper()
+	plan, err := agent.NewPlan(3, []agent.PlanItem{{Title: "newer plan", Status: agent.PlanDone}})
+	if err != nil {
+		t.Fatalf("new test Plan: %v", err)
+	}
 	return agent.SessionSnapshot{
 		Session: agent.Session{ID: "ses_1", Status: agent.SessionIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
 			Path: "/tmp/demo", ProjectRoot: "/tmp/demo", Availability: workspace.Available,
-		}},
+		}, Revision: 1},
 		Transcript: []agent.Block{
 			{ID: "old", RunID: "run_old", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "historical answer"},
 			{ID: "current", RunID: "run_1", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "current answer"},
 			{ID: "new", RunID: "run_new", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "newer answer"},
 		},
 		Runs: []agent.Run{
-			{ID: "run_old", SessionID: "ses_1", Status: agent.RunStatusFinished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Status: agent.RunStatusFinished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_new", SessionID: "ses_1", Status: agent.RunStatusFinished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		},
-		Plan: []agent.PlanItem{{Title: "newer plan", Status: agent.PlanDone}}, PlanRevision: 3,
+		Plan: &plan,
 	}
 }
 
@@ -635,7 +642,7 @@ func requireScopedResultJSON(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Reconcile(snapshot); err != nil {
@@ -653,7 +660,7 @@ func requireScopedText(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	textRenderer := NewText(&output)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Reconcile(snapshot); err != nil {
@@ -671,7 +678,7 @@ func requireScopedStream(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	streamRenderer := NewNDJSON(&output)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := streamRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := streamRenderer.Reconcile(snapshot); err != nil {
@@ -754,12 +761,18 @@ func testEvents() []agent.RunEvent {
 	}
 }
 
-func runTreeEvents() []agent.RunEvent {
+func runTreeEvents(t *testing.T) []agent.RunEvent {
+	t.Helper()
 	root := testRun()
+	lineage, err := agent.NewChildRunLineage("run_child", "spawn", root.ID, root.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	child := agent.Run{
 		ID: "run_child", SessionID: root.SessionID,
-		Lineage:  agent.RunLineage{SpawnedByBlockID: "spawn", ParentRunID: root.ID, RootRunID: root.ID},
+		Lineage:  lineage,
 		Provider: root.Provider, Model: root.Model, Status: agent.RunStatusRunning, ActiveSegmentID: "seg_child",
+		Limits: agent.UnlimitedRunLimits(),
 	}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
 		return agent.RunEvent{
@@ -799,7 +812,11 @@ func testEvent(id string, event agent.Event) agent.RunEvent {
 }
 
 func testRun() agent.Run {
-	return agent.Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: agent.RunStatusRunning, ActiveSegmentID: "seg_1"}
+	return agent.Run{
+		ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
+		Lineage: agent.RootRunLineage(),
+		Status:  agent.RunStatusRunning, ActiveSegmentID: "seg_1", Limits: agent.UnlimitedRunLimits(),
+	}
 }
 
 func testApproval(itemID, title string) agent.Approval {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SelectableModel } from "./selectableModel";
+import { SelectableModel, SelectableModelTokenLimits } from "./selectableModel";
 
 describe("SelectableModel", () => {
   it("owns immutable capability collections", () => {
@@ -43,15 +43,57 @@ describe("SelectableModel", () => {
     expect(model.reasoningLevelOrDefault("unsupported")).toBe("medium");
   });
 
-  it("does not invent reasoning for a model that lacks it", () => {
+  it("rejects contradictory reasoning metadata", () => {
+    expect(
+      () =>
+        new SelectableModel({
+          id: "plain",
+          provider: "example",
+          label: "Plain",
+          reasoningLevels: ["high"],
+        }),
+    ).toThrow(/non-reasoning/);
+
     const model = new SelectableModel({
       id: "plain",
       provider: "example",
       label: "Plain",
-      reasoningLevels: ["high"],
     });
 
     expect(model.acceptsReasoningLevel("high")).toBe(false);
     expect(model.reasoningLevelOrDefault()).toBeUndefined();
+  });
+
+  it("rejects invalid model identity restoration", () => {
+    expect(
+      () => new SelectableModel({ id: "bad model", provider: "openai", label: "Bad" }),
+    ).toThrow("model_identity_not_canonical");
+    expect(
+      () => new SelectableModel({ id: "gpt", provider: "openai\u0000shadow", label: "Bad" }),
+    ).toThrow("provider_identity_not_canonical");
+    expect(
+      () =>
+        new SelectableModel({
+          id: "gpt",
+          provider: "openai",
+          label: "Bad",
+          reasoning: true,
+          reasoningLevels: ["very high"],
+        }),
+    ).toThrow("reasoningEffort_identity_not_canonical");
+  });
+
+  it("owns token-limit presence without numeric sentinels", () => {
+    const limits = new SelectableModelTokenLimits({
+      contextWindow: 16_384,
+      maxOutputTokens: 32_768,
+    });
+
+    expect(limits.contextWindow).toBe(16_384);
+    expect(limits.maxInputTokens).toBeUndefined();
+    expect(limits.maxOutputTokens).toBe(32_768);
+    expect(Object.isFrozen(limits)).toBe(true);
+    expect(() => new SelectableModelTokenLimits({})).toThrow(/at least one/);
+    expect(() => new SelectableModelTokenLimits({ contextWindow: 0 })).toThrow(/positive/);
   });
 });

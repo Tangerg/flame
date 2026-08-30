@@ -62,12 +62,13 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const includeDescendants = runtimeCapability("subagents");
     try {
       const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      const plan = snapshot.plan ? runtimePlan(snapshot.plan) : undefined;
       return {
         snapshot: {
           items: snapshot.items.map(runtimeItem),
           runs: snapshot.runs.map(runtimeRunFact),
           pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
-          ...(snapshot.plan ? { plan: runtimePlan(snapshot.plan) } : {}),
+          ...(plan ? { plan } : {}),
         },
         projectAssociatedSharedMaterial: stageAgentSessionSharedMaterial(sessionId, snapshot),
       };

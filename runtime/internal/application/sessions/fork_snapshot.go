@@ -24,107 +24,186 @@ func (c *Coordinator) copyForkSnapshot(
 	if len(boundary.RunIDs) == 0 {
 		return Snapshot{Session: child, Messages: boundary.Messages, Plan: steps}, nil
 	}
+	projection := newForkSnapshotProjection(c, source, child, boundary, steps)
+	if err := projection.selectRuns(); err != nil {
+		return Snapshot{}, err
+	}
+	projection.selectItems()
+	projection.selectToolResults()
+	if err := projection.copyRuns(); err != nil {
+		return Snapshot{}, err
+	}
+	if err := projection.copyItems(); err != nil {
+		return Snapshot{}, err
+	}
+	projection.copyToolResults()
+	return projection.finish()
+}
 
-	selectedRunIDs := make(map[string]struct{}, len(boundary.RunIDs))
+type forkSnapshotProjection struct {
+	coordinator    *Coordinator
+	source         Snapshot
+	child          session.Session
+	boundary       ForkBoundary
+	runByID        map[string]run.Run
+	selectedRunIDs map[string]struct{}
+	runIDs         map[string]string
+	itemIDs        map[string]string
+	blobIDs        map[toolresult.ID]toolresult.ID
+	forked         Snapshot
+}
+
+func newForkSnapshotProjection(
+	coordinator *Coordinator,
+	source Snapshot,
+	child session.Session,
+	boundary ForkBoundary,
+	steps []plan.Step,
+) *forkSnapshotProjection {
 	runByID := make(map[string]run.Run, len(source.Runs))
 	for _, value := range source.Runs {
 		runByID[value.ID()] = value
 	}
-	runIDs := make(map[string]string, len(boundary.RunIDs))
-	for _, sourceID := range boundary.RunIDs {
-		value, found := runByID[sourceID]
+	return &forkSnapshotProjection{
+		coordinator:    coordinator,
+		source:         source,
+		child:          child,
+		boundary:       boundary,
+		runByID:        runByID,
+		selectedRunIDs: make(map[string]struct{}, len(boundary.RunIDs)),
+		runIDs:         make(map[string]string, len(boundary.RunIDs)),
+		itemIDs:        make(map[string]string),
+		blobIDs:        make(map[toolresult.ID]toolresult.ID),
+		forked: Snapshot{
+			Session:  child,
+			Messages: boundary.Messages,
+			Plan:     steps,
+		},
+	}
+}
+
+func (projection *forkSnapshotProjection) selectRuns() error {
+	for _, sourceID := range projection.boundary.RunIDs {
+		value, found := projection.runByID[sourceID]
 		if !found {
-			return Snapshot{}, fmt.Errorf("sessions: fork boundary references missing run %q", sourceID)
+			return fmt.Errorf("sessions: fork boundary references missing run %q", sourceID)
 		}
 		if !value.State().IsTerminal() {
-			return Snapshot{}, fmt.Errorf("sessions: fork boundary run %q is not terminal", sourceID)
+			return fmt.Errorf("sessions: fork boundary run %q is not terminal", sourceID)
 		}
-		selectedRunIDs[sourceID] = struct{}{}
-		runIDs[sourceID] = c.newRunID()
+		projection.selectedRunIDs[sourceID] = struct{}{}
+		projection.runIDs[sourceID] = projection.coordinator.newRunID()
 	}
+	projection.forked.Runs = make([]run.Run, 0, len(projection.boundary.RunIDs))
+	return nil
+}
 
-	itemIDs := make(map[string]string)
-	for _, item := range source.Items {
-		if _, selected := selectedRunIDs[item.RunID()]; selected {
-			itemIDs[item.ID()] = c.newItemID()
+func (projection *forkSnapshotProjection) selectItems() {
+	for _, item := range projection.source.Items {
+		if _, selected := projection.selectedRunIDs[item.RunID()]; selected {
+			projection.itemIDs[item.ID()] = projection.coordinator.newItemID()
 		}
 	}
+	projection.forked.Items = make([]transcript.Item, 0, len(projection.itemIDs))
+}
 
-	selectedItemIDs := make(map[string]struct{}, len(itemIDs))
-	for sourceID := range itemIDs {
-		selectedItemIDs[sourceID] = struct{}{}
-	}
-	blobIDs := make(map[toolresult.ID]toolresult.ID)
-	for _, blob := range source.ToolResults {
-		if _, selected := selectedItemIDs[blob.ItemID]; !selected {
+func (projection *forkSnapshotProjection) selectToolResults() {
+	for _, blob := range projection.source.ToolResults {
+		if _, selected := projection.itemIDs[blob.ItemID]; !selected {
 			continue
 		}
-		blobIDs[blob.ID] = c.newToolResultID()
+		projection.blobIDs[blob.ID] = projection.coordinator.newToolResultID()
 	}
+	projection.forked.ToolResults = make([]toolresult.Blob, 0, len(projection.blobIDs))
+}
 
-	forked := Snapshot{
-		Session:     child,
-		Messages:    boundary.Messages,
-		Runs:        make([]run.Run, 0, len(boundary.RunIDs)),
-		Items:       make([]transcript.Item, 0, len(itemIDs)),
-		ToolResults: make([]toolresult.Blob, 0, len(blobIDs)),
-		Plan:        steps,
-	}
-	for _, sourceID := range boundary.RunIDs {
-		value := runByID[sourceID]
-		lineage := value.Lineage()
-		if lineage.IsChild() {
-			spawnedBy, itemFound := itemIDs[lineage.SpawnedByItemID]
-			parentID, parentFound := runIDs[lineage.ParentRunID]
-			rootID, rootFound := runIDs[lineage.RootRunID]
-			if !itemFound || !parentFound || !rootFound {
-				return Snapshot{}, fmt.Errorf("sessions: fork run %q has lineage outside the selected boundary", sourceID)
-			}
-			lineage = run.Lineage{
-				SpawnedByItemID: spawnedBy,
-				ParentRunID:     parentID,
-				RootRunID:       rootID,
-			}
-		}
-		copied, err := value.Fork(child.ID(), runIDs[sourceID], lineage)
+func (projection *forkSnapshotProjection) copyRuns() error {
+	for _, sourceID := range projection.boundary.RunIDs {
+		value := projection.runByID[sourceID]
+		lineage, err := projection.remapLineage(sourceID, value.Lineage())
 		if err != nil {
-			return Snapshot{}, fmt.Errorf("sessions: copy fork run %q: %w", sourceID, err)
+			return err
 		}
-		forked.Runs = append(forked.Runs, copied)
+		copied, err := value.Fork(projection.child.ID(), projection.runIDs[sourceID], lineage)
+		if err != nil {
+			return fmt.Errorf("sessions: copy fork run %q: %w", sourceID, err)
+		}
+		projection.forked.Runs = append(projection.forked.Runs, copied)
 	}
+	return nil
+}
 
-	for _, value := range source.Items {
-		newID, selected := itemIDs[value.ID()]
+func (projection *forkSnapshotProjection) remapLineage(
+	sourceID string,
+	lineage run.Lineage,
+) (run.Lineage, error) {
+	if !lineage.IsChild() {
+		return lineage, nil
+	}
+	spawnedBy, itemFound := projection.itemIDs[lineage.SpawnedByItemID]
+	parentID, parentFound := projection.runIDs[lineage.ParentRunID]
+	rootID, rootFound := projection.runIDs[lineage.RootRunID]
+	if !itemFound || !parentFound || !rootFound {
+		return run.Lineage{}, fmt.Errorf("sessions: fork run %q has lineage outside the selected boundary", sourceID)
+	}
+	return run.Lineage{
+		SpawnedByItemID: spawnedBy,
+		ParentRunID:     parentID,
+		RootRunID:       rootID,
+	}, nil
+}
+
+func (projection *forkSnapshotProjection) copyItems() error {
+	for _, value := range projection.source.Items {
+		newID, selected := projection.itemIDs[value.ID()]
 		if !selected {
 			continue
 		}
-		var offload *toolresult.Ref
-		if invocation, present := value.ToolInvocation(); present && invocation.Offload != nil {
-			newBlobID, found := blobIDs[invocation.Offload.ID]
-			if !found {
-				return Snapshot{}, fmt.Errorf("sessions: fork item %q references an unavailable tool result", value.ID())
-			}
-			offload = &toolresult.Ref{ID: newBlobID}
-		}
-		copied, err := value.Fork(child.ID(), runIDs[value.RunID()], newID, offload)
+		offload, err := projection.remapOffload(value)
 		if err != nil {
-			return Snapshot{}, fmt.Errorf("sessions: copy fork item %q: %w", value.ID(), err)
+			return err
 		}
-		forked.Items = append(forked.Items, copied)
+		copied, err := value.Fork(
+			projection.child.ID(),
+			projection.runIDs[value.RunID()],
+			newID,
+			offload,
+		)
+		if err != nil {
+			return fmt.Errorf("sessions: copy fork item %q: %w", value.ID(), err)
+		}
+		projection.forked.Items = append(projection.forked.Items, copied)
 	}
+	return nil
+}
 
-	for _, blob := range source.ToolResults {
-		newBlobID, selected := blobIDs[blob.ID]
+func (projection *forkSnapshotProjection) remapOffload(item transcript.Item) (*toolresult.Ref, error) {
+	invocation, present := item.ToolInvocation()
+	if !present || invocation.Offload == nil {
+		return nil, nil
+	}
+	newBlobID, found := projection.blobIDs[invocation.Offload.ID]
+	if !found {
+		return nil, fmt.Errorf("sessions: fork item %q references an unavailable tool result", item.ID())
+	}
+	return &toolresult.Ref{ID: newBlobID}, nil
+}
+
+func (projection *forkSnapshotProjection) copyToolResults() {
+	for _, blob := range projection.source.ToolResults {
+		newBlobID, selected := projection.blobIDs[blob.ID]
 		if !selected {
 			continue
 		}
 		blob.ID = newBlobID
-		blob.SessionID = child.ID()
-		blob.ItemID = itemIDs[blob.ItemID]
-		forked.ToolResults = append(forked.ToolResults, blob)
+		blob.SessionID = projection.child.ID()
+		blob.ItemID = projection.itemIDs[blob.ItemID]
+		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}
+}
 
-	normalized, err := forked.NormalizeForRestore()
+func (projection *forkSnapshotProjection) finish() (Snapshot, error) {
+	normalized, err := projection.forked.NormalizeForRestore()
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("sessions: normalize fork snapshot: %w", err)
 	}

@@ -1,8 +1,8 @@
-# Flame Runtime Transport（定稿 `2026-08-28`）
+# Flame Runtime Transport（定稿 `2026-08-30`）
 
 > **状态：正式契约（canonical）。** 本文定义同目录 [`API.md`](./API.md)（Flame Runtime Protocol）如何在具体 transport
 > 上承载，并且是 **binding 层的唯一作者**：端点、POST 契约、HTTP status、SSE 帧、续流、门禁 token、sidecar、CORS、
-> 背压 —— 这些在别处都没有第二份定义。`protocolVersion`: **`2026-08-28`**。
+> 背压 —— 这些在别处都没有第二份定义。`protocolVersion`: **`2026-08-30`**。
 
 ## 0. 目的
 
@@ -145,7 +145,7 @@ body：
   "method": "runs.start",
   "params": {
     "_meta": {
-      "protocolVersion": "2026-08-28",
+      "protocolVersion": "2026-08-30",
       "clientInfo": { "name": "flame-desktop", "version": "0.1.0" },
       "clientCapabilities": {
         "features": {},
@@ -290,7 +290,7 @@ data: {"jsonrpc":"2.0","method":"notifications.run.event","params":{"runId":"run
 
 - **只对活跃 run 开流**；后台 run 用 `items.list` 补历史，需要 live 再 `runs.subscribe`；
 - 普通 RPC 走短连接（keep-alive 复用），不与流式连接抢占；
-- `maxConcurrentRuns` 是 server 并发上限，**不等于**客户端要同时开这么多条流。
+- `maxConcurrentRuns` 缺席表示 Runtime **没有实施进程级 Run 上限**；present positive value 才是 server admission owner 实际强制的上限。它仍**不等于**客户端要同时开这么多条流。
 
 真需要"同时 live 跟多个 run"并会顶到上限时，loopback 上启用 **TLS**（`https://127.0.0.1` + 本地证书）让浏览器
 ALPN 协商 HTTP/2 多路复用 —— 这才是有效解，**不是 h2c**。
@@ -429,7 +429,7 @@ live 只返回 200；ready 在依赖异常时返回 503，并携带 `checks`。�
 
 ```json
 {
-  "protocolVersion": "2026-08-28",
+  "protocolVersion": "2026-08-30",
   "server": {
     "instanceId": "runtime_019c765b-2f8f-7e36-a2b4-31cb11f48d10",
     "name": "flame-runtime",

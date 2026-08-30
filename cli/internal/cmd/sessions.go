@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/render"
-	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
@@ -101,8 +100,9 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 
 func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 	var (
-		query  agent.SessionQuery
-		asJSON bool
+		query     agent.SessionQuery
+		limitRows = agent.DefaultPageRows
+		asJSON    bool
 	)
 	cmd := &cobra.Command{
 		Use:          "ls",
@@ -111,6 +111,11 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			pageSize, err := pageSizeFromFlag(cmd, "limit", limitRows)
+			if err != nil {
+				return err
+			}
+			query.PageSize = pageSize
 			if query.Workspace != "" {
 				resolved, err := canonicalWorkspacePath(query.Workspace)
 				if err != nil {
@@ -151,7 +156,13 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().IntVarP(&query.Limit, "limit", "n", 20, "Maximum sessions to return (up to 100)")
+	cmd.Flags().IntVarP(
+		&limitRows,
+		"limit",
+		"n",
+		agent.DefaultPageRows,
+		fmt.Sprintf("Maximum sessions to return (up to %d)", agent.MaximumPageRows),
+	)
 	cmd.Flags().StringVar(&query.Cursor, "cursor", "", "Opaque cursor returned by the previous page")
 	cmd.Flags().StringVarP(&query.Search, "search", "q", "", "Search session titles and workspaces")
 	cmd.Flags().StringVar(&query.Workspace, "workspace", "", "Only sessions in this exact workspace")
@@ -282,14 +293,18 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return err
 			}
-			authoring, err := workbench.Open(stateDirectory, workbench.Config{})
+			authoring, err := openCommandWorkbench(stateDirectory)
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
+			replayPolicy, err := runtimeprofile.CommandReplayPolicy(services.RuntimeProfile)
+			if err != nil {
+				return fmt.Errorf("runtime command replay policy: %w", err)
+			}
 			result, err := sessiondeletion.Execute(
 				cmd.Context(), services.Agent, authoring, args[0],
-				commandDeletionReplayWindow(services.RuntimeProfile),
-				retry.Backoff{Base: 50 * time.Millisecond, Maximum: time.Second},
+				replayPolicy,
+				mutation.AcknowledgementBackoff(),
 			)
 			switch result.Outcome {
 			case mutation.Rejected:
@@ -318,14 +333,11 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 	return cmd
 }
 
-func commandDeletionReplayWindow(profile *runtimeprofile.Profile) sessiondeletion.ReplayWindow {
-	if profile == nil {
-		return sessiondeletion.ReplayWindow{}
+func openCommandWorkbench(directory string) (*workbench.Store, error) {
+	if strings.TrimSpace(directory) == "" {
+		return workbench.OpenMemory(workbench.Config{})
 	}
-	return sessiondeletion.ReplayWindow{
-		Namespace: profile.Limits.IdempotencyNamespace,
-		Retention: time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second,
-	}
+	return workbench.OpenDirectory(directory, workbench.Config{})
 }
 
 func completeFirstSessionArgument(provider runtimeProvider) cobra.CompletionFunc {
@@ -344,7 +356,7 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		page, err := runtime.ListSessions(cmd.Context(), agent.SessionQuery{Limit: 100, Search: toComplete})
+		page, err := runtime.ListSessions(cmd.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize(), Search: toComplete})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

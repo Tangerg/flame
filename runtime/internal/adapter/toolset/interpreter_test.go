@@ -96,7 +96,11 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	interpreter := NewInterpreter(fixedPlanState{state: want})
+	current, err := plan.CurrentOf(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	interpreter := NewInterpreter(fixedPlanState{state: current})
 	event, err := interpreter.ProjectOutcome(t.Context(), "session_1", tool.SetPlan, true)
 	if err != nil {
 		t.Fatal(err)
@@ -120,10 +124,10 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 }
 
 type fixedPlanState struct {
-	state plan.State
+	state plan.Current
 	err   error
 }
 
-func (f fixedPlanState) State(context.Context, string) (plan.State, error) {
+func (f fixedPlanState) State(context.Context, string) (plan.Current, error) {
 	return f.state, f.err
 }

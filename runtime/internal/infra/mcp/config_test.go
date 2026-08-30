@@ -17,7 +17,8 @@ import (
 func TestConnectSessionLifetimeDoesNotInheritHandshakeDeadline(t *testing.T) {
 	owner, stopOwner := context.WithCancel(context.Background())
 	var lifetime context.Context
-	session, cancel, err := connectSession(t.Context(), owner, time.Hour, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
+	timeout := time.Hour
+	session, cancel, err := connectSession(t.Context(), owner, &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
 		lifetime = ctx
 		return new(sdkmcp.ClientSession), nil
 	})
@@ -43,7 +44,8 @@ func TestConnectSessionLifetimeDoesNotInheritHandshakeDeadline(t *testing.T) {
 
 func TestConnectSessionHandshakeTimeoutCancelsInFlightConnect(t *testing.T) {
 	started := make(chan struct{})
-	_, _, err := connectSession(t.Context(), t.Context(), 20*time.Millisecond, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
+	timeout := 20 * time.Millisecond
+	_, _, err := connectSession(t.Context(), t.Context(), &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
 		close(started)
 		<-ctx.Done()
 		return nil, ctx.Err()
@@ -64,21 +66,22 @@ func TestServerConfigValidate(t *testing.T) {
 		cfg  ServerConfig
 		ok   bool
 	}{
-		{"http ok", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e/"}, true},
-		{"http relative endpoint", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "/mcp"}, false},
-		{"http non-http endpoint", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
-		{"stdio ok", ServerConfig{Name: "x", Transport: TransportStdio, Command: "npx"}, true},
+		{"http ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}, true},
+		{"http relative endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "/mcp"}, false},
+		{"http non-http endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
+		{"stdio ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx"}, true},
+		{"zero handshake timeout", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx", HandshakeTimeout: durationPointer(0)}, false},
 		{"missing name", ServerConfig{Transport: TransportHTTP, Endpoint: "https://e/"}, false},
-		{"zero transport", ServerConfig{Name: "x", Endpoint: "https://e/"}, false},
-		{"http without endpoint", ServerConfig{Name: "x", Transport: TransportHTTP}, false},
-		{"http with command", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e/", Command: "npx"}, false},
-		{"stdio without command", ServerConfig{Name: "x", Transport: TransportStdio}, false},
-		{"stdio with endpoint", ServerConfig{Name: "x", Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
-		{"http auth fields ok", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
-		{"http oauth with static authorization", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
-		{"http oauth with authorization header", ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
-		{"stdio with auth", ServerConfig{Name: "x", Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},
-		{"stdio with headers", ServerConfig{Name: "x", Transport: TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}, false},
+		{"zero transport", ServerConfig{Name: testMCPServerName("x"), Endpoint: "https://e/"}, false},
+		{"http without endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP}, false},
+		{"http with command", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/", Command: "npx"}, false},
+		{"stdio without command", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio}, false},
+		{"stdio with endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
+		{"http auth fields ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
+		{"http oauth with static authorization", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
+		{"http oauth with authorization header", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"stdio with auth", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},
+		{"stdio with headers", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -92,16 +95,18 @@ func TestServerConfigValidate(t *testing.T) {
 	}
 }
 
+func durationPointer(value time.Duration) *time.Duration { return &value }
+
 func TestDialValidatesBeforeDialing(t *testing.T) {
 	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Name: "x", Transport: TransportHTTP})
+		ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Endpoint is required")
 }
 
 func TestDialNilClient(t *testing.T) {
 	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Name: "x", Transport: TransportHTTP, Endpoint: "https://e/"})
+		ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client must not be nil")
 }
@@ -114,7 +119,7 @@ func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
 	_, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
-		Name: "x", Transport: TransportHTTP, Endpoint: server.URL,
+		Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: server.URL,
 	})
 	require.Error(t, err)
 	assert.Nil(t, cleanup)

@@ -23,7 +23,7 @@ import (
 // Deriving one from the other makes agreement structural — there is no path by
 // which a variant can be forbidden in the schema and allowed in TypeScript.
 //
-// What TypeScript cannot express is left out on purpose: a presence rule
+// What TypeScript cannot express is left out on purpose: a conditional rule
 // (`if/then`) is a runtime check, not a type, and the generated validator is where
 // it lands. A type system that silently drops half a constraint is worse than one
 // that says which half it holds.
@@ -65,7 +65,7 @@ func newTypeScript(set *schemaSet, notifications []string) string {
 		emitter.define(name, set.defs[name])
 	}
 	emitter.enumValues(names)
-	emitter.runEventReliability()
+	emitter.runEventSemantics()
 	return emitter.out.String()
 }
 
@@ -163,7 +163,7 @@ func (t *tsEmitter) enumValues(names []string) {
 	t.line("} as const;")
 }
 
-func (t *tsEmitter) runEventReliability() {
+func (t *tsEmitter) runEventSemantics() {
 	values, ok := contractcatalog.EnumValues(reflect.TypeFor[protocol.StreamEventType]())
 	if !ok {
 		panic("contractgen: StreamEventType is not a registered wire enum")
@@ -184,6 +184,19 @@ func (t *tsEmitter) runEventReliability() {
 	t.line("export function runEventReliability(value: unknown): RunEventReliability | undefined {")
 	t.line("  if (typeof value !== \"string\") return undefined;")
 	t.line("  return (RUN_EVENT_RELIABILITY as Partial<Record<string, RunEventReliability>>)[value];")
+	t.line("}")
+	t.line("")
+	t.line("/** Replay retention is owned by event type; live-only previews never consume the replay window. */")
+	t.line("export const RUN_EVENT_REPLAYABLE = {")
+	for _, value := range values {
+		replayable := (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Replayable()
+		t.line("  %s: %t,", strconv.Quote(value), replayable)
+	}
+	t.line("} as const satisfies Record<StreamEventType, boolean>;")
+	t.line("")
+	t.line("export function runEventIsReplayable(value: unknown): boolean | undefined {")
+	t.line("  if (typeof value !== \"string\") return undefined;")
+	t.line("  return (RUN_EVENT_REPLAYABLE as Partial<Record<string, boolean>>)[value];")
 	t.line("}")
 }
 
@@ -209,6 +222,31 @@ func (t *tsEmitter) header() {
 func (t *tsEmitter) protocolVersion() {
 	t.line("// The wire version this runtime serves; a client states it in request metadata.")
 	t.line("export const PROTOCOL_VERSION = %s;", strconv.Quote(protocol.ProtocolVersion))
+	t.line("")
+	t.line("// The only Session Artifact version this runtime imports or exports.")
+	t.line("export const SESSION_ARTIFACT_VERSION = %d;", protocol.SessionArtifactVersion)
+	t.line("")
+	t.line("// The maximum length of one opaque pagination cursor on the public wire.")
+	t.line("export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = %d;", protocol.MaximumPaginationCursorCharacters)
+	t.line("")
+	t.line("// Public Unicode code-point ceilings for model-selection identities.")
+	t.line("export const MAXIMUM_PROVIDER_IDENTITY_CHARACTERS = %d;", protocol.MaximumProviderIdentityCharacters)
+	t.line("export const MAXIMUM_MODEL_IDENTITY_CHARACTERS = %d;", protocol.MaximumModelIdentityCharacters)
+	t.line("export const MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS = %d;", protocol.MaximumReasoningEffortIdentityCharacters)
+	t.line("export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = %d;", protocol.MaximumResourceIdentityCharacters)
+	t.line("")
+	t.line("// Public framing of one opaque Schedule resource identity.")
+	t.line("export const SCHEDULE_ID_PREFIX = %s;", strconv.Quote(protocol.IDPrefixSchedule))
+	t.line("")
+	t.line("// Public framing and maximum length of one opaque Run event identity.")
+	t.line("export const RUN_EVENT_ID_PREFIX = %s;", strconv.Quote(protocol.IDPrefixEvent))
+	t.line("export const MAXIMUM_RUN_EVENT_ID_CHARACTERS = %d;", protocol.MaximumRunEventIDCharacters)
+	t.line("")
+	t.line("// Largest integer identity represented exactly by every supported JSON consumer.")
+	t.line("export const MAXIMUM_EXACT_JSON_INTEGER = %d;", protocol.MaximumExactJSONInteger)
+	t.line("")
+	t.line("// Runtime subscriptions consume the shared exact-integer envelope.")
+	t.line("export const MAXIMUM_RUNTIME_EVENT_SEQUENCE = MAXIMUM_EXACT_JSON_INTEGER;")
 	t.line("")
 }
 
@@ -314,6 +352,9 @@ func (t *tsEmitter) branch(unionSchema, variantSchema *schema) string {
 func (t *tsEmitter) narrow(baseChild, narrowing *schema) string {
 	if narrowing.Const != "" {
 		return strconv.Quote(narrowing.Const)
+	}
+	if len(narrowing.Enum) > 0 {
+		return unionOf(quoteAll(narrowing.Enum))
 	}
 	if narrowing.TypeScriptType != "" {
 		return narrowing.TypeScriptType

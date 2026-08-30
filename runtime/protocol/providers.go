@@ -8,14 +8,11 @@ type TestProviderRequest struct {
 // Provider is one configured LLM provider (API.md §4.9). The key is
 // returned masked, never reconstructable.
 type Provider struct {
-	ID           string `json:"id"`
-	BaseURL      string `json:"baseUrl,omitempty"`
-	APIKeyMasked string `json:"apiKeyMasked"` // "" = unconfigured; e.g. "sk****78"
-	// KeySource is the provenance of the key: "stored" (set via
-	// providers.update, editable) or "env" (read from the provider's
-	// environment variable, read-only — shown as "from env"). Omitted when the
-	// provider is unconfigured (apiKeyMasked is also "").
-	KeySource ProviderKeySource `json:"keySource,omitempty"`
+	ID                    string                        `json:"id"`
+	BaseURL               *string                       `json:"baseUrl,omitempty"`
+	Credential            *ProviderCredential           `json:"credential,omitempty"`
+	Configured            bool                          `json:"configured"`
+	CredentialRequirement ProviderCredentialRequirement `json:"credentialRequirement"`
 	// RequiresBaseURL marks providers with no built-in endpoint — the generic
 	// "openai-compatible" / "anthropic-compatible" passthroughs and Azure
 	// (per-resource URL). The client must collect a base URL when configuring
@@ -23,14 +20,31 @@ type Provider struct {
 	RequiresBaseURL bool `json:"requiresBaseUrl,omitempty"`
 	// EmbeddingCapable marks providers with an embeddings adapter — the set the
 	// agent-memory embedding-role picker offers (models.setEmbeddingRole).
-	// DefaultEmbeddingModel is a sensible default model id to prefill ("" when
-	// the id is user-supplied, e.g. an Azure deployment).
-	EmbeddingCapable      bool   `json:"embeddingCapable,omitempty"`
-	DefaultEmbeddingModel string `json:"defaultEmbeddingModel,omitempty"`
+	// DefaultEmbeddingModel is a sensible default model id to prefill. It is
+	// absent when the id is user-supplied, e.g. an Azure deployment.
+	EmbeddingCapable      bool    `json:"embeddingCapable,omitempty"`
+	DefaultEmbeddingModel *string `json:"defaultEmbeddingModel,omitempty"`
 }
 
-// ProviderKeySource records where the visible API key originates. The empty
-// value means no key is configured and is intentionally omitted on the wire.
+// ProviderCredentialRequirement distinguishes API-key vendors from endpoints
+// such as a local Ollama daemon that are usable without authentication. An
+// optional provider may still carry a stored or environment credential.
+type ProviderCredentialRequirement string
+
+const (
+	ProviderAPIKeyRequired ProviderCredentialRequirement = "apiKeyRequired"
+	ProviderAPIKeyOptional ProviderCredentialRequirement = "apiKeyOptional"
+)
+
+// ProviderCredential is the redacted projection of actual secret material.
+// Its absence does not imply the provider is unconfigured: an optional-key
+// endpoint may be ready without carrying a credential.
+type ProviderCredential struct {
+	Masked string            `json:"masked"`
+	Source ProviderKeySource `json:"source"`
+}
+
+// ProviderKeySource records where the visible API key originates.
 type ProviderKeySource string
 
 const (

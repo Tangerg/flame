@@ -12,26 +12,31 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 )
 
-const agentMemorySearchDefaultLimit = 8
+const (
+	agentMemorySearchDefaultLimit = 8
+	agentMemorySearchMaxLimit     = 20
+)
 
 type agentMemorySearchRequest struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Natural-language topic, decision, convention, or user preference to recall from curated memory visible in the current project context."`
-	Limit int    `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum memories to return. Defaults to 8."`
+	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum memories to return. Defaults to 8."`
 }
 
-func (a agentMemorySearchRequest) normalize() (agentMemorySearchRequest, error) {
-	a.Query = strings.TrimSpace(a.Query)
-	if a.Query == "" {
-		return agentMemorySearchRequest{}, errors.New("query is required")
+func (a agentMemorySearchRequest) normalized() (query string, limit int, err error) {
+	query = strings.TrimSpace(a.Query)
+	if query == "" {
+		return "", 0, errors.New("query is required")
 	}
-	if a.Limit <= 0 {
-		a.Limit = agentMemorySearchDefaultLimit
+	limit, err = toolarg.PositiveInt(a.Limit, agentMemorySearchDefaultLimit, agentMemorySearchMaxLimit, "limit")
+	if err != nil {
+		return "", 0, err
 	}
-	return a, nil
+	return query, limit, nil
 }
 
 // AgentMemorySearch is the agent-memory search capability this tool consumes.
@@ -64,7 +69,7 @@ func agentMemorySearchDefinition() toolcontract.FuncConfig {
 }
 
 func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (string, error) {
-	req, err := req.normalize()
+	query, limit, err := req.normalized()
 	if err != nil {
 		return "", fmt.Errorf("search_memory: %w", err)
 	}
@@ -72,7 +77,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if cwd == "" {
 		return "No project is associated with this session, so there is no project memory to search.", nil
 	}
-	items, err := a.search.Search(ctx, filepath.Clean(cwd), req.Query, req.Limit)
+	items, err := a.search.Search(ctx, filepath.Clean(cwd), query, limit)
 	if err != nil {
 		return "", err
 	}

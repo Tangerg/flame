@@ -6,11 +6,11 @@ import (
 	"math"
 	"slices"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 )
 
 func (i *interactionSession) initializeRestoredContinuation(
@@ -193,6 +193,12 @@ func restoreManagedDelegateCall(
 	if err := binding.Validate(); err != nil {
 		return nil, false, err
 	}
+	callID, err := delegatedToolCallID(
+		parentSnapshot.Relation(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall(),
+	)
+	if err != nil {
+		return nil, false, err
+	}
 	return &managedDelegateCall{
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
 		parentRelation:    parentSnapshot.Relation(),
@@ -202,10 +208,8 @@ func restoreManagedDelegateCall(
 		arguments:         arguments,
 		modelCallSequence: child.ModelCallSequence(),
 		toolCallIndex:     child.ToolCallIndex(),
-		callID: delegatedToolCallID(
-			parentSnapshot.Relation(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall(),
-		),
-		binding: binding, childProcessID: child.ProcessID(), toolStarted: true,
+		callID:            callID,
+		binding:           binding, childProcessID: child.ProcessID(), toolStarted: true,
 	}, true, nil
 }
 

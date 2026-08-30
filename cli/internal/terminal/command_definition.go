@@ -9,6 +9,14 @@ import (
 	"unicode/utf8"
 )
 
+func parseSlashCommand(line string) (name, argument string, ok bool) {
+	if !strings.HasPrefix(line, "/") {
+		return "", "", false
+	}
+	name, argument, _ = strings.Cut(strings.TrimPrefix(line, "/"), " ")
+	return name, strings.TrimSpace(argument), true
+}
+
 func splitCommandArgument(value string) (identity, remainder string, ok bool) {
 	value = strings.TrimSpace(value)
 	if value == "" {

@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
 
 func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 	t.Parallel()
 
-	profile := commandRuntimeProfile()
+	profile := commandRuntimeProfile(t)
 	for _, test := range []struct {
 		name  string
 		args  []string
@@ -37,15 +39,15 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		{
 			name: "JSON", args: []string{"runtime", "info", "--json"},
 			check: func(t *testing.T, output string) {
-				if !strings.Contains(output, `"maxConcurrentRuns":`) {
-					t.Fatalf("runtime profile JSON omitted the optional concurrency limit: %s", output)
+				if !strings.Contains(output, `"runConcurrency":{"type":"bounded","maximum":4}`) {
+					t.Fatalf("runtime profile JSON omitted the explicit concurrency policy: %s", output)
 				}
 				var decoded runtimeprofile.Profile
 				if err := json.Unmarshal([]byte(output), &decoded); err != nil {
 					t.Fatal(err)
 				}
 				if decoded.Server != profile.Server || len(decoded.Features) != len(profile.Features) ||
-					decoded.Limits.IdempotencyRetentionSeconds != 600 || decoded.Limits.RunReplay.MaxBytes != 1<<20 {
+					decoded.Limits.CommandReplay != profile.Limits.CommandReplay || decoded.Limits.RunReplay.MaxBytes != 1<<20 {
 					t.Fatalf("runtime profile JSON = %+v", decoded)
 				}
 			},
@@ -68,7 +70,16 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 	}
 }
 
-func commandRuntimeProfile() runtimeprofile.Profile {
+func commandRuntimeProfile(t *testing.T) runtimeprofile.Profile {
+	t.Helper()
+	concurrency, err := runtimeprofile.NewBoundedRunConcurrencyLimit(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandReplay, err := commandreplay.NewCapability("idp_test", 10*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return runtimeprofile.Profile{
 		Protocol:  runtimeprofile.Protocol{Version: "2.0"},
 		Server:    runtimeprofile.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
@@ -80,7 +91,7 @@ func commandRuntimeProfile() runtimeprofile.Profile {
 			},
 		},
 		Limits: runtimeprofile.Limits{
-			MaxConcurrentRuns: 4, IdempotencyRetentionSeconds: 600, IdempotencyNamespace: "idp_test",
+			RunConcurrency: concurrency, CommandReplay: commandReplay,
 			RunReplay:                        runtimeprofile.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},

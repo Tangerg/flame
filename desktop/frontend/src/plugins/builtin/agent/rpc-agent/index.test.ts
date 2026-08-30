@@ -11,7 +11,10 @@ import {
 } from "@/rpc";
 import { definePlugin, pickAgentSource } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import rpcAgent from "./index";
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
@@ -122,7 +125,7 @@ describe("RPC Agent Runtime generation wiring", () => {
 
 class RuntimeGenerationFixture {
   readonly #subscribers = new Set<() => void>();
-  #generation = "runtime_1";
+  #generation = RuntimeConnectionGeneration.forProcess("runtime_1");
   readonly plugin;
 
   constructor(name: string) {
@@ -147,7 +150,7 @@ class RuntimeGenerationFixture {
   }
 
   replace(generation: string): void {
-    this.#generation = generation;
+    this.#generation = RuntimeConnectionGeneration.forProcess(generation);
     this.notify();
   }
 }

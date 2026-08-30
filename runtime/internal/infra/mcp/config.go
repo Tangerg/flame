@@ -17,6 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
@@ -51,7 +52,7 @@ func (t Transport) String() string {
 type ServerConfig struct {
 	// Name identifies the server for tool namespacing and status reporting.
 	// Required.
-	Name string
+	Name mcpserver.ServerName
 
 	// Transport picks the connection mode. Required.
 	Transport Transport
@@ -77,9 +78,9 @@ type ServerConfig struct {
 	// Headers carries extra static HTTP headers.
 	Headers map[string]string
 
-	// Timeout bounds the MCP initialize handshake. It does not bound the live
-	// session after connection.
-	Timeout time.Duration
+	// HandshakeTimeout bounds MCP initialization when present. nil is the
+	// explicit unbounded policy and does not affect the live session.
+	HandshakeTimeout *time.Duration
 
 	// OAuthHandler authorizes an HTTP connection via OAuth 2.1. The handler is
 	// live process state; its opaque session may be persisted separately through
@@ -93,14 +94,21 @@ func (s ServerConfig) Clone() ServerConfig {
 	s.Args = slices.Clone(s.Args)
 	s.Env = slices.Clone(s.Env)
 	s.Headers = maps.Clone(s.Headers)
+	if s.HandshakeTimeout != nil {
+		timeout := *s.HandshakeTimeout
+		s.HandshakeTimeout = &timeout
+	}
 	return s
 }
 
 // Validate reports whether exactly one transport is fully specified and the
 // other transport's fields are blank.
 func (s ServerConfig) Validate() error {
-	if s.Name == "" {
-		return errors.New("mcp: server name is required")
+	if err := s.Name.Validate(); err != nil {
+		return fmt.Errorf("mcp: server name: %w", err)
+	}
+	if s.HandshakeTimeout != nil && *s.HandshakeTimeout <= 0 {
+		return fmt.Errorf("mcp server %q: HandshakeTimeout must be positive when present", s.Name)
 	}
 	switch s.Transport {
 	case TransportHTTP:
@@ -198,7 +206,7 @@ func dial(
 			return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport)
 		}
 	}
-	session, cancelLifetime, err := connectSession(ctx, lifetime, cfg.Timeout, connect)
+	session, cancelLifetime, err := connectSession(ctx, lifetime, cfg.HandshakeTimeout, connect)
 	cleanup := sessionCleanup(func() error {
 		if cancelLifetime != nil {
 			cancelLifetime()
@@ -230,7 +238,7 @@ type sessionCleanup func() error
 func connectSession(
 	parent context.Context,
 	lifetime context.Context,
-	timeout time.Duration,
+	timeout *time.Duration,
 	connect func(context.Context) (*sdkmcp.ClientSession, error),
 ) (*sdkmcp.ClientSession, context.CancelFunc, error) {
 	if parent == nil {
@@ -242,8 +250,8 @@ func connectSession(
 	lifetimeCtx, cancelLifetime := context.WithCancel(lifetime)
 	handshakeCtx := parent
 	cancelHandshake := func() {}
-	if timeout > 0 {
-		handshakeCtx, cancelHandshake = context.WithTimeout(parent, timeout)
+	if timeout != nil {
+		handshakeCtx, cancelHandshake = context.WithTimeout(parent, *timeout)
 	}
 	stopHandshake := context.AfterFunc(handshakeCtx, cancelLifetime)
 

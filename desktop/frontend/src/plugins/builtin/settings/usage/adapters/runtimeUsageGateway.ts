@@ -2,10 +2,11 @@ import { getContainer } from "@/main/container";
 import { configureUsageGateway, type UsageGateway } from "../application/ports/usageGateway";
 
 const gateway: UsageGateway = {
-  loadSummary(sinceDays, signal) {
+  loadSummary(period, signal) {
+    const sinceDays = period.recentDays();
     return getContainer()
       .client()
-      .usage.summary(sinceDays > 0 ? { sinceDays } : {}, signal);
+      .usage.summary(sinceDays === undefined ? {} : { sinceDays }, signal);
   },
 };
 

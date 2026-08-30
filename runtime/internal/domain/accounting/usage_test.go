@@ -2,7 +2,10 @@ package accounting
 
 import (
 	"math"
+	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 func TestTokenUsageAdd(t *testing.T) {
@@ -79,6 +82,23 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	}}
 	if _, err := overflow.Total(); err == nil {
 		t.Fatal("overflowing snapshot aggregate was accepted")
+	}
+}
+
+func TestUsageRejectsInvalidModelIdentities(t *testing.T) {
+	t.Parallel()
+
+	for _, model := range []string{
+		"bad model",
+		"model\x00shadow",
+		strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1),
+	} {
+		if err := (Usage{ByModel: map[string]Totals{model: {}}}).Validate(); err == nil {
+			t.Fatalf("Usage.Validate accepted model identity %q", model)
+		}
+		if err := (Snapshot{Models: []ModelUsage{{Model: model, Calls: 1}}}).Validate(); err == nil {
+			t.Fatalf("Snapshot.Validate accepted model identity %q", model)
+		}
 	}
 }
 

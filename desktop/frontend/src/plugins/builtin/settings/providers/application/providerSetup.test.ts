@@ -7,7 +7,7 @@ describe("needsProviderSetup", () => {
   });
 
   it("shows setup only when every provider lacks a saved key", () => {
-    expect(needsProviderSetup([{ apiKeyMasked: "" }])).toBe(true);
-    expect(needsProviderSetup([{ apiKeyMasked: "" }, { apiKeyMasked: "sk-..." }])).toBe(false);
+    expect(needsProviderSetup([{ configured: false }])).toBe(true);
+    expect(needsProviderSetup([{ configured: false }, { configured: true }])).toBe(false);
   });
 });

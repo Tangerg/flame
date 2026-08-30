@@ -1,31 +1,114 @@
 package provider
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
 
-func TestProviderEnabled(t *testing.T) {
-	if (Provider{}).Enabled() {
-		t.Error("empty provider should not be enabled")
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+)
+
+func TestProviderCredentialIsClosedAndStoredWinsEnvironmentFallback(t *testing.T) {
+	storedKey, err := NewAPIKey("sk-stored")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !(Provider{APIKey: "k"}).Enabled() {
-		t.Error("keyed provider should be enabled")
+	environmentKey, err := NewAPIKey("sk-environment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := New("openai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err = entry.Apply(Patch{APIKey: Set(storedKey)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry = entry.WithEnvironmentFallback(environmentKey)
+
+	credential, configured := entry.Credential()
+	if !configured {
+		t.Fatal("stored provider should be configured")
+	}
+	key, _ := credential.APIKey()
+	source, _ := credential.Source()
+	if key.Reveal() != "sk-stored" || source != KeyStored {
+		t.Fatalf("credential = (%q, %q), want stored credential", key.Reveal(), source)
+	}
+
+	unconfigured, err := New("anthropic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unconfigured = unconfigured.WithEnvironmentFallback(environmentKey)
+	credential, configured = unconfigured.Credential()
+	source, _ = credential.Source()
+	if !configured || source != KeyEnvironment {
+		t.Fatalf("environment credential = (%v, %q)", configured, source)
 	}
 }
 
-func TestPatchDistinguishesPreserveReplaceAndClear(t *testing.T) {
-	provider := Provider{ID: "openai", APIKey: "sk-old", BaseURL: "https://old.test"}
+func TestPatchDistinguishesPreserveSetAndClearWithoutStringSentinels(t *testing.T) {
+	key, _ := NewAPIKey("sk-old")
+	oldBaseURL, _ := NewBaseURL("https://old.test")
+	newBaseURL, _ := NewBaseURL("https://new.test/")
+	entry, _ := New("openai")
+	entry, _ = entry.Apply(Patch{APIKey: Set(key), BaseURL: Set(oldBaseURL)})
 
-	baseURL := "https://new.test"
-	updated := provider.Apply(Patch{BaseURL: &baseURL})
-	if updated.APIKey != provider.APIKey || updated.BaseURL != baseURL {
-		t.Fatalf("replace endpoint = %+v", updated)
+	updated, err := entry.Apply(Patch{BaseURL: Set(newBaseURL)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedKey, _ := updated.APIKey()
+	baseURL, _ := updated.BaseURL()
+	if updatedKey.Reveal() != key.Reveal() || baseURL.String() != "https://new.test" {
+		t.Fatalf("replace endpoint = (%q, %q)", updatedKey.Reveal(), baseURL.String())
 	}
 
-	emptyAPIKey := ""
-	updated = updated.Apply(Patch{APIKey: &emptyAPIKey})
-	if updated.APIKey != "" || updated.BaseURL != baseURL {
-		t.Fatalf("clear key = %+v", updated)
+	updated, err = updated.Apply(Patch{APIKey: Clear[APIKey]()})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !(Patch{}).Empty() || (Patch{APIKey: &emptyAPIKey}).Empty() {
+	if _, configured := updated.Credential(); configured {
+		t.Fatal("cleared provider should be unconfigured")
+	}
+	baseURL, present := updated.BaseURL()
+	if !present || baseURL.String() != "https://new.test" {
+		t.Fatalf("clearing key changed endpoint = (%q, %v)", baseURL.String(), present)
+	}
+	clearing := Patch{APIKey: Clear[APIKey]()}
+	if !(Patch{}).Empty() || clearing.Empty() {
 		t.Fatal("Patch.Empty does not distinguish preserve from clear")
+	}
+}
+
+func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
+	if _, err := New("  "); !errors.Is(err, ErrIDRequired) {
+		t.Fatalf("New blank id error = %v", err)
+	}
+	for _, value := range []string{
+		"open ai",
+		"openai\x00shadow",
+		strings.Repeat("p", modelref.MaximumProviderIdentityCharacters+1),
+	} {
+		if _, err := New(value); !errors.Is(err, ErrIDInvalid) {
+			t.Errorf("New(%q) error = %v, want ErrIDInvalid", value, err)
+		}
+	}
+	if _, err := NewAPIKey("\t"); !errors.Is(err, ErrAPIKeyRequired) {
+		t.Fatalf("NewAPIKey blank error = %v", err)
+	}
+	for _, value := range []string{
+		"", "api.example.test", "ftp://api.example.test", "https://user@api.example.test",
+		"https://api.example.test?token=secret", "https://api.example.test#fragment",
+	} {
+		if _, err := NewBaseURL(value); !errors.Is(err, ErrBaseURLInvalid) {
+			t.Errorf("NewBaseURL(%q) error = %v", value, err)
+		}
+	}
+	entry, _ := New("openai")
+	if _, err := entry.Apply(Patch{APIKey: Set(APIKey{})}); !errors.Is(err, ErrChangeCorrupted) {
+		t.Fatalf("Apply zero API key error = %v", err)
 	}
 }

@@ -22,12 +22,12 @@ type blockingGoalProjection struct {
 	release chan struct{}
 }
 
-func (b *blockingGoalProjection) Get(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
+func (b *blockingGoalProjection) Get(ctx context.Context, sessionID string) (goal.Current, error) {
 	close(b.entered)
 	select {
 	case <-b.release:
 	case <-ctx.Done():
-		return goal.Goal{}, false, ctx.Err()
+		return goal.Current{}, ctx.Err()
 	}
 	return b.GoalStore.Get(ctx, sessionID)
 }
@@ -57,25 +57,33 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	}
 	readerPlanStore := sqlite.NewPlanStore(readerDB)
 	writerPlanStore := sqlite.NewPlanStore(writerDB)
-	originalPlan, err := (plan.State{}).Replace([]plan.Step{{
+	originalPlan, err := (plan.Current{}).Replace([]plan.Step{{
 		Description: "before", Status: plan.StatusInProgress,
 	}}, createdAt)
 	if err != nil {
 		t.Fatalf("prepare Plan: %v", err)
 	}
-	if saveErr := writerPlanStore.Save(ctx, original.ID(), 0, originalPlan); saveErr != nil {
+	if saveErr := writerPlanStore.Save(ctx, original.ID(), (plan.Current{}).Version(), originalPlan); saveErr != nil {
 		t.Fatalf("seed Plan: %v", saveErr)
 	}
 	readerGoalStore := sqlite.NewGoalStore(readerDB)
 	writerGoalStore := sqlite.NewGoalStore(writerDB)
+	selection, err := modelref.New("provider", "model")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalGoal, err := goal.New(
-		original.ID(), "before", modelref.Selection{}, goal.Budget{}, run.Capabilities{},
+		original.ID(), "before", selection, goal.UnlimitedBudget(), run.Capabilities{},
 		"goal_before", createdAt,
 	)
 	if err != nil {
 		t.Fatalf("prepare Goal: %v", err)
 	}
-	originalGoal, applied, err := writerGoalStore.Save(ctx, originalGoal, goal.Version{})
+	unwritten, err := goal.Unwritten(original.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalGoal, applied, err := writerGoalStore.Save(ctx, originalGoal, unwritten.Version())
 	if err != nil || !applied {
 		t.Fatalf("seed Goal: applied=%t err=%v", applied, err)
 	}
@@ -99,12 +107,16 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	}, 1)
 	go func() {
 		snapshot, readMaterialSnapshotErr := stores.ReadMaterialSnapshot(ctx, original.ID())
+		committedPlan, committed := snapshot.Plan.State()
+		if readMaterialSnapshotErr == nil && !committed {
+			readMaterialSnapshotErr = errors.New("snapshot Plan is unwritten")
+		}
 		snapshotResult <- struct {
 			snapshotRevision uint64
 			planRevision     uint64
 			goalRevision     int64
 			err              error
-		}{snapshot.Session.Revision(), snapshot.Plan.Revision(), snapshot.Goal.Revision, readMaterialSnapshotErr}
+		}{snapshot.Session.Revision(), committedPlan.Revision(), snapshot.Goal.Revision(), readMaterialSnapshotErr}
 	}()
 	<-blockingGoal.entered
 
@@ -121,15 +133,21 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatalf("prepare Plan replacement: %v", err)
 	}
-	updatedGoal := originalGoal.Clone()
-	updatedGoal.Pause(goal.ReasonRuntimeRestarted, "", createdAt.Add(time.Second))
+	updatedGoal, err := originalGoal.Pause(goal.ReasonRuntimeRestarted, "", createdAt.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
 	writerDone := make(chan error, 1)
 	go func() {
 		writerDone <- sqlite.RunInTx(ctx, writerDB, func(ctx context.Context) error {
 			if saveErr := writerSessionStore.Save(ctx, original.Revision(), updatedSession); saveErr != nil {
 				return saveErr
 			}
-			if saveErr := writerPlanStore.Save(ctx, original.ID(), originalPlan.Revision(), updatedPlan); saveErr != nil {
+			originalCurrent, currentErr := plan.CurrentOf(originalPlan)
+			if currentErr != nil {
+				return currentErr
+			}
+			if saveErr := writerPlanStore.Save(ctx, original.ID(), originalCurrent.Version(), updatedPlan); saveErr != nil {
 				return saveErr
 			}
 			_, applied, saveErr := writerGoalStore.Save(ctx, updatedGoal, originalGoal.Version())
@@ -159,10 +177,11 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatalf("read successor snapshot: %v", err)
 	}
-	if after.Session.Revision() != 2 || after.Plan.Revision() != 2 || after.Goal.Revision != 2 {
+	afterPlan, committed := after.Plan.State()
+	if !committed || after.Session.Revision() != 2 || afterPlan.Revision() != 2 || after.Goal.Revision() != 2 {
 		t.Fatalf(
 			"successor revisions = Session:%d Plan:%d Goal:%d, want 2/2/2",
-			after.Session.Revision(), after.Plan.Revision(), after.Goal.Revision,
+			after.Session.Revision(), afterPlan.Revision(), after.Goal.Revision(),
 		)
 	}
 }

@@ -91,6 +91,54 @@ type Connection struct {
 	Directory           string
 }
 
+// HandshakeTimeout is the CLI's MCP connection deadline policy. Its zero value
+// is explicitly unbounded; a bounded value can only be constructed with a
+// strictly positive number of seconds.
+type HandshakeTimeout struct {
+	bounded bool
+	seconds int
+}
+
+func NewHandshakeTimeout(seconds int) (HandshakeTimeout, error) {
+	if seconds <= 0 {
+		return HandshakeTimeout{}, errors.New("MCP handshake timeout must be a positive integer")
+	}
+	return HandshakeTimeout{bounded: true, seconds: seconds}, nil
+}
+
+func (h HandshakeTimeout) IsBounded() bool { return h.bounded }
+
+func (h HandshakeTimeout) Seconds() (int, bool) {
+	if !h.bounded {
+		return 0, false
+	}
+	return h.seconds, true
+}
+
+func (h HandshakeTimeout) Validate() error {
+	if !h.bounded {
+		if h.seconds != 0 {
+			return errors.New("unbounded MCP handshake timeout carries seconds")
+		}
+		return nil
+	}
+	if h.seconds <= 0 {
+		return errors.New("bounded MCP handshake timeout must be positive")
+	}
+	return nil
+}
+
+func (h HandshakeTimeout) Equal(other HandshakeTimeout) bool {
+	return h.bounded == other.bounded && h.seconds == other.seconds
+}
+
+func (h HandshakeTimeout) String() string {
+	if seconds, bounded := h.Seconds(); bounded {
+		return fmt.Sprintf("%ds", seconds)
+	}
+	return "unbounded"
+}
+
 func (c Connection) Validate() error {
 	if err := c.Transport.Validate(); err != nil {
 		return err
@@ -128,7 +176,7 @@ type Server struct {
 	Name             string
 	Description      string
 	Connection       Connection
-	TimeoutSeconds   int
+	HandshakeTimeout HandshakeTimeout
 	DisabledTools    []string
 	AutoApproveTools []string
 	State            State
@@ -138,8 +186,8 @@ func (s Server) Validate() error {
 	if strings.TrimSpace(s.Name) == "" {
 		return errors.New("MCP server name is empty")
 	}
-	if s.TimeoutSeconds < 0 {
-		return errors.New("MCP server timeout is negative")
+	if err := s.HandshakeTimeout.Validate(); err != nil {
+		return fmt.Errorf("MCP server %s: %w", s.Name, err)
 	}
 	if err := s.Connection.Validate(); err != nil {
 		return fmt.Errorf("MCP server %s: %w", s.Name, err)
@@ -301,7 +349,7 @@ type Candidate struct {
 	Enabled          bool
 	Description      string
 	Connection       ConnectionInput
-	TimeoutSeconds   int
+	HandshakeTimeout HandshakeTimeout
 	DisabledTools    []string
 	AutoApproveTools []string
 }
@@ -310,8 +358,8 @@ func (c Candidate) Validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		return errors.New("MCP candidate name is empty")
 	}
-	if c.TimeoutSeconds < 0 {
-		return errors.New("MCP candidate timeout is negative")
+	if err := c.HandshakeTimeout.Validate(); err != nil {
+		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
 	}
 	if err := c.Connection.Validate(); err != nil {
 		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
@@ -346,8 +394,8 @@ func (c Candidate) ValidateResult(result Server) error {
 	if result.Description != c.Description {
 		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, c.Description))
 	}
-	if result.TimeoutSeconds != c.TimeoutSeconds {
-		problems = append(problems, fmt.Errorf("runtime returned timeout %d, want %d", result.TimeoutSeconds, c.TimeoutSeconds))
+	if !result.HandshakeTimeout.Equal(c.HandshakeTimeout) {
+		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, c.HandshakeTimeout))
 	}
 	if !slices.Equal(result.DisabledTools, c.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, c.DisabledTools))
@@ -368,7 +416,7 @@ type ServerUpdate struct {
 	Enabled          *bool
 	Description      *string
 	Connection       *ConnectionInput
-	TimeoutSeconds   *int
+	HandshakeTimeout *HandshakeTimeout
 	DisabledTools    *[]string
 	AutoApproveTools *[]string
 }
@@ -385,8 +433,10 @@ func (s ServerUpdate) Validate() error {
 			return fmt.Errorf("MCP update %s: %w", s.Server, err)
 		}
 	}
-	if s.TimeoutSeconds != nil && *s.TimeoutSeconds < 0 {
-		return errors.New("MCP update timeout is negative")
+	if s.HandshakeTimeout != nil {
+		if err := s.HandshakeTimeout.Validate(); err != nil {
+			return fmt.Errorf("MCP update %s: %w", s.Server, err)
+		}
 	}
 	if s.DisabledTools != nil {
 		if err := validateUniqueStrings("disabled MCP tools", *s.DisabledTools); err != nil {
@@ -402,7 +452,7 @@ func (s ServerUpdate) Validate() error {
 }
 
 func (s ServerUpdate) HasChanges() bool {
-	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.TimeoutSeconds != nil ||
+	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.HandshakeTimeout != nil ||
 		s.DisabledTools != nil || s.AutoApproveTools != nil
 }
 
@@ -423,8 +473,8 @@ func (s ServerUpdate) ValidateResult(result Server) error {
 	if s.Description != nil && result.Description != *s.Description {
 		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, *s.Description))
 	}
-	if s.TimeoutSeconds != nil && result.TimeoutSeconds != *s.TimeoutSeconds {
-		problems = append(problems, fmt.Errorf("runtime returned timeout %d, want %d", result.TimeoutSeconds, *s.TimeoutSeconds))
+	if s.HandshakeTimeout != nil && !result.HandshakeTimeout.Equal(*s.HandshakeTimeout) {
+		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, *s.HandshakeTimeout))
 	}
 	if s.DisabledTools != nil && !slices.Equal(result.DisabledTools, *s.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, *s.DisabledTools))

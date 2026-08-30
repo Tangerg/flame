@@ -130,7 +130,7 @@ export function DiffWorkspaceSurface() {
     });
   };
 
-  const consumedFocusRevision = useRef(-1);
+  const consumedFocusRevision = useRef<bigint | null>(null);
   // Diff data can be replaced by a mode switch or Runtime resync without the
   // user asking to move. Only a new focus revision is a navigation intent.
   useEffect(() => {

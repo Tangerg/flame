@@ -57,6 +57,7 @@ import type {
   ListItemsResponse,
   ListModelsRequest,
   ListRunsRequest,
+  ListSessionsRequest,
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRequest,
   MCPListToolsRequest,
@@ -1162,7 +1163,7 @@ export const WIRE_CAPABILITY_POLICY: {
 /** The frames each method carries. */
 export interface WireShapes {
   "runtime.discover": { params: Record<string, never>; result: DiscoverResponse };
-  "sessions.list": { params: PageQuery; result: PageOfSession };
+  "sessions.list": { params: ListSessionsRequest; result: PageOfSession };
   "sessions.get": { params: GetSessionRequest; result: Session };
   "sessions.snapshot": { params: GetSessionSnapshotRequest; result: SessionSnapshot };
   "sessions.create": { params: CreateSessionRequest; result: Session };

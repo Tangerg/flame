@@ -51,12 +51,12 @@ func TestCompactorAppendsLiveStateReminder(t *testing.T) {
 		}
 	}
 
-	c := NewCompactor(store, constClient(client), live, CompactionConfig{MaxMessages: total, KeepRecent: 4})
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted {
+	if !res.Compacted() {
 		t.Fatal("expected compaction to fire")
 	}
 
@@ -86,7 +86,7 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
 
 	live := func(context.Context, string) LiveStateSnapshot { return LiveStateSnapshot{} }
-	c := NewCompactor(store, constClient(client), live, CompactionConfig{MaxMessages: total, KeepRecent: 4})
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
 	if _, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); err != nil {
 		t.Fatal(err)
 	}

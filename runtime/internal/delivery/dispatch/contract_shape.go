@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
@@ -58,9 +59,19 @@ type PatternVariantSpec struct {
 // VariantSpec is one tag of a union and the fields that tag brings. Names are
 // JSON field names, dotted for a nested frame (`payload.tool`).
 type VariantSpec struct {
-	Tag      string
-	Required []string
-	Optional []string
+	Tag           string
+	Required      []string
+	Optional      []string
+	AllowedValues []AllowedValueSet
+}
+
+// AllowedValueSet narrows one string field to the listed values inside a union
+// variant or conditional rule. Field is a dotted JSON path. The values are a
+// typed set rather than a map so registry order remains explicit and generated
+// artifacts stay deterministic.
+type AllowedValueSet struct {
+	Field  string
+	Values []string
 }
 
 // ObjectConstraintSpec declares cross-field rules inside ONE DTO (contract
@@ -69,15 +80,19 @@ type VariantSpec struct {
 // so nothing here ever needs a repository to decide.
 type ObjectConstraintSpec struct {
 	GoType reflect.Type
-	Rules  []PresenceRule
+	Rules  []ConditionalRule
 }
 
-// PresenceRule says which fields must (or must not) be there when a condition
-// holds. Required and Forbidden are JSON field names, dotted for a nested frame.
-type PresenceRule struct {
-	When      []operation.FieldCondition
-	Required  []string
-	Forbidden []string
+// ConditionalRule says which fields must be present, which set must contribute
+// at least one present field, which fields must be absent, or which fields are
+// restricted to a smaller value set when a condition holds. Field names are
+// dotted JSON paths.
+type ConditionalRule struct {
+	When          []operation.FieldCondition
+	Required      []string
+	RequiredAny   []string
+	Forbidden     []string
+	AllowedValues []AllowedValueSet
 }
 
 // CarriedSpec declares a wire type the method graph cannot reach.
@@ -105,13 +120,20 @@ type NotificationSpec struct {
 // ConstraintKind is a value constraint a field's JSON type does not express.
 type ConstraintKind string
 
+// IdentityPattern is the JSON Schema/ECMAScript spelling of the domain's
+// printable, non-whitespace identity alphabet. Category C contains control,
+// format, surrogate, private-use, and unassigned code points; category Z
+// contains every separator. Empty is intentionally accepted for optional wire
+// members and is rejected separately where a member is required.
+const IdentityPattern = `^[^\p{C}\p{Z}]*$`
+
 const (
 	// ConstraintNonEmpty rejects the empty string. A required id whose value is ""
 	// names nothing, and every transport and generated client should refuse it in
 	// the same place rather than each handler deciding.
 	ConstraintNonEmpty ConstraintKind = "nonEmpty"
-	// ConstraintPositive rejects zero. A revision or count of zero is not a value
-	// the caller could have meant.
+	// ConstraintPositive rejects zero, negative values, NaN, and infinities. It
+	// applies to both integral identities/counts and real-valued limits.
 	ConstraintPositive ConstraintKind = "positive"
 	// ConstraintNonNegative rejects negative numeric values while preserving zero
 	// as the wire spelling of an omitted/unbounded limit.
@@ -133,9 +155,41 @@ const (
 	// Unlike ConstraintNonEmptyItems, its bound is part of the contract rather
 	// than the special distinction between omission and an explicitly empty set.
 	ConstraintMinItems ConstraintKind = "minItems"
+	// ConstraintMaxItems rejects an array longer than FieldConstraint.Limit.
+	ConstraintMaxItems ConstraintKind = "maxItems"
 	// ConstraintMaxLength rejects a string containing more Unicode code points
 	// than FieldConstraint.Limit, matching JSON Schema's length semantics.
 	ConstraintMaxLength ConstraintKind = "maxLength"
+	// ConstraintMaxItemLength applies the same Unicode code-point ceiling to
+	// every string member of an array.
+	ConstraintMaxItemLength ConstraintKind = "maxItemLength"
+	// ConstraintIdentity rejects whitespace, control, format, private-use and
+	// unassigned code points. Empty remains the spelling of an omitted optional
+	// identity; requiredness is declared separately with ConstraintNonEmpty.
+	ConstraintIdentity ConstraintKind = "identity"
+	// ConstraintIdentityItems applies ConstraintIdentity to every string member
+	// of an array.
+	ConstraintIdentityItems ConstraintKind = "identityItems"
+	// ConstraintMaxPropertyNameLength bounds every key of a string-keyed map.
+	ConstraintMaxPropertyNameLength ConstraintKind = "maxPropertyNameLength"
+	// ConstraintIdentityPropertyNames applies ConstraintIdentity to every key of
+	// a string-keyed map.
+	ConstraintIdentityPropertyNames ConstraintKind = "identityPropertyNames"
+	// ConstraintPrefix rejects a string that does not start with
+	// FieldConstraint.Value. It is used for framed opaque identities whose prefix
+	// is part of the public wire contract even though the remainder is not parsed.
+	ConstraintPrefix ConstraintKind = "prefix"
+	// ConstraintPrefixItems applies ConstraintPrefix to every string member of
+	// an array whose entries share one framed identity namespace.
+	ConstraintPrefixItems ConstraintKind = "prefixItems"
+	// ConstraintPatternItems applies one exact regular-expression grammar to
+	// every string member of an array.
+	ConstraintPatternItems ConstraintKind = "patternItems"
+	// ConstraintPattern rejects a string that does not match the exact regular
+	// expression in FieldConstraint.Value. It is reserved for public wire
+	// identities whose canonical grammar is narrower than prefix + printable
+	// text, such as a fixed-width lowercase-hex namespace.
+	ConstraintPattern ConstraintKind = "pattern"
 	// ConstraintMinimum rejects a number smaller than FieldConstraint.Limit.
 	// It is inclusive, matching JSON Schema's minimum keyword.
 	ConstraintMinimum ConstraintKind = "minimum"
@@ -149,7 +203,11 @@ func (c ConstraintKind) Valid() bool {
 	switch c {
 	case ConstraintNonEmpty, ConstraintPositive, ConstraintNonNegative,
 		ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintUniqueItems,
-		ConstraintMinItems, ConstraintMaxLength, ConstraintMinimum, ConstraintMaximum:
+		ConstraintMinItems, ConstraintMaxItems, ConstraintMaxLength, ConstraintMaxItemLength,
+		ConstraintIdentity, ConstraintIdentityItems, ConstraintMaxPropertyNameLength,
+		ConstraintIdentityPropertyNames, ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern,
+		ConstraintPatternItems,
+		ConstraintMinimum, ConstraintMaximum:
 		return true
 	default:
 		return false
@@ -167,13 +225,16 @@ func (c ConstraintKind) String() string {
 type FieldConstraint struct {
 	Field string
 	Kind  ConstraintKind
-	Limit int
+	Limit int64
+	Value string
 }
 
 func (f FieldConstraint) String() string {
 	switch f.Kind {
-	case ConstraintMinItems, ConstraintMaxLength, ConstraintMinimum, ConstraintMaximum:
+	case ConstraintMinItems, ConstraintMaxItems, ConstraintMaxLength, ConstraintMaxItemLength, ConstraintMaxPropertyNameLength, ConstraintMinimum, ConstraintMaximum:
 		return fmt.Sprintf("%s(%d)", f.Kind, f.Limit)
+	case ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern, ConstraintPatternItems:
+		return fmt.Sprintf("%s(%s)", f.Kind, strconv.Quote(f.Value))
 	default:
 		return f.Kind.String()
 	}
@@ -261,6 +322,7 @@ func cloneUnionSpec(spec UnionSpec) UnionSpec {
 	for index := range spec.Variants {
 		spec.Variants[index].Required = slices.Clone(spec.Variants[index].Required)
 		spec.Variants[index].Optional = slices.Clone(spec.Variants[index].Optional)
+		spec.Variants[index].AllowedValues = cloneAllowedValueSets(spec.Variants[index].AllowedValues)
 	}
 	if spec.PatternVariant != nil {
 		pattern := *spec.PatternVariant
@@ -276,9 +338,19 @@ func cloneObjectConstraintSpec(spec ObjectConstraintSpec) ObjectConstraintSpec {
 	for index := range spec.Rules {
 		spec.Rules[index].When = slices.Clone(spec.Rules[index].When)
 		spec.Rules[index].Required = slices.Clone(spec.Rules[index].Required)
+		spec.Rules[index].RequiredAny = slices.Clone(spec.Rules[index].RequiredAny)
 		spec.Rules[index].Forbidden = slices.Clone(spec.Rules[index].Forbidden)
+		spec.Rules[index].AllowedValues = cloneAllowedValueSets(spec.Rules[index].AllowedValues)
 	}
 	return spec
+}
+
+func cloneAllowedValueSets(sets []AllowedValueSet) []AllowedValueSet {
+	out := slices.Clone(sets)
+	for index := range out {
+		out[index].Values = slices.Clone(out[index].Values)
+	}
+	return out
 }
 
 func (s *Shapes) union(spec UnionSpec) {
@@ -440,11 +512,15 @@ func (u *unionValidation) validateLiteralVariant(variant VariantSpec) error {
 		return fmt.Errorf("%s: variant %q is declared twice", u.name, variant.Tag)
 	}
 	u.tags[variant.Tag] = true
-	return u.claimFields(
-		fmt.Sprintf("%s variant %q", u.name, variant.Tag),
+	owner := fmt.Sprintf("%s variant %q", u.name, variant.Tag)
+	if err := u.claimFields(
+		owner,
 		variant.Required,
 		variant.Optional,
-	)
+	); err != nil {
+		return err
+	}
+	return validateAllowedValueSets(owner, u.spec.GoType, variant.AllowedValues, nil)
 }
 
 func (u *unionValidation) validatePatternVariant() error {
@@ -538,8 +614,8 @@ func (o ObjectConstraintSpec) validate() error {
 		return fmt.Errorf("%s: a constraint spec with no rules constrains nothing", name)
 	}
 	for index, rule := range o.Rules {
-		if len(rule.Required) == 0 && len(rule.Forbidden) == 0 {
-			return fmt.Errorf("%s rule %d: states neither a required nor a forbidden field", name, index)
+		if len(rule.Required) == 0 && len(rule.RequiredAny) == 0 && len(rule.Forbidden) == 0 && len(rule.AllowedValues) == 0 {
+			return fmt.Errorf("%s rule %d: states no field constraint", name, index)
 		}
 		for conditionIndex, condition := range rule.When {
 			if slices.Contains(rule.When[:conditionIndex], condition) {
@@ -564,6 +640,20 @@ func (o ObjectConstraintSpec) validate() error {
 				)
 			}
 		}
+		for fieldIndex, field := range rule.RequiredAny {
+			switch {
+			case slices.Contains(rule.RequiredAny[:fieldIndex], field):
+				return fmt.Errorf(
+					"%s rule %d: required-any field %q is declared twice",
+					name, index, field,
+				)
+			case slices.Contains(rule.Required, field):
+				return fmt.Errorf(
+					"%s rule %d: field %q cannot be both required and required-any",
+					name, index, field,
+				)
+			}
+		}
 		for fieldIndex, field := range rule.Forbidden {
 			switch {
 			case slices.Contains(rule.Forbidden[:fieldIndex], field):
@@ -576,11 +666,56 @@ func (o ObjectConstraintSpec) validate() error {
 					"%s rule %d: field %q cannot be both required and forbidden",
 					name, index, field,
 				)
+			case slices.Contains(rule.RequiredAny, field):
+				return fmt.Errorf(
+					"%s rule %d: field %q cannot be both required-any and forbidden",
+					name, index, field,
+				)
 			}
 		}
-		for _, field := range slices.Concat(rule.Required, rule.Forbidden) {
+		for _, field := range slices.Concat(rule.Required, rule.RequiredAny, rule.Forbidden) {
 			if err := contractshape.HasPath(o.GoType, field); err != nil {
 				return fmt.Errorf("%s rule %d: %w", name, index, err)
+			}
+		}
+		if err := validateAllowedValueSets(
+			fmt.Sprintf("%s rule %d", name, index),
+			o.GoType,
+			rule.AllowedValues,
+			rule.Forbidden,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateAllowedValueSets(owner string, shape reflect.Type, sets []AllowedValueSet, forbidden []string) error {
+	for index, set := range sets {
+		if slices.ContainsFunc(sets[:index], func(previous AllowedValueSet) bool {
+			return previous.Field == set.Field
+		}) {
+			return fmt.Errorf("%s: allowed values for field %q are declared twice", owner, set.Field)
+		}
+		if slices.Contains(forbidden, set.Field) {
+			return fmt.Errorf("%s: field %q cannot be both value-restricted and forbidden", owner, set.Field)
+		}
+		_, leaf, found := contractshape.GoPath(shape, set.Field)
+		if !found {
+			return fmt.Errorf("%s: %s has no JSON field path %q", owner, shape.Name(), set.Field)
+		}
+		if contractshape.Deref(leaf.Type).Kind() != reflect.String {
+			return fmt.Errorf("%s: allowed-values field %q is not a string", owner, set.Field)
+		}
+		if len(set.Values) == 0 {
+			return fmt.Errorf("%s: allowed-values field %q has no values", owner, set.Field)
+		}
+		for valueIndex, value := range set.Values {
+			switch {
+			case value == "" || value != strings.TrimSpace(value):
+				return fmt.Errorf("%s: allowed value %d for field %q is not canonical", owner, valueIndex, set.Field)
+			case slices.Contains(set.Values[:valueIndex], value):
+				return fmt.Errorf("%s: allowed value %q for field %q is declared twice", owner, value, set.Field)
 			}
 		}
 	}
@@ -616,15 +751,18 @@ func validateFieldConstraint(owner string, shape reflect.Type, constraint FieldC
 	if !ok {
 		return fmt.Errorf("%s: no JSON field %q", owner, constraint.Field)
 	}
-	if err := validateConstraintLimit(owner, constraint); err != nil {
+	if err := validateConstraintArguments(owner, constraint); err != nil {
 		return err
 	}
 	return validateConstraintTarget(owner, leaf.Type, constraint)
 }
 
-func validateConstraintLimit(owner string, constraint FieldConstraint) error {
+func validateConstraintArguments(owner string, constraint FieldConstraint) error {
 	acceptsLimit := constraint.Kind == ConstraintMinItems ||
+		constraint.Kind == ConstraintMaxItems ||
 		constraint.Kind == ConstraintMaxLength ||
+		constraint.Kind == ConstraintMaxItemLength ||
+		constraint.Kind == ConstraintMaxPropertyNameLength ||
 		constraint.Kind == ConstraintMinimum ||
 		constraint.Kind == ConstraintMaximum
 	if acceptsLimit && constraint.Limit <= 0 {
@@ -643,6 +781,35 @@ func validateConstraintLimit(owner string, constraint FieldConstraint) error {
 			constraint.Kind,
 		)
 	}
+	acceptsValue := constraint.Kind == ConstraintPrefix || constraint.Kind == ConstraintPrefixItems ||
+		constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems
+	if acceptsValue && constraint.Value == "" {
+		return fmt.Errorf(
+			"%s.%s constraint %s needs a non-empty value",
+			owner,
+			constraint.Field,
+			constraint.Kind,
+		)
+	}
+	if !acceptsValue && constraint.Value != "" {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not accept a value",
+			owner,
+			constraint.Field,
+			constraint.Kind,
+		)
+	}
+	if constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems {
+		if _, err := regexp.Compile(constraint.Value); err != nil {
+			return fmt.Errorf(
+				"%s.%s constraint %s has invalid pattern: %w",
+				owner,
+				constraint.Field,
+				constraint.Kind,
+				err,
+			)
+		}
+	}
 	return nil
 }
 
@@ -652,33 +819,28 @@ func validateConstraintTarget(owner string, declaredType reflect.Type, constrain
 		valueType = valueType.Elem()
 	}
 	kind := valueType.Kind()
+	if err, handled := validateTextualConstraintTarget(owner, valueType, constraint); handled {
+		return err
+	}
 	switch constraint.Kind {
-	case ConstraintNonEmpty:
-		if kind != reflect.String {
-			return fmt.Errorf("%s.%s is %s; only a string can be non-empty", owner, constraint.Field, kind)
-		}
 	case ConstraintPositive:
-		if kind != reflect.Uint64 && kind != reflect.Int && kind != reflect.Int64 {
+		if kind != reflect.Uint64 && kind != reflect.Int && kind != reflect.Int64 && kind != reflect.Float64 {
 			return fmt.Errorf("%s.%s is %s; only a number can be positive", owner, constraint.Field, kind)
 		}
 	case ConstraintNonNegative:
 		if kind != reflect.Int && kind != reflect.Int64 && kind != reflect.Float64 {
 			return fmt.Errorf("%s.%s is %s; only a number can be non-negative", owner, constraint.Field, kind)
 		}
-	case ConstraintNonEmptyItems, ConstraintUniqueItems, ConstraintMinItems:
+	case ConstraintNonEmptyItems, ConstraintUniqueItems, ConstraintMinItems, ConstraintMaxItems:
 		if kind != reflect.Slice {
 			return fmt.Errorf("%s.%s is %s; only an array has items", owner, constraint.Field, declaredType.Kind())
-		}
-	case ConstraintMaxLength:
-		if kind != reflect.String {
-			return fmt.Errorf("%s.%s is %s; only a string has a length", owner, constraint.Field, kind)
 		}
 	case ConstraintMinimum:
 		if kind != reflect.Int && kind != reflect.Int64 && kind != reflect.Float64 {
 			return fmt.Errorf("%s.%s is %s; only a number can have a minimum", owner, constraint.Field, kind)
 		}
 	case ConstraintMaximum:
-		if kind != reflect.Int && kind != reflect.Int64 && kind != reflect.Float64 {
+		if kind != reflect.Int && kind != reflect.Int64 && kind != reflect.Uint64 && kind != reflect.Float64 {
 			return fmt.Errorf("%s.%s is %s; only a number can have a maximum", owner, constraint.Field, kind)
 		}
 	case ConstraintNonEmptyProperties:
@@ -687,23 +849,55 @@ func validateConstraintTarget(owner string, declaredType reflect.Type, constrain
 		}
 	default:
 		return fmt.Errorf(
-			"%s.%s has invalid constraint kind %s; expected %s, %s, %s, %s, %s, %s, %s, %s, %s or %s",
+			"%s.%s has invalid constraint kind %s",
 			owner,
 			constraint.Field,
 			constraint.Kind,
-			ConstraintNonEmpty,
-			ConstraintPositive,
-			ConstraintNonNegative,
-			ConstraintNonEmptyItems,
-			ConstraintNonEmptyProperties,
-			ConstraintUniqueItems,
-			ConstraintMinItems,
-			ConstraintMaxLength,
-			ConstraintMinimum,
-			ConstraintMaximum,
 		)
 	}
 	return nil
+}
+
+func validateTextualConstraintTarget(owner string, valueType reflect.Type, constraint FieldConstraint) (error, bool) {
+	kind := valueType.Kind()
+	switch {
+	case isStringConstraint(constraint.Kind):
+		if kind != reflect.String {
+			if constraint.Kind == ConstraintMaxLength {
+				return fmt.Errorf("%s.%s is %s; only a string has a length", owner, constraint.Field, kind), true
+			}
+			return fmt.Errorf("%s.%s is %s; only a string can satisfy constraint %s", owner, constraint.Field, kind, constraint.Kind), true
+		}
+	case isStringItemConstraint(constraint.Kind):
+		if kind != reflect.Slice || valueType.Elem().Kind() != reflect.String {
+			return fmt.Errorf("%s.%s is %s; constraint %s requires a string array", owner, constraint.Field, valueType, constraint.Kind), true
+		}
+	case isStringPropertyNameConstraint(constraint.Kind):
+		if kind != reflect.Map || valueType.Key().Kind() != reflect.String {
+			return fmt.Errorf("%s.%s is %s; constraint %s requires a string-keyed map", owner, constraint.Field, valueType, constraint.Kind), true
+		}
+	default:
+		return nil, false
+	}
+	return nil, true
+}
+
+func isStringConstraint(kind ConstraintKind) bool {
+	switch kind {
+	case ConstraintNonEmpty, ConstraintMaxLength, ConstraintIdentity, ConstraintPrefix, ConstraintPattern:
+		return true
+	default:
+		return false
+	}
+}
+
+func isStringItemConstraint(kind ConstraintKind) bool {
+	return kind == ConstraintMaxItemLength || kind == ConstraintIdentityItems ||
+		kind == ConstraintPrefixItems || kind == ConstraintPatternItems
+}
+
+func isStringPropertyNameConstraint(kind ConstraintKind) bool {
+	return kind == ConstraintMaxPropertyNameLength || kind == ConstraintIdentityPropertyNames
 }
 
 func (c CarriedSpec) validate() error {

@@ -26,7 +26,7 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	run := func(command string) *Shell {
-		id, launchErr := shells.Launch(t.Context(), "s1", workspace, command, 10*time.Second, false)
+		id, launchErr := shells.Launch(t.Context(), "s1", workspace, command, testTimeout(t, 10*time.Second), false)
 		if launchErr != nil {
 			t.Fatalf("launch: %v", launchErr)
 		}
@@ -71,7 +71,7 @@ func TestLaunchIsolatedJailsWithoutGlobalFlag(t *testing.T) {
 	shells := NewShells(confiner, false) // global jail OFF
 	t.Cleanup(func() { _ = shells.KillAll() })
 
-	id, err := shells.Launch(t.Context(), "s1", workspace, "printf x > "+strconv.Quote(outside), 10*time.Second, true)
+	id, err := shells.Launch(t.Context(), "s1", workspace, "printf x > "+strconv.Quote(outside), testTimeout(t, 10*time.Second), true)
 	if err != nil {
 		t.Fatalf("launch: %v", err)
 	}

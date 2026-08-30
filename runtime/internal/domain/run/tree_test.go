@@ -87,7 +87,7 @@ func TestRunTreeRejectsInvalidTopology(t *testing.T) {
 		members []run.TreeMember
 		want    string
 	}{
-		{name: "missing root id", members: []run.TreeMember{{RunID: "run_root"}}, want: "root run id is required"},
+		{name: "missing root id", members: []run.TreeMember{{RunID: "run_root"}}, want: "root run identity is empty"},
 		{name: "no members", root: "run_root", want: "no members"},
 		{
 			name:    "duplicate run",

@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -33,10 +34,10 @@ func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (usage
 	}, nil
 }
 
-func (usageServiceStub) Summary(_ context.Context, sinceDays int) (usage.Summary, error) {
+func (usageServiceStub) Summary(_ context.Context, period usage.SummaryPeriod) (usage.Summary, error) {
 	cost := 1.5
 	return usage.Summary{
-		SinceDays: sinceDays, Total: usage.Totals{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
+		Period: period, Total: usage.Totals{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
 		ByProvider: []usage.Bucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
 	}, nil
 }
@@ -53,7 +54,7 @@ func (b blockingUsageService) SessionUsage(ctx context.Context, _ string) (usage
 	return usage.SessionReport{}, context.Cause(ctx)
 }
 
-func (blockingUsageService) Summary(context.Context, int) (usage.Summary, error) {
+func (blockingUsageService) Summary(context.Context, usage.SummaryPeriod) (usage.Summary, error) {
 	panic("summary must not run after the session usage query is canceled")
 }
 
@@ -84,10 +85,39 @@ func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "embedding model · disabled")
 	roles, err := models.Roles(t.Context())
-	if err != nil || roles.Utility.Model != "maintenance" || roles.Embedding.Configured() {
+	provider, model, configured := roles.Utility.ProviderModel()
+	if err != nil || !configured || provider != "deepseek" || model != "maintenance" || roles.Embedding.Configured() {
 		t.Fatalf("roles = (%+v, %v)", roles, err)
 	}
 	stop()
+}
+
+func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
+	t.Parallel()
+	utility, err := parseModelRole(modelconfig.UtilityRole, utilityRoleInheritedArgument)
+	if err != nil || utility.Configured() {
+		t.Fatalf("utility inherit = (%+v, %v)", utility, err)
+	}
+	embedding, err := parseModelRole(modelconfig.EmbeddingRole, embeddingRoleDisabledArgument)
+	if err != nil || embedding.Configured() {
+		t.Fatalf("embedding off = (%+v, %v)", embedding, err)
+	}
+	if _, err := parseModelRole(modelconfig.UtilityRole, embeddingRoleDisabledArgument); err == nil {
+		t.Fatal("utility accepted embedding's disabled command")
+	}
+	if _, err := parseModelRole(modelconfig.EmbeddingRole, utilityRoleInheritedArgument); err == nil {
+		t.Fatal("embedding accepted utility's inherited command")
+	}
+	configured, err := parseModelRole(modelconfig.UtilityRole, "deepseek/maintenance")
+	provider, model, present := configured.ProviderModel()
+	if err != nil || !present || provider != "deepseek" || model != "maintenance" {
+		t.Fatalf("configured role = (%+v, %v)", configured, err)
+	}
+	for _, argument := range []string{" deepseek/maintenance", "deepseek /maintenance", "deepseek/ maintenance"} {
+		if _, err := parseModelRole(modelconfig.UtilityRole, argument); err == nil {
+			t.Fatalf("configured role normalized identity input %q", argument)
+		}
+	}
 }
 
 func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
@@ -100,7 +130,8 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 			runtimeprofile.FeatureMCP: {Enabled: true},
 		},
 		Limits: runtimeprofile.Limits{
-			MaxConcurrentRuns: 4, IdempotencyRetentionSeconds: 600, IdempotencyNamespace: "idp_test",
+			RunConcurrency:                   boundedRunConcurrency(t, 4),
+			CommandReplay:                    testCommandReplay(t, "idp_test", 10*time.Minute),
 			RunReplay:                        runtimeprofile.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
@@ -112,12 +143,39 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 	host.Press(input.Enter)
 	for _, want := range []string{
 		"flame-runtime 1.2.3", "protocol: 2.0", "default workspace: /workspace", "available features: mcp",
-		"run concurrency: 4 runs", "run replay: 1024 events / 1 MiB", "command replay retention: 10m",
+		"run concurrency: at most 4 runs", "run replay: 1024 events / 1 MiB", "command replay retention: 10m",
 		"runtime subscriptions: 16 topics / 32 watches", "1 run events / 1 topics / 1 streaming methods",
 	} {
 		host.Shows(t, want)
 	}
 	stop()
+}
+
+func boundedRunConcurrency(t *testing.T, maximum int) runtimeprofile.RunConcurrencyLimit {
+	t.Helper()
+	limit, err := runtimeprofile.NewBoundedRunConcurrencyLimit(maximum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return limit
+}
+
+func testCommandReplay(t *testing.T, namespace string, retention time.Duration) commandreplay.Capability {
+	t.Helper()
+	capability, err := commandreplay.NewCapability(namespace, retention)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return capability
+}
+
+func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) commandreplay.Guard {
+	t.Helper()
+	guard, err := commandreplay.NewProtectedGuard(namespace, until)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return guard
 }
 
 func TestSessionReplacementCancelsAnOutstandingSideQuery(t *testing.T) {
@@ -172,15 +230,29 @@ func (b *blockingProviderUpdateService) UpdateProvider(
 func newModelConfigServiceStub() *modelConfigServiceStub {
 	return &modelConfigServiceStub{
 		roles: modelconfig.Roles{
-			Utility:   modelconfig.Role{Kind: modelconfig.UtilityRole},
-			Embedding: modelconfig.Role{Kind: modelconfig.EmbeddingRole},
+			Utility:   modelconfig.InheritedUtilityRole(),
+			Embedding: modelconfig.DisabledEmbeddingRole(),
 		},
-		providers: []modelconfig.Provider{{
-			ID: "deepseek", BaseURL: "https://api.deepseek.example", APIKeyMasked: "sk****42",
-			KeySource: modelconfig.KeyStored,
-		}},
+		providers: []modelconfig.Provider{terminalTestProvider(
+			"deepseek", "https://api.deepseek.example", "sk****42", modelconfig.KeyStored,
+		)},
 		updates: make(chan modelconfig.UpdateProvider, 1),
 	}
+}
+
+func terminalTestProvider(id, rawBaseURL, masked string, source modelconfig.KeySource) modelconfig.Provider {
+	credential, err := modelconfig.NewCredential(masked, source)
+	if err != nil {
+		panic(err)
+	}
+	provider, err := modelconfig.NewProvider(modelconfig.ProviderSpec{
+		ID: id, BaseURL: &rawBaseURL, Credential: &credential, Configured: true,
+		CredentialRequirement: modelconfig.APIKeyRequired,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return provider
 }
 
 func (m *modelConfigServiceStub) Roles(context.Context) (modelconfig.Roles, error) {
@@ -195,7 +267,7 @@ func (m *modelConfigServiceStub) SetRole(_ context.Context, role modelconfig.Rol
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if role.Kind == modelconfig.UtilityRole {
+	if role.Kind() == modelconfig.UtilityRole {
 		m.roles.Utility = role
 	} else {
 		m.roles.Embedding = role
@@ -369,11 +441,7 @@ func (g *goalServiceStub) GetGoal(context.Context, string) (goal.Goal, bool, err
 	if g.current == nil {
 		return goal.Goal{}, false, nil
 	}
-	current := *g.current
-	if current.Reason != nil {
-		current.Reason = new(*current.Reason)
-	}
-	return current, true, nil
+	return *g.current, true, nil
 }
 
 func (g *goalServiceStub) StartGoal(_ context.Context, start goal.Start) (goal.Goal, error) {
@@ -381,9 +449,14 @@ func (g *goalServiceStub) StartGoal(_ context.Context, start goal.Start) (goal.G
 	if err := start.Validate(); err != nil {
 		return goal.Goal{}, err
 	}
-	current := goal.Goal{
+	at := time.Unix(1, 0).UTC()
+	current, err := goal.Restore(goal.Snapshot{
 		SessionID: start.SessionID, Objective: start.Objective, Status: goal.Active,
 		Provider: start.Provider, Model: start.Model, Budget: start.Budget,
+		CreatedAt: at, UpdatedAt: at,
+	})
+	if err != nil {
+		return goal.Goal{}, err
 	}
 	g.set(current)
 	return current, nil
@@ -399,8 +472,15 @@ func (g *goalServiceStub) UpdateGoal(_ context.Context, update goal.Update) (goa
 	if g.current == nil {
 		return goal.Goal{}, errors.New("no goal")
 	}
-	g.current.Objective = update.Objective
-	return *g.current, nil
+	snapshot := g.current.Snapshot()
+	snapshot.Objective = update.Objective
+	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
+	current, err := goal.Restore(snapshot)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	g.current = &current
+	return current, nil
 }
 
 func (g *goalServiceStub) ClearGoal(context.Context, string) error {
@@ -418,9 +498,16 @@ func (g *goalServiceStub) StopGoal(context.Context, string) (goal.Goal, error) {
 	if g.current == nil {
 		return goal.Goal{}, errors.New("no goal")
 	}
-	g.current.Status = goal.Paused
-	g.current.Reason = &goal.Reason{Code: goal.StoppedByUser}
-	return *g.current, nil
+	snapshot := g.current.Snapshot()
+	snapshot.Status = goal.Paused
+	snapshot.ReasonCode = goal.StoppedByUser
+	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
+	current, err := goal.Restore(snapshot)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	g.current = &current
+	return current, nil
 }
 
 func (g *goalServiceStub) ResumeGoal(context.Context, string) (goal.Goal, error) {
@@ -430,9 +517,17 @@ func (g *goalServiceStub) ResumeGoal(context.Context, string) (goal.Goal, error)
 	if g.current == nil {
 		return goal.Goal{}, errors.New("no goal")
 	}
-	g.current.Status = goal.Active
-	g.current.Reason = nil
-	return *g.current, nil
+	snapshot := g.current.Snapshot()
+	snapshot.Status = goal.Active
+	snapshot.ReasonCode = goal.ReasonNone
+	snapshot.ReasonDetail = ""
+	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
+	current, err := goal.Restore(snapshot)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	g.current = &current
+	return current, nil
 }
 
 func (g *goalServiceStub) set(current goal.Goal) {
@@ -440,6 +535,33 @@ func (g *goalServiceStub) set(current goal.Goal) {
 	defer g.mu.Unlock()
 	g.current = &current
 }
+
+func testGoal(t testing.TB, objective string) goal.Goal {
+	t.Helper()
+	at := time.Unix(1, 0).UTC()
+	current, err := goal.Restore(goal.Snapshot{
+		SessionID: "ses_demo_1", Objective: objective, Status: goal.Active,
+		Budget: goal.UnlimitedBudget(), CreatedAt: at, UpdatedAt: at,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return current
+}
+
+func reviseGoal(t testing.TB, current goal.Goal, revise func(*goal.Snapshot)) goal.Goal {
+	t.Helper()
+	snapshot := current.Snapshot()
+	revise(&snapshot)
+	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
+	revised, err := goal.Restore(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return revised
+}
+
+func goalPointer(current goal.Goal) *goal.Goal { return &current }
 
 func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	goals := new(goalServiceStub)
@@ -482,9 +604,11 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if err != nil || !exists {
 		t.Fatalf("goal = (%+v, %t, %v)", current, exists, err)
 	}
-	current.Status = goal.Blocked
-	current.Reason = &goal.Reason{Code: goal.BlockedByModel, Detail: "needs clarification"}
-	goals.set(current)
+	goals.set(reviseGoal(t, current, func(snapshot *goal.Snapshot) {
+		snapshot.Status = goal.Blocked
+		snapshot.ReasonCode = goal.BlockedByModel
+		snapshot.ReasonDetail = "needs clarification"
+	}))
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
 		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 1,
@@ -495,9 +619,11 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if goals.reads.Load() <= baseline {
 		t.Fatal("goals.changed did not refetch the goal")
 	}
-	current.Status = goal.Completing
-	current.Reason = nil
-	goals.set(current)
+	goals.set(reviseGoal(t, current, func(snapshot *goal.Snapshot) {
+		snapshot.Status = goal.Completing
+		snapshot.ReasonCode = goal.ReasonNone
+		snapshot.ReasonDetail = ""
+	}))
 	source.events <- changefeed.Event{
 		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 2,
 		SessionIDs: []string{"ses_demo_1"},
@@ -514,7 +640,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		t.Fatalf("goal mutations after settlement command = %d, want %d", writes, baselineWrites)
 	}
 	settling, exists, err := goals.GetGoal(t.Context(), "ses_demo_1")
-	if err != nil || !exists || settling.Status != goal.Completing {
+	if err != nil || !exists || settling.Status() != goal.Completing {
 		t.Fatalf("goal after rejected settlement command = (%+v, %t, %v)", settling, exists, err)
 	}
 	host.Type("/goal-clear")
@@ -525,7 +651,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 
 func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 	goals := &goalServiceStub{
-		current: &goal.Goal{SessionID: "ses_demo_1", Objective: "original objective", Status: goal.Active},
+		current: goalPointer(testGoal(t, "original objective")),
 		readErr: make(chan error, 1),
 	}
 	source := &runtimeChangeSourceStub{
@@ -539,7 +665,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "original objective")
 
-	goals.set(goal.Goal{SessionID: "ses_demo_1", Objective: "converged objective", Status: goal.Active})
+	goals.set(testGoal(t, "converged objective"))
 	goals.readErr <- fmt.Errorf("temporary goal read failure: %w", agent.ErrDisconnected)
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
@@ -556,7 +682,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 
 func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 	goals := &goalServiceStub{
-		current:    &goal.Goal{SessionID: "ses_demo_1", Objective: "original objective", Status: goal.Active},
+		current:    goalPointer(testGoal(t, "original objective")),
 		readErr:    make(chan error, 1),
 		readSignal: make(chan struct{}, 4),
 	}
@@ -582,14 +708,14 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 	select {
 	case <-goals.readSignal:
 		t.Fatal("incompatible goal projection was retried")
-	case <-time.After(3 * runtimeRecoveryBackoff.Base):
+	case <-time.After(3 * runtimeRecoveryFirstDelay(t)):
 	}
 	stop()
 }
 
 func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 	goals := &goalServiceStub{
-		current:    &goal.Goal{SessionID: "ses_demo_1", Objective: "original objective", Status: goal.Active},
+		current:    goalPointer(testGoal(t, "original objective")),
 		readErr:    make(chan error, 1),
 		readSignal: make(chan struct{}, 4),
 	}
@@ -616,7 +742,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 	select {
 	case <-goals.readSignal:
 		t.Fatal("permanent goal projection failure was retried")
-	case <-time.After(3 * runtimeRecoveryBackoff.Base):
+	case <-time.After(3 * runtimeRecoveryFirstDelay(t)):
 	}
 	host.Press(input.Esc)
 	host.Shows(t, permanent.Error())
@@ -689,7 +815,7 @@ func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID st
 
 func TestReaderRefreshDoesNotCancelAGoalLifecycleCommand(t *testing.T) {
 	base := new(goalServiceStub)
-	base.set(goal.Goal{SessionID: "ses_demo_1", Objective: "finish safely", Status: goal.Active})
+	base.set(testGoal(t, "finish safely"))
 	service := &blockingGoalMutationService{
 		goalServiceStub: base,
 		started:         make(chan struct{}, 1), release: make(chan struct{}), canceled: make(chan struct{}, 1),
@@ -720,7 +846,7 @@ func TestReaderRefreshDoesNotCancelAGoalLifecycleCommand(t *testing.T) {
 func TestGoalMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	backend := mock.New()
 	base := new(goalServiceStub)
-	base.set(goal.Goal{SessionID: "ses_demo_1", Objective: "finish safely", Status: goal.Active})
+	base.set(testGoal(t, "finish safely"))
 	service := &blockingGoalMutationService{
 		goalServiceStub: base,
 		started:         make(chan struct{}, 1), release: make(chan struct{}), canceled: make(chan struct{}, 1),
@@ -757,7 +883,7 @@ func TestGoalMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 
 func TestGoalMutationDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := new(goalServiceStub)
-	base.set(goal.Goal{SessionID: "ses_demo_1", Objective: "finish safely", Status: goal.Active})
+	base.set(testGoal(t, "finish safely"))
 	service := &blockingGoalMutationService{
 		goalServiceStub: base,
 		started:         make(chan struct{}, 1), release: make(chan struct{}), canceled: make(chan struct{}, 1),
@@ -791,7 +917,7 @@ func runUIWithRuntimeServices(t *testing.T, config Config) (*programtest.Host, f
 	if config.SessionID == "" && config.Workspace == "" {
 		config.SessionID = "ses_demo_1"
 	}
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	config.Host = host
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)

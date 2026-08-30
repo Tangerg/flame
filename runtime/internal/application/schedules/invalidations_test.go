@@ -5,12 +5,14 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 )
 
 var errScheduleMutation = errors.New("schedule mutation failed")
+var testScheduleCreatedAt = time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 
 type invalidationScheduleStore struct {
 	*runNowStore
@@ -18,12 +20,12 @@ type invalidationScheduleStore struct {
 	deleteFound bool
 }
 
-func (i *invalidationScheduleStore) Create(_ context.Context, scheduled schedule.Schedule) (schedule.Schedule, error) {
+func (i *invalidationScheduleStore) Insert(_ context.Context, scheduled schedule.Schedule) error {
 	if i.fail == "create" {
-		return schedule.Schedule{}, errScheduleMutation
+		return errScheduleMutation
 	}
-	scheduled.ID = "sch_created"
-	return scheduled, nil
+	i.created = scheduled
+	return nil
 }
 
 func (i *invalidationScheduleStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) (schedule.Schedule, error) {
@@ -42,15 +44,17 @@ func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error
 
 func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 	store := &invalidationScheduleStore{
-		runNowStore: &runNowStore{schedule: schedule.Schedule{
+		runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
 			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily", Enabled: true,
-		}},
+			CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
+		})},
 		deleteFound: true,
 	}
 	var notices []invalidation.Notice
-	coordinator := New(Dependencies{
-		Store:  store,
-		Models: allowModels{},
+	coordinator := mustCoordinator(t, Dependencies{
+		Store:      store,
+		Models:     allowModels{},
+		Identities: managementIdentity("sch_created"),
 		Invalidations: func(notice invalidation.Notice) {
 			notices = append(notices, notice)
 		},
@@ -86,13 +90,14 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 	for _, operation := range []string{"create", "update", "delete"} {
 		t.Run(operation, func(t *testing.T) {
 			store := &invalidationScheduleStore{
-				runNowStore: &runNowStore{schedule: schedule.Schedule{
+				runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
 					ID: "sch_1", Revision: 1, Instructions: "before", Cron: "@daily", Enabled: true,
-				}},
+					CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
+				})},
 				fail: operation, deleteFound: true,
 			}
 			var notices []invalidation.Notice
-			coordinator := New(Dependencies{Store: store, Models: allowModels{}, Invalidations: func(notice invalidation.Notice) {
+			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, Identities: managementIdentity("sch_created"), Invalidations: func(notice invalidation.Notice) {
 				notices = append(notices, notice)
 			}})
 
@@ -119,7 +124,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 
 	store := &invalidationScheduleStore{runNowStore: &runNowStore{}, deleteFound: false}
 	var notices []invalidation.Notice
-	coordinator := New(Dependencies{Store: store, Models: allowModels{}, Invalidations: func(notice invalidation.Notice) {
+	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, Invalidations: func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	}})
 	if err := coordinator.Delete(t.Context(), "sch_missing"); err != nil {

@@ -35,9 +35,7 @@ func (r *Runtime) StartRun(ctx context.Context, input agent.StartRun) (agent.Seg
 	request := protocol.StartRunRequest{
 		SessionID: input.SessionID, Input: content,
 		Provider: input.Options.Provider, Model: input.Options.Model,
-		MaxTotalTokens: input.Options.Limits.MaxTotalTokens,
-		MaxSteps:       input.Options.Limits.MaxSteps,
-		MaxBudgetUSD:   input.Options.Limits.MaxBudgetUSD,
+		Limits: projectRunLimitsToWire(input.Options.Limits),
 	}
 	if generationParamsPresent(input.Options.Generation) {
 		request.Params = &protocol.GenerationParams{
@@ -69,6 +67,23 @@ func (r *Runtime) StartRun(ctx context.Context, input agent.StartRun) (agent.Seg
 		)
 	}
 	return stream, nil
+}
+
+func projectRunLimitsToWire(limits agent.RunLimits) *protocol.RunLimits {
+	if limits.Unlimited() {
+		return nil
+	}
+	wire := &protocol.RunLimits{}
+	if value, limited := limits.MaxTotalTokens(); limited {
+		wire.MaxTotalTokens = &value
+	}
+	if value, limited := limits.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		wire.MaxBudgetUSD = &value
+	}
+	return wire
 }
 
 func generationParamsPresent(value agent.GenerationParams) bool {
@@ -158,17 +173,28 @@ func (r *Runtime) SubscribeRun(ctx context.Context, input agent.SubscribeRun) (a
 	if err := input.Validate(); err != nil {
 		return agent.SegmentStream{}, err
 	}
+	options, err := r.subscriptionOptions(input.AfterEventID)
+	if err != nil {
+		return agent.SegmentStream{}, err
+	}
 	ack, events, err := r.runs.SubscribeRun(ctx, protocol.SubscribeRunRequest{
 		RunID: input.RunID, SegmentID: input.SegmentID,
-	}, r.subscriptionOptions(input.AfterEventID))
+	}, options)
 	if err != nil {
 		return agent.SegmentStream{}, classifyError(err)
 	}
 	if ack == nil || events == nil {
 		return agent.SegmentStream{}, runtimeContractViolation("subscribe run returned an incomplete stream")
 	}
+	headEventID := ""
+	if ack.HeadEventID != nil {
+		headEventID = *ack.HeadEventID
+	}
+	if _, err := r.subscriptionOptions(headEventID); err != nil {
+		return agent.SegmentStream{}, runtimeContractViolation("subscribe run returned an invalid head event id: %v", err)
+	}
 	stream := agent.SegmentStream{
-		RunID: ack.RunID, SegmentID: ack.SegmentID, HeadEventID: ack.HeadEventID,
+		RunID: ack.RunID, SegmentID: ack.SegmentID, HeadEventID: headEventID,
 		Events: projectEventStream(events, ack.SegmentID),
 	}
 	if err := stream.ValidateSubscription(); err != nil {

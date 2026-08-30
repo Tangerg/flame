@@ -1,8 +1,12 @@
 package transcript
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // SearchHit is one full-text transcript search result: the conversation item
@@ -14,6 +18,27 @@ type SearchHit struct {
 	Kind      ItemKind
 	CreatedAt time.Time
 	Snippet   string
+}
+
+// Validate rejects corrupt search-index provenance before a hit is exposed as
+// a usable transcript reference.
+func (h SearchHit) Validate() error {
+	if _, err := resourceid.ParseSession(h.SessionID); err != nil {
+		return fmt.Errorf("transcript search hit: %w", err)
+	}
+	if _, err := resourceid.ParseRun(h.RunID); err != nil {
+		return fmt.Errorf("transcript search hit: %w", err)
+	}
+	if _, err := resourceid.ParseItem(h.ItemID); err != nil {
+		return fmt.Errorf("transcript search hit: %w", err)
+	}
+	if !h.Kind.Valid() {
+		return fmt.Errorf("transcript search hit: unknown item kind %q", h.Kind)
+	}
+	if h.CreatedAt.IsZero() {
+		return errors.New("transcript search hit: creation time is required")
+	}
+	return nil
 }
 
 // SearchableText returns the conversation text of item to full-text index and

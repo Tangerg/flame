@@ -17,8 +17,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -37,7 +39,7 @@ type SessionStore interface {
 // run. The confirmation shares the opening transaction with run admission, so
 // an accepted occurrence and its Run cannot diverge across a crash.
 type ScheduleFiringStore interface {
-	Accept(ctx context.Context, occurrenceID, runID string) error
+	Accept(ctx context.Context, acceptance schedule.Acceptance) error
 }
 
 // GoalRunRecorder records the budget charge for a terminal goal-owned Run. It
@@ -156,11 +158,11 @@ type RunWriter interface {
 	Resume(ctx context.Context, sessionID string, draft run.ResumeDraft, resumedAt time.Time) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
 	Suspend(ctx context.Context, run run.Run) error
-	SuspendBarrier(ctx context.Context, run run.Run, segmentID, commitID string) error
+	SuspendBarrier(ctx context.Context, run run.Run, segmentID string, commitID commitidentity.ID) error
 	Terminalize(ctx context.Context, run run.Run) error
-	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID, commitID string) error
-	RecordWaitingRunCommit(ctx context.Context, sessionID, runID, commitID string) error
-	TerminalizeEvent(ctx context.Context, run run.Run, segmentID, commitID string) error
+	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID commitidentity.ID) error
+	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID commitidentity.ID) error
+	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID commitidentity.ID) error
 }
 
 // RunStore combines lifecycle writes with the exact durable reads required to
@@ -168,7 +170,7 @@ type RunWriter interface {
 type RunStore interface {
 	RunWriter
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID, commitID string) (bool, error)
+	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID commitidentity.ID) (bool, error)
 }
 
 // RunProgressWriter updates cumulative consumption and latest prompt footprint

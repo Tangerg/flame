@@ -54,6 +54,13 @@ import {
   type WireStreamingMethodName,
 } from "@flame/runtime-contract/methods";
 
+/** Absolute transport-safety envelope for one decoded SSE frame. Runtime run
+ * replay has a much smaller negotiated retained-material budget; this ceiling
+ * only prevents a malformed/non-Flame peer from growing an unterminated parser
+ * frame forever before discovery can exist. Callers embedding a differently
+ * provisioned compatible Runtime may lower or raise it explicitly. */
+export const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
+
 // Delegating tracer — resolves to the global provider once observability is
 // installed (no-op spans before then). One CLIENT span per RPC call; the
 // W3C `traceparent` it injects extends the backend's existing OTel trace
@@ -81,13 +88,59 @@ export interface HttpTransportConfig {
   localToken?: string;
   /** Custom fetch impl (tests inject one). Defaults to globalThis.fetch. */
   fetch?: typeof fetch;
+  /** Hard decoded-character envelope for one SSE frame. */
+  maximumEventStreamFrameCharacters?: number;
+}
+
+interface EventStreamTextParser {
+  feed(chunk: string): void;
+}
+
+/** Feed one physical SSE line at a time. eventsource-parser
+ * remains the framing authority (including CR/LF/CRLF and multi-data-line
+ * semantics); this splitter only gives each completed frame an async boundary
+ * where delivery can apply backpressure before parsing the next line. */
+async function feedEventStreamText(
+  parser: EventStreamTextParser,
+  text: string,
+  afterLine: () => Promise<boolean> | undefined,
+): Promise<boolean> {
+  let start = 0;
+  while (start < text.length) {
+    let lineEnd = start;
+    while (lineEnd < text.length && text[lineEnd] !== "\n" && text[lineEnd] !== "\r") {
+      lineEnd++;
+    }
+    if (lineEnd === text.length) {
+      parser.feed(text.slice(start));
+      const delivery = afterLine();
+      return delivery === undefined ? true : delivery;
+    }
+    if (text[lineEnd] === "\r" && text[lineEnd + 1] === "\n") lineEnd++;
+    parser.feed(text.slice(start, lineEnd + 1));
+    const delivery = afterLine();
+    if (delivery !== undefined && !(await delivery)) return false;
+    start = lineEnd + 1;
+  }
+  return true;
 }
 
 export function createHttpTransport(config: HttpTransportConfig): Transport {
   const baseUrl = config.baseUrl.replace(/\/+$/, "");
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
+  const maximumEventStreamFrameCharacters =
+    config.maximumEventStreamFrameCharacters ?? MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS;
+  if (
+    !Number.isSafeInteger(maximumEventStreamFrameCharacters) ||
+    maximumEventStreamFrameCharacters <= 0
+  ) {
+    throw new RangeError("event-stream frame capacity must be a positive safe integer");
+  }
 
-  const channel = createPushPullChannel<TransportEvent>();
+  // RpcClient owns exactly one receive loop. A rendezvous channel makes that
+  // consumer's acceptance the permit for every HTTP body reader to continue;
+  // it cannot become a second replay/live queue with different loss semantics.
+  const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
   // Active SSE body readers — close() cancels in-flight streams through these.
   const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>();
@@ -126,6 +179,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   ): Promise<void> {
     let responseSeen = false;
     let streamError: Error | undefined;
+    let parsedEvent: TransportEvent | undefined;
     const parser = createParser({
       onEvent(event) {
         if (!event.data) return;
@@ -141,9 +195,25 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         if (isResponse(msg) && msg.id === requestId) {
           responseSeen = true;
         }
-        channel.push({ type: "message", message: msg, requestRpcId: requestId, metadata });
+        parsedEvent = { type: "message", message: msg, requestRpcId: requestId, metadata };
       },
+      onError(error) {
+        if (error.type !== "max-buffer-size-exceeded") return;
+        streamError = new RpcTransportError(
+          `event-stream frame exceeds ${maximumEventStreamFrameCharacters} characters`,
+          undefined,
+          metadata.requestId,
+        );
+        throw streamError;
+      },
+      maxBufferSize: maximumEventStreamFrameCharacters,
     });
+    const deliverParsedEvent = (): Promise<boolean> | undefined => {
+      if (parsedEvent === undefined) return undefined;
+      const event = parsedEvent;
+      parsedEvent = undefined;
+      return channel.send(event);
+    };
     const reader = body.getReader();
     readers.add(reader);
     const decoder = new TextDecoder();
@@ -152,9 +222,17 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        parser.feed(decoder.decode(value, { stream: true }));
+        if (
+          !(await feedEventStreamText(
+            parser,
+            decoder.decode(value, { stream: true }),
+            deliverParsedEvent,
+          ))
+        ) {
+          return;
+        }
       }
-      parser.feed(decoder.decode());
+      if (!(await feedEventStreamText(parser, decoder.decode(), deliverParsedEvent))) return;
     } catch (err) {
       // Aborts (stop / switch session / superseded run / transport close) are
       // expected teardown via the fetch signal — not failures, stay quiet.
@@ -171,19 +249,23 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     }
     if (aborted || channel.closed) return;
     if (!responseSeen) {
-      channel.push({
-        type: "requestError",
-        rpcId: requestId,
-        error:
-          streamError ??
-          new RpcTransportError(
-            "event stream ended before the call's response",
-            undefined,
-            metadata.requestId,
-          ),
-      });
+      if (
+        !(await channel.send({
+          type: "requestError",
+          rpcId: requestId,
+          error:
+            streamError ??
+            new RpcTransportError(
+              "event stream ended before the call's response",
+              undefined,
+              metadata.requestId,
+            ),
+        }))
+      ) {
+        return;
+      }
     }
-    channel.push({
+    await channel.send({
       type: "streamEnd",
       method,
       requestRpcId: requestId,
@@ -348,7 +430,13 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       endSpan(span, err);
       throw err;
     }
-    channel.push({ type: "message", message: inbound, requestRpcId: rpcId, metadata });
+    if (
+      !(await channel.send({ type: "message", message: inbound, requestRpcId: rpcId, metadata }))
+    ) {
+      const err = new RpcTransportError("transport closed before delivering the RPC response");
+      endSpan(span, err);
+      throw err;
+    }
     endSpan(span);
   }
 

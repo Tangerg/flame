@@ -4,7 +4,10 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { forgetRules } from "../application/approvalPolicy";
 import { APPROVAL_RULES_KEY } from "../application/approvalPolicyQueries";
 import agentBootstrap from "./index";
@@ -22,7 +25,7 @@ describe("Agent bootstrap Runtime generation wiring", () => {
     setContainer({
       client: () => ({ approval: { forgetRule } }) as unknown as FlameClient,
     });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -45,7 +48,7 @@ describe("Agent bootstrap Runtime generation wiring", () => {
     const command = rejected(forgetRules(["rule-1"]));
     await vi.waitFor(() => expect(forgetRule).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({ message: "agent_command_owner_retired" });
 

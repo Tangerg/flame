@@ -5,7 +5,7 @@ import { ActivePlan } from "./ActivePlan";
 
 const model = vi.hoisted(() => ({
   sessionId: "ses-a",
-  generation: 1,
+  generation: 1n,
   revision: 1,
   running: true,
   steps: [
@@ -36,7 +36,7 @@ vi.mock("@/plugins/builtin/agent/public/plan", async (importOriginal) => {
 describe("ActivePlan", () => {
   beforeEach(() => {
     model.sessionId = "ses-a";
-    model.generation = 1;
+    model.generation = 1n;
     model.revision = 1;
     model.running = true;
     model.steps = [{ id: "step-1", text: "Inspect", status: "active" }];

@@ -1,11 +1,12 @@
 import type { WorkspaceEventLoop } from "./workspaceEventLoop";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
 
 export type WorkspaceCwdResolution =
   { status: "resolved"; cwd?: string } | { status: "unavailable" };
 
 export interface WorkspaceEventSubscriptionPorts {
   canSubscribe: () => boolean;
-  connectionGeneration: () => string | null;
+  connectionGeneration: () => RuntimeConnectionGeneration | null;
   subscribeConnection: (onChange: () => void) => () => void;
   retireReadModels: () => void;
   resolveWorkspaceCwd: (signal: AbortSignal) => Promise<WorkspaceCwdResolution>;
@@ -16,7 +17,7 @@ export interface WorkspaceEventSubscriptionPorts {
 
 class RuntimeEventLoopOwner {
   #observedConnection = false;
-  #connectionGeneration: string | null = null;
+  #connectionGeneration: RuntimeConnectionGeneration | null = null;
   #abort: AbortController | null = null;
 
   constructor(
@@ -24,7 +25,7 @@ class RuntimeEventLoopOwner {
     private readonly retireReadModels: () => void,
   ) {}
 
-  reconcile(connectionGeneration: string | null, canSubscribe: boolean): void {
+  reconcile(connectionGeneration: RuntimeConnectionGeneration | null, canSubscribe: boolean): void {
     const generationChanged =
       this.#observedConnection && this.#connectionGeneration !== connectionGeneration;
     const shouldStream = connectionGeneration !== null && canSubscribe;
@@ -63,10 +64,10 @@ export function startWorkspaceEventSubscription(
 ): () => void {
   const controller = new AbortController();
   const eventLoop = new RuntimeEventLoopOwner(ports.loop, ports.retireReadModels);
-  let retargetGeneration = 0;
+  let retargetLease: object = {};
   let resolutionAbort: AbortController | null = null;
 
-  const resolveTarget = (generation: number): void => {
+  const resolveTarget = (lease: object): void => {
     resolutionAbort?.abort();
     const attemptAbort = new AbortController();
     resolutionAbort = attemptAbort;
@@ -75,11 +76,7 @@ export function startWorkspaceEventSubscription(
       while (!attemptAbort.signal.aborted && !controller.signal.aborted) {
         try {
           const resolution = await ports.resolveWorkspaceCwd(attemptAbort.signal);
-          if (
-            generation !== retargetGeneration ||
-            attemptAbort.signal.aborted ||
-            controller.signal.aborted
-          )
+          if (lease !== retargetLease || attemptAbort.signal.aborted || controller.signal.aborted)
             return;
           if (resolution.status === "resolved") {
             ports.loop.retarget({
@@ -91,11 +88,7 @@ export function startWorkspaceEventSubscription(
           }
           return;
         } catch (error) {
-          if (
-            generation !== retargetGeneration ||
-            attemptAbort.signal.aborted ||
-            controller.signal.aborted
-          )
+          if (lease !== retargetLease || attemptAbort.signal.aborted || controller.signal.aborted)
             return;
           ports.reportResolutionError(error);
           await retryDelay(
@@ -109,14 +102,14 @@ export function startWorkspaceEventSubscription(
   };
 
   const retarget = (change: WorkspaceCwdInputChange): void => {
-    const generation = ++retargetGeneration;
+    const lease = (retargetLease = {});
     // A new active Session must never inherit the previous Session's watch while
     // its identity resolves. A projection update belongs to the same Session,
     // so keep the current watch until its workspace resolves: WorkspaceEventLoop
     // suppresses an equal target and avoids tearing down a healthy stream merely
     // because the Session list caught up after a cold direct read.
     if (change === "identity") ports.loop.retarget({ type: "none" });
-    resolveTarget(generation);
+    resolveTarget(lease);
   };
 
   const reconcileConnection = (): void => {
@@ -130,7 +123,7 @@ export function startWorkspaceEventSubscription(
   const unsubscribeCwdInputs = ports.subscribeWorkspaceCwdInputs(retarget);
 
   return () => {
-    retargetGeneration += 1;
+    retargetLease = {};
     resolutionAbort?.abort();
     unsubscribeConnection();
     unsubscribeCwdInputs();

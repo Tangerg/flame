@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/utilitymodel"
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 const (
@@ -29,33 +30,52 @@ const (
 	memoryCurationLedgerBytes  = 256 * 1024
 )
 
-// MemoryCurationConfig bounds and schedules the ledger-to-memory fold. Zero values
-// select package defaults.
-type MemoryCurationConfig struct {
-	MinPendingFacts int
-	MaxPendingFacts int
-	MaxTokens       int
-	MaxAge          time.Duration
+// MemoryCurationPolicyValues is the construction boundary for the
+// ledger-to-memory fold. Nil selects a named default; present non-positive or
+// inconsistent values are rejected instead of silently rewritten.
+type MemoryCurationPolicyValues struct {
+	MinPendingFacts *int
+	MaxPendingFacts *int
+	MaxTokens       *int
+	MaxAge          *time.Duration
 }
 
-func (m MemoryCurationConfig) normalized() MemoryCurationConfig {
-	if m.MinPendingFacts <= 0 {
-		m.MinPendingFacts = defaultMemoryCurationMinPending
+type memoryCurationPolicy struct {
+	minPendingFacts int
+	maxPendingFacts int
+	maxTokens       int
+	maxAge          time.Duration
+}
+
+func newMemoryCurationPolicy(values MemoryCurationPolicyValues) (memoryCurationPolicy, error) {
+	minPending, err := positiveIntOrDefault(values.MinPendingFacts, defaultMemoryCurationMinPending, "minimum pending facts")
+	if err != nil {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
-	if m.MaxPendingFacts <= 0 {
-		m.MaxPendingFacts = defaultMemoryCurationMaxPending
+	maxPending, err := positiveIntOrDefault(values.MaxPendingFacts, defaultMemoryCurationMaxPending, "maximum pending facts")
+	if err != nil {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
-	m.MaxPendingFacts = min(m.MaxPendingFacts, agentmemory.MaxLedgerFoldFacts)
-	if m.MinPendingFacts > m.MaxPendingFacts {
-		m.MinPendingFacts = m.MaxPendingFacts
+	if maxPending > agentmemory.MaxLedgerFoldFacts {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: maximum pending facts %d exceeds ledger fold limit %d", maxPending, agentmemory.MaxLedgerFoldFacts)
 	}
-	if m.MaxTokens <= 0 {
-		m.MaxTokens = defaultMemoryCurationMaxTokens
+	if minPending > maxPending {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: minimum pending facts %d exceeds maximum %d", minPending, maxPending)
 	}
-	if m.MaxAge <= 0 {
-		m.MaxAge = defaultMemoryCurationMaxAge
+	maxTokens, err := positiveIntOrDefault(values.MaxTokens, defaultMemoryCurationMaxTokens, "maximum tokens")
+	if err != nil {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
-	return m
+	maxAge, err := positiveDurationOrDefault(values.MaxAge, defaultMemoryCurationMaxAge, "maximum age")
+	if err != nil {
+		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
+	}
+	return memoryCurationPolicy{
+		minPendingFacts: minPending,
+		maxPendingFacts: maxPending,
+		maxTokens:       maxTokens,
+		maxAge:          maxAge,
+	}, nil
 }
 
 type agentMemory interface {
@@ -78,21 +98,25 @@ type MemoryConsolidator struct {
 	history messageReader
 	memory  agentMemory
 	client  utilitymodel.Resolver
-	config  MemoryCurationConfig
+	policy  memoryCurationPolicy
 	minMsgs int
 	now     func() time.Time
 }
 
 // NewMemoryConsolidator builds the Run-boundary memory consolidation worker.
-func NewMemoryConsolidator(store messageReader, memory agentMemory, client utilitymodel.Resolver, config MemoryCurationConfig) *MemoryConsolidator {
+func NewMemoryConsolidator(store messageReader, memory agentMemory, client utilitymodel.Resolver, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
+	policy, err := newMemoryCurationPolicy(values)
+	if err != nil {
+		return nil, err
+	}
 	return &MemoryConsolidator{
 		history: store,
 		memory:  memory,
 		client:  client,
-		config:  config.normalized(),
+		policy:  policy,
 		minMsgs: 4,
 		now:     time.Now,
-	}
+	}, nil
 }
 
 // Consolidate reads post-compaction history, appends fresh facts to today's
@@ -102,6 +126,9 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client utili
 func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) error {
 	if m == nil || m.memory == nil || sessionID == "" || cwd == "" {
 		return nil
+	}
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("memory extraction: %w", err)
 	}
 	project := filepath.Clean(cwd)
 	messages, err := m.history.Read(ctx, sessionID)
@@ -136,7 +163,7 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	if err != nil {
 		return fmt.Errorf("memory curation: load watermark: %w", err)
 	}
-	pending, err := m.memory.PendingLedger(ctx, project, state.Watermark, m.config.MaxPendingFacts)
+	pending, err := m.memory.PendingLedger(ctx, project, state.Watermark, m.policy.maxPendingFacts)
 	if err != nil {
 		return fmt.Errorf("memory curation: read ledger after watermark %d: %w", state.Watermark, err)
 	}
@@ -155,8 +182,8 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	if err != nil {
 		return fmt.Errorf("memory curation: generate memory: %w", err)
 	}
-	if tokens := estimateTextTokens(content); tokens > m.config.MaxTokens {
-		return fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.config.MaxTokens)
+	if tokens := estimateTextTokens(content); tokens > m.policy.maxTokens {
+		return fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.policy.maxTokens)
 	}
 	through := pending[len(pending)-1].Sequence
 	published, err := m.memory.PublishGeneration(ctx, project, state.Watermark, through, parseMemoryFacts(content), now)
@@ -218,10 +245,10 @@ func (m *MemoryConsolidator) curationDue(state agentmemory.State, pending int, n
 	if pending == 0 {
 		return false
 	}
-	if state.Watermark == 0 || pending >= m.config.MinPendingFacts {
+	if state.Watermark == 0 || pending >= m.policy.minPendingFacts {
 		return true
 	}
-	return !state.UpdatedAt.IsZero() && now.Sub(state.UpdatedAt) >= m.config.MaxAge
+	return !state.UpdatedAt.IsZero() && now.Sub(state.UpdatedAt) >= m.policy.maxAge
 }
 
 // askForFacts queries the utility model directly, outside conversation
@@ -241,7 +268,7 @@ Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bull
 ordered from most important to least important, without a preamble or code fence.`
 	text, err := utilitymodel.Complete(ctx, m.resolveClient(ctx), utilitymodel.Prompt{
 		SystemPrompt: prompt, UserPrompt: transcript,
-		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.config.MaxTokens),
+		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
 	if err != nil {
 		return "", err
@@ -264,7 +291,7 @@ list: one self-contained, standalone fact per bullet, no headings and no
 nesting — each bullet is stored as an individually addressable memory. Output
 at most ` + strconv.Itoa(agentmemory.MaxCurationProposals) + ` bullets, ordered
 from most important to least important, without a code fence. Keep the result
-within ` + strconv.Itoa(m.config.MaxTokens) + ` tokens.
+within ` + strconv.Itoa(m.policy.maxTokens) + ` tokens.
 If no facts remain useful, respond exactly NO_MEMORY.`
 
 	var input strings.Builder
@@ -281,7 +308,7 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 	}
 	text, err := utilitymodel.Complete(ctx, m.resolveClient(ctx), utilitymodel.Prompt{
 		SystemPrompt: systemPrompt, UserPrompt: input.String(),
-		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.config.MaxTokens),
+		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
 	if err != nil {
 		return "", err

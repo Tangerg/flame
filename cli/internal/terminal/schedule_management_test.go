@@ -221,6 +221,31 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	stop()
 }
 
+func TestScheduleFormDoesNotNormalizeModelIdentity(t *testing.T) {
+	draft := scheduleFormDraft{
+		instructions: "review the repository",
+		provider:     " deepseek",
+		model:        "deepseek-v4-flash",
+		cron:         defaultScheduleCron,
+	}
+	if _, err := draft.candidate(); err == nil {
+		t.Fatal("schedule create form normalized a provider identity")
+	}
+
+	original := schedule.Schedule{
+		ID: "sch_review", Instructions: "review the repository", Provider: "deepseek",
+		Model: "deepseek-v4-flash", Cron: defaultScheduleCron, Enabled: true, Revision: 1,
+	}
+	update := newScheduleFormDraft(scheduleFormUpdate, original, "")
+	update.provider = " deepseek"
+	if _, _, err := update.patch(original); err == nil {
+		t.Fatal("schedule update form normalized a provider identity")
+	}
+	if err := validateScheduleModelPair(" ", ""); err == nil {
+		t.Fatal("schedule form treated whitespace as an absent identity")
+	}
+}
+
 func TestWorkspaceReplacementRetiresAPresentedScheduleForm(t *testing.T) {
 	backend := mock.New()
 	service := newScheduleServiceStub()

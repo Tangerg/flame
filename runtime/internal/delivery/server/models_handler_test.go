@@ -24,11 +24,11 @@ func (m *modelProviderFake) Update(context.Context, string, provider.Patch) (pro
 	return provider.Provider{}, nil
 }
 func (m *modelProviderFake) Supported() []models.ProviderMetadata {
-	return []models.ProviderMetadata{{ID: "anthropic"}}
+	return []models.ProviderMetadata{serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}
 }
 func (m *modelProviderFake) Metadata(id string) (models.ProviderMetadata, bool) {
 	if id == "anthropic" {
-		return models.ProviderMetadata{ID: id}, true
+		return serverProviderMetadata(id, models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()), true
 	}
 	return models.ProviderMetadata{}, false
 }
@@ -85,7 +85,7 @@ func TestSetUtilityRoleRequiresConfiguredProvider(t *testing.T) {
 func TestSetUtilityRoleRejectsPartialSelection(t *testing.T) {
 	saver := &utilitySaverRecorder{}
 	s := modelRoleServer(map[string]provider.Provider{
-		"anthropic": {ID: "anthropic", APIKey: "sk-secret"},
+		"anthropic": serverProvider(t, "anthropic", "sk-secret", ""),
 	}, saver)
 
 	_, err := s.SetUtilityRole(context.Background(), protocol.UtilityRole{Provider: "anthropic"})
@@ -100,7 +100,7 @@ func TestSetUtilityRoleRejectsPartialSelection(t *testing.T) {
 func TestSetUtilityRoleStoresConfiguredProvider(t *testing.T) {
 	saver := &utilitySaverRecorder{}
 	s := modelRoleServer(map[string]provider.Provider{
-		"anthropic": {ID: "anthropic", APIKey: "sk-secret"},
+		"anthropic": serverProvider(t, "anthropic", "sk-secret", ""),
 	}, saver)
 
 	got, err := s.SetUtilityRole(context.Background(), protocol.UtilityRole{

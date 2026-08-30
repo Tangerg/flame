@@ -150,7 +150,7 @@ const (
 	ProblemMCPAuthorizationRequired = "mcp_authorization_required" // an HTTP MCP server needs an interactive sign-in
 	ProblemMCPAuthorizationFailed   = "mcp_authorization_failed"   // an interactive MCP sign-in did not complete successfully
 	ProblemMCPDialFailed            = "mcp_dial_failed"            // the MCP connection, or a test of it, did not succeed
-	ProblemProviderNotConfigured    = "provider_not_configured"    // the provider has no credential yet
+	ProblemProviderNotConfigured    = "provider_not_configured"    // the provider's authentication or endpoint policy is unsatisfied
 	ProblemProviderTestFailed       = "provider_test_failed"       // the provider was unreachable or rejected the probe
 )
 

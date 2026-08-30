@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/conversations"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -45,52 +46,68 @@ func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan conv
 	if c == nil || c.history == nil || c.runs == nil || c.tx == nil {
 		return errors.New("persistence: conversation compaction dependencies are unavailable")
 	}
-	if plan.SessionID == "" {
-		return errors.New("persistence: conversation compaction session ID is required")
+	if _, err := resourceid.ParseSession(plan.SessionID); err != nil {
+		return fmt.Errorf("persistence: conversation compaction: %w", err)
 	}
-	return c.tx(ctx, func(ctx context.Context) error {
-		count, err := c.history.Count(ctx, plan.SessionID)
-		if err != nil {
+	return c.tx(ctx, func(ctx context.Context) error { return c.applyCompaction(ctx, plan) })
+}
+
+func (c *ConversationCompactions) applyCompaction(
+	ctx context.Context,
+	plan conversations.CompactionPlan,
+) error {
+	count, err := c.history.Count(ctx, plan.SessionID)
+	if err != nil {
+		return err
+	}
+	if count != plan.Compaction.ExpectedCount() {
+		return fmt.Errorf(
+			"persistence: conversation compaction message count changed from %d to %d",
+			plan.Compaction.ExpectedCount(), count,
+		)
+	}
+	current, err := c.runs.ListRuns(ctx, plan.SessionID)
+	if err != nil {
+		return err
+	}
+	if err := validateCompactionRuns(plan.SessionID, plan.Runs, current); err != nil {
+		return err
+	}
+	if err := c.history.Replace(ctx, plan.SessionID, plan.Compaction.Messages()...); err != nil {
+		return err
+	}
+	for _, planned := range plan.Runs {
+		if planned.Expected.Equal(planned.Replacement) {
+			continue
+		}
+		if err := c.runs.RebaseMessageMark(ctx, planned.Expected, planned.Replacement); err != nil {
 			return err
 		}
-		if count != plan.Compaction.ExpectedCount() {
-			return fmt.Errorf(
-				"persistence: conversation compaction message count changed from %d to %d",
-				plan.Compaction.ExpectedCount(), count,
-			)
+	}
+	return nil
+}
+
+func validateCompactionRuns(
+	sessionID string,
+	planned []conversations.CompactionRun,
+	current []run.Run,
+) error {
+	if len(current) != len(planned) {
+		return fmt.Errorf(
+			"persistence: conversation compaction Run set changed from %d to %d records",
+			len(planned), len(current),
+		)
+	}
+	for index, candidate := range planned {
+		if !current[index].Equal(candidate.Expected) {
+			return fmt.Errorf("persistence: conversation compaction Run %q changed", candidate.Expected.ID())
 		}
-		current, err := c.runs.ListRuns(ctx, plan.SessionID)
-		if err != nil {
-			return err
+		if candidate.Expected.SessionID() != sessionID || candidate.Replacement.SessionID() != sessionID {
+			return fmt.Errorf("persistence: conversation compaction Run %q belongs to another session", candidate.Expected.ID())
 		}
-		if len(current) != len(plan.Runs) {
-			return fmt.Errorf(
-				"persistence: conversation compaction Run set changed from %d to %d records",
-				len(plan.Runs), len(current),
-			)
+		if candidate.Expected.ID() != candidate.Replacement.ID() {
+			return fmt.Errorf("persistence: conversation compaction changes Run %q identity", candidate.Expected.ID())
 		}
-		for index, planned := range plan.Runs {
-			if !current[index].Equal(planned.Expected) {
-				return fmt.Errorf("persistence: conversation compaction Run %q changed", planned.Expected.ID())
-			}
-			if planned.Expected.SessionID() != plan.SessionID || planned.Replacement.SessionID() != plan.SessionID {
-				return fmt.Errorf("persistence: conversation compaction Run %q belongs to another session", planned.Expected.ID())
-			}
-			if planned.Expected.ID() != planned.Replacement.ID() {
-				return fmt.Errorf("persistence: conversation compaction changes Run %q identity", planned.Expected.ID())
-			}
-		}
-		if err := c.history.Replace(ctx, plan.SessionID, plan.Compaction.Messages()...); err != nil {
-			return err
-		}
-		for _, planned := range plan.Runs {
-			if planned.Expected.Equal(planned.Replacement) {
-				continue
-			}
-			if err := c.runs.RebaseMessageMark(ctx, planned.Expected, planned.Replacement); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }

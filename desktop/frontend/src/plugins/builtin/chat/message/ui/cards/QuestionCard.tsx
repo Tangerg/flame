@@ -8,7 +8,16 @@ import {
   type CompositionEvent,
   type KeyboardEvent,
 } from "react";
-import { Button, Icon, IconButton, Pressable, Surface, TextArea, TextField } from "@/ui";
+import {
+  Button,
+  ChoiceList,
+  ChoiceOption,
+  Icon,
+  IconButton,
+  Surface,
+  TextArea,
+  TextField,
+} from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { HitlSettledRow } from "./HitlCard";
 import { useT } from "@/lib/i18n";
@@ -17,8 +26,8 @@ import {
   createQuestionDraft,
   questionAnswerText,
   questionDraftComplete,
+  setQuestionOptions,
   setQuestionText,
-  toggleQuestionOption,
   type QuestionDraft,
 } from "@/plugins/builtin/agent/public/messagePresentation";
 import {
@@ -140,9 +149,12 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
     navigateQuestion(activeIndex + 1);
   };
 
-  const chooseOption = (question: Extract<QuestionItem, { type: "choice" }>, label: string) => {
+  const selectOptions = (
+    question: Extract<QuestionItem, { type: "choice" }>,
+    selected: string[],
+  ) => {
     if (!runtimeAvailable || actions.pending) return;
-    const nextDraft = toggleQuestionOption(draft, activeIndex, question, label);
+    const nextDraft = setQuestionOptions(draft, activeIndex, question, selected);
     if (question.multiple) {
       setDraft(nextDraft);
       return;
@@ -158,42 +170,6 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
   const advanceCurrent = () => {
     if (!runtimeAvailable || actions.pending) return;
     submitOrAdvance(draft);
-  };
-
-  const handleSingleChoiceKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    question: Extract<QuestionItem, { type: "choice" }>,
-    optionIndex: number,
-  ) => {
-    if (question.multiple) return;
-
-    let nextIndex: number | undefined;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      nextIndex = (optionIndex + 1) % question.options.length;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      nextIndex = (optionIndex - 1 + question.options.length) % question.options.length;
-    } else if (event.key === "Home") {
-      nextIndex = 0;
-    } else if (event.key === "End") {
-      nextIndex = question.options.length - 1;
-    } else if (/^[1-9]$/.test(event.key)) {
-      const numberedIndex = Number(event.key) - 1;
-      if (numberedIndex < question.options.length) {
-        event.preventDefault();
-        const numbered = question.options[numberedIndex];
-        if (numbered) chooseOption(question, numbered.label);
-      }
-      return;
-    }
-
-    if (nextIndex === undefined) return;
-    event.preventDefault();
-    const next = question.options[nextIndex];
-    if (!next) return;
-    setDraft((previous) => toggleQuestionOption(previous, activeIndex, question, next.label));
-    event.currentTarget.parentElement
-      ?.querySelectorAll<HTMLElement>('[role="radio"]')
-      ?.[nextIndex]?.focus();
   };
 
   const handleCompositionStart = () => {
@@ -293,59 +269,32 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
 
       <div ref={activeQuestionRef} className="flex flex-col gap-1 px-2 pt-1 pb-2">
         {activeQuestion.type === "choice" && (
-          <div
-            role={activeQuestion.multiple ? "group" : "radiogroup"}
-            aria-labelledby={promptId}
-            className="flex flex-col gap-1"
+          <ChoiceList
+            multiple={activeQuestion.multiple}
+            value={activeDraft.selected}
+            values={activeQuestion.options.map((option) => option.label)}
+            labelledBy={promptId}
+            disabled={!runtimeAvailable || actions.pending}
+            onValueChange={(selected) => selectOptions(activeQuestion, selected)}
           >
             {activeQuestion.options.map((option, optionIndex) => {
-              const active = activeDraft.selected.includes(option.label);
+              const selected = activeDraft.selected.includes(option.label);
               const recommended = option.label.endsWith(RECOMMENDED_SUFFIX);
               const label = recommended
                 ? option.label.slice(0, -RECOMMENDED_SUFFIX.length)
                 : option.label;
               return (
-                <Pressable
+                <ChoiceOption
                   key={option.label}
-                  type="button"
-                  role={activeQuestion.multiple ? "checkbox" : "radio"}
-                  aria-label={option.label}
-                  aria-description={option.description || undefined}
-                  aria-checked={active}
+                  multiple={activeQuestion.multiple}
+                  value={option.label}
+                  selected={selected}
+                  ordinal={optionIndex + 1}
+                  label={option.label}
+                  description={option.description}
                   disabled={!runtimeAvailable || actions.pending}
-                  tabIndex={
-                    activeQuestion.multiple ||
-                    active ||
-                    (!activeDraft.selected.length && optionIndex === 0)
-                      ? 0
-                      : -1
-                  }
-                  onClick={() => chooseOption(activeQuestion, option.label)}
-                  onKeyDown={(event) =>
-                    handleSingleChoiceKeyDown(event, activeQuestion, optionIndex)
-                  }
-                  className={cn(
-                    "group/choice flex min-h-8 w-full items-center gap-2 rounded-full px-2 py-1.5 text-left outline-none transition-colors duration-[var(--dur-fast)] focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-64",
-                    active ? "bg-hover" : "hover:bg-hover",
-                  )}
+                  onReselect={() => selectOptions(activeQuestion, [option.label])}
                 >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "grid size-5 shrink-0 place-items-center rounded-full border text-ui-xs leading-none font-medium",
-                      active
-                        ? "border-fg bg-fg text-canvas"
-                        : "border-field bg-surface-2 text-fg-muted",
-                    )}
-                  >
-                    {active && activeQuestion.multiple ? (
-                      <Icon name="check" size="xs" />
-                    ) : active ? (
-                      <span className="size-1.5 rounded-full bg-current" />
-                    ) : activeQuestion.multiple ? null : (
-                      optionIndex + 1
-                    )}
-                  </span>
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
                     <span className="min-w-0 max-w-1/2 shrink-0 truncate text-ui-md font-medium text-fg">
                       {label}
@@ -364,10 +313,10 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
                       </span>
                     )}
                   </span>
-                </Pressable>
+                </ChoiceOption>
               );
             })}
-          </div>
+          </ChoiceList>
         )}
 
         {activeQuestion.type === "text" && (

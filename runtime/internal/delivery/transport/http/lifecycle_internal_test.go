@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -40,7 +41,7 @@ func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 	cfg := Config{
 		Endpoint:        endpoint,
 		Addr:            "127.0.0.1:0",
-		ServerInfo:      protocol.ServerInfo{Name: "test", Version: "1", InstanceID: "runtime_test"},
+		ServerInfo:      protocol.ServerInfo{Name: "test", Version: "1", InstanceID: identityfixture.RuntimeInstanceID},
 		ProtocolVersion: "test",
 	}
 	if configure != nil {

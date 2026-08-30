@@ -13,6 +13,7 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/utilitymodel"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -37,25 +38,33 @@ const (
 	skillProposalRevision = "revise"
 )
 
-// SkillMiningConfig tunes when the [SkillProposalMiner] attempts a distillation. Zero values
-// select package defaults.
-type SkillMiningConfig struct {
+// SkillMiningPolicyValues tunes when the [SkillProposalMiner] attempts a
+// distillation. Nil selects a named default; present non-positive values are
+// invalid.
+type SkillMiningPolicyValues struct {
 	// ComplexityThreshold is the minimum completed tool-call count for a Run to
 	// count as complex. Only complex Runs advance the cadence counter.
-	ComplexityThreshold int
+	ComplexityThreshold *int
 	// Cadence bounds mining to at most once per this many complex Runs, per
 	// session.
-	Cadence int
+	Cadence *int
 }
 
-func (s SkillMiningConfig) normalized() SkillMiningConfig {
-	if s.ComplexityThreshold <= 0 {
-		s.ComplexityThreshold = defaultSkillMiningComplexityThreshold
+type skillMiningPolicy struct {
+	complexityThreshold int
+	cadence             int
+}
+
+func newSkillMiningPolicy(values SkillMiningPolicyValues) (skillMiningPolicy, error) {
+	threshold, err := positiveIntOrDefault(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
+	if err != nil {
+		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}
-	if s.Cadence <= 0 {
-		s.Cadence = defaultSkillMiningCadence
+	cadence, err := positiveIntOrDefault(values.Cadence, defaultSkillMiningCadence, "cadence")
+	if err != nil {
+		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}
-	return s
+	return skillMiningPolicy{complexityThreshold: threshold, cadence: cadence}, nil
 }
 
 // proposalSubmitter is the skillMiner's narrow application boundary. The skillMiner can
@@ -85,7 +94,7 @@ type SkillProposalMiner struct {
 	proposals proposalSubmitter
 	source    skillSource
 	client    utilitymodel.Resolver
-	config    SkillMiningConfig
+	policy    skillMiningPolicy
 	minMsgs   int
 
 	// mu guards complexRuns, the per-session count of complex Runs since the
@@ -98,16 +107,20 @@ type SkillProposalMiner struct {
 // NewSkillProposalMiner builds the Run-boundary skill skillMiner over the conversation
 // history reader, the proposal use case, the active-Skill source (for the
 // read-before-write refinement guard), and the utility-model client resolver.
-func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client utilitymodel.Resolver, config SkillMiningConfig) *SkillProposalMiner {
+func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client utilitymodel.Resolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
+	policy, err := newSkillMiningPolicy(values)
+	if err != nil {
+		return nil, err
+	}
 	return &SkillProposalMiner{
 		history:     history,
 		proposals:   proposals,
 		source:      source,
 		client:      client,
-		config:      config.normalized(),
+		policy:      policy,
 		minMsgs:     skillMiningMinMessages,
 		complexRuns: map[string]int{},
-	}
+	}, nil
 }
 
 // MineIfDue distills the session's recent trajectory into a Skill proposal
@@ -119,7 +132,10 @@ func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd strin
 	if s == nil || s.proposals == nil || sessionID == "" || cwd == "" {
 		return nil
 	}
-	if toolCalls < s.config.ComplexityThreshold {
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("skill mining: %w", err)
+	}
+	if toolCalls < s.policy.complexityThreshold {
 		return nil
 	}
 	if !s.due(sessionID) {
@@ -239,7 +255,7 @@ func (s *SkillProposalMiner) due(sessionID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.complexRuns[sessionID]++
-	if s.complexRuns[sessionID] >= s.config.Cadence {
+	if s.complexRuns[sessionID] >= s.policy.cadence {
 		delete(s.complexRuns, sessionID)
 		return true
 	}

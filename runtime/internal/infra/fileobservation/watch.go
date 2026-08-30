@@ -4,7 +4,6 @@
 package fileobservation
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -78,7 +77,11 @@ type target struct {
 
 func canonicalTargets(targets []Target) ([]target, error) {
 	out := make([]target, 0, len(targets))
-	seen := make(map[string]struct{}, len(targets))
+	type targetKey struct {
+		name string
+		path string
+	}
+	seen := make(map[targetKey]struct{}, len(targets))
 	for index, candidate := range targets {
 		if candidate.Key == "" {
 			return nil, fmt.Errorf("observe files: target %d key is required", index)
@@ -87,7 +90,7 @@ func canonicalTargets(targets []Target) ([]target, error) {
 			return nil, fmt.Errorf("observe files: target %d path must be absolute", index)
 		}
 		path := filepath.Clean(candidate.Path)
-		identity := candidate.Key + "\x00" + path
+		identity := targetKey{name: candidate.Key, path: path}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
@@ -107,8 +110,6 @@ func canonicalTargets(targets []Target) ([]target, error) {
 	}
 	return out, nil
 }
-
-type fingerprint [sha256.Size]byte
 
 type watch struct {
 	fsw     *fsnotify.Watcher
@@ -265,28 +266,29 @@ func (w *watch) Accept(keys, identities []string) error {
 }
 
 func fingerprintOf(candidate target) (fingerprint, string, error) {
-	hash := sha256.New()
-	_, _ = io.WriteString(hash, candidate.path)
+	encoder := newFingerprintEncoder()
+	encoder.field(fingerprintFieldLogicalPath, candidate.path)
 	info, err := os.Lstat(candidate.path)
 	if errors.Is(err, os.ErrNotExist) {
-		_, _ = io.WriteString(hash, "\x00missing")
-		return sum(hash), "", nil
+		encoder.state(fingerprintStateMissing)
+		return encoder.sum(), "", nil
 	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe files: inspect %q: %w", candidate.path, err)
 	}
-	writeInfo(hash, info)
+	encoder.fileInfo(fingerprintFieldLogicalInfo, info)
 	if info.Mode()&os.ModeSymlink != 0 {
 		destination, readErr := os.Readlink(candidate.path)
 		if readErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: read symlink %q: %w", candidate.path, readErr)
 		}
-		_, _ = io.WriteString(hash, "\x00link\x00"+destination)
+		encoder.field(fingerprintFieldLinkTarget, destination)
 	}
 	physical, err := pathidentity.Resolve("", candidate.path)
 	if err != nil {
-		_, _ = io.WriteString(hash, "\x00unresolved\x00"+err.Error())
-		return sum(hash), "", nil
+		encoder.state(fingerprintStateUnresolved)
+		encoder.field(fingerprintFieldError, err.Error())
+		return encoder.sum(), "", nil
 	}
 	if candidate.physicalBoundary != "" {
 		inside, containsErr := pathidentity.Contains(candidate.physicalBoundary, physical)
@@ -294,42 +296,33 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 			return fingerprint{}, "", fmt.Errorf("observe files: confine %q: %w", candidate.path, containsErr)
 		}
 		if !inside {
-			_, _ = io.WriteString(hash, "\x00outside-boundary\x00"+physical)
-			return sum(hash), "", nil
+			encoder.state(fingerprintStateOutsideBoundary)
+			encoder.field(fingerprintFieldPhysicalPath, physical)
+			return encoder.sum(), "", nil
 		}
 	}
-	_, _ = io.WriteString(hash, "\x00physical\x00"+physical)
+	encoder.field(fingerprintFieldPhysicalPath, physical)
 	physicalInfo, err := os.Stat(physical)
 	if errors.Is(err, os.ErrNotExist) {
-		_, _ = io.WriteString(hash, "\x00missing-target")
-		return sum(hash), physical, nil
+		encoder.state(fingerprintStateMissingTarget)
+		return encoder.sum(), physical, nil
 	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe files: inspect target %q: %w", physical, err)
 	}
-	writeInfo(hash, physicalInfo)
+	encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 	if physicalInfo.Mode().IsRegular() {
 		file, openErr := os.Open(physical)
 		if openErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}
-		_, copyErr := io.Copy(hash, file)
+		copyErr := encoder.content(file)
 		closeErr := file.Close()
 		if copyErr != nil || closeErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, closeErr))
 		}
 	}
-	return sum(hash), physical, nil
-}
-
-func writeInfo(dst io.Writer, info os.FileInfo) {
-	_, _ = fmt.Fprintf(dst, "\x00type=%d\x00size=%d\x00mtime=%d", info.Mode().Type(), info.Size(), info.ModTime().UnixNano())
-}
-
-func sum(hash interface{ Sum([]byte) []byte }) fingerprint {
-	var value fingerprint
-	copy(value[:], hash.Sum(nil))
-	return value
+	return encoder.sum(), physical, nil
 }
 
 func nearestExistingDirectory(path string) (string, error) {

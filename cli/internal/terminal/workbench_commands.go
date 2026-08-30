@@ -50,7 +50,7 @@ func (a *app) showPromptStashes() {
 	for index, stash := range stashes {
 		lines = append(lines, fmt.Sprintf("%d. %s · %s · %s", index+1, stash.ID, compactRelativeAge(stash.CreatedAt), promptSummary(stash)))
 	}
-	a.transcript.Append(&kit.Message{Theme: a.transcript.theme, Speaker: "prompt stashes", Body: strings.Join(lines, "\n")})
+	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "prompt stashes", Body: strings.Join(lines, "\n")})
 }
 
 func (a *app) applyPromptStash(identity string) error {

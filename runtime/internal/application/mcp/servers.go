@@ -70,7 +70,7 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 
 // UpdateServer applies an explicit partial update to an existing resource.
 // The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
-func (c *Coordinator) UpdateServer(ctx context.Context, name string, patch ServerPatch) (Server, error) {
+func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerName, patch ServerPatch) (Server, error) {
 	if patch.Empty() {
 		return Server{}, fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
@@ -128,7 +128,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 		redialErr = c.redialServer(write.ownerCtx, srv, startDial)
 		if redialErr != nil {
 			// Admission can race component shutdown. Reuse this mutation's reserved
-			// sequence for the truthful disconnected projection instead of
+			// queue position for the truthful disconnected projection instead of
 			// publishing a connecting state that no task can ever settle.
 			event.status = ServerStatus{Name: srv.Name}
 		}
@@ -152,7 +152,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 
 // DeleteServer deletes a server from the registry and drops it from the live
 // connections.
-func (c *Coordinator) DeleteServer(ctx context.Context, name string) error {
+func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerName) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return err
@@ -305,7 +305,7 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 
 func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (mcpserver.Server, error) {
 	var current *mcpserver.Server
-	if c.registry != nil && input.Name != "" {
+	if c.registry != nil && input.Name.Validate() == nil {
 		stored, found, err := c.registry.Get(ctx, input.Name)
 		if err != nil {
 			return mcpserver.Server{}, err
@@ -334,9 +334,8 @@ func serverCandidate(input ServerInput, current *mcpserver.Server) (mcpserver.Se
 		Args:             connection.Args,
 		Env:              connection.Env,
 		Dir:              connection.Dir,
-		Timeout:          input.Timeout,
-		DisabledTools:    slices.Clone(input.DisabledTools),
-		AutoApproveTools: slices.Clone(input.AutoApproveTools),
+		HandshakeTimeout: input.HandshakeTimeout,
+		ToolPolicy:       input.ToolPolicy,
 	}
 	if err := srv.Validate(); err != nil {
 		return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
@@ -366,14 +365,23 @@ func applyServerPatch(current mcpserver.Server, patch ServerPatch) (mcpserver.Se
 		updated.Env = connection.Env
 		updated.Dir = connection.Dir
 	}
-	if patch.Timeout != nil {
-		updated.Timeout = *patch.Timeout
+	if patch.HandshakeTimeout != nil {
+		updated.HandshakeTimeout = *patch.HandshakeTimeout
 	}
-	if patch.DisabledTools != nil {
-		updated.DisabledTools = slices.Clone(*patch.DisabledTools)
-	}
-	if patch.AutoApproveTools != nil {
-		updated.AutoApproveTools = slices.Clone(*patch.AutoApproveTools)
+	if patch.DisabledTools != nil || patch.AutoApproveTools != nil {
+		disabled := updated.ToolPolicy.DisabledTools()
+		autoApproved := updated.ToolPolicy.AutoApprovedTools()
+		if patch.DisabledTools != nil {
+			disabled = slices.Clone(*patch.DisabledTools)
+		}
+		if patch.AutoApproveTools != nil {
+			autoApproved = slices.Clone(*patch.AutoApproveTools)
+		}
+		policy, err := mcpserver.NewServerToolPolicy(disabled, autoApproved)
+		if err != nil {
+			return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
+		}
+		updated.ToolPolicy = policy
 	}
 	if err := updated.Validate(); err != nil {
 		return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
@@ -552,7 +560,7 @@ func resolveEnvironment(
 
 // Tools lists tools advertised by the connected MCP servers (scoped to server
 // when non-empty) for tool discovery.
-func (c *Coordinator) Tools(ctx context.Context, server string) ([]mcpserver.AdvertisedTool, error) {
+func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if c.toolCatalog == nil {
 		return nil, nil
 	}

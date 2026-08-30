@@ -368,7 +368,7 @@ func (m *mutationStores) ApplyTerminal(context.Context, TerminalPlan) error {
 
 func (*mutationStores) List(context.Context) ([]session.Session, error) { panic("unused") }
 
-func (*mutationStores) ListPage(context.Context, bool, int64, string, int) ([]session.Session, error) {
+func (*mutationStores) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
 	panic("unused")
 }
 func (m *mutationStores) Get(context.Context, string) (session.Session, error) {

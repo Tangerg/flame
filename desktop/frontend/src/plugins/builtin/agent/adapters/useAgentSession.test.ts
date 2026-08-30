@@ -84,9 +84,6 @@ describe("useAgentSession driver lifecycle", () => {
               interrupts: [],
               plan: {
                 sessionId: SID,
-                revision: 0,
-                steps: [],
-                updatedAt: "2026-07-29T00:00:00Z",
               },
             }),
           },
@@ -254,9 +251,6 @@ describe("useAgentSession run timing guards", () => {
               interrupts: [],
               plan: {
                 sessionId: SID,
-                revision: 0,
-                steps: [],
-                updatedAt: "2026-07-29T00:00:00Z",
               },
             }),
           },
@@ -414,9 +408,6 @@ describe("useAgentSession run timing guards", () => {
                 interrupts: [],
                 plan: {
                   sessionId: SID,
-                  revision: 0,
-                  steps: [],
-                  updatedAt: "2026-07-29T00:00:00Z",
                 },
               }),
             ),
@@ -531,9 +522,6 @@ describe("useAgentSession run timing guards", () => {
               interrupts: [],
               plan: {
                 sessionId: SID,
-                revision: 0,
-                steps: [],
-                updatedAt: "2026-07-29T00:00:00Z",
               },
             }),
           },
@@ -581,9 +569,6 @@ describe("useAgentSession durable recovery", () => {
       interrupts: [],
       plan: {
         sessionId: RID,
-        revision: 0,
-        steps: [],
-        updatedAt: "2026-07-29T00:00:00Z",
       },
       ...overrides,
     };
@@ -813,15 +798,17 @@ describe("useAgentSession durable recovery", () => {
             : [],
           plan: {
             sessionId: RID,
-            revision: restarted ? 2 : 1,
-            steps: [
-              {
-                id: restarted ? "step_after_restart" : "step_before_restart",
-                description: restarted ? "Approve resumed tool" : "Run old generation",
-                status: "in_progress",
-              },
-            ],
-            updatedAt: "2026-08-13T00:00:03.000Z",
+            state: {
+              revision: restarted ? 2 : 1,
+              steps: [
+                {
+                  id: restarted ? "step_after_restart" : "step_before_restart",
+                  description: restarted ? "Approve resumed tool" : "Run old generation",
+                  status: "in_progress",
+                },
+              ],
+              updatedAt: "2026-08-13T00:00:03.000Z",
+            },
           },
         }),
       ),
@@ -928,15 +915,17 @@ describe("useAgentSession durable recovery", () => {
             ],
             plan: {
               sessionId: RID,
-              revision: 2,
-              steps: [
-                {
-                  id: "step_restarted",
-                  description: "Approve recovered tool",
-                  status: "in_progress",
-                },
-              ],
-              updatedAt: "2026-08-13T00:00:03.000Z",
+              state: {
+                revision: 2,
+                steps: [
+                  {
+                    id: "step_restarted",
+                    description: "Approve recovered tool",
+                    status: "in_progress",
+                  },
+                ],
+                updatedAt: "2026-08-13T00:00:03.000Z",
+              },
             },
           }),
         );
@@ -1018,9 +1007,11 @@ describe("useAgentSession durable recovery", () => {
               ],
           plan: {
             sessionId: RID,
-            revision: restarted ? 2 : 1,
-            steps: [],
-            updatedAt: "2026-08-13T00:00:03.000Z",
+            state: {
+              revision: restarted ? 2 : 1,
+              steps: [],
+              updatedAt: "2026-08-13T00:00:03.000Z",
+            },
           },
         }),
       ),
@@ -1102,9 +1093,11 @@ describe("useAgentSession durable recovery", () => {
               ],
           plan: {
             sessionId: RID,
-            revision: restarted ? 2 : 1,
-            steps: [],
-            updatedAt: "2026-08-13T00:00:03.000Z",
+            state: {
+              revision: restarted ? 2 : 1,
+              steps: [],
+              updatedAt: "2026-08-13T00:00:03.000Z",
+            },
           },
         }),
       ),
@@ -1183,9 +1176,11 @@ describe("useAgentSession durable recovery", () => {
               ],
           plan: {
             sessionId: RID,
-            revision: restarted ? 2 : 1,
-            steps: [],
-            updatedAt: "2026-08-13T00:00:03.000Z",
+            state: {
+              revision: restarted ? 2 : 1,
+              steps: [],
+              updatedAt: "2026-08-13T00:00:03.000Z",
+            },
           },
         }),
       ),

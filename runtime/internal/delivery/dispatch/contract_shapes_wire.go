@@ -47,6 +47,14 @@ func registerProviderUnions(s *Shapes) {
 
 func registerMCPUnions(s *Shapes) {
 	s.union(UnionSpec{
+		GoType:        typeOf[protocol.MCPHandshakeTimeout](),
+		Discriminator: "type",
+		Variants: []VariantSpec{
+			{Tag: string(protocol.MCPHandshakeUnbounded)},
+			{Tag: string(protocol.MCPHandshakeBounded), Required: []string{"seconds"}},
+		},
+	})
+	s.union(UnionSpec{
 		GoType:        typeOf[protocol.MCPConnection](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
@@ -143,6 +151,28 @@ func registerNotifications(s *Shapes) {
 
 func typeOf[T any]() reflect.Type { return reflect.TypeFor[T]() }
 
+func allowedItemStatuses(statuses ...protocol.ItemStatus) []AllowedValueSet {
+	values := make([]string, len(statuses))
+	for index, status := range statuses {
+		values[index] = string(status)
+	}
+	return []AllowedValueSet{{Field: "status", Values: values}}
+}
+
+func allowedStreamItemStatuses(statuses ...protocol.ItemStatus) []AllowedValueSet {
+	sets := allowedItemStatuses(statuses...)
+	sets[0].Field = "item.status"
+	return sets
+}
+
+func allowedStreamItemKinds(kinds ...protocol.ItemType) []AllowedValueSet {
+	values := make([]string, len(kinds))
+	for index, kind := range kinds {
+		values[index] = string(kind)
+	}
+	return []AllowedValueSet{{Field: "item.type", Values: values}}
+}
+
 func registerRunUnions(s *Shapes) {
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.CancelRunResponse](),
@@ -206,12 +236,25 @@ func registerItemUnions(s *Shapes) {
 		GoType:        typeOf[protocol.Item](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
-			{Tag: string(protocol.ItemTypeUserMessage), Required: createdItemFields, Optional: []string{"content"}},
-			{Tag: string(protocol.ItemTypeAgentMessage), Required: createdItemFields, Optional: []string{"phase", "content"}},
-			{Tag: string(protocol.ItemTypeReasoning), Required: createdItemFields, Optional: []string{"text", "redacted"}},
-			{Tag: string(protocol.ItemTypeQuestion), Required: createdItemFields, Optional: []string{"question"}},
-			{Tag: string(protocol.ItemTypeToolCall), Required: toolItemFields, Optional: []string{"finishedAt", "durationMillis", "tool", "safetyClass", "approvalDecision", "error"}},
-			{Tag: string(protocol.ItemTypeCompaction), Required: createdItemFields, Optional: []string{"summary", "droppedMessages"}},
+			{
+				Tag: string(protocol.ItemTypeUserMessage), Required: slices.Concat(createdItemFields, []string{"content"}),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeAgentMessage), Required: createdItemFields, Optional: []string{"phase", "content"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeReasoning), Required: createdItemFields, Optional: []string{"text", "redacted"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeQuestion), Required: slices.Concat(createdItemFields, []string{"question"}),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeToolCall), Required: slices.Concat(toolItemFields, []string{"tool"}), Optional: []string{"finishedAt", "durationMillis", "safetyClass", "approvalDecision", "error"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
+			}, {
+				Tag: string(protocol.ItemTypeCompaction), Required: slices.Concat(createdItemFields, []string{"summary"}), Optional: []string{"droppedMessages"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			},
 		},
 	})
 
@@ -222,7 +265,7 @@ func registerItemUnions(s *Shapes) {
 		GoType:        typeOf[protocol.ItemDelta](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
-			{Tag: string(protocol.DeltaContent), Required: []string{"text"}, Optional: []string{"index"}},
+			{Tag: string(protocol.DeltaContent), Required: []string{"text"}},
 			{Tag: string(protocol.DeltaReasoning), Required: []string{"text"}},
 			{Tag: string(protocol.DeltaToolArguments), Required: []string{"argumentsTextDelta"}},
 			{Tag: string(protocol.DeltaToolOutput), Required: []string{"text"}},
@@ -386,12 +429,25 @@ func registerArtifactUnions(s *Shapes) {
 		GoType:        typeOf[protocol.ArtifactItem](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
-			{Tag: string(protocol.ItemTypeUserMessage), Required: createdItemFields, Optional: []string{"content"}},
-			{Tag: string(protocol.ItemTypeAgentMessage), Required: slices.Concat(createdItemFields, []string{"phase"}), Optional: []string{"content"}},
-			{Tag: string(protocol.ItemTypeReasoning), Required: createdItemFields, Optional: []string{"text", "redacted"}},
-			{Tag: string(protocol.ItemTypeQuestion), Required: createdItemFields, Optional: []string{"question"}},
-			{Tag: string(protocol.ItemTypeToolCall), Required: toolItemFields, Optional: []string{"finishedAt", "durationMillis", "tool", "safetyClass", "approvalDecision", "error"}},
-			{Tag: string(protocol.ItemTypeCompaction), Required: createdItemFields, Optional: []string{"summary", "droppedMessages"}},
+			{
+				Tag: string(protocol.ItemTypeUserMessage), Required: slices.Concat(createdItemFields, []string{"content"}),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeAgentMessage), Required: slices.Concat(createdItemFields, []string{"phase", "content"}),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeReasoning), Required: slices.Concat(createdItemFields, []string{"text"}), Optional: []string{"redacted"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeQuestion), Required: slices.Concat(createdItemFields, []string{"question"}),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			}, {
+				Tag: string(protocol.ItemTypeToolCall), Required: slices.Concat(toolItemFields, []string{"tool"}), Optional: []string{"finishedAt", "durationMillis", "safetyClass", "approvalDecision", "error"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
+			}, {
+				Tag: string(protocol.ItemTypeCompaction), Required: slices.Concat(createdItemFields, []string{"summary"}), Optional: []string{"droppedMessages"},
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+			},
 		},
 	})
 
@@ -427,13 +483,82 @@ func registerDiffUnions(s *Shapes) {
 }
 
 func registerObjectConstraints(s *Shapes) {
+	for _, constrained := range []struct {
+		goType      reflect.Type
+		requiredAny []string
+	}{
+		{goType: typeOf[protocol.GoalBudget](), requiredAny: []string{"maxRuns", "maxCostUsd", "maxSteps"}},
+		{goType: typeOf[protocol.RunLimits](), requiredAny: []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}},
+		{goType: typeOf[protocol.ArtifactRunLimits](), requiredAny: []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}},
+		{goType: typeOf[protocol.ModelTokenLimits](), requiredAny: []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}},
+	} {
+		s.constraint(ObjectConstraintSpec{
+			GoType: constrained.goType,
+			Rules:  []ConditionalRule{{RequiredAny: constrained.requiredAny}},
+		})
+	}
+
+	// A progress frame is a preview of one or more independently advancing facts,
+	// never a heartbeat with an empty object. Stating the alternatives as one set
+	// preserves that several of them may legitimately arrive together.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.RunProgress](),
+		Rules: []ConditionalRule{{
+			RequiredAny: []string{"step", "usage", "contextTokens", "activity"},
+		}},
+	})
+
+	// A file end line is meaningful only as the end of a window that starts at
+	// an explicit line. Structured-diff row budgets likewise have no meaning on
+	// the raw patch branch.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ReadFileRequest](),
+		Rules: []ConditionalRule{{
+			When:     []operation.FieldCondition{{Field: "endLine", Operator: operation.OperatorPresent}},
+			Required: []string{"startLine"},
+		}},
+	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.GetDiffRequest](),
+		Rules: []ConditionalRule{{
+			When:      []operation.FieldCondition{{Field: "format", Operator: operation.OperatorEquals, Value: string(protocol.DiffFormatRaw)}},
+			Forbidden: []string{"limit"},
+		}},
+	})
+
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.StreamEvent](),
+		Rules: []ConditionalRule{{
+			When: []operation.FieldCondition{{
+				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamItemStarted),
+			}},
+			AllowedValues: slices.Concat(
+				allowedStreamItemKinds(protocol.ItemTypeAgentMessage, protocol.ItemTypeReasoning, protocol.ItemTypeToolCall),
+				allowedStreamItemStatuses(protocol.ItemStatusRunning),
+			),
+		}, {
+			When: []operation.FieldCondition{{
+				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamItemCompleted),
+			}},
+			AllowedValues: allowedStreamItemStatuses(
+				protocol.ItemStatusCompleted,
+				protocol.ItemStatusIncomplete,
+			),
+		}, {
+			When: []operation.FieldCondition{{
+				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamPlanUpdated),
+			}},
+			Required: []string{"plan.state"},
+		}},
+	})
+
 	for _, target := range []reflect.Type{
 		typeOf[protocol.StartRunRequest](),
 		typeOf[protocol.UpdateSessionRequest](),
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
-			Rules: []PresenceRule{{
+			Rules: []ConditionalRule{{
 				When:     []operation.FieldCondition{{Field: "provider", Operator: operation.OperatorPresent}},
 				Required: []string{"model"},
 			}, {
@@ -445,61 +570,59 @@ func registerObjectConstraints(s *Shapes) {
 
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.UpdateScheduleRequest](),
-		Rules: []PresenceRule{{
+		Rules: []ConditionalRule{{
 			When:      []operation.FieldCondition{{Field: "workspaceMode", Operator: operation.OperatorEquals, Value: string(protocol.ScheduleWorkspaceDefault)}},
 			Forbidden: []string{"workspace"},
 		}},
 	})
 
-	for _, target := range []reflect.Type{
-		typeOf[protocol.Item](),
-		typeOf[protocol.ArtifactItem](),
-	} {
-		rules := []PresenceRule{{
-			When: []operation.FieldCondition{
-				{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-				{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
-			},
-			Forbidden: []string{"finishedAt", "durationMillis"},
-		}, {
-			When: []operation.FieldCondition{
-				{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-				{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
-			},
-			Required: []string{"finishedAt"},
-		}, {
-			When: []operation.FieldCondition{
-				{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-				{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
-			},
-			Required: []string{"finishedAt"},
-		}}
-		if target == typeOf[protocol.Item]() {
-			rules = append(rules, PresenceRule{
-				When: []operation.FieldCondition{
-					{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
-					{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
-				},
-				Forbidden: []string{"phase"},
-			}, PresenceRule{
-				When: []operation.FieldCondition{
-					{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
-					{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
-				},
-				Required: []string{"phase"},
-			}, PresenceRule{
-				When: []operation.FieldCondition{
-					{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
-					{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
-				},
-				Required: []string{"phase"},
-			})
-		}
-		s.constraint(ObjectConstraintSpec{
-			GoType: target,
-			Rules:  rules,
-		})
-	}
+	terminalToolRules := []ConditionalRule{{
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		},
+		Required: []string{"finishedAt"},
+	}, {
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
+		},
+		Required: []string{"finishedAt"},
+	}}
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ArtifactItem](),
+		Rules:  terminalToolRules,
+	})
+
+	runtimeItemRules := slices.Concat(terminalToolRules, []ConditionalRule{{
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
+		},
+		Forbidden: []string{"finishedAt", "durationMillis"},
+	}, {
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
+		},
+		Forbidden: []string{"phase"},
+	}, {
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		},
+		Required: []string{"phase", "content"},
+	}, {
+		When: []operation.FieldCondition{
+			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeReasoning)},
+			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		},
+		Required: []string{"text"},
+	}})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.Item](),
+		Rules:  runtimeItemRules,
+	})
 
 	for _, target := range []reflect.Type{
 		typeOf[protocol.AgentMemoryListRequest](),
@@ -507,7 +630,7 @@ func registerObjectConstraints(s *Shapes) {
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
-			Rules: []PresenceRule{{
+			Rules: []ConditionalRule{{
 				When:     []operation.FieldCondition{{Field: "scope", Operator: operation.OperatorEquals, Value: string(protocol.AgentMemoryScopeProject)}},
 				Required: []string{"workspace"},
 			}, {
@@ -519,7 +642,7 @@ func registerObjectConstraints(s *Shapes) {
 
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
-		Rules: []PresenceRule{{
+		Rules: []ConditionalRule{{
 			When:      []operation.FieldCondition{{Field: "status.type", Operator: operation.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptPending)}},
 			Forbidden: []string{"finishedAt"},
 		}, {
@@ -544,7 +667,7 @@ func registerObjectConstraints(s *Shapes) {
 	// page-level runs of items.list as much as a RunRef, which embeds it.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
-		Rules: append([]PresenceRule{{
+		Rules: append([]ConditionalRule{{
 			When:     []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
 			Required: []string{"outcome", "finishedAt"},
 		}, {
@@ -562,7 +685,7 @@ func registerObjectConstraints(s *Shapes) {
 	// already ended (§4.1).
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunRef](),
-		Rules: []PresenceRule{{
+		Rules: []ConditionalRule{{
 			When:     []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusRunning)}},
 			Required: []string{"activeSegmentId"},
 		}, {
@@ -587,11 +710,11 @@ func registerObjectConstraints(s *Shapes) {
 	// interrupts because they belong to the run that raised them.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.SegmentOutcome](),
-		Rules: append(failureTerminalRules(), PresenceRule{
+		Rules: append(failureTerminalRules(), ConditionalRule{
 			When:      []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.SegmentInterrupt)}},
 			Required:  []string{"interrupts"},
 			Forbidden: []string{"error", "detail"},
-		}, PresenceRule{
+		}, ConditionalRule{
 			When:      []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.SegmentSuspended)}},
 			Forbidden: []string{"interrupts", "error", "detail"},
 		}),
@@ -601,7 +724,7 @@ func registerObjectConstraints(s *Shapes) {
 	// the client polling a run that will never move (contract §11.2).
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.PendingInterruptSet](),
-		Rules: []PresenceRule{{
+		Rules: []ConditionalRule{{
 			Required: []string{"rootRunId", "sessionId", "interrupts", "createdAt"},
 		}},
 	})
@@ -612,12 +735,12 @@ func registerObjectConstraints(s *Shapes) {
 	// a contract nothing negotiated.
 	//
 	// The other half — a ROOT must carry one — is not here: "root" is the absence of
-	// those edges, and absence is not something a PresenceRule can condition on. It
+	// those edges, and absence is not something a ConditionalRule can condition on. It
 	// is an aggregate invariant of the import, checked where the archive is turned
 	// into a session.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ArtifactRun](),
-		Rules: append([]PresenceRule{{
+		Rules: append([]ConditionalRule{{
 			When:      []operation.FieldCondition{{Field: "spawnedByItemId", Operator: operation.OperatorPresent}},
 			Forbidden: []string{"protocolProfile"},
 		}}, childLineageRules()...),
@@ -632,8 +755,8 @@ func registerObjectConstraints(s *Shapes) {
 	})
 }
 
-func failureArtifactRules() []PresenceRule {
-	return []PresenceRule{
+func failureArtifactRules() []ConditionalRule {
+	return []ConditionalRule{
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
@@ -643,20 +766,20 @@ func failureArtifactRules() []PresenceRule {
 // childLineageRules say the three child edges are all-or-none: a run either
 // carries every one of them or is a root (§4.2). Stated as one rule per edge
 // rather than "root forbids them", because presence is the only thing a
-// PresenceRule can condition on and each edge is the condition for the other two.
+// ConditionalRule can condition on and each edge is the condition for the other two.
 //
 // The contract's other half — that neither RunId equals the run's own id — is
 // NOT here. JSON Schema cannot compare two fields, so it could not be one of the
 // three equivalent statements §11.2 asks for; it is an identity invariant of the
 // child-creation transaction. It is registered as a system invariant and proved
 // by admission and durable-adapter fixtures; fusing an inequality into a
-// presence rule would be one primitive doing two jobs.
-func childLineageRules() []PresenceRule {
+// conditional rule would be one primitive doing two jobs.
+func childLineageRules() []ConditionalRule {
 	edges := []string{"spawnedByItemId", "parentRunId", "rootRunId"}
-	rules := make([]PresenceRule, 0, len(edges))
+	rules := make([]ConditionalRule, 0, len(edges))
 	for index, edge := range edges {
 		others := append(append([]string{}, edges[:index]...), edges[index+1:]...)
-		rules = append(rules, PresenceRule{
+		rules = append(rules, ConditionalRule{
 			When:     []operation.FieldCondition{{Field: edge, Operator: operation.OperatorPresent}},
 			Required: others,
 		})
@@ -666,8 +789,8 @@ func childLineageRules() []PresenceRule {
 
 // failureTerminalRules define the terminal outcomes whose typed problem is
 // mandatory and mutually exclusive with the free-form detail field.
-func failureTerminalRules() []PresenceRule {
-	return []PresenceRule{
+func failureTerminalRules() []ConditionalRule {
+	return []ConditionalRule{
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},

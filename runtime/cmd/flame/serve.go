@@ -18,7 +18,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const runtimeLogPrefix = "[flame]"
+const (
+	runtimeLogPrefix      = "[flame]"
+	serverShutdownTimeout = 10 * time.Second
+)
 
 func run(ctx context.Context, errw io.Writer) (err error) {
 	shutdownTelemetry := telemetry.Configure(resolvedVersion())
@@ -90,15 +93,15 @@ func runServer(ctx context.Context, errw io.Writer, httpServer *flamehttp.Server
 
 	errs := make(chan error, 1)
 	go func() {
-		fmt.Fprintf(errw, "%s http listening on %s\n", runtimeLogPrefix, addr)
-		fmt.Fprintf(errw, "%s   POST /v2/rpc              JSON-RPC (streaming methods -> text/event-stream)\n", runtimeLogPrefix)
-		fmt.Fprintf(errw, "%s   GET  /v2/info             metadata (no auth)\n", runtimeLogPrefix)
-		fmt.Fprintf(errw, "%s   GET  /v2/health/live      liveness\n", runtimeLogPrefix)
-		fmt.Fprintf(errw, "%s   GET  /v2/health/ready     dependency readiness\n", runtimeLogPrefix)
+		_, _ = fmt.Fprintf(errw, "%s http listening on %s\n", runtimeLogPrefix, addr)
+		_, _ = fmt.Fprintf(errw, "%s   POST /v2/rpc              JSON-RPC (streaming methods -> text/event-stream)\n", runtimeLogPrefix)
+		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/info             metadata (no auth)\n", runtimeLogPrefix)
+		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/health/live      liveness\n", runtimeLogPrefix)
+		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/health/ready     dependency readiness\n", runtimeLogPrefix)
 		if token != nil {
-			fmt.Fprintf(errw, "%s local-token gate active; token at %s\n", runtimeLogPrefix, token.Path())
+			_, _ = fmt.Fprintf(errw, "%s local-token gate active; token at %s\n", runtimeLogPrefix, token.Path())
 		} else {
-			fmt.Fprintln(errw, runtimeLogPrefix+" local-token gate disabled")
+			_, _ = fmt.Fprintln(errw, runtimeLogPrefix+" local-token gate disabled")
 		}
 		errs <- httpServer.Start()
 	}()
@@ -110,10 +113,10 @@ func runServer(ctx context.Context, errw io.Writer, httpServer *flamehttp.Server
 		}
 		return err
 	case <-ctx.Done():
-		fmt.Fprintln(errw, runtimeLogPrefix+" shutdown requested, draining...")
+		_, _ = fmt.Fprintln(errw, runtimeLogPrefix+" shutdown requested, draining...")
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), serverShutdownTimeout)
 	defer cancel()
 	shutdownErr := httpServer.Shutdown(shutdownCtx)
 	if shutdownErr != nil {

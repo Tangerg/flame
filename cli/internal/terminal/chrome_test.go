@@ -59,7 +59,7 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 }
 
 func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
-	status := newStatusView(kit.Dark(), kit.Unicode(), settings.Default().RunOptions())
+	status := newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t))
 	step, contextTokens := 7, int64(12_345)
 	status.progress(agent.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
 	if !status.busy || status.doing != "calling tools · step 7 · ctx 12,345" {
@@ -67,8 +67,26 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	}
 }
 
+func TestBusyStatusExposesLiveDelegatedWorkWithoutHidingProgress(t *testing.T) {
+	status := newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t))
+	status.active("inspecting architecture")
+	status.setRunningDescendants(2)
+
+	wide := drawStatic(t, status, 72, 1)
+	for _, want := range []string{"inspecting architecture", "2 subagents active"} {
+		if !strings.Contains(wide, want) {
+			t.Errorf("busy status does not contain %q:\n%s", want, wide)
+		}
+	}
+
+	narrow := drawStatic(t, status, 18, 1)
+	if strings.TrimSpace(narrow) == "" || strings.Contains(narrow, "subagents active") {
+		t.Fatalf("narrow busy status did not preserve primary progress:\n%s", narrow)
+	}
+}
+
 func TestStatusKeepsAnUnresolvedWorkbenchProblemAboveRunProgress(t *testing.T) {
-	status := newStatusView(kit.Dark(), kit.Unicode(), settings.Default().RunOptions())
+	status := newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t))
 	status.setProblem("workbench: state could not be committed")
 	status.active("working")
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "state could not be committed") || strings.Contains(got, "working") {
@@ -127,7 +145,7 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	composer := kit.Composer{Theme: kit.Dark(), Prompt: "> "}
-	prompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, settings.Default().RunOptions())
+	prompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, defaultRunOptions(t))
 	prompt.Focus(true)
 
 	idle := drawRoot(t, prompt, 120, prompt.Measure(120))
@@ -161,9 +179,9 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]agent.PlanItem{{Title: "Inspect", Status: agent.PlanActive}})
-	status := newStatusView(theme, glyphs, settings.Default().RunOptions())
+	status := newStatusView(theme, glyphs, defaultRunOptions(t))
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, settings.Default().RunOptions())
+	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, prompt)
 	shell.Focus(true)
 
@@ -186,7 +204,7 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
-	transcript.Append(&kit.Message{Theme: theme, Speaker: "flame", Body: "VISIBLE_TRANSCRIPT"})
+	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
 	header := newSessionHeader(theme, glyphs, agent.Session{Title: "Hidden title", Workspace: workspace.Workspace{
 		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: workspace.Available,
 	}})
@@ -195,8 +213,8 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("TINY_DRAFT")
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, settings.Default().RunOptions())
-	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs, settings.Default().RunOptions()), prompt)
+	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs, defaultRunOptions(t)), prompt)
 	shell.Focus(true)
 
 	tiny := drawRoot(t, shell, 20, compactShellHeight-1)
@@ -236,11 +254,11 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("PRESERVED_DRAFT")
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, settings.Default().RunOptions())
+	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
 		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
-		newStatusView(theme, glyphs, settings.Default().RunOptions()), prompt,
+		newStatusView(theme, glyphs, defaultRunOptions(t)), prompt,
 	)
 	shell.Focus(true)
 	if !shell.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
@@ -269,11 +287,11 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, settings.Default().RunOptions())
+	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
 		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
-		newStatusView(theme, glyphs, settings.Default().RunOptions()), prompt,
+		newStatusView(theme, glyphs, defaultRunOptions(t)), prompt,
 	)
 	prompt.SetTranscriptKeys(transcript.Keys())
 	transcript.OnFocusChange(prompt.SetTranscriptFocused)

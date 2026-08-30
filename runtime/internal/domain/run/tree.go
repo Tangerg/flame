@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // ErrInvalidTree reports a set of Run identities that cannot form one
@@ -51,8 +52,8 @@ type Tree struct {
 // present exactly once, every child must name the same root and an existing
 // parent, and no disconnected component or cycle is accepted.
 func NewTree(rootRunID string, members []TreeMember) (Tree, error) {
-	if strings.TrimSpace(rootRunID) == "" {
-		return Tree{}, fmt.Errorf("%w: root run id is required", ErrInvalidTree)
+	if _, err := resourceid.ParseRun(rootRunID); err != nil {
+		return Tree{}, fmt.Errorf("%w: root %v", ErrInvalidTree, err)
 	}
 	if len(members) == 0 {
 		return Tree{}, fmt.Errorf("%w: tree has no members", ErrInvalidTree)

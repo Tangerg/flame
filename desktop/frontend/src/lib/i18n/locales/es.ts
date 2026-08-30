@@ -42,6 +42,8 @@ export const es: Record<string, string> = {
   "composer.placeholder": "Describe lo que quieres hacer: @ para referenciar un archivo",
   "composer.switchModel": "Cambiar modelo",
   "composer.switchReasoningEffort": "Cambiar intensidad de razonamiento",
+  "composer.model.search.placeholder": "Buscar modelos…",
+  "composer.model.search.empty": "No se encontraron modelos",
   "composer.model.contextWindow": "Contexto de {{tokens}}",
   "composer.model.maxInput": "Entrada máxima: {{tokens}}",
   "composer.model.maxOutput": "Salida máxima: {{tokens}}",
@@ -248,8 +250,8 @@ export const es: Record<string, string> = {
   "composer.project.required": "Selecciona un proyecto para continuar",
   "providers.setup.title": "Conecta un proveedor de modelos",
   "providers.setup.sub":
-    "Añade una clave de API para empezar — el agente necesita un proveedor de modelos.",
-  "providers.setup.action": "Añadir clave de proveedor",
+    "Configura un proveedor de modelos para empezar — la autenticación depende del proveedor.",
+  "providers.setup.action": "Configurar proveedor",
 
   "settings.title": "Ajustes",
   "settings.backToApp": "Volver a la app",
@@ -289,6 +291,7 @@ export const es: Record<string, string> = {
   "providers.baseUrl.placeholder": "URL base",
   "providers.baseUrl.aria": "URL base de {{provider}}",
   "providers.key": "clave {{masked}}",
+  "providers.ready": "listo",
   "providers.notConfigured": "sin configurar",
   "providers.save": "Guardar",
   "providers.saving": "Guardando…",
@@ -1011,7 +1014,7 @@ export const es: Record<string, string> = {
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
   "mcp.import.hint":
-    'Pega un bloque de configuración de Claude Desktop: uno o varios servidores bajo "mcpServers".',
+    'Pega un bloque de configuración de cliente MCP: uno o varios servidores bajo "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",
@@ -1053,7 +1056,7 @@ export const es: Record<string, string> = {
     "Este intento de inicio de sesión caducó. Inicia uno nuevo.",
   "rpcError.mcp_dial_failed":
     "No se pudo conectar con este servidor — revisa el comando o la URL y reinténtalo.",
-  "rpcError.provider_not_configured": "Configura primero la clave de API.",
+  "rpcError.provider_not_configured": "Completa primero la configuración del proveedor.",
   "rpcError.provider_test_failed":
     "No se pudo contactar al proveedor, o rechazó la petición de prueba.",
   "session.error.create": "No se pudo crear la sesión.",

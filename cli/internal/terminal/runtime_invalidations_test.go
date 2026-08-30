@@ -245,7 +245,12 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Shows(t, "inherit the run model")
 
 		models.mu.Lock()
-		models.roles.Utility = modelconfig.Role{Kind: modelconfig.UtilityRole, Provider: "deepseek", Model: "chat"}
+		updated, err := modelconfig.NewConfiguredRole(modelconfig.UtilityRole, "deepseek", "chat")
+		if err != nil {
+			models.mu.Unlock()
+			t.Fatal(err)
+		}
+		models.roles.Utility = updated
 		models.mu.Unlock()
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed role delivery")
@@ -267,7 +272,9 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Shows(t, "api.deepseek.example")
 
 		models.mu.Lock()
-		models.providers[0].BaseURL = "https://new.deepseek.example"
+		models.providers[0] = terminalTestProvider(
+			"deepseek", "https://new.deepseek.example", "sk****42", modelconfig.KeyStored,
+		)
 		models.mu.Unlock()
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed provider delivery")
@@ -762,7 +769,9 @@ func TestRuntimeChangeMonitorReconnectsWhenAStreamClosesUnexpectedly(t *testing.
 		subscription: make(chan changefeed.Subscription, 2),
 	}
 	done := make(chan error, 1)
-	go func() { done <- (runtimeChangeMonitor{source: source}).run(ctx) }()
+	go func() {
+		done <- (runtimeChangeMonitor{source: source, recovery: retry.ImmediateBackoff()}).run(ctx)
+	}()
 
 	awaitSignal(t, source.subscription, "initial runtime subscription")
 	awaitSignal(t, source.subscription, "replacement runtime subscription")
@@ -784,7 +793,7 @@ func TestRuntimeChangeMonitorBacksOffRepeatedEmptyStreams(t *testing.T) {
 	defer cancel()
 	monitor := runtimeChangeMonitor{
 		source:   source,
-		recovery: retry.Backoff{Base: 20 * time.Millisecond, Maximum: 40 * time.Millisecond},
+		recovery: testBackoff(t, 20*time.Millisecond, 40*time.Millisecond),
 	}
 	done := make(chan error, 1)
 	started := time.Now()
@@ -1275,7 +1284,7 @@ func runUIWithRuntimeChanges(t *testing.T, runtime agent.Runtime, source changef
 
 func runUIWithRuntimeChangeServices(t *testing.T, runtime agent.Runtime, workspaces workspace.Service, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -1549,7 +1558,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1583,7 +1592,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	host.Shows(t, "working")
 	host.Type("queued for the deleted session")
 	host.Press(input.Enter)
-	host.Send(input.Key{Code: input.Character, Rune: 'g', Mods: input.Ctrl})
+	host.Send(input.Key{Code: input.Character, Rune: ';', Mods: input.Ctrl})
 	host.Shows(t, "Queue · 1 prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "Editing queued prompt")
@@ -1841,7 +1850,7 @@ func TestRuntimeChangeMonitorTurnsASequenceGapIntoFullResync(t *testing.T) {
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	if len(events) != 1 || events[0].Sequence != 1 {
 		t.Fatalf("events = %+v, want only the contiguous frame before the gap", events)
 	}
@@ -1875,7 +1884,7 @@ func TestRuntimeChangeMonitorDetectsASequenceGapOnTheFirstFrame(t *testing.T) {
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	if len(resyncs) != 2 || !slices.Equal(resyncs[0], resyncs[1]) {
 		t.Fatalf("resyncs = %+v, want matching initial and first-frame-gap reads", resyncs)
 	}
@@ -1905,7 +1914,7 @@ func TestRuntimeChangeMonitorRefreshesFilesOnceForASequenceGap(t *testing.T) {
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	if reads := service.callCount("changes"); reads != 2 {
 		t.Fatalf("workspace change reads = %d, want initial read plus one gap recovery", reads)
 	}
@@ -1938,7 +1947,7 @@ func TestRuntimeChangeMonitorRefreshesFilesForBroadWorkspaceInvalidations(t *tes
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	if reads := service.callCount("changes"); reads != 2 || applied != 2 {
 		t.Fatalf("workspace reads/applies = %d/%d, want initial plus current-workspace broad invalidation", reads, applied)
 	}
@@ -1989,7 +1998,7 @@ func TestRuntimeChangeMonitorAppliesAContiguousScopedResync(t *testing.T) {
 			return nil
 		},
 	}
-	monitor.run(ctx)
+	_ = monitor.run(ctx)
 	if len(applied) != 1 || applied[0].Type != changefeed.Resync ||
 		!slices.Equal(applied[0].Topics, []changefeed.Topic{changefeed.SkillsChanged}) {
 		t.Fatalf("applied events = %+v, want the scoped resync frame", applied)

@@ -27,12 +27,12 @@ var machineLocalRuntimeConfig = filepath.Join("runtime", "config", "config.yaml"
 
 const (
 	brandScanChunkBytes       = 64 << 10
-	maxRetiredBrandTokenBytes = len("LY" + "RA")
+	maxRetiredBrandTokenBytes = len("ly" + "ra")
 )
 
 // TestAppHasNoRetiredProductBrand keeps the breaking product-identity cutover
-// complete. The frozen app/cli TUI is explicitly outside this app migration;
-// generated dependencies and build outputs are not repository product sources.
+// complete across every shipped Flame module. Generated dependencies and build
+// outputs are not repository product sources.
 func TestAppHasNoRetiredProductBrand(t *testing.T) {
 	appRoot := filepath.Dir(moduleRoot(t))
 	err := filepath.WalkDir(appRoot, func(path string, entry os.DirEntry, walkErr error) error {
@@ -79,7 +79,7 @@ func retiredBrandInFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var window [brandScanChunkBytes + maxRetiredBrandTokenBytes - 1]byte
 	overlap := 0
@@ -103,9 +103,6 @@ func retiredBrandInFile(path string) (string, error) {
 }
 
 func retiredBrandExcludedDirectory(relative string) bool {
-	if relative == "cli" || strings.HasPrefix(relative, "cli"+string(filepath.Separator)) {
-		return true
-	}
 	base := filepath.Base(relative)
 	if base == "node_modules" || base == "dist" {
 		return true

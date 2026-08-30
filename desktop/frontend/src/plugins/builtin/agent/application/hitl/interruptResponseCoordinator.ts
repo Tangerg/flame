@@ -1,4 +1,5 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
+import { tupleKey } from "@/lib/tupleKey";
 import type {
   AgentSessionViewEntry,
   AgentSessionViewPort,
@@ -15,8 +16,8 @@ interface StagedResponse {
 }
 
 interface ProjectionBoundary {
-  generation: number;
-  authoritativeRevision: number;
+  generation: bigint;
+  authoritativeRevision: bigint;
 }
 
 interface SubmittedResponseBatch {
@@ -104,7 +105,7 @@ class InterruptResponseBatch {
   }
 }
 
-const batchKey = (sessionId: string, rootRunId: string) => `${sessionId}\u0000${rootRunId}`;
+const batchKey = (sessionId: string, rootRunId: string) => tupleKey(sessionId, rootRunId);
 
 function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): string[] {
   return entry.view.pendingInterrupts

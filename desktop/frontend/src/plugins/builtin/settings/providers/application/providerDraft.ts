@@ -1,44 +1,48 @@
-import type { ProviderConfiguration } from "./providerConfig";
-import type { ProviderUpdate } from "./ports/providerGateway";
+import type { ProviderSettingChange, ProviderUpdate } from "./ports/providerGateway";
 
-export interface ProviderCredentialsDraft {
-  apiKey: string;
-  baseUrl: string;
-}
+/**
+ * Owns the only blank editable fields in the provider feature. Form input is
+ * converted into explicit preserve/set/clear changes before leaving this type.
+ */
+export class ProviderCredentialsDraft {
+  private constructor(
+    readonly apiKey: string,
+    readonly baseUrl: string,
+  ) {}
 
-export function initialProviderCredentialsDraft(
-  provider: Pick<ProviderConfiguration, "baseUrl">,
-): ProviderCredentialsDraft {
-  return {
-    apiKey: "",
-    baseUrl: provider.baseUrl,
-  };
-}
-
-export function providerCredentialsDirty(
-  provider: Pick<ProviderConfiguration, "baseUrl">,
-  draft: ProviderCredentialsDraft,
-): boolean {
-  return draft.apiKey.trim() !== "" || draft.baseUrl !== provider.baseUrl;
-}
-
-export function providerCredentialsValid(
-  provider: Pick<ProviderConfiguration, "requiresBaseUrl">,
-  draft: ProviderCredentialsDraft,
-): boolean {
-  return !provider.requiresBaseUrl || draft.baseUrl.trim() !== "";
-}
-
-export function providerCredentialsInput(
-  provider: Pick<ProviderConfiguration, "id" | "baseUrl">,
-  draft: ProviderCredentialsDraft,
-): ProviderUpdate {
-  const input: ProviderUpdate = { provider: provider.id };
-  const apiKey = draft.apiKey.trim();
-  if (apiKey) input.apiKey = apiKey;
-  if (draft.baseUrl !== provider.baseUrl) {
-    const baseUrl = draft.baseUrl.trim();
-    input.baseUrl = baseUrl || null;
+  static initial(provider: { baseUrl?: string }): ProviderCredentialsDraft {
+    return new ProviderCredentialsDraft("", provider.baseUrl ?? "");
   }
-  return input;
+
+  withAPIKey(apiKey: string): ProviderCredentialsDraft {
+    return new ProviderCredentialsDraft(apiKey, this.baseUrl);
+  }
+
+  withBaseURL(baseUrl: string): ProviderCredentialsDraft {
+    return new ProviderCredentialsDraft(this.apiKey, baseUrl);
+  }
+
+  dirty(provider: { baseUrl?: string }): boolean {
+    return this.apiKey.trim() !== "" || this.baseUrl !== (provider.baseUrl ?? "");
+  }
+
+  valid(provider: { requiresBaseUrl?: boolean }): boolean {
+    return !provider.requiresBaseUrl || this.baseUrl.trim() !== "";
+  }
+
+  toUpdate(provider: { id: string; baseUrl?: string }): ProviderUpdate {
+    const input: ProviderUpdate = { provider: provider.id };
+    if (this.apiKey.trim() !== "") {
+      input.apiKey = setProviderSetting(this.apiKey);
+    }
+    if (this.baseUrl !== (provider.baseUrl ?? "")) {
+      const baseUrl = this.baseUrl.trim();
+      input.baseUrl = baseUrl === "" ? { type: "clear" } : setProviderSetting(baseUrl);
+    }
+    return input;
+  }
+}
+
+function setProviderSetting(value: string): ProviderSettingChange {
+  return { type: "set", value };
 }

@@ -12,28 +12,87 @@ import (
 	"github.com/Tangerg/scope/models/deepseek"
 )
 
-// TestChatProviderCatalogSatisfiesConstructionContract holds the static catalog to its contract:
-// every row builds, names a key env var, and the no-built-in-endpoint rows
-// (the compatible endpoint providers and Azure) are flagged requiresBaseURL.
+func mustClientSpec(t testing.TB, provider Provider, model, apiKey, baseURL string) ClientSpec {
+	t.Helper()
+	credential := NoClientCredential()
+	if apiKey != "" {
+		var err error
+		credential, err = NewAPIKeyCredential(apiKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	spec, err := NewClientSpec(provider, model, credential)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if baseURL != "" {
+		spec, err = spec.WithBaseURL(baseURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return spec
+}
+
+// TestChatProviderCatalogSatisfiesConstructionContract holds the constructed
+// catalog to its contract. Invalid combinations cannot be registered.
 func TestChatProviderCatalogSatisfiesConstructionContract(t *testing.T) {
-	for provider, profile := range chatProviderCatalog {
-		if profile.build == nil {
+	for _, provider := range providers.supported() {
+		profile, found := providers.lookup(provider)
+		if !found {
+			t.Fatalf("provider %q disappeared from its own catalog", provider)
+		}
+		if profile.chatBuilder == nil {
 			t.Errorf("provider %q: nil build func", provider)
 		}
-		if profile.apiKeyEnv == "" {
+		if profile.credential.environment == "" {
 			t.Errorf("provider %q: empty apiKeyEnv", provider)
 		}
 	}
 
 	// The compatible endpoint providers and Azure carry no built-in endpoint.
 	for _, p := range []Provider{ProviderOpenAICompatible, ProviderAnthropicCompatible, ProviderAzureOpenAI} {
-		if !p.RequiresBaseURL() {
+		profile, found := LookupProvider(p)
+		if !found || !profile.RequiresConfiguredEndpoint() {
 			t.Errorf("provider %q must require a base URL", p)
 		}
 	}
 	// A named vendor must NOT require one (it has a built-in endpoint).
-	if ProviderAnthropic.RequiresBaseURL() {
+	anthropic, _ := LookupProvider(ProviderAnthropic)
+	if anthropic.RequiresConfiguredEndpoint() {
 		t.Error("anthropic must not require a base URL")
+	}
+}
+
+func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
+	valid := bundledProvider(ProviderOpenAI, defaultOpenAIModel, "OPENAI_API_KEY", buildOpenAIResponsesModel)
+	cases := []struct {
+		name     string
+		profiles []providerProfile
+		want     string
+	}{
+		{name: "duplicate identity", profiles: []providerProfile{valid, valid}, want: "more than once"},
+		{name: "blank bundled default", profiles: []providerProfile{bundledProvider("broken", "", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "requires a default model"},
+		{name: "invalid provider identity", profiles: []providerProfile{bundledProvider("broken\x00shadow", "model", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "provider identity"},
+		{name: "invalid bundled default", profiles: []providerProfile{bundledProvider("broken", "model\x00shadow", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "model identity"},
+		{name: "non-canonical environment", profiles: []providerProfile{bundledProvider("broken", "model", "broken_api_key", buildOpenAIResponsesModel)}, want: "not canonical"},
+		{name: "endpoint discovery without endpoint", profiles: []providerProfile{endpointProvider("broken", adapterEndpoint(), "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "resolvable endpoint"},
+		{name: "required endpoint carrying default", profiles: []providerProfile{{
+			id: "broken", credential: requiredCredential("BROKEN_API_KEY"),
+			endpoint:   endpointPolicy{kind: endpointMustBeConfigured, defaultURL: "https://example.test"},
+			chatModels: endpointModels(), chatBuilder: buildOpenAIResponsesModel,
+		}}, want: "cannot carry a default URL"},
+		{name: "embedding without model policy", profiles: []providerProfile{valid.withEmbedding(modelPolicy{}, buildOpenAIEmbeddingModel)}, want: "embedding"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := newProviderCatalog(test.profiles...); err == nil {
+				t.Fatal("newProviderCatalog accepted contradictory provider state")
+			} else if !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("newProviderCatalog error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 
@@ -60,12 +119,7 @@ func TestBuildClient_DeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := BuildClient(ClientSpec{
-		Provider: ProviderDeepSeek,
-		Model:    deepseek.ModelV4Flash,
-		APIKey:   "test-key",
-		BaseURL:  server.URL,
-	})
+	client, err := BuildClient(mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
 	if err != nil {
 		t.Fatalf("BuildClient: %v", err)
 	}
@@ -111,21 +165,24 @@ func TestQueries(t *testing.T) {
 	if got := len(SupportedProviders()); got != 21 {
 		t.Errorf("SupportedProviders = %d, want 21", got)
 	}
-	if !ProviderGroq.IsSupported() {
+	if _, found := LookupProvider(ProviderGroq); !found {
 		t.Error("groq should be supported")
 	}
-	if Provider("nope").IsSupported() {
+	if _, found := LookupProvider(Provider("nope")); found {
 		t.Error("unknown provider should not be supported")
 	}
-	if ProviderAnthropic.DefaultModel() == "" {
+	anthropic, _ := LookupProvider(ProviderAnthropic)
+	if _, found := anthropic.DefaultChatModel(); !found {
 		t.Error("anthropic should have a default model")
 	}
 	// A generic compatible endpoint has no catalog default — the model id is user-supplied.
-	if ProviderOpenAICompatible.DefaultModel() != "" {
+	compatible, _ := LookupProvider(ProviderOpenAICompatible)
+	if _, found := compatible.DefaultChatModel(); found {
 		t.Error("openai-compatible should have no default model")
 	}
-	if ProviderOpenAI.APIKeyEnv() != "OPENAI_API_KEY" {
-		t.Errorf("openai key env = %q", ProviderOpenAI.APIKeyEnv())
+	openAI, _ := LookupProvider(ProviderOpenAI)
+	if openAI.CredentialEnvironment() != "OPENAI_API_KEY" {
+		t.Errorf("openai key env = %q", openAI.CredentialEnvironment())
 	}
 }
 
@@ -134,23 +191,83 @@ func TestQueries(t *testing.T) {
 // until a call is made).
 func TestBuildClient(t *testing.T) {
 	// Unknown provider → error.
-	if _, err := BuildClient(ClientSpec{Provider: "nope", Model: "x"}); err == nil {
+	if _, err := NewClientSpec("nope", "x", NoClientCredential()); err == nil {
 		t.Error("unknown provider must error")
 	}
 	// A requiresBaseURL provider without a base URL → error naming the gap.
-	if _, err := BuildClient(ClientSpec{Provider: ProviderOpenAICompatible, Model: "x", APIKey: "k"}); err == nil {
+	if _, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "")); err == nil {
 		t.Error("openai-compatible without base URL must error")
 	} else if !strings.Contains(err.Error(), "base URL") {
 		t.Errorf("error should mention the base URL: %v", err)
 	}
 	// A named vendor builds a non-nil client.
-	c, err := BuildClient(ClientSpec{Provider: ProviderAnthropic, Model: "claude-3-5-haiku-20241022", APIKey: "test-key"})
+	c, err := BuildClient(mustClientSpec(t, ProviderAnthropic, "claude-3-5-haiku-20241022", "test-key", ""))
 	if err != nil || c == nil {
 		t.Fatalf("build anthropic: client=%v err=%v", c, err)
 	}
 	// A requiresBaseURL provider WITH a base URL builds.
-	if _, err := BuildClient(ClientSpec{Provider: ProviderOpenAICompatible, Model: "x", APIKey: "k", BaseURL: "https://gateway.example.com/v1"}); err != nil {
+	if _, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "https://gateway.example.com/v1")); err != nil {
 		t.Errorf("openai-compatible with base URL: %v", err)
+	}
+}
+
+func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
+	credential, err := NewAPIKeyCredential(" key with exact surrounding whitespace ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if credential.sdkAPIKey() != " key with exact surrounding whitespace " {
+		t.Fatal("API key material was normalized")
+	}
+	if _, err := NewClientSpec(ProviderOpenAI, " ", credential); err == nil {
+		t.Fatal("blank model identity was accepted")
+	}
+	if _, err := NewClientSpec(ProviderOpenAI, "model\x00shadow", credential); err == nil {
+		t.Fatal("non-printing model identity was accepted")
+	}
+	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, ClientCredential{}); err == nil {
+		t.Fatal("zero credential state was accepted")
+	}
+	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, NoClientCredential()); err == nil {
+		t.Fatal("required API key absence was accepted")
+	}
+	if _, err := NewAPIKeyCredential("\t \n"); err == nil {
+		t.Fatal("blank API key was accepted")
+	}
+
+	spec, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, credential)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, invalid := range []string{"", " https://example.test", "ftp://example.test", "https://user@example.test", "https://example.test/#fragment"} {
+		if _, err := spec.WithBaseURL(invalid); err == nil {
+			t.Errorf("base URL %q was accepted", invalid)
+		}
+	}
+	if _, err := BuildClient(ClientSpec{}); err == nil {
+		t.Fatal("zero ClientSpec was accepted")
+	}
+}
+
+func TestProviderEndpointPolicyResolvesCatalogDefaultOnce(t *testing.T) {
+	ollama, found := providers.lookup(ProviderOllama)
+	if !found {
+		t.Fatal("ollama profile is missing")
+	}
+	endpoint, err := ollama.endpoint.resolve(noClientEndpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if endpoint.sdkBaseURL() != defaultOllamaOpenAIBaseURL {
+		t.Fatalf("resolved endpoint = %q, want %q", endpoint.sdkBaseURL(), defaultOllamaOpenAIBaseURL)
+	}
+	if _, err := BuildClient(mustClientSpec(t, ProviderOllama, "local-model", "", "")); err != nil {
+		t.Fatalf("catalog-default Ollama client: %v", err)
+	}
+	ollamaProfile, _ := LookupProvider(ProviderOllama)
+	openAIProfile, _ := LookupProvider(ProviderOpenAI)
+	if ollamaProfile.RequiresAPIKey() || !openAIProfile.RequiresAPIKey() {
+		t.Fatal("provider credential requirements are inverted")
 	}
 }
 
@@ -178,12 +295,7 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 	}))
 	t.Cleanup(server.Close)
 
-	direct, err := BuildClient(ClientSpec{
-		Provider: ProviderOpenAI,
-		Model:    defaultOpenAIModel,
-		APIKey:   "test-key",
-		BaseURL:  server.URL,
-	})
+	direct, err := BuildClient(mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, "test-key", server.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,12 +315,7 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 		t.Fatalf("direct Responses Call = %#v, %v; requests=%d", response, err, responseRequests.Load())
 	}
 
-	compatible, err := BuildClient(ClientSpec{
-		Provider: ProviderOpenAICompatible,
-		Model:    "compatible-model",
-		APIKey:   "test-key",
-		BaseURL:  "https://gateway.example/v1",
-	})
+	compatible, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,12 +336,7 @@ func TestDirectAnthropicCountsWhileCompatibleDoesNotAssumeTheNativeEndpoint(t *t
 	}))
 	t.Cleanup(server.Close)
 
-	direct, err := BuildClient(ClientSpec{
-		Provider: ProviderAnthropic,
-		Model:    defaultAnthropicModel,
-		APIKey:   "test-key",
-		BaseURL:  server.URL,
-	})
+	direct, err := BuildClient(mustClientSpec(t, ProviderAnthropic, defaultAnthropicModel, "test-key", server.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,12 +349,7 @@ func TestDirectAnthropicCountsWhileCompatibleDoesNotAssumeTheNativeEndpoint(t *t
 		t.Fatalf("direct CountInputTokens = %d, %v; requests=%d", count, err, countRequests.Load())
 	}
 
-	compatible, err := BuildClient(ClientSpec{
-		Provider: ProviderAnthropicCompatible,
-		Model:    "compatible-model",
-		APIKey:   "test-key",
-		BaseURL:  "https://gateway.example/v1",
-	})
+	compatible, err := BuildClient(mustClientSpec(t, ProviderAnthropicCompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
 	if err != nil {
 		t.Fatal(err)
 	}

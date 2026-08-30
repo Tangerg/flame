@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	agent "github.com/Tangerg/scope/agent"
 )
 
 type interactionWaitingSubtreeChange struct {

@@ -21,7 +21,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := runtime.StartRun(t.Context(), agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "finish"}})
+	opened, err := runtime.StartRun(t.Context(), unlimitedStart(session.ID, "finish"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := runtime.StartRun(t.Context(), agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "keep running"}})
+	opened, err := runtime.StartRun(t.Context(), unlimitedStart(session.ID, "keep running"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := runtime.StartRun(t.Context(), agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "keep running"}})
+	opened, err := runtime.StartRun(t.Context(), unlimitedStart(session.ID, "keep running"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +118,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		}
 		opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 			SessionID: session.ID, Message: agent.Message{Text: "wait for approval"},
+			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -144,6 +145,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		}
 		opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 			SessionID: session.ID, Message: agent.Message{Text: "finish"},
+			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -173,6 +175,13 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 			t.Fatalf("empty session attachment = %+v", recovered)
 		}
 	})
+}
+
+func unlimitedStart(sessionID, text string) agent.StartRun {
+	return agent.StartRun{
+		SessionID: sessionID, Message: agent.Message{Text: text},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	}
 }
 
 func consumeSegment(t *testing.T, stream agent.SegmentStream) {

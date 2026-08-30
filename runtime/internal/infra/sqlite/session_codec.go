@@ -1,13 +1,14 @@
 package sqlite
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-const sessionColumns = `id, title, workspace_path, parent_id, started_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
+const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, started_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
 
 // rowToSession decodes one DB row into a product session.Session. Execution
 // continuation state deliberately lives in its dedicated sidecar table, never
@@ -25,13 +26,23 @@ func rowToSession(scanner interface {
 		model           string
 		reasoningEffort string
 		workspacePath   string
+		titleSearch     string
+		workspaceSearch string
 	)
 	if err := scanner.Scan(
-		&snapshot.ID, &snapshot.Title, &workspacePath, &snapshot.ParentID,
+		&snapshot.ID, &snapshot.Title, &titleSearch, &workspacePath, &workspaceSearch, &snapshot.ParentID,
 		&startedAtNanos, &updatedAtNanos, &provider, &model, &reasoningEffort,
 		&favoriteInt, &isolatedInt, &snapshot.Revision,
 	); err != nil {
 		return session.Session{}, err
+	}
+	expectedTitleSearch, err := session.NormalizeCatalogText(snapshot.Title)
+	if err != nil || titleSearch != expectedTitleSearch {
+		return session.Session{}, fmt.Errorf("sqlite: Session %q has invalid title search material", snapshot.ID)
+	}
+	expectedWorkspaceSearch, err := session.NormalizeCatalogText(workspacePath)
+	if err != nil || workspaceSearch != expectedWorkspaceSearch {
+		return session.Session{}, fmt.Errorf("sqlite: Session %q has invalid workspace search material", snapshot.ID)
 	}
 	snapshot.StartedAt = time.Unix(0, startedAtNanos).UTC()
 	snapshot.UpdatedAt = time.Unix(0, updatedAtNanos).UTC()

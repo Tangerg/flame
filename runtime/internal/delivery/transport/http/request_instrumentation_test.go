@@ -76,6 +76,17 @@ func TestRequestInstrumentationRecordsContainedPanicResponse(t *testing.T) {
 	}
 }
 
+func TestRequestIdentityUsesProcessSafeRandomMaterial(t *testing.T) {
+	first := newRequestID()
+	second := newRequestID()
+	if !strings.HasPrefix(first, requestIDPrefix) || !strings.HasPrefix(second, requestIDPrefix) {
+		t.Fatalf("request identities = %q, %q", first, second)
+	}
+	if first == second {
+		t.Fatalf("consecutive request identities alias: %q", first)
+	}
+}
+
 func TestRequestInstrumentationDoesNotCorruptCommittedPanicResponse(t *testing.T) {
 	exporter := captureHTTPSpans(t)
 	handler := (&Server{}).instrumentRequests(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, _ *nethttp.Request) {

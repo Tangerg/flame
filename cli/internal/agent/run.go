@@ -34,17 +34,46 @@ type Run struct {
 	Contract        *RunContract
 }
 
-// RunLineage locates a child run beneath the tool block that spawned it. The
-// zero value is a root run; child fields are an all-or-none identity tuple.
+type runLineageKind uint8
+
+const (
+	rootRunLineage runLineageKind = iota + 1
+	childRunLineage
+)
+
+// RunLineage explicitly identifies either a root run or a child beneath the
+// tool block that spawned it. Its zero value is invalid.
 type RunLineage struct {
-	SpawnedByBlockID string
-	ParentRunID      string
-	RootRunID        string
+	kind             runLineageKind
+	spawnedByBlockID string
+	parentRunID      string
+	rootRunID        string
+}
+
+// RootRunLineage constructs explicit root-run lineage.
+func RootRunLineage() RunLineage { return RunLineage{kind: rootRunLineage} }
+
+// NewChildRunLineage constructs and validates a child-run identity tuple.
+func NewChildRunLineage(runID, spawnedByBlockID, parentRunID, rootRunID string) (RunLineage, error) {
+	lineage := RunLineage{
+		kind: childRunLineage, spawnedByBlockID: spawnedByBlockID,
+		parentRunID: parentRunID, rootRunID: rootRunID,
+	}
+	if err := lineage.validate(runID); err != nil {
+		return RunLineage{}, err
+	}
+	return lineage, nil
 }
 
 func (r RunLineage) IsRoot() bool {
-	return r == (RunLineage{})
+	return r.kind == rootRunLineage
 }
+
+func (r RunLineage) SpawnedByBlockID() string { return r.spawnedByBlockID }
+
+func (r RunLineage) ParentRunID() string { return r.parentRunID }
+
+func (r RunLineage) RootRunID() string { return r.rootRunID }
 
 func (r Run) Clone() Run {
 	r.Outcome = r.Outcome.Clone()
@@ -177,12 +206,6 @@ type RunOptions struct {
 	Generation GenerationParams
 }
 
-type RunLimits struct {
-	MaxTotalTokens int64
-	MaxSteps       int
-	MaxBudgetUSD   float64
-}
-
 type GenerationParams struct {
 	Temperature *float64
 	MaxTokens   *int64
@@ -218,9 +241,7 @@ type Model struct {
 	ID              string
 	Provider        string
 	DisplayName     string
-	ContextWindow   int
-	MaxInputTokens  int
-	MaxOutputTokens int
+	TokenLimits     ModelTokenLimits
 	KnowledgeCutoff string
 	Deprecated      bool
 	Capabilities    *ModelCapabilities

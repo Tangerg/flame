@@ -103,10 +103,14 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		{method: "approval.listRules", param: "sessionId", minLength: new(1)},
 		{method: "schedules.create", param: "instructions", minLength: new(1)},
 		{method: "sessions.update", param: "expectedRevision", minimum: new(int64(1))},
-		{method: "runs.start", param: "maxTotalTokens", minimum: new(int64(0))},
-		{method: "sessions.list", param: "limit", minimum: new(int64(0))},
-		{method: "workspace.files.read", param: "maxBytes", minimum: new(int64(0))},
-		{method: "usage.summary", param: "sinceDays", minimum: new(int64(0))},
+		{method: "sessions.list", param: "limit", minimum: new(int64(1))},
+		{method: "workspace.diff.get", param: "limit", minimum: new(int64(1))},
+		{method: "workspace.files.head", param: "lines", minimum: new(int64(1))},
+		{method: "workspace.files.search", param: "limit", minimum: new(int64(1))},
+		{method: "workspace.files.read", param: "startLine", minimum: new(int64(1))},
+		{method: "workspace.files.read", param: "endLine", minimum: new(int64(1))},
+		{method: "workspace.files.read", param: "maxBytes", minimum: new(int64(1))},
+		{method: "usage.summary", param: "sinceDays", minimum: new(int64(1))},
 	} {
 		param := openRPCParam(t, openRPCMethod(t, document, test.method), test.param)
 		if !equalOptional(param.Schema.Minimum, test.minimum) {
@@ -115,6 +119,10 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		if !equalOptional(param.Schema.MinLength, test.minLength) {
 			t.Errorf("%s.%s minLength = %v, want %v", test.method, test.param, param.Schema.MinLength, test.minLength)
 		}
+	}
+	limits := openRPCParam(t, openRPCMethod(t, document, "runs.start"), "limits")
+	if limits.Schema.Ref != bundleRef+refPrefix+"RunLimits" {
+		t.Errorf("runs.start.limits schema ref = %q", limits.Schema.Ref)
 	}
 }
 

@@ -67,14 +67,13 @@ func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, la
 	p.query = kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 1}
 	p.query.Editor().Placeholder = placeholder
 	p.items = &headless.Filter[T]{Row: p.row}
-	p.items.SetText(func(item T) string { return strings.TrimSpace(label(item) + " " + detail(item)) })
 	return p
 }
 
 func (p *picker[T]) SetItems(items []T) {
 	p.pointerGesture.cancel()
-	p.items.SetItems(items)
-	p.items.SetPattern(p.query.Text())
+	p.items.SetItems(items, func(item T) string { return strings.TrimSpace(p.label(item) + " " + p.detail(item)) })
+	p.items.SetPattern(p.query.Editor().Text())
 }
 
 func (p *picker[T]) Current() (T, bool) { return p.items.Current() }
@@ -82,7 +81,7 @@ func (p *picker[T]) Current() (T, bool) { return p.items.Current() }
 func (p *picker[T]) interruptPointerGesture() { p.pointerGesture.cancel() }
 
 func (p *picker[T]) Reset() {
-	p.query.Reset()
+	p.query.Editor().Clear()
 	p.items.SetPattern("")
 	p.items.Select(0)
 	p.pointerGesture.cancel()
@@ -114,7 +113,7 @@ func (p *picker[T]) Handle(event input.Event) bool {
 	}
 	if p.query.Handle(event) {
 		p.pointerGesture.cancel()
-		p.items.SetPattern(p.query.Text())
+		p.items.SetPattern(p.query.Editor().Text())
 		return true
 	}
 	return false
@@ -157,7 +156,7 @@ func (p *picker[T]) handleMouse(mouse input.Mouse) bool {
 	case mouse.Pos.In(areas.query):
 		mouse.Pos = mouse.Pos.Sub(areas.query.Min)
 		if p.query.Handle(mouse) {
-			p.items.SetPattern(p.query.Text())
+			p.items.SetPattern(p.query.Editor().Text())
 			return true
 		}
 	case mouse.Pos.In(areas.list):

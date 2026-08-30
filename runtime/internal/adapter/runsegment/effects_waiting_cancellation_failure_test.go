@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -56,7 +57,7 @@ func (f failingWaitingRunWriter) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr
@@ -68,7 +69,7 @@ func (f failingWaitingRunWriter) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr
@@ -157,7 +158,9 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 		"root":             func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
 		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
 		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"limits":           func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Limits.MaxTotalTokens++ },
+		"limits": func(checkpoint *runs.ExecutorCheckpoint) {
+			checkpoint.Limits = runfixture.MustLimits(run.LimitValues{MaxTotalTokens: runfixture.Pointer[int64](1)})
+		},
 		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
 		},
@@ -189,7 +192,7 @@ func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutM
 		},
 		"frozen limits": func(commit *runs.WaitingSubtreeCancellationCommit) {
 			commit.TerminalRuns[0] = mutatedRun(commit.TerminalRuns[0], func(snapshot *run.Snapshot) {
-				snapshot.Limits.MaxSteps++
+				snapshot.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(1)})
 			})
 		},
 		"root run capabilities": func(commit *runs.WaitingSubtreeCancellationCommit) {

@@ -45,7 +45,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
 		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
-		Pricing: func(_, _ string, _ *chat.Usage) float64 { return 0.25 }, Provider: "test",
+		Pricing: func(_, _ string, _ *chat.Usage) float64 { return 0.25 },
 	})
 
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
@@ -165,6 +165,69 @@ func TestInteractionExecutorCarriesProviderInputCountingIntoEveryMainCallReducti
 	}
 }
 
+func TestInteractionExecutorPublishesModelContextCompactionSummary(t *testing.T) {
+	const summary = "MID-RUN SUMMARY"
+	model := &observationScriptModel{
+		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
+	}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ModelContextCompactor: summarizingObservationCompactor{summary: summary},
+		ModelContextState:     emptyInteractionModelContextState{},
+	})
+
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	boundaries := payloadsOf[runs.CompactionBoundary](events)
+	if len(boundaries) != 1 || boundaries[0].Summary != summary {
+		t.Fatalf("compaction boundaries = %#v, want summary %q", boundaries, summary)
+	}
+}
+
+func TestInteractionExecutorPublishesRunMaintenanceCompactionSummary(t *testing.T) {
+	const summary = "ROOT MAINTENANCE SUMMARY"
+	compaction, err := NewCompactionResult(summary, 12, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{
+		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
+	}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		Maintenance: fixedRunMaintenance{result: RunMaintenanceResult{Compaction: compaction}},
+	})
+
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	boundaries := payloadsOf[runs.CompactionBoundary](events)
+	if len(boundaries) != 1 || boundaries[0].Summary != summary ||
+		boundaries[0].MessagesBefore != 12 || boundaries[0].MessagesAfter != 5 {
+		t.Fatalf("compaction boundaries = %#v", boundaries)
+	}
+}
+
+type summarizingObservationCompactor struct {
+	summary string
+}
+
+func (c summarizingObservationCompactor) CompactModelContext(
+	_ context.Context,
+	request ModelContextCompaction,
+) (ModelContextCompactionResult, error) {
+	return NewModelContextCompactionResult(
+		request.Candidate(),
+		true,
+		c.summary,
+		len(request.Candidate()),
+		100,
+	)
+}
+
+type fixedRunMaintenance struct {
+	result RunMaintenanceResult
+}
+
+func (m fixedRunMaintenance) Maintain(context.Context, RunMaintenanceInput) RunMaintenanceResult {
+	return m.result
+}
+
 type calibrationCaptureCompactor struct {
 	estimatedTokens int
 	adjustments     []int
@@ -186,7 +249,7 @@ func (c *calibrationCaptureCompactor) CompactModelContext(
 	return NewModelContextCompactionResult(
 		request.Candidate(),
 		false,
-		false,
+		"",
 		len(request.Candidate()),
 		c.estimatedTokens,
 	)
@@ -459,7 +522,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	model := streamingObservationModel{chunks: chunks, streamed: make(chan struct{})}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		StreamModelResponses: true,
-		DeltaBufferCapacity:  1,
+		DeltaBufferCapacity:  intPointer(1),
 	})
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
@@ -684,7 +747,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 		return interactionUsageTextResponse("answer", 2, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		UnknownEffectPollInterval: 5 * time.Millisecond,
+		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
 	})
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
@@ -806,7 +869,7 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		ToolResolver:           staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter:        testInteractionToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
-		MaxConcurrentToolCalls: 2,
+		MaxConcurrentToolCalls: intPointer(2),
 	})
 	var release sync.Once
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -880,7 +943,7 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 		}}},
 		ToolInterpreter:        testInteractionToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
-		MaxConcurrentToolCalls: 2,
+		MaxConcurrentToolCalls: intPointer(2),
 	})
 	projectionFailure := errors.New("canonical concurrent Tool batch unavailable")
 	var release sync.Once
@@ -940,7 +1003,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		ToolAuthorizer: selectiveDenyInteractionTools{
 			name: "denied_write", reason: "blocked by policy", waitBeforeDenial: externalResultCommitSeen,
 		},
-		MaxConcurrentToolCalls: 2,
+		MaxConcurrentToolCalls: intPointer(2),
 	})
 	projectionFailure := errors.New("denial store unavailable")
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
@@ -1116,12 +1179,13 @@ func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:         staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
-		ToolInterpreter:      testInteractionToolInterpreter{},
-		ToolAuthorizer:       allowInteractionTools{},
-		ToolResultStore:      store,
-		ToolResultThreshold:  100,
-		ToolResultReaderName: testToolResultReaderName,
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+		ToolResultStore: store,
+		ToolResultOffload: ToolResultOffloadPolicyValues{
+			Threshold: intPointer(100), ReaderName: testToolResultReaderName,
+		},
 	})
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 	finished := payloadsOf[runs.ToolCallFinished](events)
@@ -1369,14 +1433,13 @@ func newObservedTestInteractionExecutor(
 	if err != nil {
 		t.Fatal(err)
 	}
-	extra.DefaultClient = client
-	extra.DefaultSelection = testDefaultSelection()
+	extra.ChatResolver = staticInteractionChatResolver(client)
 	extra.Lifetime = t.Context()
 	extra.ImplementationIdentity = "interaction-observation-test-build"
 	extra.ConfigurationIdentity = "interaction-observation-test-config"
 	extra.BuildID = interactionTestBuildID
-	extra.DefaultMaxModelCalls = 8
-	extra.UnknownEffectPollInterval = 5 * time.Millisecond
+	extra.DefaultMaxModelCalls = uint32Pointer(8)
+	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
 	executor, err := NewInteractionExecutor(extra)
 	if err != nil {
 		t.Fatal(err)

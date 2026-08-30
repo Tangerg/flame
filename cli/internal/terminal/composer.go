@@ -18,6 +18,11 @@ const fileElement headless.ElementKind = 1
 
 const draftPersistenceDelay = 150 * time.Millisecond
 
+// promptHistoryCapacity is the aggregate's retained semantic-message budget.
+// It is not caller configuration: every TUI session has the same bounded
+// recall behavior.
+const promptHistoryCapacity = 1000
+
 type attachmentInsertion struct {
 	item  agent.Attachment
 	count int
@@ -49,7 +54,6 @@ type promptHistory struct {
 	entries []agent.Message
 	at      int
 	draft   agent.Message
-	limit   int
 }
 
 func (p *promptHistory) Load(messages []agent.Message) {
@@ -69,12 +73,8 @@ func (p *promptHistory) Add(message agent.Message) {
 		return
 	}
 	p.entries = append(p.entries, message)
-	limit := p.limit
-	if limit <= 0 {
-		limit = 1000
-	}
-	if len(p.entries) > limit {
-		dropped := len(p.entries) - limit
+	if len(p.entries) > promptHistoryCapacity {
+		dropped := len(p.entries) - promptHistoryCapacity
 		clear(p.entries[:dropped])
 		p.entries = slices.Clone(p.entries[dropped:])
 	}
@@ -268,7 +268,7 @@ func (a *app) showAttachments() {
 	for i, item := range message.Attachments {
 		lines = append(lines, fmt.Sprintf("%d. %s · %s · %d bytes", i+1, item.Name, item.MimeType, item.Size))
 	}
-	a.transcript.Append(&kit.Message{Theme: a.transcript.theme, Speaker: "attachments", Body: strings.Join(lines, "\n")})
+	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "attachments", Body: strings.Join(lines, "\n")})
 }
 
 func (a *app) composerMessage() (agent.Message, error) {
@@ -324,7 +324,7 @@ func (a *app) resetComposer() {
 }
 
 func (a *app) clearComposer() {
-	a.composer.Reset()
+	a.composer.Editor().Clear()
 	clear(a.attachmentElements)
 	a.confirmation.Reset()
 }
@@ -367,7 +367,7 @@ func (a *app) scheduleDraftPersistence() {
 			return
 		}
 		if a.draftState.Observe(a.session.ID, message) {
-			a.drafts.Schedule(a.session.ID, message)
+			a.reportWorkbenchIssue(workbenchDraft, a.drafts.Schedule(a.session.ID, message))
 		}
 	})
 }

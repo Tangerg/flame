@@ -8,23 +8,14 @@ package modelref
 
 import (
 	"errors"
-	"strings"
 )
 
 // ErrIncomplete reports a provider/model pair where only one value was set.
 var ErrIncomplete = errors.New("model selection: provider and model must be set together")
 
-// ErrSurroundingWhitespace reports a provider/model identity that would compare
-// differently before and after ordinary input normalization.
-var ErrSurroundingWhitespace = errors.New("model selection: provider and model must not have surrounding whitespace")
-
 // ErrReasoningEffortWithoutModel reports a reasoning choice that has no exact
 // provider/model identity to interpret its model-owned vocabulary.
 var ErrReasoningEffortWithoutModel = errors.New("model selection: reasoning effort requires provider and model")
-
-// ErrReasoningEffortWhitespace reports a reasoning identity that would compare
-// differently before and after ordinary input normalization.
-var ErrReasoningEffortWhitespace = errors.New("model selection: reasoning effort must not have surrounding whitespace")
 
 // ErrUnsupported reports a syntactically valid exact selection the configured
 // Runtime cannot admit.
@@ -33,17 +24,18 @@ var ErrUnsupported = errors.New("model selection: unsupported")
 // IsInvalid reports whether err is a stable model-selection syntax failure.
 func IsInvalid(err error) bool {
 	return errors.Is(err, ErrIncomplete) ||
-		errors.Is(err, ErrSurroundingWhitespace) ||
+		errors.Is(err, ErrProviderIdentity) ||
+		errors.Is(err, ErrModelIdentity) ||
 		errors.Is(err, ErrReasoningEffortWithoutModel) ||
-		errors.Is(err, ErrReasoningEffortWhitespace)
+		errors.Is(err, ErrReasoningEffortIdentity)
 }
 
 // Selection is an immutable model choice. Its zero value asks the owning use
 // case to use its configured default.
 type Selection struct {
-	provider        string
-	model           string
-	reasoningEffort string
+	provider        ProviderIdentity
+	model           ModelIdentity
+	reasoningEffort ReasoningEffortIdentity
 }
 
 // Patch describes an atomic edit of one model selection. Provider and model
@@ -89,34 +81,46 @@ func NewWithReasoningEffort(provider, model, reasoningEffort string) (Selection,
 	if (provider == "") != (model == "") {
 		return Selection{}, ErrIncomplete
 	}
-	if provider != strings.TrimSpace(provider) || model != strings.TrimSpace(model) {
-		return Selection{}, ErrSurroundingWhitespace
-	}
-	if reasoningEffort != strings.TrimSpace(reasoningEffort) {
-		return Selection{}, ErrReasoningEffortWhitespace
-	}
 	if model == "" && reasoningEffort != "" {
 		return Selection{}, ErrReasoningEffortWithoutModel
 	}
-	return Selection{provider: provider, model: model, reasoningEffort: reasoningEffort}, nil
+	if model == "" {
+		return Selection{}, nil
+	}
+	providerIdentity, err := NewProviderIdentity(provider)
+	if err != nil {
+		return Selection{}, err
+	}
+	modelIdentity, err := NewModelIdentity(model)
+	if err != nil {
+		return Selection{}, err
+	}
+	var effortIdentity ReasoningEffortIdentity
+	if reasoningEffort != "" {
+		effortIdentity, err = NewReasoningEffortIdentity(reasoningEffort)
+		if err != nil {
+			return Selection{}, err
+		}
+	}
+	return Selection{provider: providerIdentity, model: modelIdentity, reasoningEffort: effortIdentity}, nil
 }
 
 // Validate documents the zero-or-complete invariant at aggregate boundaries.
 // Selection is immutable, so values constructed by New already satisfy it.
 func (s Selection) Validate() error {
-	_, err := NewWithReasoningEffort(s.provider, s.model, s.reasoningEffort)
+	_, err := NewWithReasoningEffort(s.Provider(), s.Model(), s.ReasoningEffort())
 	return err
 }
 
 // Configured reports whether s pins one provider and model.
-func (s Selection) Configured() bool { return s.model != "" }
+func (s Selection) Configured() bool { return s.model.String() != "" }
 
 // Provider returns the explicitly selected provider, or "" for the runtime default.
-func (s Selection) Provider() string { return s.provider }
+func (s Selection) Provider() string { return s.provider.String() }
 
 // Model returns the explicitly selected model, or "" for the runtime default.
-func (s Selection) Model() string { return s.model }
+func (s Selection) Model() string { return s.model.String() }
 
 // ReasoningEffort returns the selected model's explicit intensity, or "" to
 // use that model's provider default.
-func (s Selection) ReasoningEffort() string { return s.reasoningEffort }
+func (s Selection) ReasoningEffort() string { return s.reasoningEffort.String() }

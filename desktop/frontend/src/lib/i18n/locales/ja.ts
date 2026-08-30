@@ -41,6 +41,8 @@ export const ja: Record<string, string> = {
   "composer.placeholder": "やりたいことを書いてください — @ でファイル参照",
   "composer.switchModel": "モデルを切替",
   "composer.switchReasoningEffort": "思考強度を切替",
+  "composer.model.search.placeholder": "モデルを検索…",
+  "composer.model.search.empty": "一致するモデルはありません",
   "composer.model.contextWindow": "コンテキスト {{tokens}}",
   "composer.model.maxInput": "最大入力 {{tokens}}",
   "composer.model.maxOutput": "最大出力 {{tokens}}",
@@ -247,8 +249,8 @@ export const ja: Record<string, string> = {
   "composer.project.required": "続行するにはプロジェクトを選択してください",
   "providers.setup.title": "モデルプロバイダーを接続",
   "providers.setup.sub":
-    "API キーを追加すると会話を開始できます — エージェントにはモデルプロバイダーが必要です。",
-  "providers.setup.action": "プロバイダーキーを追加",
+    "モデルプロバイダーを設定すると会話を開始できます — 認証要件はプロバイダーごとに異なります。",
+  "providers.setup.action": "プロバイダーを設定",
 
   "settings.title": "設定",
   "settings.backToApp": "アプリに戻る",
@@ -288,6 +290,7 @@ export const ja: Record<string, string> = {
   "providers.baseUrl.placeholder": "ベース URL",
   "providers.baseUrl.aria": "{{provider}} のベース URL",
   "providers.key": "キー {{masked}}",
+  "providers.ready": "利用可能",
   "providers.notConfigured": "未設定",
   "providers.save": "保存",
   "providers.saving": "保存中…",
@@ -1001,7 +1004,7 @@ export const ja: Record<string, string> = {
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
   "mcp.import.hint":
-    'Claude Desktop の設定ブロックを貼り付けてください — "mcpServers" 配下の1つ以上のサーバー。',
+    'MCP クライアントの設定ブロックを貼り付けてください — "mcpServers" 配下の1つ以上のサーバー。',
 
   "rpcError.session_has_active_run":
     "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",
@@ -1044,7 +1047,7 @@ export const ja: Record<string, string> = {
     "このサインイン試行は期限切れです。もう一度開始してください。",
   "rpcError.mcp_dial_failed":
     "このサーバーに接続できません — コマンドか URL を確認して再試行してください。",
-  "rpcError.provider_not_configured": "先に API キーを設定してください。",
+  "rpcError.provider_not_configured": "先にプロバイダーの設定を完了してください。",
   "rpcError.provider_test_failed":
     "プロバイダーに接続できないか、テストリクエストが拒否されました。",
   "session.error.create": "セッションを作成できませんでした。",

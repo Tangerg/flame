@@ -70,10 +70,11 @@ func TestServerUpdateRequiresAnExplicitChange(t *testing.T) {
 
 func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	t.Parallel()
+	timeout := mustHandshakeTimeout(t, 15)
 	authorization := AuthorizationChange{Kind: Set, Value: "Bearer secret"}
 	headers := HeadersChange{Kind: Set, Value: map[string]string{"X-Key": "secret"}}
 	candidate := Candidate{
-		Name: "docs", Enabled: true, Description: "Documentation", TimeoutSeconds: 15,
+		Name: "docs", Enabled: true, Description: "Documentation", HandshakeTimeout: timeout,
 		Connection: ConnectionInput{
 			Transport: StreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
@@ -81,7 +82,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
 	}
 	valid := Server{
-		Name: candidate.Name, Description: candidate.Description, TimeoutSeconds: candidate.TimeoutSeconds,
+		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
 		Connection: Connection{
 			Transport: StreamableHTTP, URL: candidate.Connection.URL,
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
@@ -98,7 +99,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		want   string
 	}{
 		{name: "description", mutate: func(result *Server) { result.Description = "ignored" }, want: "description"},
-		{name: "timeout", mutate: func(result *Server) { result.TimeoutSeconds = 1 }, want: "timeout"},
+		{name: "timeout", mutate: func(result *Server) { result.HandshakeTimeout = mustHandshakeTimeout(t, 1) }, want: "timeout"},
 		{name: "URL", mutate: func(result *Server) { result.Connection.URL = "https://other.example" }, want: "URL"},
 		{name: "authorization", mutate: func(result *Server) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
 		{name: "headers", mutate: func(result *Server) { result.Connection.HeadersMasked = nil }, want: "headers"},
@@ -115,14 +116,15 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		})
 	}
 
-	description, enabled, timeout := "Updated", false, 30
+	description, enabled := "Updated", false
+	updatedTimeout := mustHandshakeTimeout(t, 30)
 	disabledTools := []string{"delete"}
 	update := ServerUpdate{
 		Server: candidate.Name, Enabled: &enabled, Description: &description,
-		TimeoutSeconds: &timeout, DisabledTools: &disabledTools,
+		HandshakeTimeout: &updatedTimeout, DisabledTools: &disabledTools,
 	}
 	updated := valid.Clone()
-	updated.Description, updated.TimeoutSeconds = description, timeout
+	updated.Description, updated.HandshakeTimeout = description, updatedTimeout
 	updated.DisabledTools, updated.State = disabledTools, State{Type: Disabled}
 	if err := update.ValidateResult(updated); err != nil {
 		t.Fatalf("valid update result: %v", err)
@@ -177,5 +179,25 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	missingEnvironment.Connection.EnvironmentMasked = nil
 	if err := stdioCandidate.ValidateResult(missingEnvironment); err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Fatalf("stdio result error = %v", err)
+	}
+}
+
+func mustHandshakeTimeout(t *testing.T, seconds int) HandshakeTimeout {
+	t.Helper()
+	timeout, err := NewHandshakeTimeout(seconds)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout(%d): %v", seconds, err)
+	}
+	return timeout
+}
+
+func TestHandshakeTimeoutRejectsNumericDisableSentinel(t *testing.T) {
+	for _, seconds := range []int{0, -1} {
+		if _, err := NewHandshakeTimeout(seconds); err == nil {
+			t.Fatalf("NewHandshakeTimeout(%d) accepted", seconds)
+		}
+	}
+	if err := (HandshakeTimeout{}).Validate(); err != nil {
+		t.Fatalf("explicit unbounded zero value rejected: %v", err)
 	}
 }

@@ -7,6 +7,7 @@ package attachment
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -26,9 +27,9 @@ import (
 )
 
 const (
-	DefaultMaxFileBytes    = 20 << 20
-	DefaultCompletionLimit = 50
-	maxVisitedEntries      = 100_000
+	DefaultMaxFileBytes   = 20 << 20
+	completionResultLimit = 50
+	maxVisitedEntries     = 100_000
 )
 
 var (
@@ -97,7 +98,7 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("attachment: open %q: %w", input, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("attachment: inspect %q: %w", input, err)
@@ -145,11 +146,36 @@ func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (a
 	if relative, ok := r.relative(canonical); ok {
 		name = relative
 	}
-	digest := sha256.Sum256([]byte(canonical + "\x00" + strconv.FormatInt(info.Size(), 10) + "\x00" + strconv.FormatInt(info.ModTime().UnixNano(), 10)))
+	digest := (attachmentIdentity{
+		canonicalPath: canonical,
+		size:          info.Size(),
+		modifiedAt:    info.ModTime().UnixNano(),
+	}).digest()
 	return agent.Attachment{
 		ID: "att_" + hex.EncodeToString(digest[:8]), Kind: kind, Name: filepath.ToSlash(name),
 		Path: canonical, MimeType: mimeType, Size: info.Size(),
 	}, nil
+}
+
+type attachmentIdentity struct {
+	canonicalPath string
+	size          int64
+	modifiedAt    int64
+}
+
+func (i attachmentIdentity) digest() [sha256.Size]byte {
+	digest := sha256.New()
+	for _, field := range []string{
+		i.canonicalPath,
+		strconv.FormatInt(i.size, 10),
+		strconv.FormatInt(i.modifiedAt, 10),
+	} {
+		_, _ = digest.Write(binary.AppendUvarint(nil, uint64(len(field))))
+		_, _ = io.WriteString(digest, field)
+	}
+	var value [sha256.Size]byte
+	copy(value[:], digest.Sum(nil))
+	return value
 }
 
 func attachmentKind(mimeType string) (agent.AttachmentKind, bool) {
@@ -166,13 +192,10 @@ func attachmentKind(mimeType string) (agent.AttachmentKind, bool) {
 // Complete searches regular files below Root and returns fuzzy-ranked relative
 // paths. It does not follow directory symlinks, skips dependency/VCS internals,
 // and obeys cancellation during the walk.
-func (r *Resolver) Complete(ctx context.Context, query string, limit int) ([]PathMatch, error) {
-	if limit <= 0 {
-		limit = DefaultCompletionLimit
-	}
+func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, error) {
 	search := completionSearch{
 		ctx: ctx, root: r.root, maxBytes: r.maxBytes,
-		query: filepath.ToSlash(strings.TrimSpace(query)), matches: make([]PathMatch, 0, limit),
+		query: filepath.ToSlash(strings.TrimSpace(query)), matches: make([]PathMatch, 0, completionResultLimit),
 	}
 	err := filepath.WalkDir(r.root, search.visit)
 	if err != nil {
@@ -187,7 +210,7 @@ func (r *Resolver) Complete(ctx context.Context, query string, limit int) ([]Pat
 		}
 		return strings.Compare(a.Path, b.Path)
 	})
-	return slices.Clone(search.matches[:min(len(search.matches), limit)]), nil
+	return slices.Clone(search.matches[:min(len(search.matches), completionResultLimit)]), nil
 }
 
 type completionSearch struct {

@@ -121,7 +121,7 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		return ExecutorCheckpoint{
 			RootMemberID: rootMemberID,
 			Payload:      []byte(`{}`),
-			BuildID:      "test-build",
+			BuildID:      testExecutorBuildID,
 			Scope: ExecutionScope{
 				SessionID: pending.SessionID, CWD: sess.Workspace().Path(), WorkspaceCWD: sess.Workspace().Path(),
 				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
@@ -528,7 +528,7 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	wantContinuation, err := waitingContinuationFromPending(pending, ExecutorCheckpoint{
-		RootMemberID: "member_root", Payload: []byte(`{}`), BuildID: "test-build",
+		RootMemberID: "member_root", Payload: []byte(`{}`), BuildID: testExecutorBuildID,
 		Scope: ExecutionScope{
 			SessionID: run.SessionID(), CWD: "/workspace", WorkspaceCWD: "/workspace",
 			GoalIncarnationID: pending.GoalIncarnationID,
@@ -699,7 +699,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
 		{name: "limits", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Limits.MaxSteps++
+			checkpoint.Limits = runfixture.MustLimits(rundomain.LimitValues{MaxSteps: runfixture.Pointer(1)})
 		}},
 		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = true
@@ -715,7 +715,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			checkpoint := ExecutorCheckpoint{
 				RootMemberID: root.MemberID,
 				Payload:      []byte(`{}`),
-				BuildID:      "test-build",
+				BuildID:      testExecutorBuildID,
 				Scope: ExecutionScope{
 					SessionID:    run.SessionID(),
 					CWD:          "/workspace",
@@ -896,7 +896,7 @@ func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing
 		{
 			name: "frozen limits",
 			mutate: func(_ *rundomain.Run, pending *Pending) {
-				pending.Continuations[0].Limits.MaxSteps++
+				pending.Continuations[0].Limits = runfixture.MustLimits(rundomain.LimitValues{MaxSteps: runfixture.Pointer(1)})
 			},
 		},
 		{

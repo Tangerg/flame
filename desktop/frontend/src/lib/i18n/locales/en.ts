@@ -44,6 +44,8 @@ export const en: Record<string, string> = {
   "composer.placeholder.steer": "Send a message to steer the running turn…",
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",
+  "composer.model.search.placeholder": "Search models…",
+  "composer.model.search.empty": "No models found",
   "composer.model.contextWindow": "{{tokens}} context",
   "composer.model.maxInput": "{{tokens}} max input",
   "composer.model.maxOutput": "{{tokens}} max output",
@@ -259,8 +261,8 @@ export const en: Record<string, string> = {
   "composer.project.required": "Select a project to continue",
   "providers.setup.title": "Connect a model provider",
   "providers.setup.sub":
-    "Add an API key to start chatting — the agent needs a model provider to talk to.",
-  "providers.setup.action": "Add a provider key",
+    "Configure a model provider to start chatting — authentication depends on the provider.",
+  "providers.setup.action": "Configure a provider",
 
   "settings.title": "Settings",
   "settings.backToApp": "Back to app",
@@ -351,6 +353,7 @@ export const en: Record<string, string> = {
   "providers.baseUrl.placeholder": "Base URL",
   "providers.baseUrl.aria": "{{provider}} base URL",
   "providers.key": "key {{masked}}",
+  "providers.ready": "ready",
   "providers.fromEnv": "from env",
   "providers.notConfigured": "not configured",
   "providers.save": "Save",
@@ -426,8 +429,7 @@ export const en: Record<string, string> = {
   "mcp.form.description.placeholder": "Description (optional)",
   "mcp.form.description.aria": "Description",
   "mcp.import": "Import from JSON",
-  "mcp.import.hint":
-    'Paste a Claude Desktop config block — one or more servers under "mcpServers".',
+  "mcp.import.hint": 'Paste an MCP client config block — one or more servers under "mcpServers".',
   "mcp.import.confirm": "Import",
   "mcp.importing": "Importing…",
   "mcp.import.ok": "Imported {{count}} server(s)",
@@ -1078,7 +1080,7 @@ export const en: Record<string, string> = {
   "rpcError.mcp_authorization_failed": "Sign-in didn't complete. Try again.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
   "rpcError.mcp_dial_failed": "Couldn't reach this server — check the command or URL and retry.",
-  "rpcError.provider_not_configured": "Set the API key first.",
+  "rpcError.provider_not_configured": "Finish configuring the provider first.",
   "rpcError.provider_test_failed":
     "The provider couldn't be reached, or it rejected the test request.",
   "session.error.create": "Couldn't create the session.",

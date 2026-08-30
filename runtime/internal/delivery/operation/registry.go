@@ -303,8 +303,8 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if cursor.Type.Kind() != reflect.String || !cursor.Optional {
 		return PaginationNone, fmt.Errorf("%s.cursor must be an optional string", params)
 	}
-	if limit.Type.Kind() != reflect.Int || !limit.Optional {
-		return PaginationNone, fmt.Errorf("%s.limit must be an optional int", params)
+	if limit.Type.Kind() != reflect.Pointer || limit.Type.Elem().Kind() != reflect.Int || !limit.Optional {
+		return PaginationNone, fmt.Errorf("%s.limit must be a pointer-backed optional int", params)
 	}
 	return PaginationCursor, nil
 }

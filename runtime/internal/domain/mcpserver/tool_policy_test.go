@@ -14,31 +14,31 @@ func TestToolPolicy(t *testing.T) {
 		{
 			name: "enabled servers contribute qualified tools",
 			servers: []Server{
-				{Name: "files", Enabled: true, DisabledTools: []string{"write"}, AutoApproveTools: []string{"read"}},
-				{Name: "db", Enabled: true, DisabledTools: []string{"drop"}, AutoApproveTools: []string{"select"}},
+				{Name: testMCPServerName("files"), Enabled: true, ToolPolicy: testServerToolPolicy([]string{"write"}, []string{"read"})},
+				{Name: testMCPServerName("db"), Enabled: true, ToolPolicy: testServerToolPolicy([]string{"drop"}, []string{"select"})},
 			},
 			checks: map[ToolRef]struct {
 				disabled     bool
 				autoApproved bool
 			}{
-				{Server: "files", Tool: "write"}: {disabled: true},
-				{Server: "files", Tool: "read"}:  {autoApproved: true},
-				{Server: "db", Tool: "drop"}:     {disabled: true},
-				{Server: "db", Tool: "select"}:   {autoApproved: true},
-				{Tool: "write"}:                  {disabled: true},
+				{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}: {disabled: true},
+				{Server: testMCPServerName("files"), Tool: testRemoteToolName("read")}:  {autoApproved: true},
+				{Server: testMCPServerName("db"), Tool: testRemoteToolName("drop")}:     {disabled: true},
+				{Server: testMCPServerName("db"), Tool: testRemoteToolName("select")}:   {autoApproved: true},
+				{Tool: testRemoteToolName("write")}:                                     {disabled: true},
 			},
 		},
 		{
 			name: "disabled servers contribute nothing",
 			servers: []Server{
-				{Name: "files", Enabled: false, DisabledTools: []string{"write"}, AutoApproveTools: []string{"read"}},
+				{Name: testMCPServerName("files"), Enabled: false, ToolPolicy: testServerToolPolicy([]string{"write"}, []string{"read"})},
 			},
 			checks: map[ToolRef]struct {
 				disabled     bool
 				autoApproved bool
 			}{
-				{Server: "files", Tool: "write"}: {disabled: true},
-				{Server: "files", Tool: "read"}:  {disabled: true},
+				{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}: {disabled: true},
+				{Server: testMCPServerName("files"), Tool: testRemoteToolName("read")}:  {disabled: true},
 			},
 		},
 	}
@@ -60,7 +60,7 @@ func TestToolPolicy(t *testing.T) {
 
 func TestZeroToolPolicyDisablesUnregisteredTools(t *testing.T) {
 	var policy ToolPolicy
-	ref := ToolRef{Server: "server", Tool: "tool"}
+	ref := ToolRef{Server: testMCPServerName("server"), Tool: testRemoteToolName("tool")}
 	if !policy.Disabled(ref) || policy.AutoApproved(ref) {
 		t.Fatal("zero policy must disable unregistered tools without auto-approving them")
 	}

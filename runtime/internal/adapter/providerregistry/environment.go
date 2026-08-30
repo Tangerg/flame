@@ -5,63 +5,70 @@ package providerregistry
 import (
 	"cmp"
 	"context"
-	"maps"
+	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
-// envKeyRegistry decorates a registry so a provider with no stored key falls
-// back to its environment-variable key. Precedence is stored > env: a key set
-// through a registry mutation always wins over the environment. The decorator is
-// the single authority on [Provider.KeySource] — it's the only layer that knows
-// whether the effective key is stored or env-sourced.
+var ErrIdentityMismatch = errors.New("provider registry: stored identity does not match lookup identity")
+
+// environmentRegistry is the sole owner of the stored-over-environment
+// precedence rule. Environment credentials are an immutable startup snapshot
+// and can never cross the durable registry boundary.
 type environmentRegistry struct {
 	inner   models.ProviderRegistry
-	envKeys map[string]string // provider id -> env key value (non-empty)
+	envKeys map[string]provider.APIKey
 }
 
-// WithEnvKeys wraps a registry with the stored>env credential fallback: a
-// provider absent or keyless in inner becomes enabled when its id has an entry
-// in envKeys, with [Provider.KeySource] set to [KeyEnv]. envKeys (from
-// llm.EnvKeys, read once at startup) is copied into an immutable snapshot. An
-// empty map still applies the provenance projection so stored credentials are
-// reported as [KeyStored] rather than losing their source.
-func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]string) models.ProviderRegistry {
-	return &environmentRegistry{inner: inner, envKeys: maps.Clone(envKeys)}
+// WithEnvironmentKeys validates and snapshots environment credentials before
+// exposing the effective registry. Invalid host input fails composition instead
+// of becoming a partially configured provider later in a Run.
+func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]string) (models.ProviderRegistry, error) {
+	snapshot := make(map[string]provider.APIKey, len(envKeys))
+	for id, rawKey := range envKeys {
+		if _, err := provider.New(id); err != nil {
+			return nil, fmt.Errorf("provider registry: environment provider id %q: %w", id, err)
+		}
+		key, err := provider.NewAPIKey(rawKey)
+		if err != nil {
+			return nil, fmt.Errorf("provider registry: environment credential for %q: %w", id, err)
+		}
+		snapshot[id] = key
+	}
+	return &environmentRegistry{inner: inner, envKeys: snapshot}, nil
 }
 
-// resolve stamps KeySource and overlays the env key when there's no stored one.
-// found mirrors the inner Get's ok — but an env-only provider (no stored row)
-// still resolves as found, since an env key makes it usable.
-func (e *environmentRegistry) resolve(p provider.Provider, found bool, id string) (provider.Provider, bool) {
-	if found && p.APIKey != "" {
-		p.KeySource = provider.KeyStored
-		return p, true
+func (e *environmentRegistry) resolve(entry provider.Provider, found bool, id string) (provider.Provider, bool, error) {
+	if found && entry.ID() != id {
+		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", ErrIdentityMismatch, entry.ID(), id)
 	}
-	if env := e.envKeys[id]; env != "" {
-		// Overlay onto the stored row (keeps any configured base URL) or
-		// synthesize a fresh entry for an env-only provider.
-		p.ID = id
-		p.APIKey = env
-		p.KeySource = provider.KeyEnv
-		return p, true
+	if !found {
+		key, hasEnvironmentCredential := e.envKeys[id]
+		if !hasEnvironmentCredential {
+			return provider.Provider{}, false, nil
+		}
+		var err error
+		entry, err = provider.New(id)
+		if err != nil {
+			return provider.Provider{}, false, err
+		}
+		return entry.WithEnvironmentFallback(key), true, nil
 	}
-	if found {
-		p.KeySource = provider.KeyNone
-		return p, true
+	if key, hasEnvironmentCredential := e.envKeys[id]; hasEnvironmentCredential {
+		entry = entry.WithEnvironmentFallback(key)
 	}
-	return provider.Provider{}, false
+	return entry, true, nil
 }
 
 func (e *environmentRegistry) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
-	p, ok, err := e.inner.Get(ctx, id)
+	entry, found, err := e.inner.Get(ctx, id)
 	if err != nil {
 		return provider.Provider{}, false, err
 	}
-	rp, rok := e.resolve(p, ok, id)
-	return rp, rok, nil
+	return e.resolve(entry, found, id)
 }
 
 func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, error) {
@@ -71,30 +78,36 @@ func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, er
 	}
 	out := make([]provider.Provider, 0, len(stored)+len(e.envKeys))
 	seen := make(map[string]struct{}, len(stored))
-	for _, p := range stored {
-		rp, _ := e.resolve(p, true, p.ID)
-		out = append(out, rp)
-		seen[p.ID] = struct{}{}
+	for _, entry := range stored {
+		id := entry.ID()
+		resolved, _, resolveErr := e.resolve(entry, true, id)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		out = append(out, resolved)
+		seen[id] = struct{}{}
 	}
-	// Env-only providers (no stored row) still surface as enabled.
-	for id, env := range e.envKeys {
-		if _, ok := seen[id]; ok {
+	for id, key := range e.envKeys {
+		if _, exists := seen[id]; exists {
 			continue
 		}
-		out = append(out, provider.Provider{ID: id, APIKey: env, KeySource: provider.KeyEnv})
+		entry, newErr := provider.New(id)
+		if newErr != nil {
+			return nil, newErr
+		}
+		out = append(out, entry.WithEnvironmentFallback(key))
 	}
-	slices.SortFunc(out, func(a, b provider.Provider) int { return cmp.Compare(a.ID, b.ID) })
+	slices.SortFunc(out, func(a, b provider.Provider) int { return cmp.Compare(a.ID(), b.ID()) })
 	return out, nil
 }
 
-// Update delegates the atomic persisted mutation before resolving the returned
-// effective credential. Environment keys remain read-only and are never copied
-// into the durable registry.
+// Update delegates the persisted mutation before applying the environment
+// overlay to its result. The overlay is never passed into the inner registry.
 func (e *environmentRegistry) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
-	p, err := e.inner.Update(ctx, id, patch)
+	entry, err := e.inner.Update(ctx, id, patch)
 	if err != nil {
 		return provider.Provider{}, err
 	}
-	resolved, _ := e.resolve(p, true, id)
-	return resolved, nil
+	resolved, _, err := e.resolve(entry, true, id)
+	return resolved, err
 }

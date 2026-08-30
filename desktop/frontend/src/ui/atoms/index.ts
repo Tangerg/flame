@@ -4,6 +4,7 @@ export type { ButtonProps } from "./button";
 export { CatalogPicker } from "./catalog-picker";
 export type { CatalogPickerGroup } from "./catalog-picker";
 export { Checkbox } from "./checkbox";
+export { ChoiceList, ChoiceOption } from "./choice-list";
 export { Chip } from "./chip";
 export { Collapsible } from "./collapsible";
 export { ColorPickerInput } from "./color-picker-input";

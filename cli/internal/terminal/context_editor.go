@@ -49,7 +49,7 @@ func (c *contextEditorSession) Dismiss() {
 	}
 	c.closed = true
 	if c.dialog != nil {
-		c.dialog.Dismiss()
+		c.dialog.Controller().Dismiss()
 	}
 	if c.dismissed != nil {
 		c.dismissed()
@@ -70,7 +70,7 @@ func newContextEditor(theme kit.Theme, clipboard headless.Clipboard, content, pl
 	editor.composer.Editor().Keys = keys
 	editor.composer.Editor().Clipboard = clipboard
 	editor.composer.Editor().Placeholder = placeholder
-	editor.composer.SetText(content)
+	editor.composer.Editor().SetText(content)
 	return editor
 }
 
@@ -97,7 +97,7 @@ func (c *contextEditor) Handle(event input.Event) bool {
 		switch action {
 		case saveContextDocument:
 			if c.save != nil {
-				_ = c.save(c.composer.Text())
+				_ = c.save(c.composer.Editor().Text())
 			}
 			return true
 		case cancelContextDocument:
@@ -149,7 +149,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 				}
 				return false
 			}
-			if editor.composer.Text() != value {
+			if editor.composer.Editor().Text() != value {
 				editor.problem, editor.failed = "Saved. New edits remain unsaved.", false
 				if dialog != nil {
 					dialog.Controller().SetDescription(editor.problem)
@@ -174,7 +174,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 	})
 	session.dialog = dialog
 	a.activeContextEditor = session
-	dialog.Show()
+	dialog.Controller().Show()
 	return session
 }
 

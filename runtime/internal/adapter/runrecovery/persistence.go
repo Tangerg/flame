@@ -228,106 +228,168 @@ func (p *Persistence) CommitRecovery(ctx context.Context, commit runs.RecoveryCo
 	if err := commit.Validate(); err != nil {
 		return fmt.Errorf("runrecovery: invalid recovery commit: %w", err)
 	}
-	return p.tx(ctx, func(ctx context.Context) error {
-		for _, invocation := range commit.ModelInvocations {
-			if err := p.modelInvocations.MarkModelInvocationUnknown(
-				ctx,
-				invocation.SessionID,
-				invocation.RunID,
-				invocation.SegmentID,
+	return p.tx(ctx, func(ctx context.Context) error { return p.applyRecovery(ctx, commit) })
+}
+
+func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCommit) error {
+	if err := p.markModelInvocationsUnknown(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.markToolInvocationsIncomplete(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.applyConversationTransitions(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.replaceTranscriptItems(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.recoverLostRuns(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.recordGoalRuns(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.deleteInterrupts(ctx, commit); err != nil {
+		return err
+	}
+	if err := p.deleteExecutorCheckpoints(ctx, commit); err != nil {
+		return err
+	}
+	return p.deleteChildRunStartReservations(ctx, commit)
+}
+
+func (p *Persistence) markModelInvocationsUnknown(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, invocation := range commit.ModelInvocations {
+		if err := p.modelInvocations.MarkModelInvocationUnknown(
+			ctx,
+			invocation.SessionID,
+			invocation.RunID,
+			invocation.SegmentID,
+			invocation.CallID,
+			invocation.StartedAt,
+			invocation.FinishedAt,
+		); err != nil {
+			return fmt.Errorf(
+				"runrecovery: mark model invocation %q unknown: %w",
 				invocation.CallID,
-				invocation.StartedAt,
-				invocation.FinishedAt,
-			); err != nil {
-				return fmt.Errorf(
-					"runrecovery: mark model invocation %q unknown: %w",
-					invocation.CallID,
-					err,
-				)
-			}
+				err,
+			)
 		}
-		for _, invocation := range commit.ToolInvocations {
-			if err := p.toolInvocations.MarkToolInvocationIncomplete(
-				ctx,
-				invocation.SessionID,
-				invocation.RunID,
-				invocation.SegmentID,
+	}
+	return nil
+}
+
+func (p *Persistence) markToolInvocationsIncomplete(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, invocation := range commit.ToolInvocations {
+		if err := p.toolInvocations.MarkToolInvocationIncomplete(
+			ctx,
+			invocation.SessionID,
+			invocation.RunID,
+			invocation.SegmentID,
+			invocation.CallID,
+			invocation.ItemID,
+			invocation.StartedAt,
+			invocation.FinishedAt,
+		); err != nil {
+			return fmt.Errorf(
+				"runrecovery: mark Tool invocation %q incomplete: %w",
 				invocation.CallID,
-				invocation.ItemID,
-				invocation.StartedAt,
-				invocation.FinishedAt,
-			); err != nil {
-				return fmt.Errorf(
-					"runrecovery: mark Tool invocation %q incomplete: %w",
-					invocation.CallID,
-					err,
-				)
-			}
+				err,
+			)
 		}
-		for _, transition := range commit.ConversationTransitions {
-			count, err := p.messages.Count(ctx, transition.SessionID)
-			if err != nil {
-				return fmt.Errorf(
-					"runrecovery: count conversation for root Run %q: %w",
-					transition.RootRunID,
-					err,
-				)
-			}
-			if count != transition.ExpectedCount {
-				return fmt.Errorf(
-					"runrecovery: conversation for root Run %q moved from %d to %d messages",
-					transition.RootRunID,
-					transition.ExpectedCount,
-					count,
-				)
-			}
-			if err := p.messages.Write(ctx, transition.SessionID, transition.Messages...); err != nil {
-				return fmt.Errorf(
-					"runrecovery: close conversation for root Run %q: %w",
-					transition.RootRunID,
-					err,
-				)
-			}
+	}
+	return nil
+}
+
+func (p *Persistence) applyConversationTransitions(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, transition := range commit.ConversationTransitions {
+		count, err := p.messages.Count(ctx, transition.SessionID)
+		if err != nil {
+			return fmt.Errorf(
+				"runrecovery: count conversation for root Run %q: %w",
+				transition.RootRunID,
+				err,
+			)
 		}
-		for _, replacement := range commit.ItemReplacements {
-			if err := p.transcript.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); err != nil {
-				return fmt.Errorf("runrecovery: replace transcript Item %q: %w", replacement.Expected.ID(), err)
-			}
+		if count != transition.ExpectedCount {
+			return fmt.Errorf(
+				"runrecovery: conversation for root Run %q moved from %d to %d messages",
+				transition.RootRunID,
+				transition.ExpectedCount,
+				count,
+			)
 		}
-		for _, lost := range commit.LostRuns {
-			if err := p.runs.RecoverLost(ctx, lost); err != nil {
-				return fmt.Errorf("runrecovery: recover lost Run %q: %w", lost.ID(), err)
-			}
+		if err := p.messages.Write(ctx, transition.SessionID, transition.Messages...); err != nil {
+			return fmt.Errorf(
+				"runrecovery: close conversation for root Run %q: %w",
+				transition.RootRunID,
+				err,
+			)
 		}
-		for _, record := range commit.GoalRuns {
-			if p.goalRuns == nil {
-				return errors.New("runrecovery: Goal Run store is unavailable for a Goal-owned lost Run")
-			}
-			if err := p.goalRuns.RecordRun(ctx, record); err != nil {
-				return fmt.Errorf("runrecovery: record Goal Run for Run %q: %w", record.RunID, err)
-			}
+	}
+	return nil
+}
+
+func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, replacement := range commit.ItemReplacements {
+		if err := p.transcript.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); err != nil {
+			return fmt.Errorf("runrecovery: replace transcript Item %q: %w", replacement.Expected.ID(), err)
 		}
-		for _, owner := range commit.DeleteInterrupts {
-			if err := p.interrupts.Delete(ctx, owner.SessionID, owner.RootRunID); err != nil {
-				return fmt.Errorf("runrecovery: delete interrupt for root Run %q: %w", owner.RootRunID, err)
-			}
+	}
+	return nil
+}
+
+func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, lost := range commit.LostRuns {
+		if err := p.runs.RecoverLost(ctx, lost); err != nil {
+			return fmt.Errorf("runrecovery: recover lost Run %q: %w", lost.ID(), err)
 		}
-		for _, sessionID := range commit.DeleteCheckpointSessionIDs {
-			if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
-				return fmt.Errorf("runrecovery: delete executor checkpoints for Session %q: %w", sessionID, err)
-			}
+	}
+	return nil
+}
+
+func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, record := range commit.GoalRuns {
+		if p.goalRuns == nil {
+			return errors.New("runrecovery: Goal Run store is unavailable for a Goal-owned lost Run")
 		}
-		for _, sessionID := range commit.RecoveredSessionIDs {
-			if err := p.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
-				return fmt.Errorf(
-					"runrecovery: delete child Run start reservations for Session %q: %w",
-					sessionID,
-					err,
-				)
-			}
+		if err := p.goalRuns.RecordRun(ctx, record); err != nil {
+			return fmt.Errorf("runrecovery: record Goal Run for Run %q: %w", record.RunID, err)
 		}
-		return nil
-	})
+	}
+	return nil
+}
+
+func (p *Persistence) deleteInterrupts(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, owner := range commit.DeleteInterrupts {
+		if err := p.interrupts.Delete(ctx, owner.SessionID, owner.RootRunID); err != nil {
+			return fmt.Errorf("runrecovery: delete interrupt for root Run %q: %w", owner.RootRunID, err)
+		}
+	}
+	return nil
+}
+
+func (p *Persistence) deleteExecutorCheckpoints(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, sessionID := range commit.DeleteCheckpointSessionIDs {
+		if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
+			return fmt.Errorf("runrecovery: delete executor checkpoints for Session %q: %w", sessionID, err)
+		}
+	}
+	return nil
+}
+
+func (p *Persistence) deleteChildRunStartReservations(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, sessionID := range commit.RecoveredSessionIDs {
+		if err := p.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
+			return fmt.Errorf(
+				"runrecovery: delete child Run start reservations for Session %q: %w",
+				sessionID,
+				err,
+			)
+		}
+	}
+	return nil
 }
 
 var _ runs.RecoveryStore = (*Persistence)(nil)

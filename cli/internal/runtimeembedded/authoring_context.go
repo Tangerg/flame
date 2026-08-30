@@ -34,20 +34,11 @@ func (a *authoringContextAdapter) Documents(ctx context.Context, workspace strin
 	if err != nil {
 		return nil, err
 	}
-	documents := make([]authoringcontext.Document, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		document := authoringcontext.Document{Path: value.Path, Title: value.Title, Scope: authoringcontext.DocumentScope(value.Scope)}
-		if err := document.Validate(); err != nil {
-			return nil, runtimeContractViolation("list agent documents item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[document.Path]; duplicate {
-			return nil, runtimeContractViolation("list agent documents repeats %q", document.Path)
-		}
-		seen[document.Path] = struct{}{}
-		documents = append(documents, document)
-	}
-	return documents, nil
+	return projectUniqueValues("list agent documents", values, func(value protocol.AgentDoc) authoringcontext.Document {
+		return authoringcontext.Document{Path: value.Path, Title: value.Title, Scope: authoringcontext.DocumentScope(value.Scope)}
+	}, func(document authoringcontext.Document) string {
+		return document.Path
+	})
 }
 
 func (a *authoringContextAdapter) Recipes(ctx context.Context, workspace string) ([]authoringcontext.Recipe, error) {
@@ -64,23 +55,14 @@ func (a *authoringContextAdapter) Recipes(ctx context.Context, workspace string)
 	if err != nil {
 		return nil, err
 	}
-	recipes := make([]authoringcontext.Recipe, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		recipe := authoringcontext.Recipe{
+	return projectUniqueValues("list recipes", values, func(value protocol.Recipe) authoringcontext.Recipe {
+		return authoringcontext.Recipe{
 			Name: value.Name, Description: value.Description, ArgumentHint: value.ArgumentHint,
 			Body: value.Body, Scope: authoringcontext.RecipeScope(value.Scope), Source: value.Source,
 		}
-		if err := recipe.Validate(); err != nil {
-			return nil, runtimeContractViolation("list recipes item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[recipe.Name]; duplicate {
-			return nil, runtimeContractViolation("list recipes repeats %q", recipe.Name)
-		}
-		seen[recipe.Name] = struct{}{}
-		recipes = append(recipes, recipe)
-	}
-	return recipes, nil
+	}, func(recipe authoringcontext.Recipe) string {
+		return recipe.Name
+	})
 }
 
 func authoringWorkspaceQuery(workspace string) (protocol.WorkspaceQuery, error) {

@@ -1,4 +1,5 @@
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
+import type { MCPHandshakeTimeout } from "./mcpHandshakeTimeout";
 
 export type MCPTransport = "stdio" | "streamableHttp";
 export type MCPServerStatus =
@@ -25,7 +26,7 @@ export interface MCPServerSettings {
   args?: string[];
   envMasked?: Record<string, string>;
   dir?: string;
-  timeoutSeconds?: number;
+  handshakeTimeout: MCPHandshakeTimeout;
   disabledTools?: string[];
   autoApproveTools?: string[];
   toolCount?: number;

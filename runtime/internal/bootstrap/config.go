@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/llm"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 // LoadConfig loads the app config and resolves provider defaults plus env-key
@@ -27,36 +26,29 @@ func LoadConfig(configDirectories []string) (config.Settings, error) {
 }
 
 func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
-	provider := llm.Provider(settings.Provider)
-	if !provider.IsSupported() {
+	profile, found := llm.LookupProvider(llm.Provider(settings.Provider))
+	if !found {
 		return config.Settings{}, fmt.Errorf("config: unknown provider %q (see providers.list for the supported set)", settings.Provider)
 	}
 	if settings.Model == "" {
-		settings.Model = provider.DefaultModel()
+		defaultModel, hasDefault := profile.DefaultChatModel()
+		if !hasDefault {
+			return config.Settings{}, fmt.Errorf("config: provider %q requires an explicit model", settings.Provider)
+		}
+		settings.Model = defaultModel
 	}
-	apiKeyEnvironmentVariable := provider.APIKeyEnv()
+	apiKeyEnvironmentVariable := profile.CredentialEnvironment()
 	if apiKey := os.Getenv(apiKeyEnvironmentVariable); apiKey != "" {
 		settings.APIKey = apiKey
 	}
-	if settings.APIKey == "" {
+	if profile.RequiresAPIKey() && settings.APIKey == "" {
 		return config.Settings{}, errors.New("config: apiKey is empty — set it in config/config.yaml or " + apiKeyEnvironmentVariable)
 	}
 	return settings, nil
 }
 
-// DefaultClient builds the provider/model client used when a Run does not
-// choose a per-run model.
-func DefaultClient(settings config.Settings) (*chatclient.Client, error) {
-	return llm.BuildClient(llm.ClientSpec{
-		Provider: llm.Provider(settings.Provider),
-		Model:    settings.Model,
-		APIKey:   settings.APIKey,
-		BaseURL:  settings.BaseURL,
-	})
-}
-
 // ProviderRegistry wraps the durable provider registry with env-key fallback.
-func ProviderRegistry(registry models.ProviderRegistry) models.ProviderRegistry {
+func ProviderRegistry(registry models.ProviderRegistry) (models.ProviderRegistry, error) {
 	return providerregistry.WithEnvironmentKeys(registry, llm.EnvKeys())
 }
 
@@ -70,12 +62,16 @@ func MCPServers(configuredServers []config.MCPServer) ([]mcpserversvc.Server, er
 	}
 	servers := make([]mcpserversvc.Server, len(configuredServers))
 	for index, server := range configuredServers {
+		name, err := mcpserversvc.ParseServerName(server.Name)
+		if err != nil {
+			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
+		}
 		transport, err := parseMCPTransport(server.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
 		}
 		candidate := mcpserversvc.Server{
-			Name:          server.Name,
+			Name:          name,
 			Transport:     transport,
 			Enabled:       true,
 			URL:           server.Endpoint,

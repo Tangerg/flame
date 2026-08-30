@@ -6,6 +6,7 @@ import { runtimeRequestMeta } from "@/main/runtimeProtocol";
 import { negotiatedCapabilities } from "@/plugins/builtin/runtime/public/capabilities";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { installedRuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
+import { tupleKey } from "@/lib/tupleKey";
 import type { DesktopBootstrap, DesktopHostClient, FlameClient, SidecarClient } from "@/rpc";
 import type { RuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
 import {
@@ -47,7 +48,7 @@ function defaultContainer(): DefaultContainerOwner {
   let sidecar: { endpoint: string; client: SidecarClient } | null = null;
   const retiring = new Set<Promise<void>>();
   let desktopBootstrap: DesktopBootstrap | null = null;
-  let bootstrapGeneration = 0;
+  let bootstrapLease: object = {};
   let closed = false;
   let disposal: Promise<void> | undefined;
   const assertOpen = () => {
@@ -72,7 +73,7 @@ function defaultContainer(): DefaultContainerOwner {
       assertOpen();
       const baseUrl = currentRuntimeEndpoint();
       const localToken = localTokenFor(baseUrl);
-      const signature = `${baseUrl}\u0000${localToken ?? ""}`;
+      const signature = tupleKey(baseUrl, localToken ?? "");
       const storage = installedRuntimeMutationJournalStorage();
       if (shared?.signature === signature && shared.storage === storage) return shared.client;
       if (shared) retire(shared.client);
@@ -111,21 +112,21 @@ function defaultContainer(): DefaultContainerOwner {
     container,
     async initializeDesktopHost(desktop) {
       assertOpen();
-      const generation = ++bootstrapGeneration;
+      const lease = (bootstrapLease = {});
       desktopBootstrap = null;
       const bootstrap = await desktop.bootstrap();
-      if (closed || generation !== bootstrapGeneration) return;
+      if (closed || lease !== bootstrapLease) return;
       desktopBootstrap = bootstrap;
     },
     replaceDesktopHost() {
       assertOpen();
-      bootstrapGeneration += 1;
+      bootstrapLease = {};
       desktopBootstrap = null;
     },
     dispose() {
       if (disposal) return disposal;
       closed = true;
-      bootstrapGeneration += 1;
+      bootstrapLease = {};
       desktopBootstrap = null;
       if (shared) retire(shared.client);
       shared = null;

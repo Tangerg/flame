@@ -24,7 +24,9 @@ export interface MemoryTransport extends Transport {
 
 export function createMemoryTransport(): MemoryTransport {
   const sent: TransportRequest[] = [];
-  const channel = createPushPullChannel<TransportEvent>();
+  // Test fixtures deliberately allow arbitrary pre-injection before a reader
+  // exists; production transports must choose a finite/rendezvous capacity.
+  const channel = createPushPullChannel<TransportEvent>({ capacity: "unbounded" });
 
   return {
     async send(msg) {

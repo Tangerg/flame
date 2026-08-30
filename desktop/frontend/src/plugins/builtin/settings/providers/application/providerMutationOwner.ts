@@ -1,6 +1,7 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { tupleKey } from "@/lib/tupleKey";
 import type { ProviderGateway, ProviderTestOutcome, ProviderUpdate } from "./ports/providerGateway";
 import type { ProviderConfiguration, ProviderRole } from "./providerModels";
 import { EMBEDDING_ROLE_KEY, MODELS_KEY, PROVIDERS_KEY, UTILITY_ROLE_KEY } from "./providerQueries";
@@ -30,7 +31,7 @@ class ProviderMutationGeneration {
   }
 
   updateProvider(input: ProviderUpdate): Promise<ProviderConfiguration> {
-    return this.#run(`provider\u0000${input.provider}`, {
+    return this.#run(tupleKey("provider", input.provider), {
       execute: () => this.#gateway.updateProvider(input),
       commit: commitProviderSaved,
       repair: [PROVIDERS_KEY, MODELS_KEY],
@@ -114,7 +115,7 @@ class ProviderMutationGeneration {
 /** Owns Provider commands and their cache projection for one exact Plugin Host
  * and Runtime generation. */
 export class ProviderMutationOwner {
-  static #materialGeneration = 0;
+  static #materialGeneration = 0n;
   static readonly #materialListeners = new Set<() => void>();
 
   readonly #gateway: ProviderGateway;
@@ -139,7 +140,7 @@ export class ProviderMutationOwner {
     return owner;
   }
 
-  static materialGeneration(): number {
+  static materialGeneration(): bigint {
     return ProviderMutationOwner.#materialGeneration;
   }
 
@@ -186,7 +187,7 @@ export class ProviderMutationOwner {
   }
 
   static #advanceMaterialGeneration(): void {
-    ProviderMutationOwner.#materialGeneration += 1;
+    ProviderMutationOwner.#materialGeneration += 1n;
     for (const listener of ProviderMutationOwner.#materialListeners) listener();
   }
 }

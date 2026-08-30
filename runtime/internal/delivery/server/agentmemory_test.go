@@ -3,11 +3,23 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func serverAgentMemoryItemID(digit byte) agentmemory.ItemID {
+	id, err := agentmemory.ParseItemID(agentmemory.ItemIDPrefix + strings.Repeat(
+		string(digit),
+		agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix),
+	))
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
 
 // recordingAgentMemory captures application use cases driven by agentMemory.*
 // handlers, so Delivery's wire mapping is tested without a persistence port.
@@ -64,12 +76,12 @@ func (r *recordingAgentMemory) Add(_ context.Context, scope agentmemory.Scope, c
 	if r.err != nil {
 		return agentmemory.Item{}, r.err
 	}
-	return agentmemory.Item{ID: "mem_new", Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}, nil
+	return agentmemory.Item{ID: serverAgentMemoryItemID('1'), Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}, nil
 }
 
 func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
 	rec := &recordingAgentMemory{items: []agentmemory.Item{
-		{ID: "1", Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending},
+		{ID: serverAgentMemoryItemID('1'), Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending},
 	}}
 	s := newTestServer(&stubRuntime{})
 	s.agentMemory = rec
@@ -119,26 +131,28 @@ func TestAgentMemoryReviewMapsDecision(t *testing.T) {
 	s.agentMemory = rec
 	s.features.agentMemory = true
 
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: "a", Decision: "approve"}); err != nil {
+	approveID := serverAgentMemoryItemID('a').String()
+	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: approveID, Decision: "approve"}); err != nil {
 		t.Fatal(err)
 	}
-	if rec.reviewID != "a" || rec.decision != agentmemory.ReviewApprove {
+	if rec.reviewID != approveID || rec.decision != agentmemory.ReviewApprove {
 		t.Fatalf("approve → %q %v", rec.reviewID, rec.decision)
 	}
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: "b", Decision: "reject"}); err != nil {
+	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: serverAgentMemoryItemID('b').String(), Decision: "reject"}); err != nil {
 		t.Fatal(err)
 	}
 	if rec.decision != agentmemory.ReviewReject {
 		t.Fatalf("reject → %v", rec.decision)
 	}
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: "c", Decision: "bogus"}); !errors.Is(err, protocol.ErrInvalidParams) {
+	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: serverAgentMemoryItemID('c').String(), Decision: "bogus"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("bogus decision → %v, want invalid_params", err)
 	}
 }
 
 func TestAgentMemoryUpdateAndAdd(t *testing.T) {
+	itemID := serverAgentMemoryItemID('a')
 	rec := &recordingAgentMemory{getItem: agentmemory.Item{
-		ID: "a", Scope: agentmemory.ScopeProject, Content: "- edited", Origin: agentmemory.OriginUser,
+		ID: itemID, Scope: agentmemory.ScopeProject, Content: "- edited", Origin: agentmemory.OriginUser,
 		Pinned: true, Status: agentmemory.StatusActive,
 	}}
 	s := newTestServer(&stubRuntime{})
@@ -147,14 +161,14 @@ func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 
 	content := "- edited"
 	pinned := true
-	out, err := s.UpdateAgentMemory(context.Background(), protocol.AgentMemoryUpdateRequest{ID: "a", Content: &content, Pinned: &pinned})
+	out, err := s.UpdateAgentMemory(context.Background(), protocol.AgentMemoryUpdateRequest{ID: itemID.String(), Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.editedID != "a" || rec.editedTx != "- edited" || rec.pinnedID != "a" || !rec.pinned {
+	if rec.editedID != itemID.String() || rec.editedTx != "- edited" || rec.pinnedID != itemID.String() || !rec.pinned {
 		t.Fatalf("update recorded %+v", rec)
 	}
-	if out.ID != "a" || !out.Pinned {
+	if out.ID != itemID.String() || !out.Pinned {
 		t.Fatalf("update wire = %+v", out)
 	}
 

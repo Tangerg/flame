@@ -18,7 +18,11 @@ import (
 
 // ListSchedules returns every schedule, newest-created first (schedules.list).
 func (s *Server) ListSchedules(ctx context.Context, query protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {
-	page, err := s.schedules.ListPage(ctx, query.Cursor, query.Limit)
+	limit, err := requestedPageLimit(query.Limit)
+	if err != nil {
+		return nil, mapScheduleErr(wirePageError(err), "schedules.list", "")
+	}
+	page, err := s.schedules.ListPage(ctx, query.Cursor, limit)
 	if err != nil {
 		return nil, mapScheduleErr(wirePageError(err), "schedules.list", "")
 	}
@@ -133,24 +137,24 @@ func mapScheduleErr(err error, method, id string) error {
 // time (never fired / unscheduled) to an omitted field rather than a fake epoch.
 func presentSchedule(scheduled schedule.Schedule) protocol.Schedule {
 	presented := protocol.Schedule{
-		ID:              scheduled.ID,
-		Title:           scheduled.Title,
-		Instructions:    scheduled.Instructions,
-		Workspace:       workspaceRefFromPath(scheduled.CWD),
-		Provider:        scheduled.ModelSelection.Provider(),
-		Model:           scheduled.ModelSelection.Model(),
-		ReasoningEffort: scheduled.ModelSelection.ReasoningEffort(),
-		Cron:            scheduled.Cron,
-		Enabled:         scheduled.Enabled,
-		CreatedAt:       scheduled.CreatedAt,
-		Revision:        scheduled.Revision,
+		ID:              scheduled.ID(),
+		Title:           scheduled.Title(),
+		Instructions:    scheduled.Instructions(),
+		Workspace:       workspaceRefFromPath(scheduled.CWD()),
+		Provider:        scheduled.ModelSelection().Provider(),
+		Model:           scheduled.ModelSelection().Model(),
+		ReasoningEffort: scheduled.ModelSelection().ReasoningEffort(),
+		Cron:            scheduled.Cron(),
+		Enabled:         scheduled.Enabled(),
+		CreatedAt:       scheduled.CreatedAt(),
+		Revision:        scheduled.Revision(),
 	}
-	if !scheduled.LastRunAt.IsZero() {
-		lastRunAt := scheduled.LastRunAt
+	if !scheduled.LastRunAt().IsZero() {
+		lastRunAt := scheduled.LastRunAt()
 		presented.LastRunAt = &lastRunAt
 	}
-	if !scheduled.NextRunAt.IsZero() {
-		nextRunAt := scheduled.NextRunAt
+	if !scheduled.NextRunAt().IsZero() {
+		nextRunAt := scheduled.NextRunAt()
 		presented.NextRunAt = &nextRunAt
 	}
 	return presented

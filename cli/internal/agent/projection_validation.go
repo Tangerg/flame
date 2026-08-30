@@ -7,15 +7,19 @@ import (
 	"math"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 func (r Run) Validate() error {
 	var problems []error
-	if strings.TrimSpace(r.ID) == "" {
-		problems = append(problems, errors.New("id is empty"))
+	if _, err := runidentity.ParseRun(r.ID); err != nil {
+		problems = append(problems, err)
 	}
-	if strings.TrimSpace(r.SessionID) == "" {
-		problems = append(problems, errors.New("session id is empty"))
+	if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+		problems = append(problems, err)
 	}
 	if err := r.Lineage.validate(r.ID); err != nil {
 		problems = append(problems, err)
@@ -23,11 +27,13 @@ func (r Run) Validate() error {
 	if !slices.Contains([]RunStatus{RunStatusRunning, RunStatusWaiting, RunStatusFinished}, r.Status) {
 		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
 	}
-	if (r.Provider == "") != (r.Model == "") {
-		problems = append(problems, errors.New("provider and model must be selected together"))
+	if err := modelidentity.Selection(r.Provider, r.Model, ""); err != nil {
+		problems = append(problems, err)
 	}
-	if r.Status == RunStatusRunning && strings.TrimSpace(r.ActiveSegmentID) == "" {
-		problems = append(problems, errors.New("running run has no active segment"))
+	if r.Status == RunStatusRunning {
+		if _, err := runidentity.ParseSegment(r.ActiveSegmentID); err != nil {
+			problems = append(problems, fmt.Errorf("running run: %w", err))
+		}
 	}
 	if r.Status != RunStatusRunning && r.ActiveSegmentID != "" {
 		problems = append(problems, errors.New("non-running run carries an active segment"))
@@ -89,21 +95,34 @@ func validateRunContractSet[T comparable](label string, values, supported []T) e
 }
 
 func (r RunLineage) validate(runID string) error {
-	values := []string{r.SpawnedByBlockID, r.ParentRunID, r.RootRunID}
-	present := 0
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			present++
+	switch r.kind {
+	case rootRunLineage:
+		if r.spawnedByBlockID != "" || r.parentRunID != "" || r.rootRunID != "" {
+			return errors.New("root run lineage carries child identity")
 		}
+		return nil
+	case childRunLineage:
+		if _, err := runidentity.ParseRun(runID); err != nil {
+			return fmt.Errorf("child run lineage: %w", err)
+		}
+		if _, err := runidentity.ParseItem(r.spawnedByBlockID); err != nil {
+			return fmt.Errorf("child run lineage spawn block: %w", err)
+		}
+		if _, err := runidentity.ParseRun(r.parentRunID); err != nil {
+			return fmt.Errorf("child run lineage parent: %w", err)
+		}
+		if _, err := runidentity.ParseRun(r.rootRunID); err != nil {
+			return fmt.Errorf("child run lineage root: %w", err)
+		}
+	case 0:
+		return errors.New("run lineage is not initialized")
+	default:
+		return errors.New("run lineage kind is unknown")
 	}
 	switch {
-	case present == 0:
-		return nil
-	case present != len(values):
-		return errors.New("run lineage must provide spawn block, parent, and root together")
-	case r.ParentRunID == runID:
+	case r.parentRunID == runID:
 		return errors.New("run lineage names itself as parent")
-	case r.RootRunID == runID:
+	case r.rootRunID == runID:
 		return errors.New("run lineage names itself as root")
 	default:
 		return nil
@@ -112,8 +131,8 @@ func (r RunLineage) validate(runID string) error {
 
 func (r RunOptions) Validate() error {
 	var problems []error
-	if (strings.TrimSpace(r.Provider) == "") != (strings.TrimSpace(r.Model) == "") {
-		problems = append(problems, errors.New("provider and model must be selected together"))
+	if err := modelidentity.Selection(r.Provider, r.Model, ""); err != nil {
+		problems = append(problems, err)
 	}
 	if err := r.Limits.Validate(); err != nil {
 		problems = append(problems, err)
@@ -123,13 +142,6 @@ func (r RunOptions) Validate() error {
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("run options: %w", err)
-	}
-	return nil
-}
-
-func (r RunLimits) Validate() error {
-	if r.MaxTotalTokens < 0 || r.MaxSteps < 0 || r.MaxBudgetUSD < 0 || math.IsNaN(r.MaxBudgetUSD) || math.IsInf(r.MaxBudgetUSD, 0) {
-		return errors.New("run limits must be finite and non-negative")
 	}
 	return nil
 }
@@ -195,8 +207,8 @@ func (u Usage) Validate() error {
 		return errors.New("usage duration cannot be negative")
 	}
 	for model, usage := range u.ByModel {
-		if strings.TrimSpace(model) == "" {
-			return errors.New("usage has an empty model key")
+		if err := modelidentity.Model(model); err != nil {
+			return fmt.Errorf("usage model identity: %w", err)
 		}
 		if err := validateModelUsage(usage); err != nil {
 			return fmt.Errorf("model usage %q: %w", model, err)
@@ -229,19 +241,16 @@ func ValidateEvent(event Event) error {
 	case BlockStarted:
 		return item.Block.validateLifecycle(false)
 	case BlockDelta:
-		if strings.TrimSpace(item.BlockID) == "" {
-			return errors.New("block delta without a block id")
+		if _, err := runidentity.ParseItem(item.BlockID); err != nil {
+			return fmt.Errorf("block delta: %w", err)
 		}
 		if item.Text == "" {
 			return errors.New("block delta without text")
 		}
-		if item.ContentIndex != nil && *item.ContentIndex < 0 {
-			return errors.New("block delta with a negative content index")
-		}
 		return nil
 	case ToolArgumentsDelta:
-		if strings.TrimSpace(item.BlockID) == "" {
-			return errors.New("tool arguments delta without a block id")
+		if _, err := runidentity.ParseItem(item.BlockID); err != nil {
+			return fmt.Errorf("tool arguments delta: %w", err)
 		}
 		return nil
 	case RunProgress:
@@ -266,10 +275,7 @@ func ValidateEvent(event Event) error {
 	case BlockCompleted:
 		return item.Block.validateLifecycle(true)
 	case PlanChanged:
-		if item.Revision == 0 {
-			return errors.New("plan changed without a revision")
-		}
-		return validatePlan(item.Items)
+		return item.Plan.Validate()
 	case RunInterrupted:
 		return errors.Join(ValidateInteractions(item.Interactions), item.Usage.Validate())
 	case RunSuspended:
@@ -297,11 +303,11 @@ func (b Block) validateLifecycle(completed bool) error {
 }
 
 func (b Block) validateEnvelope(completed bool) error {
-	if strings.TrimSpace(b.ID) == "" {
-		return errors.New("transcript block has no id")
+	if _, err := runidentity.ParseItem(b.ID); err != nil {
+		return fmt.Errorf("transcript block: %w", err)
 	}
-	if strings.TrimSpace(b.RunID) == "" {
-		return fmt.Errorf("transcript block %s has no run id", b.ID)
+	if _, err := runidentity.ParseRun(b.RunID); err != nil {
+		return fmt.Errorf("transcript block %s: %w", b.ID, err)
 	}
 	if !slices.Contains([]BlockStatus{BlockStatusRunning, BlockStatusCompleted, BlockStatusIncomplete}, b.Status) {
 		return fmt.Errorf("block %s has invalid status %q", b.ID, b.Status)

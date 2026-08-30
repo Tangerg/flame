@@ -17,7 +17,7 @@ func testRootExecutorCheckpoint() runs.ExecutorCheckpoint {
 	return runs.ExecutorCheckpoint{
 		RootMemberID:   rootMemberID,
 		Payload:        []byte("opaque root checkpoint"),
-		BuildID:        "build",
+		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: selection,
 	}

@@ -3,7 +3,6 @@ package runs
 import (
 	"cmp"
 	"fmt"
-	"maps"
 	"slices"
 	"time"
 
@@ -11,6 +10,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 )
+
+type interruptProjection struct {
+	events        []RunEvent
+	items         []transcript.Item
+	approvalItems map[int]transcript.Item
+}
 
 func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 	if err := e.validate(); err != nil {
@@ -20,7 +25,10 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 	if err != nil {
 		return factReduction{}, err
 	}
-	parkItems := completedEventItems(nil, out)
+	projection := interruptProjection{
+		events: out, items: completedEventItems(nil, out),
+		approvalItems: make(map[int]transcript.Item),
+	}
 	open := r.tools.drain()
 	matched, err := matchInterruptTools(open, e.Interrupts)
 	if err != nil {
@@ -28,93 +36,12 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 	}
 	priorDrained := r.resume.remainingDrainedTools()
 	r.drained = mergeDrainedTools(priorDrained, drainedToolRefs(open, matched, e.Interrupts))
-
-	approvalItems := make(map[int]transcript.Item, len(matched))
-	for _, ref := range open {
-		if index, ok := matched[ref]; ok {
-			if closeSuspendedToolAttemptErr := r.closeSuspendedToolAttempt(ref); closeSuspendedToolAttemptErr != nil {
-				return factReduction{}, closeSuspendedToolAttemptErr
-			}
-			switch pending := e.Interrupts[index]; pending.Kind {
-			case interrupt.Approval:
-				item, publishStart, approvalItemErr := r.approvalItem(*pending.Approval, ref)
-				if approvalItemErr != nil {
-					return factReduction{}, approvalItemErr
-				}
-				approvalItems[index] = item
-				parkItems = append(parkItems, item)
-				if publishStart {
-					started, newToolItemStartErr := newToolItemStart(item)
-					if newToolItemStartErr != nil {
-						return factReduction{}, newToolItemStartErr
-					}
-					out = append(out, ItemStarted{Item: started})
-				}
-			case interrupt.Question:
-				// The question is a separate completed prompt Item, but the tool
-				// call that owns it is still suspended inside its handler. Persist
-				// that Tool Item as running and carry its identity through the
-				// continuation; publishing a completion here would make resume
-				// complete the same client block a second time.
-				item, runningToolItemErr := r.runningToolItem(ref)
-				if runningToolItemErr != nil {
-					return factReduction{}, runningToolItemErr
-				}
-				parkItems = append(parkItems, item)
-			}
-			continue
-		}
-		if ref.end != nil {
-			completed, completeToolErr := r.completeTool(ref, *ref.end)
-			if completeToolErr != nil {
-				return factReduction{}, completeToolErr
-			}
-			out = append(out, completed...)
-			parkItems = completedEventItems(parkItems, completed)
-			continue
-		}
-		suspended, suspendedToolItemErr := r.suspendedToolItem(ref)
-		if suspendedToolItemErr != nil {
-			return factReduction{}, suspendedToolItemErr
-		}
-		parkItems = append(parkItems, suspended)
+	if err := r.projectInterruptedTools(&projection, open, matched, e.Interrupts); err != nil {
+		return factReduction{}, err
 	}
-
-	pending := make([]transcript.Interrupt, 0, len(e.Interrupts))
-	for index, in := range e.Interrupts {
-		var item transcript.Item
-		var pendingInterrupt transcript.Interrupt
-		switch in.Kind {
-		case interrupt.Approval:
-			if matchedItem, ok := approvalItems[index]; ok {
-				item = matchedItem
-				pendingInterrupt = approvalTranscriptInterrupt(item, *in.Approval)
-			} else {
-				var publishStart bool
-				var approvalErr error
-				item, pendingInterrupt, publishStart, approvalErr = r.approvalInterrupt(in)
-				if approvalErr != nil {
-					return factReduction{}, approvalErr
-				}
-				parkItems = append(parkItems, item)
-				if publishStart {
-					started, newToolItemStartErr := newToolItemStart(item)
-					if newToolItemStartErr != nil {
-						return factReduction{}, newToolItemStartErr
-					}
-					out = append(out, ItemStarted{Item: started})
-				}
-			}
-		case interrupt.Question:
-			var questionErr error
-			item, pendingInterrupt, questionErr = r.questionInterrupt(in)
-			if questionErr != nil {
-				return factReduction{}, questionErr
-			}
-			out = append(out, ItemCompleted{Item: item})
-			parkItems = append(parkItems, item)
-		}
-		pending = append(pending, pendingInterrupt)
+	pending, err := r.projectPendingInterrupts(&projection, e.Interrupts)
+	if err != nil {
+		return factReduction{}, err
 	}
 
 	r.segmentDuration = e.Duration
@@ -123,10 +50,129 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 		return factReduction{}, err
 	}
 	return factReduction{
-		events:          append(out, SegmentFinished{Run: waiting, Interrupts: pending}),
-		parkItems:       parkItems,
+		events:          append(projection.events, SegmentFinished{Run: waiting, Interrupts: pending}),
+		parkItems:       projection.items,
 		toolInvocations: closedToolInvocationCommits(r.cfg.SegmentID, open),
 	}, nil
+}
+
+func (r *reducer) projectInterruptedTools(
+	projection *interruptProjection,
+	open []*openTool,
+	matched map[*openTool]int,
+	interrupts []Interrupt,
+) error {
+	for _, ref := range open {
+		if index, ok := matched[ref]; ok {
+			if err := r.projectInterruptedTool(projection, ref, index, interrupts[index]); err != nil {
+				return err
+			}
+			continue
+		}
+		if ref.end != nil {
+			completed, err := r.completeTool(ref, *ref.end)
+			if err != nil {
+				return err
+			}
+			projection.events = append(projection.events, completed...)
+			projection.items = completedEventItems(projection.items, completed)
+			continue
+		}
+		suspended, err := r.suspendedToolItem(ref)
+		if err != nil {
+			return err
+		}
+		projection.items = append(projection.items, suspended)
+	}
+	return nil
+}
+
+func (r *reducer) projectInterruptedTool(
+	projection *interruptProjection,
+	ref *openTool,
+	interruptIndex int,
+	pending Interrupt,
+) error {
+	if err := r.closeSuspendedToolAttempt(ref); err != nil {
+		return err
+	}
+	switch pending.Kind {
+	case interrupt.Approval:
+		item, publishStart, err := r.approvalItem(*pending.Approval, ref)
+		if err != nil {
+			return err
+		}
+		projection.approvalItems[interruptIndex] = item
+		return projection.appendToolItem(item, publishStart)
+	case interrupt.Question:
+		// The Question is a separate completed prompt Item, while its Tool
+		// remains suspended inside the handler and must resume under one identity.
+		item, err := r.runningToolItem(ref)
+		if err != nil {
+			return err
+		}
+		projection.items = append(projection.items, item)
+	}
+	return nil
+}
+
+func (r *reducer) projectPendingInterrupts(
+	projection *interruptProjection,
+	interrupts []Interrupt,
+) ([]transcript.Interrupt, error) {
+	pending := make([]transcript.Interrupt, 0, len(interrupts))
+	for index, value := range interrupts {
+		projected, err := r.projectPendingInterrupt(projection, index, value)
+		if err != nil {
+			return nil, err
+		}
+		pending = append(pending, projected)
+	}
+	return pending, nil
+}
+
+func (r *reducer) projectPendingInterrupt(
+	projection *interruptProjection,
+	index int,
+	pending Interrupt,
+) (transcript.Interrupt, error) {
+	switch pending.Kind {
+	case interrupt.Approval:
+		if item, ok := projection.approvalItems[index]; ok {
+			return approvalTranscriptInterrupt(item, *pending.Approval), nil
+		}
+		item, projected, publishStart, err := r.approvalInterrupt(pending)
+		if err != nil {
+			return transcript.Interrupt{}, err
+		}
+		if err := projection.appendToolItem(item, publishStart); err != nil {
+			return transcript.Interrupt{}, err
+		}
+		return projected, nil
+	case interrupt.Question:
+		item, projected, err := r.questionInterrupt(pending)
+		if err != nil {
+			return transcript.Interrupt{}, err
+		}
+		projection.events = append(projection.events, ItemCompleted{Item: item})
+		projection.items = append(projection.items, item)
+		return projected, nil
+	default:
+		return transcript.Interrupt{}, fmt.Errorf("interrupt kind %q is invalid", pending.Kind)
+	}
+}
+
+func (p *interruptProjection) appendToolItem(item transcript.Item, publishStart bool) error {
+	p.items = append(p.items, item)
+	if !publishStart {
+		return nil
+	}
+	started, err := newToolItemStart(item)
+	if err != nil {
+		return err
+	}
+	p.events = append(p.events, ItemStarted{Item: started})
+	return nil
 }
 
 // suspend closes this Run's Segment because another Run in the same tree raised
@@ -203,7 +249,10 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 	if ref != nil {
 		id, startedAt = ref.id, ref.occurredAt
 	} else {
-		identity, reused := r.reuseOrCreateToolItem(prompt.CallID, prompt.ToolName, arguments)
+		identity, reused, identityErr := r.reuseOrCreateToolItem(prompt.CallID, prompt.ToolName, arguments)
+		if identityErr != nil {
+			return transcript.Item{}, false, identityErr
+		}
 		id, startedAt = identity.id, identity.occurredAt
 		publishStart = !reused
 		r.removeDrained(id)
@@ -365,7 +414,10 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 		return transcript.Item{}, transcript.Interrupt{}, nil
 	}
 	question := questionFromPrompt(*in.Question)
-	id := r.nextItemID()
+	id, err := r.nextItemID()
+	if err != nil {
+		return transcript.Item{}, transcript.Interrupt{}, err
+	}
 	item, err := transcript.NewQuestion(r.itemIdentity(id, r.now()), question)
 	if err != nil {
 		return transcript.Item{}, transcript.Interrupt{}, err
@@ -396,38 +448,116 @@ func questionFromPrompt(prompt QuestionPrompt) transcript.Question {
 	return transcript.Question{Fields: fields}
 }
 
-type openTools map[string]*openTool
-
-func (o openTools) add(tool *openTool) {
-	o[tool.callID] = tool
+// openTools owns both call lookup and publication order for one reducer. Direct
+// calls retain their actual registration order as object references; provider-
+// attributed calls use their immutable model-call position. No synthetic
+// process-local sequence is needed to reconstruct either order.
+type openTools struct {
+	byCallID map[string]*openTool
+	direct   []*openTool
 }
 
-func (o openTools) drain() []*openTool {
+func newOpenTools() openTools {
+	return openTools{byCallID: make(map[string]*openTool)}
+}
+
+func (o *openTools) add(tool *openTool) {
+	if o.byCallID == nil {
+		o.byCallID = make(map[string]*openTool)
+	}
+	o.byCallID[tool.callID] = tool
+	if tool.modelCallSequence == 0 {
+		o.direct = append(o.direct, tool)
+	}
+}
+
+func (o openTools) get(callID string) (*openTool, bool) {
+	tool, ok := o.byCallID[callID]
+	return tool, ok
+}
+
+func (o openTools) count() int { return len(o.byCallID) }
+
+func (o *openTools) remove(callID string) {
+	tool, present := o.byCallID[callID]
+	if !present {
+		return
+	}
+	delete(o.byCallID, callID)
+	if tool.modelCallSequence > 0 {
+		return
+	}
+	for index, direct := range o.direct {
+		if direct != tool {
+			continue
+		}
+		copy(o.direct[index:], o.direct[index+1:])
+		o.direct[len(o.direct)-1] = nil
+		o.direct = o.direct[:len(o.direct)-1]
+		return
+	}
+}
+
+func (o *openTools) drain() []*openTool {
 	ordered := o.ordered()
-	clear(o)
+	clear(o.byCallID)
+	clear(o.direct)
+	o.direct = nil
 	return ordered
 }
 
 func (o openTools) ordered() []*openTool {
-	ordered := slices.Collect(maps.Values(o))
-	slices.SortFunc(ordered, func(a, b *openTool) int {
-		aAttributed := a.modelCallSequence > 0
-		bAttributed := b.modelCallSequence > 0
-		if aAttributed != bAttributed {
-			if aAttributed {
-				return 1
-			}
-			return -1
+	attributed := make([]*openTool, 0, len(o.byCallID)-len(o.direct))
+	for _, tool := range o.byCallID {
+		if tool.modelCallSequence > 0 {
+			attributed = append(attributed, tool)
 		}
-		if aAttributed {
-			if byModelCall := cmp.Compare(a.modelCallSequence, b.modelCallSequence); byModelCall != 0 {
-				return byModelCall
-			}
-			return cmp.Compare(a.toolCallIndex, b.toolCallIndex)
+	}
+	slices.SortFunc(attributed, func(a, b *openTool) int {
+		if byModelCall := cmp.Compare(a.modelCallSequence, b.modelCallSequence); byModelCall != 0 {
+			return byModelCall
 		}
-		return cmp.Compare(a.arrivalOrder, b.arrivalOrder)
+		return cmp.Compare(a.toolCallIndex, b.toolCallIndex)
 	})
-	return ordered
+	return append(slices.Clone(o.direct), attributed...)
+}
+
+func (o openTools) clone() openTools {
+	cloned := newOpenTools()
+	for _, current := range o.ordered() {
+		cloned.add(cloneOpenTool(current))
+	}
+	return cloned
+}
+
+func cloneOpenTool(current *openTool) *openTool {
+	if current == nil {
+		return nil
+	}
+	tool := *current
+	if current.end == nil {
+		return &tool
+	}
+	end := *current.end
+	end.MutatedPaths = slices.Clone(current.end.MutatedPaths)
+	if current.end.ModelResult != nil {
+		modelResult := *current.end.ModelResult
+		end.ModelResult = &modelResult
+	}
+	if current.end.Result != nil {
+		result := *current.end.Result
+		end.Result = &result
+	}
+	if current.end.Offload != nil {
+		offload := *current.end.Offload
+		end.Offload = &offload
+	}
+	if current.end.Failure != nil {
+		failure := *current.end.Failure
+		end.Failure = &failure
+	}
+	tool.end = &end
+	return &tool
 }
 
 func (r *reducer) drainTools() ([]RunEvent, error) {

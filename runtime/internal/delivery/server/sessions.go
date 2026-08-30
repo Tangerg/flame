@@ -39,8 +39,27 @@ func wireSessionErr(err error) error {
 // ListSessions returns one page of the session list (sessions.list). A non-empty
 // NextCursor is the "has more" signal — never a silent truncation. The page is
 // cut by the read, so only the sessions on it are resolved.
-func (s *Server) ListSessions(ctx context.Context, q protocol.PageQuery) (*protocol.Page[protocol.Session], error) {
-	page, err := s.sessions.ListViewPage(ctx, q.Cursor, q.Limit)
+func (s *Server) ListSessions(ctx context.Context, q protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+	limit, err := requestedPageLimit(q.Limit)
+	if err != nil {
+		return nil, wirePageError(err)
+	}
+	filter := session.AllCatalogEntries()
+	var workspace *session.Workspace
+	if q.Workspace != nil {
+		value, workspaceErr := session.NewWorkspace(q.Workspace.Path)
+		if workspaceErr != nil {
+			return nil, fmt.Errorf("%w: sessions: catalog workspace: %w", protocol.ErrInvalidParams, workspaceErr)
+		}
+		workspace = &value
+	}
+	if q.Search != "" || q.Workspace != nil {
+		filter, err = session.NewCatalogFilter(q.Search, workspace)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		}
+	}
+	page, err := s.sessions.ListViewPage(ctx, filter, q.Cursor, limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}

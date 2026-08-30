@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const directoryLockRetryInterval = time.Millisecond
+
 func tryFile(file *os.File) (*Lease, error) {
 	return tryFileMode(file, unix.LOCK_EX)
 }
@@ -34,7 +36,7 @@ func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
 	if err != nil {
 		return nil, err
 	}
-	retry := time.NewTicker(time.Millisecond)
+	retry := time.NewTicker(directoryLockRetryInterval)
 	defer retry.Stop()
 	for {
 		if cause := context.Cause(ctx); cause != nil {

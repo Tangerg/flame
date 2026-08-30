@@ -90,7 +90,11 @@ type watchedRepository struct {
 }
 
 func watchedRepositories(lifetime context.Context, roots []string) []watchedRepository {
-	seen := make(map[string]struct{}, len(roots))
+	type repositoryWatchKey struct {
+		workspace string
+		gitDir    string
+	}
+	seen := make(map[repositoryWatchKey]struct{}, len(roots))
 	repositories := make([]watchedRepository, 0, len(roots))
 	for _, root := range roots {
 		gitDir, commonDir, ok := gitDirectoriesOf(lifetime, root)
@@ -100,7 +104,7 @@ func watchedRepositories(lifetime context.Context, roots []string) []watchedRepo
 		// Multiple WorkspaceRefs may point at different subtrees of the same
 		// repository. Their fingerprints are intentionally separate because Git
 		// pathspecs scope staged entries to each resource root.
-		identity := filepath.Clean(root) + "\x00" + gitDir
+		identity := repositoryWatchKey{workspace: filepath.Clean(root), gitDir: gitDir}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}

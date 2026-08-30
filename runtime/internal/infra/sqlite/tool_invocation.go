@@ -5,15 +5,20 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
+type toolInvocationState string
+
 const (
-	toolInvocationStarted    = "started"
-	toolInvocationCompleted  = "completed"
-	toolInvocationIncomplete = "incomplete"
+	toolInvocationStarted    toolInvocationState = "started"
+	toolInvocationCompleted  toolInvocationState = "completed"
+	toolInvocationIncomplete toolInvocationState = "incomplete"
 )
+
+func (t toolInvocationState) databaseValue() string { return string(t) }
 
 // ToolInvocationStore is the SQLite operational journal for Tool attempts.
 // Arguments and results deliberately stay out of this table: the canonical
@@ -38,16 +43,19 @@ func (t *ToolInvocationStore) ListStartedToolInvocations(
 		  FROM tool_invocations
 		 WHERE state = ?
 		 ORDER BY session_id, run_id, segment_id, call_id, item_id
-	`, toolInvocationStarted)
+	`, toolInvocationStarted.databaseValue())
 	if err != nil {
 		return fmt.Errorf("sqlite: list started Tool invocations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var sessionID, runID, segmentID, callID, itemID string
 		var startedAt int64
 		if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &itemID, &startedAt); err != nil {
 			return fmt.Errorf("sqlite: scan started Tool invocation: %w", err)
+		}
+		if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
+			return fmt.Errorf("sqlite: restore started Tool invocation: %w", err)
 		}
 		if err := yield(sessionID, runID, segmentID, callID, itemID, time.Unix(0, startedAt).UTC()); err != nil {
 			return err
@@ -79,7 +87,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 		sessionID,
 		runID,
 		segmentID,
-		toolInvocationStarted,
+		toolInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
@@ -95,7 +103,7 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 ) error {
 	return t.finish(
 		ctx, sessionID, runID, segmentID, callID, itemID,
-		startedAt, finishedAt, toolInvocationCompleted,
+		startedAt, finishedAt, toolInvocationCompleted.databaseValue(),
 	)
 }
 
@@ -106,7 +114,7 @@ func (t *ToolInvocationStore) MarkToolInvocationIncomplete(
 ) error {
 	return t.finish(
 		ctx, sessionID, runID, segmentID, callID, itemID,
-		startedAt, finishedAt, toolInvocationIncomplete,
+		startedAt, finishedAt, toolInvocationIncomplete.databaseValue(),
 	)
 }
 
@@ -137,7 +145,7 @@ func (t *ToolInvocationStore) finish(
 		sessionID,
 		runID,
 		segmentID,
-		toolInvocationStarted,
+		toolInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
@@ -154,22 +162,14 @@ func (t *ToolInvocationStore) finish(
 }
 
 func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID string) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "session", value: sessionID},
-		{name: "Run", value: runID},
-		{name: "segment", value: segmentID},
-		{name: "call", value: callID},
-		{name: "Item", value: itemID},
-	} {
-		if strings.TrimSpace(identity.value) == "" || identity.value != strings.TrimSpace(identity.value) {
-			return fmt.Errorf(
-				"sqlite: Tool invocation %s ID is required without surrounding whitespace",
-				identity.name,
-			)
-		}
+	if err := validateRunCoordinates("Tool invocation", sessionID, runID, segmentID); err != nil {
+		return err
+	}
+	if err := validateItemResource("Tool invocation", itemID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseEffect(callID); err != nil {
+		return fmt.Errorf("sqlite: Tool invocation: %w", err)
 	}
 	return nil
 }

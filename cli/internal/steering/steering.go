@@ -6,10 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/workbench"
@@ -19,21 +18,6 @@ type runtime interface {
 	SteerRun(context.Context, agent.SteerRun) error
 }
 
-// ReplayWindow identifies the runtime command store that can still return the
-// original outcome for one stable idempotency key.
-type ReplayWindow struct {
-	Namespace string
-	Retention time.Duration
-	Now       func() time.Time
-}
-
-func (r ReplayWindow) now() time.Time {
-	if r.Now == nil {
-		return time.Now().UTC()
-	}
-	return r.Now().UTC()
-}
-
 // Stage atomically transfers the source draft's attachments into a durable
 // command journal before delivery can begin.
 func Stage(
@@ -41,7 +25,7 @@ func Stage(
 	sessionID string,
 	request agent.SteerRun,
 	sourceDraft agent.Message,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 ) (workbench.PendingSteer, error) {
 	if authoring == nil {
 		return workbench.PendingSteer{}, errors.New("CLI workbench is unavailable")
@@ -52,16 +36,17 @@ func Stage(
 	if request.CommandID == "" {
 		return workbench.PendingSteer{}, errors.New("steer command id is empty")
 	}
-	stagedAt := window.now()
-	pending := workbench.PendingSteer{
-		SessionID: strings.TrimSpace(sessionID), Command: request.Clone(), StagedAt: stagedAt,
+	if err := policy.Validate(); err != nil {
+		return workbench.PendingSteer{}, err
 	}
-	if namespace := strings.TrimSpace(window.Namespace); namespace != "" {
-		if window.Retention <= 0 {
-			return workbench.PendingSteer{}, errors.New("steer replay retention is not positive")
-		}
-		pending.ReplayNamespace = namespace
-		pending.ReplayUntil = stagedAt.Add(window.Retention)
+	stagedAt := policy.Now()
+	guard, err := policy.NewGuardAt(stagedAt)
+	if err != nil {
+		return workbench.PendingSteer{}, err
+	}
+	pending, err := workbench.NewPendingSteer(sessionID, request, stagedAt, guard)
+	if err != nil {
+		return workbench.PendingSteer{}, err
 	}
 	if err := authoring.StagePendingSteer(pending, sourceDraft); err != nil {
 		return workbench.PendingSteer{}, fmt.Errorf("stage steer command: %w", err)
@@ -75,13 +60,14 @@ type Result struct {
 	Outcome mutation.Outcome
 }
 
-// Deliver settles a freshly staged command. Its first attempt does not depend
-// on a replay window because the command has not previously left this process.
+// Deliver settles a freshly staged command. An unadvertised Runtime permits
+// exactly one I/O attempt; only an advertised guard permits acknowledgement
+// retries.
 func Deliver(
 	ctx context.Context,
 	runtime runtime,
 	pending workbench.PendingSteer,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) (Result, error) {
 	result := Result{Pending: pending}
@@ -91,19 +77,10 @@ func Deliver(
 	if err := pending.Validate(); err != nil {
 		return result, err
 	}
-	var admit mutation.Admission
-	if pending.ReplayNamespace != "" || !pending.ReplayUntil.IsZero() ||
-		window.Namespace != "" || window.Retention != 0 {
-		admit = func() error {
-			if !replaySafe(pending, window) {
-				return mutation.ErrReplayGuaranteeUnavailable
-			}
-			return nil
-		}
-	}
-	_, err := mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (struct{}, error) {
-		return struct{}{}, runtime.SteerRun(ctx, pending.Command)
-	})
+	_, err := mutation.ConfirmAdmitted(ctx, backoff,
+		mutation.FreshReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, runtime.SteerRun(ctx, pending.Command())
+		})
 	if err == nil {
 		result.Outcome = mutation.Confirmed
 		return result, nil
@@ -123,34 +100,34 @@ func Recover(
 	ctx context.Context,
 	runtime runtime,
 	authoring *workbench.Store,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) error {
 	if authoring == nil {
 		return errors.New("CLI workbench is unavailable")
 	}
 	for _, pending := range authoring.PendingSteers() {
-		if !replaySafe(pending, window) {
+		if !policy.Replayable(pending.Replay()) {
 			return fmt.Errorf(
 				"recover steer command for session %s: replay guarantee expired or belongs to another runtime",
-				pending.SessionID,
+				pending.SessionID(),
 			)
 		}
-		result, err := Deliver(ctx, runtime, pending, window, backoff)
+		result, err := Deliver(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			if acknowledgeErr := authoring.AcknowledgePendingSteer(
-				pending.SessionID, pending.Command.CommandID,
+				pending.SessionID(), pending.CommandID(),
 			); acknowledgeErr != nil {
 				return errors.Join(err, acknowledgeErr)
 			}
 		case mutation.Rejected:
-			draft, _, draftErr := authoring.Draft(pending.SessionID)
+			draft, _, draftErr := authoring.Draft(pending.SessionID())
 			if draftErr != nil {
 				return errors.Join(err, draftErr)
 			}
 			if _, rejectErr := authoring.RejectPendingSteer(
-				pending.SessionID, pending.Command.CommandID, draft,
+				pending.SessionID(), pending.CommandID(), draft,
 			); rejectErr != nil {
 				return errors.Join(err, rejectErr)
 			}
@@ -161,10 +138,4 @@ func Recover(
 		}
 	}
 	return nil
-}
-
-func replaySafe(pending workbench.PendingSteer, window ReplayWindow) bool {
-	return strings.TrimSpace(window.Namespace) != "" &&
-		strings.TrimSpace(window.Namespace) == pending.ReplayNamespace &&
-		window.now().Before(pending.ReplayUntil)
 }

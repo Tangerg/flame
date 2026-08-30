@@ -41,6 +41,8 @@ export const ko: Record<string, string> = {
   "composer.placeholder": "무엇을 할지 적어 주세요 — @ 로 파일 참조",
   "composer.switchModel": "모델 변경",
   "composer.switchReasoningEffort": "추론 강도 변경",
+  "composer.model.search.placeholder": "모델 검색…",
+  "composer.model.search.empty": "일치하는 모델이 없습니다",
   "composer.model.contextWindow": "컨텍스트 {{tokens}}",
   "composer.model.maxInput": "최대 입력 {{tokens}}",
   "composer.model.maxOutput": "최대 출력 {{tokens}}",
@@ -246,8 +248,8 @@ export const ko: Record<string, string> = {
   "composer.project.required": "계속하려면 프로젝트를 선택하세요",
   "providers.setup.title": "모델 제공자 연결",
   "providers.setup.sub":
-    "API 키를 추가하면 대화를 시작할 수 있습니다 — 에이전트에는 모델 제공자가 필요합니다.",
-  "providers.setup.action": "제공자 키 추가",
+    "모델 제공자를 구성하면 대화를 시작할 수 있습니다 — 인증 요구 사항은 제공자마다 다릅니다.",
+  "providers.setup.action": "제공자 구성",
 
   "settings.title": "설정",
   "settings.backToApp": "앱으로 돌아가기",
@@ -287,6 +289,7 @@ export const ko: Record<string, string> = {
   "providers.baseUrl.placeholder": "기본 URL",
   "providers.baseUrl.aria": "{{provider}} 기본 URL",
   "providers.key": "키 {{masked}}",
+  "providers.ready": "사용 가능",
   "providers.notConfigured": "미설정",
   "providers.save": "저장",
   "providers.saving": "저장 중…",
@@ -993,7 +996,7 @@ export const ko: Record<string, string> = {
   "composer.key.historyPrevDesc": "이전 메시지 불러오기",
   "composer.key.historyNextDesc": "다음 메시지 불러오기",
   "mcp.import.hint":
-    'Claude Desktop 설정 블록을 붙여넣으세요 — "mcpServers" 아래의 서버 하나 이상.',
+    'MCP 클라이언트 설정 블록을 붙여넣으세요 — "mcpServers" 아래의 서버 하나 이상.',
 
   "rpcError.session_has_active_run":
     "이 세션에는 이미 진행 중인 실행이 있습니다 — 먼저 개입하거나 응답하거나 취소하세요.",
@@ -1031,7 +1034,7 @@ export const ko: Record<string, string> = {
     "이 로그인 시도는 만료되었습니다. 다시 시작하세요.",
   "rpcError.mcp_dial_failed":
     "이 서버에 연결할 수 없습니다 — 명령이나 URL을 확인하고 다시 시도하세요.",
-  "rpcError.provider_not_configured": "먼저 API 키를 입력하세요.",
+  "rpcError.provider_not_configured": "먼저 제공자 구성을 완료하세요.",
   "rpcError.provider_test_failed": "제공자에 연결할 수 없거나 테스트 요청이 거부됐습니다.",
   "session.error.create": "세션을 만들 수 없습니다.",
   "session.error.chooseWorkingDirectory": "폴더 선택기를 열 수 없습니다.",

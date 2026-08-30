@@ -12,9 +12,9 @@ import (
 func TestPinnedMemoryPromptOrdersPinnedThenRecent(t *testing.T) {
 	base := time.Date(2026, 7, 19, 0, 0, 0, 0, time.UTC)
 	items := []agentmemory.Item{
-		{ID: "old", Content: "- old unpinned", UpdatedAt: base},
-		{ID: "pinned", Content: "- pinned note", Pinned: true, UpdatedAt: base.Add(-time.Hour)},
-		{ID: "fresh", Content: "- fresh unpinned", UpdatedAt: base.Add(time.Hour)},
+		{ID: testAgentMemoryItemID(t, '1'), Content: "- old unpinned", UpdatedAt: base},
+		{ID: testAgentMemoryItemID(t, '2'), Content: "- pinned note", Pinned: true, UpdatedAt: base.Add(-time.Hour)},
+		{ID: testAgentMemoryItemID(t, '3'), Content: "- fresh unpinned", UpdatedAt: base.Add(time.Hour)},
 	}
 	got := strings.Split(newPinnedMemoryPrompt(items, 0).text, "\n")
 	want := []string{"- pinned note", "- fresh unpinned", "- old unpinned"}
@@ -25,11 +25,11 @@ func TestPinnedMemoryPromptOrdersPinnedThenRecent(t *testing.T) {
 
 func TestPinnedMemoryPromptHonorsBudget(t *testing.T) {
 	items := []agentmemory.Item{
-		{ID: "pinned", Content: "- pinned", Pinned: true},
-		{ID: "omitted", Content: strings.Repeat("界", 40)},
+		{ID: testAgentMemoryItemID(t, '1'), Content: "- pinned", Pinned: true},
+		{ID: testAgentMemoryItemID(t, '2'), Content: strings.Repeat("界", 40)},
 	}
 	prompt := newPinnedMemoryPrompt(items, 5)
-	if prompt.text != "- pinned" || len(prompt.sources) != 1 || prompt.sources[0].Reference != "pinned" {
+	if prompt.text != "- pinned" || len(prompt.sources) != 1 || prompt.sources[0].Reference != items[0].ID.String() {
 		t.Fatalf("budgeted memory = %+v, want only pinned item", prompt)
 	}
 	if newPinnedMemoryPrompt(nil, 10).text != "" {
@@ -42,7 +42,7 @@ func TestPinnedMemoryPromptHonorsBudget(t *testing.T) {
 
 func TestPinnedMemoryPromptDoesNotLetFirstItemBypassBudget(t *testing.T) {
 	prompt := newPinnedMemoryPrompt([]agentmemory.Item{{
-		ID:      "oversized-first",
+		ID:      testAgentMemoryItemID(t, '1'),
 		Content: strings.Repeat("界", 6),
 		Pinned:  true,
 	}}, 5)

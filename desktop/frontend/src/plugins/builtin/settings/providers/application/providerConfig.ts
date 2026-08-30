@@ -21,7 +21,7 @@ export function useProviderConfigs() {
   return useProviders();
 }
 
-export function useProviderMutationMaterialGeneration(): number {
+export function useProviderMutationMaterialGeneration(): bigint {
   return useSyncExternalStore(
     ProviderMutationOwner.subscribeMaterialGeneration,
     ProviderMutationOwner.materialGeneration,
@@ -66,7 +66,7 @@ export function useEmbeddingModelConfig() {
     role,
     providers: providerConfigs,
     capableProviders: providerConfigs.filter(
-      (provider) => provider.embeddingCapable && provider.apiKeyMasked !== "",
+      (provider) => provider.embeddingCapable && provider.configured,
     ),
     isSet: Boolean(role?.model),
     isAvailable: providerRoleIsAvailable(role, providerConfigs),

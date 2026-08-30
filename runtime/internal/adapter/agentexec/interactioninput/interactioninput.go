@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/scope/agent/interaction"
 )
 
 const continuationSchemaVersion = 1

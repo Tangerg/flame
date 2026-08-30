@@ -30,11 +30,15 @@ func (m *modeStore) PutMode(_ context.Context, sessionID string, state approval.
 
 type planReader struct{ steps []plandomain.Step }
 
-func (p planReader) State(context.Context, string) (plandomain.State, error) {
+func (p planReader) State(context.Context, string) (plandomain.Current, error) {
 	if len(p.steps) == 0 {
-		return plandomain.State{}, nil
+		return plandomain.Current{}, nil
 	}
-	return plandomain.Restore(plandomain.Snapshot{Steps: p.steps, Revision: 1, UpdatedAt: time.Now()})
+	state, err := plandomain.Restore(plandomain.Snapshot{Steps: p.steps, Revision: 1, UpdatedAt: time.Now()})
+	if err != nil {
+		return plandomain.Current{}, err
+	}
+	return plandomain.CurrentOf(state)
 }
 
 func planContext(t *testing.T, sessionID string) context.Context {

@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -45,19 +46,26 @@ func (r *recordingDraftRepository) snapshot() ([]draftSnapshot, int) {
 	return append([]draftSnapshot(nil), r.writes...), r.maxActive
 }
 
+func scheduleDraft(t testing.TB, persistence *draftPersistence, text string) {
+	t.Helper()
+	if err := persistence.Schedule("session", agent.Message{Text: text}); err != nil {
+		t.Fatalf("schedule draft %q: %v", text, err)
+	}
+}
+
 func TestDraftPersistenceSerializesAndCoalescesWrites(t *testing.T) {
 	repository := &recordingDraftRepository{first: make(chan struct{}), releaseFirst: make(chan struct{})}
 	results := make(chan draftPersistenceResult, 3)
 	persistence := newDraftPersistence(repository, func(result draftPersistenceResult) { results <- result })
-	persistence.Schedule("session", agent.Message{Text: "first"})
+	scheduleDraft(t, persistence, "first")
 	select {
 	case <-repository.first:
 	case <-time.After(time.Second):
 		t.Fatal("first autosave did not start")
 	}
 
-	persistence.Schedule("session", agent.Message{Text: "superseded"})
-	persistence.Schedule("session", agent.Message{Text: "latest"})
+	scheduleDraft(t, persistence, "superseded")
+	scheduleDraft(t, persistence, "latest")
 	close(repository.releaseFirst)
 	for range 2 {
 		select {
@@ -82,7 +90,7 @@ func TestDraftPersistenceSerializesAndCoalescesWrites(t *testing.T) {
 func TestDraftPersistenceFlushSupersedesPendingAutosave(t *testing.T) {
 	repository := &recordingDraftRepository{first: make(chan struct{}), releaseFirst: make(chan struct{})}
 	persistence := newDraftPersistence(repository, nil)
-	persistence.Schedule("session", agent.Message{Text: "pending"})
+	scheduleDraft(t, persistence, "pending")
 	select {
 	case <-repository.first:
 	case <-time.After(time.Second):
@@ -107,7 +115,7 @@ func TestDraftPersistenceFlushSupersedesPendingAutosave(t *testing.T) {
 func TestDraftPersistenceCloseFlushesPendingAutosave(t *testing.T) {
 	repository := &recordingDraftRepository{}
 	persistence := newDraftPersistence(repository, nil)
-	persistence.Schedule("session", agent.Message{Text: "last visible value"})
+	scheduleDraft(t, persistence, "last visible value")
 	if err := persistence.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -118,5 +126,30 @@ func TestDraftPersistenceCloseFlushesPendingAutosave(t *testing.T) {
 	}
 	if err := persistence.Flush("session", agent.Message{Text: "too late"}); !errors.Is(err, errDraftPersistenceClosed) {
 		t.Fatalf("flush after close error = %v", err)
+	}
+}
+
+func TestDraftPersistenceRevisionExhaustionPreservesPendingSnapshot(t *testing.T) {
+	pending := draftSnapshot{
+		revision:  math.MaxUint64,
+		sessionID: "session",
+		message:   agent.Message{Text: "last addressable draft"},
+	}
+	persistence := &draftPersistence{
+		pending:  &pending,
+		revision: math.MaxUint64,
+	}
+
+	if err := persistence.Schedule("session", agent.Message{Text: "wrapped draft"}); !errors.Is(err, errDraftPersistenceRevisionExhausted) {
+		t.Fatalf("schedule after revision exhaustion error = %v", err)
+	}
+	if persistence.revision != math.MaxUint64 {
+		t.Fatalf("revision = %d, want exhausted revision to remain unchanged", persistence.revision)
+	}
+	if persistence.pending != &pending || persistence.pending.message.Text != "last addressable draft" {
+		t.Fatalf("pending snapshot = %+v, want the last addressable draft to remain authoritative", persistence.pending)
+	}
+	if err := persistence.Flush("session", agent.Message{Text: "wrapped barrier"}); !errors.Is(err, errDraftPersistenceRevisionExhausted) {
+		t.Fatalf("flush after revision exhaustion error = %v", err)
 	}
 }

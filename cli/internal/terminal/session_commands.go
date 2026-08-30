@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/attachment"
 	"github.com/Tangerg/flame/cli/internal/mutation"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
@@ -43,7 +42,7 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	a.message("loading sessions")
 	a.runOperation(pickerCatalogOperation, true,
 		func(ctx context.Context) (agent.SessionPage, error) {
-			page, err := a.runtime.ListSessions(ctx, agent.SessionQuery{Limit: 20, Cursor: cursor})
+			page, err := a.runtime.ListSessions(ctx, agent.SessionQuery{PageSize: agent.DefaultPageSize(), Cursor: cursor})
 			if err != nil {
 				return agent.SessionPage{}, err
 			}
@@ -90,7 +89,7 @@ func (a *app) openSessionRename(session agent.Session) {
 		if a.sessionRenameDialog != dialog {
 			return
 		}
-		dialog.Dismiss()
+		dialog.Controller().Dismiss()
 		a.sessionRenameDialog = nil
 		trimmed := strings.TrimSpace(title)
 		a.updateSessionFromCenter(session.ID, "renaming session", func(latest agent.Session) agent.UpdateSession {
@@ -99,7 +98,7 @@ func (a *app) openSessionRename(session agent.Session) {
 	}
 	form.GaveUp = func() {
 		if a.sessionRenameDialog == dialog {
-			dialog.Dismiss()
+			dialog.Controller().Dismiss()
 			a.sessionRenameDialog = nil
 		}
 	}
@@ -113,7 +112,7 @@ func (a *app) openSessionRename(session agent.Session) {
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
 	a.sessionRenameDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func (a *app) openSessionDelete(session agent.Session) {
@@ -121,9 +120,9 @@ func (a *app) openSessionDelete(session agent.Session) {
 		a.message("switch away before deleting the current session")
 		return
 	}
-	decision := "cancel"
-	choice := &headless.Select[string]{Label: "Delete " + displayTitle(session) + "?", Value: headless.Bind(&decision), Rows: 2}
-	choice.SetOptions([]headless.Option[string]{{Label: "Cancel", Value: "cancel"}, {Label: "Delete permanently", Value: "delete"}})
+	confirmed := false
+	choice := &headless.Select[bool]{Label: "Delete " + displayTitle(session) + "?", Value: headless.Bind(&confirmed), Rows: 2}
+	choice.SetOptions([]headless.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
 	form := headless.NewForm(choice)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
@@ -131,15 +130,15 @@ func (a *app) openSessionDelete(session agent.Session) {
 		if a.sessionDeleteDialog != dialog {
 			return
 		}
-		dialog.Dismiss()
+		dialog.Controller().Dismiss()
 		a.sessionDeleteDialog = nil
-		if decision == "delete" {
+		if confirmed {
 			a.deleteSessionFromCenter(session.ID)
 		}
 	}
 	form.GaveUp = func() {
 		if a.sessionDeleteDialog == dialog {
-			dialog.Dismiss()
+			dialog.Controller().Dismiss()
 			a.sessionDeleteDialog = nil
 		}
 	}
@@ -153,7 +152,7 @@ func (a *app) openSessionDelete(session agent.Session) {
 		Where: layout.Placement{Width: 68, Height: 8},
 	})
 	a.sessionDeleteDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session) agent.UpdateSession) {
@@ -186,7 +185,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
 		func(ctx context.Context) (sessiondeletion.Result, error) {
 			return sessiondeletion.Execute(
-				ctx, a.runtime, a.workbench, id, deletionReplayWindow(a.runtimeProfile), runtimeRecoveryBackoff,
+				ctx, a.runtime, a.workbench, id, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
 		},
 		func(result sessiondeletion.Result, err error) {
@@ -528,14 +527,17 @@ func (a *app) retireSessionState(sessionID string) (int, error) {
 // repeating a mutation that may already be durable. Its retry budget is the
 // same user-configured transport policy as live run recovery.
 func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
-	policy := reconnect.New(a.settings.UI.ReconnectAttempts)
+	policy := a.reconnectPolicy
 	for failures := 0; ; {
 		snapshot, err := a.runtime.GetSession(ctx, sessionID)
 		if err == nil {
 			return snapshot, nil
 		}
 		failures++
-		delay, shouldRetry := policy.Next(failures, err)
+		delay, shouldRetry, policyErr := policy.Next(failures, err)
+		if policyErr != nil {
+			return agent.SessionSnapshot{}, policyErr
+		}
 		if !shouldRetry {
 			return agent.SessionSnapshot{}, err
 		}

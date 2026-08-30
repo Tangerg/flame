@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
@@ -142,6 +144,13 @@ type childRunStartReservationPayload struct {
 	RootRunID       string `json:"rootRunId"`
 }
 
+type preparedResumeClaim struct {
+	claim                runs.ResumeClaimCommit
+	root                 runs.Continuation
+	questionReplacements []runs.ItemReplacement
+	approvalResolutions  []runs.ToolApprovalResolution
+}
+
 func validateStartedChildOpening(
 	reservation runs.ChildRunStartReservation,
 	opening runs.OpeningCommit,
@@ -168,84 +177,135 @@ func (e *Effects) ClaimResume(
 	ctx context.Context,
 	claim runs.ResumeClaimCommit,
 ) (runs.ClaimedResume, error) {
+	prepared, err := prepareResumeClaim(claim)
+	if err != nil {
+		return runs.ClaimedResume{}, err
+	}
+	var checkpoint runs.ExecutorCheckpoint
+	err = e.runInTx(ctx, func(ctx context.Context) error {
+		return e.applyResumeClaim(ctx, prepared, &checkpoint)
+	})
+	if err == nil {
+		return claimedResumeResult(claim, checkpoint), nil
+	}
+	return e.reconcileResumeClaim(ctx, claim, checkpoint, err)
+}
+
+func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, error) {
 	if err := claim.Validate(); err != nil {
-		return runs.ClaimedResume{}, fmt.Errorf("runsegment: invalid resume claim: %w", err)
+		return preparedResumeClaim{}, fmt.Errorf("runsegment: invalid resume claim: %w", err)
 	}
 	root, ok := claim.Expected.RootContinuation()
 	if !ok {
-		return runs.ClaimedResume{}, errors.New("runsegment: resume claim has no root continuation")
+		return preparedResumeClaim{}, errors.New("runsegment: resume claim has no root continuation")
 	}
-	var checkpoint runs.ExecutorCheckpoint
 	questionReplacements, err := claim.QuestionReplacements()
 	if err != nil {
-		return runs.ClaimedResume{}, fmt.Errorf("runsegment: prepare answered questions: %w", err)
+		return preparedResumeClaim{}, fmt.Errorf("runsegment: prepare answered questions: %w", err)
 	}
 	approvalResolutions, err := claim.ToolApprovalResolutions()
 	if err != nil {
-		return runs.ClaimedResume{}, fmt.Errorf("runsegment: prepare Tool approval resolutions: %w", err)
+		return preparedResumeClaim{}, fmt.Errorf("runsegment: prepare Tool approval resolutions: %w", err)
 	}
-	err = e.runInTx(ctx, func(ctx context.Context) error {
-		loaded, loadCheckpointErr := e.executorCheckpoints.LoadCheckpoint(ctx, root.MemberID)
-		if loadCheckpointErr != nil {
-			return fmt.Errorf("runsegment: load claimed executor checkpoint: %w", loadCheckpointErr)
-		}
-		if validateOwnershipErr := loaded.ValidateOwnership(root.MemberID, claim.Expected.SessionID); validateOwnershipErr != nil {
-			return validateOwnershipErr
-		}
-		if loaded.ModelSelection != root.ModelSelection || loaded.Limits != root.Limits ||
-			loaded.Scope.GoalIncarnationID != claim.Expected.GoalIncarnationID {
-			return fmt.Errorf("%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint)
-		}
-		consumed, found, loadCheckpointErr := e.resumeClaims.ClaimResume(
-			ctx, claim.Expected.SessionID, claim.Expected.RootRunID, claim.Answers, claim.ClaimedAt,
-		)
-		if loadCheckpointErr != nil {
-			return fmt.Errorf("runsegment: consume resume Pending: %w", loadCheckpointErr)
-		}
-		if !found {
-			return runs.ErrInterruptNotOpen
-		}
-		if !reflect.DeepEqual(consumed, claim.Expected) {
-			return errors.New("runsegment: waiting hand-off changed before answer claim")
-		}
-		for _, resolution := range approvalResolutions {
-			if resolveToolApprovalErr := e.resolveToolApproval(ctx, resolution); resolveToolApprovalErr != nil {
-				return fmt.Errorf("runsegment: record Tool approval %q: %w", resolution.Identity.ItemID, resolveToolApprovalErr)
-			}
-		}
-		for _, replacement := range questionReplacements {
-			if replaceItemErr := e.itemReplacer.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); replaceItemErr != nil {
-				return fmt.Errorf("runsegment: record answered question %q: %w", replacement.Expected.ID(), replaceItemErr)
-			}
-		}
-		if deleteCheckpointsErr := e.executorCheckpoints.DeleteCheckpoints(
-			ctx, claim.Expected.SessionID, []string{root.MemberID},
-		); deleteCheckpointsErr != nil {
-			return fmt.Errorf("runsegment: invalidate claimed executor checkpoint: %w", deleteCheckpointsErr)
-		}
-		checkpoint = loaded.Clone()
-		if recordWaitingRunCommitErr := e.runState.RecordWaitingRunCommit(
-			ctx, claim.Expected.SessionID, claim.Expected.RootRunID, claim.CommitID,
-		); recordWaitingRunCommitErr != nil {
-			return fmt.Errorf("runsegment: record resume claim commit receipt: %w", recordWaitingRunCommitErr)
-		}
-		return nil
-	})
+	return preparedResumeClaim{
+		claim: claim, root: root,
+		questionReplacements: questionReplacements,
+		approvalResolutions:  approvalResolutions,
+	}, nil
+}
+
+func (e *Effects) applyResumeClaim(
+	ctx context.Context,
+	prepared preparedResumeClaim,
+	checkpoint *runs.ExecutorCheckpoint,
+) error {
+	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
 	if err != nil {
-		settled, settleErr := e.reconcileRunCommit(
-			ctx, claim.Expected.SessionID, claim.Expected.RootRunID, "", claim.CommitID,
-		)
-		if settled {
-			if checkpointErr := checkpoint.Validate(); checkpointErr != nil {
-				return runs.ClaimedResume{}, errors.Join(
-					err,
-					errors.New("runsegment: committed resume claim checkpoint is unavailable to this caller"),
-					checkpointErr,
-				)
-			}
-			return claimedResumeResult(claim, checkpoint), nil
+		return err
+	}
+	if err := e.consumeResumePending(ctx, prepared.claim); err != nil {
+		return err
+	}
+	for _, resolution := range prepared.approvalResolutions {
+		if err := e.resolveToolApproval(ctx, resolution); err != nil {
+			return fmt.Errorf("runsegment: record Tool approval %q: %w", resolution.Identity.ItemID, err)
 		}
-		return runs.ClaimedResume{}, errors.Join(err, settleErr)
+	}
+	for _, replacement := range prepared.questionReplacements {
+		if err := e.itemReplacer.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); err != nil {
+			return fmt.Errorf("runsegment: record answered question %q: %w", replacement.Expected.ID(), err)
+		}
+	}
+	if err := e.executorCheckpoints.DeleteCheckpoints(
+		ctx, prepared.claim.Expected.SessionID, []string{prepared.root.MemberID},
+	); err != nil {
+		return fmt.Errorf("runsegment: invalidate claimed executor checkpoint: %w", err)
+	}
+	*checkpoint = loaded.Clone()
+	if err := e.runState.RecordWaitingRunCommit(
+		ctx, prepared.claim.Expected.SessionID, prepared.claim.Expected.RootRunID, prepared.claim.CommitID,
+	); err != nil {
+		return fmt.Errorf("runsegment: record resume claim commit receipt: %w", err)
+	}
+	return nil
+}
+
+func (e *Effects) loadResumeCheckpoint(
+	ctx context.Context,
+	prepared preparedResumeClaim,
+) (runs.ExecutorCheckpoint, error) {
+	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf("runsegment: load claimed executor checkpoint: %w", err)
+	}
+	if err := loaded.ValidateOwnership(
+		prepared.root.MemberID, prepared.claim.Expected.SessionID,
+	); err != nil {
+		return runs.ExecutorCheckpoint{}, err
+	}
+	if loaded.ModelSelection != prepared.root.ModelSelection || loaded.Limits != prepared.root.Limits ||
+		loaded.Scope.GoalIncarnationID != prepared.claim.Expected.GoalIncarnationID {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf(
+			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
+		)
+	}
+	return loaded, nil
+}
+
+func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeClaimCommit) error {
+	consumed, found, err := e.resumeClaims.ClaimResume(
+		ctx, claim.Expected.SessionID, claim.Expected.RootRunID, claim.Answers, claim.ClaimedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("runsegment: consume resume Pending: %w", err)
+	}
+	if !found {
+		return runs.ErrInterruptNotOpen
+	}
+	if !reflect.DeepEqual(consumed, claim.Expected) {
+		return errors.New("runsegment: waiting hand-off changed before answer claim")
+	}
+	return nil
+}
+
+func (e *Effects) reconcileResumeClaim(
+	ctx context.Context,
+	claim runs.ResumeClaimCommit,
+	checkpoint runs.ExecutorCheckpoint,
+	commitErr error,
+) (runs.ClaimedResume, error) {
+	settled, settleErr := e.reconcileRunCommit(
+		ctx, claim.Expected.SessionID, claim.Expected.RootRunID, "", claim.CommitID,
+	)
+	if !settled {
+		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
+	}
+	if err := checkpoint.Validate(); err != nil {
+		return runs.ClaimedResume{}, errors.Join(
+			commitErr,
+			errors.New("runsegment: committed resume claim checkpoint is unavailable to this caller"),
+			err,
+		)
 	}
 	return claimedResumeResult(claim, checkpoint), nil
 }
@@ -385,7 +445,11 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	if e.scheduleFirings == nil {
 		return errors.New("runsegment: schedule-firing persistence is unavailable")
 	}
-	if err := e.scheduleFirings.Accept(ctx, opening.ScheduleFiring, opening.Admit.RunID); err != nil {
+	acceptance, err := schedule.NewAcceptance(opening.ScheduleFiring, opening.Admit.RunID)
+	if err != nil {
+		return fmt.Errorf("runsegment: form scheduled occurrence acceptance: %w", err)
+	}
+	if err := e.scheduleFirings.Accept(ctx, acceptance); err != nil {
 		return fmt.Errorf("runsegment: accept scheduled occurrence: %w", err)
 	}
 	return nil
@@ -399,7 +463,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 	if err := commit.Validate(); err != nil {
 		return fmt.Errorf("runsegment: invalid event commit: %w", err)
 	}
-	if commit.CommitID == "" {
+	if commit.CommitID.IsZero() {
 		return errors.New("runsegment: event commit identity is required")
 	}
 	if commit.State == runs.StateSuspend {
@@ -460,7 +524,7 @@ func (e *Effects) reconcileRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID string,
+	commitID commitidentity.ID,
 ) (bool, error) {
 	reconcileCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(ctx),
@@ -587,7 +651,7 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 			return fmt.Errorf("runsegment: record Goal Run: %w", err)
 		}
 	}
-	if commit.State == runs.StateUnchanged && commit.CommitID != "" {
+	if commit.State == runs.StateUnchanged && !commit.CommitID.IsZero() {
 		if err := e.runState.RecordRunCommit(
 			ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,
 		); err != nil {
@@ -745,7 +809,7 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 		if commit.Run == nil {
 			return errors.New("runsegment: park commit carries no run record")
 		}
-		if commit.CommitID != "" {
+		if !commit.CommitID.IsZero() {
 			return e.runState.SuspendBarrier(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
 		}
 		return e.runState.Suspend(ctx, *commit.Run)

@@ -279,7 +279,7 @@ func (a *app) addAgentMemory(target agentmemory.Target, content string, complete
 				closed = complete(nil)
 			}
 			a.message("agent memory added · " + item.ID)
-			if closed && a.sessionContext == presentation {
+			if closed && a.sessionContext.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -307,7 +307,7 @@ func (a *app) updateAgentMemory(target agentmemory.Target, patch agentmemory.Pat
 				closed = complete(nil)
 			}
 			a.message("agent memory updated · " + item.ID)
-			if closed && a.sessionContext == presentation {
+			if closed && a.sessionContext.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -333,7 +333,7 @@ func (a *app) reviewAgentMemory(target agentmemory.Target, id string, decision a
 				outcome = "approved"
 			}
 			a.message("agent memory " + outcome + " · " + reviewed)
-			if a.sessionContext == presentation {
+			if a.sessionContext.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -353,7 +353,7 @@ func (a *app) deleteAgentMemory(target agentmemory.Target, id string) {
 				return
 			}
 			a.message("agent memory deleted · " + deleted)
-			if a.sessionContext == presentation {
+			if a.sessionContext.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},

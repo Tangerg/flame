@@ -3,6 +3,8 @@ package run
 import (
 	"errors"
 	"fmt"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // ErrInvalidLineage reports a Run whose root/child identity is incomplete or
@@ -24,8 +26,8 @@ type Lineage struct {
 
 // Validate reports whether l is exactly a root or child shape.
 func (l Lineage) Validate(runID string) error {
-	if runID == "" {
-		return fmt.Errorf("%w: run id is required", ErrInvalidLineage)
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidLineage, err)
 	}
 	present := 0
 	for _, value := range [...]string{
@@ -46,6 +48,17 @@ func (l Lineage) Validate(runID string) error {
 			ErrInvalidLineage,
 			runID,
 		)
+	}
+	if _, err := resourceid.ParseItem(l.SpawnedByItemID); err != nil {
+		return fmt.Errorf("%w: spawned-by %v", ErrInvalidLineage, err)
+	}
+	if _, err := resourceid.ParseRun(l.ParentRunID); err != nil {
+		return fmt.Errorf("%w: parent %v", ErrInvalidLineage, err)
+	}
+	if _, err := resourceid.ParseRun(l.RootRunID); err != nil {
+		return fmt.Errorf("%w: root %v", ErrInvalidLineage, err)
+	}
+	switch {
 	case l.ParentRunID == runID:
 		return fmt.Errorf("%w: child run %q is its own parent", ErrInvalidLineage, runID)
 	case l.RootRunID == runID:

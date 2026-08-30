@@ -12,7 +12,13 @@ import (
 	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
-var runtimeRecoveryBackoff = retry.Backoff{Base: 100 * time.Millisecond, Maximum: 5 * time.Second}
+var runtimeRecoveryBackoff = func() retry.Backoff {
+	backoff, err := retry.NewBackoff(100*time.Millisecond, 5*time.Second)
+	if err != nil {
+		panic("invalid static runtime recovery backoff: " + err.Error())
+	}
+	return backoff
+}()
 
 func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	if event.Type == changefeed.Resync {
@@ -151,7 +157,7 @@ func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
 				return document, err
 			}
 			failures++
-			if err := retry.Wait(ctx, runtimeRecoveryBackoff.Delay(failures)); err != nil {
+			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 				return readerDocument{}, err
 			}
 		}
@@ -281,7 +287,7 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (age
 			return snapshot, err
 		}
 		failures++
-		if err := retry.Wait(ctx, runtimeRecoveryBackoff.Delay(failures)); err != nil {
+		if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 			return agent.SessionSnapshot{}, err
 		}
 	}
@@ -302,11 +308,11 @@ func (a *app) dismissInteractionProjection() {
 		a.approvalDialog.Dismiss()
 	}
 	if a.questionDialog != nil {
-		a.questionDialog.Dismiss()
+		a.questionDialog.Controller().Dismiss()
 		a.questionDialog = nil
 	}
 	if a.reviewDialog != nil {
-		a.reviewDialog.Dismiss()
+		a.reviewDialog.Controller().Dismiss()
 		a.reviewDialog = nil
 	}
 }

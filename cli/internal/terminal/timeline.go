@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -25,6 +24,7 @@ type timelinePane struct {
 	glyphs kit.Glyphs
 	picker *picker[timelineEntry]
 	fork   func(timelineEntry)
+	live   bool
 }
 
 func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry), fork func(timelineEntry)) *timelinePane {
@@ -42,7 +42,7 @@ func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry
 				detail = entry.Run.Model + " · " + detail
 			}
 			if entry.Depth > 0 {
-				detail += " · parent " + shortIdentity(entry.Run.Lineage.ParentRunID)
+				detail += " · parent " + shortIdentity(entry.Run.Lineage.ParentRunID())
 			}
 			return detail
 		},
@@ -56,6 +56,12 @@ func (t *timelinePane) SetRuns(runs []agent.Run) {
 	t.picker.SetItems(buildTimelineEntries(runs))
 }
 
+func (t *timelinePane) RefreshRuns(runs []agent.Run) {
+	t.picker.SetItems(buildTimelineEntries(runs))
+}
+
+func (t *timelinePane) SetLive(live bool) { t.live = live }
+
 func buildTimelineEntries(runs []agent.Run) []timelineEntry {
 	children := make(map[string][]agent.Run)
 	var roots []agent.Run
@@ -63,7 +69,7 @@ func buildTimelineEntries(runs []agent.Run) []timelineEntry {
 		if run.Lineage.IsRoot() {
 			roots = append(roots, run)
 		} else {
-			children[run.Lineage.ParentRunID] = append(children[run.Lineage.ParentRunID], run)
+			children[run.Lineage.ParentRunID()] = append(children[run.Lineage.ParentRunID()], run)
 		}
 	}
 	entries := make([]timelineEntry, 0, len(runs))
@@ -96,12 +102,19 @@ func (t *timelinePane) Draw(frame headless.Frame) {
 		{Size: layout.Flex(1)}, {Size: layout.Fixed(1)},
 	}))
 	t.picker.Draw(rows[0])
-	kit.Label{Text: "enter jump to retained output · alt+f fork from run · esc close", Style: t.theme.Subtle, Ellipsis: t.glyphs.Ellipsis}.Draw(rows[1].View)
+	hint := "enter jump to retained output · alt+f fork from run · esc close"
+	if t.live {
+		hint = "live run tree · enter jump to retained output · esc close"
+	}
+	kit.Label{Text: hint, Style: t.theme.Subtle, Ellipsis: t.glyphs.Ellipsis}.Draw(rows[1].View)
 }
 
 func (t *timelinePane) Handle(event input.Event) bool {
 	if key, ok := event.(input.Key); ok && key.Down() && key.Mods == input.Alt && key.Rune == 'f' {
 		t.picker.interruptPointerGesture()
+		if t.live {
+			return true
+		}
 		if entry, selected := t.picker.Current(); selected && t.fork != nil {
 			t.fork(entry)
 		}
@@ -129,6 +142,10 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 			if !a.timelineDialog.Open() {
 				return
 			}
+			if a.conversation.Busy() || a.following || a.pendingCancel != nil {
+				a.message("finish or cancel the current run before forking")
+				return
+			}
 			a.timelineDialog.Dismiss()
 			a.forkSessionFromRun(entry.Run.ID)
 		},
@@ -141,27 +158,22 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 }
 
 func (a *app) ShowTimeline() {
-	if a.conversation.Busy() || a.following {
-		a.message("finish or cancel the current run before opening the timeline")
+	runs := a.conversation.Runs()
+	if len(runs) == 0 {
+		a.message("the current session has no runs")
 		return
 	}
-	sessionID := a.session.ID
-	a.message("loading timeline")
-	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) (agent.SessionSnapshot, error) { return a.runtime.GetSession(ctx, sessionID) },
-		func(snapshot agent.SessionSnapshot, err error) {
-			if err != nil {
-				a.message("could not load timeline: " + err.Error())
-				return
-			}
-			if len(snapshot.Runs) == 0 {
-				a.message("the current session has no runs")
-				return
-			}
-			a.timeline.SetRuns(snapshot.Runs)
-			a.timelineDialog.Show()
-		},
-	)
+	a.timeline.SetLive(a.conversation.Busy() || a.following || a.pendingCancel != nil)
+	a.timeline.SetRuns(runs)
+	a.timelineDialog.Show()
+}
+
+func (a *app) refreshOpenTimeline() {
+	if !a.timelineDialog.Open() {
+		return
+	}
+	a.timeline.SetLive(a.conversation.Busy() || a.following || a.pendingCancel != nil)
+	a.timeline.RefreshRuns(a.conversation.Runs())
 }
 
 func shortIdentity(identity string) string {

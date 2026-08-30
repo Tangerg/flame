@@ -29,7 +29,7 @@ export function GoalStatusSurface() {
   if (!goal) return null;
   return (
     <AgentComposerTopTraySurface
-      key={JSON.stringify([goal.sessionId, material.generation, goal.createdAt])}
+      key={JSON.stringify([goal.sessionId, material.generation.toString(), goal.createdAt])}
     >
       <GoalRow goal={goal} />
     </AgentComposerTopTraySurface>

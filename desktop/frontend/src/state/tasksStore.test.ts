@@ -26,25 +26,23 @@ describe("startTask generation safety", () => {
   it("the previous settle's linger timer does not delete a restarted task", () => {
     const h1 = startTask("p", { id: "task:p:sync", label: "Sync" });
     h1.fail(new Error("boom")); // arms the linger timer
-    vi.advanceTimersByTime(1000);
 
-    // User retries — same id, fresh running entry — before the timer fires.
-    vi.setSystemTime(Date.now() + 1); // distinct startedAt generation
+    // User retries in the same clock tick — wall time is presentation data,
+    // not lifecycle identity.
     startTask("p", { id: "task:p:sync", label: "Sync" });
     vi.runAllTimers(); // the stale timer fires now
 
     expect(get("task:p:sync")?.status).toBe("running");
   });
 
-  it("the previous generation's handle cannot settle the restarted task", () => {
+  it("the previous handle cannot control a same-millisecond restart", () => {
     const h1 = startTask("p", { id: "task:p:sync", label: "Sync" });
-    vi.setSystemTime(Date.now() + 1);
     startTask("p", { id: "task:p:sync", label: "Sync" }); // restart, new generation
-
-    h1.fail(new Error("late failure from the old attempt"));
-    expect(get("task:p:sync")?.status).toBe("running");
 
     h1.update({ message: "stale" });
     expect(get("task:p:sync")?.message).not.toBe("stale");
+
+    h1.fail(new Error("late failure from the old attempt"));
+    expect(get("task:p:sync")?.status).toBe("running");
   });
 });

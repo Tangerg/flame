@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceEventLoop } from "./workspaceEventLoop";
 import {
+  RuntimeConnectionGeneration,
+  type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
+} from "@/plugins/builtin/runtime/public/ports";
+import {
   startWorkspaceEventSubscription,
   type WorkspaceCwdInputChange,
   type WorkspaceCwdResolution,
@@ -16,6 +20,7 @@ function deferred<T>() {
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const RUNTIME_ONE = RuntimeConnectionGeneration.forProcess("runtime_1");
 
 afterEach(() => vi.useRealTimers());
 
@@ -28,7 +33,7 @@ function subscriptionPorts(
   };
   return {
     canSubscribe: vi.fn(() => true),
-    connectionGeneration: vi.fn(() => "runtime_1"),
+    connectionGeneration: vi.fn(() => RUNTIME_ONE),
     subscribeConnection: vi.fn(() => vi.fn()),
     retireReadModels: vi.fn(),
     resolveWorkspaceCwd: vi.fn().mockResolvedValue({ status: "resolved", cwd: "/repo" }),
@@ -46,7 +51,7 @@ describe("startWorkspaceEventSubscription", () => {
     startWorkspaceEventSubscription(ports);
 
     expect(ports.loop.start).toHaveBeenCalledOnce();
-    expect(ports.loop.start).toHaveBeenCalledWith(expect.any(AbortSignal), "runtime_1");
+    expect(ports.loop.start).toHaveBeenCalledWith(expect.any(AbortSignal), RUNTIME_ONE);
   });
 
   it("starts once when the capability is advertised later", () => {
@@ -104,7 +109,7 @@ describe("startWorkspaceEventSubscription", () => {
 
   it("supersedes the event loop when a ready Runtime is replaced in place", () => {
     let onConnectionChange: (() => void) | undefined;
-    let generation = "runtime_retired";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_retired");
     const signals: AbortSignal[] = [];
     const ports = subscriptionPorts({
       connectionGeneration: () => generation,
@@ -127,7 +132,7 @@ describe("startWorkspaceEventSubscription", () => {
     expect(signals).toHaveLength(1);
     expect(signals[0]?.aborted).toBe(false);
 
-    generation = "runtime_successor";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_successor");
     onConnectionChange?.();
     expect(signals).toHaveLength(2);
     expect(signals[0]?.aborted).toBe(true);
@@ -136,7 +141,7 @@ describe("startWorkspaceEventSubscription", () => {
 
   it("retires old read admissions before opening a successor Runtime event tail", () => {
     let onConnectionChange: (() => void) | undefined;
-    let generation = "runtime_retired";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_retired");
     const order: string[] = [];
     const ports = subscriptionPorts({
       connectionGeneration: () => generation,
@@ -155,7 +160,7 @@ describe("startWorkspaceEventSubscription", () => {
 
     startWorkspaceEventSubscription(ports);
     order.length = 0;
-    generation = "runtime_successor";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_successor");
     onConnectionChange?.();
 
     expect(order).toEqual(["retire", "start"]);
@@ -163,7 +168,8 @@ describe("startWorkspaceEventSubscription", () => {
 
   it("retires the exact disconnected generation before admitting its recovered tail", () => {
     let onConnectionChange: (() => void) | undefined;
-    let generation: string | null = "connection_retired";
+    let generation: RuntimeConnectionGenerationValue | null =
+      RuntimeConnectionGeneration.forProcess("connection_retired");
     const order: string[] = [];
     const signals: AbortSignal[] = [];
     const ports = subscriptionPorts({
@@ -176,7 +182,7 @@ describe("startWorkspaceEventSubscription", () => {
       loop: {
         start: vi.fn(async (signal, connectionGeneration) => {
           signals.push(signal);
-          order.push(`start:${connectionGeneration}`);
+          order.push(`start:${connectionGeneration.processGeneration}`);
         }),
         retarget: vi.fn(),
       },
@@ -190,7 +196,7 @@ describe("startWorkspaceEventSubscription", () => {
     expect(signals[0]?.aborted).toBe(true);
     expect(order).toEqual(["retire"]);
 
-    generation = "connection_recovered";
+    generation = RuntimeConnectionGeneration.forProcess("connection_recovered");
     onConnectionChange?.();
     expect(order).toEqual(["retire", "retire", "start:connection_recovered"]);
     expect(signals[1]?.aborted).toBe(false);
@@ -198,7 +204,7 @@ describe("startWorkspaceEventSubscription", () => {
 
   it("retires reads admitted while disconnected before the first recovered tail", () => {
     let onConnectionChange: (() => void) | undefined;
-    let generation: string | null = null;
+    let generation: RuntimeConnectionGenerationValue | null = null;
     let advertised = false;
     const order: string[] = [];
     const ports = subscriptionPorts({
@@ -218,7 +224,7 @@ describe("startWorkspaceEventSubscription", () => {
     });
 
     startWorkspaceEventSubscription(ports);
-    generation = "runtime_recovered";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_recovered");
     advertised = true;
     onConnectionChange?.();
 

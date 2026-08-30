@@ -8,11 +8,13 @@ import (
 	"strings"
 	"sync"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -25,8 +27,7 @@ type interactionAccounting struct {
 	carriedUsage             map[string]accounting.ModelUsage
 	contextByProcess         map[agent.ProcessID]ModelContextTokenCalibration
 	preparedContextByProcess map[agent.ProcessID]preparedModelContext
-	provider                 string
-	fallbackModel            string
+	selection                modelref.Selection
 	pricing                  accounting.Pricing
 	toolCalls                int
 }
@@ -38,8 +39,7 @@ type preparedModelContext struct {
 }
 
 func newInteractionAccounting(
-	provider string,
-	fallbackModel string,
+	selection modelref.Selection,
 	pricing accounting.Pricing,
 ) interactionAccounting {
 	return interactionAccounting{
@@ -47,8 +47,7 @@ func newInteractionAccounting(
 		carriedUsage:             make(map[string]accounting.ModelUsage),
 		contextByProcess:         make(map[agent.ProcessID]ModelContextTokenCalibration),
 		preparedContextByProcess: make(map[agent.ProcessID]preparedModelContext),
-		provider:                 provider,
-		fallbackModel:            fallbackModel,
+		selection:                selection,
 		pricing:                  pricing,
 	}
 }
@@ -83,7 +82,9 @@ func (i *interactionAccounting) prepareModelContext(
 	return nil
 }
 
-func (i *interactionAccounting) providerName() string { return i.provider }
+func (i *interactionAccounting) providerName() string { return i.selection.Provider() }
+
+func (i *interactionAccounting) modelName() string { return i.selection.Model() }
 
 func (i *interactionAccounting) recordToolCall() {
 	i.mu.Lock()
@@ -194,7 +195,13 @@ func (i *interactionAccounting) accountModelCall(
 	callID string,
 	response *corechat.Response,
 ) (runs.ModelCallCompleted, error) {
-	delta := modelUsage(response, i.provider, i.fallbackModel, i.pricing)
+	if response == nil || response.Output == nil || response.Output.Message == nil {
+		return runs.ModelCallCompleted{}, errors.New("agentexec: account model call without an assistant message")
+	}
+	if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
+		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: account model call: %w", err)
+	}
+	delta := modelUsage(response, i.selection, i.pricing)
 	if err := delta.Validate(); err != nil {
 		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: account model call: %w", err)
 	}
@@ -240,9 +247,6 @@ func (i *interactionAccounting) accountModelCall(
 		)
 	}
 	modelOutput := response.Output
-	if modelOutput == nil || modelOutput.Message == nil {
-		return runs.ModelCallCompleted{}, errors.New("agentexec: account model call without an assistant message")
-	}
 	var usage corechat.Usage
 	if response.Metadata != nil {
 		usage = response.Metadata.Usage

@@ -5,7 +5,7 @@ type CopyMaterial = (material: string) => Promise<boolean>;
 
 interface CopyFeedbackOwnership {
   material: string;
-  revision: number;
+  lease: object;
   mounted: boolean;
   resetTimer: ReturnType<typeof setTimeout> | undefined;
 }
@@ -31,11 +31,11 @@ export function useCopyFeedback(
 ): { copied: boolean; copy: () => Promise<boolean> } {
   const ownerRef = useRef<CopyFeedbackOwnership>({
     material,
-    revision: 0,
+    lease: {},
     mounted: true,
     resetTimer: undefined,
   });
-  const [accepted, setAccepted] = useState<{ material: string; revision: number } | null>(null);
+  const [accepted, setAccepted] = useState<{ material: string; lease: object } | null>(null);
 
   // Layout ownership changes before the replacement material can paint or
   // receive an event. Promise continuations run only after this transition has
@@ -44,7 +44,7 @@ export function useCopyFeedback(
     const owner = ownerRef.current;
     if (owner.material === material) return;
     owner.material = material;
-    owner.revision += 1;
+    owner.lease = {};
     clearResetTimer(owner);
     setAccepted(null);
   }, [material]);
@@ -54,26 +54,26 @@ export function useCopyFeedback(
     owner.mounted = true;
     return () => {
       owner.mounted = false;
-      owner.revision += 1;
+      owner.lease = {};
       clearResetTimer(owner);
     };
   }, []);
 
   const copy = useCallback(async (): Promise<boolean> => {
     const owner = ownerRef.current;
-    const revision = ++owner.revision;
+    const lease = (owner.lease = {});
     clearResetTimer(owner);
     setAccepted(null);
 
     const accepted = await copyMaterial(material);
-    if (!accepted || !owner.mounted || owner.material !== material || owner.revision !== revision) {
+    if (!accepted || !owner.mounted || owner.material !== material || owner.lease !== lease) {
       return false;
     }
 
-    setAccepted({ material, revision });
+    setAccepted({ material, lease });
     owner.resetTimer = setTimeout(() => {
       owner.resetTimer = undefined;
-      if (!owner.mounted || owner.material !== material || owner.revision !== revision) return;
+      if (!owner.mounted || owner.material !== material || owner.lease !== lease) return;
       setAccepted(null);
     }, resetAfterMs);
     return true;

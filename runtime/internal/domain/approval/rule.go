@@ -6,6 +6,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 type ruleSet []Rule
@@ -36,7 +38,11 @@ func (r Rule) Validate() error {
 		return fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, r.Scope)
 	}
 	switch r.Scope {
-	case ScopeSession, ScopeProject:
+	case ScopeSession:
+		if _, err := resourceid.ParseSession(r.ScopeKey); err != nil {
+			return fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
+		}
+	case ScopeProject:
 		if strings.TrimSpace(r.ScopeKey) == "" {
 			return fmt.Errorf("%w: scope %q requires a key", ErrInvalidRule, r.Scope)
 		}
@@ -107,6 +113,11 @@ func (r Rule) specificity() int {
 // decide picks the strongest visible rule; equally specific disagreements
 // resolve to Deny so a remembered deny cannot be canceled by a peer allow.
 func (r ruleSet) decide(q Query) (Decision, bool, error) {
+	if q.SessionID != "" {
+		if _, err := resourceid.ParseSession(q.SessionID); err != nil {
+			return "", false, fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
+		}
+	}
 	if strings.TrimSpace(q.Tool) == "" || strings.TrimSpace(q.Tool) != q.Tool {
 		return "", false, fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidQuery)
 	}
@@ -152,6 +163,11 @@ func (s Scope) key(sessionID, projectDir string) (string, bool) {
 
 // Rule derives and validates the durable rule represented by r.
 func (r RememberRequest) Rule() (Rule, error) {
+	if r.SessionID != "" {
+		if _, err := resourceid.ParseSession(r.SessionID); err != nil {
+			return Rule{}, fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
+		}
+	}
 	key, ok := r.Scope.key(r.SessionID, r.ProjectDir)
 	if !ok {
 		return Rule{}, fmt.Errorf("%w: scope %q has no usable key", ErrInvalidRule, r.Scope)

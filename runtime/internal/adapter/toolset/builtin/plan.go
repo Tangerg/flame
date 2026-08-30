@@ -14,7 +14,7 @@ import (
 
 // planStateReader supplies the canonical session Plan approved by exit_plan_mode.
 type planStateReader interface {
-	State(ctx context.Context, sessionID string) (plandomain.State, error)
+	State(ctx context.Context, sessionID string) (plandomain.Current, error)
 }
 
 // planReplacer executes the application use case behind set_plan.
@@ -24,7 +24,7 @@ type planReplacer interface {
 
 // PlanUseCases is the Plan application surface consumed by this tool family.
 type PlanUseCases interface {
-	State(ctx context.Context, sessionID string) (plandomain.State, error)
+	State(ctx context.Context, sessionID string) (plandomain.Current, error)
 	Replace(ctx context.Context, sessionID string, steps []plandomain.Step) (plandomain.State, error)
 }
 

@@ -9,6 +9,9 @@ import (
 )
 
 func projectEvent(value protocol.RunEvent) (agent.RunEvent, bool, error) {
+	if err := value.ValidateWire(); err != nil {
+		return agent.RunEvent{}, false, err
+	}
 	if value.Timestamp.IsZero() {
 		return agent.RunEvent{}, false, fmt.Errorf("event %s timestamp is zero", value.EventID)
 	}
@@ -122,11 +125,9 @@ func (r runEventProjection) itemDelta() (projectedRunEvent, error) {
 			BlockID: r.source.Event.ItemID, Text: delta.ArgumentsTextDelta,
 		}), nil
 	case protocol.DeltaContent:
-		projected := agent.BlockDelta{BlockID: r.source.Event.ItemID, Text: delta.Text}
-		if delta.Index != nil {
-			projected.ContentIndex = new(*delta.Index)
-		}
-		return includeRunEvent(projected), nil
+		return includeRunEvent(agent.BlockDelta{
+			BlockID: r.source.Event.ItemID, Text: delta.Text,
+		}), nil
 	case protocol.DeltaReasoning, protocol.DeltaToolOutput:
 		return includeRunEvent(agent.BlockDelta{BlockID: r.source.Event.ItemID, Text: delta.Text}), nil
 	default:
@@ -135,11 +136,14 @@ func (r runEventProjection) itemDelta() (projectedRunEvent, error) {
 }
 
 func (r runEventProjection) planUpdated() (projectedRunEvent, error) {
-	items, revision, err := projectPlan(r.source.Event.Plan)
+	plan, err := projectPlan(r.source.Event.Plan)
 	if err != nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 	}
-	return includeRunEvent(agent.PlanChanged{Revision: revision, Items: items}), nil
+	if plan == nil {
+		return projectedRunEvent{}, fmt.Errorf("event %s: plan.updated has no committed state", r.source.EventID)
+	}
+	return includeRunEvent(agent.PlanChanged{Plan: *plan}), nil
 }
 
 func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {

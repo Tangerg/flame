@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
@@ -11,9 +12,10 @@ import (
 )
 
 func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
-	registry := &mcpRegistryFake{servers: map[string]mcpserver.Server{
-		"linear": {
-			Name: "linear", Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+	name := testMCPServerName("linear")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+		name: {
+			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
 			Headers: map[string]string{"X-API-Key": "stored-key"},
 		},
@@ -47,9 +49,10 @@ func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 }
 
 func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t *testing.T) {
-	registry := &mcpRegistryFake{servers: map[string]mcpserver.Server{
-		"linear": {
-			Name: "linear", Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+	name := testMCPServerName("linear")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+		name: {
+			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
 		},
 	}}
@@ -82,9 +85,10 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 }
 
 func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testing.T) {
-	registry := &mcpRegistryFake{servers: map[string]mcpserver.Server{
-		"cloud": {
-			Name: "cloud", Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+	name := testMCPServerName("cloud")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+		name: {
+			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://old.example/mcp", Headers: map[string]string{"X-API-Key": "stored-key"},
 		},
 	}}
@@ -114,9 +118,10 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 }
 
 func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing.T) {
-	registry := &mcpRegistryFake{servers: map[string]mcpserver.Server{
-		"fs": {
-			Name: "fs", Enabled: true, Transport: mcpserver.TransportStdio,
+	name := testMCPServerName("fs")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+		name: {
+			Name: name, Enabled: true, Transport: mcpserver.TransportStdio,
 			Command: "node", Args: []string{"server.js"}, Dir: "/repo",
 			Env: map[string]string{"API_KEY": "stored-key"},
 		},
@@ -161,11 +166,12 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 
 func TestCreateMCPServerPropagatesExistenceLookupError(t *testing.T) {
 	lookupErr := errors.New("registry unavailable")
-	registry := &mcpRegistryFake{servers: map[string]mcpserver.Server{}, getErr: lookupErr}
+	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{}, getErr: lookupErr}
 	s := serverWithMCP(mcpapp.Config{Registry: registry})
 
 	_, err := s.CreateMCPServer(context.Background(), protocol.MCPServerCandidate{
 		Name: "linear", Enabled: true,
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 		Connection: protocol.MCPConnectionInput{
 			Type: protocol.MCPTransportStreamableHTTP,
 			URL:  "https://mcp.linear.app/mcp",
@@ -182,9 +188,12 @@ func TestCreateMCPServerPropagatesExistenceLookupError(t *testing.T) {
 func TestCreateMCPServerRejectsNegativeTimeout(t *testing.T) {
 	registry := &mcpRegistryFake{}
 	s := serverWithMCP(mcpapp.Config{Registry: registry})
+	negative := -1
 
 	_, err := s.CreateMCPServer(context.Background(), protocol.MCPServerCandidate{
-		Name: "linear", TimeoutSeconds: -1,
+		Name: "linear", HandshakeTimeout: protocol.MCPHandshakeTimeout{
+			Type: protocol.MCPHandshakeBounded, Seconds: &negative,
+		},
 		Connection: protocol.MCPConnectionInput{
 			Type: protocol.MCPTransportStreamableHTTP,
 			URL:  "https://mcp.linear.app/mcp",
@@ -198,12 +207,35 @@ func TestCreateMCPServerRejectsNegativeTimeout(t *testing.T) {
 	}
 }
 
+func TestCreateMCPServerRejectsHandshakeTimeoutDurationOverflow(t *testing.T) {
+	if int64(math.MaxInt) <= maxMCPHandshakeTimeoutSeconds {
+		t.Skip("int width cannot represent an overflowing duration")
+	}
+	registry := &mcpRegistryFake{}
+	s := serverWithMCP(mcpapp.Config{Registry: registry})
+	seconds := math.MaxInt
+
+	_, err := s.CreateMCPServer(context.Background(), protocol.MCPServerCandidate{
+		Name: "linear", HandshakeTimeout: protocol.MCPHandshakeTimeout{
+			Type: protocol.MCPHandshakeBounded, Seconds: &seconds,
+		},
+		Connection: protocol.MCPConnectionInput{
+			Type: protocol.MCPTransportStreamableHTTP,
+			URL:  "https://mcp.linear.app/mcp",
+		},
+	})
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("create err = %v, want ErrInvalidParams", err)
+	}
+}
+
 func TestCreateMCPServerRejectsInvalidHTTPEndpointBeforePersistence(t *testing.T) {
 	registry := &mcpRegistryFake{}
 	s := serverWithMCP(mcpapp.Config{Registry: registry})
 
 	_, err := s.CreateMCPServer(t.Context(), protocol.MCPServerCandidate{
-		Name: "linear",
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Name:             "linear",
 		Connection: protocol.MCPConnectionInput{
 			Type: protocol.MCPTransportStreamableHTTP,
 			URL:  "file:///tmp/mcp.sock",

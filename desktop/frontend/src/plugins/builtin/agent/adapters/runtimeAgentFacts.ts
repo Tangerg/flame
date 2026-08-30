@@ -38,7 +38,7 @@ import type {
   AgentRunProgress,
   RunUsage,
 } from "@/plugins/sdk/types/agentSessionView";
-import { runtimePlan } from "./runtimePlan";
+import { runtimePlanUpdate } from "./runtimePlan";
 
 function runtimeUsage(usage?: Usage): RunUsage {
   return {
@@ -195,7 +195,7 @@ export function runtimeItem(item: Item): AgentItem {
         runId: item.runId,
         status: item.status,
         createdAt: item.createdAt,
-        ...(item.content ? { content: item.content.map(runtimeContent) } : {}),
+        content: item.content.map(runtimeContent),
       };
     case "agentMessage":
       return {
@@ -224,7 +224,7 @@ export function runtimeItem(item: Item): AgentItem {
         runId: item.runId,
         status: item.status,
         createdAt: item.createdAt,
-        ...(item.summary !== undefined ? { summary: item.summary } : {}),
+        summary: item.summary,
         ...(item.droppedMessages !== undefined ? { droppedMessages: item.droppedMessages } : {}),
       };
     case "question":
@@ -234,7 +234,7 @@ export function runtimeItem(item: Item): AgentItem {
         runId: item.runId,
         status: item.status,
         createdAt: item.createdAt,
-        ...(item.question ? { question: runtimeQuestion(item.question) } : {}),
+        question: runtimeQuestion(item.question),
       };
     case "toolCall":
       return {
@@ -252,7 +252,7 @@ export function runtimeItem(item: Item): AgentItem {
             ? { approvalDecision: "declined" as const }
             : {}),
         ...(item.error ? { error: runtimeProblem(item.error) } : {}),
-        ...(item.tool ? { tool: runtimeTool(item.tool) } : {}),
+        tool: runtimeTool(item.tool),
       };
   }
 }
@@ -329,7 +329,7 @@ export function runtimeAgentEvent(envelope: RunEvent): AgentEventEnvelope {
           delta: runtimeItemDelta(event.delta),
         } as const;
       case "plan.updated":
-        return { type: event.type, plan: runtimePlan(event.plan) } as const;
+        return { type: event.type, plan: runtimePlanUpdate(event.plan) } as const;
     }
   })();
   return { ...envelope, event: mapped };

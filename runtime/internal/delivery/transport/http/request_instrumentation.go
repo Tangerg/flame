@@ -2,10 +2,8 @@ package http
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -74,15 +72,9 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 	})
 }
 
-var requestSequence atomic.Uint64
+const requestIDPrefix = "req_"
 
-func newRequestID() string {
-	var random [16]byte
-	if _, err := rand.Read(random[:]); err == nil {
-		return "req_" + hex.EncodeToString(random[:])
-	}
-	return fmt.Sprintf("req_%x_%x", time.Now().UnixNano(), requestSequence.Add(1))
-}
+func newRequestID() string { return requestIDPrefix + rand.Text() }
 
 // recordingResponseWriter is a tiny wrapper that captures status +
 // bytes so the response span can include them. Stays minimal —

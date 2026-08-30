@@ -10,18 +10,13 @@ import {
   createRuntimeServiceController,
   type RuntimeConnectionInspection,
   type RuntimeConnectionInspector,
-  type RuntimeProcessGeneration,
   type RuntimeServiceController,
   type RuntimeServiceFailure,
 } from "../application/runtimeService";
-
-/** Process-local capability identifying one admitted client/server connection.
- *  A reconnect to the same Runtime process still creates a successor identity. */
-export type RuntimeConnectionGeneration = string;
+import { RuntimeConnectionGeneration } from "../public/ports";
 
 interface RuntimeConnectionState {
   connectionGeneration: RuntimeConnectionGeneration | null;
-  processGeneration: RuntimeProcessGeneration | null;
   capabilities: ServerCapabilities | null;
   service: RuntimeServiceSnapshot;
 }
@@ -29,7 +24,6 @@ interface RuntimeConnectionState {
 function initialConnectionState(): RuntimeConnectionState {
   return {
     connectionGeneration: null,
-    processGeneration: null,
     capabilities: null,
     service: { phase: "checking", observation: null, failure: null },
   };
@@ -38,7 +32,6 @@ function initialConnectionState(): RuntimeConnectionState {
 function reconnectingConnectionState(): RuntimeConnectionState {
   return {
     connectionGeneration: null,
-    processGeneration: null,
     capabilities: null,
     service: { phase: "reconnecting", observation: null, failure: null },
   };
@@ -90,13 +83,6 @@ export interface RuntimeConnectionOwner {
   replaceEndpoint(commit: () => void): Promise<void>;
   reportConnectionLoss(expectedGeneration: RuntimeConnectionGeneration): Promise<void>;
   dispose(): void;
-}
-
-let connectionGenerationSequence = 0;
-
-function nextConnectionGeneration(processGeneration: RuntimeProcessGeneration): string {
-  connectionGenerationSequence += 1;
-  return `${processGeneration}:${connectionGenerationSequence}`;
 }
 
 class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
@@ -211,13 +197,11 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
     if (!this.#ownsGeneration()) return;
     const current = useRuntimeConnectionStore.getState();
     const connectionGeneration =
-      current.connectionGeneration !== null &&
-      current.processGeneration === inspection.processGeneration
+      current.connectionGeneration?.belongsTo(inspection.processGeneration) === true
         ? current.connectionGeneration
-        : nextConnectionGeneration(inspection.processGeneration);
+        : RuntimeConnectionGeneration.forProcess(inspection.processGeneration);
     useRuntimeConnectionStore.setState({
       connectionGeneration,
-      processGeneration: inspection.processGeneration,
       capabilities: inspection.capabilities,
       service: {
         phase: inspection.service.health,
@@ -231,7 +215,6 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
     if (!this.#ownsGeneration()) return;
     useRuntimeConnectionStore.setState({
       connectionGeneration: null,
-      processGeneration: null,
       capabilities: null,
       service: { phase: "unavailable", observation: null, failure },
     });

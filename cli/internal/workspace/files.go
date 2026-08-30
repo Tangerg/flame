@@ -77,9 +77,8 @@ func (f FilesRequest) Validate() error {
 type ReadRequest struct {
 	Workspace string
 	Path      string
-	StartLine int
-	EndLine   int
-	MaxBytes  int
+	Range     ReadLineRange
+	ByteLimit ReadByteLimit
 }
 
 func (r ReadRequest) Validate() error {
@@ -88,14 +87,12 @@ func (r ReadRequest) Validate() error {
 		return errors.New("file read workspace is empty")
 	case strings.TrimSpace(r.Path) == "":
 		return errors.New("file read path is empty")
-	case r.StartLine < 0 || r.EndLine < 0 || r.MaxBytes < 0:
-		return errors.New("file read bounds cannot be negative")
-	case r.EndLine > 0 && r.StartLine == 0:
-		return errors.New("file read end line requires a start line")
-	case r.StartLine > 0 && r.EndLine > 0 && r.EndLine < r.StartLine:
-		return errors.New("file read end line precedes start line")
 	default:
-		return nil
+		if _, _, err := r.Range.Bounds(); err != nil {
+			return err
+		}
+		_, err := r.ByteLimit.Bytes()
+		return err
 	}
 }
 
@@ -138,17 +135,15 @@ func (f FileContent) Window() string {
 type HeadRequest struct {
 	Workspace string
 	Path      string
-	Lines     int
+	LineLimit HeadLineLimit
 }
 
 func (h HeadRequest) Validate() error {
 	if strings.TrimSpace(h.Workspace) == "" || strings.TrimSpace(h.Path) == "" {
 		return errors.New("file head requires workspace and path")
 	}
-	if h.Lines < 0 {
-		return errors.New("file head line count is negative")
-	}
-	return nil
+	_, err := h.LineLimit.Lines()
+	return err
 }
 
 type FileLine struct {
@@ -179,17 +174,15 @@ type SearchRequest struct {
 	Workspace string
 	Query     string
 	Path      string
-	Limit     int
+	Limit     SearchResultLimit
 }
 
 func (s SearchRequest) Validate() error {
 	if strings.TrimSpace(s.Workspace) == "" || strings.TrimSpace(s.Query) == "" {
 		return errors.New("workspace search requires workspace and query")
 	}
-	if s.Limit < 0 {
-		return errors.New("workspace search limit is negative")
-	}
-	return nil
+	_, err := s.Limit.Matches()
+	return err
 }
 
 type Match struct {

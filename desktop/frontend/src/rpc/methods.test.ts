@@ -28,7 +28,12 @@ function agentMessageItem(id: string, runId: string, status: Item["status"]): It
     status,
     createdAt: "2026-06-03T00:00:00Z",
     type: "agentMessage",
-    ...(status === "running" ? {} : { phase: "finalAnswer" as const }),
+    ...(status === "running"
+      ? {}
+      : {
+          phase: "finalAnswer" as const,
+          content: [{ type: "text" as const, text: "done" }],
+        }),
   } as Item;
 }
 
@@ -204,7 +209,6 @@ describe("methods factory", () => {
       sessionId: "ses_1",
       objective: "Ship beta",
       status: "active",
-      budget: {},
       used: { runs: 0, costUsd: 0, steps: 0 },
     });
     const methods = createMethods({ call } as unknown as RpcClient);
@@ -604,10 +608,17 @@ describe("methods factory", () => {
     const methods = createMethods(client);
     const signal = new AbortController().signal;
 
-    const promise = methods.sessions.list({ limit: 10 }, signal);
+    const promise = methods.sessions.list(
+      { limit: 10, search: "release", workspace: { path: "/repo" } },
+      signal,
+    );
     const req = await waitForRequest(t, "sessions.list");
     expect(req.method).toBe("sessions.list");
-    expect(req.params).toEqual({ limit: 10 });
+    expect(req.params).toEqual({
+      limit: 10,
+      search: "release",
+      workspace: { path: "/repo" },
+    });
     expect(send.mock.calls[0]?.[1]).toBe(signal);
 
     t.inject({ jsonrpc: JSONRPC_VERSION, id: req.id, result: { data: [] } } as RpcMessage);
@@ -793,7 +804,7 @@ describe("methods factory", () => {
     await client.close();
   });
 
-  it("ignores events for foreign segments", async () => {
+  it("accepts a child tail without replayed lineage and isolates another response", async () => {
     const t = createMemoryTransport();
     const client = createRpcClient(t);
     const methods = createMethods(client);
@@ -814,13 +825,25 @@ describe("methods factory", () => {
       {
         jsonrpc: JSONRPC_VERSION,
         method: RUN_EVENT_METHOD,
-        params: runEvent("run_OTHER", "seg_OTHER", "evt_x", {
+        params: runEvent("run_child", "seg_child", "evt_child_tail", {
           type: "item.started",
-          item: agentMessageItem("item_x", "run_OTHER", "running"),
+          item: agentMessageItem("item_child", "run_child", "running"),
         }),
       },
       undefined,
       req.id,
+    );
+    t.inject(
+      {
+        jsonrpc: JSONRPC_VERSION,
+        method: RUN_EVENT_METHOD,
+        params: runEvent("run_foreign", "seg_foreign", "evt_foreign", {
+          type: "item.started",
+          item: agentMessageItem("item_foreign", "run_foreign", "running"),
+        }),
+      },
+      undefined,
+      "rpc_other",
     );
     t.inject(
       {
@@ -850,7 +873,7 @@ describe("methods factory", () => {
 
     const collected: RunEvent[] = [];
     for await (const ev of events) collected.push(ev);
-    expect(collected.map((e) => e.event.type)).toEqual(["item.completed", "segment.finished"]);
+    expect(collected.map((e) => e.eventId)).toEqual(["evt_child_tail", "evt_1", "evt_2"]);
     await client.close();
   });
 

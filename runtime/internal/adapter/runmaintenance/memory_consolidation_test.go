@@ -29,6 +29,17 @@ type scriptedModel struct {
 	requests []*chat.Request
 }
 
+func durationPointer(value time.Duration) *time.Duration { return &value }
+
+func mustMemoryCurationPolicy(t *testing.T, values MemoryCurationPolicyValues) memoryCurationPolicy {
+	t.Helper()
+	policy, err := newMemoryCurationPolicy(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
 func (s *scriptedModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -68,7 +79,15 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	if err != nil {
 		t.Fatal(err)
 	}
-	consolidator := NewMemoryConsolidator(messages, memoryCuration, func(context.Context) *chatclient.Client { return client }, MemoryCurationConfig{MinPendingFacts: 1})
+	consolidator, err := NewMemoryConsolidator(
+		messages,
+		memoryCuration,
+		func(context.Context) *chatclient.Client { return client },
+		MemoryCurationPolicyValues{MinPendingFacts: intPointer(1)},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	consolidator.now = func() time.Time { return time.Date(2026, 7, 19, 9, 30, 0, 0, time.FixedZone("CST", 8*60*60)) }
 	return consolidator, memory, model
 }
@@ -169,7 +188,10 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 }
 
 func TestCurationGateAndTokenEstimate(t *testing.T) {
-	consolidator := &MemoryConsolidator{config: MemoryCurationConfig{MinPendingFacts: 3, MaxAge: time.Hour}}
+	consolidator := &MemoryConsolidator{policy: mustMemoryCurationPolicy(t, MemoryCurationPolicyValues{
+		MinPendingFacts: intPointer(3),
+		MaxAge:          durationPointer(time.Hour),
+	})}
 	now := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
 	state := agentmemory.State{Watermark: 1, UpdatedAt: now}
 	if consolidator.curationDue(state, 2, now) {
@@ -190,13 +212,21 @@ func TestCurationGateAndTokenEstimate(t *testing.T) {
 	}
 }
 
-func TestMemoryCurationConfigCannotExpandLedgerReadBound(t *testing.T) {
-	config := (MemoryCurationConfig{
-		MinPendingFacts: 1,
-		MaxPendingFacts: agentmemory.MaxLedgerFoldFacts + 1,
-	}).normalized()
-	if config.MaxPendingFacts != agentmemory.MaxLedgerFoldFacts {
-		t.Fatalf("MaxPendingFacts = %d, want %d", config.MaxPendingFacts, agentmemory.MaxLedgerFoldFacts)
+func TestMemoryCurationPolicyRejectsInvalidPresenceAndBounds(t *testing.T) {
+	zero := 0
+	if _, err := newMemoryCurationPolicy(MemoryCurationPolicyValues{MinPendingFacts: &zero}); err == nil {
+		t.Fatal("present zero minimum was treated as omission")
+	}
+	over := agentmemory.MaxLedgerFoldFacts + 1
+	if _, err := newMemoryCurationPolicy(MemoryCurationPolicyValues{MaxPendingFacts: &over}); err == nil {
+		t.Fatal("ledger read bound was silently clamped")
+	}
+	minimum, maximum := 4, 3
+	if _, err := newMemoryCurationPolicy(MemoryCurationPolicyValues{
+		MinPendingFacts: &minimum,
+		MaxPendingFacts: &maximum,
+	}); err == nil {
+		t.Fatal("inverted pending bounds were silently rewritten")
 	}
 }
 
@@ -205,7 +235,10 @@ func TestMemoryConsolidatorDoesNotAdvanceWatermarkForOversizedCuration(t *testin
 		scriptedReply{text: "- durable fact"},
 		scriptedReply{text: strings.Repeat("界", 20)},
 	)
-	consolidator.config.MaxTokens = 10
+	consolidator.policy = mustMemoryCurationPolicy(t, MemoryCurationPolicyValues{
+		MinPendingFacts: intPointer(1),
+		MaxTokens:       intPointer(10),
+	})
 	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil || !strings.Contains(err.Error(), "limit is 10") {
 		t.Fatalf("oversized curation error = %v", err)
 	}

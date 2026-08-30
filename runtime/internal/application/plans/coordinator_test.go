@@ -11,17 +11,18 @@ import (
 )
 
 type fakeStore struct {
-	state            plan.State
-	expectedRevision uint64
-	saved            plan.State
-	readErr          error
-	saveErr          error
+	state           plan.Current
+	expectedVersion plan.Version
+	saved           *plan.State
+	readErr         error
+	saveErr         error
 }
 
-func (f *fakeStore) State(context.Context, string) (plan.State, error) { return f.state, f.readErr }
-func (f *fakeStore) Save(_ context.Context, _ string, expected uint64, replacement plan.State) error {
-	f.expectedRevision = expected
-	f.saved = replacement
+func (f *fakeStore) State(context.Context, string) (plan.Current, error) { return f.state, f.readErr }
+func (f *fakeStore) Save(_ context.Context, _ string, expected plan.Version, replacement plan.State) error {
+	f.expectedVersion = expected
+	owned := replacement
+	f.saved = &owned
 	return f.saveErr
 }
 
@@ -34,7 +35,11 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := &fakeStore{state: current}
+	currentProjection, err := plan.CurrentOf(current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &fakeStore{state: currentProjection}
 	var notices []invalidation.Notice
 	coordinator := New(Dependencies{
 		Store: store, Now: func() time.Time { return now },
@@ -44,8 +49,9 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Replace: %v", err)
 	}
-	if store.expectedRevision != 3 || store.saved.Revision() != 4 || got.Revision() != 4 || !got.UpdatedAt().Equal(now) {
-		t.Fatalf("saved = %+v expected=%d got=%+v", store.saved.Snapshot(), store.expectedRevision, got.Snapshot())
+	expectedRevision, committed := store.expectedVersion.Revision()
+	if !committed || expectedRevision != 3 || store.saved == nil || store.saved.Revision() != 4 || got.Revision() != 4 || !got.UpdatedAt().Equal(now) {
+		t.Fatalf("saved = %+v expected=%s got=%+v", store.saved, store.expectedVersion, got.Snapshot())
 	}
 	if len(notices) != 1 || notices[0].Resource != invalidation.PlanState || len(notices[0].SessionIDs) != 1 || notices[0].SessionIDs[0] != "ses_1" {
 		t.Fatalf("notices = %+v, want the committed Plan state", notices)
@@ -59,8 +65,8 @@ func TestPrepareReplacementDoesNotWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PrepareReplacement: %v", err)
 	}
-	if replacement.ExpectedRevision() != 0 || replacement.State().Revision() != 1 || store.saved.Revision() != 0 {
-		t.Fatalf("replacement = expected %d state %+v; store was %+v", replacement.ExpectedRevision(), replacement.State().Snapshot(), store.saved.Snapshot())
+	if !replacement.ExpectedVersion().IsUnwritten() || replacement.State().Revision() != 1 || store.saved != nil {
+		t.Fatalf("replacement = expected %s state %+v; store was %+v", replacement.ExpectedVersion(), replacement.State().Snapshot(), store.saved)
 	}
 }
 

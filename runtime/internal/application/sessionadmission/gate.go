@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates
@@ -15,12 +17,11 @@ import (
 type Gate struct {
 	mu            sync.Mutex
 	runs          map[string]liveRun
-	pending       map[uint64]pendingRun
-	claims        map[string]map[uint64]struct{}
+	pending       map[*runAdmissionLease]pendingRun
+	claims        map[string]map[*sessionClaim]struct{}
 	treeRuns      map[string]int
 	treeMutations map[string]struct{}
 	changed       chan struct{}
-	nextID        uint64
 	ownership     Ownership
 }
 
@@ -63,15 +64,23 @@ type RunAdmission struct {
 
 type runAdmissionLease struct {
 	gate *Gate
-	id   uint64
 	once sync.Once
+}
+
+// sessionClaim is one process-local ownership registration. Its address is the
+// registry identity because the claim never crosses the Gate boundary.
+type sessionClaim struct {
+	sessionID string
 }
 
 // Admit converts the pending reservation into the live run identified by
 // runID. It returns false when the reservation had already been released or
 // admitted, or when runID is empty.
 func (r RunAdmission) Admit(runID string) bool {
-	if r.lease == nil || runID == "" {
+	if r.lease == nil {
+		return false
+	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
 		return false
 	}
 	admitted := false
@@ -79,11 +88,11 @@ func (r RunAdmission) Admit(runID string) bool {
 		g := r.lease.gate
 		g.mu.Lock()
 		defer g.mu.Unlock()
-		pending, ok := g.pending[r.lease.id]
+		pending, ok := g.pending[r.lease]
 		if !ok {
 			return
 		}
-		delete(g.pending, r.lease.id)
+		delete(g.pending, r.lease)
 		g.releaseTreeRunLocked(pending.cwd)
 		g.runs[runID] = liveRun(pending)
 		admitted = true
@@ -99,12 +108,12 @@ func (r RunAdmission) Release() {
 	r.lease.once.Do(func() {
 		g := r.lease.gate
 		g.mu.Lock()
-		pending, ok := g.pending[r.lease.id]
+		pending, ok := g.pending[r.lease]
 		if !ok {
 			g.mu.Unlock()
 			return
 		}
-		delete(g.pending, r.lease.id)
+		delete(g.pending, r.lease)
 		g.releaseTreeRunLocked(pending.cwd)
 		g.notifyLocked()
 		g.mu.Unlock()
@@ -162,10 +171,9 @@ func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool) {
 		leases = append(leases, treeLease)
 		g.addTreeRunLocked(cwd)
 	}
-	g.nextID++
-	id := g.nextID
-	g.pending[id] = pendingRun{sessionID: sessionID, cwd: cwd, leases: leases}
-	return RunAdmission{lease: &runAdmissionLease{gate: g, id: id}}, true
+	admission := &runAdmissionLease{gate: g}
+	g.pending[admission] = pendingRun{sessionID: sessionID, cwd: cwd, leases: leases}
+	return RunAdmission{lease: admission}, true
 }
 
 // BeginMaintenance converts a live run into a maintenance reservation. Both
@@ -283,7 +291,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case <-changed:
 		}
 	}
@@ -311,10 +319,10 @@ func (g *Gate) initLocked() {
 		g.runs = map[string]liveRun{}
 	}
 	if g.pending == nil {
-		g.pending = map[uint64]pendingRun{}
+		g.pending = map[*runAdmissionLease]pendingRun{}
 	}
 	if g.claims == nil {
-		g.claims = map[string]map[uint64]struct{}{}
+		g.claims = map[string]map[*sessionClaim]struct{}{}
 	}
 	if g.treeRuns == nil {
 		g.treeRuns = map[string]int{}
@@ -338,24 +346,23 @@ func (g *Gate) hasLiveRunOnTreeLocked(cwd string) bool {
 
 func (g *Gate) addClaimLocked(sessionID string) func() {
 	g.initLocked()
-	g.nextID++
-	id := g.nextID
+	claim := &sessionClaim{sessionID: sessionID}
 	owners := g.claims[sessionID]
 	if owners == nil {
-		owners = map[uint64]struct{}{}
+		owners = map[*sessionClaim]struct{}{}
 		g.claims[sessionID] = owners
 	}
-	owners[id] = struct{}{}
+	owners[claim] = struct{}{}
 
 	var once sync.Once
 	return func() {
 		once.Do(func() {
 			g.mu.Lock()
 			defer g.mu.Unlock()
-			owners := g.claims[sessionID]
-			delete(owners, id)
+			owners := g.claims[claim.sessionID]
+			delete(owners, claim)
 			if len(owners) == 0 {
-				delete(g.claims, sessionID)
+				delete(g.claims, claim.sessionID)
 			}
 			g.notifyLocked()
 		})

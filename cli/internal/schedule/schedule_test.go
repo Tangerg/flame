@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/exactint"
 )
 
 func TestScheduleValidatesLifecycleAndModelSelection(t *testing.T) {
@@ -27,7 +29,8 @@ func TestScheduleValidatesLifecycleAndModelSelection(t *testing.T) {
 		{name: "missing model", mutate: func(value *Schedule) { value.Model = "" }, want: "both be set"},
 		{name: "enabled without next", mutate: func(value *Schedule) { value.NextRunAt = nil }, want: "inconsistent"},
 		{name: "disabled with next", mutate: func(value *Schedule) { value.Enabled = false }, want: "inconsistent"},
-		{name: "missing revision", mutate: func(value *Schedule) { value.Revision = 0 }, want: "persistence metadata"},
+		{name: "missing revision", mutate: func(value *Schedule) { value.Revision = 0 }, want: "revision"},
+		{name: "inexact revision", mutate: func(value *Schedule) { value.Revision = exactint.Maximum + 1 }, want: "supported range"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			value := valid
@@ -53,6 +56,7 @@ func TestPatchRequiresRevisionAndCoherentChanges(t *testing.T) {
 		want  string
 	}{
 		{name: "no revision", patch: Patch{ID: "sch_1", Title: &title}, want: "revision"},
+		{name: "inexact revision", patch: Patch{ID: "sch_1", ExpectedRevision: exactint.Maximum + 1, Title: &title}, want: "supported range"},
 		{name: "no changes", patch: Patch{ID: "sch_1", ExpectedRevision: 1}, want: "no changes"},
 		{name: "partial model", patch: Patch{ID: "sch_1", ExpectedRevision: 1, Provider: &provider}, want: "together"},
 		{name: "complete model", patch: Patch{ID: "sch_1", ExpectedRevision: 1, Provider: &provider, Model: &model}},
@@ -120,6 +124,7 @@ func TestScheduleMutationResultsMustFulfillTheCommand(t *testing.T) {
 			result.NextRunAt = nil
 		}, want: "disabled"},
 		{name: "prior run", mutate: func(result *Schedule) { result.LastRunAt = &lastRunAt }, want: "prior run"},
+		{name: "revision", mutate: func(result *Schedule) { result.Revision = 2 }, want: "initial revision"},
 	}
 	for _, test := range createTests {
 		t.Run("create "+test.name, func(t *testing.T) {
@@ -151,6 +156,7 @@ func TestScheduleMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}{
 		{name: "identity", mutate: func(result *Schedule) { result.ID = "sch_other" }, want: "schedule"},
 		{name: "revision", mutate: func(result *Schedule) { result.Revision = patch.ExpectedRevision }, want: "revision"},
+		{name: "revision jump", mutate: func(result *Schedule) { result.Revision = patch.ExpectedRevision + 2 }, want: "revision"},
 		{name: "title", mutate: func(result *Schedule) { result.Title = "ignored" }, want: "title"},
 		{name: "instructions", mutate: func(result *Schedule) { result.Instructions = "ignored" }, want: "instructions"},
 		{name: "workspace", mutate: func(result *Schedule) { result.Workspace = "/workspace" }, want: "workspace"},

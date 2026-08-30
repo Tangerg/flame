@@ -46,7 +46,7 @@ func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 		nilList bool
 	}{
 		{name: "nil page", nilList: true},
-		{name: "continuation without request cursor", listed: &protocol.Page[protocol.KnowledgeEntry]{NextCursor: "next"}},
+		{name: "continuation without request cursor", listed: protocol.NewPageWithCursor([]protocol.KnowledgeEntry{}, "next")},
 		{name: "duplicate scope", listed: &protocol.Page[protocol.KnowledgeEntry]{Data: []protocol.KnowledgeEntry{duplicate, duplicate}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {

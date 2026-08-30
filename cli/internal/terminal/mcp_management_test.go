@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/mcp"
-	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
 type mcpServiceStub struct {
@@ -86,9 +85,13 @@ func (b *blockingMCPAuthorizationService) GetAuthorization(
 
 func newMCPServiceStub() *mcpServiceStub {
 	count := 1
+	timeout, err := mcp.NewHandshakeTimeout(15)
+	if err != nil {
+		panic(err)
+	}
 	return &mcpServiceStub{
 		servers: []mcp.Server{{
-			Name: "docs", Description: "Documentation", TimeoutSeconds: 15,
+			Name: "docs", Description: "Documentation", HandshakeTimeout: timeout,
 			Connection: mcp.Connection{Transport: mcp.StreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
 			State:      mcp.State{Type: mcp.Connected, ToolCount: &count},
 		}},
@@ -114,7 +117,7 @@ func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate
 	}
 	m.created <- candidate.Clone()
 	server := mcp.Server{
-		Name: candidate.Name, Description: candidate.Description, TimeoutSeconds: candidate.TimeoutSeconds,
+		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
 		Connection:    mcp.Connection{Transport: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Directory: candidate.Connection.Directory},
 		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
 		State: mcp.State{Type: mcp.Disconnected},
@@ -207,7 +210,7 @@ func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAb
 	service.authErrors <- fmt.Errorf("another temporary authorization read failure: %w", agent.ErrDisconnected)
 	observer := mcpAuthorizationObserver{
 		service: service, pollInterval: time.Nanosecond,
-		recovery: retry.Backoff{Base: time.Nanosecond, Maximum: time.Nanosecond},
+		recovery: testBackoff(t, time.Nanosecond, time.Nanosecond),
 	}
 	initial, err := service.StartAuthorization(t.Context(), "docs")
 	if err != nil {

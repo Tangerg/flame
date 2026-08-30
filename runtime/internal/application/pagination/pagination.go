@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/opaquetoken"
+	"github.com/Tangerg/flame/runtime/internal/cursorresource"
 )
 
 // ErrInvalidCursor reports a cursor that cannot continue this query: damaged,
@@ -29,6 +30,17 @@ import (
 // All of those have one remedy — restart from the first page — so they are one
 // sentinel rather than a taxonomy the caller would branch on identically.
 var ErrInvalidCursor = errors.New("pagination: cursor cannot continue this query")
+
+// ErrInvalidCursorMaterial reports an authority-side attempt to mint a cursor
+// without the query identity or keyset anchor needed to continue it. It is an
+// explicit construction failure, never a panic or an empty token that silently
+// means "end of collection".
+var ErrInvalidCursorMaterial = errors.New("pagination: cursor material is invalid")
+
+// ErrCursorTooLarge reports a continuation that exceeds Flame's finite cursor
+// resource envelope. It applies symmetrically to received and newly minted
+// cursors, so neither direction can hide an unbounded allocation contract.
+var ErrCursorTooLarge = errors.New("pagination: cursor exceeds maximum size")
 
 // ErrInvalidLimit reports a page size a read will not serve. Separate from
 // ErrInvalidCursor because the caller's fix differs: correct the request, rather
@@ -38,6 +50,11 @@ var ErrInvalidLimit = errors.New("pagination: page limit is invalid")
 // formatVersion changes when the token layout does, so a cursor in flight across
 // an upgrade is rejected instead of decoded as something else.
 const formatVersion = 2
+
+// MaximumCursorCharacters is Application's projection of the shared cursor
+// resource envelope. It is exported so architecture tests can prove that every
+// cursor authority uses the same limit as the public wire contract.
+const MaximumCursorCharacters = cursorresource.MaximumCharacters
 
 // Page is one keyset page: the rows, and the token that continues after them.
 // An empty NextCursor means the page reached the end of the collection — the
@@ -60,20 +77,27 @@ type token struct {
 // query's normalized inputs — every value that changes which rows match or the
 // order they arrive in, including the sort direction, since a cursor from an
 // ascending page cannot continue a descending one.
-func Encode(namespace string, filters []string, key []string) string {
+func Encode(namespace string, filters []string, key []string) (string, error) {
 	if namespace == "" {
-		panic("pagination: encode cursor: namespace is required")
+		return "", fmt.Errorf("%w: namespace is required", ErrInvalidCursorMaterial)
+	}
+	if len(key) == 0 {
+		return "", fmt.Errorf("%w: key is required", ErrInvalidCursorMaterial)
+	}
+	if !rawMaterialFits(namespace, filters, key) {
+		return "", ErrCursorTooLarge
 	}
 	encoded, err := opaquetoken.Encode(token{
 		Version: formatVersion, Namespace: namespace,
-		Filters: slices.Clone(filters), Key: key,
-	})
+		Filters: slices.Clone(filters), Key: slices.Clone(key),
+	}, MaximumCursorCharacters)
 	if err != nil {
-		// token holds only strings, ints and a string slice, so marshaling it
-		// cannot fail; a nil cursor would read as "no more pages" and truncate.
-		panic("pagination: encode cursor: " + err.Error())
+		if errors.Is(err, opaquetoken.ErrTooLarge) {
+			return "", ErrCursorTooLarge
+		}
+		return "", fmt.Errorf("%w: encode: %v", ErrInvalidCursorMaterial, err)
 	}
-	return encoded
+	return encoded, nil
 }
 
 // Decode returns the sort position cursor stopped at, for the same namespace and
@@ -86,8 +110,11 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 	if cursor == "" {
 		return nil, nil
 	}
+	if len(cursor) > MaximumCursorCharacters {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidCursor, ErrCursorTooLarge)
+	}
 	var decoded token
-	if err := opaquetoken.Decode(cursor, &decoded); err != nil {
+	if err := opaquetoken.Decode(cursor, MaximumCursorCharacters, &decoded); err != nil {
 		return nil, ErrInvalidCursor
 	}
 	if decoded.Version != formatVersion || decoded.Namespace != namespace ||
@@ -97,32 +124,109 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 	return decoded.Key, nil
 }
 
-// Limit validates and clamps a requested page size. Zero asks for the default,
-// which is also the ceiling; a negative value is invalid.
-func Limit(requested, ceiling int) (int, error) {
-	if requested < 0 {
-		return 0, fmt.Errorf("%w: must not be negative", ErrInvalidLimit)
+// rawMaterialFits rejects obviously oversized material before JSON/Base64 can
+// allocate from it. The test is deliberately a lower bound: every source byte
+// and every slice element consumes at least one decoded byte. Escaping can make
+// the final token larger, which the exact encoded-size check catches afterward.
+func rawMaterialFits(namespace string, groups ...[]string) bool {
+	remaining := MaximumCursorCharacters
+	consume := func(size int) bool {
+		if size < 0 || size > remaining {
+			return false
+		}
+		remaining -= size
+		return true
 	}
-	if requested == 0 || requested > ceiling {
+	if !consume(len(namespace)) {
+		return false
+	}
+	for _, group := range groups {
+		if !consume(len(group)) {
+			return false
+		}
+		for _, value := range group {
+			if !consume(len(value)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// RequestedLimit is the caller's page-size intent. The zero value is the named
+// default intent: use the read's own ceiling. An explicit intent can only be
+// constructed with a positive value, so Application code never receives a raw
+// integer whose zero might mean either "omitted" or "unbounded".
+type RequestedLimit struct {
+	mode  requestedLimitMode
+	value int
+}
+
+type requestedLimitMode uint8
+
+const (
+	requestedLimitDefault requestedLimitMode = iota
+	requestedLimitExplicit
+)
+
+// DefaultLimit asks a read to use its owned page-size ceiling.
+func DefaultLimit() RequestedLimit { return RequestedLimit{mode: requestedLimitDefault} }
+
+// NewLimit constructs an explicit positive page-size request.
+func NewLimit(value int) (RequestedLimit, error) {
+	if value <= 0 {
+		return RequestedLimit{}, fmt.Errorf("%w: must be greater than zero", ErrInvalidLimit)
+	}
+	return RequestedLimit{mode: requestedLimitExplicit, value: value}, nil
+}
+
+// Resolve applies the read's positive ceiling to this request. Explicit values
+// larger than the ceiling are clamped, keeping store reads bounded without
+// silently reinterpreting an invalid non-positive request as a default.
+func (l RequestedLimit) Resolve(ceiling int) (int, error) {
+	if ceiling <= 0 {
+		return 0, fmt.Errorf("%w: ceiling must be greater than zero", ErrInvalidLimit)
+	}
+	switch l.mode {
+	case requestedLimitDefault:
+		if l.value != 0 {
+			return 0, fmt.Errorf("%w: default request carries a value", ErrInvalidLimit)
+		}
 		return ceiling, nil
+	case requestedLimitExplicit:
+		if l.value <= 0 {
+			return 0, fmt.Errorf("%w: explicit request must be greater than zero", ErrInvalidLimit)
+		}
+		return min(l.value, ceiling), nil
+	default:
+		return 0, fmt.Errorf("%w: request mode is unknown", ErrInvalidLimit)
 	}
-	return requested, nil
 }
 
 // PageOf splits an over-fetched row set into the page and its continuation.
 // Reads ask their store for limit+1 rows: getting the extra one is how "there is
 // more" is known without a second count query. nextKey derives the anchor from
 // the last row the page actually returns.
-func PageOf[T any](rows []T, limit int, namespace string, filters []string, nextKey func(T) []string) Page[T] {
+func PageOf[T any](rows []T, limit int, namespace string, filters []string, nextKey func(T) []string) (Page[T], error) {
 	if namespace == "" {
-		panic("pagination: page namespace is required")
+		return Page[T]{}, fmt.Errorf("%w: namespace is required", ErrInvalidCursorMaterial)
+	}
+	if limit <= 0 {
+		return Page[T]{}, fmt.Errorf("%w: must be greater than zero", ErrInvalidLimit)
 	}
 	if len(rows) <= limit {
-		return Page[T]{Rows: rows}
+		return Page[T]{Rows: rows}, nil
+	}
+	if nextKey == nil {
+		return Page[T]{}, fmt.Errorf("%w: next-key function is required", ErrInvalidCursorMaterial)
 	}
 	page := rows[:limit]
+	nextCursor, err := Encode(namespace, filters, nextKey(page[len(page)-1]))
+	if err != nil {
+		return Page[T]{}, err
+	}
 	return Page[T]{
 		Rows:       page,
-		NextCursor: Encode(namespace, filters, nextKey(page[len(page)-1])),
-	}
+		NextCursor: nextCursor,
+	}, nil
 }

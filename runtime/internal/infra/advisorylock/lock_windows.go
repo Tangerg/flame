@@ -12,6 +12,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+const directoryLockWaitMilliseconds uint32 = 10
+
 func tryFile(file *os.File) (*Lease, error) {
 	return tryFileMode(file, true)
 }
@@ -118,7 +120,7 @@ func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking b
 				return 0, err
 			}
 		}
-		result, err := windows.WaitForSingleObject(handle, 10)
+		result, err := windows.WaitForSingleObject(handle, directoryLockWaitMilliseconds)
 		if err != nil {
 			_ = windows.CloseHandle(handle)
 			return 0, err

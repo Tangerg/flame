@@ -3,9 +3,11 @@ package sessions
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // PlanServices is the complete optional Plan capability. Grouping the two
@@ -37,6 +39,9 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 	}
 	if runID == "" {
 		return PlanBoundary{Recorded: true}, nil
+	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
 	}
 	steps, recorded, err := c.plan.Boundaries.Boundary(ctx, runID)
 	if err != nil {

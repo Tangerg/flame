@@ -15,7 +15,10 @@ import (
 // protocol page. Discovery policy, remote fallback, and catalog enrichment all
 // remain in application/models.
 func (s *Server) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
-	models := s.models.ListModels(ctx, in.Provider)
+	models, err := s.models.ListModels(ctx, in.Provider)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]protocol.Model, 0, len(models))
 	for _, model := range models {
 		out = append(out, presentModel(model))
@@ -75,18 +78,15 @@ func mapModelError(err error) error {
 }
 
 func presentModel(model modelapp.Model) protocol.Model {
-	if model.Details == nil {
-		return protocol.Model{ID: model.ID, Provider: model.Provider}
+	details := model.Details()
+	if details == nil {
+		return protocol.Model{ID: model.ID(), Provider: model.Provider()}
 	}
-	details := model.Details
 	out := protocol.Model{
-		ID:              model.ID,
-		Provider:        model.Provider,
-		DisplayName:     details.DisplayName,
-		ContextWindow:   details.ContextWindow,
-		MaxInputTokens:  details.MaxInputTokens,
-		MaxOutputTokens: details.MaxOutputTokens,
-		Deprecated:      details.Deprecated,
+		ID:          model.ID(),
+		Provider:    model.Provider(),
+		DisplayName: details.DisplayName,
+		Deprecated:  details.Deprecated,
 		Capabilities: &protocol.ModelCapabilities{
 			Reasoning:             details.Reasoning,
 			ReasoningLevels:       details.ReasoningLevels,
@@ -97,6 +97,18 @@ func presentModel(model modelapp.Model) protocol.Model {
 			ToolUse:               details.ToolUse,
 			StructuredOutput:      details.StructuredOutput,
 		},
+	}
+	if !details.TokenLimits.Unknown() {
+		out.TokenLimits = &protocol.ModelTokenLimits{}
+		if value, present := details.TokenLimits.ContextWindow(); present {
+			out.TokenLimits.ContextWindow = &value
+		}
+		if value, present := details.TokenLimits.MaxInputTokens(); present {
+			out.TokenLimits.MaxInputTokens = &value
+		}
+		if value, present := details.TokenLimits.MaxOutputTokens(); present {
+			out.TokenLimits.MaxOutputTokens = &value
+		}
 	}
 	if !details.KnowledgeCutoff.IsZero() {
 		out.KnowledgeCutoff = details.KnowledgeCutoff.Format(time.DateOnly)

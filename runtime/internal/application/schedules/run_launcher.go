@@ -28,21 +28,21 @@ func NewRunLauncher(runStarter RunStarter, defaultWorkspacePath string) RunLaunc
 
 // StartScheduledRun starts one schedule through the shared Run entry point, then
 // immediately drops the unused event subscription.
-func (r RunLauncher) StartScheduledRun(ctx context.Context, occurrence schedule.Occurrence) (StartedRun, error) {
-	scheduled := occurrence.Schedule
-	workspacePath := scheduled.CWD
+func (r RunLauncher) StartScheduledRun(ctx context.Context, request schedule.RunRequest) (StartedRun, error) {
+	execution := request.Execution()
+	workspacePath := execution.CWD()
 	if workspacePath == "" {
 		workspacePath = r.defaultWorkspacePath
 	}
 	startCtx, cancel := context.WithCancel(ctx)
 	result, err := r.runs.Start(startCtx, runs.StartCommand{
-		RunID:                occurrence.RunID,
-		NewSessionID:         occurrence.SessionID,
-		ScheduleFiring:       occurrence.ID,
+		RunID:                request.RunID(),
+		NewSessionID:         request.SessionID(),
+		ScheduleFiring:       request.OccurrenceID(),
 		DefaultWorkspacePath: workspacePath,
-		NewSessionTitle:      scheduled.Title,
-		ModelSelection:       scheduled.ModelSelection,
-		Input:                []transcript.ContentBlock{{Kind: transcript.TextContent, Text: scheduled.Instructions}},
+		NewSessionTitle:      execution.Title(),
+		ModelSelection:       execution.ModelSelection(),
+		Input:                []transcript.ContentBlock{{Kind: transcript.TextContent, Text: execution.Instructions()}},
 	})
 	cancel()
 	if err != nil {

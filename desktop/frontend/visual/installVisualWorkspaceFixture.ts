@@ -8,8 +8,8 @@ import providersSettings from "@/plugins/builtin/settings/providers";
 import {
   EMBEDDING_ROLE_KEY,
   PROVIDERS_KEY,
+  ProviderConfiguration,
   UTILITY_ROLE_KEY,
-  type ProviderConfiguration,
 } from "@/plugins/builtin/settings/providers/public/queries";
 import {
   MCP_SERVERS_KEY,
@@ -153,20 +153,22 @@ const RESIZER_SOURCE: WorkspaceFileContent = {
 };
 
 const PROVIDERS: ProviderConfiguration[] = [
-  {
+  ProviderConfiguration.restore({
     id: "openai",
     baseUrl: "https://api.openai.com/v1",
-    apiKeyMasked: "sk-…7F2A",
-    keySource: "stored",
+    credential: { masked: "sk-…7F2A", source: "stored" },
+    configured: true,
+    credentialRequirement: "apiKeyRequired",
     embeddingCapable: true,
     defaultEmbeddingModel: "text-embedding-3-large",
-  },
-  {
+  }),
+  ProviderConfiguration.restore({
     id: "anthropic",
     baseUrl: "https://api.anthropic.com",
-    apiKeyMasked: "",
+    configured: false,
+    credentialRequirement: "apiKeyRequired",
     embeddingCapable: false,
-  },
+  }),
 ];
 
 function feature(enabled: boolean): FeatureCapability {

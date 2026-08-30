@@ -9,7 +9,6 @@ package llm
 
 import (
 	"os"
-	"slices"
 )
 
 // Provider identifies an LLM vendor Flame supports. Its lowercase string value
@@ -48,58 +47,65 @@ const (
 	ProviderAnthropicCompatible Provider = "anthropic-compatible"
 )
 
-// SupportedProviders lists every provider with a static catalog entry,
-// regardless of which are configured. The result has deterministic order.
-func SupportedProviders() []Provider {
-	out := make([]Provider, 0, len(chatProviderCatalog))
-	for provider := range chatProviderCatalog {
-		out = append(out, provider)
+// ProviderProfile is the immutable constructed view of one provider
+// integration. Its behavior derives endpoint, discovery, and embedding facts
+// from closed policies instead of exposing the catalog's representation.
+type ProviderProfile struct {
+	value providerProfile
+}
+
+// LookupProvider resolves one exact provider identity. Absence is represented
+// by the lookup result, never by an empty profile or empty metadata strings.
+func LookupProvider(id Provider) (ProviderProfile, bool) {
+	profile, found := providers.lookup(id)
+	return ProviderProfile{value: profile}, found
+}
+
+// SupportedProviders lists every constructed profile in deterministic identity
+// order, regardless of which providers are configured at runtime.
+func SupportedProviders() []ProviderProfile {
+	ids := providers.supported()
+	out := make([]ProviderProfile, len(ids))
+	for index, id := range ids {
+		profile, _ := providers.lookup(id)
+		out[index] = ProviderProfile{value: profile}
 	}
-	slices.Sort(out)
 	return out
 }
 
-// IsSupported reports whether p is a known provider (has a table row).
-func (p Provider) IsSupported() bool {
-	_, ok := chatProviderCatalog[p]
-	return ok
+func (p ProviderProfile) ID() Provider { return p.value.id }
+
+// DefaultChatModel returns the bundled default. Endpoint-owned catalogs make
+// absence explicit because their model identity is selected from live data.
+func (p ProviderProfile) DefaultChatModel() (string, bool) {
+	return p.value.chatModels.defaultValue()
 }
 
-// DefaultModel returns a provider's catalog default model id (used when the
-// caller doesn't pick one). Empty for an unknown provider or one whose model id
-// is always user-supplied (Azure deployment, Ollama, or a compatible endpoint).
-func (p Provider) DefaultModel() string {
-	return chatProviderCatalog[p].defaultModel
+func (p ProviderProfile) CredentialEnvironment() string { return p.value.credential.environment }
+
+func (p ProviderProfile) RequiresAPIKey() bool { return p.value.credential.required() }
+
+func (p ProviderProfile) RequiresConfiguredEndpoint() bool {
+	return p.value.endpoint.requiresConfiguration()
 }
 
-// APIKeyEnv returns the environment variable a provider's key is read from,
-// or "" for an unknown provider.
-func (p Provider) APIKeyEnv() string {
-	return chatProviderCatalog[p].apiKeyEnv
+// DefaultEndpoint returns the catalog-owned endpoint when one exists. Adapter-
+// owned and caller-required endpoints are distinct policies, not empty values.
+func (p ProviderProfile) DefaultEndpoint() (string, bool) {
+	return p.value.endpoint.defaultValue()
 }
 
-// RequiresBaseURL reports whether p has no built-in endpoint and needs a
-// caller-supplied base URL (the compatible endpoint providers and Azure).
-func (p Provider) RequiresBaseURL() bool {
-	return chatProviderCatalog[p].requiresBaseURL
+func (p ProviderProfile) DiscoversModelsAtEndpoint() bool {
+	return p.value.chatModels.discoveredAtEndpoint()
 }
 
-// DefaultBaseURL returns a provider's built-in endpoint used for live model
-// discovery when the caller configured none — non-empty only for the local
-// Ollama daemon (hosted vendors encode their endpoint inside the adapter, and
-// the compatible endpoint providers have no default at all).
-func (p Provider) DefaultBaseURL() string {
-	return chatProviderCatalog[p].defaultBaseURL
-}
+func (p ProviderProfile) SupportsEmbeddings() bool { return p.value.embedding != nil }
 
-// ProbeModels reports whether p's available models are defined by its live
-// endpoint rather than the static catalog — true exactly for the providers
-// whose model id is user-supplied (no catalog default): Ollama, Azure, and the
-// generic OpenAI-/Anthropic-compatible endpoints. Dynamic discovery probes their
-// /v1/models instead of serving the embedded catalog for these.
-func (p Provider) ProbeModels() bool {
-	profile, ok := chatProviderCatalog[p]
-	return ok && profile.defaultModel == ""
+func (p ProviderProfile) DefaultEmbeddingModel() (string, bool) {
+	if p.value.embedding == nil {
+		return "", false
+	}
+	return p.value.embedding.models.defaultValue()
 }
 
 // EnvKeys reads the environment once and returns the API keys present for the
@@ -114,11 +120,12 @@ func (p Provider) ProbeModels() bool {
 // environment is process-static, so callers read this once at startup.
 func EnvKeys() map[string]string {
 	out := make(map[string]string)
-	for provider, profile := range chatProviderCatalog {
-		if profile.requiresBaseURL || profile.apiKeyEnv == "" {
+	for _, provider := range providers.supported() {
+		profile, _ := providers.lookup(provider)
+		if !profile.endpoint.environmentCredentialIsUsable() {
 			continue
 		}
-		if key := os.Getenv(profile.apiKeyEnv); key != "" {
+		if key := os.Getenv(profile.credential.environment); key != "" {
 			out[string(provider)] = key
 		}
 	}

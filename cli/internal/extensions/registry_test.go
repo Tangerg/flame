@@ -2,8 +2,48 @@ package extensions
 
 import (
 	"errors"
+	"math"
 	"testing"
 )
+
+func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
+	registry := &Registry{
+		next:    registrationSequence(math.MaxUint64),
+		plugins: map[string]registrationSequence{"existing": 1},
+	}
+	if _, err := registry.claim("replacement"); !errors.Is(err, errRegistrationSequenceExhausted) {
+		t.Fatalf("claim after sequence exhaustion error = %v", err)
+	}
+	if len(registry.plugins) != 1 || registry.plugins["existing"] != 1 {
+		t.Fatalf("loaded plugin owners after exhaustion = %+v", registry.plugins)
+	}
+}
+
+func TestContributionSequenceExhaustionDoesNotCreatePointState(t *testing.T) {
+	registry := &Registry{next: registrationSequence(math.MaxUint64)}
+	point := NewMultiPoint[string]("test.exhausted")
+	if _, _, err := registry.insertContribution("plugin", point, "", "value", 0); !errors.Is(err, errRegistrationSequenceExhausted) {
+		t.Fatalf("contribution after sequence exhaustion error = %v", err)
+	}
+	if len(registry.points) != 0 {
+		t.Fatalf("point state after sequence exhaustion = %+v", registry.points)
+	}
+}
+
+func TestRejectedContributionDoesNotConsumeRegistrationSequence(t *testing.T) {
+	registry := new(Registry)
+	point := NewKeyedPoint("test.sequence", func(value format) string { return value.ID })
+	if _, _, err := registry.insertContribution("first", point, "same", format{ID: "same"}, 0); err != nil {
+		t.Fatal(err)
+	}
+	before := registry.next
+	if _, _, err := registry.insertContribution("second", point, "same", format{ID: "same"}, 0); err == nil {
+		t.Fatal("duplicate contribution was accepted")
+	}
+	if registry.next != before {
+		t.Fatalf("registration sequence after rejected contribution = %d, want %d", registry.next, before)
+	}
+}
 
 type format struct {
 	ID    string
@@ -71,7 +111,7 @@ func TestKeyedPointRejectsDuplicateOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer first.Dispose()
+	defer func() { _ = first.Dispose() }()
 
 	if _, err := Load(registry, manifest("second", func(scope *Scope) error {
 		_, err := scope.Contribute(point, format{ID: "json"}, Contribution{})
@@ -92,7 +132,7 @@ func TestPointsWithTheSameIDCannotDisagreeOnType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer loaded.Dispose()
+	defer func() { _ = loaded.Dispose() }()
 
 	if _, err := Load(registry, manifest("ints", func(scope *Scope) error {
 		_, err := scope.Contribute(intsPoint, 1, Contribution{})
@@ -135,7 +175,7 @@ func TestScopeRejectsOwnershipAfterSetupReturns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer loaded.Dispose()
+	defer func() { _ = loaded.Dispose() }()
 
 	if _, err := retained.Contribute(point, "late", Contribution{}); !errors.Is(err, errScopeClosed) {
 		t.Fatalf("late contribution error = %v, want scope closed", err)
@@ -169,7 +209,7 @@ func TestScopeSealWinsAgainstAnInFlightLateContribution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer loaded.Dispose()
+	defer func() { _ = loaded.Dispose() }()
 
 	close(release)
 	if err := <-result; !errors.Is(err, errScopeClosed) {

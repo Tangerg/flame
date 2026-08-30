@@ -97,7 +97,7 @@ func TestRPCErrorResolutionUsesRegistryOrder(t *testing.T) {
 
 // TestAStructuredProblemCarriesItsPayload proves the two typed problems reach the wire
 // with the fields their type requires, rather than with the payload flattened into
-// prose. The presence rules published beside them say the same thing to clients; this
+// prose. The conditional rules published beside them say the same thing to clients; this
 // is the runtime half.
 func TestAStructuredProblemCarriesItsPayload(t *testing.T) {
 	t.Parallel()

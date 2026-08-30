@@ -80,9 +80,11 @@ const VISUAL_MODELS: SelectableModel[] = [
     label: "GPT-5.6 Sol",
     inputModalities: ["text", "image", "pdf"],
     outputModalities: ["text"],
-    contextWindow: VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW,
-    maxInputTokens: 922_000,
-    maxOutputTokens: 128_000,
+    tokenLimits: {
+      contextWindow: VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW,
+      maxInputTokens: 922_000,
+      maxOutputTokens: 128_000,
+    },
     reasoning: true,
     reasoningLevels: ["none", "low", "medium", "high", "xhigh", "max"],
     reasoningDefaultLevel: "medium",
@@ -96,7 +98,7 @@ const VISUAL_MODELS: SelectableModel[] = [
     label: "Qwen MT Plus",
     inputModalities: ["text"],
     outputModalities: ["text"],
-    contextWindow: 32_768,
+    tokenLimits: { contextWindow: 32_768 },
   }),
 ];
 

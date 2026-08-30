@@ -23,39 +23,39 @@ type fakeMCPPorts struct {
 
 func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return f.statuses }
 
-func (f *fakeMCPPorts) Tools(_ context.Context, server string) ([]mcpserver.AdvertisedTool, error) {
-	if server == "" {
+func (f *fakeMCPPorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+	if server == nil {
 		return f.tools, nil
 	}
 	var out []mcpserver.AdvertisedTool
 	for _, t := range f.tools {
-		if t.Server == server {
+		if t.Server == *server {
 			out = append(out, t)
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeMCPPorts) Reconnect(_ context.Context, name string) error {
-	f.reconnectName = name
+func (f *fakeMCPPorts) Reconnect(_ context.Context, name mcpserver.ServerName) error {
+	f.reconnectName = name.String()
 	return nil
 }
 
-func (f *fakeMCPPorts) Authorize(_ context.Context, name string) error {
-	f.authorizeName = name
+func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ServerName) error {
+	f.authorizeName = name.String()
 	return nil
 }
 
 func (*fakeMCPPorts) Probe(context.Context, mcpserver.Server) error     { return nil }
 func (*fakeMCPPorts) Configure(context.Context, mcpserver.Server) error { return nil }
-func (*fakeMCPPorts) Detach(string) error                               { return nil }
+func (*fakeMCPPorts) Detach(mcpserver.ServerName) error                 { return nil }
 
 func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
-	servers := make(map[string]mcpserver.Server, len(ports.statuses))
+	servers := make(map[mcpserver.ServerName]mcpserver.Server, len(ports.statuses))
 	for _, status := range ports.statuses {
 		servers[status.Name] = mcpserver.Server{
 			Name: status.Name, Enabled: true,
-			Transport: mcpserver.TransportStdio, Command: "mcp-" + status.Name,
+			Transport: mcpserver.TransportStdio, Command: "mcp-" + status.Name.String(),
 		}
 	}
 	return mcpapp.Config{
@@ -70,7 +70,7 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 // mcpRegistryFake is the integration registry the MCP config handlers drive.
 type mcpRegistryFake struct {
 	mu      sync.Mutex
-	servers map[string]mcpserver.Server
+	servers map[mcpserver.ServerName]mcpserver.Server
 	getErr  error
 	saved   []mcpserver.Server
 }
@@ -83,12 +83,12 @@ func (m *mcpRegistryFake) List(context.Context) ([]mcpserver.Server, error) {
 		out = append(out, srv)
 	}
 	slices.SortFunc(out, func(a, b mcpserver.Server) int {
-		return cmp.Compare(a.Name, b.Name)
+		return cmp.Compare(a.Name.String(), b.Name.String())
 	})
 	return out, nil
 }
 
-func (m *mcpRegistryFake) Get(_ context.Context, name string) (mcpserver.Server, bool, error) {
+func (m *mcpRegistryFake) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.getErr != nil {
@@ -102,14 +102,14 @@ func (m *mcpRegistryFake) Save(_ context.Context, srv mcpserver.Server) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.servers == nil {
-		m.servers = make(map[string]mcpserver.Server)
+		m.servers = make(map[mcpserver.ServerName]mcpserver.Server)
 	}
 	m.servers[srv.Name] = srv
 	m.saved = append(m.saved, srv)
 	return nil
 }
 
-func (m *mcpRegistryFake) Remove(_ context.Context, name string) error {
+func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) error {
 	m.mu.Lock()
 	delete(m.servers, name)
 	m.mu.Unlock()

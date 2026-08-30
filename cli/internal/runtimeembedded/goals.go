@@ -84,7 +84,7 @@ func (r *Runtime) StartGoal(ctx context.Context, start goal.Start) (goal.Goal, e
 	result, err := r.goals.StartGoal(ctx, protocol.StartGoalRequest{
 		SessionID: start.SessionID, Objective: start.Objective,
 		Provider: start.Provider, Model: start.Model,
-		Budget: protocol.GoalBudget{MaxRuns: start.Budget.MaxRuns, MaxCostUSD: start.Budget.MaxCostUSD, MaxSteps: start.Budget.MaxSteps},
+		Budget: goalBudgetToProtocol(start.Budget),
 	}, options)
 	projected, err := projectGoalResult("start goal", start.SessionID, result, err)
 	if err != nil {
@@ -101,7 +101,7 @@ func (r *Runtime) StopGoal(ctx context.Context, sessionID string) (goal.Goal, er
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	if projected.Status == goal.Active {
+	if projected.Status() == goal.Active {
 		return goal.Goal{}, runtimeContractViolation("stop goal returned an active acknowledgement")
 	}
 	return projected, nil
@@ -112,10 +112,10 @@ func (r *Runtime) ResumeGoal(ctx context.Context, sessionID string) (goal.Goal, 
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	if projected.Status != goal.Active {
+	if projected.Status() != goal.Active {
 		return goal.Goal{}, runtimeContractViolation(
 			"resume goal returned status %q, want %q",
-			projected.Status,
+			projected.Status(),
 			goal.Active,
 		)
 	}
@@ -149,11 +149,11 @@ func projectGoalResult(operation, expectedSessionID string, result *protocol.Goa
 	if err != nil {
 		return goal.Goal{}, runtimeContractViolation("%s returned an invalid goal: %v", operation, err)
 	}
-	if projected.SessionID != expectedSessionID {
+	if projected.SessionID() != expectedSessionID {
 		return goal.Goal{}, runtimeContractViolation(
 			"%s returned session %q for %q",
 			operation,
-			projected.SessionID,
+			projected.SessionID(),
 			expectedSessionID,
 		)
 	}
@@ -161,18 +161,52 @@ func projectGoalResult(operation, expectedSessionID string, result *protocol.Goa
 }
 
 func projectGoal(value protocol.Goal) (goal.Goal, error) {
-	projected := goal.Goal{
+	budget, err := projectGoalBudget(value.Budget)
+	if err != nil {
+		return goal.Goal{}, fmt.Errorf("project goal budget: %w", err)
+	}
+	used, err := goal.NewUsage(value.Used.Runs, value.Used.CostUSD, value.Used.Steps)
+	if err != nil {
+		return goal.Goal{}, fmt.Errorf("project goal usage: %w", err)
+	}
+	snapshot := goal.Snapshot{
 		SessionID: value.SessionID, Objective: value.Objective, Status: goal.Status(value.Status),
-		Provider: value.Provider, Model: value.Model,
-		Budget:    goal.Budget{MaxRuns: value.Budget.MaxRuns, MaxCostUSD: value.Budget.MaxCostUSD, MaxSteps: value.Budget.MaxSteps},
-		Used:      goal.Usage{Runs: value.Used.Runs, CostUSD: value.Used.CostUSD, Steps: value.Used.Steps},
+		Provider: value.Provider, Model: value.Model, Budget: budget, Used: used,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 	if value.Reason != nil {
-		projected.Reason = &goal.Reason{Code: goal.ReasonCode(value.Reason.Code), Detail: value.Reason.Detail}
+		snapshot.ReasonCode = goal.ReasonCode(value.Reason.Code)
+		snapshot.ReasonDetail = value.Reason.Detail
 	}
-	if err := projected.Validate(); err != nil {
+	projected, err := goal.Restore(snapshot)
+	if err != nil {
 		return goal.Goal{}, fmt.Errorf("project goal: %w", err)
 	}
 	return projected, nil
+}
+
+func goalBudgetToProtocol(budget goal.Budget) *protocol.GoalBudget {
+	if budget.Unlimited() {
+		return nil
+	}
+	wire := &protocol.GoalBudget{}
+	if value, limited := budget.MaxRuns(); limited {
+		wire.MaxRuns = &value
+	}
+	if value, limited := budget.MaxCostUSD(); limited {
+		wire.MaxCostUSD = &value
+	}
+	if value, limited := budget.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	return wire
+}
+
+func projectGoalBudget(wire *protocol.GoalBudget) (goal.Budget, error) {
+	if wire == nil {
+		return goal.UnlimitedBudget(), nil
+	}
+	return goal.NewBudget(goal.BudgetLimits{
+		MaxRuns: wire.MaxRuns, MaxCostUSD: wire.MaxCostUSD, MaxSteps: wire.MaxSteps,
+	})
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	runtimeserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -429,7 +430,7 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	cfg := ComposeConfig(
 		config.Settings{Provider: "anthropic", Model: "claude-test"},
 		stores,
-		client,
+		testChatResolver(client),
 		stores.Providers,
 		NewHookResolver(stores.DataDirectory, stores.Trust),
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
@@ -462,9 +463,9 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *runtime
 
 func protocolServer(host *Host, cwd string) (*runtimeserver.Server, error) {
 	return host.application.newOperationService(protocol.ServerInfo{
-		Name: "conformance-test", Version: "0.0.0-test", InstanceID: "runtime_test",
+		Name: "conformance-test", Version: "0.0.0-test", InstanceID: identityfixture.RuntimeInstanceID,
 		DefaultWorkspace: protocol.WorkspaceRef{Path: cwd}, Home: cwd,
-	}, "idp_protocol_lifecycle_test")
+	}, identityfixture.IdempotencyNamespace)
 }
 
 func collectRunEvents(events iter.Seq[protocol.RunEvent]) <-chan []protocol.RunEvent {

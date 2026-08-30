@@ -21,6 +21,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"sync"
@@ -31,8 +32,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+const serverReadHeaderTimeout = 10 * time.Second
 
 // messageDispatcher is the dispatch surface this transport needs: route
 // one inbound message, return the synchronous reply plus any stream.
@@ -113,8 +117,8 @@ func NewServer(cfg Config) (*Server, error) {
 	if cfg.ProtocolVersion == "" {
 		return nil, errors.New("http: ProtocolVersion is required")
 	}
-	if cfg.ServerInfo.InstanceID == "" {
-		return nil, errors.New("http: ServerInfo.InstanceID is required")
+	if _, err := runtimeinstanceidentity.Parse(cfg.ServerInfo.InstanceID); err != nil {
+		return nil, fmt.Errorf("http: ServerInfo.InstanceID: %w", err)
 	}
 	seenProbes := make(map[string]struct{}, len(cfg.HealthProbes))
 	for _, probe := range cfg.HealthProbes {
@@ -147,7 +151,7 @@ func NewServer(cfg Config) (*Server, error) {
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           s.Handler(),
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
 		// No WriteTimeout — SSE streams can be arbitrarily long.
 	}
 	return s, nil

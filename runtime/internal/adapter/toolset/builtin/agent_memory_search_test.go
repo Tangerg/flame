@@ -24,6 +24,9 @@ func TestNewUsesSearchMemoryContract(t *testing.T) {
 	if _, err := tl.Call(t.Context(), `{"query":"naming","limit":21}`); err == nil {
 		t.Fatal("expected an error for limit above 20")
 	}
+	if _, err := tl.Call(t.Context(), `{"query":"naming","limit":0}`); err == nil {
+		t.Fatal("expected an error for numeric default sentinel")
+	}
 	if _, err := tl.Call(t.Context(), `{"query":"naming","unknown":true}`); err == nil {
 		t.Fatal("expected an error for an unknown argument")
 	}

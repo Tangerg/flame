@@ -8,6 +8,8 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 )
 
 type Protocol struct {
@@ -83,12 +85,11 @@ type SubscriptionLimits struct {
 }
 
 type Limits struct {
-	MaxConcurrentRuns                int                `json:"maxConcurrentRuns"`
-	IdempotencyRetentionSeconds      int                `json:"idempotencyRetentionSeconds"`
-	IdempotencyNamespace             string             `json:"idempotencyNamespace"`
-	RunReplay                        ReplayLimits       `json:"runReplay"`
-	MCPAuthorizationRetentionSeconds int                `json:"mcpAuthorizationRetentionSeconds"`
-	RuntimeSubscription              SubscriptionLimits `json:"runtimeSubscription"`
+	RunConcurrency                   RunConcurrencyLimit      `json:"runConcurrency"`
+	CommandReplay                    commandreplay.Capability `json:"commandReplay"`
+	RunReplay                        ReplayLimits             `json:"runReplay"`
+	MCPAuthorizationRetentionSeconds int                      `json:"mcpAuthorizationRetentionSeconds"`
+	RuntimeSubscription              SubscriptionLimits       `json:"runtimeSubscription"`
 }
 
 // Profile is the complete, CLI-owned projection of one successful runtime
@@ -109,11 +110,6 @@ func (p Profile) Clone() Profile {
 	p.StreamingMethods = slices.Clone(p.StreamingMethods)
 	p.Features = maps.Clone(p.Features)
 	return p
-}
-
-// Available reports whether discovery populated this profile.
-func (p Profile) Available() bool {
-	return strings.TrimSpace(p.Server.Name) != ""
 }
 
 func (p Profile) Validate() error {
@@ -150,14 +146,14 @@ func (p Profile) Validate() error {
 }
 
 func (l Limits) validate() error {
-	if l.MaxConcurrentRuns < 0 {
-		return errors.New("runtime limits have a negative concurrent-run cap")
+	if err := l.RunConcurrency.Validate(); err != nil {
+		return fmt.Errorf("runtime limits: %w", err)
 	}
-	if l.IdempotencyRetentionSeconds <= 0 || l.MCPAuthorizationRetentionSeconds <= 0 {
-		return errors.New("runtime limits require positive retention periods")
+	if err := l.CommandReplay.Validate(); err != nil {
+		return fmt.Errorf("runtime limits: %w", err)
 	}
-	if strings.TrimSpace(l.IdempotencyNamespace) == "" {
-		return errors.New("runtime limits require an idempotency namespace")
+	if l.MCPAuthorizationRetentionSeconds <= 0 {
+		return errors.New("runtime limits require positive MCP authorization retention")
 	}
 	if strings.TrimSpace(l.RunReplay.Scope) == "" || l.RunReplay.MaxEvents <= 0 || l.RunReplay.MaxBytes <= 0 {
 		return errors.New("runtime replay limits are incomplete")

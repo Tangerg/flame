@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 	"syscall"
-	"time"
 )
 
 func configureProcess(command *exec.Cmd) {
@@ -26,5 +25,5 @@ func configureProcess(command *exec.Cmd) {
 		}
 		return err
 	}
-	command.WaitDelay = 250 * time.Millisecond
+	command.WaitDelay = processWaitDelay
 }

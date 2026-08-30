@@ -43,6 +43,10 @@ func (s *Server) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protoc
 // The registered capability rule decides whether a caller may ask for descendants;
 // this handler preserves the accepted filter all the way to the durable read.
 func (s *Server) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
+	limit, err := requestedPageLimit(in.Limit)
+	if err != nil {
+		return nil, wirePageError(err)
+	}
 	statuses, err := runStatusesFromWire(in.Statuses)
 	if err != nil {
 		return nil, err
@@ -51,7 +55,7 @@ func (s *Server) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*pr
 		SessionID:          in.SessionID,
 		Statuses:           statuses,
 		IncludeDescendants: in.IncludeDescendants,
-	}, in.Cursor, in.Limit)
+	}, in.Cursor, limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
@@ -92,11 +96,15 @@ func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.Status, error) {
 // trimmed set would be answered, consumed as if complete, and leave the run waiting
 // on interrupts the client believes it resolved.
 func (s *Server) ListInterrupts(ctx context.Context, in protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
+	limit, err := requestedPageLimit(in.Limit)
+	if err != nil {
+		return nil, wireInterruptPageError(wirePageError(err))
+	}
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queries.ListPendingInterruptPage(ctx, in.SessionID, in.RootRunID, caller, in.Cursor, in.Limit)
+	page, err := s.queries.ListPendingInterruptPage(ctx, in.SessionID, in.RootRunID, caller, in.Cursor, limit)
 	if err != nil {
 		return nil, wireInterruptPageError(wirePageError(err))
 	}
@@ -155,9 +163,10 @@ func (s *Server) SubscribeRun(ctx context.Context, in protocol.SubscribeRunReque
 	if err != nil {
 		return nil, nil, wireLiveSegmentError(err)
 	}
-	head := ""
+	var head *string
 	if attached.HeadCursor != "" {
-		head = protocol.IDPrefixEvent + attached.HeadCursor
+		framed := protocol.IDPrefixEvent + attached.HeadCursor
+		head = &framed
 	}
 	return &protocol.SubscribeRunResponse{
 		RunID: in.RunID, SegmentID: attached.Record.SegmentID, HeadEventID: head,

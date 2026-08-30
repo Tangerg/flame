@@ -3,10 +3,16 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/Tangerg/flame/cli/internal/exactint"
+	"github.com/Tangerg/flame/cli/internal/modelidentity"
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -41,8 +47,8 @@ func (s Session) Equal(other Session) bool {
 
 func (s Session) Validate() error {
 	var problems []error
-	if strings.TrimSpace(s.ID) == "" {
-		problems = append(problems, errors.New("id is empty"))
+	if _, err := sessionidentity.Parse(s.ID); err != nil {
+		problems = append(problems, err)
 	}
 	if err := s.Workspace.Validate(); err != nil {
 		problems = append(problems, err)
@@ -53,8 +59,22 @@ func (s Session) Validate() error {
 	if err := (ModelRef{Provider: s.Provider, Model: s.Model}).Validate(); err != nil {
 		problems = append(problems, err)
 	}
+	if err := validateCommittedRevision("session", s.Revision); err != nil {
+		problems = append(problems, err)
+	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("session: %w", err)
+	}
+	return nil
+}
+
+func validateCommittedRevision(owner string, value uint64) error {
+	revision, err := exactint.Restore(value)
+	if err != nil {
+		return fmt.Errorf("%s revision: %w", owner, err)
+	}
+	if revision.IsZero() {
+		return fmt.Errorf("%s revision must be positive", owner)
 	}
 	return nil
 }
@@ -70,7 +90,7 @@ type ModelRef struct {
 const modelRefSeparator = "/"
 
 func NewModelRef(provider, model string) (ModelRef, error) {
-	ref := ModelRef{Provider: strings.TrimSpace(provider), Model: strings.TrimSpace(model)}
+	ref := ModelRef{Provider: provider, Model: model}
 	if err := ref.Validate(); err != nil {
 		return ModelRef{}, err
 	}
@@ -78,7 +98,7 @@ func NewModelRef(provider, model string) (ModelRef, error) {
 }
 
 func ParseModelRef(value string) (ModelRef, error) {
-	provider, model, found := strings.Cut(strings.TrimSpace(value), modelRefSeparator)
+	provider, model, found := strings.Cut(value, modelRefSeparator)
 	if !found {
 		return ModelRef{}, fmt.Errorf("model identity must use provider%smodel form", modelRefSeparator)
 	}
@@ -86,11 +106,8 @@ func ParseModelRef(value string) (ModelRef, error) {
 }
 
 func (m ModelRef) Validate() error {
-	if strings.TrimSpace(m.Provider) == "" || strings.TrimSpace(m.Model) == "" {
-		return errors.New("model identity requires provider and model")
-	}
-	if m.Provider != strings.TrimSpace(m.Provider) || m.Model != strings.TrimSpace(m.Model) {
-		return errors.New("model identity must not have surrounding whitespace")
+	if err := modelidentity.Selection(m.Provider, m.Model, ""); err != nil {
+		return err
 	}
 	if strings.Contains(m.Provider, modelRefSeparator) {
 		return fmt.Errorf("model identity provider must not contain %q", modelRefSeparator)
@@ -102,22 +119,38 @@ func (m ModelRef) String() string { return m.Provider + modelRefSeparator + m.Mo
 
 type SessionQuery struct {
 	Cursor    string
-	Limit     int
+	PageSize  PageSize
 	Search    string
 	Workspace string
 }
 
+// MaximumSessionSearchCharacters mirrors the Flame sessions.list transport
+// envelope while keeping CLI query admission independent of protocol DTOs.
+const MaximumSessionSearchCharacters = 1024
+
 // Normalize returns one exact session-catalog query. Search text and workspace
-// input are presentation values, while a non-empty workspace is an absolute
-// identity because filtering happens client-side against canonical responses.
+// input are presentation values; a non-empty workspace is an exact absolute
+// identity because the Runtime binds it into the authoritative cursor query.
 func (s SessionQuery) Normalize() (SessionQuery, error) {
-	if s.Limit < 0 {
-		return SessionQuery{}, errors.New("session query: limit cannot be negative")
+	if _, err := s.PageSize.Rows(); err != nil {
+		return SessionQuery{}, fmt.Errorf("session query: %w", err)
+	}
+	if !utf8.ValidString(s.Search) {
+		return SessionQuery{}, errors.New("session query: search is not valid UTF-8")
 	}
 	s.Search = strings.TrimSpace(s.Search)
+	if strings.ContainsRune(s.Search, 0) {
+		return SessionQuery{}, errors.New("session query: search contains NUL")
+	}
+	if utf8.RuneCountInString(s.Search) > MaximumSessionSearchCharacters {
+		return SessionQuery{}, fmt.Errorf("session query: search exceeds %d characters", MaximumSessionSearchCharacters)
+	}
 	s.Workspace = strings.TrimSpace(s.Workspace)
 	if err := (workspace.ResolveRequest{Path: s.Workspace}).Validate(); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
+	}
+	if s.Workspace != "" && filepath.Clean(s.Workspace) != s.Workspace {
+		return SessionQuery{}, errors.New("session query: workspace path is not canonical")
 	}
 	return s, nil
 }
@@ -148,8 +181,7 @@ type SessionSnapshot struct {
 	Session      Session
 	Transcript   []Block
 	Runs         []Run
-	Plan         []PlanItem
-	PlanRevision uint64
+	Plan         *Plan
 	Interactions []Interaction
 }
 
@@ -207,11 +239,10 @@ func (s SessionSnapshot) Validate() error {
 	if err := s.validateReferences(transcript, runs); err != nil {
 		return err
 	}
-	if err := validatePlan(s.Plan); err != nil {
-		return fmt.Errorf("session snapshot: %w", err)
-	}
-	if s.PlanRevision == 0 && len(s.Plan) != 0 {
-		return errors.New("session snapshot: unwritten plan contains items")
+	if s.Plan != nil {
+		if err := s.Plan.Validate(); err != nil {
+			return fmt.Errorf("session snapshot: %w", err)
+		}
 	}
 	return s.validateLifecycle(transcript, runs)
 }
@@ -254,19 +285,33 @@ func (s SessionSnapshot) validateRuns() (snapshotRuns, error) {
 		byID: make(map[string]Run, len(s.Runs)), position: make(map[string]int, len(s.Runs)),
 		activeIndex: -1,
 	}
+	lastRootIndex, err := indexed.index(s.Session.ID, s.Runs)
+	if err != nil {
+		return snapshotRuns{}, err
+	}
+	if indexed.activeIndex >= 0 && indexed.activeIndex != lastRootIndex {
+		return snapshotRuns{}, errors.New("session snapshot: active run is not the latest root run")
+	}
+	if err := indexed.validateChildLineages(s.Runs); err != nil {
+		return snapshotRuns{}, err
+	}
+	return indexed, nil
+}
+
+func (s *snapshotRuns) index(sessionID string, runs []Run) (int, error) {
 	lastRootIndex := -1
-	for i, run := range s.Runs {
+	for i, run := range runs {
 		if err := run.Validate(); err != nil {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: run %d: %w", i+1, err)
+			return -1, fmt.Errorf("session snapshot: run %d: %w", i+1, err)
 		}
-		if run.SessionID != s.Session.ID {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: run %s belongs to session %s", run.ID, run.SessionID)
+		if run.SessionID != sessionID {
+			return -1, fmt.Errorf("session snapshot: run %s belongs to session %s", run.ID, run.SessionID)
 		}
-		if _, duplicate := indexed.byID[run.ID]; duplicate {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: repeats run %q", run.ID)
+		if _, duplicate := s.byID[run.ID]; duplicate {
+			return -1, fmt.Errorf("session snapshot: repeats run %q", run.ID)
 		}
-		indexed.byID[run.ID] = run
-		indexed.position[run.ID] = i
+		s.byID[run.ID] = run
+		s.position[run.ID] = i
 		if !run.Lineage.IsRoot() {
 			continue
 		}
@@ -274,44 +319,52 @@ func (s SessionSnapshot) validateRuns() (snapshotRuns, error) {
 		if run.Status == RunStatusFinished {
 			continue
 		}
-		if indexed.activeIndex >= 0 {
-			return snapshotRuns{}, errors.New("session snapshot: more than one root run is active")
+		if s.activeIndex >= 0 {
+			return -1, errors.New("session snapshot: more than one root run is active")
 		}
-		indexed.activeIndex = i
+		s.activeIndex = i
 	}
-	if indexed.activeIndex >= 0 && indexed.activeIndex != lastRootIndex {
-		return snapshotRuns{}, errors.New("session snapshot: active run is not the latest root run")
-	}
-	for i, run := range s.Runs {
+	return lastRootIndex, nil
+}
+
+func (s snapshotRuns) validateChildLineages(runs []Run) error {
+	for i, run := range runs {
 		if run.Lineage.IsRoot() {
 			continue
 		}
-		parent, parentExists := indexed.byID[run.Lineage.ParentRunID]
-		root, rootExists := indexed.byID[run.Lineage.RootRunID]
-		if !parentExists || !rootExists || !root.Lineage.IsRoot() {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s has an incomplete lineage", run.ID)
-		}
-		parentRootID := parent.Lineage.RootRunID
-		if parent.Lineage.IsRoot() {
-			parentRootID = parent.ID
-		}
-		if parentRootID != run.Lineage.RootRunID {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s crosses run trees", run.ID)
-		}
-		if indexed.position[parent.ID] >= i {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s precedes parent %s", run.ID, parent.ID)
-		}
-		if root.Status == RunStatusFinished && run.Status != RunStatusFinished {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s outlives finished root %s", run.ID, root.ID)
-		}
-		if root.Status == RunStatusRunning && run.Status == RunStatusWaiting {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s is waiting beneath running root %s", run.ID, root.ID)
-		}
-		if root.Status == RunStatusWaiting && run.Status == RunStatusRunning {
-			return snapshotRuns{}, fmt.Errorf("session snapshot: child run %s is running beneath waiting root %s", run.ID, root.ID)
+		if err := s.validateChildLineage(run, i); err != nil {
+			return err
 		}
 	}
-	return indexed, nil
+	return nil
+}
+
+func (s snapshotRuns) validateChildLineage(run Run, position int) error {
+	parent, parentExists := s.byID[run.Lineage.ParentRunID()]
+	root, rootExists := s.byID[run.Lineage.RootRunID()]
+	if !parentExists || !rootExists || !root.Lineage.IsRoot() {
+		return fmt.Errorf("session snapshot: child run %s has an incomplete lineage", run.ID)
+	}
+	parentRootID := parent.Lineage.RootRunID()
+	if parent.Lineage.IsRoot() {
+		parentRootID = parent.ID
+	}
+	if parentRootID != run.Lineage.RootRunID() {
+		return fmt.Errorf("session snapshot: child run %s crosses run trees", run.ID)
+	}
+	if s.position[parent.ID] >= position {
+		return fmt.Errorf("session snapshot: child run %s precedes parent %s", run.ID, parent.ID)
+	}
+	if root.Status == RunStatusFinished && run.Status != RunStatusFinished {
+		return fmt.Errorf("session snapshot: child run %s outlives finished root %s", run.ID, root.ID)
+	}
+	if root.Status == RunStatusRunning && run.Status == RunStatusWaiting {
+		return fmt.Errorf("session snapshot: child run %s is waiting beneath running root %s", run.ID, root.ID)
+	}
+	if root.Status == RunStatusWaiting && run.Status == RunStatusRunning {
+		return fmt.Errorf("session snapshot: child run %s is running beneath waiting root %s", run.ID, root.ID)
+	}
+	return nil
 }
 
 func (s SessionSnapshot) validateReferences(transcript snapshotTranscript, runs snapshotRuns) error {
@@ -325,7 +378,7 @@ func (s SessionSnapshot) validateReferences(transcript snapshotTranscript, runs 
 	}
 	for _, block := range transcript.running {
 		run := runs.byID[block.RunID]
-		rootID := run.Lineage.RootRunID
+		rootID := run.Lineage.RootRunID()
 		if run.Lineage.IsRoot() {
 			rootID = run.ID
 		}
@@ -381,7 +434,7 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 		runID := InteractionRunID(interaction)
 		run, runExists := runs.byID[runID]
 		block, exists := transcript.byIdentity[blockIdentity(runID, itemID)]
-		rootID := run.Lineage.RootRunID
+		rootID := run.Lineage.RootRunID()
 		if run.Lineage.IsRoot() {
 			rootID = run.ID
 		}
@@ -404,11 +457,10 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	}
 	next := NewConversation()
 	next.blocks = cloneBlocks(snapshot.Transcript)
-	next.plan = slices.Clone(snapshot.Plan)
-	next.planRevision = snapshot.PlanRevision
+	next.plan = clonePlan(snapshot.Plan)
 	next.rebuildBlockIndex()
 	for _, run := range snapshot.Runs {
-		next.runs[run.ID] = run.Clone()
+		next.rememberRun(run)
 	}
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
@@ -479,6 +531,9 @@ func (c CreateSession) ValidateResult(result Session) error {
 	if err := result.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
+	if result.Revision != exactint.First().Value() {
+		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
+	}
 	if title := strings.TrimSpace(c.Title); title != "" && result.Title != title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
 	}
@@ -501,8 +556,8 @@ type UpdateSession struct {
 }
 
 func (u UpdateSession) Validate() error {
-	if strings.TrimSpace(u.SessionID) == "" {
-		return errors.New("session update: session id is empty")
+	if _, err := sessionidentity.Parse(u.SessionID); err != nil {
+		return fmt.Errorf("session update: %w", err)
 	}
 	if u.Title == nil && u.Workspace == nil && u.Model == nil && u.Favorite == nil {
 		return errors.New("session update: no fields are selected")
@@ -517,6 +572,9 @@ func (u UpdateSession) Validate() error {
 		if err := u.Model.Validate(); err != nil {
 			return fmt.Errorf("session update: %w", err)
 		}
+	}
+	if err := validateCommittedRevision("session update expected", u.ExpectedRevision); err != nil {
+		return err
 	}
 	return nil
 }
@@ -535,8 +593,8 @@ func (u UpdateSession) ValidateResult(result Session) error {
 	if result.ID != u.SessionID {
 		problems = append(problems, fmt.Errorf("runtime returned session %s, want %s", result.ID, u.SessionID))
 	}
-	if result.Revision <= u.ExpectedRevision {
-		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d", result.Revision, u.ExpectedRevision))
+	if err := exactint.Follows(u.ExpectedRevision, result.Revision); err != nil {
+		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d: %w", result.Revision, u.ExpectedRevision, err))
 	}
 	if u.Title != nil && result.Title != strings.TrimSpace(*u.Title) {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, strings.TrimSpace(*u.Title)))
@@ -563,11 +621,13 @@ type ForkSession struct {
 }
 
 func (f ForkSession) Validate() error {
-	if strings.TrimSpace(f.SessionID) == "" {
-		return errors.New("session fork: session id is empty")
+	if _, err := sessionidentity.Parse(f.SessionID); err != nil {
+		return fmt.Errorf("session fork: %w", err)
 	}
-	if f.FromRunID != "" && strings.TrimSpace(f.FromRunID) == "" {
-		return errors.New("session fork: run id is empty")
+	if f.FromRunID != "" {
+		if _, err := runidentity.ParseRun(f.FromRunID); err != nil {
+			return fmt.Errorf("session fork: %w", err)
+		}
 	}
 	if f.Title != "" && strings.TrimSpace(f.Title) == "" {
 		return errors.New("session fork: title is empty")
@@ -583,7 +643,10 @@ func (f ForkSession) ValidateResult(result Session) error {
 	if err := result.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
-	if result.ID == strings.TrimSpace(f.SessionID) {
+	if result.Revision != exactint.First().Value() {
+		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
+	}
+	if result.ID == f.SessionID {
 		problems = append(problems, fmt.Errorf("runtime returned source session %q", result.ID))
 	}
 	if title := strings.TrimSpace(f.Title); title != "" && result.Title != title {

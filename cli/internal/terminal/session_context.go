@@ -2,10 +2,22 @@ package terminal
 
 import "github.com/Tangerg/flame/cli/internal/agent"
 
-type sessionContextEpoch uint64
+type sessionContextLease struct {
+	retired bool
+}
 
-func (s *sessionContextEpoch) advance() {
-	*s = *s + 1
+func newSessionContextLease() *sessionContextLease {
+	return &sessionContextLease{}
+}
+
+func (s *sessionContextLease) retire() {
+	if s != nil {
+		s.retired = true
+	}
+}
+
+func (s *sessionContextLease) current(candidate *sessionContextLease) bool {
+	return s != nil && s == candidate && !s.retired
 }
 
 func (a *app) canPreserveInteractionProjection(next *agent.Conversation) bool {
@@ -28,7 +40,8 @@ func (a *app) prepareSessionProjectionReplacement(next agent.Session, conversati
 }
 
 func (a *app) retireSessionContext() {
-	a.sessionContext.advance()
+	a.sessionContext.retire()
+	a.sessionContext = newSessionContextLease()
 	a.dismissInteractionProjection()
 	a.dismissConfirmation()
 	a.dismissReader()
@@ -41,15 +54,15 @@ func (a *app) retireSessionContext() {
 	a.sessionDialog.Dismiss()
 	a.queueDialog.Dismiss()
 	if a.sessionRenameDialog != nil {
-		a.sessionRenameDialog.Dismiss()
+		a.sessionRenameDialog.Controller().Dismiss()
 		a.sessionRenameDialog = nil
 	}
 	if a.sessionDeleteDialog != nil {
-		a.sessionDeleteDialog.Dismiss()
+		a.sessionDeleteDialog.Controller().Dismiss()
 		a.sessionDeleteDialog = nil
 	}
 	if a.scheduleDialog != nil {
-		a.scheduleDialog.Dismiss()
+		a.scheduleDialog.Controller().Dismiss()
 		a.scheduleDialog = nil
 	}
 }

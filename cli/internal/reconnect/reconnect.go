@@ -5,43 +5,78 @@ package reconnect
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
+var ErrInvalidPolicy = errors.New("reconnect policy is invalid")
+
+const (
+	defaultRetryBase             = 50 * time.Millisecond
+	defaultRetryMaximum          = time.Second
+	commandInProgressMinimumWait = time.Second
+)
+
 type Policy struct {
-	Attempts int
-	Base     time.Duration
-	Maximum  time.Duration
+	configured bool
+	attempts   int
+	base       time.Duration
+	maximum    time.Duration
 }
 
-func New(attempts int) Policy {
-	return Policy{Attempts: max(attempts, 0), Base: 50 * time.Millisecond, Maximum: time.Second}
+func New(attempts int) (Policy, error) {
+	return newPolicy(attempts, defaultRetryBase, defaultRetryMaximum)
+}
+
+func Disabled() Policy {
+	return Policy{
+		configured: true,
+		base:       defaultRetryBase,
+		maximum:    defaultRetryMaximum,
+	}
+}
+
+func newPolicy(attempts int, base, maximum time.Duration) (Policy, error) {
+	if attempts < 0 || base <= 0 || maximum < base {
+		return Policy{}, fmt.Errorf("%w: require non-negative attempts and 0 < base <= maximum", ErrInvalidPolicy)
+	}
+	return Policy{configured: true, attempts: attempts, base: base, maximum: maximum}, nil
+}
+
+func (p Policy) AttemptLimit() int { return p.attempts }
+
+func (p Policy) Validate() error {
+	if !p.configured || p.attempts < 0 || p.base <= 0 || p.maximum < p.base {
+		return ErrInvalidPolicy
+	}
+	return nil
 }
 
 // Next reports the delay before retrying failure number n, counted from one.
-func (p Policy) Next(n int, err error) (time.Duration, bool) {
-	if n <= 0 || n > p.Attempts || !Retryable(err) {
-		return 0, false
+func (p Policy) Next(n int, err error) (time.Duration, bool, error) {
+	if err := p.Validate(); err != nil {
+		return 0, false, err
 	}
-	base := max(p.Base, 0)
-	maximum := p.Maximum
-	if maximum <= 0 {
-		maximum = time.Second
+	if n <= 0 {
+		return 0, false, fmt.Errorf("%w: failure number must be positive", ErrInvalidPolicy)
 	}
-	delay := base
+	if n > p.attempts || !Retryable(err) {
+		return 0, false, nil
+	}
+	delay := p.base
 	for range n - 1 {
-		if delay >= maximum/2 {
-			delay = maximum
+		if delay >= p.maximum/2 {
+			delay = p.maximum
 			break
 		}
 		delay *= 2
 	}
 	if errors.Is(err, agent.ErrCommandInProgress) {
-		delay = max(delay, time.Second)
+		delay = max(delay, commandInProgressMinimumWait)
 	}
-	return min(delay, maximum), true
+	return min(delay, p.maximum), true, nil
 }
 
 // Retryable reports whether retrying can repair the classified transport

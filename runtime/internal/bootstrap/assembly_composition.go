@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/skillproposal"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -28,6 +29,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
 )
+
+const interactionDeploymentConfigurationIdentity = "flame.runtime.interaction.v1"
 
 // policyComposition contains the application policies that share the same
 // process-local invalidation vocabulary. It owns no background task or closer.
@@ -58,6 +61,19 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		return policyComposition{}, err
 	}
 	goalStore := goals.WithInvalidations(cfg.GoalStore, invalidations.Publish)
+	scheduleCoordinator := schedules.Disabled()
+	if cfg.ScheduleStore != nil {
+		scheduleCoordinator, err = schedules.New(schedules.Dependencies{
+			Store:         cfg.ScheduleStore,
+			Paths:         workspacepath.Resolver{},
+			Models:        modelcatalog.Capabilities{},
+			Identities:    scheduleidentity.Source{},
+			Invalidations: invalidations.Publish,
+		})
+		if err != nil {
+			return policyComposition{}, fmt.Errorf("runtime: construct Schedule coordinator: %w", err)
+		}
+	}
 	return policyComposition{
 		invalidations: invalidations,
 		approvals:     approvalPolicy,
@@ -67,13 +83,8 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		plans: planapp.New(planapp.Dependencies{
 			Store: cfg.PlanStore, Now: time.Now, Invalidations: invalidations.Publish,
 		}),
-		mcp: mcpSettings,
-		schedules: schedules.New(schedules.Dependencies{
-			Store:         cfg.ScheduleStore,
-			Paths:         workspacepath.Resolver{},
-			Models:        modelcatalog.Capabilities{},
-			Invalidations: invalidations.Publish,
-		}),
+		mcp:       mcpSettings,
+		schedules: scheduleCoordinator,
 	}, nil
 }
 
@@ -178,7 +189,11 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	modelServices, err := buildModelEnvironment(ctx, cfg)
+	defaultSelection, err := runtimeDefaultModelSelection(cfg)
+	if err != nil {
+		return executionComposition{}, err
+	}
+	modelServices, err := buildModelEnvironment(ctx, cfg, defaultSelection)
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -212,10 +227,6 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
 	}
-	defaultSelection, err := runtimeDefaultModelSelection(cfg)
-	if err != nil {
-		return executionComposition{}, err
-	}
 	runMaintenance, modelContextCompactor, err := buildRunMaintenance(
 		cfg,
 		defaultSelection,
@@ -229,37 +240,46 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
 	}
+	maxConcurrentToolCalls := 8
 	interactionConfig := agentexec.InteractionExecutorConfig{
 		Lifetime:               lifetime.context,
 		BuildID:                cfg.BuildID,
-		DefaultClient:          cfg.ChatClient,
-		DefaultSelection:       defaultSelection,
-		ChatResolver:           modelServices.chatResolver,
+		ChatResolver:           cfg.ChatResolver,
 		ImplementationIdentity: cfg.BuildID,
-		ConfigurationIdentity:  "flame.runtime.interaction.v1",
+		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
 		StreamModelResponses:   true,
-		MaxConcurrentToolCalls: 8,
+		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
 		ToolInterpreter:        toolset.NewInterpreter(policy.plans),
 		ToolPresenter:          toolset.Presenter{},
 		ToolAuthorizer:         toolAuthorizer,
 		ToolHooks:              workingContexts,
 		MCPToolAutoApproved: func(server, toolName string) bool {
-			return policy.mcp.policy.ToolAutoApproved(mcpserver.ToolRef{Server: server, Tool: toolName})
+			name, err := mcpserver.ParseServerName(server)
+			if err != nil {
+				return false
+			}
+			remoteName, err := mcpserver.ParseRemoteToolName(toolName)
+			if err != nil {
+				return false
+			}
+			return policy.mcp.policy.ToolAutoApproved(mcpserver.ToolRef{Server: name, Tool: remoteName})
 		},
 		Maintenance:           runMaintenance,
 		ModelContextCompactor: modelContextCompactor,
 		ModelContextState:     workingContexts,
 		LifecycleHooks:        workingContexts,
 		Pricing:               cfg.Pricing,
-		Provider:              cfg.Provider,
 	}
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
 	}
-	if cfg.ToolResultStore != nil {
+	if cfg.ToolResultOffloadEnabled {
+		toolResultThreshold := cfg.ToolResultThreshold
 		interactionConfig.ToolResultStore = cfg.ToolResultStore
-		interactionConfig.ToolResultThreshold = cfg.ToolResultThreshold
-		interactionConfig.ToolResultReaderName = tool.ReadToolResult
+		interactionConfig.ToolResultOffload = agentexec.ToolResultOffloadPolicyValues{
+			Threshold:  &toolResultThreshold,
+			ReaderName: tool.ReadToolResult,
+		}
 	}
 	interactionExecutor, err := agentexec.NewInteractionExecutor(interactionConfig)
 	if err != nil {

@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 // SessionRollbackPhase separates a command whose runtime outcome is unknown
@@ -26,19 +29,18 @@ const (
 // outcomes without replay; file-affecting commands additionally bind replay to
 // one runtime idempotency store and its advertised retention window.
 type PendingSessionRollback struct {
-	Phase           SessionRollbackPhase `json:"phase"`
-	CommandID       agent.CommandID      `json:"commandId"`
-	SessionID       string               `json:"sessionId"`
-	ToRunID         string               `json:"toRunId,omitempty"`
-	Scope           agent.RestoreScope   `json:"scope"`
-	BeforeRevision  uint64               `json:"beforeRevision"`
-	BeforeRunIDs    []string             `json:"beforeRunIds"`
-	AfterRunIDs     []string             `json:"afterRunIds"`
-	OpeningText     string               `json:"openingText,omitempty"`
-	OpeningImages   int                  `json:"openingImages,omitempty"`
-	StagedAt        time.Time            `json:"stagedAt"`
-	ReplayNamespace string               `json:"replayNamespace,omitempty"`
-	ReplayUntil     time.Time            `json:"replayUntil,omitempty"`
+	Phase          SessionRollbackPhase `json:"phase"`
+	CommandID      agent.CommandID      `json:"commandId"`
+	SessionID      string               `json:"sessionId"`
+	ToRunID        string               `json:"toRunId,omitempty"`
+	Scope          agent.RestoreScope   `json:"scope"`
+	BeforeRevision uint64               `json:"beforeRevision"`
+	BeforeRunIDs   []string             `json:"beforeRunIds"`
+	AfterRunIDs    []string             `json:"afterRunIds"`
+	OpeningText    string               `json:"openingText,omitempty"`
+	OpeningImages  int                  `json:"openingImages,omitempty"`
+	StagedAt       time.Time            `json:"stagedAt"`
+	Replay         commandreplay.Guard  `json:"replay"`
 }
 
 func (p PendingSessionRollback) Validate() error {
@@ -83,11 +85,15 @@ func (p PendingSessionRollback) Validate() error {
 	} else if !slices.Contains(p.AfterRunIDs, p.ToRunID) {
 		return errors.New("session rollback boundary is absent from its after projection")
 	}
+	if err := p.Replay.Validate(); err != nil {
+		return err
+	}
 	if p.Scope != agent.RestoreHistory {
-		if strings.TrimSpace(p.ReplayNamespace) == "" || p.ReplayUntil.IsZero() ||
-			!p.ReplayUntil.After(p.StagedAt) {
+		if !p.Replay.Protected() || !p.Replay.Until().After(p.StagedAt) {
 			return errors.New("file rollback replay guarantee is incomplete")
 		}
+	} else if p.Replay.Protected() {
+		return errors.New("history-only rollback carries an unnecessary replay guarantee")
 	}
 	return nil
 }
@@ -112,15 +118,14 @@ func pendingSessionRollbackEqual(left, right PendingSessionRollback) bool {
 		left.BeforeRevision == right.BeforeRevision && slices.Equal(left.BeforeRunIDs, right.BeforeRunIDs) &&
 		slices.Equal(left.AfterRunIDs, right.AfterRunIDs) && left.OpeningText == right.OpeningText &&
 		left.OpeningImages == right.OpeningImages && left.StagedAt.Equal(right.StagedAt) &&
-		left.ReplayNamespace == right.ReplayNamespace && left.ReplayUntil.Equal(right.ReplayUntil)
+		left.Replay == right.Replay
 }
 
 func validateRunIDs(name string, ids []string) error {
 	seen := make(map[string]struct{}, len(ids))
 	for index, id := range ids {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return fmt.Errorf("%s item %d is empty", name, index+1)
+		if _, err := runidentity.ParseRun(id); err != nil {
+			return fmt.Errorf("%s item %d: %w", name, index+1, err)
 		}
 		if _, duplicate := seen[id]; duplicate {
 			return fmt.Errorf("%s repeats %q", name, id)
@@ -157,7 +162,7 @@ func (s *Store) PendingSessionRollbacks() []PendingSessionRollback {
 func (s *Store) PendingSessionRollback(sessionID string) (PendingSessionRollback, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingRollbacks[strings.TrimSpace(sessionID)]
+	pending, exists := s.pendingRollbacks[sessionID]
 	return pending.clone(), exists
 }
 
@@ -165,7 +170,6 @@ func (s *Store) PendingSessionRollback(sessionID string) (PendingSessionRollback
 // process. Repeating the exact journal is idempotent; another command cannot
 // replace an outcome whose acknowledgement is still unknown.
 func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
-	pending.SessionID = strings.TrimSpace(pending.SessionID)
 	if err := pending.Validate(); err != nil {
 		return err
 	}
@@ -192,7 +196,9 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 // local recovery record. Draft materialization remains a separate activation
 // transition so a non-active session cannot replace the visible composer.
 func (s *Store) ConfirmSessionRollback(sessionID string, commandID agent.CommandID) error {
-	sessionID = strings.TrimSpace(sessionID)
+	if _, err := sessionidentity.Parse(sessionID); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, exists := s.pendingRollbacks[sessionID]
@@ -216,7 +222,9 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID agent.Command
 // RejectSessionRollback retires only the exact prepared command after a
 // definitive runtime refusal.
 func (s *Store) RejectSessionRollback(sessionID string, commandID agent.CommandID) error {
-	sessionID = strings.TrimSpace(sessionID)
+	if _, err := sessionidentity.Parse(sessionID); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, exists := s.pendingRollbacks[sessionID]
@@ -240,7 +248,9 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID agent.CommandI
 // input with any newer draft and retires the journal. A newer user draft is
 // appended after the restored opening text so neither value is discarded.
 func (s *Store) ConsumeConfirmedSessionRollback(sessionID string) (SessionRollbackRecovery, bool, error) {
-	sessionID = strings.TrimSpace(sessionID)
+	if _, err := sessionidentity.Parse(sessionID); err != nil {
+		return SessionRollbackRecovery{}, false, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, exists := s.pendingRollbacks[sessionID]

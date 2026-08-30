@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -13,9 +14,45 @@ import (
 
 // CompactionResult reports one completed Run-boundary compaction sweep.
 type CompactionResult struct {
-	Compacted      bool
-	MessagesBefore int
-	MessagesAfter  int
+	summary        string
+	messagesBefore int
+	messagesAfter  int
+}
+
+// NewCompactionResult constructs an observable summary compaction. The zero
+// value means that no summary rewrite occurred.
+func NewCompactionResult(summary string, messagesBefore, messagesAfter int) (CompactionResult, error) {
+	canonicalSummary := strings.TrimSpace(summary)
+	if canonicalSummary == "" {
+		return CompactionResult{}, fmt.Errorf("agentexec: compaction summary is empty")
+	}
+	if canonicalSummary != summary {
+		return CompactionResult{}, fmt.Errorf("agentexec: compaction summary is not canonical")
+	}
+	if messagesBefore <= 0 || messagesAfter <= 0 {
+		return CompactionResult{}, fmt.Errorf(
+			"agentexec: invalid compaction message counts %d -> %d",
+			messagesBefore,
+			messagesAfter,
+		)
+	}
+	return CompactionResult{
+		summary:        canonicalSummary,
+		messagesBefore: messagesBefore,
+		messagesAfter:  messagesAfter,
+	}, nil
+}
+
+func (r CompactionResult) Compacted() bool {
+	return r.summary != ""
+}
+
+func (r CompactionResult) Summary() string {
+	return r.summary
+}
+
+func (r CompactionResult) MessageCounts() (before, after int) {
+	return r.messagesBefore, r.messagesAfter
 }
 
 // RunMaintenance owns best-effort housekeeping after a clean Interaction but
@@ -74,12 +111,14 @@ func (i *interactionSession) maintainCompletedRoot() {
 			)
 		}
 	}
-	if result.Compaction.Compacted {
+	if result.Compaction.Compacted() {
+		messagesBefore, messagesAfter := result.Compaction.MessageCounts()
 		i.lifetime.send(runs.ExecutorEvent{
 			Member: runs.ExecutorMember{MemberID: i.processRootID().String()},
 			Payload: runs.CompactionBoundary{
-				MessagesBefore: result.Compaction.MessagesBefore,
-				MessagesAfter:  result.Compaction.MessagesAfter,
+				Summary:        result.Compaction.Summary(),
+				MessagesBefore: messagesBefore,
+				MessagesAfter:  messagesAfter,
 			},
 		})
 	}

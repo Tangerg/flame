@@ -1,5 +1,5 @@
-// Parser for the Claude Desktop `mcpServers` config block (the de-facto MCP
-// interchange shape) → our settings MCP config input. Pasted JSON is an
+// Parser for the common `mcpServers` MCP-client interchange block → our
+// settings MCP config input. Pasted JSON is an
 // EXTERNAL trust boundary (§3), so it's validated with Zod before any field is
 // trusted; everything downstream (the configure call) gets a well-typed value.
 //
@@ -12,6 +12,7 @@
 
 import { z } from "zod";
 import type { MCPServerInput } from "./mcpServerInput";
+import { mcpHandshakeTimeoutFromOptionalSeconds } from "./mcpHandshakeTimeout";
 
 // env may be a map ({KEY:"val"}) or a "KEY=value" array; both normalize to the
 // KEY→value map our config input carries (split on the FIRST '=' so a value may
@@ -41,13 +42,13 @@ const serverSchema = z.object({
   args: z.array(z.string()).optional(),
   env: envSchema,
   dir: z.string().optional(),
-  cwd: z.string().optional(), // Claude Desktop's name for the working dir
+  cwd: z.string().optional(),
   url: z.string().optional(),
   // A bearer token may arrive bare or as a Headers "Authorization" entry; it's
   // pulled into the dedicated bearer field, the rest of headers is preserved.
   authorization: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
-  timeout: z.number().optional(), // seconds (Cherry-style); 0/absent = unbounded
+  timeout: z.number().optional(), // seconds; 0/absent = unbounded
 });
 
 type ParsedServer = z.infer<typeof serverSchema>;
@@ -75,7 +76,7 @@ export interface McpImportResult {
 }
 
 /**
- * Parse a Claude-Desktop-format JSON string into configure requests, one per
+ * Parse an MCP-client JSON string into configure requests, one per
  * named server. Throws on malformed JSON or a server entry that matches
  * neither transport (no command and no url) — the caller surfaces the message.
  */
@@ -115,7 +116,7 @@ export function parseMcpImport(text: string): McpImportResult {
         args: s.args,
         env: s.env,
         dir: s.dir ?? s.cwd,
-        timeoutSeconds: s.timeout,
+        handshakeTimeout: mcpHandshakeTimeoutFromOptionalSeconds(s.timeout),
       });
     } else {
       servers.push({
@@ -125,7 +126,7 @@ export function parseMcpImport(text: string): McpImportResult {
         url: s.url,
         authorization: authorizationFrom(s),
         headers: headersExceptAuth(s),
-        timeoutSeconds: s.timeout,
+        handshakeTimeout: mcpHandshakeTimeoutFromOptionalSeconds(s.timeout),
       });
     }
   }

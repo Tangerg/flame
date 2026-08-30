@@ -22,8 +22,8 @@ const (
 func registerSessions(registry *Registry) {
 	registry.Query(MethodMeta{Name: SessionsList},
 		func(service interface {
-			ListSessions(context.Context, protocol.PageQuery) (*protocol.Page[protocol.Session], error)
-		}, ctx context.Context, request protocol.PageQuery) (*protocol.Page[protocol.Session], error) {
+			ListSessions(context.Context, protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)
+		}, ctx context.Context, request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
 			return service.ListSessions(ctx, request)
 		})
 

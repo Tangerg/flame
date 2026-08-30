@@ -24,6 +24,9 @@ func TestConfigurationUsesDeepSeekProductDefaults(t *testing.T) {
 	if got.Provider != settings.DefaultProvider || got.Model != settings.DefaultModel {
 		t.Fatalf("default model = %q/%q, want %q/%q", got.Provider, got.Model, settings.DefaultProvider, settings.DefaultModel)
 	}
+	if got.Run.MaxTotalTokens != nil || got.Run.MaxSteps != nil || got.Run.MaxBudgetUSD != nil {
+		t.Fatalf("default run limits = %+v, want explicit absence", got.Run)
+	}
 }
 
 func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
@@ -40,7 +43,7 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("config show JSON: %v\n%s", err, out)
 	}
-	if got.Provider != "file-provider" || got.Model != "environment-model" || got.Run.MaxTotalTokens != 12000 || got.Run.MaxSteps != 12 {
+	if got.Provider != "file-provider" || got.Model != "environment-model" || got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 12000 || got.Run.MaxSteps == nil || *got.Run.MaxSteps != 12 {
 		t.Fatalf("effective settings = %+v", got)
 	}
 }
@@ -98,8 +101,22 @@ func TestConfigurationMergesPartialKeyOverridesWithDefaultActions(t *testing.T) 
 }
 
 func TestConfigurationRejectsInvalidValuesAndMissingExplicitFile(t *testing.T) {
-	if _, _, err := executeCommand(t, instantRuntime(), "", "--max-steps=-1", "config", "show"); err == nil {
-		t.Fatal("negative run limit was accepted")
+	for _, value := range []string{"0", "-1", "not-a-number"} {
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--max-steps="+value, "config", "show"); err == nil {
+			t.Fatalf("run step limit %q was accepted", value)
+		}
+	}
+	for _, value := range []string{"0", "NaN", "+Inf"} {
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--max-budget-usd="+value, "config", "show"); err == nil {
+			t.Fatalf("run budget limit %q was accepted", value)
+		}
+	}
+	zeroConfig := filepath.Join(t.TempDir(), "zero-limit.yaml")
+	if err := os.WriteFile(zeroConfig, []byte("run:\n  max-budget-usd: 0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := executeCommand(t, instantRuntime(), "", "--config", zeroConfig, "config", "show"); err == nil {
+		t.Fatal("configuration numeric zero sentinel was accepted")
 	}
 	missing := filepath.Join(t.TempDir(), "missing.yaml")
 	if _, _, err := executeCommand(t, instantRuntime(), "", "--config", missing, "config", "show"); err == nil {

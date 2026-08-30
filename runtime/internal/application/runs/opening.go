@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -12,79 +13,59 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+type rootStartPreparation struct {
+	command            StartCommand
+	requestedSelection modelref.Selection
+	session            session.Session
+	initialSession     *session.Session
+	draft              RootExecutionStart
+	currentMessage     corechat.Message
+	openingUserText    string
+}
+
 // Start validates and resolves the Session, claims the Session and working
 // tree, stages execution, and commits the Run opening. That durable opening is
 // the command's acceptance point; executor activation continues behind the
 // package's lifecycle supervisor and cannot retain the accepted response.
 func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
-	if validateScheduledIdentityErr := cmd.ValidateScheduledIdentity(); validateScheduledIdentityErr != nil {
-		return StartResult{}, validateScheduledIdentityErr
-	}
-	requestedSelection := cmd.ModelSelection
-	message, media, openingUserText, err := cmd.MaterializeInput()
+	preparation, err := c.prepareRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
-	}
-	sess, initialSession, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
-	if err != nil {
-		return StartResult{}, err
-	}
-	cmd.ModelSelection = effectiveSelection
-	draft := RootExecutionStart{
-		Message:                  message,
-		Media:                    media,
-		ModelSelection:           cmd.ModelSelection,
-		Limits:                   cmd.Limits,
-		Options:                  cmd.Options,
-		InterruptKinds:           cmd.Capabilities.InterruptKinds,
-		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
-		GoalIncarnationID:        cmd.GoalIncarnationID,
-	}
-	currentMessage, err := MaterializeUserMessage(cmd.Input)
-	if err != nil {
-		return StartResult{}, err
-	}
-	draft.WorkingContext = []corechat.Message{currentMessage}
-	if validateErr := draft.Validate(); validateErr != nil {
-		return StartResult{}, validateErr
-	}
-	if admitErr := c.models.AdmitInput(cmd.ModelSelection, draft.WorkingContext); admitErr != nil {
-		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
-	}
-	if validateRootStartErr := c.rootStarts.ValidateRootStart(draft); validateRootStartErr != nil {
-		return StartResult{}, validateRootStartErr
 	}
 
-	runAdmission, err := c.claimFreshRun(ctx, sess)
+	runAdmission, err := c.claimFreshRun(ctx, preparation.session)
 	if err != nil {
 		return StartResult{}, err
 	}
 	defer runAdmission.Release()
 
-	draft.SessionID = sess.ID()
-	workingContext, err := c.conversation.Read(ctx, sess.ID())
+	draft := preparation.draft
+	draft.SessionID = preparation.session.ID()
+	workingContext, err := c.conversation.Read(ctx, preparation.session.ID())
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: read conversation for session %q: %w", sess.ID(), err)
+		return StartResult{}, fmt.Errorf(
+			"runs: read conversation for session %q: %w", preparation.session.ID(), err,
+		)
 	}
-	workingContext = append(workingContext, currentMessage.Clone())
+	workingContext = append(workingContext, preparation.currentMessage.Clone())
 	draft.WorkingContext = workingContext
-	execCWD, isolated, err := c.executionCWD(ctx, sess)
+	execCWD, isolated, err := c.executionCWD(ctx, preparation.session)
 	if err != nil {
 		return StartResult{}, err
 	}
 	draft.CWD = execCWD
-	draft.WorkspaceCWD = sess.Workspace().Path()
+	draft.WorkspaceCWD = preparation.session.Workspace().Path()
 	draft.Isolated = isolated
 	draft.WorkingContext, err = c.workingContexts.ComposeWorkingContext(ctx, WorkingContextInput{
-		SessionID:  sess.ID(),
+		SessionID:  preparation.session.ID(),
 		CWD:        execCWD,
-		PromptText: message,
+		PromptText: draft.Message,
 		Seed:       draft.WorkingContext,
 	})
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)
 	}
-	if admitErr := c.models.AdmitInput(cmd.ModelSelection, draft.WorkingContext); admitErr != nil {
+	if admitErr := c.models.AdmitInput(preparation.command.ModelSelection, draft.WorkingContext); admitErr != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
 	}
 	ref, err := c.rootStarts.StageRoot(ctx, draft)
@@ -98,10 +79,11 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 			result = StartResult{}
 		}
 	}()
-	if validateForErr := staged.validateFor(sess.ID()); validateForErr != nil {
+	if validateForErr := staged.validateFor(preparation.session.ID()); validateForErr != nil {
 		return StartResult{}, validateForErr
 	}
 
+	cmd = preparation.command
 	runID := cmd.RunID
 	if runID == "" {
 		runID = c.newRunID()
@@ -110,17 +92,9 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	createdAt := c.publications.nowUTC()
 	modelOnlyInput := cmd.GoalIncarnationID != ""
 	conversationInput := draft.WorkingContext[len(draft.WorkingContext)-1].Clone()
-	var sessionReplacement *SessionReplacement
-	if initialSession == nil && requestedSelection.Configured() {
-		next, changed, applyErr := sess.Apply(session.Patch{Selection: &requestedSelection}, createdAt)
-		if applyErr != nil {
-			return StartResult{}, fmt.Errorf("runs: prepare Session model-selection replacement: %w", applyErr)
-		}
-		if changed {
-			sessionReplacement = &SessionReplacement{
-				ExpectedRevision: sess.Revision(), State: next,
-			}
-		}
+	sessionReplacement, err := prepareStartSessionReplacement(preparation, createdAt)
+	if err != nil {
+		return StartResult{}, err
 	}
 	// A fresh Segment owns rejection as soon as openSegment is entered. Until
 	// this exact hand-off, every preparation failure remains Start's responsibility.
@@ -128,16 +102,16 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:              runID,
 		SegmentID:          segmentID,
-		SessionID:          sess.ID(),
-		CWD:                sess.Workspace().Path(),
+		SessionID:          preparation.session.ID(),
+		CWD:                preparation.session.Workspace().Path(),
 		ExecutorID:         ref.ExecutorID,
 		ModelSelection:     cmd.ModelSelection,
 		GoalIncarnationID:  cmd.GoalIncarnationID,
-		InitialSession:     initialSession,
+		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
 		ScheduleFiring:     cmd.ScheduleFiring,
 		CreatedAt:          createdAt,
-		OpeningUserText:    openingUserText,
+		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,
 		ConversationInput:  &conversationInput,
 		ModelOnlyInput:     modelOnlyInput,
@@ -150,26 +124,98 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		},
 	})
 	if err != nil {
-		// The durable unique index rejected the INSERT, which means another writer got
-		// there first. Naming that Run is the same answer the pre-admission check gives:
-		// what changed is only who noticed.
-		if errors.Is(err, run.ErrSessionBusy) {
-			if active, lookupErr := c.activeRunConflict(ctx, sess.ID()); lookupErr == nil && active != nil {
-				return StartResult{}, active
-			}
-			return StartResult{}, fmt.Errorf("%w: %w", ErrSessionBusy, err)
-		}
-		return StartResult{}, err
+		return StartResult{}, c.resolveOpeningError(ctx, preparation.session.ID(), err)
 	}
-	c.publications.publishRunMoved(sess.ID(), runID)
+	c.publications.publishRunMoved(preparation.session.ID(), runID)
 	userItemID := userMessageItemID(segmentID)
 	if modelOnlyInput {
 		userItemID = ""
 	}
 	return StartResult{
-		RunID: runID, SegmentID: segmentID, SessionID: sess.ID(),
+		RunID: runID, SegmentID: segmentID, SessionID: preparation.session.ID(),
 		UserItemID: userItemID, Events: events,
 	}, nil
+}
+
+func (c *Coordinator) prepareRootStart(
+	ctx context.Context,
+	cmd StartCommand,
+) (rootStartPreparation, error) {
+	if err := cmd.ValidateScheduledIdentity(); err != nil {
+		return rootStartPreparation{}, err
+	}
+	requestedSelection := cmd.ModelSelection
+	message, media, openingUserText, err := cmd.MaterializeInput()
+	if err != nil {
+		return rootStartPreparation{}, err
+	}
+	sess, initialSession, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
+	if err != nil {
+		return rootStartPreparation{}, err
+	}
+	cmd.ModelSelection = effectiveSelection
+	draft := RootExecutionStart{
+		Message:                  message,
+		Media:                    media,
+		ModelSelection:           effectiveSelection,
+		Limits:                   cmd.Limits,
+		Options:                  cmd.Options,
+		InterruptKinds:           cmd.Capabilities.InterruptKinds,
+		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
+		GoalIncarnationID:        cmd.GoalIncarnationID,
+	}
+	currentMessage, err := MaterializeUserMessage(cmd.Input)
+	if err != nil {
+		return rootStartPreparation{}, err
+	}
+	draft.WorkingContext = []corechat.Message{currentMessage}
+	if err := draft.Validate(); err != nil {
+		return rootStartPreparation{}, err
+	}
+	if err := c.models.AdmitInput(effectiveSelection, draft.WorkingContext); err != nil {
+		return rootStartPreparation{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, err)
+	}
+	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
+		return rootStartPreparation{}, err
+	}
+	return rootStartPreparation{
+		command: cmd, requestedSelection: requestedSelection, session: sess,
+		initialSession: initialSession, draft: draft, currentMessage: currentMessage,
+		openingUserText: openingUserText,
+	}, nil
+}
+
+func prepareStartSessionReplacement(
+	preparation rootStartPreparation,
+	createdAt time.Time,
+) (*SessionReplacement, error) {
+	if preparation.initialSession != nil || !preparation.requestedSelection.Configured() {
+		return nil, nil
+	}
+	next, changed, err := preparation.session.Apply(
+		session.Patch{Selection: &preparation.requestedSelection}, createdAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("runs: prepare Session model-selection replacement: %w", err)
+	}
+	if !changed {
+		return nil, nil
+	}
+	return &SessionReplacement{
+		ExpectedRevision: preparation.session.Revision(), State: next,
+	}, nil
+}
+
+func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string, err error) error {
+	if !errors.Is(err, run.ErrSessionBusy) {
+		return err
+	}
+	// The durable unique index rejected the INSERT, which means another writer
+	// got there first. Naming that Run is the pre-admission conflict answer too.
+	if active, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && active != nil {
+		return active
+	}
+	return fmt.Errorf("%w: %w", ErrSessionBusy, err)
 }
 
 // resolveSessionSelection admits an explicitly requested selection, resolves

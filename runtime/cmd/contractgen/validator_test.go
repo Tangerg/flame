@@ -15,6 +15,33 @@ type validatorUnionFixture struct {
 	Beta  string `json:"beta,omitempty"`
 }
 
+type validatorEmbeddedFixture struct {
+	Cursor string `json:"cursor,omitempty"`
+}
+
+type validatorOuterFixture struct {
+	validatorEmbeddedFixture
+	Search string `json:"search,omitempty"`
+}
+
+func TestValueConstraintsFollowFlattenedEmbedding(t *testing.T) {
+	t.Parallel()
+
+	embedded := reflect.TypeFor[validatorEmbeddedFixture]()
+	outer := reflect.TypeFor[validatorOuterFixture]()
+	constraints := inheritedValueConstraints(outer, map[reflect.Type][]dispatch.FieldConstraint{
+		embedded: {{Field: "cursor", Kind: dispatch.ConstraintMaxLength, Limit: 64}},
+		outer:    {{Field: "search", Kind: dispatch.ConstraintNonEmpty}},
+	})
+	want := []dispatch.FieldConstraint{
+		{Field: "search", Kind: dispatch.ConstraintNonEmpty},
+		{Field: "cursor", Kind: dispatch.ConstraintMaxLength, Limit: 64},
+	}
+	if !slices.Equal(constraints, want) {
+		t.Fatalf("inherited constraints = %v, want %v", constraints, want)
+	}
+}
+
 func TestUnionBranchPresenceDoesNotBecomeGlobalRequiredness(t *testing.T) {
 	t.Parallel()
 
@@ -54,5 +81,17 @@ func TestUnionBranchPresenceDoesNotBecomeGlobalRequiredness(t *testing.T) {
 		if !slices.Contains(checks, required) {
 			t.Fatalf("branch requiredness was not generated through %s: %v", required, checks)
 		}
+	}
+}
+
+func TestObjectAlternativePresenceStaysOneRule(t *testing.T) {
+	t.Parallel()
+
+	checks := objectChecks([]dispatch.ConditionalRule{{
+		RequiredAny: []string{"alpha", "beta"},
+	}}, "v")
+	want := `requiredAnyWhen(true, []string{"alpha", "beta"}, v)`
+	if !slices.Equal(checks, []string{want}) {
+		t.Fatalf("object checks = %v, want one alternative-presence check %q", checks, want)
 	}
 }

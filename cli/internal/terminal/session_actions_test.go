@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
@@ -52,7 +53,7 @@ func (p *postCommitSessionDeleteRuntime) deletion() (agent.DeleteSession, int) {
 }
 
 func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
-	store, err := workbench.Open("", workbench.Config{})
+	store, err := workbench.OpenMemory(workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +70,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 			Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
 		}
 		if stagePendingResumeErr := store.StagePendingResume(sessionID, workbench.PendingResume{
+			Replay: commandreplay.UnprotectedGuard(),
 			Command: agent.ResumeRun{
 				CommandID: agent.CommandID("cli_" + map[string]string{
 					"retired": "11111111111111111111111111111111",
@@ -115,7 +117,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 
 func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := workbench.Open(directory, workbench.Config{})
+	store, err := workbench.OpenDirectory(directory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +173,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +206,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
 		t.Fatalf("deleted session read = %v", getSessionErr)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +226,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,19 +236,17 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	request := agent.DeleteSession{
 		CommandID: agent.CommandID("cli_66666666666666666666666666666666"), SessionID: target.ID,
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, workbench.ReplayGuard{}); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(request, durableCommandReplayGuard(t)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", StateDirectory: stateDirectory,
-	})
+	host, stop := runUIWithReplayState(t, backend, workspace, "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	stop()
 	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
 		t.Fatalf("recovered deletion read = %v", getSessionErr)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,7 +480,7 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	)
 	restarted.Shows(t, "Why is the cache expiry test flaky?")
 	restarted.Shows(t, "recovered rollback input · 1 runs removed")
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -553,7 +553,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 		t.Fatal(err)
 	}
 	backend := mock.New()
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -588,7 +588,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 
 func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	application := &app{transcript: transcript}
+	application := &app{transcript: transcript, sessionContext: newSessionContextLease()}
 	application.stack.SetBase(transcript)
 	oldCalls, currentCalls := 0, 0
 	application.confirmAction("Old confirmation", "Run the old action?", "Run old", func() { oldCalls++ })
@@ -600,7 +600,7 @@ func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	if oldCalls != 0 || currentCalls != 0 {
 		t.Fatalf("stale presented confirmation executed callbacks: old=%d current=%d", oldCalls, currentCalls)
 	}
-	if application.confirmationDialog == nil || !application.confirmationDialog.Open() {
+	if application.confirmationDialog == nil || !application.confirmationDialog.Controller().Open() {
 		t.Fatal("stale presented confirmation dismissed its replacement")
 	}
 
@@ -617,7 +617,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
 	application := &app{
-		transcript: transcript, operations: operations,
+		transcript: transcript, operations: operations, sessionContext: newSessionContextLease(),
 	}
 	application.stack.SetBase(transcript)
 	calls := 0
@@ -630,7 +630,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	if calls != 0 {
 		t.Fatalf("retired projection confirmation executed %d callbacks", calls)
 	}
-	if application.confirmationDialog != nil || !application.stack.Empty() {
+	if application.confirmationDialog != nil || application.stack.Depth() > 0 {
 		t.Fatal("retired projection left its confirmation open")
 	}
 }
@@ -848,7 +848,7 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 		}}
 	}
 	backend := &uncertainSteeringRuntime{Runtime: base}
-	host, stop := runUIWith(t, backend)
+	host, stop := runUIWithReplay(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("start steer confirmation")
 	host.Press(input.Enter)
@@ -882,7 +882,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	if err := os.WriteFile(attachmentPath, []byte("notes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	profile := steerReplayTestProfile(workspace)
+	profile := steerReplayTestProfile(t, workspace)
 	host, stop := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
 		StateDirectory: stateDirectory,
@@ -898,12 +898,12 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	host.Type("/steer focus on parsing")
 	host.Press(input.Enter)
 	accepted := awaitSignalValue(t, runtime.committed, "accepted steer before acknowledgement")
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending, found := store.PendingSteer(sessionID)
-	if !found || !pending.Command.Equal(accepted) {
+	if !found || !pending.Command().Equal(accepted) {
 		t.Fatalf("durable steer = %+v, found %t", pending, found)
 	}
 	stop()
@@ -917,7 +917,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	if len(replay.attempts) != 1 || !replay.attempts[0].Equal(accepted) {
 		t.Fatalf("restart steer attempts = %+v", replay.attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -934,7 +934,8 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stopRestarted()
 }
 
-func steerReplayTestProfile(workspace string) runtimeprofile.Profile {
+func steerReplayTestProfile(t *testing.T, workspace string) runtimeprofile.Profile {
+	t.Helper()
 	return runtimeprofile.Profile{
 		Protocol: runtimeprofile.Protocol{Version: "2.0"},
 		Server: runtimeprofile.Server{
@@ -942,8 +943,8 @@ func steerReplayTestProfile(workspace string) runtimeprofile.Profile {
 		},
 		Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{},
 		Limits: runtimeprofile.Limits{
-			MaxConcurrentRuns: 1, IdempotencyRetentionSeconds: 600,
-			IdempotencyNamespace: "steer-test-runtime",
+			RunConcurrency: boundedRunConcurrency(t, 1),
+			CommandReplay:  testCommandReplay(t, terminalTestReplayNamespace, 10*time.Minute),
 			RunReplay: runtimeprofile.ReplayLimits{
 				Scope: "runtimeInstanceRootSegment", MaxEvents: 128, MaxBytes: 1 << 20,
 			},

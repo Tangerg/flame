@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,29 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 )
+
+func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
+	now := time.Date(2026, 8, 29, 12, 30, 0, 0, time.FixedZone("test", 8*60*60))
+	if since, err := AllTime().Since(now); err != nil || !since.IsZero() {
+		t.Fatalf("all-time Since = (%v, %v), want zero", since, err)
+	}
+	recent, err := RecentDays(7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := now.UTC().AddDate(0, 0, -7)
+	if since, err := recent.Since(now); err != nil || !since.Equal(want) {
+		t.Fatalf("recent Since = (%v, %v), want %v", since, err, want)
+	}
+	for _, days := range []int{0, -1} {
+		if _, err := RecentDays(days); !errors.Is(err, ErrInvalidSummaryPeriod) {
+			t.Fatalf("RecentDays(%d) = %v", days, err)
+		}
+	}
+	if _, err := (SummaryPeriod{days: 1}).Since(now); !errors.Is(err, ErrInvalidSummaryPeriod) {
+		t.Fatalf("corrupt all-time period = %v", err)
+	}
+}
 
 func usd(v float64) *float64 { return &v }
 

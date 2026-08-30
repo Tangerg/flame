@@ -96,7 +96,11 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 	if len(resources) == 0 {
 		return nopAuthoredWatch{}, nil
 	}
-	seen := make(map[string]struct{}, len(cwds))
+	type authoredScopeKey struct {
+		workspace   string
+		projectRoot string
+	}
+	seen := make(map[authoredScopeKey]struct{}, len(cwds))
 	scopes := make([]AuthoredScope, 0, len(cwds))
 	for _, cwd := range cwds {
 		root, err := a.scope.root(cwd)
@@ -110,7 +114,7 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 		if resolved.Missing || resolved.ProjectRoot == "" {
 			return nil, ErrCWDUnavailable
 		}
-		identity := root + "\x00" + resolved.ProjectRoot
+		identity := authoredScopeKey{workspace: root, projectRoot: resolved.ProjectRoot}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}

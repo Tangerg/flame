@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -13,11 +14,19 @@ import (
 )
 
 func TestTimelineGroupsDescendantsBeneathNewestRoots(t *testing.T) {
+	child, err := agent.NewChildRunLineage("run_child", "spawn", "run_new", "run_new")
+	if err != nil {
+		t.Fatal(err)
+	}
+	grandchild, err := agent.NewChildRunLineage("run_grandchild", "nested", "run_child", "run_new")
+	if err != nil {
+		t.Fatal(err)
+	}
 	runs := []agent.Run{
-		{ID: "run_old"},
-		{ID: "run_new"},
-		{ID: "run_child", Lineage: agent.RunLineage{SpawnedByBlockID: "spawn", ParentRunID: "run_new", RootRunID: "run_new"}},
-		{ID: "run_grandchild", Lineage: agent.RunLineage{SpawnedByBlockID: "nested", ParentRunID: "run_child", RootRunID: "run_new"}},
+		{ID: "run_old", Lineage: agent.RootRunLineage()},
+		{ID: "run_new", Lineage: agent.RootRunLineage()},
+		{ID: "run_child", Lineage: child},
+		{ID: "run_grandchild", Lineage: grandchild},
 	}
 	entries := buildTimelineEntries(runs)
 	ids := make([]string, 0, len(entries))
@@ -40,7 +49,10 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 		func(timelineEntry) { jumped++ },
 		func(timelineEntry) { forked++ },
 	)
-	pane.SetRuns([]agent.Run{{ID: "one"}, {ID: "two"}})
+	pane.SetRuns([]agent.Run{
+		{ID: "one", Lineage: agent.RootRunLineage()},
+		{ID: "two", Lineage: agent.RootRunLineage()},
+	})
 	pane.Focus(true)
 	root := headless.NewRoot(pane)
 	root.Draw(grid.NewSurface(80, 20).View())
@@ -55,5 +67,25 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 	}
 	if jumped != 0 {
 		t.Fatalf("release after fork jumped %d times", jumped)
+	}
+}
+
+func TestLiveTimelineDisablesForkAndExplainsItsMode(t *testing.T) {
+	forked := 0
+	pane := newTimelinePane(kit.Dark(), kit.Unicode(), nil, func(timelineEntry) { forked++ })
+	pane.SetRuns([]agent.Run{{ID: "root", Lineage: agent.RootRunLineage(), Status: agent.RunStatusRunning}})
+	pane.SetLive(true)
+	pane.Focus(true)
+
+	root := headless.NewRoot(pane)
+	surface := grid.NewSurface(80, 20)
+	root.Draw(surface.View())
+	root.Handle(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
+
+	if forked != 0 {
+		t.Fatalf("live timeline forked %d times", forked)
+	}
+	if got := strings.Join(surface.Rows(), "\n"); !strings.Contains(got, "live run tree") || strings.Contains(got, "alt+f") {
+		t.Fatalf("live timeline hint is ambiguous:\n%s", got)
 	}
 }

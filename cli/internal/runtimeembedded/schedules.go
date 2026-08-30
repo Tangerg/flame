@@ -13,7 +13,13 @@ import (
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
-const schedulePageLimit = 100
+const (
+	schedulePageLimit = 100
+	// maximumSchedulePageRequests bounds full-catalog materialization to at
+	// most 10,000 schedules when the Runtime serves the requested page width.
+	// The request bound remains authoritative for a Runtime that under-fills.
+	maximumSchedulePageRequests = 100
+)
 
 type scheduleBinding interface {
 	ListSchedules(context.Context, protocol.PageQuery, embedded.CallOptions) (*protocol.Page[protocol.Schedule], error)
@@ -28,15 +34,21 @@ var _ schedule.Service = (*Runtime)(nil)
 func (r *Runtime) Schedules(ctx context.Context) ([]schedule.Schedule, error) {
 	var schedules []schedule.Schedule
 	seenIDs := make(map[string]struct{})
-	cursors := newCursorTraversal("list schedules", "")
+	cursors, err := newCursorTraversal("list schedules", "", maximumSchedulePageRequests)
+	if err != nil {
+		return nil, err
+	}
 	for {
 		cursor := cursors.Current()
-		page, err := r.schedules.ListSchedules(ctx, protocol.PageQuery{Cursor: cursor, Limit: schedulePageLimit}, r.callOptions())
+		page, err := r.schedules.ListSchedules(ctx, protocol.PageQuery{Cursor: cursor, Limit: protocolPositiveInt(schedulePageLimit)}, r.callOptions())
 		if err != nil {
 			return nil, classifyError(err)
 		}
 		if page == nil {
 			return nil, runtimeContractViolation("list schedules returned a nil page")
+		}
+		if len(page.Data) > schedulePageLimit {
+			return nil, runtimeContractViolation("list schedules returned %d rows for limit %d", len(page.Data), schedulePageLimit)
 		}
 		for index, value := range page.Data {
 			projected := projectSchedule(value)

@@ -24,7 +24,7 @@ export type NotificationLevel = "info" | "warn" | "error";
  */
 export interface NotificationEntry {
   /** Monotonic id assigned by the host. */
-  id: number;
+  id: string;
   /** Plugin that called `host.notify`. */
   plugin: string;
   level: NotificationLevel;

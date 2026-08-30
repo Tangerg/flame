@@ -61,8 +61,8 @@ func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.Upd
 	if request.Connection != nil {
 		server.Connection = wireMCPConnection(*request.Connection)
 	}
-	if request.TimeoutSeconds != nil {
-		server.TimeoutSeconds = *request.TimeoutSeconds
+	if request.HandshakeTimeout != nil {
+		server.HandshakeTimeout = *request.HandshakeTimeout
 	}
 	if request.DisabledTools != nil {
 		server.DisabledTools = append([]string(nil), (*request.DisabledTools)...)
@@ -141,7 +141,7 @@ func (m *mcpBindingStub) assertCommand(action string, options embedded.CommandOp
 func wireMCPServer() protocol.MCPServer {
 	count := 1
 	return protocol.MCPServer{
-		Name: "docs", Description: "Documentation", TimeoutSeconds: 15,
+		Name: "docs", Description: "Documentation", HandshakeTimeout: boundedWireHandshakeTimeout(15),
 		Connection: protocol.MCPConnection{
 			Type: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			AuthorizationMasked: "Bearer ****", HeadersMasked: map[string]string{"X-Key": "****"},
@@ -157,10 +157,14 @@ func wireMCPServerFromCandidate(candidate protocol.MCPServerCandidate) protocol.
 	}
 	return protocol.MCPServer{
 		Name: candidate.Name, Description: candidate.Description,
-		Connection: wireMCPConnection(candidate.Connection), TimeoutSeconds: candidate.TimeoutSeconds,
+		Connection: wireMCPConnection(candidate.Connection), HandshakeTimeout: candidate.HandshakeTimeout,
 		DisabledTools:    append([]string(nil), candidate.DisabledTools...),
 		AutoApproveTools: append([]string(nil), candidate.AutoApproveTools...), Status: state,
 	}
+}
+
+func boundedWireHandshakeTimeout(seconds int) protocol.MCPHandshakeTimeout {
+	return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
 }
 
 func wireMCPConnection(input protocol.MCPConnectionInput) protocol.MCPConnection {

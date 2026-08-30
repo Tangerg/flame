@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/embedded"
@@ -186,7 +187,7 @@ func (r *Runtime) commandOptions() (embedded.CommandOptions, error) {
 	}
 	return embedded.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.Limits.IdempotencyNamespace,
+		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
@@ -199,7 +200,7 @@ func (r *Runtime) commandOptionsFor(commandID agent.CommandID) (embedded.Command
 	}
 	return embedded.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.Limits.IdempotencyNamespace,
+		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
@@ -210,7 +211,7 @@ func (r *Runtime) runCommandOptions() (embedded.RunCommandOptions, error) {
 	}
 	return embedded.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.Limits.IdempotencyNamespace,
+		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
@@ -223,15 +224,26 @@ func (r *Runtime) runCommandOptionsFor(commandID agent.CommandID) (embedded.RunC
 	}
 	return embedded.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.Limits.IdempotencyNamespace,
+		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
-func (r *Runtime) subscriptionOptions(afterEventID string) embedded.RunSubscriptionOptions {
+func (r *Runtime) subscriptionOptions(afterEventID string) (embedded.RunSubscriptionOptions, error) {
+	if afterEventID != "" {
+		if len(afterEventID) > protocol.MaximumRunEventIDCharacters {
+			return embedded.RunSubscriptionOptions{}, fmt.Errorf(
+				"run replay cursor exceeds the %d-character transport limit",
+				protocol.MaximumRunEventIDCharacters,
+			)
+		}
+		if !strings.HasPrefix(afterEventID, protocol.IDPrefixEvent) {
+			return embedded.RunSubscriptionOptions{}, errors.New("run replay cursor has invalid event-id framing")
+		}
+	}
 	return embedded.RunSubscriptionOptions{
 		RequestMeta:  cloneRequestMeta(r.meta),
 		AfterEventID: afterEventID,
-	}
+	}, nil
 }
 
 func (r *Runtime) changeSubscriptionOptions() embedded.SubscriptionOptions {
@@ -357,9 +369,10 @@ func (r *Runtime) services() backend.Services {
 		Usage: r, ModelConfig: r, DiagnosticTools: r.diagnosticPort,
 		AuthoringContext: r.authoringPort, Hooks: r.hookPort, Feedback: r.feedbackPort,
 	}
-	if r.profile.Available() {
-		services.RuntimeProfile = new(r.profile.Clone())
-	}
+	// Open cannot construct Runtime without a complete validated discovery
+	// profile. AgentOnly is the separate explicit composition for runtimes that
+	// intentionally have no discovery contract.
+	services.RuntimeProfile = new(r.profile.Clone())
 	if r.supportsFeature(runtimeprofile.FeatureGoals) {
 		services.Goals = r
 	}

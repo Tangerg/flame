@@ -62,8 +62,8 @@ beforeEach(async () => {
   installWorkspaceNavigationPort();
   resetRuntimeConnectionForTest();
   installRuntimeCapabilityPort();
-  usePluginErrorStore.setState({ log: [], nextId: 1 });
-  useNotificationStore.setState({ log: [], nextId: 1 });
+  usePluginErrorStore.setState({ log: [] });
+  useNotificationStore.setState({ log: [] });
   useConfigStore.setState({ values: new Map(), subscribers: new Map() });
   useContextDockStore.setState({
     activeSessionScopeId: null,

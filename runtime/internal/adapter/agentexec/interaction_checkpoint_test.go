@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	agent "github.com/Tangerg/scope/agent"
 )
 
 func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {

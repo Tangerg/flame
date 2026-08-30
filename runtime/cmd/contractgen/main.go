@@ -53,6 +53,16 @@ func run(dir, validatorDir, tsDir string) error {
 	registry, shapes := operation.Contract(), dispatch.WireShapes()
 	walked := walkWireTypes(registry, shapes)
 	built := build(walked)
+	// Generated validators are exported protocol methods, so they must exist on
+	// disk before public-Go-API discovery loads that package. Loading first made a
+	// shape gain require two generator runs: the first wrote ValidateWire, while
+	// only the second published that method in go-api.json.
+	if validatorDir != "" {
+		path := filepath.Join(validatorDir, validatorFile)
+		if err := os.WriteFile(path, []byte(newValidators(registry, shapes)), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
+		}
+	}
 	goAPI, err := loadPublicGoAPI()
 	if err != nil {
 		return err
@@ -74,13 +84,6 @@ func run(dir, validatorDir, tsDir string) error {
 	path := filepath.Join(dir, "API_REFERENCE.md")
 	if err := os.WriteFile(path, []byte(reference(built)), 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
-	}
-	// The Go wire validator lands beside the shapes it checks, in the protocol package.
-	if validatorDir != "" {
-		path = filepath.Join(validatorDir, validatorFile)
-		if err := os.WriteFile(path, []byte(newValidators(registry, shapes)), 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", path, err)
-		}
 	}
 	if tsDir == "" {
 		return nil

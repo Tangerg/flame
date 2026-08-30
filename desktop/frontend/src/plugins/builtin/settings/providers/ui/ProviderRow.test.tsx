@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProviderConfiguration } from "../application/providerConfig";
+import {
+  ProviderConfiguration,
+  type ProviderConfigurationSnapshot,
+} from "../application/providerModels";
 import { ProviderRow } from "./ProviderRow";
 
 const hooks = vi.hoisted(() => ({
@@ -16,13 +19,21 @@ vi.mock("../application/providerConfig", () => ({
   useTestProvider: () => hooks.test,
 }));
 
-const provider = (overrides: Partial<ProviderConfiguration> = {}): ProviderConfiguration => ({
-  id: "openai-compatible",
-  baseUrl: "",
-  apiKeyMasked: "",
-  requiresBaseUrl: true,
-  ...overrides,
-});
+const provider = (
+  overrides: Partial<ProviderConfigurationSnapshot> = {},
+): ProviderConfiguration => {
+  const configured = overrides.configured ?? overrides.credential !== undefined;
+  return ProviderConfiguration.restore({
+    id: "openai-compatible",
+    baseUrl: configured
+      ? (overrides.baseUrl ?? "https://gateway.example.test/v1")
+      : overrides.baseUrl,
+    configured,
+    credentialRequirement: "apiKeyRequired",
+    requiresBaseUrl: true,
+    ...overrides,
+  });
+};
 
 describe("ProviderRow", () => {
   beforeEach(() => {
@@ -34,8 +45,7 @@ describe("ProviderRow", () => {
   it("rebuilds its draft from the authoritative saved resource", async () => {
     const saved = provider({
       baseUrl: "http://127.0.0.1:19999/v1",
-      apiKeyMasked: "p4****ey",
-      keySource: "stored",
+      credential: { masked: "p4****ey", source: "stored" },
     });
     hooks.update.mockResolvedValue(saved);
     const view = render(<ProviderRow p={provider()} />);
@@ -56,8 +66,8 @@ describe("ProviderRow", () => {
     expect((screen.getByLabelText(/openai-compatible API/i) as HTMLInputElement).value).toBe("");
     expect(hooks.update).toHaveBeenCalledWith({
       provider: "openai-compatible",
-      apiKey: "p49-dummy-key",
-      baseUrl: "http://127.0.0.1:19999/v1",
+      apiKey: { type: "set", value: "p49-dummy-key" },
+      baseUrl: { type: "set", value: "http://127.0.0.1:19999/v1" },
     });
 
     view.rerender(<ProviderRow p={saved} />);
@@ -68,7 +78,7 @@ describe("ProviderRow", () => {
 
   it("retires old Runtime feedback without discarding the user's credential draft", async () => {
     hooks.test.mockResolvedValue({ ok: true });
-    const configured = provider({ apiKeyMasked: "sk-****", keySource: "stored" });
+    const configured = provider({ credential: { masked: "sk-****", source: "stored" } });
     const view = render(<ProviderRow p={configured} />);
 
     fireEvent.change(screen.getByLabelText(/openai-compatible Base URL/i), {
@@ -83,6 +93,27 @@ describe("ProviderRow", () => {
     expect(screen.queryByText(/connection ok/i)).toBeNull();
     expect((screen.getByLabelText(/openai-compatible Base URL/i) as HTMLInputElement).value).toBe(
       "https://draft.example.test/v1",
+    );
+  });
+
+  it("presents an optional-key provider as ready without fabricating a credential", () => {
+    render(
+      <ProviderRow
+        p={provider({
+          id: "ollama",
+          baseUrl: undefined,
+          configured: true,
+          credential: undefined,
+          credentialRequirement: "apiKeyOptional",
+          requiresBaseUrl: false,
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/^ready$/i)).toBeTruthy();
+    expect(screen.queryByText(/not configured/i)).toBeNull();
+    expect((screen.getByRole("button", { name: /test/i }) as HTMLButtonElement).disabled).toBe(
+      false,
     );
   });
 });

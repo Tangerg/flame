@@ -1,6 +1,8 @@
 package terminal
 
 import (
+	"errors"
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -8,6 +10,44 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
+
+func TestPluginCommandIdentityExhaustionPreservesExistingCancellationOwner(t *testing.T) {
+	existing := commandOperation{id: 1, pluginID: "existing.plugin"}
+	registry := commandOperationRegistry{
+		next: commandOperationID(math.MaxUint64),
+		active: map[commandOperationID]commandOperation{
+			existing.id: existing,
+		},
+	}
+
+	if _, err := registry.reserve("replacement.plugin"); !errors.Is(err, errCommandOperationIdentityExhausted) {
+		t.Fatalf("reserve after identity exhaustion error = %v", err)
+	}
+
+	if got := registry.active[existing.id]; got != existing {
+		t.Fatalf("existing cancellation owner = %+v, want %+v", got, existing)
+	}
+}
+
+func TestPluginCommandRegistryTakesOnlySelectedOwner(t *testing.T) {
+	registry := newCommandOperationRegistry()
+	first, err := registry.reserve("first.plugin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := registry.reserve("second.plugin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taken := registry.take("first.plugin")
+	if len(taken) != 1 || taken[0] != first {
+		t.Fatalf("taken operations = %+v, want only %+v", taken, first)
+	}
+	if got, ok := registry.active[second.id]; !ok || got != second {
+		t.Fatalf("independent operation = %+v, present %t; want %+v", got, ok, second)
+	}
+}
 
 func TestCommandDescriptorValidatesItsIdentityNamespace(t *testing.T) {
 	t.Parallel()
@@ -232,7 +272,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 	}
 	wantGuard := map[string]bool{
 		"clear": true, "view": true, "export": true,
-		"sessions": true, "timeline": true, "new": true, "workspace": true, "relocate": true, "rename": true, "fork": true, "rollback": true, "import": true,
+		"sessions": true, "new": true, "workspace": true, "relocate": true, "rename": true, "fork": true, "rollback": true, "import": true,
 		"stash": true, "stash-apply": true, "editor": true,
 		"workspaces": true, "changes": true, "diff": true, "preview": true, "grep": true, "browse": true, "read": true,
 		"usage": true, "roles": true, "utility": true, "embedding": true, "providers": true, "provider-test": true, "provider-config": true,

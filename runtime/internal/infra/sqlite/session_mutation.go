@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 )
 
 // Insert persists one already-decided initial Session. Identity, timestamps,
@@ -14,8 +15,9 @@ func (s *SessionStore) Insert(ctx context.Context, value session.Session) error 
 	if err := value.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate initial Session: %w", err)
 	}
-	if value.Revision() != 1 {
-		return fmt.Errorf("sqlite: initial Session revision is %d, want 1: %w", value.Revision(), session.ErrInvalid)
+	firstRevision := exactint.First().Value()
+	if value.Revision() != firstRevision {
+		return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)
 	}
 	if err := s.execInsert(ctx, conn(ctx, s.db), value); err != nil {
 		return err
@@ -34,18 +36,26 @@ func (s *SessionStore) Save(
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate Session replacement: %w", err)
 	}
-	if expectedRevision == 0 || replacement.Revision() != expectedRevision+1 {
+	if expectedRevision == 0 || exactint.Follows(expectedRevision, replacement.Revision()) != nil {
 		return fmt.Errorf(
 			"sqlite: Session replacement revision %d does not follow expected revision %d: %w",
 			replacement.Revision(), expectedRevision, session.ErrInvalid,
 		)
 	}
 	snapshot := replacement.Snapshot()
+	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
+	if err != nil {
+		return fmt.Errorf("sqlite: normalize Session title search material: %w", err)
+	}
+	workspaceSearch, err := session.NormalizeCatalogText(snapshot.Workspace.Path())
+	if err != nil {
+		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
+	}
 	result, err := conn(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
-		title = ?, workspace_path = ?, parent_id = ?, started_at = ?, updated_at = ?,
+		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, started_at = ?, updated_at = ?,
 		provider = ?, model = ?, reasoning_effort = ?, favorite = ?, isolated = ?, revision = ?
 		WHERE id = ? AND revision = ?`,
-		snapshot.Title, snapshot.Workspace.Path(), snapshot.ParentID,
+		snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
 		snapshot.StartedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
 		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),
@@ -71,6 +81,9 @@ func (s *SessionStore) Save(
 
 // Delete is idempotent. It joins an ambient transaction through conn(ctx).
 func (s *SessionStore) Delete(ctx context.Context, id string) error {
+	if err := validateSessionResource("delete Session", id); err != nil {
+		return err
+	}
 	if _, err := conn(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("sqlite: delete Session: %w", err)
 	}
@@ -79,9 +92,17 @@ func (s *SessionStore) Delete(ctx context.Context, id string) error {
 
 func (s *SessionStore) execInsert(ctx context.Context, executor execer, value session.Session) error {
 	snapshot := value.Snapshot()
-	_, err := executor.ExecContext(ctx,
-		`INSERT INTO sessions(`+sessionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		snapshot.ID, snapshot.Title, snapshot.Workspace.Path(), snapshot.ParentID,
+	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
+	if err != nil {
+		return fmt.Errorf("sqlite: normalize Session title search material: %w", err)
+	}
+	workspaceSearch, err := session.NormalizeCatalogText(snapshot.Workspace.Path())
+	if err != nil {
+		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
+	}
+	_, err = executor.ExecContext(ctx,
+		`INSERT INTO sessions(`+sessionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		snapshot.ID, snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
 		snapshot.StartedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
 		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),

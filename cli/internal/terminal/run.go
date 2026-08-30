@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -18,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/attachment"
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
 	"github.com/Tangerg/flame/cli/internal/feedback"
@@ -28,6 +30,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/session"
@@ -117,7 +120,8 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				authoringContext: cfg.AuthoringContext, hooks: cfg.Hooks, feedback: cfg.Feedback,
 				registry: registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
 				attachments: prepared.attachments,
-				settings:    prepared.settings, keyBindings: prepared.keyBindings, queue: queue,
+				settings:    prepared.settings, reconnectPolicy: prepared.reconnectPolicy,
+				options: prepared.options, keyBindings: prepared.keyBindings, queue: queue,
 				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
 			})
 			if prepared.rollbackRecovery != nil {
@@ -125,7 +129,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 			}
 			return headless.NewRoot(active)
 		},
-		Terminal: term.Config{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible},
+		Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible},
 		Host:     cfg.Host,
 	})
 	if active != nil {
@@ -140,6 +144,8 @@ type preparedSession struct {
 	attachments      *attachment.Resolver
 	keyBindings      keyBindings
 	settings         settings.Config
+	reconnectPolicy  reconnect.Policy
+	options          agent.RunOptions
 	workbench        *workbench.Store
 	draft            agent.Message
 	editor           *draftEditor
@@ -150,11 +156,37 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if cfg.Runtime == nil {
 		return preparedSession{}, errors.New("session: a runtime is required")
 	}
+	profile, configured, bindings, err := validatedSessionConfig(cfg)
+	if err != nil {
+		return preparedSession{}, err
+	}
+	reconnectPolicy, err := reconnect.New(configured.UI.ReconnectAttempts)
+	if err != nil {
+		return preparedSession{}, fmt.Errorf("session reconnect policy: %w", err)
+	}
+	authoring, err := openSessionWorkbench(cfg.StateDirectory)
+	if err != nil {
+		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
+	}
+	if err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile); err != nil {
+		return preparedSession{}, err
+	}
+	return openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
+}
+
+func openSessionWorkbench(directory string) (*workbench.Store, error) {
+	if strings.TrimSpace(directory) == "" {
+		return workbench.OpenMemory(workbench.Config{})
+	}
+	return workbench.OpenDirectory(directory, workbench.Config{})
+}
+
+func validatedSessionConfig(cfg Config) (*runtimeprofile.Profile, settings.Config, keyBindings, error) {
 	var profile *runtimeprofile.Profile
 	if cfg.RuntimeProfile != nil {
 		cloned := cfg.RuntimeProfile.Clone()
 		if err := cloned.Validate(); err != nil {
-			return preparedSession{}, fmt.Errorf("session runtime profile: %w", err)
+			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 		}
 		profile = &cloned
 	}
@@ -163,30 +195,51 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 		configured = cfg.Settings.Clone()
 	}
 	if err := configured.Validate(); err != nil {
-		return preparedSession{}, fmt.Errorf("session settings: %w", err)
+		return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session settings: %w", err)
 	}
 	bindings, err := configuredKeyBindings(configured)
 	if err != nil {
-		return preparedSession{}, err
+		return nil, settings.Config{}, keyBindings{}, err
 	}
-	authoring, err := workbench.Open(cfg.StateDirectory, workbench.Config{})
+	return profile, configured, bindings, nil
+}
+
+func recoverSessionCommands(
+	ctx context.Context,
+	runtime agent.Runtime,
+	authoring *workbench.Store,
+	profile *runtimeprofile.Profile,
+) error {
+	if err := sessiondeletion.Recover(
+		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+	); err != nil {
+		return fmt.Errorf("recover session deletions: %w", err)
+	}
+	if err := steering.Recover(
+		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+	); err != nil {
+		return fmt.Errorf("recover steer commands: %w", err)
+	}
+	if err := sessionrollback.Recover(
+		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+	); err != nil {
+		return fmt.Errorf("recover session rollbacks: %w", err)
+	}
+	return nil
+}
+
+func openPreparedSession(
+	ctx context.Context,
+	cfg Config,
+	profile *runtimeprofile.Profile,
+	configured settings.Config,
+	reconnectPolicy reconnect.Policy,
+	bindings keyBindings,
+	authoring *workbench.Store,
+) (preparedSession, error) {
+	options, err := configured.RunOptions()
 	if err != nil {
-		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
-	}
-	if recoverErr := sessiondeletion.Recover(
-		ctx, cfg.Runtime, authoring, deletionReplayWindow(profile), runtimeRecoveryBackoff,
-	); recoverErr != nil {
-		return preparedSession{}, fmt.Errorf("recover session deletions: %w", recoverErr)
-	}
-	if recoverErr := steering.Recover(
-		ctx, cfg.Runtime, authoring, steeringReplayWindow(profile), runtimeRecoveryBackoff,
-	); recoverErr != nil {
-		return preparedSession{}, fmt.Errorf("recover steer commands: %w", recoverErr)
-	}
-	if recoverErr := sessionrollback.Recover(
-		ctx, cfg.Runtime, authoring, rollbackReplayWindow(profile), runtimeRecoveryBackoff,
-	); recoverErr != nil {
-		return preparedSession{}, fmt.Errorf("recover session rollbacks: %w", recoverErr)
+		return preparedSession{}, fmt.Errorf("session run options: %w", err)
 	}
 	opened, err := session.Open(ctx, cfg.Runtime, cfg.SessionID, cfg.Workspace)
 	if err != nil {
@@ -218,87 +271,59 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 		return preparedSession{}, err
 	}
 	return preparedSession{
-		opened: opened, runtimeProfile: profile, attachments: attachments, keyBindings: bindings, settings: configured,
+		opened: opened, runtimeProfile: profile, attachments: attachments, keyBindings: bindings,
+		settings: configured, reconnectPolicy: reconnectPolicy, options: options,
 		workbench: authoring, draft: draft, editor: editor,
 		rollbackRecovery: optionalRollbackRecovery(recovery, recovered),
 	}, nil
 }
 
-func rollbackReplayWindow(profile *runtimeprofile.Profile) sessionrollback.ReplayWindow {
-	if profile == nil {
-		return sessionrollback.ReplayWindow{}
+func commandReplayPolicy(profile *runtimeprofile.Profile) commandreplay.Policy {
+	policy, err := runtimeprofile.CommandReplayPolicy(profile)
+	if err != nil {
+		return commandreplay.Policy{}
 	}
-	return sessionrollback.ReplayWindow{
-		Namespace: profile.Limits.IdempotencyNamespace,
-		Retention: time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second,
-	}
+	return policy
 }
 
-func deletionReplayWindow(profile *runtimeprofile.Profile) sessiondeletion.ReplayWindow {
-	if profile == nil {
-		return sessiondeletion.ReplayWindow{}
+func commandReplayGuard(profile *runtimeprofile.Profile) commandreplay.Guard {
+	guard, err := commandReplayPolicy(profile).NewGuard()
+	if err != nil {
+		return commandreplay.Guard{}
 	}
-	return sessiondeletion.ReplayWindow{
-		Namespace: profile.Limits.IdempotencyNamespace,
-		Retention: time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second,
-	}
+	return guard
 }
 
-func commandReplayGuard(profile *runtimeprofile.Profile) workbench.ReplayGuard {
-	if profile == nil {
-		return workbench.ReplayGuard{}
-	}
-	return workbench.ReplayGuard{
-		Namespace: profile.Limits.IdempotencyNamespace,
-		Until: time.Now().UTC().Add(
-			time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second,
-		),
-	}
-}
-
-func commandReplaySafe(guard workbench.ReplayGuard, profile *runtimeprofile.Profile) bool {
+func commandReplaySafe(guard commandreplay.Guard, profile *runtimeprofile.Profile) bool {
 	return commandReplaySafeAt(guard, profile, time.Now().UTC())
 }
 
 func commandReplaySafeAt(
-	guard workbench.ReplayGuard,
+	guard commandreplay.Guard,
 	profile *runtimeprofile.Profile,
 	now time.Time,
 ) bool {
-	return commandReplayStoreMatches(guard, profile) &&
-		(profile == nil || now.Before(guard.Until))
+	policy, err := runtimeprofile.CommandReplayPolicyWithClock(profile, func() time.Time { return now })
+	if err != nil {
+		return false
+	}
+	return policy.Replayable(guard)
 }
 
 func commandReplayStoreMatches(
-	guard workbench.ReplayGuard,
+	guard commandreplay.Guard,
 	profile *runtimeprofile.Profile,
 ) bool {
-	if profile == nil {
-		return guard.Empty()
-	}
-	return guard.Namespace == profile.Limits.IdempotencyNamespace
+	return commandReplayPolicy(profile).SameStore(guard)
 }
 
 func commandReplayAdmission(
-	guard workbench.ReplayGuard,
+	guard commandreplay.Guard,
 	profile *runtimeprofile.Profile,
 ) mutation.Admission {
-	return func() error {
-		if !commandReplaySafe(guard, profile) {
-			return mutation.ErrReplayGuaranteeUnavailable
-		}
-		return nil
-	}
-}
-
-func steeringReplayWindow(profile *runtimeprofile.Profile) steering.ReplayWindow {
-	if profile == nil {
-		return steering.ReplayWindow{}
-	}
-	return steering.ReplayWindow{
-		Namespace: profile.Limits.IdempotencyNamespace,
-		Retention: time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second,
-	}
+	return mutation.FreshDynamicReplayAdmission(func() commandreplay.Policy {
+		return commandReplayPolicy(profile)
+	}, guard)
 }
 
 func optionalRollbackRecovery(

@@ -28,7 +28,7 @@ func (a *app) matchConfiguredAction(event input.Event) (matched, handled bool) {
 		return false, false
 	}
 	keys, matcher := a.applicationKeys, &a.applicationMatcher
-	if !a.stack.Empty() {
+	if a.stack.Depth() > 0 {
 		// A modal owns every non-global key. Keeping a separate matcher prevents a
 		// printable prefix configured for the application from swallowing form input.
 		a.applicationMatcher.Clear()
@@ -64,7 +64,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		a.cancel()
 		return true
 	}
-	if !a.stack.Empty() {
+	if a.stack.Depth() > 0 {
 		if a.stack.Handle(event) {
 			return true
 		}
@@ -105,7 +105,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 }
 
 func (a *app) handleUnboundEvent(event input.Event) bool {
-	if !a.stack.Empty() {
+	if a.stack.Depth() > 0 {
 		return a.stack.Handle(event)
 	}
 	if a.shell.TranscriptFocused() {
@@ -281,6 +281,9 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		return true
 	case showSessions:
 		a.ShowSessions()
+		return true
+	case showTimeline:
+		a.ShowTimeline()
 		return true
 	case chooseModel, editPrompt:
 		return a.handlePromptAction(action)

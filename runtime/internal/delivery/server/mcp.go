@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -49,11 +50,15 @@ func (s *Server) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandi
 // UpdateMCPServer applies an explicit partial update and returns the resulting
 // unified resource.
 func (s *Server) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
+	name, err := parseMCPServerName(in.Server)
+	if err != nil {
+		return nil, err
+	}
 	patch, err := mcpServerPatchFromRequest(in)
 	if err != nil {
 		return nil, err
 	}
-	server, err := s.mcp.UpdateServer(ctx, in.Server, patch)
+	server, err := s.mcp.UpdateServer(ctx, name, patch)
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
@@ -66,7 +71,11 @@ func (s *Server) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServe
 
 // DeleteMCPServer deletes one configured server and its live projection.
 func (s *Server) DeleteMCPServer(ctx context.Context, server string) error {
-	return wireMCPError(s.mcp.DeleteServer(ctx, server))
+	name, err := parseMCPServerName(server)
+	if err != nil {
+		return err
+	}
+	return wireMCPError(s.mcp.DeleteServer(ctx, name))
 }
 
 // TestMCPServer probes a complete candidate without persisting it.
@@ -89,7 +98,15 @@ func (s *Server) TestMCPServer(ctx context.Context, in protocol.MCPServerCandida
 // ListMCPTools lists tools advertised by connected MCP servers, optionally
 // narrowed to one server.
 func (s *Server) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
-	found, err := s.mcp.Tools(ctx, in.Server)
+	var name *mcpserver.ServerName
+	if in.Server != "" {
+		parsed, err := parseMCPServerName(in.Server)
+		if err != nil {
+			return nil, err
+		}
+		name = &parsed
+	}
+	found, err := s.mcp.Tools(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -103,13 +120,21 @@ func (s *Server) ListMCPTools(ctx context.Context, in protocol.MCPListToolsReque
 // ReconnectMCPServer starts a new live dial. Its state transitions invalidate
 // the server resource through runtime.event.
 func (s *Server) ReconnectMCPServer(ctx context.Context, server string) error {
-	return wireMCPError(s.mcp.ReconnectServer(ctx, server))
+	name, err := parseMCPServerName(server)
+	if err != nil {
+		return err
+	}
+	return wireMCPError(s.mcp.ReconnectServer(ctx, name))
 }
 
 // CreateMCPAuthorizationAttempt starts interactive OAuth and returns its
 // observable asynchronous resource immediately.
 func (s *Server) CreateMCPAuthorizationAttempt(ctx context.Context, server string) (*protocol.MCPAuthorizationAttempt, error) {
-	attempt, err := s.mcp.CreateAuthorizationAttempt(ctx, server)
+	name, err := parseMCPServerName(server)
+	if err != nil {
+		return nil, err
+	}
+	attempt, err := s.mcp.CreateAuthorizationAttempt(ctx, name)
 	if err != nil {
 		return nil, wireMCPError(err)
 	}

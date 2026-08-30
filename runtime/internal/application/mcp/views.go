@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/secrets"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
@@ -62,13 +61,12 @@ type ConnectionInput struct {
 
 // ServerInput is a complete create/test candidate.
 type ServerInput struct {
-	Name             string
+	Name             mcpserver.ServerName
 	Enabled          bool
 	Description      string
 	Connection       ConnectionInput
-	Timeout          time.Duration
-	DisabledTools    []string
-	AutoApproveTools []string
+	HandshakeTimeout mcpserver.HandshakeTimeout
+	ToolPolicy       mcpserver.ServerToolPolicy
 }
 
 // ServerPatch is an update command. nil preserves the current value; a
@@ -77,15 +75,15 @@ type ServerPatch struct {
 	Enabled          *bool
 	Description      *string
 	Connection       *ConnectionInput
-	Timeout          *time.Duration
-	DisabledTools    *[]string
-	AutoApproveTools *[]string
+	HandshakeTimeout *mcpserver.HandshakeTimeout
+	DisabledTools    *[]mcpserver.RemoteToolName
+	AutoApproveTools *[]mcpserver.RemoteToolName
 }
 
 // Empty reports whether the update carries no mutation.
 func (s ServerPatch) Empty() bool {
 	return s.Enabled == nil && s.Description == nil && s.Connection == nil &&
-		s.Timeout == nil && s.DisabledTools == nil && s.AutoApproveTools == nil
+		s.HandshakeTimeout == nil && s.DisabledTools == nil && s.AutoApproveTools == nil
 }
 
 // Connection is the safe application read model for a connection. Raw
@@ -104,12 +102,11 @@ type Connection struct {
 // Server is the unified application read model: durable configuration and
 // the current connection lifecycle are projected together.
 type Server struct {
-	Name             string
+	Name             mcpserver.ServerName
 	Description      string
 	Connection       Connection
-	Timeout          time.Duration
-	DisabledTools    []string
-	AutoApproveTools []string
+	HandshakeTimeout mcpserver.HandshakeTimeout
+	ToolPolicy       mcpserver.ServerToolPolicy
 	State            ServerState
 }
 
@@ -153,7 +150,7 @@ func (s ServerStateType) String() string {
 // ServerStatus is the application status notification read model. Known is
 // false after a removed server's final invalidation.
 type ServerStatus struct {
-	Name      string
+	Name      mcpserver.ServerName
 	Known     bool
 	State     mcpserver.ConnectionState
 	ToolCount *int
@@ -193,9 +190,8 @@ func serverView(server mcpserver.Server, status *ServerStatus) Server {
 		Name:             server.Name,
 		Description:      server.Description,
 		Connection:       connectionView(server),
-		Timeout:          server.Timeout,
-		DisabledTools:    slices.Clone(server.DisabledTools),
-		AutoApproveTools: slices.Clone(server.AutoApproveTools),
+		HandshakeTimeout: server.HandshakeTimeout,
+		ToolPolicy:       server.ToolPolicy,
 		State:            ServerState{Type: ServerDisconnected},
 	}
 	if !server.Enabled {

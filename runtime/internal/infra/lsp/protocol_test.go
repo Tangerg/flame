@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func TestDefaultCapabilitiesHaveOneTypedWireShape(t *testing.T) {
+	encoded, err := json.Marshal(defaultCapabilities())
+	if err != nil {
+		t.Fatalf("marshal default capabilities: %v", err)
+	}
+	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":false},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true}}`
+	if string(encoded) != want {
+		t.Fatalf("default capabilities = %s", encoded)
+	}
+}
+
 func TestParseLocationsSupportsProtocolUnion(t *testing.T) {
 	tests := []struct {
 		name string

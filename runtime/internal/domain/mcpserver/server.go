@@ -5,9 +5,7 @@
 package mcpserver
 
 import (
-	"errors"
 	"fmt"
-	"time"
 )
 
 // Transport names an MCP server connection mode using the standard
@@ -24,7 +22,7 @@ const (
 // the server's tools ("<name>_<tool>") across servers.
 type Server struct {
 	// Name identifies the server and namespaces its tools. Required, unique.
-	Name string
+	Name ServerName
 
 	// Transport is [TransportStdio] or [TransportStreamableHTTP]. Required.
 	Transport Transport
@@ -65,30 +63,27 @@ type Server struct {
 	// Dir sets the subprocess working directory; empty inherits the parent's (stdio).
 	Dir string
 
-	// Timeout bounds the connection handshake (both transports); zero leaves it
-	// unbounded beyond the caller's ctx.
-	Timeout time.Duration
+	// HandshakeTimeout bounds connection establishment for both transports. The
+	// value object distinguishes an unbounded handshake from a bounded duration.
+	HandshakeTimeout HandshakeTimeout
 
-	// DisabledTools hides these tools from the model entirely (a blacklist —
-	// every other tool the server advertises stays available, so new tools are
-	// exposed by default).
-	DisabledTools []string
-
-	// AutoApproveTools lists tools whose calls skip the HITL approval gate (a
-	// whitelist — MCP tools otherwise follow normal approval, since a remote
-	// server's tools are arbitrary capability that shouldn't auto-run by default).
-	AutoApproveTools []string
+	// ToolPolicy owns the exact remote identities hidden from the model or
+	// allowed to skip HITL. A tool cannot carry contradictory decisions.
+	ToolPolicy ServerToolPolicy
 }
 
 // Validate reports whether the server is well-formed for its transport: the
 // chosen transport's required field is set and the other transport's fields
 // are blank before connection-specific state is attached.
 func (s Server) Validate() error {
-	if s.Name == "" {
-		return errors.New("mcpserver: Name is required")
+	if err := s.Name.Validate(); err != nil {
+		return err
 	}
-	if s.Timeout < 0 {
-		return fmt.Errorf("mcpserver %q: Timeout must be non-negative", s.Name)
+	if err := s.HandshakeTimeout.Validate(); err != nil {
+		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
+	}
+	if err := s.ToolPolicy.Validate(); err != nil {
+		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
 	}
 	switch s.Transport {
 	case TransportStreamableHTTP:

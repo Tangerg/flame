@@ -55,8 +55,7 @@ func replayIndex(events []agent.RunEvent, eventID string) int {
 }
 
 func (r *Runtime) openSegmentLocked(run *runState) *segmentState {
-	r.next++
-	segment := &segmentState{id: fmt.Sprintf("seg_mock_%d", r.next), changed: make(chan struct{})}
+	segment := &segmentState{id: r.identities.next(segmentIdentity), changed: make(chan struct{})}
 	run.active = segment.id
 	run.segments[segment.id] = segment
 	return segment
@@ -89,24 +88,29 @@ func (r *Runtime) bindSegmentLocked(
 }
 
 type segmentSubscription struct {
-	runtime     *Runtime
-	ctx         context.Context
-	run         *runState
-	segment     *segmentState
-	next        int
-	replayUntil int
-	fault       SubscriptionFault
-	position    int
+	runtime           *Runtime
+	ctx               context.Context
+	run               *runState
+	segment           *segmentState
+	next              int
+	replayUntil       int
+	fault             SubscriptionFault
+	position          int
+	terminalDelivered bool
 }
 
 func (s *segmentSubscription) stream(yield func(agent.RunEvent, error) bool) {
 	for {
-		next, closed, changed := s.nextEvent()
+		next, closed, changed, terminalErr := s.nextEvent()
 		if next != nil {
 			if !s.deliver(*next, yield) {
 				return
 			}
 			continue
+		}
+		if terminalErr != nil {
+			yield(agent.RunEvent{}, terminalErr)
+			return
 		}
 		if closed || !s.awaitChange(changed, yield) {
 			return
@@ -114,7 +118,7 @@ func (s *segmentSubscription) stream(yield func(agent.RunEvent, error) bool) {
 	}
 }
 
-func (s *segmentSubscription) nextEvent() (*agent.RunEvent, bool, <-chan struct{}) {
+func (s *segmentSubscription) nextEvent() (*agent.RunEvent, bool, <-chan struct{}, error) {
 	s.runtime.mu.Lock()
 	defer s.runtime.mu.Unlock()
 	for s.next < len(s.segment.events) {
@@ -125,9 +129,13 @@ func (s *segmentSubscription) nextEvent() (*agent.RunEvent, bool, <-chan struct{
 			continue
 		}
 		cloned := event.Clone()
-		return &cloned, s.segment.closed, s.segment.changed
+		return &cloned, s.segment.closed, s.segment.changed, nil
 	}
-	return nil, s.segment.closed, s.segment.changed
+	if !s.terminalDelivered && s.segment.terminalErr != nil {
+		s.terminalDelivered = true
+		return nil, true, s.segment.changed, s.segment.terminalErr
+	}
+	return nil, s.segment.closed, s.segment.changed, nil
 }
 
 func (s *segmentSubscription) deliver(next agent.RunEvent, yield func(agent.RunEvent, error) bool) bool {
@@ -169,12 +177,12 @@ func (r *Runtime) takeFaultLocked() (SubscriptionFault, error) {
 		return SubscriptionFault{}, nil
 	}
 	fault := r.Faults[r.fault]
-	r.fault++
 	if fault.After < 1 {
 		fault.After = 1
 	}
 	switch fault.Kind {
 	case FaultDisconnect, FaultDuplicate, FaultConflict:
+		r.fault++
 		return fault, nil
 	default:
 		return SubscriptionFault{}, fmt.Errorf("mock: unknown subscription fault %q", fault.Kind)

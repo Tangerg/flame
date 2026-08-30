@@ -7,8 +7,10 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	"github.com/Tangerg/flame/runtime/internal/adapter/utilitymodel"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // compactionStore is the worker's narrow conversation use-case view. The
@@ -29,13 +31,10 @@ type compactionStore interface {
 // Compactor is the automatic conversation-history compaction worker. A nil
 // Compactor makes [Compactor.CompactIfNeeded] a silent no-op.
 type Compactor struct {
-	store             compactionStore
-	client            utilitymodel.Resolver
-	liveState         LiveStateSnapshotter // nil = no post-compaction live-state reminder
-	maxMessages       int
-	explicitMaxTokens int // cfg.MaxTokens override; 0 = derive from the run's model window
-	fallbackLimits    modelref.TokenLimits
-	keepRecent        int
+	store     compactionStore
+	client    utilitymodel.Resolver
+	liveState LiveStateSnapshotter // nil = no post-compaction live-state reminder
+	policy    compactionPolicy
 }
 
 type compactionAction uint8
@@ -57,43 +56,16 @@ type compactionPlan struct {
 	inputTokens    int
 }
 
-// CompactionResult describes an LLM summary rewrite. A trim-only rewrite keeps
-// every message and therefore returns the zero value: callers publish a
-// compaction boundary only when older messages were replaced by a summary.
-type CompactionResult struct {
-	Compacted      bool
-	MessagesBefore int
-	MessagesAfter  int
-}
-
 // NewCompactor builds a Compactor over the chat history store and a
 // per-call chat-client resolver. liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
 // model of running shells the summary cannot reconstruct.
-// Zero / out-of-range config fields fall back to the package defaults.
-func NewCompactor(store compactionStore, client utilitymodel.Resolver, liveState LiveStateSnapshotter, cfg CompactionConfig) *Compactor {
-	maxMessages := cfg.MaxMessages
-	if maxMessages <= 0 {
-		maxMessages = defaultCompactMaxMessages
+func NewCompactor(store compactionStore, client utilitymodel.Resolver, liveState LiveStateSnapshotter, values CompactionPolicyValues) (*Compactor, error) {
+	policy, err := newCompactionPolicy(values)
+	if err != nil {
+		return nil, err
 	}
-	keep := cfg.KeepRecent
-	if keep <= 0 {
-		keep = defaultCompactKeepRecent
-	}
-	// Sanity: keep must be < maxMessages or compaction would loop on
-	// the same message set.
-	if keep >= maxMessages {
-		keep = maxMessages / 2
-	}
-	return &Compactor{
-		store:             store,
-		client:            client,
-		liveState:         liveState,
-		maxMessages:       maxMessages,
-		explicitMaxTokens: cfg.MaxTokens,
-		fallbackLimits:    cfg.FallbackTokenLimits,
-		keepRecent:        keep,
-	}
+	return &Compactor{store: store, client: client, liveState: liveState, policy: policy}, nil
 }
 
 // tokenTrigger resolves the token-footprint compaction threshold for a run whose
@@ -104,28 +76,33 @@ func NewCompactor(store compactionStore, client utilitymodel.Resolver, liveState
 // maximum and the total context remaining after an explicit output reservation.
 func (c *Compactor) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
 	effectiveLimits := limits
-	if effectiveLimits.IsZero() {
-		effectiveLimits = c.fallbackLimits
+	if effectiveLimits.Unknown() {
+		effectiveLimits = c.policy.fallbackLimits
 	}
-	requestedOutput := int64(0)
+	reservation := modelref.OutputReservation{}
 	if options.MaxTokens != nil {
-		requestedOutput = *options.MaxTokens
+		var err error
+		reservation, err = modelref.NewOutputReservation(*options.MaxTokens)
+		if err != nil {
+			return 0, err
+		}
 	}
-	inputLimit, _, err := effectiveLimits.InputCeiling(requestedOutput)
+	inputLimit, inputLimitKnown, err := effectiveLimits.InputCeiling(reservation)
 	if err != nil {
 		return 0, err
 	}
-	window := tokenLimitInt(effectiveLimits.ContextWindow())
+	contextWindow, contextWindowKnown := effectiveLimits.ContextWindow()
 
 	trigger := defaultCompactMaxTokens
-	if c.explicitMaxTokens > 0 {
-		trigger = c.explicitMaxTokens
-	} else if window > 0 {
+	if c.policy.maxTokensExplicit {
+		trigger = c.policy.maxTokens
+	} else if contextWindowKnown {
+		window := tokenLimitInt(contextWindow)
 		whole := window / percentageScale * windowTriggerPct
 		fraction := window % percentageScale * windowTriggerPct / percentageScale
 		trigger = max(1, saturatedAdd(whole, fraction))
 	}
-	if inputLimit > 0 {
+	if inputLimitKnown {
 		trigger = min(trigger, tokenLimitInt(inputLimit))
 	}
 	return trigger, nil
@@ -147,11 +124,10 @@ func tokenLimitInt(value int64) int {
 // tool-call arguments and old tool-result bodies (see trimForBudgetBefore);
 // only if that leaves the footprint over budget is the older slice summarized by
 // the LLM and the store rewritten as [summary, recent...]. A trim that suffices
-// on its own rewrites history silently and reports no boundary (Compacted stays
-// false) — it drops no messages. The returned [CompactionResult] reports
-// whether the LLM summary fired and the before/after message counts so callers
-// can chain follow-on work (e.g. extraction) and surface an observable boundary
-// event.
+// on its own rewrites history silently and reports no boundary — it drops no
+// messages. The returned [agentexec.CompactionResult] carries the semantic
+// summary and before/after message counts so callers can chain follow-on work
+// (e.g. extraction) and surface an observable boundary event.
 //
 // No-op (zero result) on a nil receiver (compaction disabled) or an
 // empty sessionID.
@@ -166,44 +142,47 @@ func (c *Compactor) CompactIfNeeded(
 	limits modelref.TokenLimits,
 	options chat.Options,
 	preCompact func(context.Context) bool,
-) (CompactionResult, error) {
+) (agentexec.CompactionResult, error) {
 	if c == nil || sessionID == "" {
-		return CompactionResult{}, nil
+		return agentexec.CompactionResult{}, nil
+	}
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: %w", err)
 	}
 	maxTokens, err := c.tokenTrigger(limits, options)
 	if err != nil {
-		return CompactionResult{}, fmt.Errorf("compactor: resolve token trigger: %w", err)
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: resolve token trigger: %w", err)
 	}
 	msgs, err := c.store.Read(ctx, sessionID)
 	if err != nil {
-		return CompactionResult{}, fmt.Errorf("compactor: read: %w", err)
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: read: %w", err)
 	}
-	budget := newModelContextBudget(c.maxMessages, maxTokens, nil, nil, nil, chat.Options{}, 0, nil)
+	budget := newModelContextBudget(c.policy.messageTrigger, maxTokens, nil, nil, nil, chat.Options{}, 0, nil)
 	plan, err := c.planCompaction(ctx, msgs, budget)
 	if err != nil {
-		return CompactionResult{}, err
+		return agentexec.CompactionResult{}, err
 	}
 	if plan.action == noCompaction {
-		return CompactionResult{}, nil
+		return agentexec.CompactionResult{}, nil
 	}
 	if preCompact != nil && !preCompact(ctx) {
-		return CompactionResult{}, nil
+		return agentexec.CompactionResult{}, nil
 	}
 
 	if plan.action == trimCompaction {
 		if rewriteForCompactionErr := c.store.RewriteForCompaction(ctx, sessionID, len(msgs), 0, 0, plan.trimmed...); rewriteForCompactionErr != nil {
-			return CompactionResult{}, fmt.Errorf("compactor: replace trimmed: %w", rewriteForCompactionErr)
+			return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace trimmed: %w", rewriteForCompactionErr)
 		}
-		return CompactionResult{}, nil
+		return agentexec.CompactionResult{}, nil
 	}
 
 	summary, err := c.summarize(ctx, plan.older)
 	if err != nil {
-		return CompactionResult{}, fmt.Errorf("compactor: summarize: %w", err)
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: summarize: %w", err)
 	}
 
 	rewritten := make([]chat.Message, 0, 2+len(plan.recent))
-	rewritten = append(rewritten, summary)
+	rewritten = append(rewritten, summary.Message())
 	// Right after the summary, carry over the live execution state the summary
 	// dropped (running background shells) so the model does not forget a process
 	// it started before the compacted Runs. Deterministic, no model
@@ -218,16 +197,16 @@ func (c *Compactor) CompactIfNeeded(
 	// a failed rewrite, so a crash cannot
 	// leave the conversation cleared-but-not-rewritten (losing `recent` too).
 	prefixAfter := len(rewritten) - len(plan.recent)
+	result, err := agentexec.NewCompactionResult(summary.Text(), plan.messagesBefore, len(rewritten))
+	if err != nil {
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: build result: %w", err)
+	}
 	if err := c.store.RewriteForCompaction(
 		ctx, sessionID, plan.messagesBefore, plan.cutoff, prefixAfter, rewritten...,
 	); err != nil {
-		return CompactionResult{}, fmt.Errorf("compactor: replace: %w", err)
+		return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace: %w", err)
 	}
-	return CompactionResult{
-		Compacted:      true,
-		MessagesBefore: plan.messagesBefore,
-		MessagesAfter:  len(rewritten),
-	}, nil
+	return result, nil
 }
 
 func (c *Compactor) planCompaction(
@@ -244,7 +223,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	budget modelContextBudget,
 	protectedTail int,
 ) (compactionPlan, error) {
-	overBudget, inputTokens, err := budget.triggered(ctx, messages)
+	overBudget, tokenTriggered, inputTokens, err := budget.triggered(ctx, messages)
 	if err != nil {
 		return compactionPlan{}, err
 	}
@@ -252,28 +231,31 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{inputTokens: inputTokens}, nil
 	}
 	if protectedTail < 0 || protectedTail > len(messages) {
-		return compactionPlan{required: true}, nil
+		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
 	}
 	foldableLimit := len(messages) - protectedTail
 	protectedOverBudget, _, err := budget.exceeded(ctx, messages[foldableLimit:])
 	if err != nil {
 		return compactionPlan{}, err
 	}
-	if foldableLimit == 0 || protectedOverBudget {
-		return compactionPlan{required: true}, nil
+	if protectedOverBudget {
+		return compactionPlan{required: true, inputTokens: inputTokens}, nil
+	}
+	if foldableLimit == 0 {
+		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
 	}
 	cutoff := c.summaryCutoffWithProtectedTail(messages, protectedTail)
 	if cutoff == 0 {
-		return compactionPlan{required: true}, nil
+		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
 	}
 	trimmed, changed := trimForBudgetBefore(messages, cutoff)
 	trimmedOverBudget, trimmedTokens, err := budget.exceeded(ctx, trimmed)
 	if err != nil {
 		return compactionPlan{}, err
 	}
-	if changed && !trimmedOverBudget {
+	if tokenTriggered && changed && !trimmedOverBudget {
 		return compactionPlan{
-			action: trimCompaction, required: true,
+			action: trimCompaction, required: tokenTriggered,
 			messagesBefore: len(messages), trimmed: trimmed,
 			inputTokens: trimmedTokens,
 		}, nil
@@ -294,9 +276,9 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		if err != nil {
 			return compactionPlan{}, err
 		}
-		if changed && !trimmedOverBudget {
+		if tokenTriggered && changed && !trimmedOverBudget {
 			return compactionPlan{
-				action: trimCompaction, required: true,
+				action: trimCompaction, required: tokenTriggered,
 				messagesBefore: len(messages), trimmed: trimmed,
 				inputTokens: trimmedTokens,
 			}, nil
@@ -304,7 +286,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	}
 	return compactionPlan{
 		action:         summarizeCompaction,
-		required:       true,
+		required:       tokenTriggered,
 		messagesBefore: len(messages),
 		cutoff:         cutoff,
 		older:          trimmed[:cutoff],
@@ -325,7 +307,7 @@ func (c *Compactor) summaryCutoffWithProtectedTail(
 		return 0
 	}
 	foldable := messages[:len(messages)-protectedTail]
-	desired := max(0, len(messages)-c.keepRecent)
+	desired := max(0, len(messages)-c.policy.keepRecent)
 	desired = min(desired, len(foldable))
 	hasOpeningUser := false
 	for index := desired; index < len(foldable); index++ {

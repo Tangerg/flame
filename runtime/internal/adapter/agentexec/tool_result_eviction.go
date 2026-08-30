@@ -2,6 +2,8 @@ package agentexec
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 )
@@ -19,25 +21,66 @@ type toolResultOffloader interface {
 // makes it no smaller than the original body.
 const toolResultPreviewBytes = 2000
 
+// ToolResultOffloadPolicyValues is the construction boundary for optional
+// Tool-result eviction. An omitted threshold disables eviction; a present
+// threshold must be positive and names the exact read-back Tool.
+type ToolResultOffloadPolicyValues struct {
+	Threshold  *int
+	ReaderName string
+}
+
+type toolResultOffloadPolicy struct {
+	enabled    bool
+	threshold  int
+	readerName string
+}
+
+type toolResultOffloadIdentity struct {
+	Threshold  int    `json:"threshold"`
+	ReaderName string `json:"readerName"`
+}
+
+func newToolResultOffloadPolicy(values ToolResultOffloadPolicyValues) (toolResultOffloadPolicy, error) {
+	if values.Threshold == nil {
+		if strings.TrimSpace(values.ReaderName) != "" {
+			return toolResultOffloadPolicy{}, errors.New("agentexec: disabled Tool-result offload cannot name a reader Tool")
+		}
+		return toolResultOffloadPolicy{}, nil
+	}
+	if *values.Threshold <= 0 {
+		return toolResultOffloadPolicy{}, errors.New("agentexec: Tool-result offload threshold must be positive")
+	}
+	if strings.TrimSpace(values.ReaderName) == "" || values.ReaderName != strings.TrimSpace(values.ReaderName) {
+		return toolResultOffloadPolicy{}, errors.New("agentexec: Tool-result reader name is required without surrounding whitespace")
+	}
+	return toolResultOffloadPolicy{enabled: true, threshold: *values.Threshold, readerName: values.ReaderName}, nil
+}
+
+func (p toolResultOffloadPolicy) identity() *toolResultOffloadIdentity {
+	if !p.enabled {
+		return nil
+	}
+	return &toolResultOffloadIdentity{Threshold: p.threshold, ReaderName: p.readerName}
+}
+
 func evictToolResult(
 	ctx context.Context,
 	store toolResultOffloader,
-	threshold int,
-	readToolName string,
+	policy toolResultOffloadPolicy,
 	sessionID string,
 	toolName string,
 	output string,
 ) (string, *toolresult.Ref) {
-	if store == nil || threshold <= 0 || len(output) <= threshold ||
-		toolName == readToolName || sessionID == "" {
+	if store == nil || !policy.enabled || len(output) <= policy.threshold ||
+		toolName == policy.readerName || sessionID == "" {
 		return output, nil
 	}
 	id := toolresult.NewID()
 	preview := renderToolResultPreview(
 		output,
 		string(id),
-		readToolName,
-		min(toolResultPreviewBytes, threshold),
+		policy.readerName,
+		min(toolResultPreviewBytes, policy.threshold),
 	)
 	if len(preview) >= len(output) {
 		return output, nil

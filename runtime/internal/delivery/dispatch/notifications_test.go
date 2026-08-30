@@ -38,7 +38,10 @@ func TestEphemeralEventNeverCarriesAnSSEReplayID(t *testing.T) {
 
 	frame, ok := runEventToFrame(protocol.RunEvent{
 		RunID: "run_1", SegmentID: "seg_1", EventID: "evt_1",
-		Event: protocol.StreamEvent{Type: protocol.StreamSegmentProgress, Progress: &protocol.RunProgress{}},
+		Event: protocol.StreamEvent{
+			Type:     protocol.StreamSegmentProgress,
+			Progress: &protocol.RunProgress{Activity: "Calling model"},
+		},
 	})
 	if !ok {
 		t.Fatal("segment progress event was not encoded")

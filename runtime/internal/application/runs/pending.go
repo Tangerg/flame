@@ -7,11 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is
@@ -73,6 +77,24 @@ type InterruptBinding struct {
 	// the resumed ToolCall identity. Questions leave it empty because their
 	// underlying tool is already carried as a drained Tool.
 	ToolCallID string
+}
+
+type memberRequestIdentity struct {
+	memberID  string
+	requestID string
+}
+
+type memberToolCallIdentity struct {
+	memberID   string
+	toolCallID string
+}
+
+type pendingBindingValidator struct {
+	pending          Pending
+	interruptsByItem map[string]transcript.Interrupt
+	boundItems       map[string]struct{}
+	boundRequests    map[memberRequestIdentity]struct{}
+	boundToolCalls   map[memberToolCallIdentity]struct{}
 }
 
 // InterruptAnswer is one validated decision bound to the exact executor
@@ -148,21 +170,19 @@ func (p Pending) Validate() error {
 }
 
 func (p Pending) validateEnvelope() error {
+	if _, err := resourceid.ParseRun(p.RootRunID); err != nil {
+		return fmt.Errorf("interrupts: pending root: %w", err)
+	}
+	if _, err := resourceid.ParseSession(p.SessionID); err != nil {
+		return fmt.Errorf("interrupts: pending: %w", err)
+	}
+	if _, _, err := goalref.ParseOptionalIncarnation(p.GoalIncarnationID); err != nil {
+		return fmt.Errorf("interrupts: pending: %w", err)
+	}
+	if _, err := executoridentity.ParseExecutor(p.ExecutorID); err != nil {
+		return fmt.Errorf("interrupts: pending: %w", err)
+	}
 	switch {
-	case strings.TrimSpace(p.RootRunID) == "":
-		return errors.New("interrupts: pending root run id is required")
-	case p.RootRunID != strings.TrimSpace(p.RootRunID):
-		return errors.New("interrupts: pending root run id has surrounding whitespace")
-	case strings.TrimSpace(p.SessionID) == "":
-		return errors.New("interrupts: pending session id is required")
-	case p.SessionID != strings.TrimSpace(p.SessionID):
-		return errors.New("interrupts: pending session id has surrounding whitespace")
-	case strings.TrimSpace(p.ExecutorID) == "":
-		return errors.New("interrupts: pending executor ID is required")
-	case p.ExecutorID != strings.TrimSpace(p.ExecutorID):
-		return errors.New("interrupts: pending executor ID has surrounding whitespace")
-	case p.GoalIncarnationID != strings.TrimSpace(p.GoalIncarnationID):
-		return errors.New("interrupts: pending goal incarnation id has surrounding whitespace")
 	case p.CreatedAt.IsZero():
 		return errors.New("interrupts: pending creation time is required")
 	case len(p.Interrupts) == 0:
@@ -263,121 +283,192 @@ func (p Pending) validateInterrupts(runIDs map[string]struct{}) (map[string]tran
 }
 
 func (p Pending) validateBindings(interruptsByItem map[string]transcript.Interrupt) error {
-	boundItems := make(map[string]struct{}, len(p.Bindings))
-	boundRequests := make(map[string]struct{}, len(p.Bindings))
-	boundToolCalls := make(map[string]struct{}, len(p.Bindings))
-	for index, binding := range p.Bindings {
-		for _, identity := range []struct {
-			name  string
-			value string
-		}{
-			{name: "interrupt item id", value: binding.InterruptItemID},
-			{name: "member id", value: binding.MemberID},
-			{name: "input request id", value: binding.RequestID},
-		} {
-			if err := validateRequiredIdentity(identity.name, identity.value); err != nil {
-				return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
-			}
-		}
-		request, exists := interruptsByItem[binding.InterruptItemID]
-		if !exists {
-			return fmt.Errorf(
-				"interrupts: input-request binding[%d] names unknown item %q",
-				index,
-				binding.InterruptItemID,
-			)
-		}
-		if p.Interrupts[index].ItemID != binding.InterruptItemID {
-			return fmt.Errorf(
-				"interrupts: input-request binding[%d] names item %q, canonical interrupt order requires %q",
-				index,
-				binding.InterruptItemID,
-				p.Interrupts[index].ItemID,
-			)
-		}
-		switch request.Kind {
-		case interrupt.Approval:
-			if err := validateRequiredIdentity("approval Tool call id", binding.ToolCallID); err != nil {
-				return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
-			}
-			key := binding.MemberID + "\x00" + binding.ToolCallID
-			if _, duplicate := boundToolCalls[key]; duplicate {
-				return fmt.Errorf(
-					"interrupts: member %q Tool call %q is bound more than once",
-					binding.MemberID,
-					binding.ToolCallID,
-				)
-			}
-			boundToolCalls[key] = struct{}{}
-		case interrupt.Question:
-			if binding.ToolCallID != "" {
-				return fmt.Errorf(
-					"interrupts: question item %q carries approval Tool call %q",
-					binding.InterruptItemID,
-					binding.ToolCallID,
-				)
-			}
-		}
-		continuation, exists := continuationForMember(p.Continuations, binding.MemberID)
-		if !exists {
-			return fmt.Errorf(
-				"interrupts: input-request binding[%d] names unknown member %q",
-				index,
-				binding.MemberID,
-			)
-		}
-		if continuation.RunID != request.RunID {
-			return fmt.Errorf(
-				"interrupts: item %q belongs to run %q but its input request belongs to run %q",
-				request.ItemID,
-				request.RunID,
-				continuation.RunID,
-			)
-		}
-		if request.Kind == interrupt.Approval {
-			for _, tool := range continuation.DrainedTools {
-				if tool.CallID == binding.ToolCallID {
-					return fmt.Errorf(
-						"interrupts: approval Tool call %q is also drained for member %q",
-						binding.ToolCallID,
-						binding.MemberID,
-					)
-				}
-			}
-			for _, tool := range continuation.CommittedTools {
-				if tool.CallID == binding.ToolCallID {
-					return fmt.Errorf(
-						"interrupts: approval Tool call %q is already committed for member %q",
-						binding.ToolCallID,
-						binding.MemberID,
-					)
-				}
-			}
-		}
-		if _, duplicate := boundItems[binding.InterruptItemID]; duplicate {
-			return fmt.Errorf("interrupts: item %q is bound more than once", binding.InterruptItemID)
-		}
-		boundItems[binding.InterruptItemID] = struct{}{}
-		key := binding.MemberID + "\x00" + binding.RequestID
-		if _, duplicate := boundRequests[key]; duplicate {
-			return fmt.Errorf(
-				"interrupts: member %q input request %q is bound more than once",
-				binding.MemberID,
-				binding.RequestID,
-			)
-		}
-		boundRequests[key] = struct{}{}
+	validator := pendingBindingValidator{
+		pending:          p,
+		interruptsByItem: interruptsByItem,
+		boundItems:       make(map[string]struct{}, len(p.Bindings)),
+		boundRequests:    make(map[memberRequestIdentity]struct{}, len(p.Bindings)),
+		boundToolCalls:   make(map[memberToolCallIdentity]struct{}, len(p.Bindings)),
 	}
+	for index, binding := range p.Bindings {
+		if err := validator.validate(index, binding); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) error {
+	if err := binding.validateIdentities(); err != nil {
+		return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
+	}
+	request, err := v.interrupt(index, binding)
+	if err != nil {
+		return err
+	}
+	if err := v.validateInterruptTool(index, binding, request); err != nil {
+		return err
+	}
+	continuation, err := v.continuation(index, binding, request)
+	if err != nil {
+		return err
+	}
+	if request.Kind == interrupt.Approval {
+		if err := validateApprovalToolState(binding, continuation); err != nil {
+			return err
+		}
+	}
+	return v.record(binding)
+}
+
+func (b InterruptBinding) validateIdentities() error {
+	if _, err := resourceid.ParseItem(b.InterruptItemID); err != nil {
+		return fmt.Errorf("interrupt item: %w", err)
+	}
+	if _, err := executoridentity.ParseMember(b.MemberID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseRequest(b.RequestID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (v *pendingBindingValidator) interrupt(
+	index int,
+	binding InterruptBinding,
+) (transcript.Interrupt, error) {
+	request, exists := v.interruptsByItem[binding.InterruptItemID]
+	if !exists {
+		return transcript.Interrupt{}, fmt.Errorf(
+			"interrupts: input-request binding[%d] names unknown item %q",
+			index,
+			binding.InterruptItemID,
+		)
+	}
+	if v.pending.Interrupts[index].ItemID != binding.InterruptItemID {
+		return transcript.Interrupt{}, fmt.Errorf(
+			"interrupts: input-request binding[%d] names item %q, canonical interrupt order requires %q",
+			index,
+			binding.InterruptItemID,
+			v.pending.Interrupts[index].ItemID,
+		)
+	}
+	return request, nil
+}
+
+func (v *pendingBindingValidator) validateInterruptTool(
+	index int,
+	binding InterruptBinding,
+	request transcript.Interrupt,
+) error {
+	switch request.Kind {
+	case interrupt.Approval:
+		if _, err := executoridentity.ParseEffect(binding.ToolCallID); err != nil {
+			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
+		}
+		key := memberToolCallIdentity{memberID: binding.MemberID, toolCallID: binding.ToolCallID}
+		if _, duplicate := v.boundToolCalls[key]; duplicate {
+			return fmt.Errorf(
+				"interrupts: member %q Tool call %q is bound more than once",
+				binding.MemberID,
+				binding.ToolCallID,
+			)
+		}
+		v.boundToolCalls[key] = struct{}{}
+	case interrupt.Question:
+		if binding.ToolCallID != "" {
+			return fmt.Errorf(
+				"interrupts: question item %q carries approval Tool call %q",
+				binding.InterruptItemID,
+				binding.ToolCallID,
+			)
+		}
+	}
+	return nil
+}
+
+func (v *pendingBindingValidator) continuation(
+	index int,
+	binding InterruptBinding,
+	request transcript.Interrupt,
+) (Continuation, error) {
+	continuation, exists := continuationForMember(v.pending.Continuations, binding.MemberID)
+	if !exists {
+		return Continuation{}, fmt.Errorf(
+			"interrupts: input-request binding[%d] names unknown member %q",
+			index,
+			binding.MemberID,
+		)
+	}
+	if continuation.RunID != request.RunID {
+		return Continuation{}, fmt.Errorf(
+			"interrupts: item %q belongs to run %q but its input request belongs to run %q",
+			request.ItemID,
+			request.RunID,
+			continuation.RunID,
+		)
+	}
+	return continuation, nil
+}
+
+func validateApprovalToolState(binding InterruptBinding, continuation Continuation) error {
+	for _, tool := range continuation.DrainedTools {
+		if tool.CallID == binding.ToolCallID {
+			return fmt.Errorf(
+				"interrupts: approval Tool call %q is also drained for member %q",
+				binding.ToolCallID,
+				binding.MemberID,
+			)
+		}
+	}
+	for _, tool := range continuation.CommittedTools {
+		if tool.CallID == binding.ToolCallID {
+			return fmt.Errorf(
+				"interrupts: approval Tool call %q is already committed for member %q",
+				binding.ToolCallID,
+				binding.MemberID,
+			)
+		}
+	}
+	return nil
+}
+
+func (v *pendingBindingValidator) record(binding InterruptBinding) error {
+	if _, duplicate := v.boundItems[binding.InterruptItemID]; duplicate {
+		return fmt.Errorf("interrupts: item %q is bound more than once", binding.InterruptItemID)
+	}
+	v.boundItems[binding.InterruptItemID] = struct{}{}
+	key := memberRequestIdentity{memberID: binding.MemberID, requestID: binding.RequestID}
+	if _, duplicate := v.boundRequests[key]; duplicate {
+		return fmt.Errorf(
+			"interrupts: member %q input request %q is bound more than once",
+			binding.MemberID,
+			binding.RequestID,
+		)
+	}
+	v.boundRequests[key] = struct{}{}
 	return nil
 }
 
 // Validate checks one Run-to-member continuation and all of its transcript
 // hand-off identities independently of the root-owned Pending aggregate.
 func (c Continuation) Validate() error {
-	if err := validateRequiredIdentity("run id", c.RunID); err != nil {
+	if err := c.validateRun(); err != nil {
 		return err
 	}
-	if err := validateRequiredIdentity("member id", c.MemberID); err != nil {
+	openItems, openCalls, err := validateDrainedTools(c.DrainedTools)
+	if err != nil {
+		return err
+	}
+	return validateCommittedTools(c.CommittedTools, openItems, openCalls)
+}
+
+func (c Continuation) validateRun() error {
+	if _, err := resourceid.ParseRun(c.RunID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseMember(c.MemberID); err != nil {
 		return err
 	}
 	if c.RunCreatedAt.IsZero() {
@@ -398,43 +489,59 @@ func (c Continuation) Validate() error {
 	if err := c.Limits.Validate(); err != nil {
 		return fmt.Errorf("limits: %w", err)
 	}
-	openItems := make(map[string]struct{}, len(c.DrainedTools))
-	openCalls := make(map[string]struct{}, len(c.DrainedTools))
-	for index, tool := range c.DrainedTools {
-		if err := validateToolIdentity(tool.ItemID, tool.CallID, tool.Name, tool.Arguments); err != nil {
-			return fmt.Errorf("drained tool[%d]: %w", index, err)
+	return nil
+}
+
+func validateDrainedTools(tools []DrainedTool) (map[string]struct{}, map[string]struct{}, error) {
+	items := make(map[string]struct{}, len(tools))
+	calls := make(map[string]struct{}, len(tools))
+	for index, tool := range tools {
+		if err := tool.validate(); err != nil {
+			return nil, nil, fmt.Errorf("drained tool[%d]: %w", index, err)
 		}
-		if tool.SourceCallID != strings.TrimSpace(tool.SourceCallID) {
-			return fmt.Errorf("drained tool[%d]: source call id has surrounding whitespace", index)
+		if _, duplicate := items[tool.ItemID]; duplicate {
+			return nil, nil, fmt.Errorf("drained tool item %q is duplicated", tool.ItemID)
 		}
-		if tool.ItemOccurredAt.IsZero() {
-			return fmt.Errorf("drained tool[%d]: item occurrence time is required", index)
+		if _, duplicate := calls[tool.CallID]; duplicate {
+			return nil, nil, fmt.Errorf("drained tool call %q is duplicated", tool.CallID)
 		}
-		if _, duplicate := openItems[tool.ItemID]; duplicate {
-			return fmt.Errorf("drained tool item %q is duplicated", tool.ItemID)
-		}
-		if _, duplicate := openCalls[tool.CallID]; duplicate {
-			return fmt.Errorf("drained tool call %q is duplicated", tool.CallID)
-		}
-		openItems[tool.ItemID] = struct{}{}
-		openCalls[tool.CallID] = struct{}{}
+		items[tool.ItemID] = struct{}{}
+		calls[tool.CallID] = struct{}{}
 	}
-	committedItems := make(map[string]struct{}, len(c.CommittedTools))
-	committedCalls := make(map[string]struct{}, len(c.CommittedTools))
-	for index, tool := range c.CommittedTools {
-		if err := validateToolIdentity(tool.ItemID, tool.CallID, tool.Name, tool.Arguments); err != nil {
+	return items, calls, nil
+}
+
+func (d DrainedTool) validate() error {
+	if err := validateToolIdentity(d.ItemID, d.CallID, d.Name, d.Arguments); err != nil {
+		return err
+	}
+	if _, _, err := conversation.ParseOptionalToolCallIdentity(d.SourceCallID); err != nil {
+		return err
+	}
+	if d.ItemOccurredAt.IsZero() {
+		return errors.New("item occurrence time is required")
+	}
+	return nil
+}
+
+func validateCommittedTools(
+	tools []CommittedTool,
+	openItems map[string]struct{},
+	openCalls map[string]struct{},
+) error {
+	items := make(map[string]struct{}, len(tools))
+	calls := make(map[string]struct{}, len(tools))
+	for index, tool := range tools {
+		if err := tool.validate(); err != nil {
 			return fmt.Errorf("committed tool[%d]: %w", index, err)
-		}
-		if tool.SourceCallID != strings.TrimSpace(tool.SourceCallID) {
-			return fmt.Errorf("committed tool[%d]: source call id has surrounding whitespace", index)
 		}
 		if err := tool.Failure.Validate(); err != nil {
 			return fmt.Errorf("committed tool[%d] failure: %w", index, err)
 		}
-		if _, duplicate := committedItems[tool.ItemID]; duplicate {
+		if _, duplicate := items[tool.ItemID]; duplicate {
 			return fmt.Errorf("committed tool item %q is duplicated", tool.ItemID)
 		}
-		if _, duplicate := committedCalls[tool.CallID]; duplicate {
+		if _, duplicate := calls[tool.CallID]; duplicate {
 			return fmt.Errorf("committed tool call %q is duplicated", tool.CallID)
 		}
 		if _, open := openItems[tool.ItemID]; open {
@@ -443,24 +550,31 @@ func (c Continuation) Validate() error {
 		if _, open := openCalls[tool.CallID]; open {
 			return fmt.Errorf("tool call %q is both drained and committed", tool.CallID)
 		}
-		committedItems[tool.ItemID] = struct{}{}
-		committedCalls[tool.CallID] = struct{}{}
+		items[tool.ItemID] = struct{}{}
+		calls[tool.CallID] = struct{}{}
+	}
+	return nil
+}
+
+func (c CommittedTool) validate() error {
+	if err := validateToolIdentity(c.ItemID, c.CallID, c.Name, c.Arguments); err != nil {
+		return err
+	}
+	if _, _, err := conversation.ParseOptionalToolCallIdentity(c.SourceCallID); err != nil {
+		return err
 	}
 	return nil
 }
 
 func validateToolIdentity(itemID, callID, name, arguments string) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "item id", value: itemID},
-		{name: "call id", value: callID},
-		{name: "name", value: name},
-	} {
-		if err := validateRequiredIdentity(identity.name, identity.value); err != nil {
-			return err
-		}
+	if _, err := resourceid.ParseItem(itemID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseEffect(callID); err != nil {
+		return err
+	}
+	if strings.TrimSpace(name) == "" || name != strings.TrimSpace(name) {
+		return errors.New("name is required without surrounding whitespace")
 	}
 	if strings.TrimSpace(arguments) == "" {
 		return errors.New("arguments are required")
@@ -469,14 +583,14 @@ func validateToolIdentity(itemID, callID, name, arguments string) error {
 }
 
 func validateInterrupt(request transcript.Interrupt) error {
-	if err := validateRequiredIdentity("item id", request.ItemID); err != nil {
-		return err
+	if _, err := resourceid.ParseItem(request.ItemID); err != nil {
+		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if request.ItemOccurredAt.IsZero() {
 		return errors.New("item occurrence time is required")
 	}
-	if err := validateRequiredIdentity("run id", request.RunID); err != nil {
-		return err
+	if _, err := resourceid.ParseRun(request.RunID); err != nil {
+		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	switch request.Kind {
 	case interrupt.Approval:
@@ -498,16 +612,6 @@ func validateInterrupt(request transcript.Interrupt) error {
 		}
 	default:
 		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
-	}
-	return nil
-}
-
-func validateRequiredIdentity(name, value string) error {
-	if strings.TrimSpace(value) == "" {
-		return fmt.Errorf("%s is required", name)
-	}
-	if value != strings.TrimSpace(value) {
-		return fmt.Errorf("%s has surrounding whitespace", name)
 	}
 	return nil
 }

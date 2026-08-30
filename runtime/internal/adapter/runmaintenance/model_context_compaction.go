@@ -84,7 +84,7 @@ func (c *Compactor) CompactModelContext(
 		)
 	}
 	budget := newModelContextBudget(
-		c.maxMessages,
+		c.policy.messageTrigger,
 		trigger,
 		request.Instructions(),
 		ephemeral,
@@ -104,7 +104,7 @@ func (c *Compactor) CompactModelContext(
 		return agentexec.NewModelContextCompactionResult(
 			candidate,
 			false,
-			false,
+			"",
 			len(candidate),
 			plan.inputTokens,
 		)
@@ -113,7 +113,7 @@ func (c *Compactor) CompactModelContext(
 		return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
 	}
 
-	replacement, summarized, cutoff, prefixAfter, err := c.materializeModelContextPlan(
+	replacement, summary, cutoff, prefixAfter, err := c.materializeModelContextPlan(
 		ctx,
 		request.SessionID(),
 		plan,
@@ -132,7 +132,7 @@ func (c *Compactor) CompactModelContext(
 	result, err := agentexec.NewModelContextCompactionResult(
 		effective,
 		true,
-		summarized,
+		summary,
 		len(candidate),
 		inputTokens,
 	)
@@ -179,30 +179,30 @@ func (c *Compactor) materializeModelContextPlan(
 	plan compactionPlan,
 ) (
 	replacement []chat.Message,
-	summarized bool,
+	summary string,
 	cutoff int,
 	prefixAfter int,
 	err error,
 ) {
 	switch plan.action {
 	case trimCompaction:
-		return cloneMessages(plan.trimmed), false, 0, 0, nil
+		return cloneMessages(plan.trimmed), "", 0, 0, nil
 	case summarizeCompaction:
 		summary, err := c.summarize(ctx, plan.older)
 		if err != nil {
-			return nil, false, 0, 0, fmt.Errorf("runmaintenance: summarize model context: %w", err)
+			return nil, "", 0, 0, fmt.Errorf("runmaintenance: summarize model context: %w", err)
 		}
 		replacement = make([]chat.Message, 0, 2+len(plan.recent))
-		replacement = append(replacement, summary)
+		replacement = append(replacement, summary.Message())
 		if c.liveState != nil {
 			if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
 				replacement = append(replacement, reminder)
 			}
 		}
 		replacement = append(replacement, cloneMessages(plan.recent)...)
-		return replacement, true, plan.cutoff, len(replacement) - len(plan.recent), nil
+		return replacement, summary.Text(), plan.cutoff, len(replacement) - len(plan.recent), nil
 	default:
-		return nil, false, 0, 0, errors.New("runmaintenance: unsupported model-context compaction plan")
+		return nil, "", 0, 0, errors.New("runmaintenance: unsupported model-context compaction plan")
 	}
 }
 

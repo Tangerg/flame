@@ -73,7 +73,7 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 	}
 	request := workspace.DiffRequest{
 		Workspace: a.session.Workspace.Path, Path: selection.path,
-		Mode: selection.mode, Format: selection.format, Limit: selection.limit,
+		Mode: selection.mode, Format: selection.format, RowLimit: selection.limit,
 	}
 	a.runWorkspaceQuery("loading workspace diff",
 		func(ctx context.Context) (readerDocument, error) {
@@ -102,7 +102,11 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 	if err != nil {
 		return err
 	}
-	request := workspace.HeadRequest{Workspace: a.session.Workspace.Path, Path: selection.path, Lines: selection.lines}
+	previewLines, err := selection.lines.Lines()
+	if err != nil {
+		return err
+	}
+	request := workspace.HeadRequest{Workspace: a.session.Workspace.Path, Path: selection.path, LineLimit: selection.lines}
 	a.runWorkspaceQuery("loading file preview",
 		func(ctx context.Context) (readerDocument, error) {
 			head, err := a.workspaces.Head(ctx, request)
@@ -113,7 +117,7 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 			for _, line := range head.Lines {
 				lines = append(lines, line.Text)
 			}
-			detail := fmt.Sprintf("%s · up to %d lines", head.Path, request.Lines)
+			detail := fmt.Sprintf("%s · up to %d lines", head.Path, previewLines)
 			return codeDocument("File preview", detail, strings.Join(lines, "\n"), head.Path, true), nil
 		}, workspaceReaderNone)
 	return nil
@@ -121,6 +125,10 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 
 func (a *app) SearchWorkspace(argument string) error {
 	selection, err := parseWorkspaceSearchSelection(argument)
+	if err != nil {
+		return err
+	}
+	matchLimit, err := selection.limit.Matches()
 	if err != nil {
 		return err
 	}
@@ -141,7 +149,7 @@ func (a *app) SearchWorkspace(argument string) error {
 			if request.Path != "" {
 				detail += " · " + request.Path
 			}
-			detail += fmt.Sprintf(" · limit %d", request.Limit)
+			detail += fmt.Sprintf(" · limit %d", matchLimit)
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
 		}, workspaceReaderNone)
 	return nil
@@ -207,7 +215,7 @@ func (a *app) ReadWorkspaceFile(argument string) error {
 	}
 	request := workspace.ReadRequest{
 		Workspace: a.session.Workspace.Path, Path: selection.path,
-		StartLine: selection.startLine, EndLine: selection.endLine, MaxBytes: selection.maxBytes,
+		Range: selection.lineRange, ByteLimit: selection.byteLimit,
 	}
 	a.runWorkspaceQuery("reading workspace file",
 		func(ctx context.Context) (readerDocument, error) {
@@ -445,131 +453,142 @@ func (r runtimeChangeMonitor) runSubscription(
 	subscription changefeed.Subscription,
 	ownsFileProjection bool,
 ) error {
-	topics := subscription.Topics
 	setupFailures, streamFailures := 0, 0
 	for context.Cause(ctx) == nil {
-		attemptContext, cancelAttempt := context.WithCancel(ctx)
-		stream, err := r.source.Subscribe(attemptContext, subscription)
+		attempt, err := r.openSubscriptionAttempt(ctx, subscription, ownsFileProjection)
 		if err != nil {
-			cancelAttempt()
-			if cause := context.Cause(ctx); cause != nil {
-				return cause
-			}
-			if !reconnect.Retryable(err) {
-				return err
-			}
 			setupFailures++
-			if retry.Wait(ctx, r.recoveryDelay(setupFailures)) != nil {
-				return context.Cause(ctx)
-			}
-			continue
-		}
-		// The subscription is registered before every authoritative cold refresh.
-		// Events that race those reads remain buffered in the stream and trigger a
-		// later replacement read, closing read-then-subscribe gaps for every topic.
-		// Query support and subscription support are independent capabilities.
-		// Even when this runtime cannot watch files.changed, install the
-		// authoritative file projection instead of leaving the header empty.
-		if ownsFileProjection {
-			if err := r.refreshFiles(attemptContext); err != nil {
-				cancelAttempt()
-				if cause := context.Cause(ctx); cause != nil {
-					return cause
-				}
-				if !reconnect.Retryable(err) {
-					return err
-				}
-				setupFailures++
-				if retry.Wait(ctx, r.recoveryDelay(setupFailures)) != nil {
-					return context.Cause(ctx)
-				}
-				continue
-			}
-		}
-		if err := r.resync(topics); err != nil {
-			cancelAttempt()
-			if cause := context.Cause(ctx); cause != nil {
-				return cause
-			}
-			if !reconnect.Retryable(err) {
-				return err
-			}
-			setupFailures++
-			if retry.Wait(ctx, r.recoveryDelay(setupFailures)) != nil {
-				return context.Cause(ctx)
+			if retryErr := r.waitToRetry(ctx, err, setupFailures); retryErr != nil {
+				return retryErr
 			}
 			continue
 		}
 		setupFailures = 0
-		lastSequence := uint64(0)
-		progressed := false
-		var attemptErr error
-		for event, streamErr := range stream {
-			if streamErr != nil {
-				attemptErr = streamErr
-				break
-			}
-			gap := event.Sequence != lastSequence+1
-			lastSequence = event.Sequence
-			if gap {
-				if ownsFileProjection && containsTopic(topics, changefeed.FilesChanged) {
-					if err := r.refreshFiles(attemptContext); err != nil {
-						attemptErr = err
-						break
-					}
-				}
-				if err := r.resync(topics); err != nil {
-					attemptErr = err
-					break
-				}
-				// The authoritative reads started after this frame was
-				// observed, so they include both the missing changes and the
-				// frame itself. Applying it again would only restart the same
-				// projections and can starve convergence on a gappy stream.
-				progressed = true
-				continue
-			}
-			if ownsFileProjection && r.invalidatesFiles(event) {
-				if err := r.refreshFiles(attemptContext); err != nil {
-					attemptErr = err
-					break
-				}
-			}
-			if event.Type != changefeed.EventType(changefeed.FilesChanged) {
-				if err := r.invalidate(event); err != nil {
-					attemptErr = err
-					break
-				}
-			}
-			progressed = true
-		}
-		cancelAttempt()
+		progressed, attemptErr := r.consumeSubscription(attempt, subscription.Topics, ownsFileProjection)
+		attempt.cancel()
 		if cause := context.Cause(ctx); cause != nil {
 			return cause
-		}
-		if attemptErr == nil {
-			attemptErr = fmt.Errorf("%w: runtime change stream ended", agent.ErrDisconnected)
-		}
-		if !reconnect.Retryable(attemptErr) {
-			return attemptErr
 		}
 		if progressed {
 			streamFailures = 0
 		}
 		streamFailures++
-		if retry.Wait(ctx, r.recoveryDelay(streamFailures)) != nil {
-			return context.Cause(ctx)
+		if retryErr := r.waitToRetry(ctx, attemptErr, streamFailures); retryErr != nil {
+			return retryErr
 		}
 	}
 	return context.Cause(ctx)
 }
 
-func (r runtimeChangeMonitor) recoveryDelay(failure int) time.Duration {
-	backoff := r.recovery
-	if backoff.Base <= 0 && backoff.Maximum <= 0 {
-		backoff = runtimeRecoveryBackoff
+type runtimeChangeAttempt struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	stream changefeed.EventStream
+}
+
+func (r runtimeChangeMonitor) openSubscriptionAttempt(
+	ctx context.Context,
+	subscription changefeed.Subscription,
+	ownsFileProjection bool,
+) (runtimeChangeAttempt, error) {
+	attemptContext, cancelAttempt := context.WithCancel(ctx)
+	attempt := runtimeChangeAttempt{ctx: attemptContext, cancel: cancelAttempt}
+	stream, err := r.source.Subscribe(attemptContext, subscription)
+	if err != nil {
+		cancelAttempt()
+		return runtimeChangeAttempt{}, err
 	}
-	return backoff.Delay(failure)
+	attempt.stream = stream
+
+	// Register before every authoritative cold refresh. Events racing the reads
+	// remain buffered and trigger a later replacement, closing read-then-subscribe
+	// gaps. File query and watch support are independent, so the owner also installs
+	// the file projection when files.changed itself was not negotiated.
+	if ownsFileProjection {
+		if err := r.refreshFiles(attemptContext); err != nil {
+			cancelAttempt()
+			return runtimeChangeAttempt{}, err
+		}
+	}
+	if err := r.resync(subscription.Topics); err != nil {
+		cancelAttempt()
+		return runtimeChangeAttempt{}, err
+	}
+	return attempt, nil
+}
+
+func (r runtimeChangeMonitor) consumeSubscription(
+	attempt runtimeChangeAttempt,
+	topics []changefeed.Topic,
+	ownsFileProjection bool,
+) (bool, error) {
+	sequences := changefeed.NewSequenceTracker()
+	progressed := false
+	for event, streamErr := range attempt.stream {
+		if streamErr != nil {
+			return progressed, streamErr
+		}
+		applied, err := r.consumeChangeEvent(attempt.ctx, topics, ownsFileProjection, sequences, event)
+		if err != nil {
+			return progressed, err
+		}
+		progressed = progressed || applied
+	}
+	return progressed, fmt.Errorf("%w: runtime change stream ended", agent.ErrDisconnected)
+}
+
+func (r runtimeChangeMonitor) consumeChangeEvent(
+	ctx context.Context,
+	topics []changefeed.Topic,
+	ownsFileProjection bool,
+	sequences *changefeed.SequenceTracker,
+	event changefeed.Event,
+) (bool, error) {
+	disposition, err := sequences.Observe(event.Sequence)
+	if err != nil {
+		return false, err
+	}
+	if disposition == changefeed.SequenceStale {
+		return false, nil
+	}
+	if disposition == changefeed.SequenceGap {
+		if ownsFileProjection && containsTopic(topics, changefeed.FilesChanged) {
+			if err := r.refreshFiles(ctx); err != nil {
+				return false, err
+			}
+		}
+		if err := r.resync(topics); err != nil {
+			return false, err
+		}
+		// The reads started after this frame was observed, so they include both
+		// the missing changes and this frame. Reapplying it can starve convergence
+		// on a persistently gappy stream.
+		return true, nil
+	}
+	if ownsFileProjection && r.invalidatesFiles(event) {
+		if err := r.refreshFiles(ctx); err != nil {
+			return false, err
+		}
+	}
+	if event.Type != changefeed.EventType(changefeed.FilesChanged) {
+		if err := r.invalidate(event); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (r runtimeChangeMonitor) waitToRetry(ctx context.Context, failure error, failures int) error {
+	if cause := context.Cause(ctx); cause != nil {
+		return cause
+	}
+	if !reconnect.Retryable(failure) {
+		return failure
+	}
+	if err := r.recovery.Wait(ctx, failures); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r runtimeChangeMonitor) runWithoutWatch(ctx context.Context) error {
@@ -584,8 +603,8 @@ func (r runtimeChangeMonitor) runWithoutWatch(ctx context.Context) error {
 			return err
 		}
 		failures++
-		if retry.Wait(ctx, r.recoveryDelay(failures)) != nil {
-			return context.Cause(ctx)
+		if err := r.recovery.Wait(ctx, failures); err != nil {
+			return err
 		}
 	}
 	return context.Cause(ctx)

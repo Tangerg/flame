@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -32,14 +32,14 @@ func (e ExecutorMember) Child() bool { return e.ParentID != "" }
 // empty member is reserved for a root execution that failed before the executor
 // created its member.
 func (e ExecutorMember) Validate() error {
-	if e.MemberID != strings.TrimSpace(e.MemberID) {
-		return errors.New("runs: executor member id has surrounding whitespace")
+	if _, _, err := executoridentity.ParseOptionalMember(e.MemberID); err != nil {
+		return fmt.Errorf("runs: %w", err)
 	}
-	if e.ParentID != strings.TrimSpace(e.ParentID) {
-		return errors.New("runs: executor member parent id has surrounding whitespace")
+	if _, _, err := executoridentity.ParseOptionalMember(e.ParentID); err != nil {
+		return fmt.Errorf("runs: executor parent: %w", err)
 	}
-	if e.SpawnCallID != strings.TrimSpace(e.SpawnCallID) {
-		return errors.New("runs: executor member spawn call id has surrounding whitespace")
+	if _, _, err := executoridentity.ParseOptionalEffect(e.SpawnCallID); err != nil {
+		return fmt.Errorf("runs: executor spawn call: %w", err)
 	}
 	if e.MemberID == "" {
 		if e.ParentID != "" || e.SpawnCallID != "" {
@@ -132,8 +132,8 @@ func (u UnknownEffectsDetected) validate() error {
 	}
 	previous := ""
 	for index, id := range u.IDs {
-		if strings.TrimSpace(id) == "" || id != strings.TrimSpace(id) {
-			return fmt.Errorf("runs: unknown Effect id[%d] is invalid", index)
+		if _, err := executoridentity.ParseEffect(id); err != nil {
+			return fmt.Errorf("runs: unknown Effect id[%d]: %w", index, err)
 		}
 		if index > 0 && id <= previous {
 			return errors.New("runs: unknown Effect ids must be unique and sorted")
@@ -209,6 +209,7 @@ type ToolCallFinished struct {
 
 type CompactionBoundary struct {
 	executionFactBase
+	Summary        string
 	MessagesBefore int
 	MessagesAfter  int
 }
@@ -243,18 +244,18 @@ func (t TreeInterrupted) validate() error {
 	if len(t.Interruptions) == 0 {
 		return errors.New("runs: executor emitted an empty tree interrupt")
 	}
-	seen := make(map[string]struct{}, len(t.Interruptions))
+	seen := make(map[inputRequestKey]struct{}, len(t.Interruptions))
 	for index, request := range t.Interruptions {
-		if strings.TrimSpace(request.MemberID) == "" {
-			return fmt.Errorf("runs: tree interrupt request[%d] has no member id", index)
+		if _, err := executoridentity.ParseMember(request.MemberID); err != nil {
+			return fmt.Errorf("runs: tree interrupt request[%d] member: %w", index, err)
 		}
-		if strings.TrimSpace(request.RequestID) == "" {
-			return fmt.Errorf("runs: tree interrupt request[%d] has no request id", index)
+		if _, err := executoridentity.ParseRequest(request.RequestID); err != nil {
+			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
 		if err := request.Interrupt.Validate(); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
-		key := request.MemberID + "\x00" + request.RequestID
+		key := inputRequestIdentity(request.MemberID, request.RequestID)
 		if _, duplicate := seen[key]; duplicate {
 			return fmt.Errorf(
 				"runs: member %q repeated request %q",

@@ -53,7 +53,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 	if err != nil {
 		return 0, false, fmt.Errorf("git: open untracked file %q: %w", rel, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	buffer := make([]byte, 64<<10)
 	lines := 0
 	var last byte

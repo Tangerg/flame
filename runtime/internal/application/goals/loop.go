@@ -152,7 +152,7 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 		if ctx.Err() != nil {
 			return nil
 		}
-		g, ok, err := d.goals.Get(ctx, sessionID)
+		g, ok, err := loadGoal(ctx, d.goals, sessionID)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
@@ -165,7 +165,7 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 		// regression where a transition stops canceling the drive. The load-bearing
 		// incarnation guard is the re-read in driveRun: it prevents adopting and
 		// clobbering a foreign incarnation mid-Run.
-		if !ok || g.Status != goal.StatusActive || g.IncarnationID != incarnationID {
+		if !ok || g.Status() != goal.StatusActive || g.IncarnationID() != incarnationID {
 			return nil
 		}
 		disposition, err := d.driveRun(ctx, &g)
@@ -184,8 +184,8 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 // completed, so nothing is metered.
 func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDisposition, err error) {
 	ctx, span := driverTracer.Start(ctx, "goal.run", trace.WithAttributes(
-		attribute.String("goal.session", g.SessionID),
-		attribute.Int("goal.run_ordinal", g.Used.Runs+1),
+		attribute.String("goal.session", g.SessionID()),
+		attribute.Int("goal.run_ordinal", g.Used().Runs+1),
 	))
 	defer span.End()
 	// Meter each Run under its own span (this defer runs before span.End) so the
@@ -202,7 +202,7 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDis
 	}
 	var result runs.StartResult
 	for {
-		if waitSessionStartableErr := d.runs.WaitSessionStartable(ctx, g.SessionID); waitSessionStartableErr != nil {
+		if waitSessionStartableErr := d.runs.WaitSessionStartable(ctx, g.SessionID()); waitSessionStartableErr != nil {
 			return d.resolveGoalRunStartError(ctx, g, span, waitSessionStartableErr)
 		}
 
@@ -309,14 +309,14 @@ func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
 }
 
 func (d *Driver) refreshOwnedGoal(ctx context.Context, current *goal.Goal) (bool, error) {
-	reread, found, err := d.goals.Get(ctx, current.SessionID)
+	reread, found, err := loadGoal(ctx, d.goals, current.SessionID())
 	if err != nil {
 		if ctx.Err() != nil {
 			return false, nil
 		}
 		return false, err
 	}
-	if !found || reread.IncarnationID != current.IncarnationID {
+	if !found || reread.IncarnationID() != current.IncarnationID() {
 		return false, nil
 	}
 	*current = reread
@@ -382,21 +382,21 @@ func (d *Driver) resolveTerminalRun(
 // capable client may answer it and resume the same Goal provenance.
 func (d *Driver) command(g goal.Goal) runs.StartCommand {
 	return runs.StartCommand{
-		SessionID:      g.SessionID,
-		ModelSelection: g.ModelSelection,
-		Capabilities:   g.Capabilities.Clone(),
+		SessionID:      g.SessionID(),
+		ModelSelection: g.ModelSelection(),
+		Capabilities:   g.Capabilities(),
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.TextContent,
 			Text: d.instructions(RunInstructionInput{
-				Objective:  g.Objective,
-				Continuing: g.Used.Runs > 0,
+				Objective:  g.Objective(),
+				Continuing: g.Used().Runs > 0,
 			}),
 		}},
 		// GoalIncarnationID stamps the run with the incarnation that launched it, so
 		// A terminal outcome report only signals THIS Goal: a straggler Run from a superseded
 		// goal (stopped, then replaced by a fresh Start) cannot mark the new goal
 		// complete/blocked — its incarnation no longer matches.
-		GoalIncarnationID: g.IncarnationID,
+		GoalIncarnationID: g.IncarnationID(),
 	}
 }
 
@@ -445,10 +445,12 @@ func (d *Driver) pauseOwned(
 	code goal.ReasonCode,
 	detail string,
 ) (runDisposition, error) {
-	for current.Status == goal.StatusActive {
+	for current.Status() == goal.StatusActive {
 		expected := current.Version()
-		candidate := *current
-		candidate.Pause(code, detail, d.now())
+		candidate, transitionErr := current.Pause(code, detail, d.now())
+		if transitionErr != nil {
+			return "", transitionErr
+		}
 		saved, applied, err := d.goals.Save(ctx, candidate, expected)
 		if err != nil {
 			return "", err
@@ -457,11 +459,11 @@ func (d *Driver) pauseOwned(
 			*current = saved
 			return dispPaused, nil
 		}
-		reread, ok, err := d.goals.Get(ctx, current.SessionID)
+		reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())
 		if err != nil {
 			return "", err
 		}
-		if !ok || reread.IncarnationID != current.IncarnationID {
+		if !ok || reread.IncarnationID() != current.IncarnationID() {
 			return "", nil
 		}
 		*current = reread
@@ -474,7 +476,7 @@ func (d *Driver) pauseOwned(
 // clear and resolves any CAS miss before returning.
 func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runDisposition, error) {
 	for {
-		switch current.Status {
+		switch current.Status() {
 		case goal.StatusActive:
 			return dispContinue, nil
 		case goal.StatusPaused:
@@ -482,26 +484,26 @@ func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runDispos
 		case goal.StatusBlocked:
 			return dispBlocked, nil
 		case goal.StatusComplete:
-			applied, err := d.goals.ClearIf(ctx, current.SessionID, current.Version())
+			applied, err := d.goals.ClearIf(ctx, current.SessionID(), current.Version())
 			if err != nil {
 				return "", err
 			}
 			if applied {
 				return dispComplete, nil
 			}
-			reread, ok, err := d.goals.Get(ctx, current.SessionID)
+			reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())
 			if err != nil {
 				return "", err
 			}
 			if !ok {
 				return dispComplete, nil
 			}
-			if reread.IncarnationID != current.IncarnationID {
+			if reread.IncarnationID() != current.IncarnationID() {
 				return "", nil
 			}
 			*current = reread
 		default:
-			return "", fmt.Errorf("goals: invalid authoritative status %q", current.Status)
+			return "", fmt.Errorf("goals: invalid authoritative status %q", current.Status())
 		}
 	}
 }

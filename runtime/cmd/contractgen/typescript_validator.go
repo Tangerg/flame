@@ -22,7 +22,7 @@ import (
 // It is the client's half of §11.3's "authoritative/terminal runtime validators",
 // and its scope follows from which side owns which frames. The runtime RECEIVES
 // requests, and Go's typed decode already fixes their structure, so the generated
-// Go validator enforces the registered value, enum, union and presence rules. A
+// Go validator enforces the registered value, enum, union and conditional rules. A
 // client RECEIVES results and events with no typing left at runtime at all, so this
 // one additionally carries the whole structural tree: type keywords, nested
 // shapes, required members and union exclusivity.
@@ -214,11 +214,6 @@ export function validateNotificationParams(
 // compile renders one schema node as a check expression, rendered as if it began at
 // column zero — a container re-indents what it embeds.
 func (c *checkEmitter) compile(node *schema) string {
-	if len(node.AnyOf) > 0 {
-		// Nothing emits anyOf today. Translating it wrong is worse than not compiling:
-		// a rule the schema publishes would go unchecked with nobody the wiser.
-		panic("contractgen: the wire check compiler has no translation for anyOf")
-	}
 	if node.Ref != "" {
 		name, _ := strings.CutPrefix(node.Ref, refPrefix)
 		return c.call("ref", "() => CHECKS."+name)
@@ -253,11 +248,17 @@ func (c *checkEmitter) compile(node *schema) string {
 	if node.Minimum != nil {
 		parts = append(parts, c.call("minimum", strconv.FormatInt(*node.Minimum, 10)))
 	}
+	if node.ExclusiveMinimum != nil {
+		parts = append(parts, c.call("exclusiveMinimum", strconv.FormatInt(*node.ExclusiveMinimum, 10)))
+	}
 	if node.Maximum != nil {
 		parts = append(parts, c.call("maximum", strconv.FormatInt(*node.Maximum, 10)))
 	}
 	if node.MinItems != nil {
 		parts = append(parts, c.call("minItems", strconv.Itoa(*node.MinItems)))
+	}
+	if node.MaxItems != nil {
+		parts = append(parts, c.call("maxItems", strconv.Itoa(*node.MaxItems)))
 	}
 	if node.MinProperties != nil {
 		parts = append(parts, c.call("minProperties", strconv.Itoa(*node.MinProperties)))
@@ -265,14 +266,20 @@ func (c *checkEmitter) compile(node *schema) string {
 	if node.UniqueItems {
 		parts = append(parts, c.call("uniqueItems"))
 	}
+	if node.PropertyNames != nil {
+		parts = append(parts, c.call("propertyNames", c.compile(node.PropertyNames)))
+	}
 	if len(node.OneOf) > 0 {
 		parts = append(parts, c.call("oneOf", c.list(node.OneOf)))
+	}
+	if len(node.AnyOf) > 0 {
+		parts = append(parts, c.call("anyOf", c.list(node.AnyOf)))
 	}
 	for _, member := range node.AllOf {
 		parts = append(parts, c.compile(member))
 	}
 	if node.If != nil {
-		// Both halves of a presence rule are objects in their own right, so they get a
+		// Both halves of a conditional rule are objects in their own right, so they get a
 		// line each rather than running together inside one argument list.
 		parts = append(parts, c.callBlock("ifThen", c.compile(node.If), c.compile(node.Then)))
 	}
@@ -311,7 +318,7 @@ func (c *checkEmitter) value(node *schema) string {
 	case schemaTypeBoolean:
 		return c.call("flag")
 	case "":
-		// A union branch and a presence rule state fields with no type keyword: the
+		// A union branch and a conditional rule state fields with no type keyword: the
 		// definition they sit inside already asserted the object.
 		if len(node.Properties) > 0 || len(node.Required) > 0 {
 			return c.call("fields", c.properties(node), values(node.Required))

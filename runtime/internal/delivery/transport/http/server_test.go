@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -26,7 +27,7 @@ func TestSidecarInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get info: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -56,7 +57,7 @@ func TestSidecarHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get health: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -82,7 +83,7 @@ func TestDiscoverOverRPC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post rpc: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -128,7 +129,7 @@ func TestRPCRefusesMethodIncompatibleMetadata(t *testing.T) {
 			name:   "namespace without key",
 			body:   `{"jsonrpc":"2.0","id":"2","method":"runtime.discover","params":{}}`,
 			header: "Idempotency-Namespace",
-			value:  "idp_store",
+			value:  identityfixture.IdempotencyNamespace,
 		},
 		{
 			name:   "runtime subscription run cursor",
@@ -159,7 +160,7 @@ func TestRPCRefusesMethodIncompatibleMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatalf("post request: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if code := decodeErrorCode(t, resp); code != -32602 {
 				t.Fatalf("error code = %d, want invalid_params (-32602)", code)
@@ -178,7 +179,7 @@ func TestRPCMethodHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post discover: %v", err)
 	}
-	discoverResp.Body.Close()
+	_ = discoverResp.Body.Close()
 	if discoverResp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("discover status = %d", discoverResp.StatusCode)
 	}
@@ -191,7 +192,7 @@ func TestRPCMethodHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post unknown method: %v", err)
 	}
-	defer unknownResp.Body.Close()
+	defer func() { _ = unknownResp.Body.Close() }()
 	if unknownResp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("unknown method status = %d", unknownResp.StatusCode)
 	}
@@ -210,7 +211,7 @@ func TestUnknownRPCEndpointReturns404(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusNotFound {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, want 404; body = %s", resp.StatusCode, raw)
@@ -224,14 +225,14 @@ func TestUnknownMethodReturnsRPCError(t *testing.T) {
 
 	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
 	r1, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
-	r1.Body.Close()
+	_ = r1.Body.Close()
 
 	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.unknownMethod"}`)
 	resp, err := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -251,7 +252,7 @@ func TestBusinessMethodDoesNotRequireDiscover(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, want 200; body = %s", resp.StatusCode, raw)
@@ -281,15 +282,15 @@ func TestIdempotencyKeyReplaysMutationAndRejectsReuse(t *testing.T) {
 	}
 
 	first := post(`{"jsonrpc":"2.0","id":"1","method":"runs.cancel","params":{"runId":"run_1"}}`)
-	first.Body.Close()
+	_ = first.Body.Close()
 	replay := post(`{"jsonrpc":"2.0","id":"2","method":"runs.cancel","params":{"runId":"run_1"}}`)
-	replay.Body.Close()
+	_ = replay.Body.Close()
 	if len(api.canceledRuns) != 1 || api.canceledRuns[0] != "run_1" {
 		t.Fatalf("canceled runs = %v, want one run_1", api.canceledRuns)
 	}
 
 	conflict := post(`{"jsonrpc":"2.0","id":"3","method":"runs.cancel","params":{"runId":"run_2"}}`)
-	defer conflict.Body.Close()
+	defer func() { _ = conflict.Body.Close() }()
 	if code := decodeErrorCode(t, conflict); code != -32020 {
 		t.Fatalf("conflict code = %d, want -32020", code)
 	}
@@ -312,12 +313,12 @@ func TestIdempotencyNamespaceMismatchIsRefusedBeforeMutation(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", "cancel-once")
-	req.Header.Set("Idempotency-Namespace", "idp_replaced_store")
+	req.Header.Set("Idempotency-Namespace", identityfixture.AlternateIdempotencyNamespace)
 	resp, err := netHTTP.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if code := decodeErrorCode(t, resp); code != -32033 {
 		t.Fatalf("mismatch code = %d, want -32033", code)
 	}
@@ -336,7 +337,7 @@ func TestRPCUsesEnvelopeMethod(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusOK {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, want 200; body = %s", resp.StatusCode, raw)
@@ -355,7 +356,7 @@ func TestNonStringIDRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusBadRequest {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, want 400; body = %s", resp.StatusCode, raw)
@@ -376,14 +377,14 @@ func TestRunsCancelIsRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover: %v", err)
 	}
-	r1.Body.Close()
+	_ = r1.Body.Close()
 
 	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.cancel","params":{"runId":"run_123"}}`)
 	resp, err := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != netHTTP.StatusOK {
 		raw := readBody(resp)
@@ -430,7 +431,7 @@ func TestNotificationReturns204(t *testing.T) {
 
 	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
 	r1, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
-	r1.Body.Close()
+	_ = r1.Body.Close()
 
 	// test.notification has no id ⇒ it's a Notification; JSON-RPC
 	// never sends a response for one, so the transport acks with 204.
@@ -439,7 +440,7 @@ func TestNotificationReturns204(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusNoContent {
 		raw := readBody(resp)
 		t.Fatalf("status = %d, want 204; body = %s", resp.StatusCode, raw)
@@ -458,7 +459,7 @@ func TestBodyTooLargeReturns413(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d, want 413", resp.StatusCode)
 	}
@@ -475,7 +476,7 @@ func TestUnsupportedMediaTypeReturns415(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusUnsupportedMediaType {
 		t.Fatalf("status = %d, want 415", resp.StatusCode)
 	}
@@ -489,7 +490,7 @@ func TestMalformedRPCBodyReturnsTransportProblem(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
@@ -569,7 +570,7 @@ func TestInvalidRPCEnvelopeReturnsTransportProblem(t *testing.T) {
 			if err != nil {
 				t.Fatalf("post: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != netHTTP.StatusBadRequest {
 				t.Fatalf("status = %d, want 400", resp.StatusCode)
 			}
@@ -601,7 +602,7 @@ func TestMethodNotAllowedHasAllow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != netHTTP.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", resp.StatusCode)
 	}

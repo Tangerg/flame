@@ -215,6 +215,433 @@ func TestRunLimitsRemainTheSingleApplicationPolicy(t *testing.T) {
 	assertStorageLimitVocabulary(t, root)
 }
 
+// TestModelTokenLimitsKeepPresenceInsideRichValues prevents the catalog,
+// Application and public protocol from reintroducing three flat numeric fields
+// whose zero value silently means "provider did not publish this fact".
+func TestModelTokenLimitsKeepPresenceInsideRichValues(t *testing.T) {
+	root := moduleRoot(t)
+	domainPath := filepath.Join(root, "internal", "domain", "modelref", "token_limits.go")
+	domainFile, err := parser.ParseFile(token.NewFileSet(), domainPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse model token limits: %v", err)
+	}
+	want := []string{
+		"contextWindow", "contextWindowKnown", "maxInputTokens", "maxInputTokensKnown", "maxOutputTokens", "maxOutputKnown",
+	}
+	if fields := structFields(domainFile, "TokenLimits"); !slices.Equal(fields, want) {
+		t.Fatalf("TokenLimits fields = %v, want private value/presence pairs %v", fields, want)
+	}
+	for _, method := range []string{"Validate", "Unknown", "ContextWindow", "MaxInputTokens", "MaxOutputTokens", "InputCeiling"} {
+		if !slices.Contains(receiverMethods(domainFile, "TokenLimits"), method) {
+			t.Errorf("TokenLimits is missing domain behavior %s", method)
+		}
+	}
+
+	applicationPath := filepath.Join(root, "internal", "application", "models", "catalog.go")
+	applicationFile, err := parser.ParseFile(token.NewFileSet(), applicationPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse application model catalog: %v", err)
+	}
+	details := structFields(applicationFile, "Details")
+	if !slices.Contains(details, "TokenLimits") {
+		t.Fatalf("models.Details fields = %v, want one TokenLimits value", details)
+	}
+	for _, duplicate := range []string{"ContextWindow", "MaxInputTokens", "MaxOutputTokens"} {
+		if slices.Contains(details, duplicate) {
+			t.Errorf("models.Details recreates flat token-limit field %s", duplicate)
+		}
+	}
+
+	protocolPath := filepath.Join(root, "protocol", "models.go")
+	protocolFile, err := parser.ParseFile(token.NewFileSet(), protocolPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse model protocol: %v", err)
+	}
+	model := structFields(protocolFile, "Model")
+	if !slices.Contains(model, "TokenLimits") {
+		t.Fatalf("protocol.Model fields = %v, want nested TokenLimits", model)
+	}
+	for _, duplicate := range []string{"ContextWindow", "MaxInputTokens", "MaxOutputTokens"} {
+		if slices.Contains(model, duplicate) {
+			t.Errorf("protocol.Model recreates flat token-limit field %s", duplicate)
+		}
+	}
+}
+
+// TestMCPHandshakeTimeoutKeepsDisabledStateOutOfDurationZero prevents the MCP
+// registry, public wire and connection adapter from flattening the explicit
+// unbounded/bounded policy back into a duration or integer where zero has to
+// mean both "absent" and "no deadline".
+func TestMCPHandshakeTimeoutKeepsDisabledStateOutOfDurationZero(t *testing.T) {
+	root := moduleRoot(t)
+	checks := []struct {
+		path      string
+		structure string
+		field     string
+		wantType  string
+	}{
+		{filepath.Join(root, "internal", "domain", "mcpserver", "server.go"), "Server", "HandshakeTimeout", "HandshakeTimeout"},
+		{filepath.Join(root, "internal", "application", "mcp", "views.go"), "ServerInput", "HandshakeTimeout", "mcpserver.HandshakeTimeout"},
+		{filepath.Join(root, "internal", "application", "mcp", "views.go"), "ServerPatch", "HandshakeTimeout", "*mcpserver.HandshakeTimeout"},
+		{filepath.Join(root, "protocol", "mcp.go"), "MCPServer", "HandshakeTimeout", "MCPHandshakeTimeout"},
+		{filepath.Join(root, "protocol", "mcp.go"), "MCPServerCandidate", "HandshakeTimeout", "MCPHandshakeTimeout"},
+		{filepath.Join(root, "protocol", "mcp.go"), "UpdateMCPServerRequest", "HandshakeTimeout", "*MCPHandshakeTimeout"},
+		{filepath.Join(root, "internal", "infra", "mcp", "config.go"), "ServerConfig", "HandshakeTimeout", "*time.Duration"},
+	}
+	for _, check := range checks {
+		if got := namedStructFieldType(t, check.path, check.structure, check.field); got != check.wantType {
+			t.Errorf("%s.%s type = %s, want %s", check.structure, check.field, got, check.wantType)
+		}
+	}
+
+	protocolPath := filepath.Join(root, "protocol", "mcp.go")
+	protocolFile, err := parser.ParseFile(token.NewFileSet(), protocolPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse MCP protocol: %v", err)
+	}
+	for _, structure := range []string{"MCPServer", "MCPServerCandidate", "UpdateMCPServerRequest"} {
+		if fields := structFields(protocolFile, structure); slices.Contains(fields, "TimeoutSeconds") {
+			t.Errorf("protocol.%s restored retired TimeoutSeconds", structure)
+		}
+	}
+}
+
+// TestBootstrapShutdownWaitPolicyOwnsTheDefault prevents Host and Instance
+// caller waits from restoring private duration fields whose zero value silently
+// selects a process default. Both lifecycle owners must hold one already-
+// validated concrete policy.
+func TestBootstrapShutdownWaitPolicyOwnsTheDefault(t *testing.T) {
+	root := moduleRoot(t)
+	bootstrapRoot := filepath.Join(root, "internal", "bootstrap")
+	checks := []struct {
+		path      string
+		structure string
+	}{
+		{path: filepath.Join(bootstrapRoot, "host.go"), structure: "hostLifetime"},
+		{path: filepath.Join(bootstrapRoot, "instance.go"), structure: "Instance"},
+	}
+	for _, check := range checks {
+		if got := namedStructFieldType(t, check.path, check.structure, "shutdownWait"); got != "shutdownWaitPolicy" {
+			t.Errorf("%s.shutdownWait type = %s, want shutdownWaitPolicy", check.structure, got)
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), check.path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", check.path, err)
+		}
+		if fields := structFields(file, check.structure); slices.Contains(fields, "shutdownTimeout") {
+			t.Errorf("%s restored primitive shutdownTimeout", check.structure)
+		}
+	}
+	policyPath := filepath.Join(bootstrapRoot, "shutdown_wait.go")
+	if got := namedStructFieldType(t, policyPath, "shutdownWaitPolicy", "timeout"); got != "time.Duration" {
+		t.Errorf("shutdownWaitPolicy.timeout type = %s, want time.Duration", got)
+	}
+}
+
+// TestCursorPageLimitKeepsAbsenceOutOfNumericZero freezes the page-size intent
+// across the public wire and Application boundary. JSON presence belongs to
+// Protocol; default/clamp behavior belongs to the rich Application value, and
+// neither may be flattened back into a scalar where zero becomes a switch.
+func TestCursorPageLimitKeepsAbsenceOutOfNumericZero(t *testing.T) {
+	root := moduleRoot(t)
+	if got := namedStructFieldType(t, filepath.Join(root, "protocol", "page.go"), "PageQuery", "Limit"); got != "*int" {
+		t.Fatalf("protocol.PageQuery.Limit type = %s, want *int", got)
+	}
+	if got := namedStructFieldType(
+		t,
+		filepath.Join(root, "internal", "application", "workspace", "file_reads.go"),
+		"FileListInput",
+		"Limit",
+	); got != "pagination.RequestedLimit" {
+		t.Fatalf("workspace.FileListInput.Limit type = %s, want pagination.RequestedLimit", got)
+	}
+
+	path := filepath.Join(root, "internal", "application", "pagination", "pagination.go")
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatalf("parse pagination policy: %v", err)
+	}
+	if fields := structFields(file, "RequestedLimit"); !slices.Equal(fields, []string{"mode", "value"}) {
+		t.Fatalf("pagination.RequestedLimit fields = %v, want private mode/value ownership", fields)
+	}
+	if !slices.Contains(receiverMethods(file, "RequestedLimit"), "Resolve") {
+		t.Fatal("pagination.RequestedLimit is missing Resolve behavior")
+	}
+	if slices.Contains(topLevelDeclarationNames(file), "Limit") {
+		t.Fatal("pagination restored a primitive Limit(requested, ceiling) function")
+	}
+}
+
+func TestSessionCatalogFilteringHasOneRichQueryAndDurableCanonicalizer(t *testing.T) {
+	root := moduleRoot(t)
+	protocolPath := filepath.Join(root, "protocol", "sessions.go")
+	protocolContents, err := os.ReadFile(protocolPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(protocolContents), "type ListSessionsRequest struct {\n\tPageQuery") {
+		t.Fatal("protocol.ListSessionsRequest does not embed PageQuery")
+	}
+	if got := namedStructFieldType(t, protocolPath, "ListSessionsRequest", "Workspace"); got != "*WorkspaceRef" {
+		t.Fatalf("protocol.ListSessionsRequest.Workspace type = %s, want *WorkspaceRef", got)
+	}
+
+	queryPath := filepath.Join(root, "internal", "domain", "session", "catalog_query.go")
+	file, err := parser.ParseFile(token.NewFileSet(), queryPath, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fields := structFields(file, "CatalogFilter"); !slices.Equal(fields, []string{"kind", "search", "workspace"}) {
+		t.Fatalf("sessions.CatalogFilter fields = %v, want private kind/search/workspace", fields)
+	}
+	if fields := structFields(file, "CatalogRead"); !slices.Equal(fields, []string{"filter", "after", "limit"}) {
+		t.Fatalf("sessions.CatalogRead fields = %v, want private filter/after/limit", fields)
+	}
+	for _, method := range []string{"Validate", "CursorIdentity"} {
+		if !slices.Contains(receiverMethods(file, "CatalogFilter"), method) {
+			t.Errorf("sessions.CatalogFilter is missing %s", method)
+		}
+	}
+
+	storePath := filepath.Join(root, "internal", "application", "sessions", "coordinator.go")
+	contents, err := os.ReadFile(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(contents)
+	if !strings.Contains(text, "ListPage(ctx context.Context, read session.CatalogRead)") {
+		t.Fatal("Session Store does not consume CatalogRead")
+	}
+	for _, retired := range []string{"afterFavorite bool", "afterUpdatedAt int64", "afterID string"} {
+		if strings.Contains(text, retired) {
+			t.Errorf("Session Store restored primitive cursor field %q", retired)
+		}
+	}
+
+	readPath := filepath.Join(root, "internal", "infra", "sqlite", "session_read.go")
+	contents, err = os.ReadFile(readPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = string(contents)
+	for _, required := range []string{"title_search LIKE", "workspace_search LIKE", "escapeSessionLikePattern"} {
+		if !strings.Contains(text, required) {
+			t.Errorf("SQLite Session catalog lost %q", required)
+		}
+	}
+	if strings.Contains(text, "lower(title)") || strings.Contains(text, "lower(workspace_path)") {
+		t.Fatal("SQLite Session catalog restored ASCII-only lower() canonicalization")
+	}
+}
+
+// TestWorkspaceDiffRowLimitOwnsItsUnitAndDefault prevents the structured-diff
+// row budget from returning to a generic scalar limit. The wire owns optional
+// presence; the workspace Application owns the row unit, clamp, and default.
+func TestWorkspaceDiffRowLimitOwnsItsUnitAndDefault(t *testing.T) {
+	root := moduleRoot(t)
+	if got := namedStructFieldType(t, filepath.Join(root, "protocol", "workspace_diff.go"), "GetDiffRequest", "Limit"); got != "*int" {
+		t.Fatalf("protocol.GetDiffRequest.Limit type = %s, want *int", got)
+	}
+	applicationPath := filepath.Join(root, "internal", "application", "workspace", "vcs_reads.go")
+	if got := namedStructFieldType(t, applicationPath, "DiffInput", "RowLimit"); got != "DiffRowLimit" {
+		t.Fatalf("workspace.DiffInput.RowLimit type = %s, want DiffRowLimit", got)
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), applicationPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse workspace diff policy: %v", err)
+	}
+	if fields := structFields(file, "DiffInput"); slices.Contains(fields, "Limit") {
+		t.Fatalf("workspace.DiffInput restored primitive Limit: %v", fields)
+	}
+	if fields := structFields(file, "DiffRowLimit"); !slices.Equal(fields, []string{"explicit", "rows"}) {
+		t.Fatalf("workspace.DiffRowLimit fields = %v, want private explicit/rows ownership", fields)
+	}
+	if !slices.Contains(receiverMethods(file, "DiffRowLimit"), "Rows") {
+		t.Fatal("workspace.DiffRowLimit is missing Rows behavior")
+	}
+}
+
+// TestWorkspaceFileReadPoliciesKeepPresenceOutOfPrimitiveZero freezes the four
+// different request units at their owners. Protocol carries optional presence;
+// Application carries typed intent; only the adapter-facing plan contains
+// normalized primitive coordinates and bytes.
+func TestWorkspaceFileReadPoliciesKeepPresenceOutOfPrimitiveZero(t *testing.T) {
+	root := moduleRoot(t)
+	protocolPath := filepath.Join(root, "protocol", "workspace_files.go")
+	for _, check := range []struct {
+		structure string
+		field     string
+	}{
+		{structure: "GetFileHeadRequest", field: "Lines"},
+		{structure: "GrepRequest", field: "Limit"},
+		{structure: "ReadFileRequest", field: "StartLine"},
+		{structure: "ReadFileRequest", field: "EndLine"},
+		{structure: "ReadFileRequest", field: "MaxBytes"},
+	} {
+		if got := namedStructFieldType(t, protocolPath, check.structure, check.field); got != "*int" {
+			t.Errorf("protocol.%s.%s type = %s, want *int", check.structure, check.field, got)
+		}
+	}
+
+	applicationPath := filepath.Join(root, "internal", "application", "workspace", "file_reads.go")
+	if got := namedStructFieldType(t, applicationPath, "FileReadInput", "Range"); got != "FileLineRange" {
+		t.Errorf("workspace.FileReadInput.Range type = %s, want FileLineRange", got)
+	}
+	if got := namedStructFieldType(t, applicationPath, "FileReadInput", "ByteLimit"); got != "FileReadByteLimit" {
+		t.Errorf("workspace.FileReadInput.ByteLimit type = %s, want FileReadByteLimit", got)
+	}
+	if got := namedStructFieldType(t, applicationPath, "GrepInput", "Limit"); got != "GrepResultLimit" {
+		t.Errorf("workspace.GrepInput.Limit type = %s, want GrepResultLimit", got)
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), applicationPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse workspace file reads: %v", err)
+	}
+	for _, retired := range []string{"MaxBytes", "StartLine", "EndLine"} {
+		if slices.Contains(structFields(file, "FileReadInput"), retired) {
+			t.Errorf("workspace.FileReadInput restored primitive %s", retired)
+		}
+	}
+
+	policyPath := filepath.Join(root, "internal", "application", "workspace", "file_read_policy.go")
+	policy, err := parser.ParseFile(token.NewFileSet(), policyPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse workspace file-read policies: %v", err)
+	}
+	for receiver, method := range map[string]string{
+		"HeadLineLimit":     "Lines",
+		"GrepResultLimit":   "Matches",
+		"FileReadByteLimit": "Bytes",
+		"FileLineRange":     "Bounds",
+	} {
+		if !slices.Contains(receiverMethods(policy, receiver), method) {
+			t.Errorf("workspace.%s is missing %s behavior", receiver, method)
+		}
+	}
+}
+
+// TestUsageSummaryPeriodKeepsAllTimeOutOfNumericZero freezes optional wire
+// presence and the Application-owned all-time/recent distinction. A request
+// may omit sinceDays, but neither Application nor its callers may turn zero
+// into a second meaning for a day count.
+func TestUsageSummaryPeriodKeepsAllTimeOutOfNumericZero(t *testing.T) {
+	root := moduleRoot(t)
+	if got := namedStructFieldType(t, filepath.Join(root, "protocol", "usage.go"), "UsageSummaryRequest", "SinceDays"); got != "*int" {
+		t.Fatalf("protocol.UsageSummaryRequest.SinceDays type = %s, want *int", got)
+	}
+	periodPath := filepath.Join(root, "internal", "application", "usage", "period.go")
+	periodFile, err := parser.ParseFile(token.NewFileSet(), periodPath, nil, 0)
+	if err != nil {
+		t.Fatalf("parse usage summary period: %v", err)
+	}
+	if fields := structFields(periodFile, "SummaryPeriod"); !slices.Equal(fields, []string{"recent", "days"}) {
+		t.Fatalf("usage.SummaryPeriod fields = %v, want private recent/days", fields)
+	}
+	for _, method := range []string{"Since", "Days"} {
+		if !slices.Contains(receiverMethods(periodFile, "SummaryPeriod"), method) {
+			t.Errorf("usage.SummaryPeriod is missing %s behavior", method)
+		}
+	}
+	reporterPath := filepath.Join(root, "internal", "application", "usage", "reporter.go")
+	if got := methodParameterType(t, reporterPath, "Reporter", "Summary", 1); got != "SummaryPeriod" {
+		t.Fatalf("usage.Reporter.Summary period type = %s, want SummaryPeriod", got)
+	}
+}
+
+// TestRunMaintenancePoliciesKeepDefaultsOutOfPrimitiveZero prevents long-Run
+// maintenance constructors from restoring "0 means use a default" fields or
+// storing mutable configuration bags beside their behavior owners.
+func TestRunMaintenancePoliciesKeepDefaultsOutOfPrimitiveZero(t *testing.T) {
+	root := moduleRoot(t)
+	checks := []struct {
+		path      string
+		structure string
+		field     string
+		wantType  string
+	}{
+		{"compaction_config.go", "CompactionPolicyValues", "MaxMessages", "*int"},
+		{"compaction_config.go", "CompactionPolicyValues", "MaxTokens", "*int"},
+		{"compaction_config.go", "CompactionPolicyValues", "KeepRecent", "*int"},
+		{"memory_consolidation.go", "MemoryCurationPolicyValues", "MinPendingFacts", "*int"},
+		{"memory_consolidation.go", "MemoryCurationPolicyValues", "MaxPendingFacts", "*int"},
+		{"memory_consolidation.go", "MemoryCurationPolicyValues", "MaxTokens", "*int"},
+		{"memory_consolidation.go", "MemoryCurationPolicyValues", "MaxAge", "*time.Duration"},
+		{"skill_proposal_mining.go", "SkillMiningPolicyValues", "ComplexityThreshold", "*int"},
+		{"skill_proposal_mining.go", "SkillMiningPolicyValues", "Cadence", "*int"},
+		{"skill_archiving.go", "SkillArchivePolicyValues", "ArchiveAfter", "*time.Duration"},
+		{"skill_archiving.go", "SkillArchivePolicyValues", "CheckInterval", "*time.Duration"},
+	}
+	for _, check := range checks {
+		path := filepath.Join(root, "internal", "adapter", "runmaintenance", check.path)
+		if got := namedStructFieldType(t, path, check.structure, check.field); got != check.wantType {
+			t.Errorf("%s.%s type = %s, want %s", check.structure, check.field, got, check.wantType)
+		}
+	}
+
+	owners := []struct {
+		path      string
+		structure string
+		wantType  string
+	}{
+		{"compaction.go", "Compactor", "compactionPolicy"},
+		{"memory_consolidation.go", "MemoryConsolidator", "memoryCurationPolicy"},
+		{"skill_proposal_mining.go", "SkillProposalMiner", "skillMiningPolicy"},
+		{"skill_archiving.go", "IdleSkillArchiver", "skillArchivePolicy"},
+	}
+	for _, owner := range owners {
+		path := filepath.Join(root, "internal", "adapter", "runmaintenance", owner.path)
+		if got := namedStructFieldType(t, path, owner.structure, "policy"); got != owner.wantType {
+			t.Errorf("%s.policy type = %s, want %s", owner.structure, got, owner.wantType)
+		}
+	}
+}
+
+// TestInteractionExecutionPolicyOwnsOptionalDefaults prevents executor
+// Sessions and Deployments from relying on primitive zero defaults inherited
+// from the Agent Framework or on a mutable host configuration bag.
+func TestInteractionExecutionPolicyOwnsOptionalDefaults(t *testing.T) {
+	root := moduleRoot(t)
+	executorPath := filepath.Join(root, "internal", "adapter", "agentexec", "interaction_executor.go")
+	for field, want := range map[string]string{
+		"DefaultMaxModelCalls":      "*uint32",
+		"DeltaBufferCapacity":       "*int",
+		"MaxConcurrentToolCalls":    "*int",
+		"UnknownEffectPollInterval": "*time.Duration",
+		"StatePollInterval":         "*time.Duration",
+		"ToolResultOffload":         "ToolResultOffloadPolicyValues",
+	} {
+		if got := namedStructFieldType(t, executorPath, "InteractionExecutorConfig", field); got != want {
+			t.Errorf("InteractionExecutorConfig.%s type = %s, want %s", field, got, want)
+		}
+	}
+	if got := namedStructFieldType(t, executorPath, "InteractionExecutor", "policy"); got != "interactionExecutionPolicy" {
+		t.Errorf("InteractionExecutor.policy type = %s, want interactionExecutionPolicy", got)
+	}
+	offloadPath := filepath.Join(root, "internal", "adapter", "agentexec", "tool_result_eviction.go")
+	if got := namedStructFieldType(t, offloadPath, "ToolResultOffloadPolicyValues", "Threshold"); got != "*int" {
+		t.Errorf("ToolResultOffloadPolicyValues.Threshold type = %s, want *int", got)
+	}
+	settingsPath := filepath.Join(root, "internal", "config", "settings.go")
+	if got := namedStructFieldType(t, settingsPath, "Settings", "ToolResultOffload"); got != "ToolResultOffloadSettings" {
+		t.Errorf("Settings.ToolResultOffload type = %s, want ToolResultOffloadSettings", got)
+	}
+
+	delegationPath := filepath.Join(root, "internal", "adapter", "agentexec", "interaction_delegation.go")
+	for field, want := range map[string]string{
+		"MaxDepth":          "*uint32",
+		"MaxChildren":       "*uint32",
+		"MaxActiveChildren": "*uint32",
+		"MaxTreeProcesses":  "*uint32",
+		"ChildSteps":        "*uint64",
+		"ChildEffects":      "*uint64",
+		"ChildSignals":      "*uint64",
+	} {
+		if got := namedStructFieldType(t, delegationPath, "InteractionDelegationPolicyValues", field); got != want {
+			t.Errorf("InteractionDelegationPolicyValues.%s type = %s, want %s", field, got, want)
+		}
+	}
+}
+
 func assertCanonicalRunLimits(t *testing.T, root string) {
 	t.Helper()
 	domainPath := filepath.Join(root, "internal", "domain", "run", "limits.go")
@@ -222,9 +649,14 @@ func assertCanonicalRunLimits(t *testing.T, root string) {
 	if err != nil {
 		t.Fatalf("parse execution admission: %v", err)
 	}
-	wantLimits := []string{"MaxTotalTokens", "MaxSteps", "MaxBudgetUSD"}
+	wantLimits := []string{"maxTotalTokens", "maxSteps", "maxBudgetUSD", "tokensLimited", "stepsLimited", "budgetLimited"}
 	if fields := structFields(domainFile, "Limits"); strings.Join(fields, ",") != strings.Join(wantLimits, ",") {
-		t.Fatalf("Limits fields = %v, want the single policy carrier %v", fields, wantLimits)
+		t.Fatalf("Limits fields = %v, want private value/presence pairs %v", fields, wantLimits)
+	}
+	for _, method := range []string{"Validate", "Unlimited", "MaxTotalTokens", "MaxSteps", "MaxBudgetUSD"} {
+		if !slices.Contains(receiverMethods(domainFile, "Limits"), method) {
+			t.Errorf("Limits is missing domain behavior %s", method)
+		}
 	}
 }
 
@@ -260,8 +692,17 @@ func assertProtocolLimitVocabulary(t *testing.T, root string) {
 		t.Fatalf("parse run protocol: %v", err)
 	}
 	startFields := structFields(protocolFile, "StartRunRequest")
-	if !slices.Contains(startFields, "MaxTotalTokens") || slices.Contains(startFields, "MaxTokens") {
-		t.Fatalf("StartRunRequest fields = %v, want cumulative MaxTotalTokens without ambiguous MaxTokens", startFields)
+	if !slices.Contains(startFields, "Limits") {
+		t.Fatalf("StartRunRequest fields = %v, want one nested Limits value", startFields)
+	}
+	for _, duplicate := range []string{"MaxTotalTokens", "MaxSteps", "MaxBudgetUSD", "MaxTokens"} {
+		if slices.Contains(startFields, duplicate) {
+			t.Fatalf("StartRunRequest fields = %v, duplicate flat limit %s", startFields, duplicate)
+		}
+	}
+	runLimitFields := structFields(protocolFile, "RunLimits")
+	if want := []string{"MaxTotalTokens", "MaxSteps", "MaxBudgetUSD"}; !slices.Equal(runLimitFields, want) {
+		t.Fatalf("RunLimits fields = %v, want %v", runLimitFields, want)
 	}
 	generationFields := structFields(protocolFile, "GenerationParams")
 	if !slices.Contains(generationFields, "MaxTokens") || slices.Contains(generationFields, "MaxTotalTokens") {
@@ -910,6 +1351,53 @@ func structFields(file *ast.File, name string) []string {
 		}
 	}
 	return nil
+}
+
+func receiverMethods(file *ast.File, receiver string) []string {
+	var methods []string
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Recv == nil || len(function.Recv.List) != 1 {
+			continue
+		}
+		typeName, ok := function.Recv.List[0].Type.(*ast.Ident)
+		if ok && typeName.Name == receiver {
+			methods = append(methods, function.Name.Name)
+		}
+	}
+	return methods
+}
+
+func methodParameterType(t *testing.T, path, receiver, method string, index int) string {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", path, err)
+	}
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Recv == nil || function.Name.Name != method || len(function.Recv.List) != 1 {
+			continue
+		}
+		receiverName := strings.TrimPrefix(exprString(function.Recv.List[0].Type), "*")
+		if receiverName != receiver {
+			continue
+		}
+		parameterIndex := 0
+		for _, field := range function.Type.Params.List {
+			count := len(field.Names)
+			if count == 0 {
+				count = 1
+			}
+			if index >= parameterIndex && index < parameterIndex+count {
+				return exprString(field.Type)
+			}
+			parameterIndex += count
+		}
+		t.Fatalf("%s.%s has no parameter %d", receiver, method, index)
+	}
+	t.Fatalf("%s has no method %s.%s", path, receiver, method)
+	return ""
 }
 
 // TestRuntimeDoesNotConfigureSingleProcessPreparedStepDurability freezes

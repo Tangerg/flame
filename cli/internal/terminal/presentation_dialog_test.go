@@ -9,6 +9,16 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 )
 
+func TestPresentationLeaseRenewPermanentlyRetiresPriorIdentity(t *testing.T) {
+	lease := presentationLease{}
+	lease.renew()
+	prior := lease.current
+	lease.renew()
+	if lease.current.current(prior) || prior.current(prior) {
+		t.Fatal("presentation renewal reactivated its prior identity")
+	}
+}
+
 type presentationProbe struct {
 	handled int
 	focused bool

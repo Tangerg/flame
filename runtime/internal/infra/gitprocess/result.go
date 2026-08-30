@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	maxOutputBytes = 64 << 20
-	maxErrorBytes  = 64 << 10
+	maxOutputBytes   = 64 << 20
+	maxErrorBytes    = 64 << 10
+	processWaitDelay = time.Second
 )
 
 // ErrOutputTooLarge reports a Git command whose stdout cannot enter a Runtime
@@ -37,7 +38,7 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	if len(overrides) > 0 {
 		command.Env = Environment(overrides...)
 	}
-	command.WaitDelay = time.Second
+	command.WaitDelay = processWaitDelay
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return Result{}, fmt.Errorf("gitprocess: stdout pipe: %w", err)

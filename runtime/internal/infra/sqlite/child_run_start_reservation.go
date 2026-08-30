@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 )
 
 var (
@@ -24,11 +26,36 @@ const (
 	ChildRunStartConclusionAborted ChildRunStartConclusion = "aborted"
 )
 
-func (c ChildRunStartConclusion) valid() bool {
-	return c == ChildRunStartConclusionStarted || c == ChildRunStartConclusionAborted
+type childRunStartState string
+
+const (
+	childRunStartStateReserved childRunStartState = "reserved"
+	childRunStartStateStarted  childRunStartState = "started"
+	childRunStartStateAborted  childRunStartState = "aborted"
+)
+
+func parseChildRunStartState(raw string) (childRunStartState, error) {
+	state := childRunStartState(raw)
+	switch state {
+	case childRunStartStateReserved, childRunStartStateStarted, childRunStartStateAborted:
+		return state, nil
+	default:
+		return "", ErrChildRunStartReservationConflict
+	}
 }
 
-const childRunStartReserved = "reserved"
+func childRunStartConcludedState(conclusion ChildRunStartConclusion) (childRunStartState, error) {
+	switch conclusion {
+	case ChildRunStartConclusionStarted:
+		return childRunStartStateStarted, nil
+	case ChildRunStartConclusionAborted:
+		return childRunStartStateAborted, nil
+	default:
+		return "", errors.New("sqlite: child Run start conclusion is invalid")
+	}
+}
+
+func (c childRunStartState) String() string { return string(c) }
 
 // ChildRunStartReservationRecord is SQLite's opaque technical record. Runtime
 // application semantics live in the runsegment adapter; storage only enforces
@@ -41,11 +68,11 @@ type ChildRunStartReservationRecord struct {
 }
 
 func (c ChildRunStartReservationRecord) validate() error {
-	if strings.TrimSpace(c.MemberID) == "" || c.MemberID != strings.TrimSpace(c.MemberID) {
-		return fmt.Errorf("%w: member ID", ErrInvalidChildRunStartReservation)
+	if _, err := executoridentity.ParseMember(c.MemberID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
-	if strings.TrimSpace(c.SessionID) == "" || c.SessionID != strings.TrimSpace(c.SessionID) {
-		return fmt.Errorf("%w: session ID", ErrInvalidChildRunStartReservation)
+	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if len(c.Payload) == 0 {
 		return fmt.Errorf("%w: payload", ErrInvalidChildRunStartReservation)
@@ -81,7 +108,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 		INSERT INTO child_run_start_reservations(member_id, session_id, payload, created_at, state)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(member_id) DO NOTHING`,
-		record.MemberID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), childRunStartReserved,
+		record.MemberID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), childRunStartStateReserved.String(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: reserve child Run start: %w", err)
@@ -119,8 +146,9 @@ func (c *ChildRunStartReservationStore) Conclude(
 	if err := record.validate(); err != nil {
 		return false, err
 	}
-	if !conclusion.valid() {
-		return false, errors.New("sqlite: child Run start conclusion is invalid")
+	concludedState, err := childRunStartConcludedState(conclusion)
+	if err != nil {
+		return false, err
 	}
 	existing, state, err := c.load(ctx, record.MemberID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -133,16 +161,16 @@ func (c *ChildRunStartReservationStore) Conclude(
 		!bytes.Equal(existing.Payload, record.Payload) {
 		return false, ErrChildRunStartReservationConflict
 	}
-	if state == string(conclusion) {
+	if state == concludedState {
 		return false, nil
 	}
-	if state != childRunStartReserved {
+	if state != childRunStartStateReserved {
 		return false, ErrChildRunStartReservationConflict
 	}
 	result, err := conn(ctx, c.db).ExecContext(ctx, `
 		UPDATE child_run_start_reservations
 		SET state = ?
-		WHERE member_id = ? AND state = ?`, conclusion, record.MemberID, childRunStartReserved)
+		WHERE member_id = ? AND state = ?`, concludedState.String(), record.MemberID, childRunStartStateReserved.String())
 	if err != nil {
 		return false, fmt.Errorf("sqlite: conclude child Run start reservation: %w", err)
 	}
@@ -168,8 +196,8 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	if c == nil || c.db == nil {
 		return errors.New("sqlite: child Run start reservation store is unavailable")
 	}
-	if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) {
-		return fmt.Errorf("%w: session ID", ErrInvalidChildRunStartReservation)
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if _, err := conn(ctx, c.db).ExecContext(ctx,
 		`DELETE FROM child_run_start_reservations WHERE session_id = ?`, sessionID,
@@ -198,7 +226,7 @@ func (c *ChildRunStartReservationStore) DeleteAll(ctx context.Context) error {
 func (c *ChildRunStartReservationStore) load(
 	ctx context.Context,
 	memberID string,
-) (ChildRunStartReservationRecord, string, error) {
+) (ChildRunStartReservationRecord, childRunStartState, error) {
 	var record ChildRunStartReservationRecord
 	var createdAt int64
 	var state string
@@ -214,9 +242,9 @@ func (c *ChildRunStartReservationStore) load(
 	if err := record.validate(); err != nil {
 		return ChildRunStartReservationRecord{}, "", err
 	}
-	if state != childRunStartReserved && state != string(ChildRunStartConclusionStarted) &&
-		state != string(ChildRunStartConclusionAborted) {
-		return ChildRunStartReservationRecord{}, "", ErrChildRunStartReservationConflict
+	parsedState, err := parseChildRunStartState(state)
+	if err != nil {
+		return ChildRunStartReservationRecord{}, "", err
 	}
-	return record, state, nil
+	return record, parsedState, nil
 }

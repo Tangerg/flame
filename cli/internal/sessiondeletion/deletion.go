@@ -6,53 +6,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
 type runtime interface {
 	DeleteSession(context.Context, agent.DeleteSession) error
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
-}
-
-// ReplayWindow identifies the runtime command store and conservative replay
-// interval advertised when a deletion intent is first staged.
-type ReplayWindow struct {
-	Namespace string
-	Retention time.Duration
-	Now       func() time.Time
-}
-
-func (r ReplayWindow) now() time.Time {
-	if r.Now == nil {
-		return time.Now().UTC()
-	}
-	return r.Now().UTC()
-}
-
-func (r ReplayWindow) guard() (workbench.ReplayGuard, error) {
-	if strings.TrimSpace(r.Namespace) == "" && r.Retention == 0 {
-		return workbench.ReplayGuard{}, nil
-	}
-	if strings.TrimSpace(r.Namespace) == "" || r.Retention <= 0 {
-		return workbench.ReplayGuard{}, errors.New("session deletion replay guarantee is incomplete")
-	}
-	return workbench.ReplayGuard{
-		Namespace: strings.TrimSpace(r.Namespace), Until: r.now().Add(r.Retention),
-	}, nil
-}
-
-func (r ReplayWindow) sameStore(guard workbench.ReplayGuard) bool {
-	if strings.TrimSpace(r.Namespace) == "" && r.Retention == 0 {
-		return guard.Empty()
-	}
-	return strings.TrimSpace(r.Namespace) != "" &&
-		guard.Namespace == strings.TrimSpace(r.Namespace)
 }
 
 // Result binds settlement to the exact durable runtime command.
@@ -69,14 +34,19 @@ func Execute(
 	runtime runtime,
 	authoring *workbench.Store,
 	sessionID string,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) (Result, error) {
 	if authoring == nil {
 		return Result{}, errors.New("CLI workbench is unavailable")
 	}
-	sessionID = strings.TrimSpace(sessionID)
+	identity, err := sessionidentity.Parse(sessionID)
+	if err != nil {
+		return Result{}, err
+	}
+	sessionID = identity.String()
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
+	fresh := !exists
 	if exists && pending.Phase == workbench.SessionDeletionConfirmed {
 		return Result{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
 	}
@@ -87,7 +57,7 @@ func Execute(
 			return Result{}, fmt.Errorf("create session deletion identity: %w", err)
 		}
 		request = agent.DeleteSession{CommandID: commandID, SessionID: sessionID}
-		replay, err := window.guard()
+		replay, err := policy.NewGuard()
 		if err != nil {
 			return Result{}, err
 		}
@@ -99,11 +69,15 @@ func Execute(
 			return Result{}, errors.New("staged session deletion is absent")
 		}
 	}
-	if !replaySafe(pending.Replay, window) {
-		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, window)
+	if fresh {
+		outcome, err := settle(ctx, runtime, request, pending.Replay, policy, backoff, true)
 		return Result{Request: request, Outcome: outcome}, err
 	}
-	outcome, err := Settle(ctx, runtime, request, pending.Replay, window, backoff)
+	if !policy.Replayable(pending.Replay) {
+		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
+		return Result{Request: request, Outcome: outcome}, err
+	}
+	outcome, err := Settle(ctx, runtime, request, pending.Replay, policy, backoff)
 	return Result{Request: request, Outcome: outcome}, err
 }
 
@@ -114,23 +88,34 @@ func Settle(
 	ctx context.Context,
 	runtime runtime,
 	request agent.DeleteSession,
-	replay workbench.ReplayGuard,
-	window ReplayWindow,
+	replay commandreplay.Guard,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) (mutation.Outcome, error) {
-	_, err := mutation.ConfirmAdmitted(ctx, backoff, func() error {
-		if !replaySafe(replay, window) {
-			return mutation.ErrReplayGuaranteeUnavailable
-		}
-		return nil
-	}, func(ctx context.Context) (struct{}, error) {
+	return settle(ctx, runtime, request, replay, policy, backoff, false)
+}
+
+func settle(
+	ctx context.Context,
+	runtime runtime,
+	request agent.DeleteSession,
+	replay commandreplay.Guard,
+	policy commandreplay.Policy,
+	backoff retry.Backoff,
+	fresh bool,
+) (mutation.Outcome, error) {
+	admit := mutation.ReplayAdmission(policy, replay)
+	if fresh {
+		admit = mutation.FreshReplayAdmission(policy, replay)
+	}
+	_, err := mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (struct{}, error) {
 		return struct{}{}, runtime.DeleteSession(ctx, request)
 	})
 	if err == nil || errors.Is(err, agent.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
-		outcome, resolveErr := resolveExpired(ctx, runtime, request.SessionID, replay, window)
+		outcome, resolveErr := resolveExpired(ctx, runtime, request.SessionID, replay, policy)
 		if outcome != mutation.Unknown {
 			return outcome, resolveErr
 		}
@@ -174,7 +159,7 @@ func Recover(
 	ctx context.Context,
 	runtime runtime,
 	authoring *workbench.Store,
-	window ReplayWindow,
+	policy commandreplay.Policy,
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionDeletions() {
@@ -185,8 +170,8 @@ func Recover(
 			continue
 		}
 		result := Result{Request: pending.Request()}
-		if !replaySafe(pending.Replay, window) {
-			outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, window)
+		if !policy.Replayable(pending.Replay) {
+			outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
 			result.Outcome = outcome
 			switch outcome {
 			case mutation.Confirmed:
@@ -202,7 +187,7 @@ func Recover(
 			}
 			continue
 		}
-		outcome, err := Settle(ctx, runtime, result.Request, pending.Replay, window, backoff)
+		outcome, err := Settle(ctx, runtime, result.Request, pending.Replay, policy, backoff)
 		result.Outcome = outcome
 		switch outcome {
 		case mutation.Confirmed:
@@ -224,10 +209,10 @@ func resolveExpired(
 	ctx context.Context,
 	runtime runtime,
 	sessionID string,
-	replay workbench.ReplayGuard,
-	window ReplayWindow,
+	replay commandreplay.Guard,
+	policy commandreplay.Policy,
 ) (mutation.Outcome, error) {
-	if !window.sameStore(replay) {
+	if !policy.SameStore(replay) {
 		return mutation.Unknown, errors.New("session deletion belongs to another runtime")
 	}
 	_, err := runtime.GetSession(ctx, sessionID)
@@ -238,12 +223,4 @@ func resolveExpired(
 		return mutation.Unknown, fmt.Errorf("read deletion outcome: %w", err)
 	}
 	return mutation.Rejected, nil
-}
-
-func replaySafe(guard workbench.ReplayGuard, window ReplayWindow) bool {
-	if strings.TrimSpace(window.Namespace) == "" && window.Retention == 0 {
-		return guard.Empty()
-	}
-	return strings.TrimSpace(window.Namespace) != "" && guard.Namespace == strings.TrimSpace(window.Namespace) &&
-		window.now().Before(guard.Until)
 }

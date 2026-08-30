@@ -32,6 +32,7 @@ import { createStorage } from "./storage";
 import type { Disposable } from "./types/common";
 import type { ExtensionContributionOptions, ExtensionPoint } from "./types/extensions";
 import type { NotificationLevel, TaskStartOptions } from "./types/infra";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 /**
  * The plugin context: Core's, with `contribute` replaced by the point-aware one
@@ -66,7 +67,7 @@ export interface PluginSpec<
 // (event handlers, log hooks, lifecycle observers). Uniqueness only has to hold
 // within one point's keyspace under one owner; a global counter is simpler than
 // per-point ones and the ids never reach plugin code.
-let nextMintedId = 0;
+const mintedIds = new ExactSequence();
 
 function itemId(item: unknown): string | undefined {
   if (typeof item !== "object" || item === null || !("id" in item)) return undefined;
@@ -78,7 +79,7 @@ function domainKey<T>(
   item: T,
   opts: ExtensionContributionOptions | undefined,
 ): string {
-  if (point.keying === "multi") return opts?.id ?? `${point.id}#${++nextMintedId}`;
+  if (point.keying === "multi") return opts?.id ?? `${point.id}#${mintedIds.issue()}`;
   const key = opts?.key ?? point.keyOf?.(item) ?? itemId(item);
   if (!key) {
     throw new Error(

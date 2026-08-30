@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -63,8 +64,8 @@ func NewMessages(store Store, compactions CompactionStore) *Messages {
 
 // Read returns the validated durable conversation snapshot.
 func (m *Messages) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
-	if sessionID == "" {
-		return nil, errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return nil, err
 	}
 	messages, err := m.store.Read(ctx, sessionID)
 	if err != nil {
@@ -80,8 +81,8 @@ func (m *Messages) Read(ctx context.Context, sessionID string) ([]chat.Message, 
 // Seed installs a prefix into a fresh conversation. Existing history is never
 // silently appended to or replaced by a fork/import operation.
 func (m *Messages) Seed(ctx context.Context, sessionID string, messages []chat.Message) error {
-	if sessionID == "" {
-		return errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return err
 	}
 	if len(messages) == 0 {
 		return nil
@@ -106,8 +107,8 @@ func (m *Messages) Seed(ctx context.Context, sessionID string, messages []chat.M
 
 // Append extends an existing conversation with validated model-context messages.
 func (m *Messages) Append(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	if sessionID == "" {
-		return errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return err
 	}
 	if len(messages) == 0 {
 		return nil
@@ -132,8 +133,8 @@ func (m *Messages) Append(ctx context.Context, sessionID string, messages ...cha
 
 // Count returns the durable message watermark.
 func (m *Messages) Count(ctx context.Context, sessionID string) (int, error) {
-	if sessionID == "" {
-		return 0, errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return 0, err
 	}
 	count, err := m.store.Count(ctx, sessionID)
 	if err != nil {
@@ -154,8 +155,8 @@ func (m *Messages) RewriteForCompaction(
 	replacementPrefix int,
 	messages ...chat.Message,
 ) error {
-	if sessionID == "" {
-		return errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return err
 	}
 	if m.compactions == nil {
 		return errors.New("conversations: compaction persistence is unavailable")
@@ -213,11 +214,18 @@ func (m *Messages) Truncate(ctx context.Context, sessionID string, keepN int) er
 
 // Clear atomically removes every message without first decoding stored rows.
 func (m *Messages) Clear(ctx context.Context, sessionID string) error {
-	if sessionID == "" {
-		return errSessionIDRequired
+	if err := validateSessionIdentity(sessionID); err != nil {
+		return err
 	}
 	if err := m.store.Replace(ctx, sessionID); err != nil {
 		return fmt.Errorf("conversations: clear session %q: %w", sessionID, err)
+	}
+	return nil
+}
+
+func validateSessionIdentity(sessionID string) error {
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("%w: %v", errSessionIDRequired, err)
 	}
 	return nil
 }

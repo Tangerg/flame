@@ -3,6 +3,7 @@ import { describeProblem } from "@/lib/rpcErrors";
 import { getContainer } from "@/main/container";
 import type {
   MCPServerCandidate,
+  MCPHandshakeTimeout as WireMCPHandshakeTimeout,
   MCPAuthorizationChange,
   MCPAuthorizationAttempt,
   MCPConnectionInput,
@@ -12,6 +13,7 @@ import type {
   UpdateMCPServerRequest,
 } from "@/rpc";
 import type { MCPServerInput } from "../application/mcpServerInput";
+import type { MCPHandshakeTimeout } from "../application/mcpHandshakeTimeout";
 import { mcpServerSettings } from "./runtimeMcpServerProjection";
 import {
   type MCPAuthorizationAttempt as AuthorizationAttempt,
@@ -62,7 +64,7 @@ function candidate(input: MCPServerInput): MCPServerCandidate {
     enabled: input.enabled,
     description: input.description,
     connection: connectionInput(input),
-    timeoutSeconds: input.timeoutSeconds,
+    handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
     disabledTools: input.disabledTools,
     autoApproveTools: input.autoApproveTools,
   };
@@ -73,10 +75,16 @@ function updateRequest(name: string, input: MCPServerInput): UpdateMCPServerRequ
     server: name,
     description: input.description ?? "",
     connection: connectionInput(input),
-    timeoutSeconds: input.timeoutSeconds ?? 0,
+    handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
     disabledTools: input.disabledTools ?? [],
     autoApproveTools: input.autoApproveTools ?? [],
   };
+}
+
+function wireHandshakeTimeout(timeout: MCPHandshakeTimeout): WireMCPHandshakeTimeout {
+  return timeout.type === "bounded"
+    ? { type: "bounded", seconds: timeout.seconds }
+    : { type: "unbounded" };
 }
 
 function authorizationAttempt(attempt: MCPAuthorizationAttempt): AuthorizationAttempt {

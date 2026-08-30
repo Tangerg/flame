@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 type Rating string
@@ -40,11 +43,30 @@ type Signal struct {
 }
 
 func (s Signal) Validate() error {
+	var problems []error
+	if s.SessionID != "" {
+		if _, err := sessionidentity.Parse(s.SessionID); err != nil {
+			problems = append(problems, err)
+		}
+	}
+	if s.RunID != "" {
+		if _, err := runidentity.ParseRun(s.RunID); err != nil {
+			problems = append(problems, err)
+		}
+	}
+	if s.ItemID != "" {
+		if _, err := runidentity.ParseItem(s.ItemID); err != nil {
+			problems = append(problems, err)
+		}
+	}
 	if err := s.Rating.Validate(); err != nil {
-		return err
+		problems = append(problems, err)
 	}
 	if s.Rating == "" && strings.TrimSpace(s.Text) == "" {
-		return errors.New("feedback requires a rating or text")
+		problems = append(problems, errors.New("feedback requires a rating or text"))
+	}
+	if err := errors.Join(problems...); err != nil {
+		return fmt.Errorf("feedback signal: %w", err)
 	}
 	return nil
 }

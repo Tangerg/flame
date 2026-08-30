@@ -184,6 +184,7 @@ func TestDiscoveryAcceptsRuntimeWithoutOptionalPlanCapability(t *testing.T) {
 }
 
 func compatibleDiscovery() *protocol.DiscoverResponse {
+	maxConcurrentRuns := 4
 	return &protocol.DiscoverResponse{
 		ProtocolVersion: protocol.ProtocolVersion,
 		ServerInfo: protocol.ServerInfo{
@@ -198,7 +199,7 @@ func compatibleDiscovery() *protocol.DiscoverResponse {
 				protocol.FeaturePlan: {Enabled: true},
 			},
 			Limits: protocol.RuntimeLimits{
-				MaxConcurrentRuns: 4,
+				MaxConcurrentRuns: &maxConcurrentRuns,
 				Idempotency:       protocol.IdempotencyLimits{RetentionSeconds: 600, Namespace: "idp_test"},
 				RunReplay: protocol.RunReplayLimits{
 					Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20,

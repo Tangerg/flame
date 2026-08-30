@@ -6,10 +6,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -31,7 +33,7 @@ type managedDelegateCall struct {
 	arguments          tool.Arguments
 	modelCallSequence  uint32
 	toolCallIndex      uint32
-	callID             string
+	callID             executoridentity.EffectID
 	admission          agent.ProcessAdmission
 	binding            runs.ChildRunBinding
 	childProcessID     agent.ProcessID
@@ -93,13 +95,17 @@ func (i *interactionSession) registerDelegateCalls(
 		identity := delegateCallIdentity{
 			parentID: invocation.Relation().ProcessID(), childKey: childKey,
 		}
+		callID, err := delegatedToolCallID(
+			invocation.Relation(), invocation.ModelCallSequence(), toolCallIndex, call,
+		)
+		if err != nil {
+			return err
+		}
 		managedCall := &managedDelegateCall{
 			identity: identity, parentRelation: invocation.Relation(), target: target,
 			call: call, input: input, arguments: arguments,
 			modelCallSequence: invocation.ModelCallSequence(), toolCallIndex: toolCallIndex,
-			callID: delegatedToolCallID(
-				invocation.Relation(), invocation.ModelCallSequence(), toolCallIndex, call,
-			),
+			callID: callID,
 		}
 		i.state.mu.Lock()
 		if prior := i.state.delegateCalls[identity]; prior != nil {
@@ -117,6 +123,9 @@ func (i *interactionSession) registerDelegateCalls(
 }
 
 func decodeDelegateCall(call corechat.ToolCall) (delegateInput, tool.Arguments, error) {
+	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
 	rawArguments := strings.TrimSpace(call.Arguments)
 	if rawArguments == "" {
 		rawArguments = "{}"

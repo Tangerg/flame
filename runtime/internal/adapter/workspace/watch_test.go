@@ -49,7 +49,7 @@ func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) 
 	if err != nil {
 		t.Fatalf("watch repository: %v", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	info, err := os.Stat(tracked)
 	if err != nil {
@@ -106,7 +106,7 @@ func TestGitWatcherResolvesRepositoryFromNestedWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch nested workspace: %v", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	if err := os.WriteFile(tracked, []byte("after\n"), 0o644); err != nil {
 		t.Fatalf("modify nested workspace file: %v", err)
@@ -147,7 +147,7 @@ func TestGitWatcherKeepsDistinctScopesWithinOneRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch sibling workspace scopes: %v", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	if err := os.WriteFile(filepath.Join(second, "tracked.txt"), []byte("after\n"), 0o644); err != nil {
 		t.Fatalf("modify second workspace file: %v", err)
@@ -206,7 +206,7 @@ func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch linked worktree: %v", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	tracked := filepath.Join(nested, "tracked.txt")
 	if err := os.WriteFile(tracked, []byte("after\n"), 0o644); err != nil {

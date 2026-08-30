@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -118,10 +119,23 @@ func (b Boundary) DroppedRunIDs() []string {
 // false). An unknown runID is [ErrRunNotFound].
 func (t Timeline) BoundaryAt(runID string, requireRoot bool) (Boundary, error) {
 	nodes := slices.Clone([]RunNode(t))
+	for index, node := range nodes {
+		if _, err := resourceid.ParseRun(node.ID); err != nil {
+			return Boundary{}, fmt.Errorf("timeline Run[%d]: %w", index, err)
+		}
+		if node.SpawnedByItemID != "" {
+			if _, err := resourceid.ParseItem(node.SpawnedByItemID); err != nil {
+				return Boundary{}, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
+			}
+		}
+	}
 	slices.SortStableFunc(nodes, func(a, b RunNode) int { return a.CreatedAt.Compare(b.CreatedAt) })
 
 	if runID == "" {
 		return Boundary{Dropped: nodes}, nil
+	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return Boundary{}, fmt.Errorf("timeline boundary: %w", err)
 	}
 	idx := slices.IndexFunc(nodes, func(n RunNode) bool { return n.ID == runID })
 	if idx < 0 {

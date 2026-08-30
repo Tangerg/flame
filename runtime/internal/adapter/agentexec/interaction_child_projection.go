@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -183,7 +183,7 @@ func (i *interactionSession) finishDelegateTool(
 		result = parsed
 	}
 	fact := runs.ToolCallFinished{
-		CallID: managed.callID, Arguments: managed.arguments.Canonical(), Result: &result,
+		CallID: managed.callID.String(), Arguments: managed.arguments.Canonical(), Result: &result,
 	}
 	if cause != nil {
 		fact.Failure = &tool.Failure{

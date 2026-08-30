@@ -14,15 +14,25 @@ func presentMCPServer(server mcpapp.Server) (protocol.MCPServer, error) {
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
+	disabledTools, autoApproveTools := presentMCPToolPolicy(server.ToolPolicy)
 	return protocol.MCPServer{
-		Name:             server.Name,
+		Name:             server.Name.String(),
 		Description:      server.Description,
 		Connection:       connection,
-		TimeoutSeconds:   int(server.Timeout / time.Second),
-		DisabledTools:    server.DisabledTools,
-		AutoApproveTools: server.AutoApproveTools,
+		HandshakeTimeout: presentMCPHandshakeTimeout(server.HandshakeTimeout),
+		DisabledTools:    disabledTools,
+		AutoApproveTools: autoApproveTools,
 		Status:           presentMCPServerState(server.State),
 	}, nil
+}
+
+func presentMCPHandshakeTimeout(timeout mcpserver.HandshakeTimeout) protocol.MCPHandshakeTimeout {
+	duration, bounded := timeout.Duration()
+	if !bounded {
+		return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}
+	}
+	seconds := int(duration / time.Second)
+	return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
 }
 
 func presentMCPConnection(connection mcpapp.Connection) (protocol.MCPConnection, error) {
@@ -96,18 +106,30 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protoco
 		panic("server: unknown MCP authorization attempt status")
 	}
 	return protocol.MCPAuthorizationAttempt{
-		ID: attempt.ID, Server: attempt.Server, Status: status,
+		ID: attempt.ID.String(), Server: attempt.Server.String(), Status: status,
 		CreatedAt: attempt.CreatedAt, FinishedAt: attempt.FinishedAt,
 	}
 }
 
 func presentMCPTool(tool mcpserver.AdvertisedTool) protocol.MCPTool {
 	return protocol.MCPTool{
-		Server:      tool.Server,
-		Name:        tool.Name,
+		Server:      tool.Server.String(),
+		Name:        tool.Name.String(),
 		Description: tool.Description,
 		InputSchema: tool.InputSchema.Map(),
 	}
+}
+
+func presentMCPToolPolicy(policy mcpserver.ServerToolPolicy) (disabled, autoApproved []string) {
+	for _, rule := range policy.Rules() {
+		switch rule.Decision {
+		case mcpserver.ToolDisabled:
+			disabled = append(disabled, rule.Tool.String())
+		case mcpserver.ToolAutoApproved:
+			autoApproved = append(autoApproved, rule.Tool.String())
+		}
+	}
+	return disabled, autoApproved
 }
 
 func presentMCPTransport(transport mcpserver.Transport) (protocol.MCPTransport, bool) {

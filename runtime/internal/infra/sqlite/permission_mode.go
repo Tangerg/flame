@@ -18,6 +18,9 @@ func NewPermissionModeStore(db *sql.DB) *PermissionModeStore {
 }
 
 func (p *PermissionModeStore) LookupMode(ctx context.Context, sessionID string) (approval.SessionMode, bool, error) {
+	if err := validateSessionResource("read Session permission mode", sessionID); err != nil {
+		return approval.SessionMode{}, false, err
+	}
 	var state approval.SessionMode
 	err := conn(ctx, p.db).QueryRowContext(ctx,
 		`SELECT mode, restore_mode FROM session_permission_modes WHERE session_id = ?`, sessionID,
@@ -35,8 +38,8 @@ func (p *PermissionModeStore) LookupMode(ctx context.Context, sessionID string) 
 }
 
 func (p *PermissionModeStore) PutMode(ctx context.Context, sessionID string, state approval.SessionMode) error {
-	if sessionID == "" {
-		return errors.New("sqlite: session permission mode requires a session id")
+	if err := validateSessionResource("write Session permission mode", sessionID); err != nil {
+		return err
 	}
 	if err := state.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate session permission mode: %w", err)

@@ -243,7 +243,7 @@ func (c *Coordinator) WaitSessionStartable(ctx context.Context, sessionID string
 		select {
 		case <-ctx.Done():
 			stopObserving()
-			return ctx.Err()
+			return context.Cause(ctx)
 		case <-changed:
 			stopObserving()
 		}
@@ -268,7 +268,7 @@ func (c *Coordinator) openSegment(reqCtx context.Context, spec segmentSpec) (ite
 	if err != nil {
 		return nil, startup.abort(err)
 	}
-	return startup.activate(reqCtx, openings), nil
+	return startup.activate(reqCtx, openings)
 }
 
 // segmentStartup owns the reversible process-local resources between executor
@@ -314,7 +314,10 @@ func (c *Coordinator) prepareSegmentStartup(
 		return nil, startup.abort(err)
 	}
 	startup.executorEvents = executorEvents
-	startup.journal = c.segments.newJournal(spec.RunID, spec.SegmentID)
+	startup.journal, err = c.segments.newJournal(spec.RunID, spec.SegmentID)
+	if err != nil {
+		return nil, startup.abort(err)
+	}
 	startup.treeOwner = &runTreeOwner{
 		cancel:      cancelRun,
 		taskContext: taskContext,
@@ -360,7 +363,7 @@ func (s *segmentStartup) abort(cause error) error {
 func (s *segmentStartup) activate(
 	requestContext context.Context,
 	openings []routeOpening,
-) iter.Seq[Event] {
+) (iter.Seq[Event], error) {
 	spec := s.spec
 	if spec.admission != nil && !spec.admission.Admit(spec.RunID) {
 		panic("runs: committed opening without a pending admission")
@@ -376,7 +379,9 @@ func (s *segmentStartup) activate(
 		Capabilities:   spec.effectiveCapabilities(),
 	}, s.treeOwner)
 	stream := s.openingStream(requestContext)
-	s.publishOpenings(openings)
+	if err := s.publishOpenings(openings); err != nil {
+		return nil, err
+	}
 	s.markSegmentsStarted()
 	if !s.spec.DetachActivation {
 		s.beginExecution()
@@ -395,7 +400,7 @@ func (s *segmentStartup) activate(
 			s.routes,
 		)
 	}()
-	return stream
+	return stream, nil
 }
 
 func (s *segmentStartup) openingStream(requestContext context.Context) iter.Seq[Event] {
@@ -409,16 +414,19 @@ func (s *segmentStartup) openingStream(requestContext context.Context) iter.Seq[
 	}
 }
 
-func (s *segmentStartup) publishOpenings(openings []routeOpening) {
+func (s *segmentStartup) publishOpenings(openings []routeOpening) error {
 	for _, opening := range openings {
 		for _, reduced := range opening.batch.events {
-			s.journal.append(s.coordinator.publications.event(
+			if err := s.journal.append(s.coordinator.publications.event(
 				opening.route.runID,
 				opening.route.segmentID,
 				reduced,
-			))
+			)); err != nil {
+				return fmt.Errorf("runs: publish opening replay position: %w", err)
+			}
 		}
 	}
+	return nil
 }
 
 func (s *segmentStartup) markSegmentsStarted() {

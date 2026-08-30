@@ -21,6 +21,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/extensions"
 	"github.com/Tangerg/flame/cli/internal/failure"
 	"github.com/Tangerg/flame/cli/internal/settings"
@@ -69,7 +70,7 @@ func runUIConfigured(t *testing.T, backend agent.Runtime, workspace string, conf
 
 func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	config.Host = host
@@ -92,7 +93,7 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 
 func runUIForSession(t *testing.T, backend agent.Runtime, sessionID string) (*programtest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -114,7 +115,7 @@ func runUIForSession(t *testing.T, backend agent.Runtime, sessionID string) (*pr
 
 func runUIWithState(t *testing.T, backend agent.Runtime, workspace, sessionID, stateDirectory string) (*programtest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -134,6 +135,33 @@ func runUIWithState(t *testing.T, backend agent.Runtime, workspace, sessionID, s
 	}
 	t.Cleanup(stop)
 	return host, stop
+}
+
+const terminalTestReplayNamespace = "terminal-test-runtime"
+
+func runUIWithReplay(t *testing.T, backend agent.Runtime) (*programtest.Host, func()) {
+	t.Helper()
+	return runUIWithReplayState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", "")
+}
+
+func runUIWithReplayState(
+	t *testing.T,
+	backend agent.Runtime,
+	workspace string,
+	sessionID string,
+	stateDirectory string,
+) (*programtest.Host, func()) {
+	t.Helper()
+	profile := steerReplayTestProfile(t, workspace)
+	return runUIFromConfig(t, Config{
+		Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
+		SessionID: sessionID, StateDirectory: stateDirectory,
+	})
+}
+
+func durableCommandReplayGuard(t *testing.T) commandreplay.Guard {
+	t.Helper()
+	return protectedCommandReplayGuard(t, terminalTestReplayNamespace, time.Now().UTC().Add(time.Hour))
 }
 
 func blockSessionStateWrites(t *testing.T, stateDirectory, sessionID string) func() {
@@ -818,7 +846,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	runtime := &blockingRefusingResumeRuntime{
 		Runtime: base, started: make(chan agent.ResumeRun, 1), release: make(chan struct{}),
 	}
-	first, stopFirst := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	first, stopFirst := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	first.Shows(t, "Ask flame")
 	first.Type("preserve a rejected approval decision")
 	first.Press(input.Enter)
@@ -861,7 +889,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -872,13 +900,13 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	stopFirst()
 
 	recovery := &replayingResumeRuntime{Runtime: base}
-	second, stopSecond := runUIWithState(t, recovery, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	second, stopSecond := runUIWithReplayState(t, recovery, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	second.Shows(t, "complete")
 	attempts := recovery.resumeAttempts()
 	if len(attempts) != 2 || attempts[0].CommandID != pending.CommandID || attempts[1].CommandID != pending.CommandID {
 		t.Fatalf("recovered resume attempts = %+v, want command %s", attempts, pending.CommandID)
 	}
-	reopened, err = workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err = workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -952,7 +980,7 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 		t.Fatal(err)
 	}
 	host.Until(t, "the accepted resume to settle locally", func() bool {
-		store, openErr := workbench.Open(stateDirectory, workbench.Config{})
+		store, openErr := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if openErr != nil {
 			return false
 		}
@@ -1005,7 +1033,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left the resumed run active: %+v", snapshot.Runs)
 	}
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1031,7 +1059,7 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 		if len(resumes) != 1 || len(cancellations) != 1 {
 			return false
 		}
-		store, err := workbench.Open(stateDirectory, workbench.Config{})
+		store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if err != nil {
 			return false
 		}
@@ -1099,7 +1127,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	}
 	host.Hides(t, "UNTRUSTED_CONTINUATION_TAIL")
 	host.Hides(t, "apply runtime event")
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1140,6 +1168,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		CommandID: agent.CommandID("cli_55555555555555555555555555555555"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "persist mixed interaction delivery"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1177,17 +1206,17 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 		},
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
-		Command: command, Interactions: snapshot.Interactions,
+		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
 		t.Fatal("resize during restored resume delivery failed")
 	}
@@ -1213,7 +1242,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			t.Fatalf("resume attempt %d question = %#v", index+1, attempt.Answers[1].Answer)
 		}
 	}
-	store, err = workbench.Open(stateDirectory, workbench.Config{})
+	store, err = workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1251,9 +1280,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "settle before restart"},
-	})
+	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "settle before restart"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1283,16 +1310,16 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		}
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := steerReplayTestProfile("/tmp/flame-cli-test")
+	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
 		Command: command, Interactions: waiting.Interactions,
-		Replay: workbench.ReplayGuard{
-			Namespace: profile.Limits.IdempotencyNamespace, Until: time.Now().UTC().Add(-time.Second),
-		},
+		Replay: protectedCommandReplayGuard(
+			t, profile.Limits.CommandReplay.Namespace(), time.Now().UTC().Add(-time.Second),
+		),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
@@ -1305,7 +1332,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
 		t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1331,9 +1358,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "retry after retention"},
-	})
+	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "retry after retention"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1354,16 +1379,16 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := steerReplayTestProfile("/tmp/flame-cli-test")
+	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
 		Command: oldCommand, Interactions: waiting.Interactions,
-		Replay: workbench.ReplayGuard{
-			Namespace: profile.Limits.IdempotencyNamespace, Until: time.Now().UTC().Add(-time.Second),
-		},
+		Replay: protectedCommandReplayGuard(
+			t, profile.Limits.CommandReplay.Namespace(), time.Now().UTC().Add(-time.Second),
+		),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
@@ -1378,7 +1403,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		attempts[0].CommandID != attempts[1].CommandID || !attempts[0].Equal(attempts[1]) {
 		t.Fatalf("reidentified resume attempts = %+v", attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1406,8 +1431,8 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	}
 	runtime := &expiringUncommittedResumeRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	profile := steerReplayTestProfile("/tmp/flame-cli-test")
-	profile.Limits.IdempotencyRetentionSeconds = 1
+	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
+	profile.Limits.CommandReplay = testCommandReplay(t, profile.Limits.CommandReplay.Namespace(), time.Second)
 	host, stop := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
@@ -1428,7 +1453,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	if !valid {
 		t.Fatalf("expired resume attempts = %+v", attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1444,7 +1469,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 	base.Script = stableCompletedScript
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1452,8 +1477,12 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
 		SessionID: "ses_demo_2",
 		Message:   agent.Message{Text: "recover destination queued prompt"},
+		Options:   agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
-	if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{State: workbench.PendingRunQueued, Command: command}); stagePendingRunErr != nil {
+	if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{
+		State: workbench.PendingRunQueued, Command: command,
+		Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+	}); stagePendingRunErr != nil {
 		t.Fatal(stagePendingRunErr)
 	}
 
@@ -1471,7 +1500,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 		inputs[0].Message.Text != command.Message.Text {
 		t.Fatalf("recovered destination starts = %+v", inputs)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1498,6 +1527,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
 		SessionID: "ses_demo_2", Message: agent.Message{Text: "recover destination decision"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1522,17 +1552,17 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_2", workbench.PendingResume{
-		Command: command, Interactions: snapshot.Interactions,
+		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions")
@@ -1544,7 +1574,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	if len(attempts) < 2 || attempts[0].CommandID != command.CommandID || attempts[1].CommandID != command.CommandID {
 		t.Fatalf("destination resume attempts = %+v", attempts)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1689,9 +1719,10 @@ func TestConfiguredPrefixesRespectModalOwnershipAndResolveAfterTimeout(t *testin
 func TestTranscriptFocusDoesNotSubmitAndTypingReturnsToPrompt(t *testing.T) {
 	backend := &recordingRuntime{Runtime: mock.New()}
 	backend.Instant = true
+	var answerSequence atomic.Uint64
 	backend.Script = func(prompt string) mock.Script {
 		return mock.Script{Prelude: []mock.Step{
-			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "focused answer · " + prompt}}},
+			{Event: agent.BlockCompleted{Block: agent.Block{ID: fmt.Sprintf("answer-%d", answerSequence.Add(1)), Kind: agent.BlockAssistant, Text: "focused answer · " + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1836,7 +1867,7 @@ func TestCancellationConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.
 		}}}
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base}
-	host, stop := runUIWith(t, backend)
+	host, stop := runUIWithReplay(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("cancel after a lost acknowledgement")
 	host.Press(input.Enter)
@@ -1863,16 +1894,17 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := base.StartRun(t.Context(), agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "cancel"}})
+	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "cancel"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base, commitBeforeTimeout: true}
-	application := &app{runtime: backend}
+	profile := steerReplayTestProfile(t, t.TempDir())
+	application := &app{runtime: backend, runtimeProfile: &profile}
 	commandID := agent.CommandID("cli_11111111111111111111111111111111")
 	settled, err := application.cancelRootRun(t.Context(), agent.CancelRun{
 		CommandID: commandID, RunID: opened.RunID, Reason: "test",
-	}, workbench.ReplayGuard{})
+	}, durableCommandReplayGuard(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1921,7 +1953,7 @@ func TestDoubleEscapeClearsAnIdleDraftAndKeepsItInHistory(t *testing.T) {
 func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 	backend := mock.New()
 	backend.Instant = true
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)
@@ -2039,7 +2071,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 		Runtime: invalid, started: make(chan agent.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithReplayState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("close during an invalid accepted start")
 	host.Press(input.Enter)
@@ -2062,7 +2094,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left malformed accepted run active: %+v", snapshot.Runs)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2079,7 +2111,7 @@ func TestClosingTheTerminalConfirmsCancellationWithOneIdentity(t *testing.T) {
 		}}}
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base}
-	host, stop := runUIWith(t, backend)
+	host, stop := runUIWithReplay(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("close after a lost cancellation acknowledgement")
 	host.Press(input.Enter)
@@ -2103,7 +2135,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 	runtime := &blockingCloseCancellationRuntime{
 		Runtime: base, started: make(chan struct{}, 1), release: make(chan struct{}),
 	}
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2153,7 +2185,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	runtime := &refusingCloseCancellationRuntime{
 		Runtime: base, canceled: make(chan agent.CancelRun, 1), err: want,
 	}
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2193,7 +2225,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 		}}
 	}
 	runtime := &invalidCloseCancellationRuntime{Runtime: base}
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2229,7 +2261,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	}
 	base := mock.New()
 	base.Instant = true
-	host := programtest.New(t, 96, 28)
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2712,9 +2744,7 @@ func TestCurrentSessionTimelineJumpsAndForksFromARootRun(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "stable answer")
 
-	host.Send(input.Key{Code: input.Character, Rune: ' ', Mods: 0})
-	host.Type("/timeline")
-	host.Press(input.Enter)
+	host.Send(input.Key{Code: input.Character, Rune: 'g', Mods: input.Ctrl})
 	host.Shows(t, "Current session timeline")
 	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
 	host.Shows(t, "session · Fork from")
@@ -2753,14 +2783,14 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		if !host.Repaint() {
 			return false
 		}
-		store, err := workbench.Open(stateDirectory, workbench.Config{})
+		store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if err != nil {
 			return false
 		}
 		draft, found, readErr := store.Draft(originalSession)
 		return readErr == nil && found && draft.Text == "do not orphan this prompt"
 	})
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2831,7 +2861,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2873,12 +2903,12 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 	host.Shows(t, "workbench:")
 	close(backend.releaseChange)
 	host.Until(t, "failed session transition to settle", func() bool {
-		page, listSessionsErr := base.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+		page, listSessionsErr := base.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 		return listSessionsErr == nil && len(page.Items) == 4 && host.Repaint()
 	})
 	host.Shows(t, "saved before transition plus input during transition")
 	host.Shows(t, "Flaky cache expiry test")
-	page, err := base.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	page, err := base.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2939,7 +2969,7 @@ func TestSessionSwitchRebindsWorkspaceAttachmentsAndDropsOldChips(t *testing.T) 
 
 func firstRuntimeSession(t *testing.T, runtime agent.SessionCatalog) string {
 	t.Helper()
-	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{Limit: 1})
+	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: catalogPageSize(t, 1)})
 	if err != nil || len(page.Items) != 1 {
 		t.Fatalf("latest session = %+v, %v", page, err)
 	}
@@ -2950,8 +2980,8 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 	backend := &recordingRuntime{Runtime: mock.New()}
 	backend.Instant = true
 	configured := settings.Default()
-	configured.Run.MaxSteps = 42
-	configured.Run.MaxBudgetUSD = 2.5
+	configured.Run.MaxSteps = new(42)
+	configured.Run.MaxBudgetUSD = new(2.5)
 	host, stop := runUIWithSettings(t, backend, configured)
 	host.Shows(t, settings.DefaultProvider+"/"+settings.DefaultModel)
 
@@ -2974,8 +3004,14 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 	host.Shows(t, "How should flame proceed?")
 	host.Press(input.Esc)
 	host.Shows(t, "complete")
-	if got := backend.options(); got.Provider != "synthetic" || got.Model != "deep" || got.Limits.MaxSteps != 42 || got.Limits.MaxBudgetUSD != 2.5 {
+	if got := backend.options(); got.Provider != "synthetic" || got.Model != "deep" {
 		t.Fatalf("StartRun options = %+v", got)
+	} else {
+		steps, stepsLimited := got.Limits.MaxSteps()
+		budget, budgetLimited := got.Limits.MaxBudgetUSD()
+		if !stepsLimited || steps != 42 || !budgetLimited || budget != 2.5 {
+			t.Fatalf("StartRun limits = %+v", got.Limits)
+		}
 	}
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -3019,7 +3055,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	err := Run(t.Context(), Config{
 		Runtime:   mock.New(),
 		Workspace: workspace,
-		Host:      programtest.New(t, 80, 24),
+		Host:      programtest.New(t, programtest.Config{Width: 80, Height: 24}),
 		Settings:  new(settings.Default()),
 	})
 	if err == nil || !strings.Contains(err.Error(), "session attachments") {
@@ -3325,7 +3361,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 	replacementID := firstRuntimeSession(t, backend)
 	stop()
 
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3341,7 +3377,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *testing.T) {
 	backend := mock.New()
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3362,7 +3398,7 @@ func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *test
 	host.Send(input.Paste{Text: " plus unsaved input"})
 	host.Shows(t, "workbench:")
 
-	before, err := backend.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	before, err := backend.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3380,7 +3416,7 @@ func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *test
 	host.Press(input.Esc)
 	host.Hides(t, "Commands")
 	host.Shows(t, "durable prefix plus unsaved input")
-	after, err := backend.ListSessions(t.Context(), agent.SessionQuery{Limit: 100})
+	after, err := backend.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3401,7 +3437,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 	base := mock.New()
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3452,7 +3488,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	base.Instant = true
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3466,7 +3502,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	if got := backend.startCount(); got != 1 {
 		t.Fatalf("runtime started %d runs, want one", got)
 	}
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3530,7 +3566,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	host.Hides(t, "stashed prompt ·")
 
 	restoreWrites()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3543,7 +3579,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	host.Type("stash current prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "stashed prompt")
-	store, err = workbench.Open(stateDirectory, workbench.Config{})
+	store, err = workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3558,7 +3594,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 
 func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := workbench.Open(stateDirectory, workbench.Config{})
+	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -4259,7 +4295,7 @@ func TestShortcutGuideReflectsActiveBindings(t *testing.T) {
 	host.Press(input.End)
 	host.Hides(t, "scroll this guide up")
 	host.Press(input.Esc)
-	host.Hides(t, "open this shortcut guide")
+	host.Hides(t, "Shortcuts")
 
 	host.Type("/shortcuts")
 	host.Press(input.Enter)
@@ -4726,7 +4762,7 @@ func TestOpeningAnActiveSessionRecoversAStreamWhoseTransientStartPredatesAttachm
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := backend.StartRun(t.Context(), agent.StartRun{SessionID: session.ID, Message: agent.Message{Text: "recover me"}})
+	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "recover me"))
 	if err != nil {
 		t.Fatal(err)
 	}

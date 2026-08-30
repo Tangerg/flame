@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -96,13 +98,13 @@ func (r RecoveryCommit) Validate() error {
 	if err := validateRecoveryInterruptDeletions(r.DeleteInterrupts, lostByID); err != nil {
 		return err
 	}
-	if err := validateCanonicalIdentities("preserved checkpoint root", r.PreservedCheckpointRootIDs); err != nil {
+	if err := validateCanonicalMemberIdentities("preserved checkpoint root", r.PreservedCheckpointRootIDs); err != nil {
 		return err
 	}
-	if err := validateCanonicalIdentities("recovered Session", r.RecoveredSessionIDs); err != nil {
+	if err := validateCanonicalSessionIdentities("recovered Session", r.RecoveredSessionIDs); err != nil {
 		return err
 	}
-	if err := validateCanonicalIdentities("checkpoint deletion Session", r.DeleteCheckpointSessionIDs); err != nil {
+	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", r.DeleteCheckpointSessionIDs); err != nil {
 		return err
 	}
 	return nil
@@ -136,12 +138,22 @@ func validateRecoveryModelInvocations(
 	return nil
 }
 
+type recoverySegmentResourceKey struct {
+	resourceID string
+	segmentID  string
+}
+
+type recoveryInterruptOwnerKey struct {
+	sessionID string
+	rootRunID string
+}
+
 func validateRecoveryToolInvocations(
 	invocations []ToolInvocationRecovery,
 	lostByID map[string]rundomain.Run,
 ) error {
-	seen := make(map[string]struct{}, len(invocations))
-	seenItems := make(map[string]struct{}, len(invocations))
+	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
+	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	for index, invocation := range invocations {
 		if err := validateRecoveryInvocation(
 			invocation.SessionID,
@@ -154,10 +166,10 @@ func validateRecoveryToolInvocations(
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
-		if err := validateRecoveryIdentity("Item", invocation.ItemID); err != nil {
+		if _, err := resourceid.ParseItem(invocation.ItemID); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
-		key := invocation.CallID + "\x00" + invocation.SegmentID
+		key := recoverySegmentResourceKey{resourceID: invocation.CallID, segmentID: invocation.SegmentID}
 		if _, duplicate := seen[key]; duplicate {
 			return fmt.Errorf(
 				"runs: recovery commit repeats Tool invocation %q in Segment %q",
@@ -166,7 +178,7 @@ func validateRecoveryToolInvocations(
 			)
 		}
 		seen[key] = struct{}{}
-		itemKey := invocation.ItemID + "\x00" + invocation.SegmentID
+		itemKey := recoverySegmentResourceKey{resourceID: invocation.ItemID, segmentID: invocation.SegmentID}
 		if _, duplicate := seenItems[itemKey]; duplicate {
 			return fmt.Errorf(
 				"runs: recovery commit repeats Tool invocation Item %q in Segment %q",
@@ -187,18 +199,17 @@ func validateRecoveryInvocation(
 	startedAt, finishedAt time.Time,
 	lostByID map[string]rundomain.Run,
 ) error {
-	for _, identity := range []struct {
-		name  string
-		value string
-	}{
-		{name: "Session", value: sessionID},
-		{name: "Run", value: runID},
-		{name: "Segment", value: segmentID},
-		{name: "call", value: callID},
-	} {
-		if err := validateRecoveryIdentity(identity.name, identity.value); err != nil {
-			return err
-		}
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return err
+	}
+	if _, err := resourceid.ParseRun(runID); err != nil {
+		return err
+	}
+	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+		return err
+	}
+	if _, err := executoridentity.ParseEffect(callID); err != nil {
+		return err
 	}
 	if startedAt.IsZero() || finishedAt.IsZero() {
 		return errors.New("invocation start and finish times are required")
@@ -210,13 +221,6 @@ func validateRecoveryInvocation(
 		if lost.SessionID() != sessionID || !lost.FinishedAt().Equal(finishedAt) {
 			return fmt.Errorf("invocation differs from its recovered lost Run %q", runID)
 		}
-	}
-	return nil
-}
-
-func validateRecoveryIdentity(name, value string) error {
-	if strings.TrimSpace(value) == "" || value != strings.TrimSpace(value) {
-		return fmt.Errorf("%s ID is required without surrounding whitespace", name)
 	}
 	return nil
 }
@@ -235,67 +239,97 @@ func validateRecoveryConversationTransitions(
 		)
 	}
 	for index, rootID := range rootIDs {
-		transition := transitions[index]
-		root := lostByID[rootID]
-		if transition.RootRunID != rootID ||
-			transition.SessionID != root.SessionID() ||
-			strings.TrimSpace(transition.SessionID) == "" ||
-			transition.SessionID != strings.TrimSpace(transition.SessionID) ||
-			transition.ExpectedCount < 0 {
+		if err := validateRecoveryConversationTransition(
+			index, rootID, transitions[index], treeMembers[rootID], lostByID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateRecoveryConversationTransition(
+	index int,
+	rootID string,
+	transition RecoveryConversationTransition,
+	members []rundomain.TreeMember,
+	lostByID map[string]rundomain.Run,
+) error {
+	root := lostByID[rootID]
+	if transition.RootRunID != rootID ||
+		transition.SessionID != root.SessionID() ||
+		transition.ExpectedCount < 0 {
+		return fmt.Errorf(
+			"runs: recovery commit conversation transition[%d] differs from lost root Run %q",
+			index,
+			rootID,
+		)
+	}
+	if _, err := resourceid.ParseSession(transition.SessionID); err != nil {
+		return fmt.Errorf("runs: recovery commit conversation transition[%d]: %w", index, err)
+	}
+	if err := validateRecoveryClosureMessages(rootID, transition.Messages); err != nil {
+		return err
+	}
+	messageMark := transition.ExpectedCount + len(transition.Messages)
+	for _, member := range members {
+		if lostByID[member.RunID].MessageMark() != messageMark {
 			return fmt.Errorf(
-				"runs: recovery commit conversation transition[%d] differs from lost root Run %q",
-				index,
+				"runs: recovery commit lost Run %q message mark differs from its conversation transition",
+				member.RunID,
+			)
+		}
+	}
+	return nil
+}
+
+func validateRecoveryClosureMessages(rootID string, messages []corechat.Message) error {
+	if len(messages) > 1 {
+		return fmt.Errorf(
+			"runs: recovery commit conversation transition for root Run %q has more than one closure message",
+			rootID,
+		)
+	}
+	seenToolCalls := make(map[string]struct{})
+	for messageIndex, message := range messages {
+		if err := message.Validate(); err != nil {
+			return fmt.Errorf(
+				"runs: recovery commit conversation transition for root Run %q message[%d]: %w",
+				rootID,
+				messageIndex,
+				err,
+			)
+		}
+		if err := conversation.ValidateMessageIdentities(message); err != nil {
+			return fmt.Errorf(
+				"runs: recovery commit conversation transition for root Run %q message[%d]: %w",
+				rootID,
+				messageIndex,
+				err,
+			)
+		}
+		if message.Role != corechat.RoleTool {
+			return fmt.Errorf(
+				"runs: recovery commit conversation transition for root Run %q is not a Tool message",
 				rootID,
 			)
 		}
-		if len(transition.Messages) > 1 {
-			return fmt.Errorf(
-				"runs: recovery commit conversation transition for root Run %q has more than one closure message",
-				rootID,
-			)
-		}
-		seenToolCalls := make(map[string]struct{})
-		for messageIndex, message := range transition.Messages {
-			if err := message.Validate(); err != nil {
+		for _, part := range message.Parts {
+			result := part.ToolResult
+			if result == nil || !result.IsError || result.Result != recoveryLostToolResult {
 				return fmt.Errorf(
-					"runs: recovery commit conversation transition for root Run %q message[%d]: %w",
-					rootID,
-					messageIndex,
-					err,
-				)
-			}
-			if message.Role != corechat.RoleTool {
-				return fmt.Errorf(
-					"runs: recovery commit conversation transition for root Run %q is not a Tool message",
+					"runs: recovery commit conversation transition for root Run %q has an invalid Tool result",
 					rootID,
 				)
 			}
-			for _, part := range message.Parts {
-				result := part.ToolResult
-				if result == nil || !result.IsError || result.Result != recoveryLostToolResult {
-					return fmt.Errorf(
-						"runs: recovery commit conversation transition for root Run %q has an invalid Tool result",
-						rootID,
-					)
-				}
-				if _, duplicate := seenToolCalls[result.ID]; duplicate {
-					return fmt.Errorf(
-						"runs: recovery commit conversation transition for root Run %q repeats ToolCall %q",
-						rootID,
-						result.ID,
-					)
-				}
-				seenToolCalls[result.ID] = struct{}{}
-			}
-		}
-		messageMark := transition.ExpectedCount + len(transition.Messages)
-		for _, member := range treeMembers[rootID] {
-			if lostByID[member.RunID].MessageMark() != messageMark {
+			if _, duplicate := seenToolCalls[result.ID]; duplicate {
 				return fmt.Errorf(
-					"runs: recovery commit lost Run %q message mark differs from its conversation transition",
-					member.RunID,
+					"runs: recovery commit conversation transition for root Run %q repeats ToolCall %q",
+					rootID,
+					result.ID,
 				)
 			}
+			seenToolCalls[result.ID] = struct{}{}
 		}
 	}
 	return nil
@@ -377,13 +411,15 @@ func validateRecoveryInterruptDeletions(
 			expected[lost.ID()] = lost
 		}
 	}
-	seen := make(map[string]struct{}, len(values))
+	seen := make(map[recoveryInterruptOwnerKey]struct{}, len(values))
 	for index, value := range values {
-		if strings.TrimSpace(value.SessionID) == "" || value.SessionID != strings.TrimSpace(value.SessionID) ||
-			strings.TrimSpace(value.RootRunID) == "" || value.RootRunID != strings.TrimSpace(value.RootRunID) {
-			return fmt.Errorf("runs: recovery commit interrupt deletion[%d] has invalid identity", index)
+		if _, err := resourceid.ParseSession(value.SessionID); err != nil {
+			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
-		key := value.SessionID + "\x00" + value.RootRunID
+		if _, err := resourceid.ParseRun(value.RootRunID); err != nil {
+			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
+		}
+		key := recoveryInterruptOwnerKey{sessionID: value.SessionID, rootRunID: value.RootRunID}
 		if _, duplicate := seen[key]; duplicate {
 			return fmt.Errorf("runs: recovery commit repeats interrupt deletion %q/%q", value.SessionID, value.RootRunID)
 		}
@@ -410,10 +446,22 @@ func validateRecoveryInterruptDeletions(
 	return nil
 }
 
-func validateCanonicalIdentities(name string, values []string) error {
+func validateCanonicalMemberIdentities(name string, values []string) error {
 	for index, value := range values {
-		if strings.TrimSpace(value) == "" || value != strings.TrimSpace(value) {
-			return fmt.Errorf("runs: recovery commit %s[%d] is invalid", name, index)
+		if _, err := executoridentity.ParseMember(value); err != nil {
+			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
+		}
+		if index > 0 && values[index-1] >= value {
+			return fmt.Errorf("runs: recovery commit %ss are not unique canonical order", name)
+		}
+	}
+	return nil
+}
+
+func validateCanonicalSessionIdentities(name string, values []string) error {
+	for index, value := range values {
+		if _, err := resourceid.ParseSession(value); err != nil {
+			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
 		}
 		if index > 0 && values[index-1] >= value {
 			return fmt.Errorf("runs: recovery commit %ss are not unique canonical order", name)

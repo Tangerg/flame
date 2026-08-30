@@ -139,12 +139,20 @@ func artifactMetricsFromDomain(metrics run.Metrics) protocol.ArtifactRunMetrics 
 }
 
 func artifactLimitsFromDomain(limits run.Limits) *protocol.ArtifactRunLimits {
-	if limits.IsZero() {
+	if limits.Unlimited() {
 		return nil
 	}
-	return &protocol.ArtifactRunLimits{
-		MaxTotalTokens: limits.MaxTotalTokens, MaxSteps: limits.MaxSteps, MaxBudgetUSD: limits.MaxBudgetUSD,
+	wire := &protocol.ArtifactRunLimits{}
+	if value, limited := limits.MaxTotalTokens(); limited {
+		wire.MaxTotalTokens = &value
 	}
+	if value, limited := limits.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		wire.MaxBudgetUSD = &value
+	}
+	return wire
 }
 
 func artifactUsageFromDomain(usage *accounting.Usage) *protocol.ArtifactUsage {

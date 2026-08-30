@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
@@ -161,6 +161,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		i.session.lifetime.send(runs.ExecutorEvent{
 			Member: i.session.executorMember(invocation.Relation()),
 			Payload: runs.CompactionBoundary{
+				Summary:        result.Summary(),
 				MessagesBefore: before,
 				MessagesAfter:  after,
 			},

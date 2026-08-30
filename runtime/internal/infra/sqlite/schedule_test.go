@@ -2,14 +2,18 @@ package sqlite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -23,6 +27,61 @@ func newScheduleStore(t *testing.T) *sqlite.ScheduleStore {
 	return sqlite.NewScheduleStore(db)
 }
 
+func insertSchedule(ctx context.Context, store *sqlite.ScheduleStore, snapshot schedule.Snapshot) (schedule.Schedule, error) {
+	if snapshot.ID == "" {
+		snapshot.ID = schedule.IDPrefix + uuid.NewString()
+	}
+	if snapshot.CreatedAt.IsZero() {
+		if snapshot.NextRunAt.IsZero() {
+			snapshot.CreatedAt = time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
+		} else {
+			snapshot.CreatedAt = snapshot.NextRunAt.Add(-time.Hour).UTC()
+		}
+	}
+	if snapshot.Revision == 0 {
+		snapshot.Revision = 1
+	}
+	if snapshot.Enabled && snapshot.NextRunAt.IsZero() {
+		next, err := schedule.NextRun(snapshot.Cron, snapshot.CreatedAt)
+		if err != nil {
+			return schedule.Schedule{}, err
+		}
+		snapshot.NextRunAt = next
+	}
+	value, err := schedule.Restore(snapshot)
+	if err != nil {
+		return schedule.Schedule{}, err
+	}
+	if err := store.Insert(ctx, value); err != nil {
+		return schedule.Schedule{}, err
+	}
+	return value, nil
+}
+
+func testClaim(scheduled schedule.Schedule, sessionID, runID string, firedAt time.Time) schedule.Claim {
+	value, err := schedule.NewClaim(scheduled, sessionID, runID, firedAt)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
+	value, err := schedule.NewAcceptance(occurrence.ID(), occurrence.RunID())
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func testRunRecord(scheduled schedule.Schedule, ranAt time.Time) schedule.RunRecord {
+	value, err := scheduled.RecordRun(ranAt)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 // TestScheduleCRUD covers create (id assigned, persisted verbatim), get, the
 // next-due query, update, and delete.
 func TestScheduleCRUD(t *testing.T) {
@@ -34,35 +93,35 @@ func TestScheduleCRUD(t *testing.T) {
 	if selectionErr != nil {
 		t.Fatalf("model selection: %v", selectionErr)
 	}
-	created, err := s.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, s, schedule.Snapshot{
 		Title: "standup", Instructions: "summarize the diff", CWD: "/proj",
 		ModelSelection: selection, Cron: "0 9 * * 1-5", Enabled: true, NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if created.ID == "" {
+	if created.ID() == "" {
 		t.Fatal("create did not assign an id")
 	}
-	if created.CreatedAt.IsZero() {
+	if created.CreatedAt().IsZero() {
 		t.Error("create did not stamp CreatedAt")
 	}
 
-	got, err := s.Get(ctx, created.ID)
+	got, err := s.Get(ctx, created.ID())
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if got.Instructions != "summarize the diff" || got.Cron != "0 9 * * 1-5" || !got.Enabled {
+	if got.Instructions() != "summarize the diff" || got.Cron() != "0 9 * * 1-5" || !got.Enabled() {
 		t.Errorf("get round-trip mismatch: %+v", got)
 	}
-	if got.ModelSelection != selection {
-		t.Errorf("model selection = %+v, want %+v", got.ModelSelection, selection)
+	if got.ModelSelection() != selection {
+		t.Errorf("model selection = %+v, want %+v", got.ModelSelection(), selection)
 	}
-	if !got.NextRunAt.Equal(past) {
-		t.Errorf("NextRunAt = %v, want %v", got.NextRunAt, past)
+	if !got.NextRunAt().Equal(past) {
+		t.Errorf("NextRunAt = %v, want %v", got.NextRunAt(), past)
 	}
-	if !got.LastRunAt.IsZero() {
-		t.Errorf("LastRunAt = %v, want zero (never fired)", got.LastRunAt)
+	if !got.LastRunAt().IsZero() {
+		t.Errorf("LastRunAt = %v, want zero (never fired)", got.LastRunAt())
 	}
 
 	// Due: the past nextRunAt is in (0, now], so it's returned.
@@ -70,35 +129,50 @@ func TestScheduleCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("due: %v", err)
 	}
-	if len(due) != 1 || due[0].ID != created.ID {
+	if len(due) != 1 || due[0].ID() != created.ID() {
 		t.Fatalf("due = %+v, want the one past-due schedule", due)
 	}
 
 	// Update: disabling clears the due index (NextRunAt zero) → never due.
-	got.Enabled = false
-	got.NextRunAt = time.Time{}
-	got.Title = "renamed"
-	if _, updateErr := s.Update(ctx, got, got.Revision); updateErr != nil {
+	disabled := false
+	renamed := "renamed"
+	replacement, editErr := got.Edit(schedule.Patch{Title: &renamed, Enabled: &disabled}, got.Revision(), time.Now())
+	if editErr != nil {
+		t.Fatalf("edit: %v", editErr)
+	}
+	if _, updateErr := s.Update(ctx, replacement, got.Revision()); updateErr != nil {
 		t.Fatalf("update: %v", updateErr)
 	}
-	reread, _ := s.Get(ctx, created.ID)
-	if reread.Enabled || reread.Title != "renamed" || !reread.NextRunAt.IsZero() {
+	reread, _ := s.Get(ctx, created.ID())
+	if reread.Enabled() || reread.Title() != "renamed" || !reread.NextRunAt().IsZero() {
 		t.Errorf("update not applied: %+v", reread)
 	}
 
-	deleted, err := s.Delete(ctx, created.ID)
+	deleted, err := s.Delete(ctx, created.ID())
 	if err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	if !deleted {
 		t.Fatal("delete reported no committed mutation")
 	}
-	if _, getErr := s.Get(ctx, created.ID); getErr != schedule.ErrNotFound {
+	if _, getErr := s.Get(ctx, created.ID()); getErr != schedule.ErrNotFound {
 		t.Errorf("get after delete err = %v, want ErrNotFound", getErr)
 	}
-	deleted, err = s.Delete(ctx, created.ID)
+	deleted, err = s.Delete(ctx, created.ID())
 	if err != nil || deleted {
 		t.Fatalf("second delete = (%v, %v), want false, nil", deleted, err)
+	}
+}
+
+func TestScheduleStoreRejectsMalformedLookupIdentities(t *testing.T) {
+	store := newScheduleStore(t)
+	for _, identity := range []string{"", "other_1", "sch_bad id", "sch_\u200bhidden"} {
+		if _, err := store.Get(t.Context(), identity); err == nil {
+			t.Errorf("Get(%q) succeeded", identity)
+		}
+		if _, err := store.Delete(t.Context(), identity); err == nil {
+			t.Errorf("Delete(%q) succeeded", identity)
+		}
 	}
 }
 
@@ -110,39 +184,42 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	s := newScheduleStore(t)
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
-	created, err := s.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, s, schedule.Snapshot{
 		Instructions: "p", Cron: "@daily", Enabled: true, NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	future := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Millisecond)
 	firedAt := time.Now().UTC().Truncate(time.Millisecond)
-	occurrence := schedule.Occurrence{
-		ID: created.ID + ":scheduled", Schedule: created,
-		DueAt: created.NextRunAt, FiredAt: firedAt, NextRunAt: future,
-		SessionID: "ses_scheduled", RunID: "run_scheduled",
+	future, err := schedule.NextRun(created.Cron(), firedAt)
+	if err != nil {
+		t.Fatalf("next run: %v", err)
 	}
-	claimed, err := s.Claim(ctx, occurrence)
+	claim := testClaim(created, "ses_scheduled", "run_scheduled", firedAt)
+	occurrence := claim.Occurrence()
+	claimed, err := s.Claim(ctx, claim)
 	if err != nil || !claimed {
 		t.Fatalf("Claim = (%v, %v), want true, nil", claimed, err)
 	}
-	if err := s.Accept(ctx, occurrence.ID, occurrence.RunID); err != nil {
+	if err := s.Accept(ctx, testAcceptance(occurrence)); err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
 
 	ranAt := time.Now().UTC().Truncate(time.Millisecond)
-	if err := s.RecordRun(ctx, created.ID, ranAt); err != nil {
+	if err := s.RecordRun(ctx, testRunRecord(created, ranAt)); err != nil {
 		t.Fatalf("recordRun: %v", err)
 	}
-
-	got, _ := s.Get(ctx, created.ID)
-	if !got.NextRunAt.Equal(future) {
-		t.Errorf("RecordRun rewound NextRunAt to %v, want %v (cursor untouched)", got.NextRunAt, future)
+	if err := s.RecordRun(ctx, testRunRecord(created, ranAt.Add(-time.Hour))); err != nil {
+		t.Fatalf("record delayed older run: %v", err)
 	}
-	if !got.LastRunAt.Equal(ranAt) {
-		t.Errorf("LastRunAt = %v, want %v", got.LastRunAt, ranAt)
+
+	got, _ := s.Get(ctx, created.ID())
+	if !got.NextRunAt().Equal(future) {
+		t.Errorf("RecordRun rewound NextRunAt to %v, want %v (cursor untouched)", got.NextRunAt(), future)
+	}
+	if !got.LastRunAt().Equal(ranAt) {
+		t.Errorf("LastRunAt = %v, want monotonic %v after delayed older completion", got.LastRunAt(), ranAt)
 	}
 	due, _ := s.Due(ctx, time.Now(), 100)
 	if len(due) != 0 {
@@ -150,12 +227,72 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	}
 }
 
+func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing.T) {
+	ctx := t.Context()
+	db, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewScheduleStore(db)
+	dueAt := time.Date(2026, 8, 29, 9, 0, 0, 0, time.UTC)
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
+		Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	setRevision := func(revision uint64) {
+		t.Helper()
+		if _, execErr := db.ExecContext(ctx, `UPDATE schedules SET revision = ? WHERE id = ?`, revision, created.ID()); execErr != nil {
+			t.Fatalf("set revision %d: %v", revision, execErr)
+		}
+	}
+
+	setRevision(exactint.Maximum)
+	if err := store.RecordRun(ctx, testRunRecord(created, dueAt)); !errors.Is(err, schedule.ErrRevisionExhausted) {
+		t.Fatalf("RecordRun error = %v, want ErrRevisionExhausted", err)
+	}
+	exhausted, err := store.Get(ctx, created.ID())
+	if err != nil || !exhausted.LastRunAt().IsZero() || exhausted.Revision() != exactint.Maximum {
+		t.Fatalf("schedule after rejected RecordRun = (%+v, %v)", exhausted, err)
+	}
+	claim := testClaim(exhausted, "ses_exhausted", "run_exhausted", dueAt)
+	if claimed, err := store.Claim(ctx, claim); claimed || !errors.Is(err, schedule.ErrRevisionExhausted) {
+		t.Fatalf("Claim = (%v, %v), want false, ErrRevisionExhausted", claimed, err)
+	}
+	if pending, err := store.Pending(ctx, 10); err != nil || len(pending) != 0 {
+		t.Fatalf("Pending after rejected Claim = (%+v, %v)", pending, err)
+	}
+
+	setRevision(exactint.First().Value())
+	current, err := store.Get(ctx, created.ID())
+	if err != nil {
+		t.Fatalf("Get reset schedule: %v", err)
+	}
+	claim = testClaim(current, "ses_accepted", "run_accepted", dueAt)
+	occurrence := claim.Occurrence()
+	if claimed, err := store.Claim(ctx, claim); err != nil || !claimed {
+		t.Fatalf("Claim before exhausted Accept = (%v, %v)", claimed, err)
+	}
+	setRevision(exactint.Maximum)
+	if err := store.Accept(ctx, testAcceptance(occurrence)); !errors.Is(err, schedule.ErrRevisionExhausted) {
+		t.Fatalf("Accept error = %v, want ErrRevisionExhausted", err)
+	}
+	if pending, err := store.Pending(ctx, 10); err != nil || len(pending) != 1 || pending[0].ID() != occurrence.ID() {
+		t.Fatalf("Pending after rolled-back Accept = (%+v, %v)", pending, err)
+	}
+	unchanged, err := store.Get(ctx, created.ID())
+	if err != nil || !unchanged.LastRunAt().IsZero() || unchanged.Revision() != exactint.Maximum {
+		t.Fatalf("schedule after rolled-back Accept = (%+v, %v)", unchanged, err)
+	}
+}
+
 func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	ctx := t.Context()
 	store := newScheduleStore(t)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
-	nextAt := dueAt.Add(time.Hour)
-	created, err := store.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
 		Instructions: "old instructions", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
 	})
 	if err != nil {
@@ -166,37 +303,32 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 		t.Fatalf("Due = (%+v, %v), want one schedule", due, err)
 	}
 
-	updated := created
-	updated.Instructions = "new instructions"
-	updated, err = store.Update(ctx, updated, created.Revision)
+	instructions := "new instructions"
+	updated, err := created.Edit(schedule.Patch{Instructions: &instructions}, created.Revision(), dueAt.Add(-time.Minute))
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	updated, err = store.Update(ctx, updated, created.Revision())
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if !updated.NextRunAt.Equal(dueAt) {
-		t.Fatalf("Update changed cursor to %v, want %v", updated.NextRunAt, dueAt)
+	if !updated.NextRunAt().Equal(dueAt) {
+		t.Fatalf("Update changed cursor to %v, want %v", updated.NextRunAt(), dueAt)
 	}
 
-	stale := schedule.Occurrence{
-		ID: created.ID + ":stale", Schedule: due[0],
-		DueAt: dueAt, FiredAt: dueAt, NextRunAt: nextAt,
-		SessionID: "ses_stale", RunID: "run_stale",
-	}
+	stale := testClaim(due[0], "ses_stale", "run_stale", dueAt)
 	claimed, err := store.Claim(ctx, stale)
 	if err != nil || claimed {
 		t.Fatalf("stale Claim = (%v, %v), want false, nil", claimed, err)
 	}
 
-	fresh := stale
-	fresh.ID = created.ID + ":fresh"
-	fresh.Schedule = updated
-	fresh.SessionID = "ses_fresh"
-	fresh.RunID = "run_fresh"
+	fresh := testClaim(updated, "ses_fresh", "run_fresh", dueAt)
 	claimed, err = store.Claim(ctx, fresh)
 	if err != nil || !claimed {
 		t.Fatalf("fresh Claim = (%v, %v), want true, nil", claimed, err)
 	}
 	pending, err := store.Pending(ctx, 1)
-	if err != nil || len(pending) != 1 || pending[0].Schedule.Instructions != "new instructions" {
+	if err != nil || len(pending) != 1 || pending[0].Execution().Instructions() != "new instructions" {
 		t.Fatalf("Pending = (%+v, %v), want the updated snapshot", pending, err)
 	}
 }
@@ -210,42 +342,39 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	if selectionErr != nil {
 		t.Fatalf("model selection: %v", selectionErr)
 	}
-	created, err := store.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
 		Title: "hourly", Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
 		ModelSelection: selection,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	occurrence := schedule.Occurrence{
-		ID: created.ID + ":" + "1784960400000", Schedule: created,
-		DueAt: dueAt, FiredAt: dueAt.Add(time.Minute), NextRunAt: nextAt,
-		SessionID: "ses_occurrence", RunID: "run_occurrence",
-	}
-	claimed, err := store.Claim(ctx, occurrence)
+	claim := testClaim(created, "ses_occurrence", "run_occurrence", dueAt.Add(time.Minute))
+	occurrence := claim.Occurrence()
+	claimed, err := store.Claim(ctx, claim)
 	if err != nil || !claimed {
 		t.Fatalf("Claim = (%v, %v), want true, nil", claimed, err)
 	}
-	claimed, err = store.Claim(ctx, occurrence)
+	claimed, err = store.Claim(ctx, claim)
 	if err != nil || claimed {
 		t.Fatalf("repeat Claim = (%v, %v), want false, nil", claimed, err)
 	}
 	pending, err := store.Pending(ctx, 100)
-	if err != nil || len(pending) != 1 || pending[0].RunID != occurrence.RunID || pending[0].SessionID != occurrence.SessionID || pending[0].Schedule.ModelSelection != selection {
+	if err != nil || len(pending) != 1 || pending[0].RunID() != occurrence.RunID() || pending[0].SessionID() != occurrence.SessionID() || pending[0].Execution().ModelSelection() != selection {
 		t.Fatalf("Pending = (%+v, %v), want persisted occurrence", pending, err)
 	}
-	got, err := store.Get(ctx, created.ID)
-	if err != nil || !got.NextRunAt.Equal(nextAt) || !got.LastRunAt.IsZero() {
+	got, err := store.Get(ctx, created.ID())
+	if err != nil || !got.NextRunAt().Equal(nextAt) || !got.LastRunAt().IsZero() {
 		t.Fatalf("schedule after Claim = (%+v, %v), want advanced cursor and no accepted run", got, err)
 	}
-	if acceptErr := store.Accept(ctx, occurrence.ID, occurrence.RunID); acceptErr != nil {
+	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr != nil {
 		t.Fatalf("Accept: %v", acceptErr)
 	}
 	if pending, err = store.Pending(ctx, 100); err != nil || len(pending) != 0 {
 		t.Fatalf("Pending after Accept = (%+v, %v), want empty", pending, err)
 	}
-	got, err = store.Get(ctx, created.ID)
-	if err != nil || !got.NextRunAt.Equal(nextAt) || !got.LastRunAt.Equal(occurrence.FiredAt) {
+	got, err = store.Get(ctx, created.ID())
+	if err != nil || !got.NextRunAt().Equal(nextAt) || !got.LastRunAt().Equal(occurrence.FiredAt()) {
 		t.Fatalf("schedule after Claim = (%+v, %v), want advanced cursor", got, err)
 	}
 }
@@ -255,52 +384,46 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 	store := newScheduleStore(t)
 	firstDueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	secondDueAt := firstDueAt.Add(time.Hour)
-	thirdDueAt := secondDueAt.Add(time.Hour)
-	created, err := store.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
 		Title: "hourly", Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: firstDueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	first := schedule.Occurrence{
-		ID: created.ID + ":first", Schedule: created,
-		DueAt: firstDueAt, FiredAt: firstDueAt, NextRunAt: secondDueAt,
-		SessionID: "ses_first", RunID: "run_first",
-	}
-	claimed, err := store.Claim(ctx, first)
+	firstClaim := testClaim(created, "ses_first", "run_first", firstDueAt)
+	first := firstClaim.Occurrence()
+	claimed, err := store.Claim(ctx, firstClaim)
 	if err != nil || !claimed {
 		t.Fatalf("first Claim = (%v, %v), want true, nil", claimed, err)
 	}
-	current, err := store.Get(ctx, created.ID)
-	if err != nil || !current.NextRunAt.Equal(secondDueAt) {
-		t.Fatalf("schedule cursor = (%v, %v), want %v", current.NextRunAt, err, secondDueAt)
+	current, err := store.Get(ctx, created.ID())
+	if err != nil || !current.NextRunAt().Equal(secondDueAt) {
+		t.Fatalf("schedule cursor = (%v, %v), want %v", current.NextRunAt(), err, secondDueAt)
 	}
 
 	// The worker can observe the later cron slot while this first occurrence is
 	// still waiting for Run admission. It must not advance the cursor again or
 	// materialize a second recovery item for the same schedule.
-	second := schedule.Occurrence{
-		ID: created.ID + ":second", Schedule: current,
-		DueAt: secondDueAt, FiredAt: secondDueAt, NextRunAt: thirdDueAt,
-		SessionID: "ses_second", RunID: "run_second",
-	}
-	claimed, err = store.Claim(ctx, second)
+	secondClaim := testClaim(current, "ses_second", "run_second", secondDueAt)
+	second := secondClaim.Occurrence()
+	claimed, err = store.Claim(ctx, secondClaim)
 	if err != nil || claimed {
 		t.Fatalf("second Claim = (%v, %v), want false, nil while first is pending", claimed, err)
 	}
 	pending, err := store.Pending(ctx, 100)
-	if err != nil || len(pending) != 1 || pending[0].ID != first.ID {
+	if err != nil || len(pending) != 1 || pending[0].ID() != first.ID() {
 		t.Fatalf("Pending = (%+v, %v), want only first occurrence", pending, err)
 	}
 
-	if acceptErr := store.Accept(ctx, first.ID, first.RunID); acceptErr != nil {
+	if acceptErr := store.Accept(ctx, testAcceptance(first)); acceptErr != nil {
 		t.Fatalf("Accept first occurrence: %v", acceptErr)
 	}
-	second.Schedule, err = store.Get(ctx, created.ID)
+	current, err = store.Get(ctx, created.ID())
 	if err != nil {
 		t.Fatalf("Get after Accept: %v", err)
 	}
-	claimed, err = store.Claim(ctx, second)
+	secondClaim = testClaim(current, second.SessionID(), second.RunID(), second.FiredAt())
+	claimed, err = store.Claim(ctx, secondClaim)
 	if err != nil || !claimed {
 		t.Fatalf("second Claim after accept = (%v, %v), want true, nil", claimed, err)
 	}
@@ -315,7 +438,7 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewScheduleStore(db)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
-	created, err := store.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
 		Instructions: "review", Cron: "@hourly", Enabled: true, NextRunAt: dueAt,
 	})
 	if err != nil {
@@ -325,7 +448,7 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 		_, err := db.ExecContext(ctx, `INSERT INTO schedule_firings(
 			id, schedule_id, instructions, cron, due_at, fired_at, next_run_at, session_id, run_id, state
 		) VALUES (?, ?, 'review', '@hourly', ?, ?, ?, ?, ?, 'pending')`,
-			id, created.ID, dueAt.UnixMilli(), dueAt.UnixMilli(), dueAt.Add(time.Hour).UnixMilli(), sessionID, runID)
+			id, created.ID(), dueAt.UnixMilli(), dueAt.UnixMilli(), dueAt.Add(time.Hour).UnixMilli(), sessionID, runID)
 		return err
 	}
 	if err := insert("first", "ses_first", "run_first"); err != nil {
@@ -339,7 +462,14 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 // TestScheduleUpdateNotFound: updating an unknown id reports ErrNotFound.
 func TestScheduleUpdateNotFound(t *testing.T) {
 	s := newScheduleStore(t)
-	_, err := s.Update(context.Background(), schedule.Schedule{ID: "sch_nope", Instructions: "x", Cron: "@daily"}, 1)
+	unknown, restoreErr := schedule.Restore(schedule.Snapshot{
+		ID: "sch_nope", Instructions: "x", Cron: "@daily",
+		CreatedAt: time.Unix(1, 0), Revision: 2,
+	})
+	if restoreErr != nil {
+		t.Fatalf("Restore unknown replacement: %v", restoreErr)
+	}
+	_, err := s.Update(context.Background(), unknown, 1)
 	if err != schedule.ErrNotFound {
 		t.Errorf("update unknown id err = %v, want ErrNotFound", err)
 	}
@@ -350,8 +480,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 func TestScheduleDueSkipsDisabled(t *testing.T) {
 	ctx := context.Background()
 	s := newScheduleStore(t)
-	past := time.Now().Add(-time.Hour)
-	if _, err := s.Create(ctx, schedule.Schedule{Instructions: "p", Cron: "@daily", Enabled: false, NextRunAt: past}); err != nil {
+	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily", Enabled: false}); err != nil {
 		t.Fatal(err)
 	}
 	due, err := s.Due(ctx, time.Now(), 100)
@@ -360,6 +489,30 @@ func TestScheduleDueSkipsDisabled(t *testing.T) {
 	}
 	if len(due) != 0 {
 		t.Errorf("due = %+v, want none (disabled)", due)
+	}
+}
+
+func TestScheduleReadsRejectNonPositiveLimits(t *testing.T) {
+	store := newScheduleStore(t)
+	for name, read := range map[string]func() error{
+		"page": func() error {
+			_, err := store.ListPage(t.Context(), time.Time{}, "", 0)
+			return err
+		},
+		"due": func() error {
+			_, err := store.Due(t.Context(), time.Now(), 0)
+			return err
+		},
+		"pending": func() error {
+			_, err := store.Pending(t.Context(), 0)
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := read(); err == nil {
+				t.Fatal("read accepted a non-positive capacity")
+			}
+		})
 	}
 }
 
@@ -375,7 +528,7 @@ func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	}
 	store := sqlite.NewScheduleStore(db)
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
-	created, err := store.Create(ctx, schedule.Schedule{
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
 		Instructions: "p", Cron: "@daily", Enabled: true, NextRunAt: past,
 	})
 	if err != nil {
@@ -394,8 +547,8 @@ func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("due after reopen: %v", err)
 	}
-	if len(due) != 1 || due[0].ID != created.ID {
-		t.Fatalf("due after reopen = %+v, want unacknowledged %q", due, created.ID)
+	if len(due) != 1 || due[0].ID() != created.ID() {
+		t.Fatalf("due after reopen = %+v, want unacknowledged %q", due, created.ID())
 	}
 }
 
@@ -419,7 +572,7 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 		}
 	}
 
-	listed, err := store.List(t.Context())
+	listed, err := store.ListPage(t.Context(), time.Time{}, "", 100)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -430,7 +583,7 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 	ids := func(items []schedule.Schedule) []string {
 		out := make([]string, len(items))
 		for i := range items {
-			out[i] = items[i].ID
+			out[i] = items[i].ID()
 		}
 		return out
 	}
@@ -444,7 +597,7 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 	if got, want := ids(firstPage), []string{"sch_c", "sch_b"}; !slices.Equal(got, want) {
 		t.Fatalf("ListPage first IDs = %v, want %v", got, want)
 	}
-	secondPage, err := store.ListPage(t.Context(), firstPage[1].CreatedAt, firstPage[1].ID, 2)
+	secondPage, err := store.ListPage(t.Context(), firstPage[1].CreatedAt(), firstPage[1].ID(), 2)
 	if err != nil {
 		t.Fatalf("ListPage second: %v", err)
 	}
@@ -489,11 +642,11 @@ func TestScheduleDuePrioritizesOldestBacklog(t *testing.T) {
 	if len(due) != 32 {
 		t.Fatalf("Due count = %d, want 32", len(due))
 	}
-	if due[0].ID != "sch_old" {
-		t.Fatalf("first due ID = %q, want oldest backlog sch_old", due[0].ID)
+	if due[0].ID() != "sch_old" {
+		t.Fatalf("first due ID = %q, want oldest backlog sch_old", due[0].ID())
 	}
 	for _, item := range due[1:] {
-		if item.ID == "sch_old" {
+		if item.ID() == "sch_old" {
 			t.Fatalf("oldest backlog appeared more than once: %+v", due)
 		}
 	}

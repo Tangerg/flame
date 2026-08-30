@@ -3,7 +3,11 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { Goal, FlameClient, MutationPromise } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+  type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
+} from "@/plugins/builtin/runtime/public/ports";
 import { goalCommandWasRetired, resumeGoal, stopGoal } from "./application/goalCommands";
 import goalPlugin from "./index";
 
@@ -30,7 +34,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ goals: { stop: retiredStop } }) as unknown as FlameClient,
     });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.goal-runtime-generation",
@@ -58,7 +62,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ goals: { resume: successorResume } }) as unknown as FlameClient,
     });
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
 
     await expect(predecessor).resolves.toMatchObject({
@@ -78,7 +82,8 @@ describe("Goal plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ goals: {} }) as unknown as FlameClient,
     });
-    let generation: string | null = "runtime_1";
+    let generation: RuntimeConnectionGenerationValue | null =
+      RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.goal-runtime-withdrawal",
@@ -117,7 +122,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ goals: { resume: successorResume } }) as unknown as FlameClient,
     });
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
 
     await expect(resumeGoal("ses_goal")).resolves.toBeUndefined();
@@ -137,7 +142,6 @@ function runtimeGoal(sessionId: string): Goal {
     sessionId,
     objective: "Keep one generation",
     status: "active",
-    budget: {},
     used: { runs: 0, costUsd: 0, steps: 0 },
     createdAt: "2026-08-18T00:00:00Z",
     updatedAt: "2026-08-18T00:00:00Z",

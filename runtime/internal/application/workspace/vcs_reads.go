@@ -87,11 +87,44 @@ type GitReader interface {
 
 // DiffInput selects a working-tree or merge-base diff, optionally as raw text.
 type DiffInput struct {
-	CWD   string
-	Path  string
-	Base  bool
-	Raw   bool
-	Limit int
+	CWD      string
+	Path     string
+	Base     bool
+	Raw      bool
+	RowLimit DiffRowLimit
+}
+
+// DiffRowLimit is the caller's structured-diff row budget. Its zero value is
+// the named default intent; an explicit value can only be constructed as a
+// positive row count. Raw diffs do not consume this value at all.
+type DiffRowLimit struct {
+	explicit bool
+	rows     int
+}
+
+// DefaultDiffRowLimit asks the structured read to use its owned maximum.
+func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{} }
+
+// NewDiffRowLimit constructs an explicit positive structured-diff row budget.
+func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
+	if rows <= 0 {
+		return DiffRowLimit{}, ErrPageLimit
+	}
+	return DiffRowLimit{explicit: true, rows: rows}, nil
+}
+
+// Rows resolves this request against the Application-owned maximum.
+func (l DiffRowLimit) Rows() (int, error) {
+	if !l.explicit {
+		if l.rows != 0 {
+			return 0, ErrPageLimit
+		}
+		return MaxWorkspaceDiffRows, nil
+	}
+	if l.rows <= 0 {
+		return 0, ErrPageLimit
+	}
+	return min(l.rows, MaxWorkspaceDiffRows), nil
 }
 
 // Diff is a structured or raw workspace diff.
@@ -147,7 +180,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 		return Diff{Patch: patch}, nil
 	}
-	rowLimit, err := workspaceDiffRowLimit(input.Limit)
+	rowLimit, err := input.RowLimit.Rows()
 	if err != nil {
 		return Diff{}, err
 	}
@@ -165,16 +198,6 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	}
 	files, truncated := limitDiffFiles(result.Files, MaxWorkspaceDiffFiles, rowLimit, MaxWorkspaceDiffBytes)
 	return Diff{Files: files, Truncated: result.Truncated || truncated}, nil
-}
-
-func workspaceDiffRowLimit(requested int) (int, error) {
-	if requested < 0 {
-		return 0, ErrPageLimit
-	}
-	if requested == 0 || requested > MaxWorkspaceDiffRows {
-		return MaxWorkspaceDiffRows, nil
-	}
-	return requested, nil
 }
 
 func limitDiffFiles(files []FileDiff, maxFiles, maxRows, maxBytes int) ([]FileDiff, bool) {

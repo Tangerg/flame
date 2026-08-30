@@ -6,8 +6,11 @@ package feedback
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 var ErrInvalid = errors.New("feedback: invalid entry")
@@ -63,6 +66,21 @@ func NewEntry(sessionID, runID, itemID string, rating Rating, text string, creat
 // boundary. A signal needs either a known rating or non-blank text; an empty
 // write would carry no product information.
 func (e Entry) Validate() error {
+	if e.SessionID != "" {
+		if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+			return fmt.Errorf("%w: Session reference: %v", ErrInvalid, err)
+		}
+	}
+	if e.RunID != "" {
+		if _, err := resourceid.ParseRun(e.RunID); err != nil {
+			return fmt.Errorf("%w: Run reference: %v", ErrInvalid, err)
+		}
+	}
+	if e.ItemID != "" {
+		if _, err := resourceid.ParseItem(e.ItemID); err != nil {
+			return fmt.Errorf("%w: Item reference: %v", ErrInvalid, err)
+		}
+	}
 	if !e.Rating.Valid() {
 		return ErrInvalid
 	}

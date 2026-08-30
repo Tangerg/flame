@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -16,6 +17,20 @@ import (
 	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
+
+func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T) {
+	t.Parallel()
+	for _, arguments := range [][]string{
+		{"sessions", "ls", "--limit", "0"},
+		{"sessions", "ls", "--limit", "101"},
+		{"runs", "ls", "--limit", "0"},
+		{"runs", "ls", "--limit", "101"},
+	} {
+		if _, _, err := executeCommand(t, instantRuntime(), "", arguments...); !errors.Is(err, agent.ErrInvalidPageSize) {
+			t.Fatalf("%v error = %v, want ErrInvalidPageSize", arguments, err)
+		}
+	}
+}
 
 type recordingRunCatalog struct {
 	agent.Runtime
@@ -43,8 +58,9 @@ func TestRunsListConsumesFiltersAndStableJSON(t *testing.T) {
 		t.Fatalf("queries = %+v", runtime.queries)
 	}
 	query := runtime.queries[0]
+	rows, rowsErr := query.PageSize.Rows()
 	if query.SessionID != "ses_demo_1" || len(query.Statuses) != 1 || query.Statuses[0] != agent.RunStatusFinished ||
-		!query.IncludeDescendants || query.Limit != 7 {
+		!query.IncludeDescendants || rowsErr != nil || rows != 7 {
 		t.Fatalf("query = %+v", query)
 	}
 	var page struct {
@@ -70,6 +86,7 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 	runtime.Script = shortCompletedScript
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "newer run"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +127,7 @@ func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 
 func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing.T) {
 	t.Parallel()
-	profile := commandRuntimeProfile()
+	profile := commandRuntimeProfile(t)
 	profile.Features[runtimeprofile.FeatureSubagents] = runtimeprofile.Feature{
 		ClientOptIn: true,
 	}
@@ -162,6 +179,7 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	}
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "keep running"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -234,12 +252,16 @@ func (c childCancellationRuntime) CancelRun(context.Context, agent.CancelRun) (a
 }
 
 func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
+	lineage, err := agent.NewChildRunLineage("run_child", "item_spawn", "run_root", "run_root")
+	if err != nil {
+		t.Fatal(err)
+	}
 	child := agent.Run{
 		ID: "run_child", SessionID: "ses_1",
-		Lineage: agent.RunLineage{SpawnedByBlockID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root"},
-		Status:  agent.RunStatusFinished, Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
+		Lineage: lineage,
+		Status:  agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
 	}
-	root := agent.Run{ID: "run_root", SessionID: "ses_1", Status: agent.RunStatusWaiting}
+	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
 	runtime := childCancellationRuntime{
 		Runtime: instantRuntime(),
 		result:  agent.RunCancellation{Canceled: child, Root: root},
@@ -263,12 +285,14 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	}
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel through subcommand"},
+		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	runtime := &uncertainRunCancellationRuntime{Runtime: base}
-	if _, _, err := executeCommand(t, runtime, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
+	profile := commandRuntimeProfile(t)
+	if _, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
 		t.Fatal(err)
 	}
 	attempts := runtime.cancelAttempts()
@@ -284,14 +308,18 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 	if err != nil || !strings.Contains(out, "run_demo_history") {
 		t.Fatalf("completion = %q, %v", out, err)
 	}
-	if len(runtime.queries) != 1 || !runtime.queries[0].IncludeDescendants || runtime.queries[0].Limit != 100 {
+	if len(runtime.queries) != 1 {
+		t.Fatalf("completion queries = %+v", runtime.queries)
+	}
+	rows, rowsErr := runtime.queries[0].PageSize.Rows()
+	if !runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != agent.MaximumPageRows {
 		t.Fatalf("completion query = %+v", runtime.queries)
 	}
 }
 
 func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 	t.Parallel()
-	profile := commandRuntimeProfile()
+	profile := commandRuntimeProfile(t)
 	profile.Features[runtimeprofile.FeatureSubagents] = runtimeprofile.Feature{
 		ClientOptIn: true,
 	}
@@ -305,7 +333,11 @@ func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 	if directive != cobra.ShellCompDirectiveNoFileComp || len(items) == 0 {
 		t.Fatalf("completion = (%v, %v)", items, directive)
 	}
-	if len(runtime.queries) != 1 || runtime.queries[0].IncludeDescendants || runtime.queries[0].Limit != 100 {
+	if len(runtime.queries) != 1 {
+		t.Fatalf("completion queries = %+v", runtime.queries)
+	}
+	rows, rowsErr := runtime.queries[0].PageSize.Rows()
+	if runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != agent.MaximumPageRows {
 		t.Fatalf("completion query = %+v", runtime.queries)
 	}
 }

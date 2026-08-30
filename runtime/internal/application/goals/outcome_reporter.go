@@ -2,9 +2,11 @@ package goals
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 )
 
 // ReportCommand is a model-originated terminal outcome for the active Goal.
@@ -54,29 +56,36 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if o == nil || o.goals == nil {
 		return ReportNoActiveGoal, nil
 	}
-	g, ok, err := o.goals.Get(ctx, cmd.SessionID)
+	if _, _, err := goalref.ParseOptionalIncarnation(cmd.IncarnationID); err != nil {
+		return "", fmt.Errorf("goals: report: %w", err)
+	}
+	g, ok, err := loadGoal(ctx, o.goals, cmd.SessionID)
 	if err != nil {
 		return "", err
 	}
-	if !ok || g.Status != goal.StatusActive {
+	if !ok || g.Status() != goal.StatusActive {
 		return ReportNoActiveGoal, nil
 	}
-	if cmd.IncarnationID != "" && cmd.IncarnationID != g.IncarnationID {
+	if cmd.IncarnationID != "" && cmd.IncarnationID != g.IncarnationID() {
 		return ReportSuperseded, nil
 	}
 	expected := g.Version()
+	var replacement goal.Goal
 	switch cmd.Outcome {
 	case goal.StatusComplete:
-		g.Complete(o.now())
+		replacement, err = g.Complete(o.now())
 	case goal.StatusBlocked:
 		if cmd.Reason == "" {
 			return ReportReasonRequired, nil
 		}
-		g.Block(goal.ReasonBlockedByModel, cmd.Reason, o.now())
+		replacement, err = g.Block(goal.ReasonBlockedByModel, cmd.Reason, o.now())
 	default:
 		return ReportInvalidOutcome, nil
 	}
-	_, applied, err := o.goals.Save(ctx, g, expected)
+	if err != nil {
+		return "", err
+	}
+	_, applied, err := o.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		return "", err
 	}

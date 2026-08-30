@@ -28,6 +28,23 @@ func constClient(c *chatclient.Client) utilitymodel.Resolver {
 	return func(context.Context) *chatclient.Client { return c }
 }
 
+func intPointer(value int) *int { return &value }
+
+func mustNewCompactor(
+	t *testing.T,
+	store compactionStore,
+	client utilitymodel.Resolver,
+	liveState LiveStateSnapshotter,
+	values CompactionPolicyValues,
+) *Compactor {
+	t.Helper()
+	compactor, err := NewCompactor(store, client, liveState, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return compactor
+}
+
 type compactionTestStore struct {
 	*conversationfixture.Store
 	rewrites int
@@ -39,16 +56,48 @@ func newCompactionTestStore() *compactionTestStore {
 
 func testTokenLimits(
 	t *testing.T,
-	contextWindow int64,
-	maxInputTokens int64,
-	maxOutputTokens int64,
+	values modelref.TokenLimitValues,
 ) modelref.TokenLimits {
 	t.Helper()
-	limits, err := modelref.NewTokenLimits(contextWindow, maxInputTokens, maxOutputTokens)
+	limits, err := modelref.NewTokenLimits(values)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return limits
+}
+
+func testTokenLimit(value int64) *int64 { return &value }
+
+func TestCompactionPolicyPreservesOptionalPresence(t *testing.T) {
+	defaults, err := newCompactionPolicy(CompactionPolicyValues{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaults.messageTrigger.limit() != defaultCompactMaxMessages ||
+		defaults.keepRecent != defaultCompactKeepRecent || defaults.maxTokensExplicit {
+		t.Fatalf("default policy = %+v", defaults)
+	}
+
+	zero := 0
+	for name, values := range map[string]CompactionPolicyValues{
+		"messages": {MaxMessages: &zero},
+		"tokens":   {MaxTokens: &zero},
+		"recent":   {KeepRecent: &zero},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := newCompactionPolicy(values); err == nil {
+				t.Fatal("present zero was treated as an omitted policy value")
+			}
+		})
+	}
+
+	maximum, recent := 6, 6
+	if _, err := newCompactionPolicy(CompactionPolicyValues{
+		MaxMessages: &maximum,
+		KeepRecent:  &recent,
+	}); err == nil {
+		t.Fatal("non-shrinking compaction window was silently rewritten")
+	}
 }
 
 func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
@@ -56,14 +105,13 @@ func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
-	compactor := NewCompactor(nil, nil, nil, CompactionConfig{})
+	compactor := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{})
 	trigger, err := compactor.tokenTrigger(
-		testTokenLimits(
-			t,
-			model.Limits.ContextWindow,
-			model.Limits.MaxInputTokens,
-			model.Limits.MaxOutputTokens,
-		),
+		testTokenLimits(t, modelref.TokenLimitValues{
+			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
+			MaxInputTokens:  testTokenLimit(model.Limits.MaxInputTokens),
+			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
+		}),
 		chat.Options{},
 	)
 	if err != nil {
@@ -86,15 +134,13 @@ func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
 	if model.Limits.MaxInputTokens != 0 {
 		t.Fatalf("fixture max input = %d, want unknown", model.Limits.MaxInputTokens)
 	}
-	compactor := NewCompactor(nil, nil, nil, CompactionConfig{})
+	compactor := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{})
 	requestedOutput := model.Limits.MaxOutputTokens
 	trigger, err := compactor.tokenTrigger(
-		testTokenLimits(
-			t,
-			model.Limits.ContextWindow,
-			model.Limits.MaxInputTokens,
-			model.Limits.MaxOutputTokens,
-		),
+		testTokenLimits(t, modelref.TokenLimitValues{
+			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
+			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
+		}),
 		chat.Options{MaxTokens: &requestedOutput},
 	)
 	if err != nil {
@@ -112,9 +158,11 @@ func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
 
 func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	t.Run("explicit trigger cannot exceed provider input", func(t *testing.T) {
-		compactor := NewCompactor(nil, nil, nil, CompactionConfig{MaxTokens: 300_000})
+		compactor := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{MaxTokens: intPointer(300_000)})
 		trigger, err := compactor.tokenTrigger(
-			testTokenLimits(t, 400_000, 272_000, 0),
+			testTokenLimits(t, modelref.TokenLimitValues{
+				ContextWindow: testTokenLimit(400_000), MaxInputTokens: testTokenLimit(272_000),
+			}),
 			chat.Options{},
 		)
 		if err != nil {
@@ -126,11 +174,13 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	})
 
 	t.Run("selected model does not inherit unrelated fallback input", func(t *testing.T) {
-		compactor := NewCompactor(nil, nil, nil, CompactionConfig{
-			FallbackTokenLimits: testTokenLimits(t, 400_000, 272_000, 0),
+		compactor := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{
+			FallbackTokenLimits: testTokenLimits(t, modelref.TokenLimitValues{
+				ContextWindow: testTokenLimit(400_000), MaxInputTokens: testTokenLimit(272_000),
+			}),
 		})
 		trigger, err := compactor.tokenTrigger(
-			testTokenLimits(t, 1_000_000, 0, 0),
+			testTokenLimits(t, modelref.TokenLimitValues{ContextWindow: testTokenLimit(1_000_000)}),
 			chat.Options{},
 		)
 		if err != nil {
@@ -142,9 +192,9 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	})
 
 	t.Run("window percentage cannot overflow", func(t *testing.T) {
-		compactor := NewCompactor(nil, nil, nil, CompactionConfig{})
+		compactor := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{})
 		trigger, err := compactor.tokenTrigger(
-			testTokenLimits(t, int64(math.MaxInt), 0, 0),
+			testTokenLimits(t, modelref.TokenLimitValues{ContextWindow: testTokenLimit(int64(math.MaxInt))}),
 			chat.Options{},
 		)
 		if err != nil {
@@ -187,12 +237,12 @@ func TestCompactor_NopBelowThreshold(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("a")),
 		chat.NewAssistantMessage(chat.NewTextPart("b")),
 	)
-	c := NewCompactor(store, nil /* never called */, nil, CompactionConfig{MaxMessages: 10})
+	c := mustNewCompactor(t, store, nil /* never called */, nil, CompactionPolicyValues{MaxMessages: intPointer(10)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Compacted {
+	if res.Compacted() {
 		t.Error("below threshold should not compact")
 	}
 }
@@ -213,19 +263,23 @@ func TestCompactor_Compacts(t *testing.T) {
 	model := newTextStubModel("BULLETS")
 	client, _ := chatclient.New(model, chatclient.Config{})
 
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: total, KeepRecent: 4})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted {
+	if !res.Compacted() {
 		t.Fatal("expected compaction to fire")
+	}
+	if res.Summary() != "BULLETS" {
+		t.Fatalf("summary = %q, want BULLETS", res.Summary())
 	}
 	if len(model.requests) != 1 || model.requests[0].Options.MaxTokens == nil || *model.requests[0].Options.MaxTokens != compactionSummaryOutputTokens {
 		t.Fatalf("compaction MaxTokens = %#v, want %d", model.requests, compactionSummaryOutputTokens)
 	}
-	if res.MessagesBefore != total || res.MessagesAfter != 5 {
-		t.Errorf("result counts = (%d → %d), want (%d → 5)", res.MessagesBefore, res.MessagesAfter, total)
+	before, afterCount := res.MessageCounts()
+	if before != total || afterCount != 5 {
+		t.Errorf("result counts = (%d → %d), want (%d → 5)", before, afterCount, total)
 	}
 
 	after, _ := store.Read(context.Background(), sessID)
@@ -279,12 +333,12 @@ func TestCompactor_CutBoundary(t *testing.T) {
 	}
 
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 6, KeepRecent: 4})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(4)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted {
+	if !res.Compacted() {
 		t.Fatal("expected compaction to fire")
 	}
 
@@ -314,13 +368,13 @@ func TestCompactor_CutBoundaryKeepsFinalTurnWithoutLaterUser(t *testing.T) {
 		_ = store.Write(t.Context(), sessID, message)
 	}
 	client, _ := chatclient.New(newTextStubModel("SUMMARY"), chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 6, KeepRecent: 2})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(2)})
 
 	result, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Compacted {
+	if !result.Compacted() {
 		t.Fatal("a cutoff inside the final turn must compact at that turn's opening user boundary")
 	}
 	after, _ := store.Read(t.Context(), sessID)
@@ -379,7 +433,7 @@ func TestCompactor_PreservesToolPairsAcrossCutoffs(t *testing.T) {
 			client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
 			// MaxMessages == len forces the count trigger every run so the cutoff
 			// logic actually executes for each keepRecent.
-			c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: len(template), KeepRecent: keepRecent})
+			c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(len(template)), KeepRecent: intPointer(keepRecent)})
 			if _, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); err != nil {
 				t.Fatal(err)
 			}
@@ -443,12 +497,12 @@ func TestCompactor_TokenTrigger(t *testing.T) {
 	// Message bound far out of reach; token bound below the ordinary assistant
 	// body, which the Tool-specific deterministic rung cannot trim. Only the
 	// token trigger can reach the summary rung.
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 1000, MaxTokens: 10_000, KeepRecent: 2})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(1000), MaxTokens: intPointer(10_000), KeepRecent: intPointer(2)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted {
+	if !res.Compacted() {
 		t.Fatal("expected the token-footprint trigger to fire on a large tool result")
 	}
 }
@@ -472,12 +526,12 @@ func TestCompactor_TokenTriggerShortHistory(t *testing.T) {
 
 	model := newTextStubModel("BULLETS")
 	client, _ := chatclient.New(model, chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 1000, MaxTokens: 10_000, KeepRecent: 6})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(1000), MaxTokens: intPointer(10_000), KeepRecent: intPointer(6)})
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Compacted {
+	if res.Compacted() {
 		t.Fatal("a deterministic trim must not report an LLM compaction boundary")
 	}
 	if model.calls != 0 {
@@ -503,15 +557,15 @@ func TestCompactorShortHistoryKeepsLatestCompleteTurn(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("done")),
 	)
 	client, _ := chatclient.New(newTextStubModel("SUMMARY"), chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{
-		MaxMessages: 1000, MaxTokens: 10_000, KeepRecent: 6,
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{
+		MaxMessages: intPointer(1000), MaxTokens: intPointer(10_000), KeepRecent: intPointer(6),
 	})
 
 	result, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Compacted {
+	if !result.Compacted() {
 		t.Fatal("an over-budget history must compact even when its message count is below KeepRecent")
 	}
 	after, _ := store.Read(t.Context(), sessID)
@@ -528,7 +582,7 @@ func TestCompactorRejectsEmptySummaryWithoutReplacingHistory(t *testing.T) {
 	}
 	before, _ := store.Read(t.Context(), sessID)
 	client, _ := chatclient.New(newTextStubModel(" \n\t "), chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 6, KeepRecent: 2})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(2)})
 
 	if _, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); !errors.Is(err, errEmptyCompactionSummary) {
 		t.Fatalf("empty summary error = %v, want %v", err, errEmptyCompactionSummary)
@@ -550,7 +604,7 @@ func TestCompactor_PreCompactVeto(t *testing.T) {
 		_ = store.Write(context.Background(), sessID, chat.NewUserMessage(chat.NewTextPart("msg")))
 	}
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: total, KeepRecent: 4})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
 
 	called := false
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, func(context.Context) bool {
@@ -563,7 +617,7 @@ func TestCompactor_PreCompactVeto(t *testing.T) {
 	if !called {
 		t.Fatal("preCompact should be consulted when a compaction is committed")
 	}
-	if res.Compacted {
+	if res.Compacted() {
 		t.Fatal("a vetoing preCompact must prevent compaction")
 	}
 	if after, _ := store.Read(context.Background(), sessID); len(after) != total {
@@ -577,7 +631,7 @@ func TestCompactor_PreCompactSkipsUnexecutablePlan(t *testing.T) {
 	for range 6 {
 		_ = store.Write(t.Context(), sessID, chat.NewAssistantMessage(chat.NewTextPart("continuation")))
 	}
-	c := NewCompactor(store, nil, nil, CompactionConfig{MaxMessages: 6, KeepRecent: 2})
+	c := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(2)})
 
 	called := false
 	if _, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, func(context.Context) bool {
@@ -613,13 +667,13 @@ func TestCompactor_LadderTrimsUnderBudgetSkippingLLM(t *testing.T) {
 	client, _ := chatclient.New(model, chatclient.Config{})
 	// Count trigger far out of reach; token trigger below the big result — so
 	// only the token trigger fires, and the deterministic trim can clear it.
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 1000, MaxTokens: 4000, KeepRecent: 2})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(1000), MaxTokens: intPointer(4000), KeepRecent: intPointer(2)})
 
 	res, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Compacted {
+	if res.Compacted() {
 		t.Fatal("a deterministic trim must not report a compaction boundary")
 	}
 	if model.calls != 0 {
@@ -657,15 +711,15 @@ func TestCompactorLadderWidensWhenRecentTurnAloneExceedsBudget(t *testing.T) {
 	)
 	model := newTextStubModel("SUMMARY")
 	client, _ := chatclient.New(model, chatclient.Config{})
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{
-		MaxMessages: 1000, MaxTokens: 10_000, KeepRecent: 2,
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{
+		MaxMessages: intPointer(1000), MaxTokens: intPointer(10_000), KeepRecent: intPointer(2),
 	})
 
 	result, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Compacted {
+	if result.Compacted() {
 		t.Fatal("an all-history deterministic trim must not report an LLM compaction boundary")
 	}
 	if model.calls != 0 {
@@ -676,7 +730,7 @@ func TestCompactorLadderWidensWhenRecentTurnAloneExceedsBudget(t *testing.T) {
 	if len(trimmed) >= len(big) || !strings.Contains(trimmed, "trimmed on compaction") {
 		t.Fatalf("oversized recent Tool result was not trimmed: len=%d", len(trimmed))
 	}
-	budget := newModelContextBudget(c.maxMessages, 10_000, nil, nil, nil, chat.Options{}, 0, nil)
+	budget := newModelContextBudget(c.policy.messageTrigger, 10_000, nil, nil, nil, chat.Options{}, 0, nil)
 	overBudget, _, err := budget.exceeded(t.Context(), after)
 	if err != nil {
 		t.Fatal(err)
@@ -706,13 +760,13 @@ func TestCompactor_LadderStillOverGoesToLLM(t *testing.T) {
 	model := newTextStubModel("SUMMARY")
 	client, _ := chatclient.New(model, chatclient.Config{})
 	// Count trigger at the message count → a body trim can't clear it.
-	c := NewCompactor(store, constClient(client), nil, CompactionConfig{MaxMessages: 6, KeepRecent: 2})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(2)})
 
 	res, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted {
+	if !res.Compacted() {
 		t.Fatal("a count-triggered compaction the trim can't clear must run the LLM summary")
 	}
 	if model.calls == 0 {
@@ -737,9 +791,9 @@ func TestTrimForBudget_PreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Result: bigResult}),                            // [2] recent
 		chat.NewAssistantMessage(chat.NewTextPart("x")),                                                            // [3] recent
 	}
-	c := NewCompactor(nil, nil, nil, CompactionConfig{KeepRecent: 2}) // boundary = 4-2 = 2
+	c := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{KeepRecent: intPointer(2)}) // boundary = 4-2 = 2
 
-	trimmed, changed := trimForBudgetBefore(msgs, len(msgs)-c.keepRecent)
+	trimmed, changed := trimForBudgetBefore(msgs, len(msgs)-c.policy.keepRecent)
 	if !changed {
 		t.Fatal("expected the old oversized parts to be trimmed")
 	}

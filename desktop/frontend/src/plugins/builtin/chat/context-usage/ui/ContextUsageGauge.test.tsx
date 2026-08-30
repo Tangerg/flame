@@ -21,8 +21,8 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
 vi.mock("@/plugins/builtin/settings/providers/public/queries", () => ({
   useModels: () => ({
     data: [
-      { provider: "provider-a", id: "shared-model", contextWindow: 100_000 },
-      { provider: "provider-b", id: "shared-model", contextWindow: 258_000 },
+      { provider: "provider-a", id: "shared-model", tokenLimits: { contextWindow: 100_000 } },
+      { provider: "provider-b", id: "shared-model", tokenLimits: { contextWindow: 258_000 } },
     ],
   }),
 }));

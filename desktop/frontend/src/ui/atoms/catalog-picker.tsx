@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { cn } from "@/lib/classNames";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
@@ -9,6 +9,8 @@ export interface CatalogPickerItem {
   id: string;
   label: string;
   icon?: IconName;
+  leading?: ReactNode;
+  description?: ReactNode;
   keywords?: readonly string[];
   active?: boolean;
 }
@@ -16,6 +18,8 @@ export interface CatalogPickerItem {
 export interface CatalogPickerGroup {
   id: string;
   label: string;
+  leading?: ReactNode;
+  count?: number;
   items: CatalogPickerItem[];
 }
 
@@ -34,6 +38,10 @@ export function CatalogPicker({
   emptyLabel,
   onSelect,
   className,
+  contentClassName,
+  trigger,
+  side = "bottom",
+  align = "end",
 }: {
   groups: CatalogPickerGroup[];
   label: string;
@@ -41,6 +49,10 @@ export function CatalogPicker({
   emptyLabel: string;
   onSelect: (item: CatalogPickerItem) => void;
   className?: string;
+  contentClassName?: string;
+  trigger?: ReactElement;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -53,25 +65,33 @@ export function CatalogPicker({
         if (!nextOpen) setQuery("");
       }}
     >
-      <Popover.Trigger
-        aria-label={label}
-        title={label}
-        data-slot="button"
-        data-variant="ghost"
-        className={cn(
-          buttonStyles({ variant: "ghost", size: "icon-sm" }),
-          "data-[popup-open]:bg-selected data-[popup-open]:text-fg",
-          className,
-        )}
-      >
-        <Icon name="plus" size="sm" />
-      </Popover.Trigger>
+      {trigger ? (
+        <Popover.Trigger render={trigger} />
+      ) : (
+        <Popover.Trigger
+          aria-label={label}
+          title={label}
+          data-slot="button"
+          data-variant="ghost"
+          className={cn(
+            buttonStyles({ variant: "ghost", size: "icon-sm" }),
+            "data-[popup-open]:bg-selected data-[popup-open]:text-fg",
+            className,
+          )}
+        >
+          <Icon name="plus" size="sm" />
+        </Popover.Trigger>
+      )}
 
       <Popover.Content
         aria-label={label}
-        align="end"
+        align={align}
+        side={side}
         sideOffset={6}
-        className="w-[300px] max-w-[var(--available-width)] p-1.5"
+        className={cn(
+          "flex max-h-[min(420px,var(--available-height))] w-[300px] max-w-[var(--available-width)] flex-col overflow-hidden p-1.5",
+          contentClassName,
+        )}
       >
         <ComboboxPrimitive.Root<CatalogPickerItem>
           items={groups}
@@ -88,7 +108,7 @@ export function CatalogPicker({
           inline
           open
         >
-          <div className="mb-1 flex h-[var(--field-height-md)] items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
+          <div className="mb-1 flex h-[var(--field-height-md)] shrink-0 items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
             <Icon name="search" size="sm" className="shrink-0" />
             <ComboboxPrimitive.Input
               aria-label={placeholder}
@@ -100,25 +120,37 @@ export function CatalogPicker({
           <ComboboxPrimitive.Empty className="empty:hidden px-2.5 py-6 text-center text-ui-sm text-fg-faint">
             {emptyLabel}
           </ComboboxPrimitive.Empty>
-          <ComboboxPrimitive.List className="max-h-[min(420px,var(--available-height))] overflow-y-auto overscroll-contain scroll-py-1 outline-none data-empty:p-0">
+          <ComboboxPrimitive.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-py-1 outline-none data-empty:p-0">
             {(group: CatalogPickerGroup) => (
               <ComboboxPrimitive.Group
                 key={group.id}
                 items={group.items}
                 className="pb-1.5 last:pb-0"
               >
-                <ComboboxPrimitive.GroupLabel className="px-2.5 pb-1 pt-2 text-ui-xs font-medium text-fg-faint select-none first:pt-1.5">
-                  {group.label}
+                <ComboboxPrimitive.GroupLabel className="flex items-center gap-2 px-2.5 pb-1 pt-2 text-ui-xs font-medium text-fg-faint select-none first:pt-1.5">
+                  {group.leading}
+                  <span>{group.label}</span>
+                  {group.count !== undefined && (
+                    <span className="ml-auto tabular-nums">{group.count}</span>
+                  )}
                 </ComboboxPrimitive.GroupLabel>
                 <ComboboxPrimitive.Collection>
                   {(item: CatalogPickerItem) => (
                     <ComboboxPrimitive.Item
                       key={item.id}
                       value={item}
-                      className="grid min-h-9 cursor-default grid-cols-[16px_minmax(0,1fr)_14px] items-center gap-2 rounded-[var(--shape-sm)] px-2.5 text-ui-md text-fg outline-none select-none data-[highlighted]:bg-hover"
+                      className={cn(
+                        "grid cursor-default grid-cols-[16px_minmax(0,1fr)_14px] items-center gap-2 rounded-[var(--shape-sm)] px-2.5 text-ui-md text-fg outline-none select-none data-[highlighted]:bg-hover",
+                        item.description ? "min-h-11 py-1.5" : "min-h-9",
+                      )}
                     >
-                      <Icon name={item.icon ?? "panel-r"} size="sm" className="text-fg-muted" />
-                      <span className="truncate">{item.label}</span>
+                      {item.leading ?? (
+                        <Icon name={item.icon ?? "panel-r"} size="sm" className="text-fg-muted" />
+                      )}
+                      <span className="min-w-0">
+                        <span className="block truncate">{item.label}</span>
+                        {item.description}
+                      </span>
                       {item.active ? (
                         <Icon name="check" size="xs" className="text-accent" />
                       ) : (

@@ -42,6 +42,8 @@ export const fr: Record<string, string> = {
   "composer.placeholder": "Décrivez ce que vous voulez faire — @ pour référencer un fichier",
   "composer.switchModel": "Changer de modèle",
   "composer.switchReasoningEffort": "Changer l’intensité du raisonnement",
+  "composer.model.search.placeholder": "Rechercher des modèles…",
+  "composer.model.search.empty": "Aucun modèle trouvé",
   "composer.model.contextWindow": "Contexte de {{tokens}}",
   "composer.model.maxInput": "Entrée maximale : {{tokens}}",
   "composer.model.maxOutput": "Sortie maximale : {{tokens}}",
@@ -250,8 +252,8 @@ export const fr: Record<string, string> = {
   "composer.project.required": "Sélectionnez un projet pour continuer",
   "providers.setup.title": "Connecter un fournisseur de modèle",
   "providers.setup.sub":
-    "Ajoutez une clé API pour commencer — l'agent a besoin d'un fournisseur de modèle.",
-  "providers.setup.action": "Ajouter une clé de fournisseur",
+    "Configurez un fournisseur de modèle pour commencer — l'authentification dépend du fournisseur.",
+  "providers.setup.action": "Configurer un fournisseur",
 
   "settings.title": "Paramètres",
   "settings.backToApp": "Retour à l'app",
@@ -292,6 +294,7 @@ export const fr: Record<string, string> = {
   "providers.baseUrl.placeholder": "URL de base",
   "providers.baseUrl.aria": "URL de base {{provider}}",
   "providers.key": "clé {{masked}}",
+  "providers.ready": "prêt",
   "providers.notConfigured": "non configuré",
   "providers.save": "Enregistrer",
   "providers.saving": "Enregistrement…",
@@ -1018,7 +1021,7 @@ export const fr: Record<string, string> = {
   "composer.key.historyPrevDesc": "Rappeler le message précédent",
   "composer.key.historyNextDesc": "Rappeler le message suivant",
   "mcp.import.hint":
-    'Collez un bloc de configuration Claude Desktop — un ou plusieurs serveurs sous "mcpServers".',
+    'Collez un bloc de configuration de client MCP — un ou plusieurs serveurs sous "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Cette session a déjà une exécution en cours — orientez-la, répondez-y ou annulez-la d’abord.",
@@ -1061,7 +1064,7 @@ export const fr: Record<string, string> = {
     "Cette tentative de connexion a expiré. Recommence.",
   "rpcError.mcp_dial_failed":
     "Impossible de joindre ce serveur — vérifie la commande ou l'URL et réessaie.",
-  "rpcError.provider_not_configured": "Renseigne d'abord la clé d'API.",
+  "rpcError.provider_not_configured": "Terminez d'abord la configuration du fournisseur.",
   "rpcError.provider_test_failed":
     "Le fournisseur était injoignable, ou il a refusé la requête de test.",
   "session.error.create": "Impossible de créer la session.",

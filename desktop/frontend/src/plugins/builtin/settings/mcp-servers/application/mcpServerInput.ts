@@ -1,4 +1,5 @@
 import type { MCPTransport } from "./mcpServerQueries";
+import type { MCPHandshakeTimeout } from "./mcpHandshakeTimeout";
 
 export interface MCPServerInput {
   name: string;
@@ -15,7 +16,7 @@ export interface MCPServerInput {
   // sets it. New resources use undefined for no credential.
   authorization?: string | null;
   headers?: Record<string, string> | null;
-  timeoutSeconds?: number;
+  handshakeTimeout: MCPHandshakeTimeout;
   disabledTools?: string[];
   autoApproveTools?: string[];
 }

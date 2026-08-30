@@ -77,7 +77,7 @@ func TestFilePagesUseATotalOrderAndBindTheCompleteQuery(t *testing.T) {
 		{Path: "b.txt", Kind: FileEntryFile},
 	}
 
-	first, cursor, err := pageFileEntries(entries, filters, "", 2)
+	first, cursor, err := pageFileEntries(entries, filters, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -91,7 +91,8 @@ func TestFilePagesUseATotalOrderAndBindTheCompleteQuery(t *testing.T) {
 		{Path: "c.txt", Kind: FileEntryFile},
 		{Path: "docs", Kind: FileEntryDir},
 		{Path: "b.txt", Kind: FileEntryFile},
-	}, filters, cursor, 2)
+	}, filters, cursor, explicitPageLimit(t, 2))
+
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -100,7 +101,7 @@ func TestFilePagesUseATotalOrderAndBindTheCompleteQuery(t *testing.T) {
 	}
 
 	otherQuery := []string{"/repo", "docs", "", "true", "false"}
-	if _, _, err := pageFileEntries(entries, otherQuery, cursor, 2); !errors.Is(err, ErrPageCursor) {
+	if _, _, err := pageFileEntries(entries, otherQuery, cursor, explicitPageLimit(t, 2)); !errors.Is(err, ErrPageCursor) {
 		t.Fatalf("cross-query cursor err = %v, want ErrPageCursor", err)
 	}
 }

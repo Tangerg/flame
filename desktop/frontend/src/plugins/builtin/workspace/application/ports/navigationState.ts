@@ -7,7 +7,7 @@ export interface WorkspaceFileViewer {
 
 export interface WorkspaceFileFocusSnapshot {
   readonly path: string;
-  readonly revision: number;
+  readonly revision: bigint;
 }
 
 /** A resizable column of the content card: its width and the setter a drag

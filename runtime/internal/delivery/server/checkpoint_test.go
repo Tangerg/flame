@@ -111,10 +111,14 @@ func TestRollback_RestoreFilesKeepsHistory(t *testing.T) {
 	ctx := context.Background()
 
 	writeCheckpointFile(t, cwd, "v1")
-	cp.Snapshot(ctx, sid, cwd, "run1")
+	if err := cp.Snapshot(ctx, sid, cwd, "run1"); err != nil {
+		t.Fatal(err)
+	}
 	putRun(t, rt, sid, "run1", 1, 1)
 	writeCheckpointFile(t, cwd, "v2")
-	cp.Snapshot(ctx, sid, cwd, "run2")
+	if err := cp.Snapshot(ctx, sid, cwd, "run2"); err != nil {
+		t.Fatal(err)
+	}
 	putRun(t, rt, sid, "run2", 2, 2)
 
 	resp, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{

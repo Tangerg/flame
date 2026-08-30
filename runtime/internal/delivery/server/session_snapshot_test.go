@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -65,23 +64,27 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
-	state, err := (plan.State{}).Replace([]plan.Step{{
+	state, err := (plan.Current{}).Replace([]plan.Step{{
 		Description: "Answer the question", Status: plan.StatusInProgress,
 	}}, createdAt)
 	if err != nil {
 		t.Fatalf("prepare Plan: %v", err)
 	}
-	if saveErr := rt.plan.Save(t.Context(), "ses_1", 0, state); saveErr != nil {
+	if saveErr := rt.plan.Save(t.Context(), "ses_1", (plan.Current{}).Version(), state); saveErr != nil {
 		t.Fatalf("save Plan: %v", saveErr)
 	}
 	standingGoal, err := goal.New(
-		"ses_1", "Finish the recovery", modelref.Selection{}, goal.Budget{}, capabilities,
+		"ses_1", "Finish the recovery", runfixture.Selection(), goal.UnlimitedBudget(), capabilities,
 		"goal_snapshot", createdAt,
 	)
 	if err != nil {
 		t.Fatalf("prepare Goal: %v", err)
 	}
-	if _, applied, saveErr := rt.goals.Save(t.Context(), standingGoal, goal.Version{}); saveErr != nil || !applied {
+	unwritten, err := goal.Unwritten("ses_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, applied, saveErr := rt.goals.Save(t.Context(), standingGoal, unwritten.Version()); saveErr != nil || !applied {
 		t.Fatalf("save Goal: applied=%t err=%v", applied, saveErr)
 	}
 
@@ -105,7 +108,8 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if len(snapshot.Interrupts) != 1 || snapshot.Interrupts[0].RootRunID != "run_waiting" {
 		t.Fatalf("Interrupts = %+v, want the open waiting set", snapshot.Interrupts)
 	}
-	if snapshot.Plan == nil || snapshot.Plan.Revision != 1 || len(snapshot.Plan.Steps) != 1 {
+	if snapshot.Plan == nil || snapshot.Plan.State == nil ||
+		snapshot.Plan.State.Revision != 1 || len(snapshot.Plan.State.Steps) != 1 {
 		t.Fatalf("Plan = %+v, want revision 1", snapshot.Plan)
 	}
 	if snapshot.Goal == nil || snapshot.Goal.Objective != "Finish the recovery" || snapshot.Goal.Status != protocol.GoalActive {

@@ -110,7 +110,7 @@ export function useAgentPlan(): AgentProjectionMaterial<AgentPlan> {
     useShallow((state) => {
       const entry = state.sessions[sessionId];
       return {
-        generation: entry?.viewEpoch ?? 0,
+        generation: entry?.viewEpoch ?? 0n,
         value: entry?.view.plan ?? undefined,
       };
     }),
@@ -123,7 +123,7 @@ export function useAgentSharedMaterial<T = unknown>(path?: string): AgentProject
     useShallow((state) => {
       const entry = state.sessions[sessionId];
       return {
-        generation: entry?.viewEpoch ?? 0,
+        generation: entry?.viewEpoch ?? 0n,
         value: selectFromShared<T>(entry?.view.shared ?? EMPTY_AGENT_SESSION_VIEW.shared, path),
       };
     }),

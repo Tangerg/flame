@@ -80,8 +80,8 @@ func mcpServerDetail(server mcp.Server) string {
 			lines = append(lines, "environment  "+formatMaskedMap(server.Connection.EnvironmentMasked))
 		}
 	}
-	if server.TimeoutSeconds > 0 {
-		lines = append(lines, fmt.Sprintf("timeout      %ds", server.TimeoutSeconds))
+	if seconds, bounded := server.HandshakeTimeout.Seconds(); bounded {
+		lines = append(lines, fmt.Sprintf("handshake timeout  %ds", seconds))
 	}
 	if len(server.DisabledTools) > 0 {
 		lines = append(lines, "disabled     "+strings.Join(server.DisabledTools, ", "))
@@ -215,7 +215,7 @@ func (a *app) EditMCPServer(serverName string) error {
 				a.message("load MCP server failed: " + err.Error())
 				return
 			}
-			if presentation != a.sessionContext {
+			if !a.sessionContext.current(presentation) {
 				a.message("MCP server loaded after the active session changed; reopen the editor to continue")
 				return
 			}
@@ -247,7 +247,7 @@ func (a *app) runMCPServerOperation(label string, change func(context.Context) (
 			return
 		}
 		a.message(label + " complete")
-		if presentation != a.sessionContext {
+		if !a.sessionContext.current(presentation) {
 			return
 		}
 		a.setRuntimeReader(runtimeReaderMCPServers)
@@ -348,7 +348,7 @@ func (a *app) AuthorizeMCPServer(server string) error {
 				a.message("start MCP authorization failed: " + err.Error())
 				return
 			}
-			if presentation == a.sessionContext {
+			if a.sessionContext.current(presentation) {
 				a.mcpAuthorizationID = attempt.ID
 				a.setRuntimeReader(runtimeReaderMCPAuthorization)
 				a.workspaceReader = workspaceReaderNone
@@ -416,7 +416,10 @@ func (m mcpAuthorizationObserver) observe(
 				return mcp.AuthorizationAttempt{}, err
 			}
 			failures++
-			delay = m.recovery.Delay(failures)
+			delay, err = m.recovery.Delay(failures)
+			if err != nil {
+				return mcp.AuthorizationAttempt{}, err
+			}
 			continue
 		}
 		if err := next.Validate(); err != nil {

@@ -43,6 +43,7 @@ import type {
   ListApprovalRulesResult,
   ListFilesRequest,
   ListItemsResponse,
+  ListSessionsRequest,
   MCPAuthorizationAttempt,
   MCPServer,
   MCPTestResult,
@@ -105,7 +106,12 @@ import type {
   WorkspaceSummary,
 } from "@flame/runtime-contract/wire";
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
-import { createAutoPagingPromise, type AutoPagingPromise, type CursorPage } from "./pagination";
+import {
+  createAutoPagingPromise,
+  SDK_PAGINATION_POLICY,
+  type AutoPagingPromise,
+  type CursorPage,
+} from "./pagination";
 import {
   wireMethodIsPaginated,
   wireMethodRequiresIdempotency,
@@ -237,7 +243,7 @@ export interface Methods {
     discover: (signal?: AbortSignal) => Promise<DiscoverResponse>;
   };
   sessions: {
-    list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
+    list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Session>;
     // One transactionally coherent material read for a mounted Session. This is
     // deliberately distinct from the independently pageable resource methods:
@@ -306,8 +312,8 @@ export interface Methods {
     ) => AutoPagingPromise<Page<RunRef>>;
   };
   plan: {
-    // The Plan's cold read (§5.6). A session with no plan yet answers with revision
-    // 0 and no steps — the same shape plan.updated pushes.
+    // The Plan's cold read (§5.3). An unwritten Session omits state; an explicit
+    // clear returns a committed state with a positive revision and no steps.
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Plan>;
   };
   interrupts: {
@@ -538,6 +544,11 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
 }
 
 export function createMethods(client: RpcClient, options: MethodsOptions = {}): Methods {
+  const runEventStreamOptions = (signal?: AbortSignal) => ({
+    signal,
+    replayLimits: options.capabilities?.()?.limits.runReplay,
+  });
+
   // Every outbound call passes the preflight, because the alternative is a
   // round-trip whose only possible answer is the refusal we already hold.
   const refuse = <M extends WireMethodName>(
@@ -652,11 +663,15 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
   ): WireCallResult<M> => {
     if (wireMethodIsPaginated(method)) {
       const initialCursor = (params as { cursor?: string }).cursor;
-      return createAutoPagingPromise<CursorPage>((cursor) => {
-        const continuation = { ...params, cursor } as WireParams<M> & { cursor?: string };
-        if (cursor === undefined) delete continuation.cursor;
-        return invoke<M>(method, continuation, callOptions) as unknown as Promise<CursorPage>;
-      }, initialCursor) as unknown as WireCallResult<M>;
+      return createAutoPagingPromise<CursorPage>(
+        (cursor) => {
+          const continuation = { ...params, cursor } as WireParams<M> & { cursor?: string };
+          if (cursor === undefined) delete continuation.cursor;
+          return invoke<M>(method, continuation, callOptions) as unknown as Promise<CursorPage>;
+        },
+        SDK_PAGINATION_POLICY,
+        initialCursor,
+      ) as unknown as WireCallResult<M>;
     }
     return invoke(method, params, callOptions) as WireCallResult<M>;
   }) as WireCall;
@@ -704,12 +719,12 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           "runs.start",
           params,
           async (idempotencyKey, attempt) => {
-            // Subscribe BEFORE the POST, then bind the tree to the runtime-assigned
+            // Subscribe BEFORE the POST, then bind the response to the runtime-assigned
             // root segmentId. Under streamable HTTP the response + its event frames
             // arrive on the same ordered stream, so the first events follow the
             // response immediately; binding only after `call` resolves could drop
             // the head (see streamRunEvents).
-            const stream = streamRunEvents(client, attempt.signal);
+            const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
             const result = await callOrDispose(stream, () =>
               perform("runs.start", params, {
                 signal: stream.requestSignal,
@@ -718,7 +733,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 onRequestRpcId: stream.bindRequest,
               }),
             );
-            stream.bind(result.runId, result.segmentId);
+            stream.bind(result.segmentId);
             return { result, events: stream.events };
           },
           signal,
@@ -728,8 +743,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           "runs.resume",
           params,
           async (idempotencyKey, attempt) => {
-            // A resume opens a NEW segment of the SAME run — bind the tree to it.
-            const stream = streamRunEvents(client, attempt.signal);
+            // A resume opens a NEW segment of the SAME run — bind the response to it.
+            const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
             const result = await callOrDispose(stream, () =>
               perform("runs.resume", params, {
                 signal: stream.requestSignal,
@@ -738,15 +753,15 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 onRequestRpcId: stream.bindRequest,
               }),
             );
-            stream.bind(result.runId, result.segmentId);
+            stream.bind(result.segmentId);
             return { result, events: stream.events };
           },
           signal,
         ),
       subscribe: async (params, signal, options) => {
-        // Reattach to the segment the caller named; the ack echoes it, and the tree
-        // binds to it (same deferred-bind head-drop guard).
-        const stream = streamRunEvents(client, signal);
+        // Reattach to the segment the caller named; the ack echoes it, and the
+        // response binds to it (same deferred-bind head-drop guard).
+        const stream = streamRunEvents(client, runEventStreamOptions(signal));
         const result = await callOrDispose(stream, () =>
           call("runs.subscribe", params, {
             signal: stream.requestSignal,
@@ -754,7 +769,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
             onRequestRpcId: stream.bindRequest,
           }),
         );
-        stream.bind(result.runId, result.segmentId);
+        stream.bind(result.segmentId);
         return { result, events: stream.events };
       },
       cancel: (runId, reason) => call("runs.cancel", { runId, reason }),

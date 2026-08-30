@@ -6,7 +6,7 @@ export type AsyncFeedback =
 /**
  * Drive an inline async-operation indicator with stale-result de-racing.
  *
- * A monotonic token guards every {@link run}: a result whose token is no longer
+ * An exact lease guards every {@link run}: a result whose lease is no longer
  * current — a newer run started, or `reset` bumped it — is dropped, so a slow
  * operation cannot overwrite feedback for a newer intent or replacement resource.
  * An optional material generation retires both completed feedback and in-flight
@@ -16,7 +16,7 @@ export type AsyncFeedback =
  */
 export function useAsyncFeedback(materialGeneration?: unknown) {
   const generation = useRef(materialGeneration);
-  const seq = useRef(0);
+  const lease = useRef<object>({});
   const [material, setMaterial] = useState<{ generation: unknown; feedback: AsyncFeedback }>(
     () => ({
       generation: materialGeneration,
@@ -26,7 +26,7 @@ export function useAsyncFeedback(materialGeneration?: unknown) {
   useLayoutEffect(() => {
     if (Object.is(generation.current, materialGeneration)) return;
     generation.current = materialGeneration;
-    seq.current++;
+    lease.current = {};
   }, [materialGeneration]);
   const feedback = Object.is(material.generation, materialGeneration)
     ? material.feedback
@@ -37,7 +37,7 @@ export function useAsyncFeedback(materialGeneration?: unknown) {
   };
 
   const reset = () => {
-    seq.current++;
+    lease.current = {};
     publish({ state: "idle" });
   };
 
@@ -48,15 +48,17 @@ export function useAsyncFeedback(materialGeneration?: unknown) {
     fallback: string,
     ignoreError?: (error: unknown) => boolean,
   ) => {
-    const token = ++seq.current;
+    const admittedLease = (lease.current = {});
     const admittedGeneration = generation.current;
     publish({ state: "busy" });
     try {
       const r = await op();
-      if (seq.current !== token || !Object.is(generation.current, admittedGeneration)) return;
+      if (lease.current !== admittedLease || !Object.is(generation.current, admittedGeneration))
+        return;
       publish(r.ok ? { state: "ok" } : { state: "error", reason: r.error ?? fallback });
     } catch (err) {
-      if (seq.current !== token || !Object.is(generation.current, admittedGeneration)) return;
+      if (lease.current !== admittedLease || !Object.is(generation.current, admittedGeneration))
+        return;
       if (ignoreError?.(err)) {
         publish({ state: "idle" });
         return;

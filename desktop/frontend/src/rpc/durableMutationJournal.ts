@@ -1,6 +1,12 @@
 const JOURNAL_VERSION = 2;
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
+const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
+const JOURNAL_ENTRY_FIELD_COUNT = 7;
+const MAX_IDENTITY_LENGTH = 255;
+const FINGERPRINT_HEX_LENGTH = 32;
+const MILLISECONDS_PER_SECOND = 1_000;
+const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
 
 export interface MutationJournalStorage {
   get(key: string): unknown;
@@ -80,13 +86,13 @@ function validEntry(value: unknown): value is JournalEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<JournalEntry>;
   return (
-    Object.keys(value).length === 7 &&
+    Object.keys(value).length === JOURNAL_ENTRY_FIELD_COUNT &&
     entry.version === JOURNAL_VERSION &&
-    validText(entry.salt, 255) &&
-    validText(entry.namespace, 255) &&
+    validText(entry.salt, MAX_IDENTITY_LENGTH) &&
+    validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
     typeof entry.fingerprint === "string" &&
-    /^[0-9a-f]{32}$/.test(entry.fingerprint) &&
-    validText(entry.idempotencyKey, 255) &&
+    FINGERPRINT_PATTERN.test(entry.fingerprint) &&
+    validText(entry.idempotencyKey, MAX_IDENTITY_LENGTH) &&
     typeof entry.createdAt === "number" &&
     Number.isFinite(entry.createdAt) &&
     typeof entry.expiresAt === "number" &&
@@ -102,7 +108,7 @@ function entryKey(idempotencyKey: string): string {
 function validScope(scope: MutationJournalScope | null | undefined): scope is MutationJournalScope {
   if (!scope) return false;
   return (
-    validText(scope.namespace, 255) &&
+    validText(scope.namespace, MAX_IDENTITY_LENGTH) &&
     Number.isInteger(scope.retentionSeconds) &&
     scope.retentionSeconds > 0
   );
@@ -207,6 +213,10 @@ function fingerprint(value: string): string {
   return hex(h1) + hex(h2) + hex(h3) + hex(h4);
 }
 
+function fingerprintFields(...fields: readonly string[]): string {
+  return fields.join(FINGERPRINT_FIELD_SEPARATOR);
+}
+
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
     left.version === right.version &&
@@ -257,7 +267,7 @@ export function openDurableMutationJournal(
     }
     const effectiveExpiry = Math.min(
       entry.expiresAt,
-      entry.createdAt + scope.retentionSeconds * 1_000,
+      entry.createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
     );
     if (effectiveExpiry <= options.now()) {
       throw new MutationJournalError("Runtime mutation identity expired before delivery");
@@ -268,11 +278,11 @@ export function openDurableMutationJournal(
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
       if (!validScope(scope)) return undefined;
-      if (preferredKey !== undefined && !validText(preferredKey, 255)) {
+      if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
       const currentTime = options.now();
-      const retentionMs = scope.retentionSeconds * 1_000;
+      const retentionMs = scope.retentionSeconds * MILLISECONDS_PER_SECOND;
       let entries = loadEntries(options.storage);
       for (const entry of entries) {
         if (entry.expiresAt <= currentTime || entry.namespace !== scope.namespace) {
@@ -280,10 +290,10 @@ export function openDurableMutationJournal(
         }
       }
       entries = loadEntries(options.storage);
-      const canonicalCommand = `${method}\u0000${canonicalJSON(params)}`;
+      const canonicalCommand = fingerprintFields(method, canonicalJSON(params));
       const matches = (entry: JournalEntry) =>
         entry.namespace === scope.namespace &&
-        entry.fingerprint === fingerprint(`${entry.salt}\u0000${canonicalCommand}`);
+        entry.fingerprint === fingerprint(fingerprintFields(entry.salt, canonicalCommand));
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -311,7 +321,7 @@ export function openDurableMutationJournal(
           version: JOURNAL_VERSION,
           salt,
           namespace: scope.namespace,
-          fingerprint: fingerprint(`${salt}\u0000${canonicalCommand}`),
+          fingerprint: fingerprint(fingerprintFields(salt, canonicalCommand)),
           idempotencyKey: preferredKey ?? crypto.randomUUID(),
           createdAt: currentTime,
           expiresAt: currentTime + retentionMs,

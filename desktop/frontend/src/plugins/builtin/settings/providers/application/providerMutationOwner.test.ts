@@ -3,7 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { ProviderMutationOwner } from "./providerMutationOwner";
 import type { ProviderGateway } from "./ports/providerGateway";
 import { MODELS_KEY, PROVIDERS_KEY } from "./providerQueries";
-import type { ProviderConfiguration } from "./providerModels";
+import { ProviderConfiguration, type ProviderConfigurationSnapshot } from "./providerModels";
 
 let owner: ProviderMutationOwner | undefined;
 
@@ -19,13 +19,13 @@ describe("ProviderMutationOwner", () => {
   it("publishes one material generation for install, Runtime replacement, and final disposal", () => {
     const start = ProviderMutationOwner.materialGeneration();
     owner = ProviderMutationOwner.install({} as ProviderGateway);
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 1);
+    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 1n);
 
     owner.replaceRuntimeGeneration();
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 2);
+    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 2n);
 
     owner.dispose();
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 3);
+    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 3n);
     owner = undefined;
   });
 
@@ -40,11 +40,11 @@ describe("ProviderMutationOwner", () => {
 
     const inFlight = owner.updateProvider({
       provider: "openai-compatible",
-      baseUrl: "https://retired.example.test/v1",
+      baseUrl: { type: "set", value: "https://retired.example.test/v1" },
     });
     const queued = owner.updateProvider({
       provider: "openai-compatible",
-      baseUrl: "https://queued.example.test/v1",
+      baseUrl: { type: "set", value: "https://queued.example.test/v1" },
     });
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
@@ -66,7 +66,7 @@ describe("ProviderMutationOwner", () => {
     await expect(
       owner.updateProvider({
         provider: "openai-compatible",
-        baseUrl: "https://successor.example.test/v1",
+        baseUrl: { type: "set", value: "https://successor.example.test/v1" },
       }),
     ).resolves.toEqual(provider({ baseUrl: "https://successor.example.test/v1" }));
     expect(updateProvider).toHaveBeenCalledTimes(2);
@@ -81,10 +81,13 @@ describe("ProviderMutationOwner", () => {
     );
     owner = ProviderMutationOwner.install({ updateProvider } as unknown as ProviderGateway);
 
-    const blocked = owner.updateProvider({ provider: "openai", baseUrl: "https://blocked.test" });
+    const blocked = owner.updateProvider({
+      provider: "openai",
+      baseUrl: { type: "set", value: "https://blocked.test" },
+    });
     const independent = owner.updateProvider({
       provider: "deepseek",
-      baseUrl: "https://independent.test",
+      baseUrl: { type: "set", value: "https://independent.test" },
     });
 
     await vi.waitFor(() => expect(updateProvider).toHaveBeenCalledTimes(2));
@@ -102,7 +105,10 @@ describe("ProviderMutationOwner", () => {
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("read unavailable"));
 
     await expect(
-      owner.updateProvider({ provider: saved.id, baseUrl: saved.baseUrl }),
+      owner.updateProvider({
+        provider: saved.id,
+        baseUrl: { type: "set", value: saved.baseUrl! },
+      }),
     ).resolves.toEqual(saved);
     expect(queryClient.getQueryData([PROVIDERS_KEY])).toEqual([saved]);
   });
@@ -122,16 +128,16 @@ describe("ProviderMutationOwner", () => {
   });
 });
 
-function provider(overrides: Partial<ProviderConfiguration> = {}): ProviderConfiguration {
-  return {
+function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): ProviderConfiguration {
+  return ProviderConfiguration.restore({
     id: "openai-compatible",
-    baseUrl: "",
-    apiKeyMasked: "",
+    configured: false,
+    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     embeddingCapable: true,
     defaultEmbeddingModel: "embed-1",
     ...overrides,
-  };
+  });
 }
 
 function deferred<T>() {

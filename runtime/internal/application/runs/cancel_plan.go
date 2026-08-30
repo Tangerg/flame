@@ -308,6 +308,21 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 	if plan == nil {
 		return errors.New("runs: waiting cancellation plan is required")
 	}
+	if err := c.loadWaitingCancellationSpawningItem(ctx, plan); err != nil {
+		return err
+	}
+	targetRunIDs := cancellationTargetRunIDs(plan.targetSubtree)
+	seenToolItems, err := c.loadWaitingCancellationInterruptItems(ctx, plan, targetRunIDs)
+	if err != nil {
+		return err
+	}
+	return c.loadWaitingCancellationDrainedItems(ctx, plan, targetRunIDs, seenToolItems)
+}
+
+func (c *Coordinator) loadWaitingCancellationSpawningItem(
+	ctx context.Context,
+	plan *cancellationPlan,
+) error {
 	item, found, err := c.items.Item(ctx, plan.target.run.Lineage().SpawnedByItemID)
 	if err != nil {
 		return fmt.Errorf(
@@ -328,10 +343,22 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 	}
 	plan.spawningItem = item
 	plan.hasSpawningItem = true
-	targetRunIDs := make(map[string]struct{}, len(plan.targetSubtree))
-	for _, member := range plan.targetSubtree {
+	return nil
+}
+
+func cancellationTargetRunIDs(subtree []cancellationRun) map[string]struct{} {
+	targetRunIDs := make(map[string]struct{}, len(subtree))
+	for _, member := range subtree {
 		targetRunIDs[member.run.ID()] = struct{}{}
 	}
+	return targetRunIDs
+}
+
+func (c *Coordinator) loadWaitingCancellationInterruptItems(
+	ctx context.Context,
+	plan *cancellationPlan,
+	targetRunIDs map[string]struct{},
+) (map[string]struct{}, error) {
 	seenToolItems := make(map[string]struct{})
 	for _, request := range plan.pending.Interrupts {
 		if _, targeted := targetRunIDs[request.RunID]; !targeted {
@@ -339,7 +366,7 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 		}
 		item, found, err := c.items.Item(ctx, request.ItemID)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"runs: read waiting interrupt Item %q for Run %q: %w",
 				request.ItemID,
 				request.RunID,
@@ -347,20 +374,29 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 			)
 		}
 		if !found {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"runs: waiting interrupt Item %q for Run %q is missing",
 				request.ItemID,
 				request.RunID,
 			)
 		}
 		if err := validateWaitingCancellationInterruptItem(*plan, request, item); err != nil {
-			return err
+			return nil, err
 		}
 		plan.targetInterruptItems = append(plan.targetInterruptItems, item)
 		if item.Kind() == transcript.ToolCall {
 			seenToolItems[item.ID()] = struct{}{}
 		}
 	}
+	return seenToolItems, nil
+}
+
+func (c *Coordinator) loadWaitingCancellationDrainedItems(
+	ctx context.Context,
+	plan *cancellationPlan,
+	targetRunIDs map[string]struct{},
+	seenToolItems map[string]struct{},
+) error {
 	for _, continuation := range plan.pending.Continuations {
 		if _, targeted := targetRunIDs[continuation.RunID]; !targeted {
 			continue

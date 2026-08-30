@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
@@ -61,8 +62,8 @@ type Transactor func(context.Context, func(context.Context) error) error
 // this adapter assigns neither revision nor update time.
 type planProjection interface {
 	List(ctx context.Context, sessionID string) ([]plan.Step, error)
-	State(ctx context.Context, sessionID string) (plan.State, error)
-	Save(ctx context.Context, sessionID string, expectedRevision uint64, replacement plan.State) error
+	State(ctx context.Context, sessionID string) (plan.Current, error)
+	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
 	DeleteSession(ctx context.Context, sessionID string) error
 }
 
@@ -79,7 +80,7 @@ type childRunStartReservationCleaner interface {
 }
 
 type goalStore interface {
-	Get(ctx context.Context, sessionID string) (goal.Goal, bool, error)
+	Get(ctx context.Context, sessionID string) (goal.Current, error)
 	Clear(ctx context.Context, sessionID string) error
 	RecordRun(ctx context.Context, record goal.RunRecord) error
 }
@@ -126,7 +127,7 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		if err != nil {
 			return err
 		}
-		var state plan.State
+		var state plan.Current
 		if s.plan != nil {
 			state, err = s.plan.State(ctx, sessionID)
 			if err != nil {
@@ -135,10 +136,11 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		}
 		var currentGoal *goal.Goal
 		if s.goals != nil {
-			stored, found, err := s.goals.Get(ctx, sessionID)
+			current, err := s.goals.Get(ctx, sessionID)
 			if err != nil {
 				return err
 			}
+			stored, found := current.Goal()
 			if found {
 				stored = stored.Clone()
 				currentGoal = &stored
@@ -356,7 +358,7 @@ func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID strin
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("persistence: invalid Plan replacement: %w", err)
 	}
-	return s.plan.Save(ctx, sessionID, replacement.ExpectedRevision(), replacement.State())
+	return s.plan.Save(ctx, sessionID, replacement.ExpectedVersion(), replacement.State())
 }
 
 func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Run) error {
@@ -382,8 +384,8 @@ func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresu
 
 // ApplyDelete removes all durable state for the addressed session.
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
-	if deletion.SessionID == "" {
-		return errors.New("persistence: delete plan has no session")
+	if _, err := resourceid.ParseSession(deletion.SessionID); err != nil {
+		return fmt.Errorf("persistence: delete plan: %w", err)
 	}
 	return s.tx(ctx, func(ctx context.Context) error {
 		return s.deleteSession(ctx, deletion.SessionID)

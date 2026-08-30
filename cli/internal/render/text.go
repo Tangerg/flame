@@ -34,9 +34,8 @@ type Text struct {
 	err   error
 	scope runScope
 
-	// streaming contains assistant blocks whose block-zero deltas are written
-	// straight through. Later indexed blocks stay buffered until authoritative
-	// completion so interleaved content cannot be emitted in the wrong order.
+	// streaming contains assistant blocks whose ordered deltas are written
+	// straight through until authoritative completion reconciles the result.
 	streaming map[string]*plainTextStream
 	// pending collects blocks that print only on completion. Retaining the kind
 	// lets this projection enforce the same delta semantics as the aggregate.
@@ -118,7 +117,7 @@ func (t *Text) renderEvent(envelope agent.RunEvent) {
 	case agent.BlockCompleted:
 		t.finish(event.Block)
 	case agent.PlanChanged:
-		t.plan(event.Items)
+		t.plan(event.Plan.Items())
 	case agent.RunInterrupted:
 		for _, interaction := range event.Interactions {
 			t.showInteraction(interaction)
@@ -166,21 +165,15 @@ func (t *Text) begin(b agent.Block) {
 func (t *Text) delta(runID string, d agent.BlockDelta) {
 	key := streamBlockKey(runID, d.BlockID)
 	if stream := t.streaming[key]; stream != nil {
-		if _, err := stream.text.Apply(d); err != nil {
+		if err := stream.text.Apply(d); err != nil {
 			t.err = fmt.Errorf("render text delta %s: %w", d.BlockID, err)
 			return
 		}
-		if d.ContentIndex == nil || *d.ContentIndex == 0 {
-			t.write(d.Text)
-			stream.emitted.WriteString(d.Text)
-		}
+		t.write(d.Text)
+		stream.emitted.WriteString(d.Text)
 		return
 	}
 	if pending := t.pending[key]; pending != nil {
-		if d.ContentIndex != nil {
-			t.err = fmt.Errorf("render text delta %s: %s block has a content index", d.BlockID, pending.kind)
-			return
-		}
 		pending.body.WriteString(d.Text)
 	}
 }
@@ -311,7 +304,7 @@ func (t *Text) renderCompletedBlock(b agent.Block, text string) {
 }
 
 func streamBlockKey(runID, blockID string) string {
-	return runID + "\x00" + blockID
+	return (agent.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
 func (t *Text) userBlock(block agent.Block, text string) {

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -69,6 +68,10 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
+	runOptions, err := config.RunOptions()
+	if err != nil {
+		return err
+	}
 	workspacePath, err := resolveWorkspace(cmd)
 	if err != nil {
 		return err
@@ -86,25 +89,22 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
+	replayPolicy, err := runtimeprofile.CommandReplayPolicy(services.RuntimeProfile)
+	if err != nil {
+		return fmt.Errorf("runtime command replay policy: %w", err)
+	}
 	return oneshot.Execute(cmd.Context(), oneshot.Invocation{
 		Runtime:  runtime,
 		Renderer: newRunRenderer(cmd, format),
 		Start: agent.StartRun{
 			SessionID: opened.Session.ID,
 			Message:   message,
-			Options:   config.RunOptions(),
+			Options:   runOptions,
 		},
 		ApproveAll:        r.approveAll,
 		ReconnectAttempts: config.UI.ReconnectAttempts,
-		ReplayRetention:   runtimeReplayRetention(services.RuntimeProfile),
+		ReplayPolicy:      replayPolicy,
 	})
-}
-
-func runtimeReplayRetention(profile *runtimeprofile.Profile) time.Duration {
-	if profile == nil {
-		return 0
-	}
-	return time.Duration(profile.Limits.IdempotencyRetentionSeconds) * time.Second
 }
 
 type outputFormat string
@@ -179,7 +179,7 @@ func completeRunFile(cmd *cobra.Command, _ []string, toComplete string) ([]strin
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	matches, err := resolver.Complete(cmd.Context(), toComplete, attachment.DefaultCompletionLimit)
+	matches, err := resolver.Complete(cmd.Context(), toComplete)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

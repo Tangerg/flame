@@ -4,6 +4,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -22,7 +23,7 @@ var (
 )
 
 func loadServerInfo() {
-	loaded = protocol.ServerInfo{Name: "runtime", Version: "dev"}
+	loaded = protocol.ServerInfo{Name: productidentity.Name, Version: "dev"}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return

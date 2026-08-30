@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -48,6 +49,55 @@ var runCreatedAt = time.Unix(1, 0).UTC()
 
 func runDraft(runID, sessionID string) run.Draft {
 	return run.Draft{RunID: runID, SessionID: sessionID, SegmentID: "seg_open", CreatedAt: runCreatedAt}
+}
+
+func TestRunLimitColumnsPreservePresenceWithoutNumericSentinels(t *testing.T) {
+	database, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	store := sqlite.NewRunStore(database)
+
+	unlimited := runDraft("run_unlimited", "session_unlimited")
+	if err := store.Admit(t.Context(), unlimited); err != nil {
+		t.Fatalf("Admit unlimited: %v", err)
+	}
+	limited := runDraft("run_limited", "session_limited")
+	limited.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(12)})
+	if err := store.Admit(t.Context(), limited); err != nil {
+		t.Fatalf("Admit limited: %v", err)
+	}
+
+	readColumns := func(runID string) (sql.NullInt64, sql.NullInt64, sql.NullFloat64) {
+		t.Helper()
+		var tokens, steps sql.NullInt64
+		var budget sql.NullFloat64
+		if err := database.QueryRowContext(t.Context(),
+			`SELECT max_total_tokens, max_steps, max_budget_usd FROM runs WHERE run_id = ?`, runID,
+		).Scan(&tokens, &steps, &budget); err != nil {
+			t.Fatalf("read limits for %s: %v", runID, err)
+		}
+		return tokens, steps, budget
+	}
+	if tokens, steps, budget := readColumns(unlimited.RunID); tokens.Valid || steps.Valid || budget.Valid {
+		t.Fatalf("unlimited columns = (%+v, %+v, %+v), want all NULL", tokens, steps, budget)
+	}
+	if tokens, steps, budget := readColumns(limited.RunID); tokens.Valid || !steps.Valid || steps.Int64 != 12 || budget.Valid {
+		t.Fatalf("limited columns = (%+v, %+v, %+v), want only max_steps=12", tokens, steps, budget)
+	}
+
+	for _, column := range []string{"max_total_tokens", "max_steps", "max_budget_usd"} {
+		if _, err := database.ExecContext(t.Context(),
+			`UPDATE runs SET `+column+` = 0 WHERE run_id = ?`, limited.RunID,
+		); err == nil {
+			t.Fatalf("storage accepted numeric zero sentinel in %s", column)
+		}
+	}
+	loaded, found, err := store.Run(t.Context(), limited.RunID)
+	if err != nil || !found || loaded.Limits() != limited.Limits {
+		t.Fatalf("loaded limited run = (%+v, %v, %v), want exact policy", loaded, found, err)
+	}
 }
 
 // finishedRun is the terminal record a segment hands to Terminalize: the outcome
@@ -511,12 +561,12 @@ func TestEventCommitMarkerDoesNotCrossSuspendResumeGeneration(t *testing.T) {
 		t.Fatalf("Admit: %v", err)
 	}
 	if err := store.RecordRunCommit(
-		ctx, "ses_A", "run_1", "seg_open", "event_commit_old",
+		ctx, "ses_A", "run_1", "seg_open", testCommitID("run_commit_event_old"),
 	); err != nil {
 		t.Fatalf("RecordRunCommit: %v", err)
 	}
 	matched, err := store.RunCommitCommitted(
-		ctx, "ses_A", "run_1", "seg_open", "event_commit_old",
+		ctx, "ses_A", "run_1", "seg_open", testCommitID("run_commit_event_old"),
 	)
 	if err != nil || !matched {
 		t.Fatalf("active marker matched=%t err=%v, want true/nil", matched, err)
@@ -525,7 +575,7 @@ func TestEventCommitMarkerDoesNotCrossSuspendResumeGeneration(t *testing.T) {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	matched, err = store.RunCommitCommitted(
-		ctx, "ses_A", "run_1", "seg_open", "event_commit_old",
+		ctx, "ses_A", "run_1", "seg_open", testCommitID("run_commit_event_old"),
 	)
 	if err != nil || matched {
 		t.Fatalf("suspended marker matched=%t err=%v, want false/nil", matched, err)
@@ -536,18 +586,18 @@ func TestEventCommitMarkerDoesNotCrossSuspendResumeGeneration(t *testing.T) {
 		t.Fatalf("Resume: %v", resumeErr)
 	}
 	matched, err = store.RunCommitCommitted(
-		ctx, "ses_A", "run_1", "seg_open", "event_commit_old",
+		ctx, "ses_A", "run_1", "seg_open", testCommitID("run_commit_event_old"),
 	)
 	if err != nil || matched {
 		t.Fatalf("resumed old marker matched=%t err=%v, want false/nil", matched, err)
 	}
 	if recordRunCommitErr := store.RecordRunCommit(
-		ctx, "ses_A", "run_1", "seg_next", "event_commit_next",
+		ctx, "ses_A", "run_1", "seg_next", testCommitID("run_commit_event_next"),
 	); recordRunCommitErr != nil {
 		t.Fatalf("RecordRunCommit next: %v", recordRunCommitErr)
 	}
 	matched, err = store.RunCommitCommitted(
-		ctx, "ses_A", "run_1", "seg_next", "event_commit_next",
+		ctx, "ses_A", "run_1", "seg_next", testCommitID("run_commit_event_next"),
 	)
 	if err != nil || !matched {
 		t.Fatalf("next marker matched=%t err=%v, want true/nil", matched, err)

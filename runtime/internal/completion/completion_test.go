@@ -29,3 +29,15 @@ func TestWaitReportsCancellationWhileCompletionIsPending(t *testing.T) {
 		t.Fatalf("Wait() = %v, want context.Canceled", err)
 	}
 }
+
+func TestWaitPreservesTheOwnerCancellationCause(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("runtime owner stopped")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(want)
+
+	if err := Wait(ctx, make(chan struct{})); !errors.Is(err, want) {
+		t.Fatalf("Wait() = %v, want owner cause", err)
+	}
+}

@@ -9,9 +9,8 @@ import (
 const PlanGet Name = "plan.get"
 
 func registerPlan(registry *Registry) {
-	// The Plan's cold read. A session with no list yet answers with the empty Plan at
-	// revision 0 — "nothing written" is a fact, and
-	// only a session that does not exist is an error.
+	// The Plan's cold read. A Session with no committed replacement answers with
+	// an explicit unwritten value; only a Session that does not exist is an error.
 	registry.Query(MethodMeta{
 		Name:            PlanGet,
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},

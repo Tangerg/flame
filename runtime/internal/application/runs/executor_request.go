@@ -83,14 +83,14 @@ func (e *executorRequest[T]) await(ctx context.Context) (T, error) {
 	case executorRequestPending:
 		e.state = executorRequestCanceled
 		e.mu.Unlock()
-		return zero, ctx.Err()
+		return zero, context.Cause(ctx)
 	case executorRequestClaimed, executorRequestCompleted:
 		e.mu.Unlock()
 		result := <-e.result
 		return result.value, result.err
 	case executorRequestCanceled:
 		e.mu.Unlock()
-		return zero, ctx.Err()
+		return zero, context.Cause(ctx)
 	default:
 		e.mu.Unlock()
 		return zero, errors.New("runs: executor request has an invalid state")

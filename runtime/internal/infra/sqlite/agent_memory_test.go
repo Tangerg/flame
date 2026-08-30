@@ -25,6 +25,16 @@ func newAgentMemoryStore(t *testing.T) *sqlite.AgentMemoryStore {
 	return sqlite.NewAgentMemoryStore(db)
 }
 
+func storedAgentMemoryItemID(index int) agentmemory.ItemID {
+	suffixCharacters := agentmemory.MaximumItemIDCharacters - len(agentmemory.ItemIDPrefix)
+	raw := fmt.Sprintf("%s%0*x", agentmemory.ItemIDPrefix, suffixCharacters, index)
+	id, err := agentmemory.ParseItemID(raw)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 func appendAgentFacts(t *testing.T, store *sqlite.AgentMemoryStore, project, day string, facts ...string) []agentmemory.LedgerFact {
 	t.Helper()
 	inserted, err := store.AppendLedger(t.Context(), agentmemory.FactBatch{
@@ -117,7 +127,7 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	before, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
-	idByContent := make(map[string]string, len(before))
+	idByContent := make(map[string]agentmemory.ItemID, len(before))
 	for _, item := range before {
 		idByContent[item.Content] = item.ID
 	}
@@ -127,17 +137,18 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
-	got := make(map[string]string, len(after))
+	got := make(map[string]agentmemory.ItemID, len(after))
 	for _, item := range after {
 		got[item.Content] = item.ID
 	}
-	if len(after) != 2 || got["two"] != "" {
+	if _, retained := got["two"]; len(after) != 2 || retained {
 		t.Fatalf("prune failed: %+v", after)
 	}
-	if got["one"] == "" || got["one"] != idByContent["one"] {
+	oneID, retained := got["one"]
+	if !retained || oneID != idByContent["one"] {
 		t.Fatalf("unchanged item lost its stable id: %q -> %q", idByContent["one"], got["one"])
 	}
-	if got["three"] == "" {
+	if _, inserted := got["three"]; !inserted {
 		t.Fatal("new item was not inserted")
 	}
 }
@@ -197,7 +208,7 @@ func TestAgentMemorySchemaRejectsInvalidDomainVocabulary(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	for _, test := range []struct {
+	for index, test := range []struct {
 		name   string
 		scope  string
 		origin string
@@ -213,11 +224,34 @@ func TestAgentMemorySchemaRejectsInvalidDomainVocabulary(t *testing.T) {
 			_, err := db.Exec(`INSERT INTO agent_memory_items(
 				id, scope, project, content, digest, origin, status, created_at, updated_at
 			) VALUES (?, ?, '/repo', 'fact', ?, ?, ?, 1, 1)`,
-				"mem_"+test.name, test.scope, "digest_"+test.name, test.origin, test.status)
+				storedAgentMemoryItemID(index).String(), test.scope, "digest_"+test.name, test.origin, test.status)
 			if err == nil {
 				t.Fatal("invalid agent-memory row was accepted")
 			}
 		})
+	}
+}
+
+func TestAgentMemorySchemaRejectsNonCanonicalItemIdentity(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	invalidIDs := []string{
+		"",
+		"mem_1",
+		strings.Repeat("a", agentmemory.MaximumItemIDCharacters),
+		agentmemory.ItemIDPrefix + strings.Repeat("A", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
+		agentmemory.ItemIDPrefix + strings.Repeat("g", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
+	}
+	for index, id := range invalidIDs {
+		if _, err := db.Exec(`INSERT INTO agent_memory_items(
+			id, scope, project, content, digest, origin, status, created_at, updated_at
+		) VALUES (?, 'project', '/repo', 'fact', ?, 'user', 'active', 1, 1)`, id, fmt.Sprintf("digest_%d", index)); err == nil {
+			t.Fatalf("non-canonical agent-memory identity %q was persisted", id)
+		}
 	}
 }
 
@@ -231,7 +265,7 @@ func TestAgentMemorySchemaRejectsContentBeyondDomainBound(t *testing.T) {
 	oversized := strings.Repeat("界", agentmemory.MaxContentCharacters+1)
 	if _, err := db.Exec(`INSERT INTO agent_memory_items(
 		id, scope, project, content, digest, origin, status, created_at, updated_at
-	) VALUES ('mem_oversized', 'project', '/repo', ?, 'digest', 'user', 'active', 1, 1)`, oversized); err == nil {
+	) VALUES (?, 'project', '/repo', ?, 'digest', 'user', 'active', 1, 1)`, storedAgentMemoryItemID(0).String(), oversized); err == nil {
 		t.Fatal("agent memory item beyond the Domain bound was persisted")
 	}
 	if _, err := db.Exec(`INSERT INTO agent_memory_ledger(
@@ -246,7 +280,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
 
 	item, created, err := store.Add(t.Context(), agentmemory.ScopeProject, "/repo", "always run make lint", now)
-	if err != nil || !created || item.ID == "" || item.Origin != agentmemory.OriginUser || item.Status != agentmemory.StatusActive {
+	if err != nil || !created || item.ID.Validate() != nil || item.Origin != agentmemory.OriginUser || item.Status != agentmemory.StatusActive {
 		t.Fatalf("add = (%+v, %t, %v)", item, created, err)
 	}
 	duplicate, duplicateCreated, err := store.Add(
@@ -385,7 +419,7 @@ func TestAgentMemoryListRejectsCorruptOverfullTarget(t *testing.T) {
 		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, created_at, updated_at
 		) VALUES (?, 'project', '/repo', ?, ?, 'user', 'active', 1, 1)`,
-			fmt.Sprintf("mem_%d", index), fmt.Sprintf("memory %d", index), fmt.Sprintf("digest_%d", index))
+			storedAgentMemoryItemID(index).String(), fmt.Sprintf("memory %d", index), fmt.Sprintf("digest_%d", index))
 		if err != nil {
 			_ = tx.Rollback()
 			t.Fatal(err)
@@ -442,7 +476,7 @@ func TestAgentMemoryExplicitAddRevivesRejectedProposal(t *testing.T) {
 }
 
 func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
-	const maximumRejected = 2048
+	maximumRejected := agentmemory.MaxRejectedPerTarget
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -456,16 +490,17 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, created_at, updated_at
 		) VALUES (?, 'project', '/repo', ?, ?, 'auto', 'rejected', 1, ?)`,
-			fmt.Sprintf("mem_old_%d", index), fmt.Sprintf("old rejection %d", index),
+			storedAgentMemoryItemID(index).String(), fmt.Sprintf("old rejection %d", index),
 			fmt.Sprintf("old_digest_%d", index), index+1)
 		if err != nil {
 			_ = tx.Rollback()
 			t.Fatal(err)
 		}
 	}
+	newID := storedAgentMemoryItemID(maximumRejected)
 	_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
 		id, scope, project, content, digest, origin, status, created_at, updated_at
-	) VALUES ('mem_new', 'project', '/repo', 'new rejection', 'new_digest', 'auto', 'pending', 1, 1)`)
+	) VALUES (?, 'project', '/repo', 'new rejection', 'new_digest', 'auto', 'pending', 1, 1)`, newID.String())
 	if err != nil {
 		_ = tx.Rollback()
 		t.Fatal(err)
@@ -475,7 +510,7 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 	}
 	store := sqlite.NewAgentMemoryStore(db)
 	if err := store.Review(
-		t.Context(), "mem_new", agentmemory.ReviewReject,
+		t.Context(), newID, agentmemory.ReviewReject,
 		time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC),
 	); err != nil {
 		t.Fatal(err)
@@ -490,7 +525,7 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 	}
 	var preserved int
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM agent_memory_items
-		WHERE id = 'mem_new' AND status = 'rejected'`).Scan(&preserved); err != nil || preserved != 1 {
+		WHERE id = ? AND status = 'rejected'`, newID.String()).Scan(&preserved); err != nil || preserved != 1 {
 		t.Fatalf("new rejection preserved = %d, err=%v", preserved, err)
 	}
 }
@@ -516,7 +551,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 		t.Fatalf("items for search = (%+v, %v), want 2", forSearch, err)
 	}
 	updates := make([]agentmemory.EmbeddingUpdate, 0, len(forSearch))
-	vectors := make(map[string][]float32, len(forSearch))
+	vectors := make(map[agentmemory.ItemID][]float32, len(forSearch))
 	for i, item := range forSearch {
 		vector := []float32{float32(i + 1), 0.5}
 		vectors[item.ID] = vector
@@ -563,7 +598,7 @@ func TestAgentMemorySearchCorpusIncludesUserAndExactProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := make(map[string]agentmemory.Scope, len(corpus))
+	got := make(map[agentmemory.ItemID]agentmemory.Scope, len(corpus))
 	for _, item := range corpus {
 		got[item.ID] = item.Scope
 	}

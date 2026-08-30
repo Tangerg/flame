@@ -17,10 +17,20 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
+
+func testQueueEntryID(t *testing.T, value uint64) promptqueue.EntryID {
+	t.Helper()
+	id, err := promptqueue.NewEntryID(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
 
 type finishObservingRuntime struct {
 	*recordingRuntime
@@ -158,17 +168,17 @@ func testQueueDrawer(t *testing.T, messages ...agent.Message) (*queueDrawer, *pr
 		CancelEdit: func(entry promptqueue.Entry) error {
 			return queue.Release(entry.SessionID, entry.ID)
 		},
-		Remove: func(id uint64) error {
+		Remove: func(id promptqueue.EntryID) error {
 			_, err := queue.Remove("session", id)
 			sync()
 			return err
 		},
-		Move: func(id uint64, offset int) error {
+		Move: func(id promptqueue.EntryID, offset int) error {
 			err := queue.Move("session", id, offset)
 			sync()
 			return err
 		},
-		SendNow: func(id uint64) error {
+		SendNow: func(id promptqueue.EntryID) error {
 			err := queue.Promote("session", id)
 			sync()
 			return err
@@ -200,10 +210,10 @@ func queueDrawerHit(t *testing.T, drawer *queueDrawer, target queueTarget) queue
 func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 	view := newQueueView(kit.Dark(), kit.Unicode())
 	view.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{
-		{ID: 1, Message: agent.Message{Text: "first follow-up\nwith more detail"}},
-		{ID: 2, Message: agent.Message{Text: "second follow-up"}},
-		{ID: 3, Message: agent.Message{Text: "third follow-up"}},
-		{ID: 4, Message: agent.Message{Text: "fourth follow-up"}},
+		{ID: testQueueEntryID(t, 1), Message: agent.Message{Text: "first follow-up\nwith more detail"}},
+		{ID: testQueueEntryID(t, 2), Message: agent.Message{Text: "second follow-up"}},
+		{ID: testQueueEntryID(t, 3), Message: agent.Message{Text: "third follow-up"}},
+		{ID: testQueueEntryID(t, 4), Message: agent.Message{Text: "fourth follow-up"}},
 	}})
 	if got := view.Measure(queueMinWidth - 1); got != 0 {
 		t.Fatalf("narrow queue height = %d", got)
@@ -250,22 +260,23 @@ func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
 	drawer := newQueueDrawer(kit.Dark(), kit.Unicode(), bindings.editor, nil)
 	active := true
 	drawer.lifecycle.bind(func() bool { return active })
-	removed := make([]uint64, 0, 1)
-	drawer.SetActions(queueDrawerActions{Remove: func(id uint64) error {
+	removed := make([]promptqueue.EntryID, 0, 1)
+	drawer.SetActions(queueDrawerActions{Remove: func(id promptqueue.EntryID) error {
 		removed = append(removed, id)
 		return nil
 	}})
-	drawer.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{ID: 1, Message: agent.Message{Text: "visible"}}}})
+	drawer.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{ID: testQueueEntryID(t, 1), Message: agent.Message{Text: "visible"}}}})
 	root := headless.NewRoot(drawer)
 	surface := grid.NewSurface(72, 8)
 	root.Draw(surface.View())
 
-	drawer.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{ID: 2, Message: agent.Message{Text: "replacement"}}}})
+	replacementID := testQueueEntryID(t, 2)
+	drawer.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{ID: replacementID, Message: agent.Message{Text: "replacement"}}}})
 	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 0 {
 		t.Fatalf("undrawn replacement removed entries %v", removed)
 	}
 	root.Draw(surface.View())
-	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 1 || removed[0] != 2 {
+	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 1 || removed[0] != replacementID {
 		t.Fatalf("visible replacement removed entries %v", removed)
 	}
 
@@ -521,17 +532,20 @@ func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 }
 
 func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
-	store, err := workbench.Open("", workbench.Config{})
+	store, err := workbench.OpenMemory(workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	queue := promptqueue.New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "send next"}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "send next"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
 	}
 	for _, command := range commands {
-		if err := store.StagePendingRun(workbench.PendingRun{State: workbench.PendingRunQueued, Command: command}); err != nil {
+		if err := store.StagePendingRun(workbench.PendingRun{
+			State: workbench.PendingRunQueued, Command: command,
+			Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+		}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := queue.EnqueueCommand(command.CommandID, command.SessionID, command.Message, command.Options); err != nil {
@@ -542,7 +556,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	if !ok || dispatching.CommandID != commands[0].CommandID {
 		t.Fatalf("opening reservation = %+v, %t", dispatching, ok)
 	}
-	if err := store.MarkPendingRunDispatching("session", dispatching.CommandID, workbench.ReplayGuard{}); err != nil {
+	if err := store.MarkPendingRunDispatching("session", dispatching.CommandID, commandreplay.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
 	secondID := queue.Snapshot("session").Entries[1].ID
@@ -578,18 +592,21 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 
 func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	directory := t.TempDir()
-	store, err := workbench.Open(directory, workbench.Config{})
+	store, err := workbench.OpenDirectory(directory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	queue := promptqueue.New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}},
-		{CommandID: agent.CommandID("cli_33333333333333333333333333333333"), SessionID: "session", Message: agent.Message{Text: "promote me"}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_33333333333333333333333333333333"), SessionID: "session", Message: agent.Message{Text: "promote me"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
 	}
 	for _, command := range commands {
-		if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{State: workbench.PendingRunQueued, Command: command}); stagePendingRunErr != nil {
+		if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{
+			State: workbench.PendingRunQueued, Command: command,
+			Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+		}); stagePendingRunErr != nil {
 			t.Fatal(stagePendingRunErr)
 		}
 		if _, enqueueCommandErr := queue.EnqueueCommand(command.CommandID, command.SessionID, command.Message, command.Options); enqueueCommandErr != nil {
@@ -600,7 +617,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	if !ok {
 		t.Fatal("queue did not reserve its first entry")
 	}
-	if markPendingRunDispatchingErr := store.MarkPendingRunDispatching("session", dispatching.CommandID, workbench.ReplayGuard{}); markPendingRunDispatchingErr != nil {
+	if markPendingRunDispatchingErr := store.MarkPendingRunDispatching("session", dispatching.CommandID, commandreplay.UnprotectedGuard()); markPendingRunDispatchingErr != nil {
 		t.Fatal(markPendingRunDispatchingErr)
 	}
 	before := queue.State("session")
@@ -653,7 +670,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := workbench.Open(directory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(directory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -685,13 +702,13 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 				queueView: newQueueView(kit.Dark(), kit.Unicode()), prompt: &promptView{},
 			}
 			pending := []workbench.PendingRun{
-				{State: test.state, Command: agent.StartRun{
+				{State: test.state, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(), Command: agent.StartRun{
 					CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
-					SessionID: "session", Message: agent.Message{Text: "first"},
+					SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 				}},
-				{State: workbench.PendingRunQueued, Command: agent.StartRun{
+				{State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(), Command: agent.StartRun{
 					CommandID: agent.CommandID("cli_22222222222222222222222222222222"),
-					SessionID: "session", Message: agent.Message{Text: "second"},
+					SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 				}},
 			}
 			if err := application.restorePendingQueue(pending); err != nil {
@@ -713,7 +730,9 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 
 func assertQueueStateEqual(t *testing.T, got, want promptqueue.State) {
 	t.Helper()
-	if got.DispatchingID != want.DispatchingID || len(got.Entries) != len(want.Entries) {
+	gotDispatch, gotReserved := got.DispatchingID()
+	wantDispatch, wantReserved := want.DispatchingID()
+	if gotReserved != wantReserved || (gotReserved && gotDispatch != wantDispatch) || len(got.Entries) != len(want.Entries) {
 		t.Fatalf("queue state = %+v, want %+v", got, want)
 	}
 	for index := range want.Entries {
@@ -794,7 +813,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 
 	var pending []workbench.PendingRun
 	host.Until(t, "both runtime commands to become durable", func() bool {
-		store, err := workbench.Open(stateDirectory, workbench.Config{})
+		store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 		if err != nil {
 			return false
 		}
@@ -845,7 +864,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		t.Fatalf("starts after durable recovery = %+v", inputs)
 	}
 
-	reopened, err := workbench.Open(stateDirectory, workbench.Config{})
+	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1014,7 +1033,7 @@ func TestQueueDrawerReordersAndRemovesFollowUpsBeforeDispatch(t *testing.T) {
 		host.Press(input.Enter)
 	}
 	host.Shows(t, "3 queued")
-	host.Send(input.Key{Code: input.Character, Rune: 'g', Mods: input.Ctrl})
+	host.Send(input.Key{Code: input.Character, Rune: ';', Mods: input.Ctrl})
 	host.Shows(t, "Queue · 3 prompts")
 	host.Press(input.Down)
 	host.Send(input.Key{Code: input.Character, Rune: 'K', Mods: input.Shift})
@@ -1090,7 +1109,7 @@ func TestQueueDrawerRemainsUsableOnAConstrainedTerminal(t *testing.T) {
 	if !host.Resize(32, 10) {
 		t.Fatal("resize to constrained queue layout was refused")
 	}
-	host.Send(input.Key{Code: input.Character, Rune: 'g', Mods: input.Ctrl})
+	host.Send(input.Key{Code: input.Character, Rune: ';', Mods: input.Ctrl})
 	host.Shows(t, "Queue · 1 prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "Editing queued prompt")
@@ -1126,7 +1145,7 @@ func TestEditingTheFrontPromptHoldsAutomaticDispatchUntilSave(t *testing.T) {
 	host.Shows(t, "working")
 	host.Type("ORIGINAL_QUEUED_TEXT")
 	host.Press(input.Enter)
-	host.Send(input.Key{Code: input.Character, Rune: 'g', Mods: input.Ctrl})
+	host.Send(input.Key{Code: input.Character, Rune: ';', Mods: input.Ctrl})
 	host.Shows(t, "Queue · 1 prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "Editing queued prompt")

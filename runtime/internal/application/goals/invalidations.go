@@ -38,7 +38,7 @@ type notifyingStore struct {
 func (n notifyingStore) Save(ctx context.Context, g goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
 	saved, applied, err := n.Store.Save(ctx, g, expected)
 	if err == nil && applied {
-		n.publish(g.SessionID)
+		n.publish(g.SessionID())
 	}
 	return saved, applied, err
 }

@@ -132,15 +132,21 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	if err != nil || len(changes) != 1 || changes[0].Stat() != "+4 -1" {
 		t.Fatalf("Changes = (%+v, %v)", changes, err)
 	}
-	diff, err := runtime.Diff(t.Context(), workspace.DiffRequest{Workspace: "/workspace", Format: workspace.DiffFormatRows})
+	diff, err := runtime.Diff(t.Context(), workspace.DiffRequest{
+		Workspace: "/workspace", Format: workspace.DiffFormatRows, RowLimit: workspace.DefaultDiffRowLimit(),
+	})
 	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)
 	}
-	head, err := runtime.Head(t.Context(), workspace.HeadRequest{Workspace: "/workspace", Path: "main.go"})
+	head, err := runtime.Head(t.Context(), workspace.HeadRequest{
+		Workspace: "/workspace", Path: "main.go", LineLimit: workspace.DefaultHeadLineLimit(),
+	})
 	if err != nil || len(head.Lines) != 1 {
 		t.Fatalf("Head = (%+v, %v)", head, err)
 	}
-	search, err := runtime.Search(t.Context(), workspace.SearchRequest{Workspace: "/workspace", Query: "main"})
+	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
+		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(),
+	})
 	if err != nil || search.Total != 1 || len(search.Matches) != 1 {
 		t.Fatalf("Search = (%+v, %v)", search, err)
 	}
@@ -150,10 +156,13 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		t.Fatalf("Files = (%+v, %v)", files, err)
 	}
 	if len(stub.fileCalls) != 2 || stub.fileCalls[0].Cursor != "" ||
-		stub.fileCalls[1].Cursor != "next" || stub.fileCalls[1].Limit != workspaceFilePageLimit {
+		stub.fileCalls[1].Cursor != "next" || stub.fileCalls[1].Limit == nil || *stub.fileCalls[1].Limit != workspaceFilePageLimit {
 		t.Fatalf("ListWorkspaceFiles calls = %+v", stub.fileCalls)
 	}
-	content, err := runtime.Read(t.Context(), workspace.ReadRequest{Workspace: "/workspace", Path: "main.go"})
+	content, err := runtime.Read(t.Context(), workspace.ReadRequest{
+		Workspace: "/workspace", Path: "main.go", Range: workspace.WholeFileReadRange(),
+		ByteLimit: workspace.DefaultReadByteLimit(),
+	})
 	if err != nil || content.Content != "package main\n" || content.Window() != "1 lines" {
 		t.Fatalf("Read = (%+v, %v)", content, err)
 	}
@@ -171,7 +180,9 @@ func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 	if _, err := runtime.Changes(t.Context(), "/workspace"); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("Changes error = %v, want ErrIncompatibleRuntime", err)
 	}
-	if _, err := runtime.Diff(t.Context(), workspace.DiffRequest{Workspace: "/workspace"}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.Diff(t.Context(), workspace.DiffRequest{
+		Workspace: "/workspace", RowLimit: workspace.DefaultDiffRowLimit(),
+	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("Diff error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if stub.changesCalls != 0 || stub.diffCalls != 0 {
@@ -238,7 +249,10 @@ func TestWorkspaceUnpageableListsRejectContinuation(t *testing.T) {
 func TestWorkspaceAdapterRejectsNilResponses(t *testing.T) {
 	t.Parallel()
 	runtime := &Runtime{workspaces: &workspaceBindingStub{}, meta: requestMeta("test")}
-	if _, err := runtime.Read(t.Context(), workspace.ReadRequest{Workspace: "/workspace", Path: "main.go"}); err == nil {
+	if _, err := runtime.Read(t.Context(), workspace.ReadRequest{
+		Workspace: "/workspace", Path: "main.go", Range: workspace.WholeFileReadRange(),
+		ByteLimit: workspace.DefaultReadByteLimit(),
+	}); err == nil {
 		t.Fatal("nil file content was accepted")
 	}
 }

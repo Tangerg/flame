@@ -88,10 +88,27 @@ export function toggleQuestionOption(
     const selected = current.selected.includes(label)
       ? current.selected.filter((item) => item !== label)
       : [...current.selected, label];
-    return replaceQuestionDraftEntry(draft, index, { ...current, selected });
+    return setQuestionOptions(draft, index, question, selected);
   }
 
-  return replaceQuestionDraftEntry(draft, index, { selected: [label], text: "" });
+  return setQuestionOptions(draft, index, question, [label]);
+}
+
+export function setQuestionOptions(
+  draft: QuestionDraft,
+  index: number,
+  question: ChoiceQuestionItem,
+  selected: readonly string[],
+): QuestionDraft {
+  const allowed = new Set(question.options.map((option) => option.label));
+  const unique = selected.filter(
+    (label, selectedIndex) => allowed.has(label) && selected.indexOf(label) === selectedIndex,
+  );
+  const current = draft[index] ?? EMPTY_ENTRY;
+  return replaceQuestionDraftEntry(draft, index, {
+    selected: question.multiple ? unique : unique.slice(0, 1),
+    text: question.multiple ? current.text : "",
+  });
 }
 
 export function setQuestionText(

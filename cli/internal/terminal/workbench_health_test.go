@@ -5,13 +5,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/oolong/components/kit"
-
-	"github.com/Tangerg/flame/cli/internal/settings"
 )
 
 func TestWorkbenchProblemsArePrioritizedAndClearedIndependently(t *testing.T) {
 	application := &app{
-		status: newStatusView(kit.Dark(), kit.Unicode(), settings.Default().RunOptions()),
+		status: newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t)),
 	}
 	application.status.active("working")
 	application.reportWorkbenchIssue(workbenchDraft, errors.New("draft could not be saved"))

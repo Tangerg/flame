@@ -14,8 +14,8 @@ import (
 	"github.com/Tangerg/oolong/core/text"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -281,7 +281,7 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
 		for failures := 1; ; failures++ {
-			if err := retry.Wait(ctx, runtimeRecoveryBackoff.Delay(failures)); err != nil {
+			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 				return
 			}
 			completed := false
@@ -356,9 +356,10 @@ func (a *app) persistQueuedRuns() error {
 	entries := state.Entries
 	persisted := a.workbench.PendingRuns(a.session.ID)
 	commands := make([]workbench.PendingRun, 0, len(entries))
+	dispatchingID, hasDispatch := state.DispatchingID()
 	for _, entry := range entries {
 		pendingState := workbench.PendingRunQueued
-		if entry.ID == state.DispatchingID {
+		if hasDispatch && entry.ID == dispatchingID {
 			pending, ok := pendingRunByCommandID(persisted, entry.CommandID)
 			if !ok {
 				// StartRun was already acknowledged. The UI queue retains the
@@ -379,7 +380,8 @@ func (a *app) persistQueuedRuns() error {
 			continue
 		}
 		commands = append(commands, workbench.PendingRun{
-			State: workbench.PendingRunQueued,
+			State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
+			CancelReplay: commandreplay.UnprotectedGuard(),
 			Command: agent.StartRun{
 				CommandID: entry.CommandID, SessionID: entry.SessionID,
 				Message: entry.Message.Clone(), Options: entry.Options.Clone(),
@@ -500,7 +502,7 @@ func (a *app) releaseQueuedPrompt(entry promptqueue.Entry) error {
 	return nil
 }
 
-func (a *app) removeQueuedPrompt(id uint64) error {
+func (a *app) removeQueuedPrompt(id promptqueue.EntryID) error {
 	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
@@ -517,7 +519,7 @@ func (a *app) removeQueuedPrompt(id uint64) error {
 	return nil
 }
 
-func (a *app) moveQueuedPrompt(id uint64, offset int) error {
+func (a *app) moveQueuedPrompt(id promptqueue.EntryID, offset int) error {
 	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
@@ -532,7 +534,7 @@ func (a *app) moveQueuedPrompt(id uint64, offset int) error {
 // sendQueuedNow persists priority in the queue before touching the active run.
 // Cancellation and dispatch therefore remain resumable if either runtime control
 // call is delayed or fails: the promoted entry is still the next FIFO item.
-func (a *app) sendQueuedNow(id uint64) error {
+func (a *app) sendQueuedNow(id promptqueue.EntryID) error {
 	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}

@@ -14,7 +14,7 @@ export function useMCPServerConfigs() {
   return useMCPServers();
 }
 
-export function useMCPServerMutationMaterialGeneration(): number {
+export function useMCPServerMutationMaterialGeneration(): bigint {
   return useSyncExternalStore(
     MCPServerMutationOwner.subscribeMaterialGeneration,
     MCPServerMutationOwner.materialGeneration,

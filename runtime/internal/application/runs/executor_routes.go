@@ -504,6 +504,12 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 }
 
 func validateRoutedEvent(route *executorRoute, sessionID string, routed RunEvent) error {
+	if routed == nil {
+		return fmt.Errorf("%w: route %q carries a nil event", errReducerInvariant, route.runID)
+	}
+	if err := routed.validate(); err != nil {
+		return fmt.Errorf("%w: route %q event %T: %v", errReducerInvariant, route.runID, routed, err)
+	}
 	switch event := routed.(type) {
 	case SegmentStarted:
 		return validateRouteRun(route, sessionID, event.Run)

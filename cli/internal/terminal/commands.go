@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -12,6 +13,7 @@ import (
 type registeredCommand struct {
 	category  string
 	arguments ArgumentMode
+	run       func(string)
 	evaluate  func(*app) CommandAvailability
 }
 
@@ -33,40 +35,34 @@ func (r registeredCommand) availability(host *app) (availability CommandAvailabi
 }
 
 type commandCatalog struct {
-	index         headless.Commands
-	registrations map[string]registeredCommand
+	index headless.Commands[registeredCommand]
 }
 
-func newCommandCatalog() commandCatalog {
-	return commandCatalog{registrations: make(map[string]registeredCommand)}
-}
+func newCommandCatalog() commandCatalog { return commandCatalog{} }
 
 func (c *commandCatalog) reset() {
 	for _, found := range c.index.Find("") {
 		c.index.Remove(found.Command.Name)
 	}
-	clear(c.registrations)
 }
 
 func (c *commandCatalog) add(owner string, descriptor CommandDescriptor, run func(string), evaluate func(*app) CommandAvailability) error {
 	for _, identity := range descriptor.identities() {
-		if existing, found := c.index.Lookup(identity); found {
+		if existing, _, found := c.index.Lookup(identity); found {
 			return fmt.Errorf("plugin %s command /%s conflicts with /%s", owner, descriptor.Name, existing.Name)
 		}
 	}
 	c.index.Add(headless.Command{
 		Name: descriptor.Name, Title: descriptor.Title, Aliases: descriptor.Aliases,
-		Takes: descriptor.Arguments.TakesInput(), Run: run,
+	}, registeredCommand{
+		category: descriptor.category(), arguments: descriptor.Arguments, run: run, evaluate: evaluate,
 	})
-	c.registrations[descriptor.Name] = registeredCommand{
-		category: descriptor.category(), arguments: descriptor.Arguments, evaluate: evaluate,
-	}
 	return nil
 }
 
 func (c *commandCatalog) find(query string) []headless.Found {
 	found := c.index.Find(query)
-	exact, ok := c.index.Lookup(query)
+	exact, _, ok := c.index.Lookup(query)
 	if !ok {
 		return found
 	}
@@ -85,7 +81,8 @@ func (c *commandCatalog) find(query string) []headless.Found {
 }
 
 func (c *commandCatalog) lookup(identity string) (headless.Command, bool) {
-	return c.index.Lookup(identity)
+	command, _, found := c.index.Lookup(identity)
+	return command, found
 }
 
 func (c *commandCatalog) used(name string) {
@@ -93,16 +90,24 @@ func (c *commandCatalog) used(name string) {
 }
 
 func (c *commandCatalog) category(name string) string {
-	return c.registrations[name].category
+	_, command, found := c.index.Lookup(name)
+	if !found {
+		return ""
+	}
+	return command.category
 }
 
 func (c *commandCatalog) arguments(name string) ArgumentMode {
-	return c.registrations[name].arguments
+	_, command, found := c.index.Lookup(name)
+	if !found {
+		return NoArguments
+	}
+	return command.arguments
 }
 
 func (c *commandCatalog) availability(name string, host *app) CommandAvailability {
-	command, ok := c.registrations[name]
-	if !ok {
+	_, command, found := c.index.Lookup(name)
+	if !found {
 		return CommandAvailability{Enabled: true}
 	}
 	return command.availability(host)
@@ -151,8 +156,72 @@ func (a *app) registerCommands() {
 }
 
 type commandOperation struct {
+	id       commandOperationID
 	pluginID string
-	slot     operationSlot
+}
+
+const pluginCommandOperationSlotPrefix operationSlot = "command:"
+
+var errCommandOperationIdentityExhausted = errors.New("plugin command operation identity space is exhausted")
+
+type commandOperationID uint64
+
+func (id commandOperationID) successor() (commandOperationID, bool) {
+	if id == commandOperationID(math.MaxUint64) {
+		return 0, false
+	}
+	return id + 1, true
+}
+
+func (o commandOperation) slot() operationSlot {
+	return operationSlot(fmt.Sprintf("%s%d", pluginCommandOperationSlotPrefix, o.id))
+}
+
+type commandOperationRegistry struct {
+	next   commandOperationID
+	active map[commandOperationID]commandOperation
+}
+
+func newCommandOperationRegistry() commandOperationRegistry {
+	return commandOperationRegistry{active: make(map[commandOperationID]commandOperation)}
+}
+
+func (r *commandOperationRegistry) reserve(pluginID string) (commandOperation, error) {
+	next, ok := r.next.successor()
+	if !ok {
+		return commandOperation{}, errCommandOperationIdentityExhausted
+	}
+	if r.active == nil {
+		r.active = make(map[commandOperationID]commandOperation)
+	}
+	operation := commandOperation{id: next, pluginID: pluginID}
+	r.next = next
+	r.active[next] = operation
+	return operation, nil
+}
+
+func (r *commandOperationRegistry) retire(operation commandOperation) {
+	if current, ok := r.active[operation.id]; ok && current == operation {
+		delete(r.active, operation.id)
+	}
+}
+
+func (r *commandOperationRegistry) take(pluginIDs ...string) []commandOperation {
+	selected := make(map[string]struct{}, len(pluginIDs))
+	for _, pluginID := range pluginIDs {
+		selected[pluginID] = struct{}{}
+	}
+	operations := make([]commandOperation, 0, len(r.active))
+	for id, operation := range r.active {
+		if len(selected) > 0 {
+			if _, take := selected[operation.pluginID]; !take {
+				continue
+			}
+		}
+		operations = append(operations, operation)
+		delete(r.active, id)
+	}
+	return operations
 }
 
 func (a *app) executeCommand(pluginID string, command SlashCommand, argument string) {
@@ -160,17 +229,19 @@ func (a *app) executeCommand(pluginID string, command SlashCommand, argument str
 	a.status.note("running /" + name)
 	request := CommandRequest{Argument: argument, Workspace: a.session.Workspace.Path, SessionID: a.session.ID}
 	dispatcher := a.loop.Dispatcher()
-	a.commandSeq++
-	sequence := a.commandSeq
-	slot := operationSlot(fmt.Sprintf("command:%d", sequence))
-	a.commandOperations[sequence] = commandOperation{pluginID: pluginID, slot: slot}
+	operation, err := a.commandOperations.reserve(pluginID)
+	if err != nil {
+		a.message("could not start /" + name + ": " + err.Error())
+		return
+	}
+	slot := operation.slot()
 	started := a.operations.GoSession(slot, false, func(ctx context.Context, lease operationLease) {
 		result, err := executeCommandSafely(ctx, command, request)
 		_ = post(ctx, dispatcher, func() {
 			if !a.operations.Current(lease) || a.closed {
 				return
 			}
-			delete(a.commandOperations, sequence)
+			a.commandOperations.retire(operation)
 			if errors.Is(err, context.Canceled) {
 				return
 			}
@@ -186,24 +257,14 @@ func (a *app) executeCommand(pluginID string, command SlashCommand, argument str
 		})
 	})
 	if !started {
-		delete(a.commandOperations, sequence)
+		a.commandOperations.retire(operation)
 		a.message("could not start /" + name)
 	}
 }
 
 func (a *app) cancelPluginCommands(pluginIDs ...string) {
-	selected := make(map[string]struct{}, len(pluginIDs))
-	for _, pluginID := range pluginIDs {
-		selected[pluginID] = struct{}{}
-	}
-	for sequence, operation := range a.commandOperations {
-		if len(selected) > 0 {
-			if _, cancel := selected[operation.pluginID]; !cancel {
-				continue
-			}
-		}
-		a.operations.Cancel(operation.slot)
-		delete(a.commandOperations, sequence)
+	for _, operation := range a.commandOperations.take(pluginIDs...) {
+		a.operations.Cancel(operation.slot())
 	}
 }
 
@@ -226,20 +287,20 @@ func runLocalCommandSafely(command localCommand, host *app, argument string) (er
 }
 
 func (a *app) runCommand(name, argument string) {
-	command, ok := a.commands.lookup(name)
-	if !ok || command.Run == nil {
+	command, registration, ok := a.commands.index.Lookup(name)
+	if !ok || registration.run == nil {
 		a.message("unknown command: /" + name)
 		return
 	}
-	if availability := a.commands.availability(command.Name, a); !availability.Enabled {
+	if availability := registration.availability(a); !availability.Enabled {
 		a.message("/" + command.Name + " unavailable: " + availability.Reason)
 		return
 	}
 	argument = strings.TrimSpace(argument)
-	if err := a.commands.arguments(command.Name).ValidateInvocation(command.Name, argument); err != nil {
+	if err := registration.arguments.ValidateInvocation(command.Name, argument); err != nil {
 		a.message(err.Error())
 		return
 	}
 	a.commands.used(command.Name)
-	command.Run(argument)
+	registration.run(argument)
 }

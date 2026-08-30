@@ -134,12 +134,14 @@ type RunMetrics struct {
 	ActiveDurationMillis int64 `json:"activeDurationMillis"`
 }
 
-// RunLimits is the allowance a run may consume before it is stopped (§4.2). An
-// omitted field is that dimension uncapped.
+// RunLimits is a bounded allowance a run may consume before it is stopped
+// (§4.2). Every present field is a strictly positive cap and at least one field
+// must be present. An omitted RunRef.limits or StartRunRequest.limits is the only
+// unlimited wire representation.
 type RunLimits struct {
-	MaxTotalTokens int64   `json:"maxTotalTokens,omitempty"`
-	MaxSteps       int     `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   float64 `json:"maxBudgetUsd,omitempty"`
+	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty"`
+	MaxSteps       *int     `json:"maxSteps,omitempty"`
+	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
 }
 
 // RunOutcomeType discriminates the RunOutcome union (§4.2).
@@ -238,9 +240,7 @@ type StartRunRequest struct {
 	Provider        string            `json:"provider,omitempty"`
 	Model           string            `json:"model,omitempty"`
 	ReasoningEffort string            `json:"reasoningEffort,omitempty"`
-	MaxTotalTokens  int64             `json:"maxTotalTokens,omitempty"`
-	MaxSteps        int               `json:"maxSteps,omitempty"`
-	MaxBudgetUSD    float64           `json:"maxBudgetUsd,omitempty"`
+	Limits          *RunLimits        `json:"limits,omitempty"`
 	Params          *GenerationParams `json:"params,omitempty"`
 }
 
@@ -397,7 +397,7 @@ type SubscribeRunResponse struct {
 	// it, compare it for magnitude, or derive a sequence from it. The value is
 	// opaque precisely so that the runtime can change what it encodes without
 	// breaking a client that only ever handed it back.
-	HeadEventID string `json:"headEventId,omitempty"`
+	HeadEventID *string `json:"headEventId,omitempty"`
 }
 
 // InterruptResponseType discriminates a client's answer to an interrupt

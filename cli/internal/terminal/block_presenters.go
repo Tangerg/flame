@@ -65,7 +65,7 @@ func presentQuestion(p BlockPresentation, block agent.Block) []headless.Block {
 }
 
 func presentNotice(p BlockPresentation, block agent.Block) []headless.Block {
-	return []headless.Block{&kit.Message{Theme: p.Theme, Speaker: "notice", Body: block.Text}}
+	return []headless.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
 }
 
 func presentFailure(p BlockPresentation, block agent.Block) []headless.Block {

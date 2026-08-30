@@ -225,13 +225,20 @@ describe("reducer — item fold", () => {
     expect(s.messages[0]!.blocks.map((b) => b.kind)).toEqual(["reasoning", "text"]);
     s = reduce(
       s,
-      started(item({ id: "u1", type: "userMessage", content: [{ type: "text", text: "next" }] })),
+      completed(
+        item({
+          id: "u1",
+          type: "userMessage",
+          status: "completed",
+          content: [{ type: "text", text: "next" }],
+        }),
+      ),
     );
     expect(s.messages).toHaveLength(2);
     expect(s.messages[1]!.role).toBe("user");
   });
 
-  it("a streamed userMessage reconciles an optimistic steer placeholder", () => {
+  it("a durable userMessage reconciles an optimistic steer placeholder", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     // runs.steer has no Item id in its ack, so its optimistic bubble uses the
     // distinct steer prefix and reconciles by content.
@@ -247,13 +254,7 @@ describe("reducer — item fold", () => {
       ),
     );
     expect(s.messages).toHaveLength(1);
-    // The runtime then streams the real userMessage Item with its durable id.
-    s = reduce(
-      s,
-      started(
-        item({ id: "item_real", type: "userMessage", content: [{ type: "text", text: "hi" }] }),
-      ),
-    );
+    // The runtime then publishes the complete userMessage Item with its durable id.
     s = reduce(
       s,
       completed(
@@ -270,25 +271,23 @@ describe("reducer — item fold", () => {
     expect(s.messages[0]!.role).toBe("user");
   });
 
-  it("body-less item.started shells fold without crashing (tool / question)", () => {
-    // The runtime's started shell may carry only ItemBase fields — the body
-    // (tool / question) streams in later or lands whole on completed.
-    // Each must fold to an empty block, not throw (which the reducer's
-    // try/catch would swallow, silently dropping the block forever).
+  it("a tool start folds its required invocation", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, started(item({ id: "t1", type: "toolCall" }))); // no `tool`
-    expect(s.toolCalls.t1).toMatchObject({ fn: "tool", status: "running" });
-    s = reduce(s, started(item({ id: "q1", type: "question" }))); // no `question`
-    expect(s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "question")).toMatchObject({
-      kind: "question",
-      itemId: "q1",
-      questions: [],
-    });
+    s = reduce(
+      s,
+      started(
+        item({
+          id: "t1",
+          type: "toolCall",
+          tool: { name: "demo_tool", arguments: {} },
+        }),
+      ),
+    );
+    expect(s.toolCalls.t1).toMatchObject({ fn: "demo_tool", status: "running" });
   });
 
   it("a completed question projects the runtime-accepted answer", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, started(item({ id: "q1", type: "question" })));
     s = reduce(
       s,
       completed(
@@ -439,19 +438,41 @@ describe("reducer — compaction fold (B10)", () => {
     ]);
   });
 
-  it("started + completed for the same compaction id upsert (one divider, never two)", () => {
+  it("replayed completion for the same compaction id upserts one divider", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, started(compaction({ id: "c1" })));
-    s = reduce(s, completed(compaction({ id: "c1", status: "completed", droppedMessages: 3 })));
+    s = reduce(
+      s,
+      completed(compaction({ id: "c1", status: "completed", summary: "first summary" })),
+    );
+    s = reduce(
+      s,
+      completed(
+        compaction({
+          id: "c1",
+          status: "completed",
+          summary: "authoritative summary",
+          droppedMessages: 3,
+        }),
+      ),
+    );
     const dividers = s.messages.filter((m) => m.role === "system");
     expect(dividers).toHaveLength(1);
-    expect(dividers[0]!.blocks[0]).toMatchObject({ kind: "compaction", droppedMessages: 3 });
+    expect(dividers[0]!.blocks[0]).toMatchObject({
+      kind: "compaction",
+      summary: "authoritative summary",
+      droppedMessages: 3,
+    });
   });
 
   it("a compaction does not split the assistant turn (only a userMessage does)", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "a1", type: "agentMessage", content: [] })));
-    s = reduce(s, completed(compaction({ id: "c1", status: "completed", droppedMessages: 2 })));
+    s = reduce(
+      s,
+      completed(
+        compaction({ id: "c1", status: "completed", summary: "earlier work", droppedMessages: 2 }),
+      ),
+    );
     s = reduce(s, started(item({ id: "a2", type: "agentMessage", content: [] })));
     expect(s.messages.filter((m) => m.role === "assistant")).toHaveLength(1);
   });

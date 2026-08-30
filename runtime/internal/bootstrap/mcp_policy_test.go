@@ -21,8 +21,8 @@ func (m *mcpServerListStub) List(context.Context) ([]mcpserver.Server, error) {
 
 func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	registry := &mcpServerListStub{servers: []mcpserver.Server{
-		{Name: "files", Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files", DisabledTools: []string{"write"}, AutoApproveTools: []string{"read"}},
-		{Name: "off", Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off", DisabledTools: []string{"hidden"}},
+		{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files", ToolPolicy: testServerToolPolicy([]string{"write"}, []string{"read"})},
+		{Name: testMCPServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off", ToolPolicy: testServerToolPolicy([]string{"hidden"}, nil)},
 	}}
 
 	env, err := buildMCPEnvironment(context.Background(), registry)
@@ -32,14 +32,14 @@ func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	if registry.calls != 1 {
 		t.Fatalf("registry List calls = %d, want 1", registry.calls)
 	}
-	if len(env.servers) != 1 || env.servers[0].Name != "files" {
+	if len(env.servers) != 1 || env.servers[0].Name.String() != "files" {
 		t.Fatalf("servers = %+v, want enabled files server", env.servers)
 	}
-	if !env.policy.ToolDisabled(mcpserver.ToolRef{Server: "files", Tool: "write"}) ||
-		!env.policy.ToolDisabled(mcpserver.ToolRef{Server: "off", Tool: "hidden"}) {
+	if !env.policy.ToolDisabled(mcpserver.ToolRef{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}) ||
+		!env.policy.ToolDisabled(mcpserver.ToolRef{Server: testMCPServerName("off"), Tool: testRemoteToolName("hidden")}) {
 		t.Fatalf("disabled policy does not match registry snapshot")
 	}
-	if !env.policy.ToolAutoApproved(mcpserver.ToolRef{Server: "files", Tool: "read"}) {
+	if !env.policy.ToolAutoApproved(mcpserver.ToolRef{Server: testMCPServerName("files"), Tool: testRemoteToolName("read")}) {
 		t.Fatal("files_read must be auto-approved")
 	}
 }

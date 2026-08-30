@@ -48,6 +48,27 @@ func TestShapeViewsAreSnapshots(t *testing.T) {
 	if got := shapes.Unions()[0].Variants[0].Tag; got != originalTag {
 		t.Fatalf("Unions exposed registry storage: got %q, want %q", got, originalTag)
 	}
+	mutatedAllowedValues := false
+	for unionIndex, union := range unions {
+		for variantIndex, variant := range union.Variants {
+			if len(variant.AllowedValues) == 0 || len(variant.AllowedValues[0].Values) == 0 {
+				continue
+			}
+			original := variant.AllowedValues[0].Values[0]
+			unions[unionIndex].Variants[variantIndex].AllowedValues[0].Values[0] = "corrupted"
+			if got := shapes.Unions()[unionIndex].Variants[variantIndex].AllowedValues[0].Values[0]; got != original {
+				t.Fatalf("Unions exposed allowed-value storage: got %q, want %q", got, original)
+			}
+			mutatedAllowedValues = true
+			break
+		}
+		if mutatedAllowedValues {
+			break
+		}
+	}
+	if !mutatedAllowedValues {
+		t.Fatal("no union allowed-value set is registered")
+	}
 	for index := range unions {
 		if unions[index].PatternVariant == nil {
 			continue
@@ -130,7 +151,7 @@ func TestEveryWireUnionIsRegistered(t *testing.T) {
 	want := []string{
 		"ArtifactContentBlock", "ArtifactItem", "ArtifactOutcome", "ArtifactQuestionField",
 		"CancelRunResponse", "CapabilityRequirement", "ContentBlock", "DiffRow", "Interrupt", "InterruptResponseValue", "Item", "ItemDelta",
-		"ItemListScope", "MCPAuthorizationAttemptStatus", "MCPAuthorizationChange", "MCPConnection", "MCPConnectionInput", "MCPEnvironmentChange", "MCPHeadersChange", "MCPServerState", "ProblemData", "ProviderConfigChange", "QuestionField", "RunOutcome", "RuntimeEvent", "SegmentOutcome", "StreamEvent",
+		"ItemListScope", "MCPAuthorizationAttemptStatus", "MCPAuthorizationChange", "MCPConnection", "MCPConnectionInput", "MCPEnvironmentChange", "MCPHandshakeTimeout", "MCPHeadersChange", "MCPServerState", "ProblemData", "ProviderConfigChange", "QuestionField", "RunOutcome", "RuntimeEvent", "SegmentOutcome", "StreamEvent",
 	}
 	got := make([]string, 0, len(shapes.Unions()))
 	for _, union := range shapes.Unions() {

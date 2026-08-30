@@ -17,16 +17,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/infra/mcp"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 // Config is the construction-time bundle for [NewAssembly]. It contains Host
 // capabilities and application adapters only; Bootstrap derives the
 // Agent Framework executor configuration so no second source of Runtime facts exists.
+type ChatResolver interface {
+	agentexec.InteractionChatResolver
+	models.ChatModelValidator
+}
+
 type Config struct {
 	// BuildID identifies the running executable at durable executor boundaries.
 	BuildID string
@@ -41,9 +46,10 @@ type Config struct {
 	// Goals, preserving their accounting order across shared Runtime instances.
 	RecoveryOwnership ownershiprecovery.Ownership
 
-	// ChatClient is the default model client. Explicit per-Run selections resolve
-	// through ProviderRegistry; utility roles fall back to this client.
-	ChatClient *chatclient.Client
+	// ChatResolver resolves every frozen Run selection against the live provider
+	// registry. Bootstrap never keeps a process-lifetime default client whose
+	// credential material can outlive a provider update.
+	ChatResolver ChatResolver
 
 	// ConversationStore is the authoritative model-context store.
 	ConversationStore conversations.Store
@@ -258,9 +264,10 @@ type Config struct {
 	// eviction (results always flow to history in full).
 	ToolResultStore *sqlitestore.ToolResultStore
 
-	// ToolResultThreshold is the byte size above which a single tool result is
-	// offloaded (see ToolResultStore). Zero or negative disables eviction.
-	ToolResultThreshold int
+	// ToolResultOffloadEnabled explicitly controls context eviction. When true,
+	// ToolResultThreshold must be positive and ToolResultStore must be present.
+	ToolResultOffloadEnabled bool
+	ToolResultThreshold      int
 
 	// Transactor runs a write-set inside one storage transaction, so the sessions
 	// coordinator's cross-store operations (sessions.import / rollback / delete
@@ -308,11 +315,11 @@ func validateAssemblyConfig(c Config) error {
 			return fmt.Errorf("runtime: SandboxReadOnlyPaths[%d] must be absolute when set", index)
 		}
 	}
-	if c.ChatClient == nil {
-		return errors.New("runtime: ChatClient is required")
+	if c.ChatResolver == nil {
+		return errors.New("runtime: ChatResolver is required")
 	}
-	if c.BuildID == "" {
-		return errors.New("runtime: BuildID is required")
+	if _, err := buildidentity.Parse(c.BuildID); err != nil {
+		return fmt.Errorf("runtime: BuildID: %w", err)
 	}
 	if c.ConversationStore == nil {
 		return errors.New("runtime: ConversationStore is required")

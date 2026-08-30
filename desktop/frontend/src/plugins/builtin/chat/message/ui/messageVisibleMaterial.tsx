@@ -31,7 +31,7 @@ export class MessageVisibleMaterialOwner {
   readonly identity: string;
   readonly #projections = new Map<VisibleMaterialToken, VisibleProjection>();
   readonly #listeners = new Set<() => void>();
-  #revision = 0;
+  #revision: object = {};
 
   constructor(sessionId: string, messageId: string) {
     this.identity = JSON.stringify([sessionId, messageId]);
@@ -75,10 +75,10 @@ export class MessageVisibleMaterialOwner {
     return () => this.#listeners.delete(listener);
   };
 
-  snapshot = (): number => this.#revision;
+  snapshot = (): object => this.#revision;
 
   #publish(): void {
-    this.#revision += 1;
+    this.#revision = {};
     for (const listener of this.#listeners) listener();
   }
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionCard } from "./QuestionCard";
 
@@ -73,7 +73,7 @@ describe("QuestionCard choice semantics", () => {
     ).toBe("false");
   });
 
-  it("moves and selects within a radio group with the arrow keys", () => {
+  it("moves and selects within a radio group with the arrow keys", async () => {
     render(
       <QuestionCard
         status="requires-action"
@@ -103,8 +103,10 @@ describe("QuestionCard choice semantics", () => {
     first!.focus();
     fireEvent.keyDown(first!, { key: "ArrowDown" });
 
-    expect(second!.getAttribute("aria-checked")).toBe("true");
-    expect(document.activeElement).toBe(second);
+    await waitFor(() => {
+      expect(second!.getAttribute("aria-checked")).toBe("true");
+      expect(document.activeElement).toBe(second);
+    });
     expect((screen.getByRole("button", { name: "Skip" }) as HTMLButtonElement).disabled).toBe(
       false,
     );

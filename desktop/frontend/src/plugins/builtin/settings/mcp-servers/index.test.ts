@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { setMCPServerEnabled } from "./application/mcpServerConfig";
@@ -20,7 +23,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     const retired = deferred<ReturnType<typeof runtimeServer>>();
     const update = vi.fn(() => retired.promise);
     setContainer({ client: () => ({ mcp: { update } }) as unknown as FlameClient });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.mcp-runtime-generation",
@@ -44,7 +47,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     const command = rejected(setMCPServerEnabled("cloud", false));
     await vi.waitFor(() => expect(update).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
       message: "mcp_server_mutation_generation_retired",
@@ -60,6 +63,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
     name: "cloud",
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
+    handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },
     ...overrides,
   };
@@ -75,6 +79,7 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     icon: "tool",
     type: "streamableHttp",
     enabled: true,
+    handshakeTimeout: { type: "unbounded" },
     url: "https://example.test/mcp",
     ...overrides,
   };

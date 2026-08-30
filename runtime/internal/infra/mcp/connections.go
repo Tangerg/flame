@@ -11,11 +11,13 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/productidentity"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by
-// Connections.mu; generation/cancel give each server latest-operation-wins
-// semantics without serializing unrelated servers or waiting OAuth flows.
+// Connections.mu; an exact attempt registration gives each server
+// latest-operation-wins semantics without serializing unrelated servers or
+// waiting OAuth flows.
 type server struct {
 	config  ServerConfig
 	session *sdkmcp.ClientSession // nil when not connected
@@ -27,11 +29,10 @@ type server struct {
 	// the user signs in. It is reusable only within the same HTTP origin.
 	oauth auth.OAuthHandler
 
-	generation uint64
-	cancel     context.CancelFunc
+	attempt *connectionAttempt
 }
 
-func (s *server) name() string { return s.config.Name }
+func (s *server) name() mcpserver.ServerName { return s.config.Name }
 
 type shutdownAttempt struct {
 	done chan struct{}
@@ -92,11 +93,11 @@ func (c *Connections) SetToolSink(sink func([]toolcontract.Tool)) {
 // newClient builds the shared MCP client identity used for every server's
 // session (and re-dials). No per-server handlers are needed, so one suffices.
 func newClient() *sdkmcp.Client {
-	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime", Version: "v0.1.0"}, nil)
+	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: productidentity.Name, Version: "v0.1.0"}, nil)
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.
-func (c *Connections) find(name string) *server {
+func (c *Connections) find(name mcpserver.ServerName) *server {
 	for _, configuredServer := range c.servers {
 		if configuredServer.name() == name {
 			return configuredServer

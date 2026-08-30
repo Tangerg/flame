@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -71,7 +70,7 @@ func (i *itemProjection) project() error {
 		}
 		i.block.Tool = &tool
 	case protocol.ItemTypeCompaction:
-		i.projectCompaction()
+		return i.projectCompaction()
 	default:
 		return fmt.Errorf("item %s has unsupported type %q", i.source.ID, i.source.Type)
 	}
@@ -97,13 +96,17 @@ func (i *itemProjection) projectMessage(allowAttachments bool) error {
 	return nil
 }
 
-func (i *itemProjection) projectCompaction() {
+func (i *itemProjection) projectCompaction() error {
+	if strings.TrimSpace(i.source.Summary) == "" {
+		return fmt.Errorf("item %s has an empty compaction summary", i.source.ID)
+	}
+	if i.source.Summary != strings.TrimSpace(i.source.Summary) {
+		return fmt.Errorf("item %s has a non-canonical compaction summary", i.source.ID)
+	}
 	i.block.Kind = agent.BlockNotice
 	i.block.Text = i.source.Summary
 	i.block.DroppedMessages = i.source.DroppedMessages
-	if strings.TrimSpace(i.block.Text) == "" {
-		i.block.Text = fmt.Sprintf("Conversation compacted; %d messages removed.", i.source.DroppedMessages)
-	}
+	return nil
 }
 
 func validateProjectedBlock(block agent.Block) error {
@@ -183,18 +186,19 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	if value == nil {
 		return agent.ToolCall{}, errors.New("tool payload is absent")
 	}
-	tool := agent.ToolCall{
-		Kind: kindForTool(value.Name), Name: value.Name, Summary: toolSummary(value),
-		Safety:    agent.ToolSafetyClass(projection.safety),
-		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
-		Command: stringArgument(value.Arguments, "command"),
-		Path:    firstStringArgument(value.Arguments, "path", "file", "filename"),
-		Query:   firstStringArgument(value.Arguments, "query", "pattern", "search"),
-		URL:     firstStringArgument(value.Arguments, "url", "uri"),
-	}
 	argumentsJSON, err := json.Marshal(value.Arguments)
 	if err != nil {
 		return agent.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
+	}
+	arguments := decodeToolArgumentsMaterial(argumentsJSON)
+	tool := agent.ToolCall{
+		Kind: kindForTool(value.Name), Name: value.Name, Summary: arguments.summary(value.Name),
+		Safety:    agent.ToolSafetyClass(projection.safety),
+		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
+		Command: arguments.command(),
+		Path:    arguments.path(),
+		Query:   arguments.query(),
+		URL:     arguments.url(),
 	}
 	tool.ArgumentsJSON = argumentsJSON
 	if value.Result != nil {
@@ -203,6 +207,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 			return agent.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
 		}
 		tool.ResultJSON = resultJSON
+		projectToolResult(&tool, resultJSON)
 	}
 	if projection.problem != nil {
 		tool.Problem = projectRuntimeProblem(projection.problem)
@@ -224,7 +229,6 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	default:
 		return agent.ToolCall{}, fmt.Errorf("tool status %q is unsupported", projection.status)
 	}
-	projectToolResult(&tool, value.Result)
 	if projection.problem != nil && strings.TrimSpace(projection.problem.Detail) != "" {
 		tool.Output = projection.problem.Detail
 	}
@@ -234,34 +238,65 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	return tool, nil
 }
 
+const toolSummaryRuneLimit = 120
+
+// builtInToolName is the CLI adapter's anti-corruption vocabulary for Runtime
+// tool presentation. It is not a live catalog: unknown and MCP-provided names
+// intentionally remain generic.
+type builtInToolName string
+
+const (
+	builtInApplyPatch          builtInToolName = "apply_patch"
+	builtInAskUser             builtInToolName = "ask_user"
+	builtInCreateGoal          builtInToolName = "create_goal"
+	builtInCreateSchedule      builtInToolName = "create_schedule"
+	builtInDeleteSchedule      builtInToolName = "delete_schedule"
+	builtInDelegateTask        builtInToolName = "delegate_task"
+	builtInEnterPlanMode       builtInToolName = "enter_plan_mode"
+	builtInExitPlanMode        builtInToolName = "exit_plan_mode"
+	builtInGetGoal             builtInToolName = "get_goal"
+	builtInGlob                builtInToolName = "glob"
+	builtInGrep                builtInToolName = "grep"
+	builtInHTTPRequest         builtInToolName = "http_request"
+	builtInListSchedules       builtInToolName = "list_schedules"
+	builtInListSkills          builtInToolName = "list_skills"
+	builtInLoadSkill           builtInToolName = "load_skill"
+	builtInLSP                 builtInToolName = "lsp"
+	builtInProposeSkill        builtInToolName = "propose_skill"
+	builtInRead                builtInToolName = "read"
+	builtInReadShellOutput     builtInToolName = "read_shell_output"
+	builtInReadSkillResource   builtInToolName = "read_skill_resource"
+	builtInReadToolResult      builtInToolName = "read_tool_result"
+	builtInReportGoalOutcome   builtInToolName = "report_goal_outcome"
+	builtInSearchConversations builtInToolName = "search_conversations"
+	builtInSearchMemory        builtInToolName = "search_memory"
+	builtInSearchTools         builtInToolName = "search_tools"
+	builtInSetPlan             builtInToolName = "set_plan"
+	builtInShell               builtInToolName = "shell"
+	builtInStopShell           builtInToolName = "stop_shell"
+	builtInWebFetch            builtInToolName = "web_fetch"
+	builtInWebSearch           builtInToolName = "web_search"
+)
+
 func kindForTool(name string) agent.ToolKind {
-	switch name {
-	case "shell", "read_shell_output", "stop_shell":
+	switch builtInToolName(name) {
+	case builtInShell, builtInReadShellOutput, builtInStopShell:
 		return agent.ToolShell
-	case "apply_patch", "write_file", "edit_file":
+	case builtInApplyPatch:
 		return agent.ToolEdit
-	case "read", "read_file", "read_skill_resource", "read_tool_result":
+	case builtInRead, builtInReadSkillResource, builtInReadToolResult:
 		return agent.ToolRead
-	case "glob", "grep", "search_memory", "search_conversations", "search_tools", "lsp":
+	case builtInGlob, builtInGrep, builtInSearchMemory, builtInSearchConversations, builtInSearchTools, builtInLSP:
 		return agent.ToolSearch
-	case "web_search", "web_fetch", "http_request":
+	case builtInWebSearch, builtInWebFetch, builtInHTTPRequest:
 		return agent.ToolWeb
-	case "ask_user", "delegate_task", "create_goal", "get_goal", "report_goal_outcome",
-		"create_schedule", "list_schedules", "delete_schedule", "load_skill", "list_skills",
-		"propose_skill", "enter_plan_mode", "exit_plan_mode", "set_plan":
+	case builtInAskUser, builtInDelegateTask, builtInCreateGoal, builtInGetGoal, builtInReportGoalOutcome,
+		builtInCreateSchedule, builtInListSchedules, builtInDeleteSchedule, builtInLoadSkill, builtInListSkills,
+		builtInProposeSkill, builtInEnterPlanMode, builtInExitPlanMode, builtInSetPlan:
 		return agent.ToolTask
 	default:
 		return agent.ToolUnknown
 	}
-}
-
-func toolSummary(value *protocol.ToolInvocation) string {
-	for _, key := range []string{"description", "summary", "query", "pattern", "path", "url", "command"} {
-		if text := stringArgument(value.Arguments, key); text != "" {
-			return truncateRunes(text, 120)
-		}
-	}
-	return truncateRunes(value.Name, 120)
 }
 
 func truncateRunes(value string, limit int) string {
@@ -275,69 +310,22 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit-1]) + "…"
 }
 
-func stringArgument(arguments map[string]any, key string) string {
-	value, ok := arguments[key].(string)
-	if !ok {
-		return ""
-	}
-	return value
-}
-
-func firstStringArgument(arguments map[string]any, keys ...string) string {
-	for _, key := range keys {
-		if value := stringArgument(arguments, key); value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
-func projectToolResult(tool *agent.ToolCall, result any) {
-	if result == nil {
-		return
-	}
-	if object, ok := result.(map[string]any); ok {
-		projectStructuredToolResult(tool, object)
-	}
-	if tool.Output == "" {
-		if encoded, err := json.MarshalIndent(result, "", "  "); err == nil {
-			tool.Output = string(encoded)
-		}
-	}
-}
-
-func projectStructuredToolResult(tool *agent.ToolCall, result map[string]any) {
-	if output, ok := result["output"].(string); ok {
-		tool.Output = output
-	}
-	if exitCode, ok := integerValue(result["exitCode"]); ok {
+func projectToolResult(tool *agent.ToolCall, encoded []byte) {
+	material := decodeToolResultMaterial(encoded)
+	tool.Output = material.output()
+	if exitCode, ok := material.exitCode(); ok {
 		tool.ExitCode = &exitCode
 	}
-	paths := changedPaths(result["changes"])
+	paths := material.changedPaths()
 	if tool.Path == "" && len(paths) != 0 {
 		tool.Path = paths[0]
 	}
 	if tool.Output == "" && len(paths) != 0 {
 		tool.Output = strings.Join(paths, "\n")
 	}
-}
-
-func changedPaths(value any) []string {
-	changes, ok := value.([]any)
-	if !ok {
-		return nil
+	if tool.Output == "" {
+		tool.Output = formattedJSON(encoded)
 	}
-	paths := make([]string, 0, len(changes))
-	for _, change := range changes {
-		entry, ok := change.(map[string]any)
-		if !ok {
-			continue
-		}
-		if path, ok := entry["path"].(string); ok {
-			paths = append(paths, filepath.ToSlash(path))
-		}
-	}
-	return paths
 }
 
 func integerValue(value any) (int, bool) {

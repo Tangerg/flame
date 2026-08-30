@@ -22,7 +22,12 @@ type workspaceBinding interface {
 	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, embedded.CallOptions) (*protocol.FileContent, error)
 }
 
-const workspaceFilePageLimit = 500
+const (
+	workspaceFilePageLimit = 500
+	// maximumWorkspaceFilePageRequests matches Flame's 20,000-entry
+	// authoritative workspace listing boundary at 500 rows per request.
+	maximumWorkspaceFilePageRequests = 40
+)
 
 func (r *Runtime) Resolve(ctx context.Context, request workspace.ResolveRequest) (workspace.Workspace, error) {
 	if err := request.Validate(); err != nil {
@@ -98,9 +103,17 @@ func (r *Runtime) Diff(ctx context.Context, request workspace.DiffRequest) (work
 	if err := r.requireFeature(runtimeprofile.FeatureGit); err != nil {
 		return workspace.Diff{}, err
 	}
+	var rowLimit *int
+	rows, explicit, err := request.RowLimit.Rows()
+	if err != nil {
+		return workspace.Diff{}, err
+	}
+	if explicit {
+		rowLimit = protocolPositiveInt(rows)
+	}
 	value, err := r.workspaces.GetWorkspaceDiff(ctx, protocol.GetDiffRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path,
-		Mode: protocol.DiffMode(request.Mode), Format: protocol.DiffFormat(request.Format), Limit: request.Limit,
+		Mode: protocol.DiffMode(request.Mode), Format: protocol.DiffFormat(request.Format), Limit: rowLimit,
 	}, r.callOptions())
 	if err != nil {
 		return workspace.Diff{}, classifyError(err)
@@ -119,8 +132,12 @@ func (r *Runtime) Head(ctx context.Context, request workspace.HeadRequest) (work
 	if err := request.Validate(); err != nil {
 		return workspace.FileHead{}, err
 	}
+	lines, err := request.LineLimit.Lines()
+	if err != nil {
+		return workspace.FileHead{}, err
+	}
 	value, err := r.workspaces.GetWorkspaceFileHead(ctx, protocol.GetFileHeadRequest{
-		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Lines: request.Lines,
+		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Lines: protocolPositiveInt(lines),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.FileHead{}, classifyError(err)
@@ -142,9 +159,13 @@ func (r *Runtime) Search(ctx context.Context, request workspace.SearchRequest) (
 	if err := request.Validate(); err != nil {
 		return workspace.SearchResult{}, err
 	}
+	limit, err := request.Limit.Matches()
+	if err != nil {
+		return workspace.SearchResult{}, err
+	}
 	value, err := r.workspaces.SearchWorkspaceFiles(ctx, protocol.GrepRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Query: request.Query,
-		Path: request.Path, Limit: request.Limit,
+		Path: request.Path, Limit: protocolPositiveInt(limit),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.SearchResult{}, classifyError(err)
@@ -167,7 +188,10 @@ func (r *Runtime) Files(ctx context.Context, request workspace.FilesRequest) (wo
 		return workspace.FileListing{}, err
 	}
 	result := workspace.FileListing{}
-	cursors := newCursorTraversal("list workspace files", "")
+	cursors, err := newCursorTraversal("list workspace files", "", maximumWorkspaceFilePageRequests)
+	if err != nil {
+		return workspace.FileListing{}, err
+	}
 	for {
 		if err := context.Cause(ctx); err != nil {
 			return workspace.FileListing{}, err
@@ -176,13 +200,20 @@ func (r *Runtime) Files(ctx context.Context, request workspace.FilesRequest) (wo
 		page, err := r.workspaces.ListWorkspaceFiles(ctx, protocol.ListFilesRequest{
 			Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Glob: request.Glob,
 			Recursive: request.Recursive, IncludeIgnored: request.IncludeIgnored,
-			PageQuery: protocol.PageQuery{Limit: workspaceFilePageLimit, Cursor: cursor},
+			PageQuery: protocol.PageQuery{Limit: protocolPositiveInt(workspaceFilePageLimit), Cursor: cursor},
 		}, r.callOptions())
 		if err != nil {
 			return workspace.FileListing{}, classifyError(err)
 		}
 		if page == nil {
 			return workspace.FileListing{}, runtimeContractViolation("list workspace files after cursor %q returned a nil page", cursor)
+		}
+		if len(page.Data) > workspaceFilePageLimit {
+			return workspace.FileListing{}, runtimeContractViolation(
+				"list workspace files returned %d rows for limit %d",
+				len(page.Data),
+				workspaceFilePageLimit,
+			)
 		}
 		for _, entry := range page.Data {
 			result.Entries = append(result.Entries, workspace.FileEntry{
@@ -208,9 +239,24 @@ func (r *Runtime) Read(ctx context.Context, request workspace.ReadRequest) (work
 	if err := request.Validate(); err != nil {
 		return workspace.FileContent{}, err
 	}
+	start, end, err := request.Range.Bounds()
+	if err != nil {
+		return workspace.FileContent{}, err
+	}
+	maxBytes, err := request.ByteLimit.Bytes()
+	if err != nil {
+		return workspace.FileContent{}, err
+	}
+	var startLine, endLine *int
+	if start > 0 {
+		startLine = protocolPositiveInt(start)
+	}
+	if end > 0 {
+		endLine = protocolPositiveInt(end)
+	}
 	value, err := r.workspaces.ReadWorkspaceFile(ctx, protocol.ReadFileRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path,
-		StartLine: request.StartLine, EndLine: request.EndLine, MaxBytes: request.MaxBytes,
+		StartLine: startLine, EndLine: endLine, MaxBytes: protocolPositiveInt(maxBytes),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.FileContent{}, classifyError(err)

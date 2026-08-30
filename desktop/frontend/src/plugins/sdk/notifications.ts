@@ -14,27 +14,28 @@ import type { NotificationEntry, NotificationLevel } from "./types";
 import { dispatchToast } from "./hostToast";
 import { toast } from "sonner";
 import { create } from "zustand";
+import { ExactSequence } from "@/foundation/exactSequence";
 
 const MAX_ENTRIES = 200;
 
 interface NotificationStoreState {
   log: NotificationEntry[];
-  nextId: number;
 }
 
 interface NotificationStoreActions {
   push: (entry: { plugin: string; level: NotificationLevel; message: string }) => NotificationEntry;
-  dismiss: (id: number) => void;
+  dismiss: (id: string) => void;
   clearAll: () => void;
 }
+
+const notificationIds = new ExactSequence();
 
 export const useNotificationStore = create<NotificationStoreState & NotificationStoreActions>(
   (set, get) => ({
     log: [],
-    nextId: 1,
 
     push({ plugin, level, message }) {
-      const id = get().nextId;
+      const id = notificationIds.issue().toString();
       const entry: NotificationEntry = {
         id,
         plugin,
@@ -45,7 +46,7 @@ export const useNotificationStore = create<NotificationStoreState & Notification
       const next = [...get().log, entry];
       // Cap from the front when we exceed the limit.
       const trimmed = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
-      set({ log: trimmed, nextId: id + 1 });
+      set({ log: trimmed });
       return entry;
     },
 

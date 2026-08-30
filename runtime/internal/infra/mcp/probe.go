@@ -8,8 +8,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 // Probe tests cfg with a throwaway client (mcp.servers.test). It reuses an
@@ -37,7 +35,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 		return validateErr
 	}
 	ctx, span := tracer.Start(ctx, "mcp.probe",
-		trace.WithAttributes(attribute.String("mcp.server.name", cfg.Name)))
+		trace.WithAttributes(attribute.String("mcp.server.name", cfg.Name.String())))
 	defer span.End()
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime-probe", Version: "v0.1.0"}, nil)
@@ -52,7 +50,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	if _, err := sourceTools(ctx, scopemcp.ToolSource{Name: cfg.Name, Session: session}); err != nil {
+	if _, err := sourceTools(ctx, cfg.Name, session); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}

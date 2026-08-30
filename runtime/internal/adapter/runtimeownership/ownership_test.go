@@ -133,7 +133,7 @@ func TestSessionOwnershipTransfersAfterProcessKill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer stdin.Close()
+	defer func() { _ = stdin.Close() }()
 	var output bytes.Buffer
 	command.Stdout = &output
 	command.Stderr = &output

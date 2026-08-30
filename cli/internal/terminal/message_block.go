@@ -17,12 +17,12 @@ const userMessageInset = 1
 // this block owns only the visual hierarchy of one durable message.
 type userMessageBlock struct {
 	box     kit.Box
-	message *kit.Message
+	message *kit.Entry
 }
 
 var (
-	_ headless.Block    = (*userMessageBlock)(nil)
-	_ headless.Copyable = (*userMessageBlock)(nil)
+	_ headless.Block         = (*userMessageBlock)(nil)
+	_ headless.TextProjector = (*userMessageBlock)(nil)
 )
 
 func newUserMessageBlock(theme kit.Theme, body string) *userMessageBlock {
@@ -30,13 +30,17 @@ func newUserMessageBlock(theme kit.Theme, body string) *userMessageBlock {
 }
 
 func newUserMessageBlockAs(theme kit.Theme, speaker, body string, own bool) *userMessageBlock {
+	message := &kit.Entry{Theme: theme, Label: speaker, Body: body}
+	if own {
+		message.LabelStyle = theme.Accent
+	}
 	return &userMessageBlock{
 		box: kit.Box{
 			Theme:   theme,
 			Bare:    true,
 			Padding: layout.Symmetric(0, userMessageInset),
 		},
-		message: &kit.Message{Theme: theme, Speaker: speaker, Body: body, Own: own},
+		message: message,
 	}
 }
 
@@ -136,5 +140,5 @@ func markdownLook(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer)
 func presentError(theme kit.Theme, message string) headless.Block {
 	danger := theme
 	danger.Text = theme.Danger
-	return &kit.Message{Theme: danger, Speaker: "runtime", Body: message}
+	return &kit.Entry{Theme: danger, Label: "runtime", Body: message}
 }

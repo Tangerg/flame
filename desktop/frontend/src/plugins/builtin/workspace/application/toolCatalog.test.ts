@@ -17,6 +17,7 @@ const server = (over: Partial<MCPServerSettings>): MCPServerSettings => ({
   icon: "tool",
   type: "stdio",
   enabled: true,
+  handshakeTimeout: { type: "unbounded" },
   ...over,
 });
 

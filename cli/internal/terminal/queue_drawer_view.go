@@ -77,7 +77,7 @@ func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) im
 		q.editorRegion.Stage(frame, image.Rectangle{}, nil)
 		return image.Rectangle{}
 	}
-	entry := q.editingEntry
+	entry := *q.editingEntry
 	rows := (layout.Flow{Axis: layout.Down}).Rects(inner.Size(), []layout.Slot{
 		{Size: layout.Fixed(1)},
 		{Size: layout.Flex(1)},
@@ -165,7 +165,7 @@ func (q *queueDrawer) drawEntry(view grid.View, entry promptqueue.Entry, index, 
 	return hits
 }
 
-func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id uint64, right int, rowStyle grid.Style, hits *[]queueHit) int {
+func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id promptqueue.EntryID, right int, rowStyle grid.Style, hits *[]queueHit) int {
 	buttons := []struct {
 		label  string
 		target queueTarget

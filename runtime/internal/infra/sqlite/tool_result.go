@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 )
 
@@ -46,8 +46,8 @@ func (t *ToolResultStore) Stage(ctx context.Context, stage toolresult.Stage) err
 // miss the caller surfaces to the model, not a failure). Scoping the read by
 // session id keeps one session from reading another's offloaded output.
 func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id toolresult.ID) (body string, found bool, err error) {
-	if strings.TrimSpace(sessionID) == "" {
-		return "", false, errors.New("sqlite: fetch tool result requires a session ID")
+	if _, validateErr := resourceid.ParseSession(sessionID); validateErr != nil {
+		return "", false, fmt.Errorf("sqlite: fetch tool result: %w", validateErr)
 	}
 	if validateErr := id.Validate(); validateErr != nil {
 		return "", false, fmt.Errorf("sqlite: fetch tool result: %w", validateErr)
@@ -71,8 +71,14 @@ func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID, preview s
 	if err := ref.Validate(); err != nil {
 		return fmt.Errorf("sqlite: bind tool result: %w", err)
 	}
-	if strings.TrimSpace(sessionID) == "" || strings.TrimSpace(itemID) == "" || preview == "" {
-		return errors.New("sqlite: bind tool result requires session, item, and preview")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("sqlite: bind tool result: %w", err)
+	}
+	if _, err := resourceid.ParseItem(itemID); err != nil {
+		return fmt.Errorf("sqlite: bind tool result: %w", err)
+	}
+	if preview == "" {
+		return errors.New("sqlite: bind tool result requires preview")
 	}
 	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`UPDATE tool_result_blobs
@@ -107,8 +113,8 @@ func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID, preview s
 
 // List returns every transcript-bound blob owned by sessionID in stable order.
 func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolresult.Blob, error) {
-	if strings.TrimSpace(sessionID) == "" {
-		return nil, errors.New("sqlite: list tool results requires a session ID")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
 	rows, err := conn(ctx, t.db).QueryContext(ctx,
 		`SELECT id, session_id, item_id, tool_name, preview, body, created_at
@@ -119,7 +125,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var blobs []toolresult.Blob
 	for rows.Next() {
 		var blob toolresult.Blob
@@ -175,8 +181,8 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 // compensation path for a failed atomic event commit: a concurrently or
 // ambiguously committed binding is never deleted.
 func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error {
-	if strings.TrimSpace(sessionID) == "" {
-		return errors.New("sqlite: discard tool result requires a session ID")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("sqlite: discard tool result: %w", err)
 	}
 	if err := ref.Validate(); err != nil {
 		return fmt.Errorf("sqlite: discard tool result: %w", err)
@@ -211,8 +217,8 @@ func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
 // of the session-delete cascade. It joins an ambient lifecycle write-set
 // transaction through conn(ctx).
 func (t *ToolResultStore) DropSession(ctx context.Context, sessionID string) error {
-	if strings.TrimSpace(sessionID) == "" {
-		return errors.New("sqlite: drop tool results requires a session ID")
+	if _, err := resourceid.ParseSession(sessionID); err != nil {
+		return fmt.Errorf("sqlite: drop tool results: %w", err)
 	}
 	if _, err := conn(ctx, t.db).ExecContext(ctx,
 		`DELETE FROM tool_result_blobs WHERE session_id = ?`, sessionID); err != nil {

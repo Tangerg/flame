@@ -36,8 +36,8 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 24 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v24",
+	if protocol.SessionArtifactVersion != 27 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v27",
 			protocol.SessionArtifactVersion)
 	}
 }
@@ -385,9 +385,16 @@ func seedCompletedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
+	maxTotalTokens, maxSteps, maxBudgetUSD := int64(32_768), 12, 3.5
+	limits, err := run.NewLimits(run.LimitValues{
+		MaxTotalTokens: &maxTotalTokens, MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudgetUSD,
+	})
+	if err != nil {
+		t.Fatalf("run limits: %v", err)
+	}
 	if err := rt.runs.Restore(t.Context(), runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Completed,
 		ModelSelection: selection, Outcome: &outcome,
-		Limits: run.Limits{MaxTotalTokens: 32_768, MaxSteps: 12, MaxBudgetUSD: 3.5},
+		Limits: limits,
 		Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,

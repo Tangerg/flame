@@ -36,6 +36,24 @@ func newTestAnalyzer(t *testing.T) *codeintel.Analyzer {
 	return analyzer
 }
 
+func TestLSPPositionPreservesPresence(t *testing.T) {
+	one, zero := 1, 0
+
+	if _, present, err := (lspInput{}).position(); err != nil || present {
+		t.Fatalf("omitted position = (present=%v, err=%v), want absent", present, err)
+	}
+	if _, _, err := (lspInput{Line: &one}).position(); err == nil {
+		t.Fatal("incomplete position was accepted")
+	}
+	if _, _, err := (lspInput{Line: &zero, Character: &one}).position(); err == nil {
+		t.Fatal("present zero line was treated as omission")
+	}
+	position, present, err := (lspInput{Line: &one, Character: &one}).position()
+	if err != nil || !present || position.line != 1 || position.character != 1 {
+		t.Fatalf("valid position = (%+v, present=%v, err=%v)", position, present, err)
+	}
+}
+
 // TestLSPToolUnsupportedFile checks the tool-layer contract: a query on a file
 // type with no configured server returns a plain message (the model adapts),
 // not an error that would halt the loop.
@@ -68,6 +86,9 @@ func TestLSPToolValidation(t *testing.T) {
 	if _, err := lsp.Call(context.Background(), `{"operation":"definition","path":"notes.txt"}`); err == nil {
 		t.Error("position operation without line and character must error")
 	}
+	if _, err := lsp.Call(context.Background(), `{"operation":"definition","path":"notes.txt","line":1}`); err == nil {
+		t.Error("position operation with an incomplete coordinate must error")
+	}
 	if _, err := lsp.Call(context.Background(), `{"operation":"workspace_symbols"}`); err == nil {
 		t.Error("workspace_symbols without query must error")
 	}
@@ -87,10 +108,13 @@ func TestLSPToolValidation(t *testing.T) {
 		t.Error("obsolete file_path field must be rejected")
 	}
 	for _, arguments := range []string{
+		`{"operation":"definition","path":"notes.txt","line":0,"character":1}`,
 		`{"operation":"definition","path":"notes.txt","line":1,"character":1,"query":"unused"}`,
+		`{"operation":"diagnostics","path":"notes.txt","line":0,"character":0}`,
 		`{"operation":"diagnostics","path":"notes.txt","line":1}`,
 		`{"operation":"document_symbols","path":"notes.txt","query":"unused"}`,
 		`{"operation":"workspace_symbols","query":"Thing","path":"notes.txt"}`,
+		`{"operation":"workspace_symbols","query":"Thing","line":0,"character":0}`,
 	} {
 		if _, err := lsp.Call(context.Background(), arguments); err == nil {
 			t.Errorf("lsp accepted fields ignored by the selected operation: %s", arguments)

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	agent "github.com/Tangerg/scope/agent"
 )
 
 // CanResumeWaitingExecution probes one exact durable waiting tree without
@@ -25,7 +25,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return false, nil
 	}
 	checkpoint := continuation.Checkpoint
-	if checkpoint.BuildID != i.config.BuildID || checkpoint.Scope.Isolated {
+	if !i.acceptsBuild(checkpoint.BuildID) || checkpoint.Scope.Isolated {
 		return false, nil
 	}
 	if err := i.validateRestoreScope(ctx, checkpoint.Scope); err != nil {

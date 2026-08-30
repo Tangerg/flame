@@ -13,13 +13,13 @@ func saveTestPlan(ctx context.Context, store *sqlite.PlanStore, sessionID string
 	if err != nil {
 		return err
 	}
-	updatedAt := current.UpdatedAt().Add(time.Nanosecond)
-	if current.UpdatedAt().IsZero() {
-		updatedAt = time.Unix(1, 0).UTC()
+	updatedAt := time.Unix(1, 0).UTC()
+	if committed, ok := current.State(); ok {
+		updatedAt = committed.UpdatedAt().Add(time.Nanosecond)
 	}
 	replacement, err := current.Replace(steps, updatedAt)
 	if err != nil {
 		return err
 	}
-	return store.Save(ctx, sessionID, current.Revision(), replacement)
+	return store.Save(ctx, sessionID, current.Version(), replacement)
 }

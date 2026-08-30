@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -10,18 +11,24 @@ import (
 
 const (
 	ollamaProtocolProvider     = "ollama"
-	ollamaCompatibilityAPIKey  = "ollama"
+	ollamaSDKValidationAPIKey  = "flame-ollama-unauthenticated"
 	defaultOllamaOpenAIBaseURL = "http://127.0.0.1:11434/v1"
 )
+
+var ollamaUnauthenticatedHTTPClient = &http.Client{
+	Transport: authorizationStrippingRoundTripper{base: http.DefaultTransport},
+}
 
 // buildOllamaChatModel uses the daemon's supported OpenAI-compatible surface.
 // Keeping the protocol adapter provider-scoped preserves ollama/* extension
 // ownership without importing Ollama's server repository into the Runtime.
 func buildOllamaChatModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
+	apiKey, httpClient := ollamaProtocolAuthentication(spec)
 	return openaiprotocol.NewCompatibleChat(openaiprotocol.ChatConfig{
-		APIKey:         ollamaAPIKey(spec.APIKey),
+		APIKey:         apiKey,
 		DefaultOptions: opts,
-		BaseURL:        ollamaOpenAIBaseURL(spec.BaseURL),
+		BaseURL:        ollamaOpenAIBaseURL(spec.sdkBaseURL()),
+		HTTPClient:     httpClient,
 	}, openaiprotocol.Dialect{
 		Provider: ollamaProtocolProvider, TokenLimitField: openaiprotocol.TokenLimitMaxTokens,
 	})
@@ -30,26 +37,40 @@ func buildOllamaChatModel(spec ClientSpec, opts chat.Options) (chat.Model, error
 // buildOllamaEmbeddingModel uses /v1/embeddings for the same reason as chat:
 // Runtime needs a client protocol, not Ollama's model-management server module.
 func buildOllamaEmbeddingModel(spec ClientSpec, opts embedding.Options) (embedding.Model, error) {
+	apiKey, httpClient := ollamaProtocolAuthentication(spec)
 	return openaiprotocol.NewEmbeddingModel(openaiprotocol.EmbeddingModelConfig{
 		Provider:       ollamaProtocolProvider,
-		APIKey:         ollamaAPIKey(spec.APIKey),
+		APIKey:         apiKey,
 		DefaultOptions: opts,
-		BaseURL:        ollamaOpenAIBaseURL(spec.BaseURL),
+		BaseURL:        ollamaOpenAIBaseURL(spec.sdkBaseURL()),
+		HTTPClient:     httpClient,
 	})
 }
 
-func ollamaAPIKey(configured string) string {
-	if configured != "" {
-		return configured
+func ollamaProtocolAuthentication(spec ClientSpec) (string, *http.Client) {
+	if apiKey := spec.sdkAPIKey(); apiKey != "" {
+		return apiKey, nil
 	}
-	return ollamaCompatibilityAPIKey
+	// scope's OpenAI protocol constructor requires a non-empty key even when the
+	// target daemon does not authenticate. Satisfy that construction invariant,
+	// then remove the header in this anti-corruption boundary so no fabricated
+	// credential crosses the process boundary.
+	return ollamaSDKValidationAPIKey, ollamaUnauthenticatedHTTPClient
+}
+
+type authorizationStrippingRoundTripper struct {
+	base http.RoundTripper
+}
+
+func (r authorizationStrippingRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	cloned := request.Clone(request.Context())
+	cloned.Header = request.Header.Clone()
+	cloned.Header.Del("Authorization")
+	return r.base.RoundTrip(cloned)
 }
 
 func ollamaOpenAIBaseURL(configured string) string {
 	baseURL := strings.TrimRight(configured, "/")
-	if baseURL == "" {
-		return defaultOllamaOpenAIBaseURL
-	}
 	if strings.HasSuffix(baseURL, "/v1") {
 		return baseURL
 	}

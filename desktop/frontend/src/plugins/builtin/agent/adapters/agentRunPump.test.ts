@@ -66,8 +66,8 @@ function pumpWith(reattach: (position: RunStreamPosition) => Promise<RunStream |
   const pump = createAgentRunPump({
     sessionId: "ses_1",
     isCancelled: () => false,
-    readEpoch: () => 0,
-    applyEvents: vi.fn(),
+    readEpoch: () => 0n,
+    applyEvents: vi.fn(() => true),
     reattach: (position) => {
       positions.push(position);
       return reattach(position);
@@ -91,6 +91,34 @@ describe("agent run pump reattach", () => {
       lastEventId: "evt_7",
       recovery: "replay",
     });
+  });
+
+  it("does not advance the replay cursor past a batch rejected by a newer view epoch", async () => {
+    let epoch = 0n;
+    const positions: RunStreamPosition[] = [];
+    const applyEvents = vi.fn();
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => epoch,
+      applyEvents,
+      reattach: (position) => {
+        positions.push(position);
+        return Promise.resolve(null);
+      },
+    });
+    const interrupted: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_not_folded", progressed);
+        epoch = 1n;
+      })(),
+    };
+
+    await pump.pump(interrupted, new AbortController().signal);
+
+    expect(applyEvents).not.toHaveBeenCalled();
+    expect(positions[0]?.lastEventId).toBe("");
   });
 
   it("requests cold recovery after an authoritative protocol violation", async () => {
@@ -125,8 +153,8 @@ describe("agent run pump reattach", () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: vi.fn(),
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
       readRunSnapshot,
       reattach: () => Promise.resolve(null),
     });
@@ -163,8 +191,11 @@ describe("agent run pump reattach", () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: (events) => order.push(...events.map((entry) => entry.event.type)),
+      readEpoch: () => 0n,
+      applyEvents: (events) => {
+        order.push(...events.map((entry) => entry.event.type));
+        return true;
+      },
       readRunSnapshot: async () => {
         order.push("exact-read");
         return terminalRun();
@@ -195,8 +226,8 @@ describe("agent run pump reattach", () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: vi.fn(),
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
       readRunSnapshot,
       applyRunSnapshot,
     });
@@ -226,8 +257,8 @@ describe("agent run pump reattach", () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: vi.fn(),
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
       readRunSnapshot,
       applyRunSnapshot,
       onIdle,
@@ -294,8 +325,8 @@ describe("agent run pump reattach", () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: vi.fn(),
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
       onIdle,
     });
     const controller = new AbortController();
@@ -325,12 +356,47 @@ describe("agent run pump reattach", () => {
     releaseNext({ value: undefined as never, done: true });
   });
 
+  it("does not let a retired pump reattach after its iterator settles late", async () => {
+    const lateNext = deferred<IteratorResult<RunEvent>>();
+    const reattach = vi.fn(() => Promise.resolve(null));
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      reattach,
+    });
+    const oldController = new AbortController();
+    const newController = new AbortController();
+    const oldSegment = asSegmentId("seg_old");
+    const newSegment = asSegmentId("seg_new");
+    const older = pump.pump(
+      {
+        result: { runId: RUN, segmentId: oldSegment },
+        events: {
+          [Symbol.asyncIterator]: () => ({ next: () => lateNext.promise }),
+        },
+      },
+      oldController.signal,
+    );
+    await Promise.resolve();
+
+    const newer = pump.pump(parkedStream(newSegment, newController.signal), newController.signal);
+    await Promise.resolve();
+    lateNext.resolve({ value: undefined as never, done: true });
+    await older;
+
+    expect(reattach).not.toHaveBeenCalled();
+    newController.abort();
+    await newer;
+  });
+
   it("does not let an older pump clear a newer segment for the same run", async () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
       isCancelled: () => false,
-      readEpoch: () => 0,
-      applyEvents: vi.fn(),
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
     });
     const oldController = new AbortController();
     const newController = new AbortController();

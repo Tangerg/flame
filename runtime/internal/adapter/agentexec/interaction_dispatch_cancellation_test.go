@@ -31,11 +31,11 @@ func TestInteractionSessionSubtreeCancellationIsScopedAndCoversLateDescendants(t
 				descendantID: {identity: delegateCallIdentity{parentID: targetID}},
 				siblingID:    {identity: delegateCallIdentity{parentID: rootID}},
 			},
-			activeDispatches: map[string]activeInteractionDispatch{
-				"root":       {processID: rootID, cancel: cancelRoot},
-				"target":     {processID: targetID, cancel: cancelTarget},
-				"descendant": {processID: descendantID, cancel: cancelDescendant},
-				"sibling":    {processID: siblingID, cancel: cancelSibling},
+			activeDispatches: map[interactionDispatchIdentity]activeInteractionDispatch{
+				{processID: rootID, effectID: mustInteractionEffectID(t, "root")}:             {processID: rootID, cancel: cancelRoot},
+				{processID: targetID, effectID: mustInteractionEffectID(t, "target")}:         {processID: targetID, cancel: cancelTarget},
+				{processID: descendantID, effectID: mustInteractionEffectID(t, "descendant")}: {processID: descendantID, cancel: cancelDescendant},
+				{processID: siblingID, effectID: mustInteractionEffectID(t, "sibling")}:       {processID: siblingID, cancel: cancelSibling},
 			},
 			canceledSubtreeRoots: make(map[agent.ProcessID]struct{}),
 		},
@@ -62,6 +62,15 @@ func TestInteractionSessionSubtreeCancellationIsScopedAndCoversLateDescendants(t
 func mustInteractionProcessID(t *testing.T, value string) agent.ProcessID {
 	t.Helper()
 	id, err := agent.ParseProcessID(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func mustInteractionEffectID(t *testing.T, value string) agent.EffectID {
+	t.Helper()
+	id, err := agent.ParseEffectID(value)
 	if err != nil {
 		t.Fatal(err)
 	}

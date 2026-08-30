@@ -3,11 +3,13 @@ package protocol
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
@@ -18,7 +20,7 @@ import (
 //
 // Implementations are GENERATED (wire_constraints.generated.go) from the Contract
 // Registry. Value constraints, closed-enum membership, union variants and
-// conditional presence rules therefore have one author shared by Go, JSON Schema
+// conditional field rules therefore have one author shared by Go, JSON Schema
 // and TypeScript. A hand-written ValidateWire would be a second author.
 //
 // [ValidateWireTree] composes these node-local validators at delivery boundaries.
@@ -227,9 +229,14 @@ type wireNumber interface {
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-func positiveNumber[Number wireNumber](field string, value Number) FieldError {
-	if value <= 0 {
-		return FieldError{Field: field, Detail: "must be greater than zero"}
+type wirePositiveNumber interface {
+	wireNumber | ~float32 | ~float64
+}
+
+func positiveNumber[Number wirePositiveNumber](field string, value Number) FieldError {
+	number := float64(value)
+	if number <= 0 || math.IsNaN(number) || math.IsInf(number, 0) {
+		return FieldError{Field: field, Detail: "must be finite and greater than zero"}
 	}
 	return FieldError{}
 }
@@ -238,14 +245,15 @@ func positiveNumber[Number wireNumber](field string, value Number) FieldError {
 // optional scalar at its zero value. A negative value is still present and
 // illegal. JSON Schema and the TypeScript validator apply minimum: 1 only when
 // the property exists, which is the same serialized contract.
-func optionalPositiveScalarNumber[Number wireNumber](field string, value Number) FieldError {
-	if value < 0 {
-		return FieldError{Field: field, Detail: "must be greater than zero when present"}
+func optionalPositiveScalarNumber[Number wirePositiveNumber](field string, value Number) FieldError {
+	number := float64(value)
+	if number < 0 || math.IsNaN(number) || math.IsInf(number, 0) {
+		return FieldError{Field: field, Detail: "must be finite and greater than zero when present"}
 	}
 	return FieldError{}
 }
 
-func optionalPositiveNumber[Number wireNumber](field string, value *Number) FieldError {
+func optionalPositiveNumber[Number wirePositiveNumber](field string, value *Number) FieldError {
 	if value == nil {
 		return FieldError{}
 	}
@@ -273,7 +281,10 @@ func optionalNonNegativeNumber[Number wireNumeric](field string, value *Number) 
 
 func minimumNumber[Number wireNumeric](field string, value Number, minimum Number) FieldError {
 	number := float64(value)
-	if math.IsNaN(number) || math.IsInf(number, 0) || number < float64(minimum) {
+	// Compare in Number's own representation. Converting both operands to
+	// float64 first would collapse adjacent uint64 values above 2^53 and could
+	// silently accept an integer outside the generated contract.
+	if math.IsNaN(number) || math.IsInf(number, 0) || value < minimum {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must be at least %v", minimum)}
 	}
 	return FieldError{}
@@ -281,7 +292,7 @@ func minimumNumber[Number wireNumeric](field string, value Number, minimum Numbe
 
 func maximumNumber[Number wireNumeric](field string, value Number, maximum Number) FieldError {
 	number := float64(value)
-	if math.IsNaN(number) || math.IsInf(number, 0) || number > float64(maximum) {
+	if math.IsNaN(number) || math.IsInf(number, 0) || value > maximum {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must be at most %v", maximum)}
 	}
 	return FieldError{}
@@ -324,6 +335,20 @@ func optionalMinItems[T any](field string, values []T, minimum int) FieldError {
 	return FieldError{}
 }
 
+func maxItems[T any](field string, values []T, maximum int) FieldError {
+	if len(values) > maximum {
+		return FieldError{Field: field, Detail: fmt.Sprintf("must contain at most %d items", maximum)}
+	}
+	return FieldError{}
+}
+
+func optionalMaxItems[T any](field string, values *[]T, maximum int) FieldError {
+	if values == nil {
+		return FieldError{}
+	}
+	return maxItems(field, *values, maximum)
+}
+
 func maxLength(field, value string, maximum int) FieldError {
 	if utf8.RuneCountInString(value) > maximum {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must contain at most %d characters", maximum)}
@@ -336,6 +361,168 @@ func optionalMaxLength(field string, value *string, maximum int) FieldError {
 		return FieldError{}
 	}
 	return maxLength(field, *value, maximum)
+}
+
+func maxItemLength[Identity ~string](field string, values []Identity, maximum int) FieldError {
+	for index, value := range values {
+		if violation := maxLength(fmt.Sprintf("%s[%d]", field, index), string(value), maximum); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func optionalMaxItemLength[Identity ~string](field string, values *[]Identity, maximum int) FieldError {
+	if values == nil {
+		return FieldError{}
+	}
+	return maxItemLength(field, *values, maximum)
+}
+
+func identity(field, value string) FieldError {
+	for _, character := range value {
+		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
+			return FieldError{Field: field, Detail: "must contain only printable non-whitespace characters"}
+		}
+	}
+	return FieldError{}
+}
+
+func optionalIdentity(field string, value *string) FieldError {
+	if value == nil {
+		return FieldError{}
+	}
+	return identity(field, *value)
+}
+
+func identityItems[Identity ~string](field string, values []Identity) FieldError {
+	for index, value := range values {
+		if violation := identity(fmt.Sprintf("%s[%d]", field, index), string(value)); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func optionalIdentityItems[Identity ~string](field string, values *[]Identity) FieldError {
+	if values == nil {
+		return FieldError{}
+	}
+	return identityItems(field, *values)
+}
+
+func textPrefixItems[Identity ~string](field string, values []Identity, prefix string) FieldError {
+	for index, value := range values {
+		if !strings.HasPrefix(string(value), prefix) {
+			return FieldError{
+				Field:  fmt.Sprintf("%s[%d]", field, index),
+				Detail: fmt.Sprintf("must be prefixed by %q", prefix),
+			}
+		}
+	}
+	return FieldError{}
+}
+
+func optionalTextPrefixItems[Identity ~string](field string, values *[]Identity, prefix string) FieldError {
+	if values == nil {
+		return FieldError{}
+	}
+	return textPrefixItems(field, *values, prefix)
+}
+
+func textPatternItems[Identity ~string](field string, values []Identity, pattern string) FieldError {
+	for index, value := range values {
+		if violation := requiredTextPattern(
+			fmt.Sprintf("%s[%d]", field, index),
+			string(value),
+			pattern,
+		); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func optionalTextPatternItems[Identity ~string](field string, values *[]Identity, pattern string) FieldError {
+	if values == nil {
+		return FieldError{}
+	}
+	return textPatternItems(field, *values, pattern)
+}
+
+func maxPropertyNameLength[Value any](field string, values map[string]Value, maximum int) FieldError {
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		if violation := maxLength(fmt.Sprintf("%s[%q]", field, key), key, maximum); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func identityPropertyNames[Value any](field string, values map[string]Value) FieldError {
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		if violation := identity(fmt.Sprintf("%s[%q]", field, key), key); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func requiredTextPrefix(field, value, prefix string) FieldError {
+	if !strings.HasPrefix(value, prefix) {
+		return FieldError{Field: field, Detail: fmt.Sprintf("must start with %q", prefix)}
+	}
+	return FieldError{}
+}
+
+func optionalTextPrefix(field, value, prefix string) FieldError {
+	if value == "" {
+		return FieldError{}
+	}
+	return requiredTextPrefix(field, value, prefix)
+}
+
+func requiredTextPointerPrefix(field string, value *string, prefix string) FieldError {
+	if value == nil {
+		return FieldError{Field: field, Detail: "is required"}
+	}
+	return requiredTextPrefix(field, *value, prefix)
+}
+
+func optionalTextPointerPrefix(field string, value *string, prefix string) FieldError {
+	if value == nil {
+		return FieldError{}
+	}
+	return requiredTextPrefix(field, *value, prefix)
+}
+
+func requiredTextPattern(field, value, pattern string) FieldError {
+	matched, err := regexp.MatchString(pattern, value)
+	if err != nil || !matched {
+		return FieldError{Field: field, Detail: fmt.Sprintf("must match %q", pattern)}
+	}
+	return FieldError{}
+}
+
+func optionalTextPattern(field, value, pattern string) FieldError {
+	if value == "" {
+		return FieldError{}
+	}
+	return requiredTextPattern(field, value, pattern)
+}
+
+func requiredTextPointerPattern(field string, value *string, pattern string) FieldError {
+	if value == nil {
+		return FieldError{Field: field, Detail: "is required"}
+	}
+	return requiredTextPattern(field, *value, pattern)
+}
+
+func optionalTextPointerPattern(field string, value *string, pattern string) FieldError {
+	if value == nil {
+		return FieldError{}
+	}
+	return requiredTextPattern(field, *value, pattern)
 }
 
 // nonEmptyProperties rejects an empty object map. nil remains a valid omission;
@@ -412,9 +599,43 @@ func requiredWhen(applies bool, field string, value any) FieldError {
 	return FieldError{}
 }
 
+// requiredAnyWhen reports one rule-level violation when none of the alternative
+// fields is present. Keeping the alternatives in one diagnostic preserves the
+// fact that satisfying any one of them is sufficient.
+func requiredAnyWhen(applies bool, fields []string, value any) FieldError {
+	if !applies {
+		return FieldError{}
+	}
+	for _, field := range fields {
+		if wireFieldPresent(value, field) {
+			return FieldError{}
+		}
+	}
+	return FieldError{
+		Field:  strings.Join(fields, "|"),
+		Detail: "at least one field is required",
+	}
+}
+
 func forbiddenWhen(applies bool, field string, value any) FieldError {
 	if applies && wireFieldPresent(value, field) {
 		return FieldError{Field: field, Detail: "must not be present here"}
+	}
+	return FieldError{}
+}
+
+func allowedValuesWhen(applies bool, field string, value any, allowed []string) FieldError {
+	if !applies {
+		return FieldError{}
+	}
+	actual, _, found := lookupWireValue(reflect.ValueOf(value), field)
+	if !found {
+		// Requiredness is a separate generated rule. Avoid reporting two different
+		// diagnostics for the same absent field.
+		return FieldError{}
+	}
+	if actual.Kind() != reflect.String || !slices.Contains(allowed, actual.String()) {
+		return FieldError{Field: field, Detail: "must be one of " + strings.Join(allowed, ", ") + " here"}
 	}
 	return FieldError{}
 }

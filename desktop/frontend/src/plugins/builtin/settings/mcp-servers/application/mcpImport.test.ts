@@ -34,7 +34,7 @@ describe("parseMcpImport", () => {
         args: ["-y", "@modelcontextprotocol/server-git"],
         env: { TOKEN: "a=b", EMPTY: "" },
         dir: "/repo",
-        timeoutSeconds: undefined,
+        handshakeTimeout: { type: "unbounded" },
       },
       {
         name: "cloud",
@@ -43,7 +43,7 @@ describe("parseMcpImport", () => {
         url: "https://example.com/mcp",
         authorization: "Bearer secret",
         headers: { "X-Trace": "abc" },
-        timeoutSeconds: 30,
+        handshakeTimeout: { type: "bounded", seconds: 30 },
       },
     ]);
   });

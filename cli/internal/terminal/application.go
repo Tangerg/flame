@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/attachment"
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
+	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
 	"github.com/Tangerg/flame/cli/internal/feedback"
@@ -29,6 +30,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/sessionartifact"
@@ -48,6 +50,7 @@ const (
 	commandPalette   keymap.Action = settings.ActionCommandPalette
 	showShortcuts    keymap.Action = settings.ActionShortcuts
 	showSessions     keymap.Action = settings.ActionSessions
+	showTimeline     keymap.Action = settings.ActionTimeline
 	searchTranscript keymap.Action = settings.ActionSearch
 	manageQueue      keymap.Action = settings.ActionManageQueue
 	chooseModel      keymap.Action = settings.ActionChooseModel
@@ -94,28 +97,29 @@ type app struct {
 	conversation     *agent.Conversation
 	operations       *operationOwner
 
-	transcript     *transcriptView
-	brand          *brandBanner
-	header         *sessionHeader
-	activity       *activityView
-	queueView      *queueView
-	queueDrawer    *queueDrawer
-	status         *statusView
-	settings       settings.Config
-	options        agent.RunOptions
-	composer       kit.Composer
-	prompt         *promptView
-	commands       commandCatalog
-	completion     headless.Completion
-	completionGate completionGate
-	shell          *shellView
-	stack          headless.Stack
-	queue          *promptqueue.Queue
-	workbench      *workbench.Store
-	drafts         *draftPersistence
-	draftState     draftObservation
-	stopDraftSave  func()
-	editor         promptEditor
+	transcript      *transcriptView
+	brand           *brandBanner
+	header          *sessionHeader
+	activity        *activityView
+	queueView       *queueView
+	queueDrawer     *queueDrawer
+	status          *statusView
+	settings        settings.Config
+	reconnectPolicy reconnect.Policy
+	options         agent.RunOptions
+	composer        kit.Composer
+	prompt          *promptView
+	commands        commandCatalog
+	completion      headless.Completion
+	completionGate  completionGate
+	shell           *shellView
+	stack           headless.Stack
+	queue           *promptqueue.Queue
+	workbench       *workbench.Store
+	drafts          *draftPersistence
+	draftState      draftObservation
+	stopDraftSave   func()
+	editor          promptEditor
 
 	approval            *agent.Approval
 	approvalDraft       *approvalDecisionDraft
@@ -167,10 +171,9 @@ type app struct {
 	attachmentElements  map[uint64]agent.Attachment
 	history             promptHistory
 	workbenchHealth     workbenchHealth
-	sessionContext      sessionContextEpoch
+	sessionContext      *sessionContextLease
 	sessionInvalidated  bool
-	commandSeq          uint64
-	commandOperations   map[uint64]commandOperation
+	commandOperations   commandOperationRegistry
 	confirmation        pressConfirmation
 	applicationKeys     *keymap.Map
 	globalKeys          *keymap.Map
@@ -178,7 +181,6 @@ type app struct {
 	globalMatcher       keymap.Matcher
 	attention           attentionCenter
 
-	streamSeq              uint64
 	openingRunID           string
 	pendingCancel          *pendingCancellation
 	sessionDraftTransition *sessionDraftTransition
@@ -217,6 +219,8 @@ type appConfig struct {
 	attachments      *attachment.Resolver
 	initialDraft     agent.Message
 	settings         settings.Config
+	reconnectPolicy  reconnect.Policy
+	options          agent.RunOptions
 	keyBindings      keyBindings
 	queue            *promptqueue.Queue
 	workbench        *workbench.Store
@@ -244,7 +248,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	cfg.keyBindings.setResolver(loop.After)
 	appearance := newTerminalAppearance(loop)
 	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
-	brand := newBrandBanner(appearance.theme, appearance.glyphs, cfg.clientVersion, cfg.snapshot.Session, cfg.settings.RunOptions())
+	brand := newBrandBanner(appearance.theme, appearance.glyphs, cfg.clientVersion, cfg.snapshot.Session, cfg.options)
 	transcript.SetEntrance(brand)
 	a := &app{
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
@@ -263,18 +267,20 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		header:             newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
 		activity:           newActivityView(appearance.theme, appearance.glyphs),
 		queueView:          newQueueView(appearance.theme, appearance.glyphs),
-		status:             newStatusView(appearance.theme, appearance.glyphs, cfg.settings.RunOptions()),
+		status:             newStatusView(appearance.theme, appearance.glyphs, cfg.options),
 		queue:              cfg.queue,
 		workbench:          cfg.workbench,
 		editor:             cfg.editor,
 		settings:           cfg.settings.Clone(),
-		options:            cfg.settings.RunOptions(),
+		reconnectPolicy:    cfg.reconnectPolicy,
+		options:            cfg.options,
 		syntax:             appearance.syntax,
 		attachments:        cfg.attachments,
 		attachmentElements: make(map[uint64]agent.Attachment),
-		commandOperations:  make(map[uint64]commandOperation),
+		commandOperations:  newCommandOperationRegistry(),
 		commands:           newCommandCatalog(),
 		attention:          newAttentionCenter(),
+		sessionContext:     newSessionContextLease(),
 		applicationKeys:    cfg.keyBindings.application,
 		globalKeys:         cfg.keyBindings.global,
 	}
@@ -655,7 +661,8 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	a.wireTranscript(projection.transcript)
 	a.shell.SetTranscript(projection.transcript)
 	a.header.SetUsage(projection.conversation.Usage())
-	a.activity.Set(projection.conversation.Plan())
+	a.activity.Set(projection.conversation.PlanItems())
+	a.status.setRunningDescendants(projection.conversation.RunningDescendants())
 	a.prompt.SetBusy(projection.conversation.Busy())
 	previousTranscript.Close()
 	a.listenForSearch()
@@ -690,8 +697,9 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 }
 
 func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
-	a.activity.Set(a.conversation.Plan())
+	a.activity.Set(a.conversation.PlanItems())
 	a.header.SetUsage(a.conversation.Usage())
+	a.status.setRunningDescendants(a.conversation.RunningDescendants())
 	a.prompt.SetBusy(a.conversation.Busy())
 	switch a.conversation.Phase() {
 	case agent.ConversationWaiting:
@@ -732,7 +740,7 @@ func (a *app) setActiveSession(session agent.Session) {
 
 func (a *app) Draw(frame headless.Frame) {
 	a.stack.Draw(frame)
-	if a.stack.Empty() && a.completion.Open() {
+	if a.stack.Depth() == 0 && a.completion.Open() {
 		a.drawCompletion(frame)
 	}
 }
@@ -754,7 +762,7 @@ func (a *app) Close(ctx context.Context) error {
 		target           agent.CancelRun
 		openingCommandID agent.CommandID
 		cancelRuntime    bool
-		cancelReplay     workbench.ReplayGuard
+		cancelReplay     commandreplay.Guard
 	)
 	if a.pendingCancel != nil {
 		target, openingCommandID, cancelRuntime = a.pendingCancel.request, a.pendingCancel.openingCommandID, true
@@ -812,7 +820,7 @@ func (a *app) submit() {
 		a.sendNextQueuedIfBusy()
 		return
 	}
-	if name, arg, command := headless.Parse(message.Text); command {
+	if name, arg, command := parseSlashCommand(message.Text); command {
 		// A command acts on the staged composer context. Clear its command text but
 		// put attachment elements back so /attachments and /detach can inspect or
 		// mutate them without accidentally sending a user turn.
@@ -877,7 +885,8 @@ func (a *app) commitPromptSubmission(commandID agent.CommandID, message agent.Me
 	}
 	if a.workbench != nil {
 		pending := workbench.PendingRun{
-			State: workbench.PendingRunQueued,
+			State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
+			CancelReplay: commandreplay.UnprotectedGuard(),
 			Command: agent.StartRun{
 				CommandID: commandID, SessionID: a.session.ID, Message: message.Clone(), Options: a.options.Clone(),
 			},
@@ -898,7 +907,7 @@ func (a *app) sendNextQueuedIfBusy() {
 		return
 	}
 	index := 0
-	if state.DispatchingID != 0 {
+	if _, dispatching := state.DispatchingID(); dispatching {
 		index = 1
 	}
 	if index >= len(state.Entries) || state.Entries[index].Held {

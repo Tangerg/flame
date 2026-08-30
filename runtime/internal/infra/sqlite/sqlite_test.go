@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
@@ -55,7 +56,7 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("table_info: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	columns := map[string]bool{}
 	for rows.Next() {
 		var cid, notNull, primaryKey int
@@ -74,13 +75,13 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	}
 
 	const insert = `INSERT INTO sessions(
-		id, title, workspace_path, parent_id, started_at, updated_at,
+		id, title, title_search, workspace_path, workspace_search, parent_id, started_at, updated_at,
 		provider, model, favorite, isolated, revision
-	) VALUES (?, '', ?, '', 1, 1, 'provider', 'model', 0, 0, 1)`
-	if _, err := db.Exec(insert, "ses_empty", ""); err == nil {
+	) VALUES (?, '', '', ?, ?, '', 1, 1, 'provider', 'model', 0, 0, 1)`
+	if _, err := db.Exec(insert, "ses_empty", "", ""); err == nil {
 		t.Fatal("sessions accepted an empty workspace_path")
 	}
-	if _, err := db.Exec(insert, "ses_relative", "relative/work"); err != nil {
+	if _, err := db.Exec(insert, "ses_relative", "relative/work", "relative/work"); err != nil {
 		t.Fatalf("seed relative workspace: %v", err)
 	}
 	if _, err := sqlite.NewSessionStore(db).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
@@ -179,7 +180,7 @@ func TestSessionPersistAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open 2: %v", err)
 	}
-	defer db2.Close()
+	defer func() { _ = db2.Close() }()
 	svc2 := sqlite.NewSessionStore(db2)
 
 	got, err := svc2.Get(ctx, created.ID())
@@ -501,7 +502,7 @@ func assertMismatchedSchemaRefused(t *testing.T, staleEpoch int) {
 	if err != nil {
 		t.Fatalf("reopen refused database: %v", err)
 	}
-	defer reopened.Close()
+	defer func() { _ = reopened.Close() }()
 	var rows int
 	if err := reopened.QueryRow(`SELECT count(*) FROM stale_runs`).Scan(&rows); err != nil || rows != 1 {
 		t.Fatalf("stale rows = %d, err=%v, want the untouched seed", rows, err)
@@ -534,9 +535,38 @@ func TestOpenInstallsIntoAnEmptyFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open empty database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	var epoch int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&epoch); err != nil || epoch == 0 {
 		t.Fatalf("installed epoch = %d, err=%v, want the current epoch", epoch, err)
+	}
+}
+
+func TestRevisionTablesRejectNumbersOutsideTheExactEnvelope(t *testing.T) {
+	t.Parallel()
+
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	for _, revision := range []uint64{0, exactint.Maximum + 1} {
+		for name, statement := range map[string]string{
+			"sessions": `INSERT INTO sessions(
+				id, title, title_search, workspace_path, workspace_search, started_at, updated_at,
+				provider, model, revision
+			) VALUES ('ses_revision', '', '', '/work', '/work', 1, 1, 'provider', 'model', ?)`,
+			"session_plans": `INSERT INTO session_plans(session_id, steps, revision, updated_at)
+				VALUES ('ses_revision', '[]', ?, 1)`,
+			"schedules": `INSERT INTO schedules(id, instructions, cron, created_at, revision)
+				VALUES ('sch_revision', 'review', '@daily', 1, ?)`,
+		} {
+			t.Run(fmt.Sprintf("%s/%d", name, revision), func(t *testing.T) {
+				if _, err := db.ExecContext(t.Context(), statement, revision); err == nil {
+					t.Fatalf("%s accepted revision %d", name, revision)
+				}
+			})
+		}
 	}
 }

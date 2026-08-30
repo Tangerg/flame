@@ -294,37 +294,8 @@ func (q Question) Validate() error {
 		return errors.New("question requires at least one field")
 	}
 	for index, field := range q.Fields {
-		if strings.TrimSpace(field.Prompt) == "" {
-			return fmt.Errorf("question field %d prompt is required", index)
-		}
-		if utf8.RuneCountInString(field.Header) > 12 {
-			return fmt.Errorf("question field %d header must be at most 12 characters", index)
-		}
-		switch field.Kind {
-		case QuestionText:
-			if len(field.Options) != 0 || field.Multiple || field.AllowCustom {
-				return fmt.Errorf("text question field %d cannot carry choice settings", index)
-			}
-		case QuestionChoice:
-			if len(field.Options) < 2 {
-				return fmt.Errorf("choice question field %d requires at least two options", index)
-			}
-		default:
-			return fmt.Errorf("question field %d has unknown kind %q", index, field.Kind)
-		}
-		seenOptions := make(map[string]struct{}, len(field.Options))
-		for optionIndex, option := range field.Options {
-			label := strings.TrimSpace(option.Label)
-			if label == "" {
-				return fmt.Errorf("question field %d option %d label is required", index, optionIndex)
-			}
-			if label != option.Label {
-				return fmt.Errorf("question field %d option %d label has surrounding whitespace", index, optionIndex)
-			}
-			if _, duplicate := seenOptions[label]; duplicate {
-				return fmt.Errorf("question field %d repeats option %q", index, label)
-			}
-			seenOptions[label] = struct{}{}
+		if err := field.validate(index); err != nil {
+			return err
 		}
 	}
 	if q.Answers != nil {
@@ -335,7 +306,7 @@ func (q Question) Validate() error {
 			)
 		}
 		for index, values := range q.Answers {
-			if err := validateQuestionAnswer(q.Fields[index], values); err != nil {
+			if err := q.Fields[index].validateAnswer(values); err != nil {
 				return fmt.Errorf("question answer %d: %w", index, err)
 			}
 		}
@@ -348,7 +319,43 @@ func (q Question) Validate() error {
 // that separate lifecycle fact.
 func (q Question) Answered() bool { return q.Answers != nil }
 
-func validateQuestionAnswer(field QuestionField, values []string) error {
+func (field QuestionField) validate(index int) error {
+	if strings.TrimSpace(field.Prompt) == "" {
+		return fmt.Errorf("question field %d prompt is required", index)
+	}
+	if utf8.RuneCountInString(field.Header) > 12 {
+		return fmt.Errorf("question field %d header must be at most 12 characters", index)
+	}
+	switch field.Kind {
+	case QuestionText:
+		if len(field.Options) != 0 || field.Multiple || field.AllowCustom {
+			return fmt.Errorf("text question field %d cannot carry choice settings", index)
+		}
+	case QuestionChoice:
+		if len(field.Options) < 2 {
+			return fmt.Errorf("choice question field %d requires at least two options", index)
+		}
+	default:
+		return fmt.Errorf("question field %d has unknown kind %q", index, field.Kind)
+	}
+	seenOptions := make(map[string]struct{}, len(field.Options))
+	for optionIndex, option := range field.Options {
+		label := strings.TrimSpace(option.Label)
+		if label == "" {
+			return fmt.Errorf("question field %d option %d label is required", index, optionIndex)
+		}
+		if label != option.Label {
+			return fmt.Errorf("question field %d option %d label has surrounding whitespace", index, optionIndex)
+		}
+		if _, duplicate := seenOptions[label]; duplicate {
+			return fmt.Errorf("question field %d repeats option %q", index, label)
+		}
+		seenOptions[label] = struct{}{}
+	}
+	return nil
+}
+
+func (field QuestionField) validateAnswer(values []string) error {
 	switch field.Kind {
 	case QuestionText:
 		if len(values) == 0 {
@@ -365,35 +372,40 @@ func validateQuestionAnswer(field QuestionField, values []string) error {
 		if !field.Multiple && len(values) != 1 {
 			return errors.New("exactly one choice is required")
 		}
-		allowed := make(map[string]struct{}, len(field.Options))
-		for _, option := range field.Options {
-			allowed[option.Label] = struct{}{}
-		}
-		seen := make(map[string]struct{}, len(values))
-		custom := 0
-		for _, value := range values {
-			if strings.TrimSpace(value) == "" {
-				return errors.New("choice values must not be empty")
-			}
-			if value != strings.TrimSpace(value) {
-				return errors.New("choice values must not have surrounding whitespace")
-			}
-			if _, known := allowed[value]; !known {
-				if !field.AllowCustom {
-					return fmt.Errorf("unknown choice %q", value)
-				}
-				custom++
-				if custom > 1 {
-					return errors.New("at most one custom choice is allowed")
-				}
-			}
-			if _, duplicate := seen[value]; duplicate {
-				return errors.New("duplicate choices are not allowed")
-			}
-			seen[value] = struct{}{}
-		}
-		return nil
+		return field.validateChoiceAnswer(values)
 	default:
 		return fmt.Errorf("unknown question field kind %q", field.Kind)
 	}
+}
+
+func (field QuestionField) validateChoiceAnswer(values []string) error {
+	allowed := make(map[string]struct{}, len(field.Options))
+	for _, option := range field.Options {
+		allowed[option.Label] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(values))
+	customSeen := false
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return errors.New("choice values must not be empty")
+		}
+		if value != trimmed {
+			return errors.New("choice values must not have surrounding whitespace")
+		}
+		if _, known := allowed[value]; !known {
+			if !field.AllowCustom {
+				return fmt.Errorf("unknown choice %q", value)
+			}
+			if customSeen {
+				return errors.New("at most one custom choice is allowed")
+			}
+			customSeen = true
+		}
+		if _, duplicate := seen[value]; duplicate {
+			return errors.New("duplicate choices are not allowed")
+		}
+		seen[value] = struct{}{}
+	}
+	return nil
 }

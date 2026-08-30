@@ -41,11 +41,48 @@ func (t *testProviderRegistry) Update(_ context.Context, id string, patch provid
 	if t.entries == nil {
 		t.entries = map[string]provider.Provider{}
 	}
-	entry := t.entries[id]
-	entry.ID = id
-	entry = entry.Apply(patch)
+	entry, found := t.entries[id]
+	if !found {
+		var err error
+		entry, err = provider.New(id)
+		if err != nil {
+			return provider.Provider{}, err
+		}
+	}
+	entry, err := entry.Apply(patch)
+	if err != nil {
+		return provider.Provider{}, err
+	}
 	t.entries[id] = entry
 	return entry, nil
+}
+
+func modelProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
+	t.Helper()
+	entry, err := provider.New(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := provider.Patch{}
+	if rawKey != "" {
+		key, keyErr := provider.NewAPIKey(rawKey)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		patch.APIKey = provider.Set(key)
+	}
+	if rawBaseURL != "" {
+		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
+		if baseURLErr != nil {
+			t.Fatal(baseURLErr)
+		}
+		patch.BaseURL = provider.Set(baseURL)
+	}
+	entry, err = entry.Apply(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
 }
 
 type testCatalog struct {
@@ -57,11 +94,29 @@ func (t testCatalog) Supported() []ProviderMetadata { return slices.Clone(t.meta
 
 func (t testCatalog) Metadata(id string) (ProviderMetadata, bool) {
 	for _, metadata := range t.metadata {
-		if metadata.ID == id {
+		if metadata.ID() == id {
 			return metadata, true
 		}
 	}
 	return ProviderMetadata{}, false
+}
+
+func providerMetadataFixture(t testing.TB, id string, endpoint ProviderEndpointPolicy, source ProviderModelSource, embedding EmbeddingCapability) ProviderMetadata {
+	t.Helper()
+	metadata, err := NewProviderMetadata(id, ProviderAPIKeyRequired, endpoint, source, embedding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return metadata
+}
+
+func optionalAPIKeyProviderMetadataFixture(t testing.TB, id string, endpoint ProviderEndpointPolicy, source ProviderModelSource, embedding EmbeddingCapability) ProviderMetadata {
+	t.Helper()
+	metadata, err := NewProviderMetadata(id, ProviderAPIKeyOptional, endpoint, source, embedding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return metadata
 }
 
 func (t testCatalog) Models(providerID string) []Model {
@@ -70,11 +125,20 @@ func (t testCatalog) Models(providerID string) []Model {
 
 func (t testCatalog) LookupModel(providerID, modelID string) (Model, bool) {
 	for _, model := range t.models[providerID] {
-		if model.ID == modelID {
+		if model.ID() == modelID {
 			return model, true
 		}
 	}
 	return Model{}, false
+}
+
+func catalogModelFixture(t testing.TB, providerID, modelID string, details *Details) Model {
+	t.Helper()
+	model, err := NewModel(providerID, modelID, details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return model
 }
 
 type fakeLister struct {
@@ -89,39 +153,111 @@ func (f *fakeLister) ListModels(_ context.Context, entry provider.Provider) ([]s
 }
 
 type fakeProber struct {
-	got provider.Provider
-	err error
+	got     provider.Provider
+	err     error
+	onProbe func()
+}
+
+func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
+	prober := &fakeProber{}
+	c := New(Config{
+		Providers: &testProviderRegistry{},
+		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
+			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, EmbeddingCapabilityWithoutDefault(),
+		)}},
+		Prober: prober,
+	})
+
+	providers, err := c.ListProviders(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(providers) != 1 || !providers[0].Configured || providers[0].RequiresAPIKey || providers[0].Credential != nil {
+		t.Fatalf("optional provider summary = %+v", providers)
+	}
+	if outcome, err := c.TestProvider(t.Context(), "ollama"); err != nil || outcome != ProviderTestSucceeded {
+		t.Fatalf("TestProvider = %q, %v", outcome, err)
+	}
+	if prober.got.ID() != "ollama" {
+		t.Fatalf("probed provider = %q", prober.got.ID())
+	}
+}
+
+func TestProviderProbePreservesCallerCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	c := New(Config{
+		Providers: &testProviderRegistry{},
+		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
+			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
+		Prober: &fakeProber{onProbe: cancel},
+	})
+
+	outcome, err := c.TestProvider(ctx, "ollama")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("TestProvider error = %v, want caller cancellation", err)
+	}
+	if outcome != "" {
+		t.Fatalf("TestProvider outcome = %q, want no operational outcome after cancellation", outcome)
+	}
+}
+
+func TestProviderProbePreservesRegistryFailure(t *testing.T) {
+	sentinel := errors.New("registry unavailable")
+	c := New(Config{
+		Providers: &testProviderRegistry{getErr: sentinel},
+		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
+			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
+		Prober: &fakeProber{},
+	})
+
+	outcome, err := c.TestProvider(t.Context(), "ollama")
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("TestProvider error = %v, want registry failure", err)
+	}
+	if outcome != "" {
+		t.Fatalf("TestProvider outcome = %q, want no probe outcome after registry failure", outcome)
+	}
 }
 
 func (f *fakeProber) Probe(_ context.Context, entry provider.Provider) error {
 	f.got = entry
+	if f.onProbe != nil {
+		f.onProbe()
+	}
 	return f.err
 }
 
 func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 	registry := &testProviderRegistry{entries: map[string]provider.Provider{
-		"ollama": {ID: "ollama", BaseURL: "http://host:1234/v1", APIKey: "k"},
+		"ollama": modelProvider(t, "ollama", "k", "http://host:1234/v1"),
 	}}
 	catalog := testCatalog{
-		metadata: []ProviderMetadata{{ID: "ollama", ProbeModels: true}},
-		models:   map[string][]Model{"ollama": {{ID: "known", Provider: "ollama", Details: &Details{DisplayName: "Known"}}}},
+		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
+		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "known", &Details{DisplayName: "Known"})}},
 	}
 	lister := &fakeLister{ids: []string{"known", "local"}}
 	c := New(Config{Providers: registry, Catalog: catalog, Lister: lister})
 
-	got := c.ListModels(t.Context(), "ollama")
-	if len(got) != 2 || got[0].Details == nil || got[0].Details.DisplayName != "Known" || got[1].ID != "local" || got[1].Details != nil {
+	got, err := c.ListModels(t.Context(), "ollama")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Details() == nil || got[0].Details().DisplayName != "Known" || got[1].ID() != "local" || got[1].Details() != nil {
 		t.Fatalf("models = %+v", got)
 	}
-	if lister.gotEntry.BaseURL != "http://host:1234/v1" || lister.gotEntry.APIKey != "k" {
-		t.Fatalf("lister entry = %+v, want configured endpoint + key", lister.gotEntry)
+	gotBaseURL, _ := lister.gotEntry.BaseURL()
+	gotKey, _ := lister.gotEntry.APIKey()
+	if gotBaseURL.String() != "http://host:1234/v1" || gotKey.Reveal() != "k" {
+		t.Fatalf("lister entry = (%q, %q), want configured endpoint + key", gotBaseURL.String(), gotKey.Reveal())
 	}
 }
 
 func TestListModelsFallsBackToStaticCatalogWhenProbeCannotAnswer(t *testing.T) {
 	catalog := testCatalog{
-		metadata: []ProviderMetadata{{ID: "ollama", ProbeModels: true}},
-		models:   map[string][]Model{"ollama": {{ID: "fallback", Provider: "ollama", Details: &Details{}}}},
+		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
+		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "fallback", &Details{})}},
 	}
 	c := New(Config{
 		Providers: &testProviderRegistry{},
@@ -129,8 +265,11 @@ func TestListModelsFallsBackToStaticCatalogWhenProbeCannotAnswer(t *testing.T) {
 		Lister:    &fakeLister{err: errors.New("offline")},
 	})
 
-	got := c.ListModels(t.Context(), "ollama")
-	if len(got) != 1 || got[0].ID != "fallback" {
+	got, err := c.ListModels(t.Context(), "ollama")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID() != "fallback" {
 		t.Fatalf("models = %+v, want static fallback", got)
 	}
 }
@@ -139,14 +278,17 @@ func TestListModelsSkipsRemoteProbeForStaticProvider(t *testing.T) {
 	lister := &fakeLister{ids: []string{"must-not-appear"}}
 	c := New(Config{
 		Catalog: testCatalog{
-			metadata: []ProviderMetadata{{ID: "anthropic"}},
-			models:   map[string][]Model{"anthropic": {{ID: "cataloged", Provider: "anthropic", Details: &Details{}}}},
+			metadata: []ProviderMetadata{providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability())},
+			models:   map[string][]Model{"anthropic": {catalogModelFixture(t, "anthropic", "cataloged", &Details{})}},
 		},
 		Lister: lister,
 	})
 
-	got := c.ListModels(t.Context(), "anthropic")
-	if len(got) != 1 || got[0].ID != "cataloged" || lister.gotEntry.ID != "" {
+	got, err := c.ListModels(t.Context(), "anthropic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID() != "cataloged" || lister.gotEntry.ID() != "" {
 		t.Fatalf("models=%+v lister=%+v", got, lister.gotEntry)
 	}
 }
@@ -155,36 +297,37 @@ func TestUpdateProviderOwnsSupportAndBaseURLPolicy(t *testing.T) {
 	registry := &testProviderRegistry{}
 	c := New(Config{
 		Providers: registry,
-		Catalog:   testCatalog{metadata: []ProviderMetadata{{ID: "compat", RequiresBaseURL: true}}},
+		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
+			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
 	})
 
-	apiKey := "sk-secret"
-	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: &apiKey}); !errors.Is(err, ErrProviderBaseURLRequired) {
+	apiKey, _ := provider.NewAPIKey("sk-secret")
+	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: provider.Set(apiKey)}); !errors.Is(err, ErrProviderBaseURLRequired) {
 		t.Fatalf("missing base URL error = %v", err)
 	}
-	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "unknown", APIKey: &apiKey}); !errors.Is(err, ErrProviderUnsupported) {
+	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "unknown", APIKey: provider.Set(apiKey)}); !errors.Is(err, ErrProviderUnsupported) {
 		t.Fatalf("unknown provider error = %v", err)
 	}
-	baseURL := "https://example.test"
-	configured, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: &apiKey, BaseURL: &baseURL})
+	baseURL, _ := provider.NewBaseURL("https://example.test")
+	configured, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: provider.Set(apiKey), BaseURL: provider.Set(baseURL)})
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
-	if len(registry.updates) != 1 || configured.APIKeyMasked == "" || configured.APIKeyMasked == "sk-secret" {
+	if len(registry.updates) != 1 || configured.Credential == nil || configured.Credential.Masked == "sk-secret" {
 		t.Fatalf("updated=%+v patches=%+v", configured, registry.updates)
 	}
 
-	replacement := "sk-replaced"
-	configured, err = c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: &replacement})
+	replacement, _ := provider.NewAPIKey("sk-replaced")
+	configured, err = c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", APIKey: provider.Set(replacement)})
 	if err != nil {
 		t.Fatalf("update key while preserving endpoint: %v", err)
 	}
-	if configured.BaseURL != baseURL {
-		t.Fatalf("base URL = %q, want preserved %q", configured.BaseURL, baseURL)
+	if configured.BaseURL == nil || *configured.BaseURL != baseURL.String() {
+		t.Fatalf("base URL = %v, want preserved %q", configured.BaseURL, baseURL.String())
 	}
 
-	emptyBaseURL := ""
-	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: &emptyBaseURL}); !errors.Is(err, ErrProviderBaseURLRequired) {
+	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: provider.Clear[provider.BaseURL]()}); !errors.Is(err, ErrProviderBaseURLRequired) {
 		t.Fatalf("clear required base URL error = %v", err)
 	}
 	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat"}); !errors.Is(err, ErrProviderUpdateRequired) {
@@ -196,9 +339,9 @@ func TestTestProviderRequiresAConfiguredSupportedProvider(t *testing.T) {
 	prober := &fakeProber{}
 	c := New(Config{
 		Providers: &testProviderRegistry{entries: map[string]provider.Provider{
-			"anthropic": {ID: "anthropic", APIKey: "sk-secret"},
+			"anthropic": modelProvider(t, "anthropic", "sk-secret", ""),
 		}},
-		Catalog: testCatalog{metadata: []ProviderMetadata{{ID: "anthropic"}}},
+		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability())}},
 		Prober:  prober,
 	})
 
@@ -208,7 +351,7 @@ func TestTestProviderRequiresAConfiguredSupportedProvider(t *testing.T) {
 	if outcome, err := c.TestProvider(t.Context(), "anthropic"); err != nil || outcome != ProviderTestSucceeded {
 		t.Fatalf("test provider = %q, %v", outcome, err)
 	}
-	if prober.got.ID != "anthropic" {
+	if prober.got.ID() != "anthropic" {
 		t.Fatalf("probed = %+v", prober.got)
 	}
 }
@@ -217,13 +360,13 @@ func TestCommittedProviderUpdatePublishesModelsInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
 	c := New(Config{
 		Providers: &testProviderRegistry{},
-		Catalog: testCatalog{metadata: []ProviderMetadata{{
-			ID: "compat", RequiresBaseURL: true,
-		}}},
+		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
+			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
-	baseURL := "https://example.test"
-	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: &baseURL}); err != nil {
+	baseURL, _ := provider.NewBaseURL("https://example.test")
+	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: provider.Set(baseURL)}); err != nil {
 		t.Fatal(err)
 	}
 	if len(notices) != 1 || notices[0].Resource != invalidation.Models {
@@ -235,13 +378,13 @@ func TestFailedProviderUpdateDoesNotPublishInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
 	c := New(Config{
 		Providers: &testProviderRegistry{updateErr: errors.New("store unavailable")},
-		Catalog: testCatalog{metadata: []ProviderMetadata{{
-			ID: "compat", RequiresBaseURL: true,
-		}}},
+		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
+			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
-	baseURL := "https://example.test"
-	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: &baseURL}); err == nil {
+	baseURL, _ := provider.NewBaseURL("https://example.test")
+	if _, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "compat", BaseURL: provider.Set(baseURL)}); err == nil {
 		t.Fatal("UpdateProvider unexpectedly succeeded")
 	}
 	if len(notices) != 0 {

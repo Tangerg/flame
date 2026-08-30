@@ -1,4 +1,5 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
+import type { UsagePeriod } from "../usagePeriod";
 export interface UsageAmount {
   inputTokens?: number;
   outputTokens?: number;
@@ -23,7 +24,7 @@ export interface UsageSummaryReadModel {
 }
 
 export interface UsageGateway {
-  loadSummary(sinceDays: number, signal?: AbortSignal): Promise<UsageSummaryReadModel>;
+  loadSummary(period: UsagePeriod, signal?: AbortSignal): Promise<UsageSummaryReadModel>;
 }
 
 const port = createSingletonPort<UsageGateway>("Usage gateway is not configured");

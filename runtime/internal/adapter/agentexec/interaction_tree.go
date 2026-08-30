@@ -7,10 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 )
 
 const interactionBarrierPauseReason = "runtime human-input tree barrier"

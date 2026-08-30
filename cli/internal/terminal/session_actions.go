@@ -156,7 +156,7 @@ func (a *app) rollbackSession(preview rollbackPreview) {
 		func(ctx context.Context) (rollbackSettlement, error) {
 			result, err := sessionrollback.Execute(
 				ctx, a.runtime, a.workbench, preview.settlement,
-				rollbackReplayWindow(a.runtimeProfile), runtimeRecoveryBackoff,
+				commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
 			if result.Pending.CommandID == "" {
 				return rollbackSettlement{}, err
@@ -270,25 +270,25 @@ func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, e
 func (a *app) confirmAction(title, question, action string, confirm func()) {
 	a.dismissConfirmation()
 	generation := a.sessionContext
-	decision := "cancel"
-	choice := &headless.Select[string]{Label: question, Value: headless.Bind(&decision), Rows: 2}
-	choice.SetOptions([]headless.Option[string]{
-		{Label: "Cancel", Value: "cancel"},
-		{Label: action, Value: "confirm"},
+	confirmed := false
+	choice := &headless.Select[bool]{Label: question, Value: headless.Bind(&confirmed), Rows: 2}
+	choice.SetOptions([]headless.Option[bool]{
+		{Label: "Cancel", Value: false},
+		{Label: action, Value: true},
 	})
 	form := headless.NewForm(choice)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	dismiss := func() {
 		if a.confirmationDialog == dialog {
-			dialog.Dismiss()
+			dialog.Controller().Dismiss()
 			a.confirmationDialog = nil
 		}
 	}
 	form.Done = func() {
 		current := a.confirmationDialog == dialog
 		dismiss()
-		if current && decision == "confirm" && generation == a.sessionContext {
+		if current && confirmed && a.sessionContext.current(generation) {
 			confirm()
 		}
 	}
@@ -302,12 +302,12 @@ func (a *app) confirmAction(title, question, action string, confirm func()) {
 		Title: title, Body: body, Where: layout.Placement{Width: 78, Height: 9},
 	})
 	a.confirmationDialog = dialog
-	dialog.Show()
+	dialog.Controller().Show()
 }
 
 func (a *app) dismissConfirmation() {
 	if a.confirmationDialog != nil {
-		a.confirmationDialog.Dismiss()
+		a.confirmationDialog.Controller().Dismiss()
 		a.confirmationDialog = nil
 	}
 }

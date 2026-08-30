@@ -35,25 +35,25 @@ func (oauthHandlerStub) Authorize(context.Context, *http.Request, *http.Response
 func TestReusableOAuthIsBoundToEndpointOrigin(t *testing.T) {
 	handler := oauthHandlerStub{}
 	current := ServerConfig{
-		Name: "server", Transport: TransportHTTP, Endpoint: "https://EXAMPLE.com/mcp",
+		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://EXAMPLE.com/mcp",
 	}
 	if got := reusableOAuth(current, ServerConfig{
-		Name: "server", Transport: TransportHTTP, Endpoint: "https://example.com:443/other",
+		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://example.com:443/other",
 	}, handler); got == nil {
 		t.Fatal("same-origin endpoint did not preserve OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
-		Name: "server", Transport: TransportHTTP, Endpoint: "https://other.example/mcp",
+		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://other.example/mcp",
 	}, handler); got != nil {
 		t.Fatal("cross-origin endpoint preserved OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
-		Name: "server", Transport: TransportStdio, Command: "server",
+		Name: testMCPServerName("server"), Transport: TransportStdio, Command: "server",
 	}, handler); got != nil {
 		t.Fatal("transport change preserved OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
-		Name: "server", Transport: TransportHTTP, Endpoint: "https://example.com/other",
+		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://example.com/other",
 		Authorization: "Bearer static",
 	}, handler); got != nil {
 		t.Fatal("static authorization preserved OAuth handler")
@@ -72,7 +72,7 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 		t.Fatalf("Shutdown: %v", err)
 	}
 
-	cfg := ServerConfig{Name: "closed", Transport: TransportHTTP, Endpoint: "https://example.invalid"}
+	cfg := ServerConfig{Name: testMCPServerName("closed"), Transport: TransportHTTP, Endpoint: "https://example.invalid"}
 	for name, call := range map[string]func() error{
 		"configure": func() error { return c.Configure(context.Background(), cfg) },
 		"reconnect": func() error { return c.Reconnect(context.Background(), cfg.Name) },
@@ -108,14 +108,14 @@ func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
 
 func TestNilConnectionsRejectRemoval(t *testing.T) {
 	var connections *Connections
-	if err := connections.Detach("server"); !errors.Is(err, ErrConnectionsUnavailable) {
+	if err := connections.Detach(testMCPServerName("server")); !errors.Is(err, ErrConnectionsUnavailable) {
 		t.Fatalf("Detach on nil pool = %v, want ErrConnectionsUnavailable", err)
 	}
 }
 
 func TestConnectionsShutdownCancelsAndJoinsAttempts(t *testing.T) {
 	c := &Connections{lifetime: t.Context()}
-	target := &server{config: ServerConfig{Name: "server"}}
+	target := &server{config: ServerConfig{Name: testMCPServerName("server")}}
 	c.servers = []*server{target}
 	c.mu.Lock()
 	attempt := c.beginAttempt(t.Context(), target)
@@ -218,8 +218,8 @@ func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testi
 
 func TestConnectionAttemptsSupersedePerServer(t *testing.T) {
 	c := &Connections{lifetime: t.Context()}
-	first := &server{config: ServerConfig{Name: "first"}}
-	second := &server{config: ServerConfig{Name: "second"}}
+	first := &server{config: ServerConfig{Name: testMCPServerName("first")}}
+	second := &server{config: ServerConfig{Name: testMCPServerName("second")}}
 	c.servers = []*server{first, second}
 
 	c.mu.Lock()
@@ -227,7 +227,7 @@ func TestConnectionAttemptsSupersedePerServer(t *testing.T) {
 	secondAttempt := c.beginAttempt(t.Context(), second)
 	newFirst := c.beginAttempt(t.Context(), first)
 	if !c.currentAttempt(newFirst) || c.currentAttempt(oldFirst) == true {
-		t.Fatal("latest first-server attempt did not own its generation")
+		t.Fatal("latest first-server attempt did not own its registration")
 	}
 	c.mu.Unlock()
 
@@ -261,12 +261,12 @@ func TestCloneServerConfigOwnsMutableFields(t *testing.T) {
 func TestPublishToolsUsesVerifiedSnapshotsInServerOrder(t *testing.T) {
 	c := &Connections{lifetime: t.Context(), servers: []*server{
 		{
-			config:  ServerConfig{Name: "alpha"},
+			config:  ServerConfig{Name: testMCPServerName("alpha")},
 			session: new(sdkmcp.ClientSession),
 			tools:   []toolcontract.Tool{catalogTool("alpha_read"), catalogTool("alpha_list")},
 		},
 		{
-			config:  ServerConfig{Name: "beta"},
+			config:  ServerConfig{Name: testMCPServerName("beta")},
 			session: new(sdkmcp.ClientSession),
 			tools:   []toolcontract.Tool{catalogTool("beta_read")},
 		},
@@ -288,9 +288,9 @@ func TestPublishToolsUsesVerifiedSnapshotsInServerOrder(t *testing.T) {
 
 func TestDetachPublishesRemainingSnapshot(t *testing.T) {
 	c := &Connections{lifetime: t.Context(), servers: []*server{
-		{config: ServerConfig{Name: "remove"}, tools: []toolcontract.Tool{catalogTool("remove_read")}},
+		{config: ServerConfig{Name: testMCPServerName("remove")}, tools: []toolcontract.Tool{catalogTool("remove_read")}},
 		{
-			config:  ServerConfig{Name: "keep"},
+			config:  ServerConfig{Name: testMCPServerName("keep")},
 			session: new(sdkmcp.ClientSession),
 			tools:   []toolcontract.Tool{catalogTool("keep_read")},
 		},
@@ -303,7 +303,7 @@ func TestDetachPublishesRemainingSnapshot(t *testing.T) {
 		}
 		published <- names
 	})
-	if err := c.Detach("remove"); err != nil {
+	if err := c.Detach(testMCPServerName("remove")); err != nil {
 		t.Fatalf("Detach: %v", err)
 	}
 	if got := <-published; !slices.Equal(got, []string{"keep_read"}) {
@@ -320,7 +320,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	config := ServerConfig{Name: "remote", Transport: TransportHTTP, Endpoint: httpServer.URL}
+	config := ServerConfig{Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: httpServer.URL}
 	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
@@ -371,17 +371,18 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 
 	requestCtx, cancelRequest := context.WithCancel(t.Context())
 	if configureErr := connections.Configure(requestCtx, ServerConfig{
-		Name: "dynamic", Transport: TransportHTTP, Endpoint: httpServer.URL,
+		Name: testMCPServerName("dynamic"), Transport: TransportHTTP, Endpoint: httpServer.URL,
 	}); configureErr != nil {
 		t.Fatalf("Configure: %v", configureErr)
 	}
 	cancelRequest()
 
-	tools, err := connections.Tools(t.Context(), "dynamic")
+	name := testMCPServerName("dynamic")
+	tools, err := connections.Tools(t.Context(), &name)
 	if err != nil {
 		t.Fatalf("Tools after request scope ended: %v", err)
 	}
-	if len(tools) != 1 || tools[0].Name != "read" {
+	if len(tools) != 1 || tools[0].Name.String() != "read" {
 		t.Fatalf("Tools after request scope ended = %+v, want dynamic/read", tools)
 	}
 }
@@ -395,7 +396,7 @@ func TestSessionLedgerOwnsReplacementUntilClose(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	config := ServerConfig{Name: "ledger", Transport: TransportHTTP, Endpoint: httpServer.URL}
+	config := ServerConfig{Name: testMCPServerName("ledger"), Transport: TransportHTTP, Endpoint: httpServer.URL}
 	c, _, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -436,8 +437,8 @@ func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
-		{Name: "a.b", Transport: TransportHTTP, Endpoint: httpServer.URL},
-		{Name: "a_b", Transport: TransportHTTP, Endpoint: httpServer.URL},
+		{Name: testMCPServerName("a.b"), Transport: TransportHTTP, Endpoint: httpServer.URL},
+		{Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: httpServer.URL},
 	}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
@@ -467,7 +468,7 @@ func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(firstHTTP.Close)
 
 	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{{
-		Name: "a_b", Transport: TransportHTTP, Endpoint: firstHTTP.URL,
+		Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: firstHTTP.URL,
 	}}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
@@ -489,7 +490,7 @@ func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(secondHTTP.Close)
 
-	err = c.Configure(t.Context(), ServerConfig{Name: "a", Transport: TransportHTTP, Endpoint: secondHTTP.URL})
+	err = c.Configure(t.Context(), ServerConfig{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL})
 	if err == nil || !strings.Contains(err.Error(), `public tool name collision "a_b_c"`) {
 		t.Fatalf("Configure collision error = %v", err)
 	}
@@ -518,8 +519,8 @@ func TestReconnectQuarantinesNewCrossServerPublicToolNameCollision(t *testing.T)
 	t.Cleanup(secondHTTP.Close)
 
 	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
-		{Name: "a_b", Transport: TransportHTTP, Endpoint: firstHTTP.URL},
-		{Name: "a", Transport: TransportHTTP, Endpoint: secondHTTP.URL},
+		{Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: firstHTTP.URL},
+		{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL},
 	}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
@@ -536,7 +537,7 @@ func TestReconnectQuarantinesNewCrossServerPublicToolNameCollision(t *testing.T)
 	publications := make(chan []string, 2)
 	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
 	addRemoteTool(t, secondRemote, "b_c")
-	err = c.Reconnect(t.Context(), "a")
+	err = c.Reconnect(t.Context(), testMCPServerName("a"))
 	if err == nil || !strings.Contains(err.Error(), `public tool name collision "a_b_c"`) {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}

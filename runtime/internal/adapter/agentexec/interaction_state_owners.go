@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -21,13 +21,22 @@ func (i *interactionChildProjection) unlock() { i.mu.Unlock() }
 // used by the doom-loop brake. It changes independently of Process topology.
 type interactionToolOutcomes struct {
 	mu      sync.Mutex
-	key     string
+	key     interactionToolCallKey
 	digest  [sha256.Size]byte
 	repeats int
 }
 
+type interactionToolCallKey struct {
+	name      string
+	arguments string
+}
+
+func newInteractionToolCallKey(toolName string, arguments tool.Arguments) interactionToolCallKey {
+	return interactionToolCallKey{name: toolName, arguments: arguments.Canonical()}
+}
+
 func (i *interactionToolOutcomes) repeated(toolName string, arguments tool.Arguments) int {
-	key := toolName + "\x00" + arguments.Canonical()
+	key := newInteractionToolCallKey(toolName, arguments)
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if key != i.key {
@@ -47,7 +56,7 @@ func (i *interactionToolOutcomes) record(
 	arguments tool.Arguments,
 	result string,
 ) {
-	key := toolName + "\x00" + arguments.Canonical()
+	key := newInteractionToolCallKey(toolName, arguments)
 	digest := sha256.Sum256([]byte(result))
 	i.mu.Lock()
 	defer i.mu.Unlock()

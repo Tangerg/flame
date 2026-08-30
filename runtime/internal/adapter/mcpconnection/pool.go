@@ -58,7 +58,7 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 	return p.inner.Statuses()
 }
 
-func (p *Pool) Tools(ctx context.Context, server string) ([]mcpserver.AdvertisedTool, error) {
+func (p *Pool) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if p == nil || p.inner == nil {
 		return nil, nil
 	}
@@ -66,14 +66,14 @@ func (p *Pool) Tools(ctx context.Context, server string) ([]mcpserver.Advertised
 	return items, mapError(err)
 }
 
-func (p *Pool) Reconnect(ctx context.Context, name string) error {
+func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
 	if p == nil || p.inner == nil {
 		return mcpserver.ErrUnknownServer
 	}
 	return mapError(p.inner.Reconnect(ctx, name))
 }
 
-func (p *Pool) Authorize(ctx context.Context, name string) error {
+func (p *Pool) Authorize(ctx context.Context, name mcpserver.ServerName) error {
 	if p == nil || p.inner == nil {
 		return mcpserver.ErrUnknownServer
 	}
@@ -102,7 +102,7 @@ func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
 	return mapError(p.inner.Configure(ctx, cfg))
 }
 
-func (p *Pool) Detach(name string) error {
+func (p *Pool) Detach(name mcpserver.ServerName) error {
 	if p == nil || p.inner == nil {
 		return mcp.ErrConnectionsUnavailable
 	}
@@ -152,7 +152,9 @@ func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
 	cfg := mcp.ServerConfig{
 		Name:      server.Name,
 		Transport: transport,
-		Timeout:   server.Timeout,
+	}
+	if timeout, bounded := server.HandshakeTimeout.Duration(); bounded {
+		cfg.HandshakeTimeout = &timeout
 	}
 	switch server.Transport {
 	case mcpserver.TransportStreamableHTTP:

@@ -27,8 +27,8 @@ describe("runtimeMcpServerGateway", () => {
       name: "local-tools",
       description: "Local tools",
       connection: { type: "stdio", command: "tool-server", args: ["--stdio"] },
+      handshakeTimeout: { type: "bounded", seconds: 15 },
       status: { type: "connected", toolCount: 3 },
-      timeoutSeconds: 15,
       disabledTools: ["delete"],
       autoApproveTools: ["read"],
     });
@@ -40,6 +40,7 @@ describe("runtimeMcpServerGateway", () => {
         name: "local-tools",
         transport: "stdio",
         enabled: true,
+        handshakeTimeout: { type: "unbounded" },
         command: "tool-server",
         args: ["--stdio"],
       }),
@@ -61,6 +62,7 @@ describe("runtimeMcpServerGateway", () => {
     const update = vi.fn().mockResolvedValue({
       name: "cloud",
       connection: { type: "streamableHttp", url: "https://example.test/mcp" },
+      handshakeTimeout: { type: "unbounded" },
       status: { type: "disabled" },
     });
     setContainer({ client: () => ({ mcp: { update } }) as unknown as FlameClient });
@@ -203,6 +205,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
     name: "cloud",
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
+    handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },
     ...overrides,
   };
@@ -218,6 +221,7 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     icon: "tool",
     type: "streamableHttp",
     enabled: true,
+    handshakeTimeout: { type: "unbounded" },
     url: "https://example.test/mcp",
     ...overrides,
   };

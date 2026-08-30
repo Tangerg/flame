@@ -6,7 +6,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/executoridentity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -102,12 +102,11 @@ type reducerConfig struct {
 type reducer struct {
 	cfg     reducerConfig
 	resume  *resumeBinding
-	itemSeq int
+	itemIDs segmentItemIdentities
 	// step is the latest cumulative accounted model-call count reported by the
 	// executor. It uses the same unit as Limits.MaxSteps; tool events never
 	// infer it.
-	step      int
-	toolOrder int
+	step int
 	// usage is the latest authoritative cumulative Run accounting reported by
 	// the executor. Nil means this segment has not advanced the committed
 	// snapshot in cfg.Metrics.
@@ -154,7 +153,6 @@ type openText struct {
 type openTool struct {
 	callID            string
 	sourceCallID      string
-	arrivalOrder      int
 	modelCallSequence uint32
 	toolCallIndex     uint32
 	id                string
@@ -192,10 +190,11 @@ func newReducer(cfg reducerConfig) *reducer {
 		resume = resumeBindingFrom(*cfg.Continuation, cfg.RunID)
 	}
 	return &reducer{
-		cfg: cfg, resume: resume, userInput: transcript.CloneContent(cfg.UserInput),
-		step: cfg.Metrics.Steps(), contextTokens: cfg.ContextTokens,
+		cfg: cfg, resume: resume, itemIDs: newSegmentItemIdentities(cfg.SegmentID),
+		userInput: transcript.CloneContent(cfg.UserInput),
+		step:      cfg.Metrics.Steps(), contextTokens: cfg.ContextTokens,
 		modelCalls: make(map[string]time.Time), toolCallIDs: make(map[string]struct{}),
-		toolPositions: make(map[toolPosition]string), tools: make(openTools),
+		toolPositions: make(map[toolPosition]string), tools: newOpenTools(),
 	}
 }
 
@@ -218,36 +217,7 @@ func (r *reducer) clone() *reducer {
 	cloned.toolCallIDs = maps.Clone(r.toolCallIDs)
 	cloned.toolPositions = maps.Clone(r.toolPositions)
 	cloned.drained = slices.Clone(r.drained)
-	cloned.tools = make(openTools, len(r.tools))
-	for callID, current := range r.tools {
-		if current == nil {
-			cloned.tools[callID] = nil
-			continue
-		}
-		tool := *current
-		if current.end != nil {
-			end := *current.end
-			end.MutatedPaths = slices.Clone(current.end.MutatedPaths)
-			if current.end.ModelResult != nil {
-				modelResult := *current.end.ModelResult
-				end.ModelResult = &modelResult
-			}
-			if current.end.Result != nil {
-				result := *current.end.Result
-				end.Result = &result
-			}
-			if current.end.Offload != nil {
-				offload := *current.end.Offload
-				end.Offload = &offload
-			}
-			if current.end.Failure != nil {
-				failure := *current.end.Failure
-				end.Failure = &failure
-			}
-			tool.end = &end
-		}
-		cloned.tools[callID] = &tool
-	}
+	cloned.tools = r.tools.clone()
 	cloned.text = cloneOpenText(r.text)
 	cloned.reasoning = cloneOpenText(r.reasoning)
 	cloned.resume = cloneResumeBinding(r.resume)
@@ -294,12 +264,7 @@ func cloneResumeBinding(value *resumeBinding) *resumeBinding {
 	return &cloned
 }
 
-func (r *reducer) nextItemID() string {
-	r.itemSeq++
-	return itemIDPrefix + r.cfg.SegmentID + "_" + strconv.Itoa(r.itemSeq)
-}
-
-func userMessageItemID(segmentID string) string { return itemIDPrefix + segmentID + "_u" }
+func (r *reducer) nextItemID() (string, error) { return r.itemIDs.Next() }
 
 func (r *reducer) open() (reductionBatch, error) {
 	if r.resume != nil && r.resume.err != nil {
@@ -324,7 +289,7 @@ func (r *reducer) open() (reductionBatch, error) {
 	}
 	if r.cfg.Lineage.IsRoot() && r.cfg.ConversationInput != nil {
 		message := r.cfg.ConversationInput.Clone()
-		if message.Role != corechat.RoleUser || message.Validate() != nil {
+		if message.Role != corechat.RoleUser || message.Validate() != nil || conversation.ValidateMessageIdentities(message) != nil {
 			return reductionBatch{}, fmt.Errorf("%w: opening conversation input is not a valid User message", errReducerInvariant)
 		}
 		if err := r.attachConversationMessages(&batch, []corechat.Message{message}); err != nil {
@@ -475,8 +440,8 @@ func (r *reducer) reduceAssistantMessage(completed AssistantMessageCompleted) (f
 }
 
 func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error) {
-	if strings.TrimSpace(started.CallID) == "" || started.CallID != strings.TrimSpace(started.CallID) {
-		return factReduction{}, fmt.Errorf("%w: model call start has an invalid id", errExecutorContract)
+	if _, err := executoridentity.ParseEffect(started.CallID); err != nil {
+		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
 	}
 	if _, duplicate := r.modelCalls[started.CallID]; duplicate {
 		return factReduction{}, fmt.Errorf("%w: model call %q started more than once", errExecutorContract, started.CallID)
@@ -494,12 +459,15 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 }
 
 func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction, error) {
-	if strings.TrimSpace(completed.CallID) == "" || completed.CallID != strings.TrimSpace(completed.CallID) {
-		return factReduction{}, fmt.Errorf("%w: model call completion has an invalid id", errExecutorContract)
+	if _, err := executoridentity.ParseEffect(completed.CallID); err != nil {
+		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
 	}
 	startedAt, started := r.modelCalls[completed.CallID]
 	if !started {
 		return factReduction{}, fmt.Errorf("%w: model call %q completed without a start", errExecutorContract, completed.CallID)
+	}
+	if err := conversation.ValidateMessageIdentities(completed.Message); err != nil {
+		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
 	}
 	finishedAt := r.now()
 	if finishedAt.Before(startedAt) {
@@ -564,8 +532,8 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 }
 
 func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
-	if strings.TrimSpace(failed.CallID) == "" || failed.CallID != strings.TrimSpace(failed.CallID) {
-		return factReduction{}, fmt.Errorf("%w: model call failure has an invalid id", errExecutorContract)
+	if _, err := executoridentity.ParseEffect(failed.CallID); err != nil {
+		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
 	}
 	startedAt, started := r.modelCalls[failed.CallID]
 	if !started {
@@ -594,7 +562,7 @@ func (r *reducer) startToolCall(started ToolCallStarted) (factReduction, error) 
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: tool call start: %w", errExecutorContract, err)
 	}
-	ref := r.tools[started.CallID]
+	ref, _ := r.tools.get(started.CallID)
 	if ref == nil {
 		return factReduction{}, fmt.Errorf("%w: started Tool %q has no open projection", errReducerInvariant, started.CallID)
 	}
@@ -996,7 +964,7 @@ func (r *reducer) fenceFinalPlan(events []RunEvent) []RunEvent {
 		if _, finishing := event.(SegmentFinished); !finishing {
 			continue
 		}
-		fence := *r.plan
+		fence := r.plan.clone()
 		// One fence per segment: a resumed segment fences again only if it changes
 		// the projection again.
 		r.plan = nil
@@ -1006,6 +974,12 @@ func (r *reducer) fenceFinalPlan(events []RunEvent) []RunEvent {
 }
 
 func (r *reducer) projectOne(event RunEvent) (reduction, error) {
+	if event == nil {
+		return reduction{}, fmt.Errorf("%w: nil run event", errReducerInvariant)
+	}
+	if err := event.validate(); err != nil {
+		return reduction{}, fmt.Errorf("%w: %T: %v", errReducerInvariant, event, err)
+	}
 	commit := EventCommit{RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID}
 	var nudge *Nudge
 	switch e := event.(type) {
@@ -1026,11 +1000,7 @@ func (r *reducer) projectOne(event RunEvent) (reduction, error) {
 			commit.Outcome = outcome
 			commit.GoalRun = r.goalTurn(e.Run)
 		}
-	case ItemStarted:
-		if err := e.Item.validate(); err != nil {
-			return reduction{}, fmt.Errorf("%w: Item start: %v", errReducerInvariant, err)
-		}
-	case SegmentStarted, SegmentProgressed, ItemChanged, PlanSnapshot:
+	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
 		// for the stream, but the Run's durable opening IS its admission (or its
 		// resume) — recording it a second time here would be a second writer of

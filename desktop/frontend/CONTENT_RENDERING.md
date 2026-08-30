@@ -80,7 +80,7 @@ Session ──┬── Run ──┬── Item   (userMessage / agentMessage /
    │  ◄── item.delta           { toolArguments: "..." } × N
    │  ◄── item.delta           { toolOutput: "..." } × N
    │  ◄── item.completed       { item: toolCall }        ← 权威：arguments + result 在这里落定
-   │  ◄── plan.updated         { plan: { steps: [...] } } ← 整份 Session Plan
+   │  ◄── plan.updated         { plan: { state: { steps: [...] } } } ← 整份已提交 Session Plan
    │  ◄── item.started/delta/completed { agentMessage }
    │  ◄── segment.finished     { outcome, metrics }
    ▼
@@ -239,19 +239,19 @@ type Item =
       safetyClass?: SafetyClass;
       tool?: ToolInvocation;
       error?: ProblemData }
-  | { type: "compaction";   id: string; runId: string; status: ItemStatus; createdAt: string;
-      summary?: string; droppedMessages?: number };
+  | { type: "compaction";   id: string; runId: string; status: "completed"; createdAt: string;
+      summary: string; droppedMessages?: number };
 ```
 
-**`item.started` 的壳是空的**：`content` / `text` / `question` / `tool` 都可能缺席，随后由 delta 补、由 completed 落定。所有读取必须容忍缺席 —— 抛错会被 reducer 吞掉，那个块就永远不渲染。
+`item.started` 只有三种合法形状：AgentMessage / Reasoning 是 provisional 空壳，`content` / `text` 可缺席并由 delta 预览、completed 落定；ToolCall 则始终携带完整 `tool` invocation。UserMessage、Question 与 Compaction 不产生 started 事件，直接以 completed fact 到达。
 
-AgentMessage 的 `phase` 只在 terminal frame 上成为权威事实：running `item.started` 壳不得伪造 phase，completed/incomplete AgentMessage 必须由 Runtime 写入 `commentary` 或 `finalAnswer`。Frontend 不根据 Item 顺序、流式结束、是否位于 Run 尾部或文本形态猜测该值。
+AgentMessage 的 `phase` 只在 completed frame 上成为权威事实：running `item.started` 壳不得伪造 phase，completed AgentMessage 必须由 Runtime 写入 `commentary` 或 `finalAnswer`；AgentMessage 没有 incomplete 生命周期。Frontend 不根据 Item 顺序、流式结束、是否位于 Run 尾部或文本形态猜测该值。
 
 ### 2.3 增量
 
 ```ts
 type ItemDelta =
-  | { type: "content";        text: string; index?: number } // agentMessage 正文
+  | { type: "content";        text: string } // agentMessage 正文；按事件顺序追加
   | { type: "reasoning";      text: string }
   | { type: "toolArguments";  argumentsTextDelta: string }   // JSON 文本片段，中途不是合法 JSON
   | { type: "toolOutput";     text: string };                // stdout 实时预览
@@ -306,7 +306,7 @@ interface RunMetrics {
   usage?: Usage;
 }
 
-interface RunLimits {           // 冻结的 run-tree policy，跨 child 与 resume 累计
+interface RunLimits {           // 冻结的有限 run-tree policy，跨 child 与 resume 累计；present 时至少一轴
   maxSteps?: number;
   maxBudgetUsd?: number;
   maxTotalTokens?: number;      // prompt + completion，≠ params.maxTokens（后者只管一次输出）
@@ -409,9 +409,13 @@ interface PendingInterruptSet {
 ```ts
 interface Plan {
   sessionId: string;
+  state?: PlanState;
+}
+
+interface PlanState {
   revision: number;
   steps: PlanStep[];
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 interface PlanStep {
@@ -427,7 +431,11 @@ interface PlanStep {
 2. **`segment.finished` 之前必发**该段改过的 Plan —— 收到终态的人就已经收到了终值。**这一段没改过就不发**。
 3. **`revision` 单调只增**。重新发布一个更早的值（回退、导入归档）也是一次**新写入**，拿更大的 revision。
 
-**冷读是一等公民**：`plan.get` 返回与事件**同形同 revision**的 Plan。重载 / 回退 / replay 窗口过期后靠它接回来。
+`state` 缺席是“从未写入”；存在的 `state` 即使 `steps` 为空也是一次“显式清空”。桌面端不能用 revision 0 或空数组
+在两者之间猜测。`plan.updated` 必带 committed `state`。
+
+**冷读是一等公民**：`plan.get` 返回与事件同形的 Plan；committed state 与事件**同 revision**。重载 / 回退 /
+replay 窗口过期后靠它接回来。
 
 ### 2.8 错误
 
@@ -497,7 +505,7 @@ type ViewContentBlock =
                          decision?: "approved" | "declined" }
   | { kind: "question";  status: BlockStatus; itemId?: string; runId?: string;
                          questions: QuestionItem[]; answered?: boolean; answers?: string[][] }
-  | { kind: "compaction"; summary?: string; droppedMessages?: number };
+  | { kind: "compaction"; summary: string; droppedMessages?: number };
 
 type QuestionItem =
   | { type: "text";   prompt: string; header: string }
@@ -920,18 +928,18 @@ interface BlockCtx {
 
 ---
 
-### 4.10 压缩分隔条
+### 4.10 压缩活动行
 
-**位置** D3，但作为 **system 角色**：无头像、无名字、无时钟、无轮廓、无右键菜单，**全宽**，自己画一条分隔线。
+**位置** D3，但作为 **system 角色**：无头像、无名字、无时钟、无轮廓、无右键菜单。它是左对齐的 quiet activity row，
+不是居中的装饰分隔线；必有的摘要通过同一行的 disclosure 展开。
 
 ```
-──────────── 已压缩 42 条更早的消息 ────────────
+▾ 已压缩上下文
+  Earlier tool output folded into a summary.
 ```
 
-| 字段 | UI |
-| --- | --- |
-| `droppedMessages` | "已压缩 n 条更早的消息" |
-| `summary` | 摘要（**通常缺席** —— 摘要文本已折进重写后的历史，Item 只表达边界） |
+`summary` 是 canonical 非空领域事实，也是 disclosure 的唯一正文。可选 `droppedMessages` 是审计用净减条数；当前紧凑行
+不重复显示它，也不从该数字生成摘要。
 
 它是时间线上的一道坎，不是一个人在说话。
 
@@ -1082,7 +1090,7 @@ Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留
 ### 5.5 Composer Context 环
 
 **位置** 只在 F Composer 工具条；B 顶栏不展示 Session 累计上下文、token 或费用。
-**来自** 当前 root Run live `segment.progress.contextTokens`、durable `RunRef.contextTokens` 与 active Session 实际 served model 的 `contextWindow`。Session view 从 root history 选择最新正值 footprint；刚 admission、尚无模型响应的 successor 不会抹掉上一份已证明读数。
+**来自** 当前 root Run live `segment.progress.contextTokens`、durable `RunRef.contextTokens` 与 active Session 实际 served model 的 `tokenLimits.contextWindow`。Session view 从 root history 选择最新正值 footprint；刚 admission、尚无模型响应的 successor 不会抹掉上一份已证明读数。
 
 `used = min(contextTokens, contextWindow)`，环形占比为 `used / contextWindow`。tooltip 显示已用比例、剩余比例与 `used / contextWindow` token；终态、renderer reload、Runtime restart 与 artifact import 都保留最后一次真实 footprint。触发器是可聚焦按钮，hover 与键盘 focus 共用同一 tooltip。缺少任一权威事实时不绘制，不能用 Session 累计 usage、费用或客户端估算代替。
 
@@ -1455,10 +1463,10 @@ type SetPlanResult = string;
 interface CreateGoalArguments {
   objective: string;
   budget?: {
-    max_runs?: number;      // 0 或省略 = 该轴不设限
-    max_cost_usd?: number;  // 同上
-    max_steps?: number;     // 同上
-  };
+    max_runs?: number;
+    max_cost_usd?: number;
+    max_steps?: number;
+  }; // 整体省略 = 无预算边界；出现时至少一个字段，且每个值严格为正
 }
 ```
 
@@ -1477,7 +1485,11 @@ interface GoalToolResult {   // snake_case，未归一化
     reason?: string;
     provider?: string;
     model?: string;
-    budget: { max_runs?: number; max_cost_usd?: number; max_steps?: number };
+    budget?: { // 省略 = 无预算边界；出现时至少一个字段，且每个值严格为正
+      max_runs?: number;
+      max_cost_usd?: number;
+      max_steps?: number;
+    };
     usage:  { runs: number; cost_usd: number; steps: number };
     created_at: string;
     updated_at: string;
@@ -1689,7 +1701,8 @@ interface UnknownToolCall {
 
 1. **会变化的数字用等宽字形。** 流式里逐 token 跳动的数字宽度，是最容易被一眼看出来的抖动源。
 2. **`undefined` ≠ `0`。** 花费缺席 = 该模型不在定价表 → **显示 token 但不许编一个价格**；`added`/`removed` 双缺席 → 什么都不画；`exitCode` 缺席（命令转后台）→ 不画。
-3. **预算语境里 `0` = 不设限**（协议在为零时省略该字段）→ **不设限的轴不能画成一条满的进度条**，那读起来正好是反义。
+3. **预算缺席与数值 `0` 不可互换。** Goal 的整个 `budget`、Run 的整个 `limits` 缺席才分别表示 unlimited；
+   present object 至少含一个轴，出现的每个上限必须严格为正。任何界面都不能把缺席补零、发送空对象，或把零画成一条满的进度条。
 
 ### 8.2 时间
 
@@ -1811,9 +1824,11 @@ interface Model {
   id: string;
   provider: string;              // per-run 必须与 model 显式配对，provider 不从 model 名推断
   displayName?: string;          // 优先显示；缺席用 id
-  contextWindow?: number;        // 配 RunProgress.contextTokens 画占用条；缺席则不画
-  maxInputTokens?: number;
-  maxOutputTokens?: number;
+  tokenLimits?: {                // 整体缺席 = provider 未发布任何事实；禁止空对象/补零
+    contextWindow?: number;      // 配 RunProgress.contextTokens 画占用条；缺席则不画
+    maxInputTokens?: number;
+    maxOutputTokens?: number;    // 可合法大于 input context（streaming/multimodal）
+  };
   knowledgeCutoff?: string;
   deprecated?: boolean;          // 弃用标记，不隐藏（用户可能还在用）
   pricing?: {
@@ -1832,10 +1847,14 @@ type Modality = "text" | "image" | "audio" | "video" | "pdf";
 
 interface Provider {
   id: string;
-  apiKeyMasked: string;          // 永不可逆推
   baseUrl?: string;
+  configured: boolean;          // Runtime 权威 readiness；不能从 credential presence 反推
+  credentialRequirement: "apiKeyRequired" | "apiKeyOptional";
   requiresBaseUrl?: boolean;
-  keySource?: "stored" | "env";  // env 来源的不该给"清除"按钮
+  credential?: {                // 缺席只表示无实际凭据；optional-auth provider 仍可 configured
+    masked: string;
+    source: "stored" | "env";   // env 来源的不该给"清除"按钮
+  };
   embeddingCapable?: boolean;
   defaultEmbeddingModel?: string;
 }
@@ -1946,10 +1965,14 @@ interface McpServer {
   description?: string;
   connection: McpConnection;
   status: McpServerState;
-  timeoutSeconds?: number;
+  handshakeTimeout: McpHandshakeTimeout;
   disabledTools?: string[];      // 用远端原名，不受塌名影响
   autoApproveTools?: string[];   // 同上
 }
+
+type McpHandshakeTimeout =
+  | { type: "unbounded" }
+  | { type: "bounded"; seconds: number }; // seconds 必须为正整数
 
 /** 闭合的安全读联合：另一 transport 的字段不可出现，secret 原文永不通过读 API 返回 */
 type McpConnection =

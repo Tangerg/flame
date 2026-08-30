@@ -38,20 +38,9 @@ func (r *Runtime) Servers(ctx context.Context) ([]mcp.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	servers := make([]mcp.Server, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		server := projectMCPServer(value)
-		if err := server.Validate(); err != nil {
-			return nil, runtimeContractViolation("list MCP servers item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[server.Name]; duplicate {
-			return nil, runtimeContractViolation("list MCP servers repeats %q", server.Name)
-		}
-		seen[server.Name] = struct{}{}
-		servers = append(servers, server)
-	}
-	return servers, nil
+	return projectUniqueValuesFallible("list MCP servers", values, projectMCPServer, func(server mcp.Server) string {
+		return server.Name
+	})
 }
 
 func (r *Runtime) CreateServer(ctx context.Context, candidate mcp.Candidate) (mcp.Server, error) {
@@ -83,7 +72,10 @@ func (r *Runtime) UpdateServer(ctx context.Context, update mcp.ServerUpdate) (mc
 	}
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: clonePointer(update.Enabled), Description: clonePointer(update.Description),
-		TimeoutSeconds: clonePointer(update.TimeoutSeconds),
+	}
+	if update.HandshakeTimeout != nil {
+		timeout := projectMCPHandshakeTimeout(*update.HandshakeTimeout)
+		request.HandshakeTimeout = &timeout
 	}
 	if update.Connection != nil {
 		connection := projectMCPConnectionInput(*update.Connection)
@@ -220,7 +212,10 @@ func projectMCPServerResult(operation, expectedName string, result *protocol.MCP
 	if result == nil {
 		return mcp.Server{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	server := projectMCPServer(*result)
+	server, projectionErr := projectMCPServer(*result)
+	if projectionErr != nil {
+		return mcp.Server{}, runtimeContractViolation("%s returned an invalid handshake timeout: %v", operation, projectionErr)
+	}
 	if err := server.Validate(); err != nil {
 		return mcp.Server{}, runtimeContractViolation("%s returned an invalid server: %v", operation, err)
 	}
@@ -235,7 +230,11 @@ func projectMCPServerResult(operation, expectedName string, result *protocol.MCP
 	return server, nil
 }
 
-func projectMCPServer(value protocol.MCPServer) mcp.Server {
+func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
+	timeout, err := mcpHandshakeTimeoutFromWire(value.HandshakeTimeout)
+	if err != nil {
+		return mcp.Server{}, err
+	}
 	return mcp.Server{
 		Name: value.Name, Description: value.Description,
 		Connection: mcp.Connection{
@@ -245,20 +244,45 @@ func projectMCPServer(value protocol.MCPServer) mcp.Server {
 			Command:             value.Connection.Command, Args: slices.Clone(value.Connection.Args),
 			EnvironmentMasked: maps.Clone(value.Connection.EnvMasked), Directory: value.Connection.Dir,
 		},
-		TimeoutSeconds: value.TimeoutSeconds, DisabledTools: slices.Clone(value.DisabledTools),
+		HandshakeTimeout: timeout, DisabledTools: slices.Clone(value.DisabledTools),
 		AutoApproveTools: slices.Clone(value.AutoApproveTools),
 		State: mcp.State{
 			Type: mcp.StateType(value.Status.Type), ToolCount: clonePointer(value.Status.ToolCount),
 			Problem: projectRuntimeProblem(value.Status.Error),
 		},
-	}
+	}, nil
 }
 
 func projectMCPCandidate(candidate mcp.Candidate) protocol.MCPServerCandidate {
 	return protocol.MCPServerCandidate{
 		Name: candidate.Name, Enabled: candidate.Enabled, Description: candidate.Description,
-		Connection: projectMCPConnectionInput(candidate.Connection), TimeoutSeconds: candidate.TimeoutSeconds,
+		Connection: projectMCPConnectionInput(candidate.Connection), HandshakeTimeout: projectMCPHandshakeTimeout(candidate.HandshakeTimeout),
 		DisabledTools: slices.Clone(candidate.DisabledTools), AutoApproveTools: slices.Clone(candidate.AutoApproveTools),
+	}
+}
+
+func projectMCPHandshakeTimeout(timeout mcp.HandshakeTimeout) protocol.MCPHandshakeTimeout {
+	seconds, bounded := timeout.Seconds()
+	if !bounded {
+		return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}
+	}
+	return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
+}
+
+func mcpHandshakeTimeoutFromWire(timeout protocol.MCPHandshakeTimeout) (mcp.HandshakeTimeout, error) {
+	switch timeout.Type {
+	case protocol.MCPHandshakeUnbounded:
+		if timeout.Seconds != nil {
+			return mcp.HandshakeTimeout{}, errors.New("unbounded policy carries seconds")
+		}
+		return mcp.HandshakeTimeout{}, nil
+	case protocol.MCPHandshakeBounded:
+		if timeout.Seconds == nil {
+			return mcp.HandshakeTimeout{}, errors.New("bounded policy omits seconds")
+		}
+		return mcp.NewHandshakeTimeout(*timeout.Seconds)
+	default:
+		return mcp.HandshakeTimeout{}, fmt.Errorf("unknown policy %q", timeout.Type)
 	}
 }
 

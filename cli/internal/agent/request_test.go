@@ -6,7 +6,10 @@ import (
 )
 
 func TestStartRunValidation(t *testing.T) {
-	valid := StartRun{SessionID: "ses_1", Message: Message{Text: "hello"}, Options: RunOptions{Provider: "mock", Model: "balanced"}}
+	valid := StartRun{
+		SessionID: "ses_1", Message: Message{Text: "hello"},
+		Options: RunOptions{Provider: "mock", Model: "balanced", Limits: UnlimitedRunLimits()},
+	}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +35,7 @@ func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 func TestStartRunEqualUsesTheCompleteMutationFingerprint(t *testing.T) {
 	request := StartRun{
 		CommandID: CommandID("cli_11111111111111111111111111111111"), SessionID: "ses_1",
-		Message: Message{Text: "hello"}, Options: RunOptions{Provider: "mock", Model: "balanced"},
+		Message: Message{Text: "hello"}, Options: RunOptions{Provider: "mock", Model: "balanced", Limits: UnlimitedRunLimits()},
 	}
 	if !request.Equal(request.Clone()) {
 		t.Fatal("cloned start request is not equal")
@@ -56,6 +59,10 @@ func TestResumeRunRequiresCompleteUniqueSet(t *testing.T) {
 	if err := request.Validate(); err == nil {
 		t.Fatal("duplicate interrupt was accepted")
 	}
+	request.Answers = []InterruptAnswer{{ItemID: " a", Answer: ApprovalAnswer{Decision: ApprovalApprove}}}
+	if err := request.Validate(); err == nil {
+		t.Fatal("resume accepted an item identity that requires trimming")
+	}
 }
 
 func TestSubscribeRunNeedsRunAndSegment(t *testing.T) {
@@ -64,6 +71,12 @@ func TestSubscribeRunNeedsRunAndSegment(t *testing.T) {
 	}
 	if err := (SubscribeRun{RunID: "run_1"}).Validate(); err == nil {
 		t.Fatal("missing segment was accepted")
+	}
+	if err := (SubscribeRun{RunID: " run_1", SegmentID: "seg_1"}).Validate(); err == nil {
+		t.Fatal("subscription accepted a run identity that requires trimming")
+	}
+	if err := (SubscribeRun{RunID: "run_1", SegmentID: "seg_1 "}).Validate(); err == nil {
+		t.Fatal("subscription accepted a segment identity that requires trimming")
 	}
 }
 
@@ -112,5 +125,14 @@ func TestSegmentStreamValidatesOperationSpecificUserItemIdentity(t *testing.T) {
 	}
 	if err := stream.ValidateResume("run_other", nil); err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("mismatched resume target error = %v", err)
+	}
+	stream.UserItemID = " item_1"
+	if err := stream.ValidateStart(); err == nil {
+		t.Fatal("start stream accepted a user item identity that requires trimming")
+	}
+	stream.UserItemID = "item_1"
+	stream.HeadEventID = " event_1"
+	if err := stream.ValidateStart(); err == nil {
+		t.Fatal("start stream accepted a head event identity that requires trimming")
 	}
 }

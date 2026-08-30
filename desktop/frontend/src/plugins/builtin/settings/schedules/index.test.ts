@@ -4,7 +4,10 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RuntimeConnectionGeneration,
+  RUNTIME_STREAM_PORTS,
+} from "@/plugins/builtin/runtime/public/ports";
 import { runScheduleNow } from "./application/scheduleCommands";
 import { SCHEDULES_KEY } from "./application/scheduleQueries";
 import schedulesPlugin from "./index";
@@ -27,7 +30,7 @@ describe("schedules plugin Runtime generation wiring", () => {
     setContainer({
       client: () => ({ schedules: { runNow } }) as unknown as FlameClient,
     });
-    let generation = "runtime_1";
+    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -50,7 +53,7 @@ describe("schedules plugin Runtime generation wiring", () => {
     const command = rejected(runScheduleNow("schedule-1"));
     await vi.waitFor(() => expect(runNow).toHaveBeenCalledOnce());
 
-    generation = "runtime_2";
+    generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
       message: "schedule_mutation_generation_retired",

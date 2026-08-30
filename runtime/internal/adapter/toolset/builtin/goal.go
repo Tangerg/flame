@@ -53,9 +53,9 @@ type createArgs struct {
 }
 
 type createBudget struct {
-	MaxRuns    int     `json:"max_runs,omitempty" jsonschema:"minimum=0" jsonschema_description:"Maximum autonomous Runs. Zero or omitted means no Run limit."`
-	MaxCostUSD float64 `json:"max_cost_usd,omitempty" jsonschema:"minimum=0" jsonschema_description:"Maximum accumulated model cost in USD. Zero or omitted means no cost limit."`
-	MaxSteps   int     `json:"max_steps,omitempty" jsonschema:"minimum=0" jsonschema_description:"Maximum accumulated model steps. Zero or omitted means no step limit."`
+	MaxRuns    *int     `json:"max_runs,omitempty" jsonschema:"exclusiveMinimum=0,anyof_required=maxRuns" jsonschema_description:"Positive maximum autonomous Run count. Omit this field for no Run-count limit."`
+	MaxCostUSD *float64 `json:"max_cost_usd,omitempty" jsonschema:"exclusiveMinimum=0,anyof_required=maxCostUsd" jsonschema_description:"Positive maximum accumulated model cost in USD. Omit this field for no cost limit."`
+	MaxSteps   *int     `json:"max_steps,omitempty" jsonschema:"exclusiveMinimum=0,anyof_required=maxSteps" jsonschema_description:"Positive maximum accumulated model step count. Omit this field for no step limit."`
 }
 
 type getArgs struct{}
@@ -118,16 +118,16 @@ type goalView struct {
 	Provider        string           `json:"provider,omitempty"`
 	Model           string           `json:"model,omitempty"`
 	ReasoningEffort string           `json:"reasoning_effort,omitempty"`
-	Budget          budgetView       `json:"budget"`
+	Budget          *budgetView      `json:"budget,omitempty"`
 	Usage           usageView        `json:"usage"`
 	CreatedAt       time.Time        `json:"created_at"`
 	UpdatedAt       time.Time        `json:"updated_at"`
 }
 
 type budgetView struct {
-	MaxRuns    int     `json:"max_runs,omitempty"`
-	MaxCostUSD float64 `json:"max_cost_usd,omitempty"`
-	MaxSteps   int     `json:"max_steps,omitempty"`
+	MaxRuns    *int     `json:"max_runs,omitempty"`
+	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
+	MaxSteps   *int     `json:"max_steps,omitempty"`
 }
 
 type usageView struct {
@@ -180,12 +180,14 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	if objective == "" {
 		return goalResult{Message: "Provide a non-empty autonomous objective."}, nil
 	}
-	var budget goalstate.Budget
+	budget := goalstate.UnlimitedBudget()
 	if args.Budget != nil {
-		budget = goalstate.Budget{
-			MaxRuns:    args.Budget.MaxRuns,
-			MaxCostUSD: args.Budget.MaxCostUSD,
-			MaxSteps:   args.Budget.MaxSteps,
+		var err error
+		budget, err = goalstate.NewBudget(goalstate.BudgetLimits{
+			MaxRuns: args.Budget.MaxRuns, MaxCostUSD: args.Budget.MaxCostUSD, MaxSteps: args.Budget.MaxSteps,
+		})
+		if err != nil {
+			return goalResult{}, fmt.Errorf("create_goal budget: %w", err)
 		}
 	}
 	capabilities, _ := executionctx.RunCapabilities(ctx)
@@ -285,33 +287,47 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 }
 
 func viewOf(g goalstate.Goal) goalView {
+	selection, budget, used := g.ModelSelection(), g.Budget(), g.Used()
 	return goalView{
-		SessionID:       g.SessionID,
-		Objective:       g.Objective,
-		Status:          g.Status,
-		Reason:          reasonText(g.Reason),
-		Provider:        g.ModelSelection.Provider(),
-		Model:           g.ModelSelection.Model(),
-		ReasoningEffort: g.ModelSelection.ReasoningEffort(),
-		Budget: budgetView{
-			MaxRuns:    g.Budget.MaxRuns,
-			MaxCostUSD: g.Budget.MaxCostUSD,
-			MaxSteps:   g.Budget.MaxSteps,
-		},
+		SessionID:       g.SessionID(),
+		Objective:       g.Objective(),
+		Status:          g.Status(),
+		Reason:          reasonText(g.Reason()),
+		Provider:        selection.Provider(),
+		Model:           selection.Model(),
+		ReasoningEffort: selection.ReasoningEffort(),
+		Budget:          budgetViewOf(budget),
 		Usage: usageView{
-			Runs:    g.Used.Runs,
-			CostUSD: g.Used.CostUSD,
-			Steps:   g.Used.Steps,
+			Runs:    used.Runs,
+			CostUSD: used.CostUSD,
+			Steps:   used.Steps,
 		},
-		CreatedAt: g.CreatedAt,
-		UpdatedAt: g.UpdatedAt,
+		CreatedAt: g.CreatedAt(),
+		UpdatedAt: g.UpdatedAt(),
 	}
+}
+
+func budgetViewOf(budget goalstate.Budget) *budgetView {
+	if budget.Unlimited() {
+		return nil
+	}
+	view := &budgetView{}
+	if value, limited := budget.MaxRuns(); limited {
+		view.MaxRuns = &value
+	}
+	if value, limited := budget.MaxCostUSD(); limited {
+		view.MaxCostUSD = &value
+	}
+	if value, limited := budget.MaxSteps(); limited {
+		view.MaxSteps = &value
+	}
+	return view
 }
 
 // reasonText is adapter-owned presentation. Keeping it here avoids making
 // application or domain packages depend on model-facing prose.
 func reasonText(reason goalstate.Reason) string {
-	switch reason.Code {
+	switch reason.Code() {
 	case goalstate.ReasonNone:
 		return ""
 	case goalstate.ReasonStoppedByUser:
@@ -325,10 +341,10 @@ func reasonText(reason goalstate.Reason) string {
 	case goalstate.ReasonTerminalOutcomeMissing:
 		return "the Run ended without a terminal outcome"
 	case goalstate.ReasonRunNotCompleted:
-		if reason.Detail == "" {
+		if reason.Detail() == "" {
 			return "the Run ended before completing the Goal"
 		}
-		return "the Run ended: " + reason.Detail
+		return "the Run ended: " + reason.Detail()
 	case goalstate.ReasonRunBudgetReached:
 		return "reached the Run budget"
 	case goalstate.ReasonCostBudgetReached:
@@ -336,8 +352,8 @@ func reasonText(reason goalstate.Reason) string {
 	case goalstate.ReasonStepBudgetReached:
 		return "reached the step budget"
 	case goalstate.ReasonBlockedByModel:
-		if reason.Detail != "" {
-			return reason.Detail
+		if reason.Detail() != "" {
+			return reason.Detail()
 		}
 		return "the model reported that it is blocked"
 	default:

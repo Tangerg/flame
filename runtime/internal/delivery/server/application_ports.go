@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -35,7 +36,7 @@ type sessionUseCases interface {
 	CreateView(ctx context.Context, title, cwd string) (sessions.View, error)
 	DeleteSession(ctx context.Context, sessionID string) error
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
-	ListViewPage(ctx context.Context, cursor string, limit int) (pagination.Page[sessions.View], error)
+	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
 	ExportSession(ctx context.Context, sessionID string) (sessions.ExportResult, error)
 	MaterialSnapshot(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, error)
 	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error)
@@ -45,16 +46,16 @@ type sessionUseCases interface {
 }
 
 type mcpUseCases interface {
-	CreateAuthorizationAttempt(ctx context.Context, name string) (mcpapp.AuthorizationAttempt, error)
+	CreateAuthorizationAttempt(ctx context.Context, name mcpserver.ServerName) (mcpapp.AuthorizationAttempt, error)
 	CreateServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.Server, error)
-	DeleteServer(ctx context.Context, name string) error
+	DeleteServer(ctx context.Context, name mcpserver.ServerName) error
 	AuthorizationAttempt(ctx context.Context, id string) (mcpapp.AuthorizationAttempt, error)
 	AuthorizationAttemptRetention() time.Duration
 	Servers(ctx context.Context) ([]mcpapp.Server, error)
-	Tools(ctx context.Context, server string) ([]mcpserver.AdvertisedTool, error)
-	ReconnectServer(ctx context.Context, name string) error
+	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
+	ReconnectServer(ctx context.Context, name mcpserver.ServerName) error
 	TestServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.TestResult, error)
-	UpdateServer(ctx context.Context, name string, patch mcpapp.ServerPatch) (mcpapp.Server, error)
+	UpdateServer(ctx context.Context, name mcpserver.ServerName, patch mcpapp.ServerPatch) (mcpapp.Server, error)
 }
 
 type approvalUseCases interface {
@@ -67,7 +68,7 @@ type approvalUseCases interface {
 type modelUseCases interface {
 	UpdateProvider(ctx context.Context, cmd models.UpdateProviderCommand) (models.ProviderSummary, error)
 	EmbeddingRole() modelref.Selection
-	ListModels(ctx context.Context, providerID string) []models.Model
+	ListModels(ctx context.Context, providerID string) ([]models.Model, error)
 	ListProviders(ctx context.Context) ([]models.ProviderSummary, error)
 	SetEmbeddingRole(ctx context.Context, providerID, model string) (modelref.Selection, error)
 	SetUtilityRole(ctx context.Context, provider, model string) (modelref.Selection, error)
@@ -93,16 +94,16 @@ type runUseCases interface {
 }
 
 type queryUseCases interface {
-	ListItemPage(ctx context.Context, scope queries.ItemScope, order transcript.SequenceOrder, cursor string, limit int) (queries.ItemPage, error)
-	ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit int) (pagination.Page[runs.Pending], error)
+	ListItemPage(ctx context.Context, scope queries.ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (queries.ItemPage, error)
+	ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error)
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	PlanState(ctx context.Context, sessionID string) (plan.State, error)
-	ListRunPage(ctx context.Context, filter queries.RunPageFilter, cursor string, limit int) (pagination.Page[run.Run], error)
+	PlanState(ctx context.Context, sessionID string) (plan.Current, error)
+	ListRunPage(ctx context.Context, filter queries.RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error)
 }
 
 type usageUseCases interface {
 	Session(ctx context.Context, sessionID string) (usage.SessionReport, error)
-	Summary(ctx context.Context, sinceDays int) (usage.Summary, error)
+	Summary(ctx context.Context, period usage.SummaryPeriod) (usage.Summary, error)
 }
 
 type feedbackUseCases interface {
@@ -113,7 +114,7 @@ type scheduleManagementUseCases interface {
 	Available() bool
 	Create(ctx context.Context, cmd schedules.CreateCommand) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) error
-	ListPage(ctx context.Context, cursor string, limit int) (pagination.Page[schedule.Schedule], error)
+	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error)
 	Update(ctx context.Context, cmd schedules.UpdateCommand) (schedule.Schedule, error)
 }
 
@@ -123,7 +124,7 @@ type scheduleFiringUseCases interface {
 }
 
 type workspaceFileUseCases interface {
-	Head(ctx context.Context, cwd, path string, lines int) (workspaceapp.FileHead, error)
+	Head(ctx context.Context, cwd, path string, lines workspaceapp.HeadLineLimit) (workspaceapp.FileHead, error)
 	Grep(ctx context.Context, cwd string, input workspaceapp.GrepInput) (workspaceapp.GrepResult, error)
 	List(ctx context.Context, input workspaceapp.FileListInput) (workspaceapp.FilePage, error)
 	Read(ctx context.Context, cwd string, input workspaceapp.FileReadInput) (workspaceapp.FileReadResult, error)

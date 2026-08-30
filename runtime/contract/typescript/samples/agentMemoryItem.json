@@ -1,5 +1,5 @@
 {
-  "id": "mem_01HZY7K9Q3T4",
+  "id": "mem_0123456789abcdef0123456789abcdef",
   "scope": "project",
   "content": "Build per-module with `go -C <dir>` — go.work makes a bare `go build ./...` at the repo root fail.",
   "origin": "auto",

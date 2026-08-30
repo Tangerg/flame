@@ -25,16 +25,32 @@ func (p *providerFake) Supported() []models.ProviderMetadata {
 	if p.supported != nil {
 		return p.supported
 	}
-	return []models.ProviderMetadata{{ID: "anthropic"}}
+	return []models.ProviderMetadata{serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}
 }
 
 func (p *providerFake) Metadata(id string) (models.ProviderMetadata, bool) {
 	for _, meta := range p.Supported() {
-		if meta.ID == id {
+		if meta.ID() == id {
 			return meta, true
 		}
 	}
 	return models.ProviderMetadata{}, false
+}
+
+func serverProviderMetadata(id string, endpoint models.ProviderEndpointPolicy, source models.ProviderModelSource, embedding models.EmbeddingCapability) models.ProviderMetadata {
+	metadata, err := models.NewProviderMetadata(id, models.ProviderAPIKeyRequired, endpoint, source, embedding)
+	if err != nil {
+		panic(err)
+	}
+	return metadata
+}
+
+func serverOptionalAPIKeyProviderMetadata(id string, endpoint models.ProviderEndpointPolicy, source models.ProviderModelSource, embedding models.EmbeddingCapability) models.ProviderMetadata {
+	metadata, err := models.NewProviderMetadata(id, models.ProviderAPIKeyOptional, endpoint, source, embedding)
+	if err != nil {
+		panic(err)
+	}
+	return metadata
 }
 func (*providerFake) Models(string) []models.Model { return nil }
 func (*providerFake) LookupModel(string, string) (models.Model, bool) {
@@ -59,9 +75,18 @@ func (p *providerFake) Update(_ context.Context, id string, patch provider.Patch
 	if p.entries == nil {
 		p.entries = map[string]provider.Provider{}
 	}
-	entry := p.entries[id]
-	entry.ID = id
-	entry = entry.Apply(patch)
+	entry, found := p.entries[id]
+	if !found {
+		var err error
+		entry, err = provider.New(id)
+		if err != nil {
+			return provider.Provider{}, err
+		}
+	}
+	entry, err := entry.Apply(patch)
+	if err != nil {
+		return provider.Provider{}, err
+	}
 	p.entries[id] = entry
 	return entry, nil
 }
@@ -75,9 +100,37 @@ func serverWithProviders(rt *providerFake) *Server {
 	return serverWithModels(models.Config{Providers: rt, Catalog: rt, Prober: rt})
 }
 
+func serverProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
+	t.Helper()
+	entry, err := provider.New(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := provider.Patch{}
+	if rawKey != "" {
+		key, keyErr := provider.NewAPIKey(rawKey)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		patch.APIKey = provider.Set(key)
+	}
+	if rawBaseURL != "" {
+		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
+		if baseURLErr != nil {
+			t.Fatal(baseURLErr)
+		}
+		patch.BaseURL = provider.Set(baseURL)
+	}
+	entry, err = entry.Apply(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
+}
+
 func TestListProvidersMergesSupportedCatalogWithRegistry(t *testing.T) {
 	s := serverWithProviders(&providerFake{entries: map[string]provider.Provider{
-		"anthropic": {ID: "anthropic", APIKey: "sk-ant-secret", KeySource: provider.KeyStored},
+		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", ""),
 	}})
 
 	page, err := s.ListProviders(context.Background())
@@ -94,11 +147,32 @@ func TestListProvidersMergesSupportedCatalogWithRegistry(t *testing.T) {
 	if anthropic == nil {
 		t.Fatalf("anthropic missing from supported provider list: %+v", page.Data)
 	}
-	if anthropic.APIKeyMasked == "" || anthropic.APIKeyMasked == "sk-ant-secret" {
-		t.Fatalf("APIKeyMasked = %q, want masked key", anthropic.APIKeyMasked)
+	if anthropic.Credential == nil || anthropic.Credential.Masked == "sk-ant-secret" {
+		t.Fatalf("Credential = %+v, want masked key", anthropic.Credential)
 	}
-	if anthropic.KeySource != protocol.ProviderKeySourceStored {
-		t.Fatalf("KeySource = %q, want stored", anthropic.KeySource)
+	if anthropic.Credential.Source != protocol.ProviderKeySourceStored {
+		t.Fatalf("credential source = %q, want stored", anthropic.Credential.Source)
+	}
+}
+
+func TestListProvidersPublishesConfiguredOptionalCredentialProvider(t *testing.T) {
+	s := serverWithProviders(&providerFake{
+		entries: map[string]provider.Provider{},
+		supported: []models.ProviderMetadata{serverOptionalAPIKeyProviderMetadata(
+			"ollama", models.ProviderEndpointOptional, models.ProviderModelsEndpoint, models.EmbeddingCapabilityWithoutDefault(),
+		)},
+	})
+
+	page, err := s.ListProviders(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Data) != 1 {
+		t.Fatalf("providers = %+v", page.Data)
+	}
+	got := page.Data[0]
+	if !got.Configured || got.Credential != nil || got.CredentialRequirement != protocol.ProviderAPIKeyOptional {
+		t.Fatalf("optional provider = %+v", got)
 	}
 }
 
@@ -118,16 +192,20 @@ func TestUpdateProviderPersistsThenReturnsStoredEntry(t *testing.T) {
 		t.Fatalf("updated %d provider(s), want 1", len(rt.updated))
 	}
 	stored := rt.entries["anthropic"]
-	if stored.APIKey != "sk-ant-secret" || stored.BaseURL != "https://example.test" {
-		t.Fatalf("stored = %+v", stored)
+	storedKey, _ := stored.APIKey()
+	storedBaseURL, _ := stored.BaseURL()
+	if storedKey.Reveal() != "sk-ant-secret" || storedBaseURL.String() != "https://example.test" {
+		t.Fatalf("stored = (%q, %q)", storedKey.Reveal(), storedBaseURL.String())
 	}
-	if got.ID != "anthropic" || got.BaseURL != "https://example.test" || got.APIKeyMasked == "" || got.APIKeyMasked == "sk-ant-secret" {
+	if got.ID != "anthropic" || got.BaseURL == nil || *got.BaseURL != "https://example.test" || got.Credential == nil || got.Credential.Masked == "sk-ant-secret" {
 		t.Fatalf("wire provider = %+v, want masked stored entry", got)
 	}
 }
 
 func TestUpdateProviderRequiresBaseURLWhenMetadataRequiresIt(t *testing.T) {
-	rt := &providerFake{supported: []models.ProviderMetadata{{ID: "openai-compatible", RequiresBaseURL: true}}}
+	rt := &providerFake{supported: []models.ProviderMetadata{serverProviderMetadata(
+		"openai-compatible", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability(),
+	)}}
 	s := serverWithProviders(rt)
 
 	_, err := s.UpdateProvider(context.Background(), protocol.UpdateProviderRequest{
@@ -144,7 +222,7 @@ func TestUpdateProviderRequiresBaseURLWhenMetadataRequiresIt(t *testing.T) {
 
 func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 	rt := &providerFake{entries: map[string]provider.Provider{
-		"anthropic": {ID: "anthropic", APIKey: "sk-ant-secret", BaseURL: "https://old.test"},
+		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", "https://old.test"),
 	}}
 	s := serverWithProviders(rt)
 
@@ -155,7 +233,7 @@ func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.BaseURL != "" || got.APIKeyMasked == "" {
+	if got.BaseURL != nil || got.Credential == nil {
 		t.Fatalf("provider after endpoint clear = %+v, want key preserved", got)
 	}
 
@@ -166,7 +244,7 @@ func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.APIKeyMasked != "" {
+	if got.Credential != nil {
 		t.Fatalf("provider after key clear = %+v", got)
 	}
 }
@@ -201,7 +279,7 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 	probeErr := errors.New("bad key")
 	rt := &providerFake{
 		entries: map[string]provider.Provider{
-			"anthropic": {ID: "anthropic", APIKey: "sk-ant-secret"},
+			"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", ""),
 		},
 		probeErr: probeErr,
 	}
@@ -214,7 +292,7 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 	if got.OK || got.Error == nil || got.Error.Type != "provider_test_failed" || got.Error.Detail != "" {
 		t.Fatalf("test result = %+v, want the provider_test_failed symbol and no prose", got)
 	}
-	if len(rt.probed) != 1 || rt.probed[0].ID != "anthropic" {
+	if len(rt.probed) != 1 || rt.probed[0].ID() != "anthropic" {
 		t.Fatalf("probed = %+v, want anthropic", rt.probed)
 	}
 }

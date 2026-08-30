@@ -3,6 +3,7 @@ package runtimeembedded
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/embedded"
@@ -18,6 +19,24 @@ type approvalBindingRecorder struct {
 	listCalls     int
 	forgetCalls   int
 	setMode       protocol.ApprovalMode
+}
+
+func TestModelCatalogRejectsPresentEmptyTokenLimits(t *testing.T) {
+	t.Parallel()
+
+	stub := modelCatalogBindingStub{
+		providers: protocol.NewPage([]protocol.Provider{{ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyRequired}}),
+		models: map[string]*protocol.Page[protocol.Model]{
+			"provider": protocol.NewPage([]protocol.Model{{
+				ID: "broken", Provider: "provider", TokenLimits: &protocol.ModelTokenLimits{},
+			}}),
+		},
+	}
+	runtime := &Runtime{modelCatalog: stub, meta: requestMeta("test")}
+	_, err := runtime.ListModels(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "token limits object is empty") {
+		t.Fatalf("ListModels() error = %v, want empty token-limits contract violation", err)
+	}
 }
 
 func (*approvalBindingRecorder) GetApprovalMode(context.Context, embedded.CallOptions) (*protocol.ApprovalModeResult, error) {
@@ -43,7 +62,7 @@ func (a *approvalBindingRecorder) ListApprovalRules(_ context.Context, request p
 func TestCatalogsRejectResponsesOutsideTheRequestedIdentity(t *testing.T) {
 	t.Parallel()
 	models := &Runtime{modelCatalog: modelCatalogBindingStub{
-		providers: protocol.NewPage([]protocol.Provider{{ID: "deepseek"}}),
+		providers: protocol.NewPage([]protocol.Provider{{ID: "deepseek", CredentialRequirement: protocol.ProviderAPIKeyRequired}}),
 		models: map[string]*protocol.Page[protocol.Model]{
 			"deepseek": protocol.NewPage([]protocol.Model{{ID: "chat", Provider: "other"}}),
 		},
@@ -75,12 +94,15 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 		InputUSDPerMillionTokens: 0.2, OutputUSDPerMillionTokens: 0.8,
 		CacheReadUSDPerMillionTokens: 0.02, CacheWriteUSDPerMillionTokens: 0.1,
 	}
+	contextWindow, maxInput, maxOutput := int64(200_000), int64(180_000), int64(20_000)
 	stub := modelCatalogBindingStub{
-		providers: protocol.NewPage([]protocol.Provider{{ID: "provider"}}),
+		providers: protocol.NewPage([]protocol.Provider{{ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyRequired}}),
 		models: map[string]*protocol.Page[protocol.Model]{
 			"provider": protocol.NewPage([]protocol.Model{{
 				ID: "reasoner", Provider: "provider", DisplayName: "Reasoner",
-				ContextWindow: 200_000, MaxInputTokens: 180_000, MaxOutputTokens: 20_000,
+				TokenLimits: &protocol.ModelTokenLimits{
+					ContextWindow: &contextWindow, MaxInputTokens: &maxInput, MaxOutputTokens: &maxOutput,
+				},
 				KnowledgeCutoff: "2026-01-31", Deprecated: true,
 				Capabilities: capabilities, Pricing: pricing,
 			}}),
@@ -95,9 +117,12 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 		t.Fatalf("models = %+v", models)
 	}
 	model := models[0]
+	projectedContext, contextKnown := model.TokenLimits.ContextWindow()
+	projectedInput, inputKnown := model.TokenLimits.MaxInputTokens()
+	projectedOutput, outputKnown := model.TokenLimits.MaxOutputTokens()
 	wantInput := []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage}
 	if model.ID != "reasoner" || model.Provider != "provider" || model.DisplayName != "Reasoner" ||
-		model.ContextWindow != 200_000 || model.MaxInputTokens != 180_000 || model.MaxOutputTokens != 20_000 ||
+		projectedContext != 200_000 || !contextKnown || projectedInput != 180_000 || !inputKnown || projectedOutput != 20_000 || !outputKnown ||
 		model.KnowledgeCutoff != "2026-01-31" || !model.Deprecated || model.Capabilities == nil || model.Pricing == nil ||
 		!model.Capabilities.Reasoning || model.Capabilities.ReasoningDefaultLevel != "high" ||
 		!model.Capabilities.Multimodal || !model.Capabilities.ToolUse || !model.Capabilities.StructuredOutput ||
@@ -115,12 +140,18 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 	}
 }
 
-func TestApprovalCatalogNormalizesIdentitiesBeforeCrossingTheRuntimeBoundary(t *testing.T) {
+func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *testing.T) {
 	t.Parallel()
 
 	recorder := &approvalBindingRecorder{}
 	runtime := &Runtime{approvals: recorder, meta: requestMeta("test")}
-	rules, err := runtime.ListApprovalRules(t.Context(), "  session_1  ")
+	if _, err := runtime.ListApprovalRules(t.Context(), "  session_1  "); err == nil {
+		t.Fatal("ListApprovalRules accepted a session identity that requires trimming")
+	}
+	if recorder.listRequest.SessionID != "" {
+		t.Fatalf("invalid identity crossed the Runtime boundary: %+v", recorder.listRequest)
+	}
+	rules, err := runtime.ListApprovalRules(t.Context(), "session_1")
 	if err != nil {
 		t.Fatal(err)
 	}

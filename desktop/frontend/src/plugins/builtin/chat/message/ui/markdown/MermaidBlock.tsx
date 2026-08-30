@@ -27,7 +27,7 @@ type MermaidRenderResult = { status: "loading" | "error" | "rendered"; svg?: str
 
 interface SettledMermaidRender {
   code: string;
-  tokenRevision: number;
+  tokenRevision: object;
   renderer: MermaidRenderer;
   result: MermaidRenderResult;
 }
@@ -35,7 +35,7 @@ interface SettledMermaidRender {
 // Resolve token vars to literal hex — beautiful-mermaid bakes the
 // values into stroke/fill on the SVG output and browsers won't honor
 // raw `var(--x)` text there.
-function readThemeColors(_tokenRevision: number) {
+function readThemeColors(_tokenRevision: object) {
   const root = document.documentElement;
   const cs = getComputedStyle(root);
   const grab = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;

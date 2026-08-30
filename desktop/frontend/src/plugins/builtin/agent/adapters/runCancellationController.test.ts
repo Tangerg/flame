@@ -9,7 +9,7 @@ describe("run cancellation controller", () => {
     const onSettled = vi.fn();
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 3, viewRevision: 7 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 3n, viewRevision: 7n }),
       execute,
       commitIfCurrent,
       revalidateTerminal: vi.fn(),
@@ -22,8 +22,8 @@ describe("run cancellation controller", () => {
     await vi.waitFor(() => expect(onSettled).toHaveBeenCalledOnce());
     expect(commitIfCurrent).toHaveBeenCalledWith(response, {
       terminal: false,
-      viewEpoch: 3,
-      viewRevision: 7,
+      viewEpoch: 3n,
+      viewRevision: 7n,
     });
   });
 
@@ -33,7 +33,7 @@ describe("run cancellation controller", () => {
     const onSettled = vi.fn();
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 1, viewRevision: 2 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 1n, viewRevision: 2n }),
       execute: vi.fn().mockRejectedValue(commandFailure),
       commitIfCurrent: vi.fn(),
       revalidateTerminal: vi.fn().mockResolvedValue(true),
@@ -52,7 +52,7 @@ describe("run cancellation controller", () => {
     const onFailure = vi.fn();
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 1, viewRevision: 2 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 1n, viewRevision: 2n }),
       execute: vi.fn().mockRejectedValue(commandFailure),
       commitIfCurrent: vi.fn(),
       revalidateTerminal: vi.fn().mockRejectedValue(new Error("offline")),
@@ -75,7 +75,7 @@ describe("run cancellation controller", () => {
     );
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 1, viewRevision: 2 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 1n, viewRevision: 2n }),
       execute,
       commitIfCurrent: vi.fn().mockReturnValue(true),
       revalidateTerminal: vi.fn(),
@@ -104,7 +104,7 @@ describe("run cancellation controller", () => {
     const onFailure = vi.fn();
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 4, viewRevision: 9 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 4n, viewRevision: 9n }),
       execute,
       commitIfCurrent,
       revalidateTerminal: vi.fn(),
@@ -128,7 +128,7 @@ describe("run cancellation controller", () => {
     const execute = vi.fn().mockResolvedValue({ type: "root" });
     const controller = createRunCancellationController({
       markInteracted: vi.fn(),
-      readTarget: () => ({ terminal: false, viewEpoch: 4, viewRevision: 9 }),
+      readTarget: () => ({ terminal: false, viewEpoch: 4n, viewRevision: 9n }),
       execute,
       commitIfCurrent: vi.fn(),
       revalidateTerminal: vi.fn(),

@@ -1521,8 +1521,8 @@ for await (const line of lines) {
           baseUrl: { type: "set", value: providerBaseUrl },
         }),
       );
-      expect(provider).toMatchObject({ id: "openai", keySource: "stored" });
-      expect(provider.apiKeyMasked).not.toContain("cutpoint-provider-secret");
+      expect(provider).toMatchObject({ id: "openai", credential: { source: "stored" } });
+      expect(provider.credential?.masked).not.toContain("cutpoint-provider-secret");
       await expect(nextRuntimeEvent(events, "models.changed")).resolves.toMatchObject({
         type: "models.changed",
       });
@@ -1530,8 +1530,7 @@ for await (const line of lines) {
         data: expect.arrayContaining([
           expect.objectContaining({
             id: "openai",
-            apiKeyMasked: provider.apiKeyMasked,
-            keySource: "stored",
+            credential: { masked: provider.credential?.masked, source: "stored" },
           }),
         ]),
       });
@@ -1722,6 +1721,7 @@ for await (const line of lines) {
             connection: { type: "stdio", command: "runtime-http-e2e-replay-cutpoint" },
             description: "MCP replay cutpoint",
             enabled: false,
+            handshakeTimeout: { type: "unbounded" },
             name: server,
           }),
         ),
@@ -1886,10 +1886,9 @@ for await (const line of lines) {
     });
     expect(updated).toMatchObject({
       id: providerId,
-      apiKeyMasked: "al****ga",
-      keySource: "stored",
+      credential: { masked: "al****ga", source: "stored" },
     });
-    expect(updated.apiKeyMasked).not.toContain("alpha-credential-omega");
+    expect(updated.credential?.masked).not.toContain("alpha-credential-omega");
     await expect(client.providers.test(providerId)).resolves.toEqual({ ok: true });
 
     await expect(
@@ -1928,9 +1927,10 @@ for await (const line of lines) {
       provider: "openai",
       model: "e2e-embedding",
     });
-    await expect(client.providers.list()).resolves.toMatchObject({
-      data: expect.arrayContaining([expect.objectContaining({ id: "openai", apiKeyMasked: "" })]),
-    });
+    const providersAfterClear = await client.providers.list();
+    expect(
+      providersAfterClear.data.find((provider) => provider.id === "openai")?.credential,
+    ).toBeUndefined();
     await client.providers.update({
       provider: "openai",
       apiKey: { type: "set", value: "embedding-test-key" },
@@ -2339,7 +2339,7 @@ for await (const line of lines) {
     expect(rolledRuns.map((run) => run.id)).toEqual([first.result.runId]);
     expect(rolledItems.every((item) => item.runId === first.result.runId)).toBe(true);
     await expect(client.plan.get(asSessionId(source.id))).resolves.toMatchObject({
-      steps: jsonExport.artifact.plan,
+      state: { steps: jsonExport.artifact.plan },
     });
 
     const imported = await client.sessions.import(jsonExport.artifact);
@@ -2359,7 +2359,7 @@ for await (const line of lines) {
     expect(restoredRuns.map((run) => run.id)).toEqual([second.result.runId, first.result.runId]);
     expect(restoredItems).toHaveLength(jsonExport.artifact.items.length);
     await expect(client.plan.get(asSessionId(source.id))).resolves.toMatchObject({
-      steps: jsonExport.artifact.plan,
+      state: { steps: jsonExport.artifact.plan },
     });
 
     const continued = await client.runs.start({
@@ -2397,7 +2397,8 @@ for await (const line of lines) {
     const events = await collectRunEvents(started.events);
     expect(
       events.some(
-        (event) => event.event.type === "plan.updated" && event.event.plan.steps.length === 2,
+        (event) =>
+          event.event.type === "plan.updated" && event.event.plan.state?.steps.length === 2,
       ),
     ).toBe(true);
 
@@ -2407,12 +2408,14 @@ for await (const line of lines) {
       sessionIds: [session.id],
     });
     await expect(client.plan.get(asSessionId(session.id))).resolves.toMatchObject({
-      revision: 1,
       sessionId: session.id,
-      steps: [
-        { description: "Inspect the runtime contract", status: "completed" },
-        { description: "Verify frontend reconciliation", status: "in_progress" },
-      ],
+      state: {
+        revision: 1,
+        steps: [
+          { description: "Inspect the runtime contract", status: "completed" },
+          { description: "Verify frontend reconciliation", status: "in_progress" },
+        ],
+      },
     });
 
     streamController.abort();
@@ -3178,6 +3181,7 @@ for await (const line of lines) {
       connection: { type: "stdio", command: "runtime-http-e2e-mcp" },
       description: "Disabled MCP E2E fixture",
       enabled: false,
+      handshakeTimeout: { type: "unbounded" },
       name: server,
     });
     expect(created).toMatchObject({ name: server, status: { type: "disabled" } });
@@ -3223,6 +3227,7 @@ for await (const line of lines) {
       connection: { type: "stdio" as const, command: process.execPath, args: [mcpFixturePath] },
       description: "Live MCP E2E fixture",
       enabled: true,
+      handshakeTimeout: { type: "unbounded" as const },
       name: server,
     };
 
@@ -4609,11 +4614,13 @@ for await (const line of lines) {
       const planSnapshot = await client.sessions.snapshot(asSessionId(planSession.id));
       expect(planSnapshot).toMatchObject({
         plan: {
-          revision: 1,
-          steps: [
-            { description: "Inspect the runtime contract", status: "completed" },
-            { description: "Verify frontend reconciliation", status: "in_progress" },
-          ],
+          state: {
+            revision: 1,
+            steps: [
+              { description: "Inspect the runtime contract", status: "completed" },
+              { description: "Verify frontend reconciliation", status: "in_progress" },
+            ],
+          },
         },
         items: expect.arrayContaining([
           expect.objectContaining({
@@ -4699,6 +4706,7 @@ for await (const line of lines) {
         },
         description: "SIGKILL Tool recovery fixture",
         enabled: true,
+        handshakeTimeout: { type: "unbounded" },
         name: server,
       });
       serverCreated = true;

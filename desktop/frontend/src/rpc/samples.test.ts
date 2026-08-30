@@ -54,3 +54,30 @@ describe("the canonical wire samples", () => {
     }
   });
 });
+
+describe("generated MCP remote-tool constraints", () => {
+  const candidate = (disabledTools: string[]) => ({
+    name: "files",
+    enabled: true,
+    connection: { type: "stdio", command: "mcp-files" },
+    handshakeTimeout: { type: "unbounded" },
+    disabledTools,
+  });
+
+  it("rejects an invalid remote identity at the item path", () => {
+    expect(validateWire("MCPServerCandidate", candidate(["tool/name"]))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "MCPServerCandidate.disabledTools[0]" }),
+      ]),
+    );
+  });
+
+  it("rejects more than one complete remote catalog of policy rules", () => {
+    const tools = Array.from({ length: 2049 }, (_, index) => `tool_${index}`);
+    expect(validateWire("MCPServerCandidate", candidate(tools))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "MCPServerCandidate.disabledTools" }),
+      ]),
+    );
+  });
+});

@@ -25,7 +25,12 @@ func (r *Reader) Current(ctx context.Context, sessionID string) (goal.Goal, bool
 	if r == nil || r.goals == nil {
 		return goal.Goal{}, false, nil
 	}
-	return r.goals.Get(ctx, sessionID)
+	current, err := r.goals.Get(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, false, err
+	}
+	value, exists := current.Goal()
+	return value, exists, nil
 }
 
 // Active reports whether sessionID currently has an actively driven Goal.
@@ -33,9 +38,10 @@ func (r *Reader) Active(ctx context.Context, sessionID string) (bool, error) {
 	if r == nil || r.goals == nil {
 		return false, nil
 	}
-	g, ok, err := r.goals.Get(ctx, sessionID)
+	current, err := r.goals.Get(ctx, sessionID)
 	if err != nil {
 		return false, err
 	}
-	return ok && g.Status == goal.StatusActive, nil
+	g, exists := current.Goal()
+	return exists && g.Status() == goal.StatusActive, nil
 }

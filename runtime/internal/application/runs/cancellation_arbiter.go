@@ -194,7 +194,7 @@ func (r *runTreeOwner) waitChildCancellation(
 			)
 		}
 	case <-ctx.Done():
-		return rundomain.Run{}, rundomain.Run{}, ctx.Err()
+		return rundomain.Run{}, rundomain.Run{}, context.Cause(ctx)
 	}
 	if attempt.err != nil {
 		return rundomain.Run{}, rundomain.Run{}, attempt.err
@@ -301,7 +301,7 @@ func (r *runTreeOwner) requestCancel(
 			case <-activation.done:
 				continue
 			case <-ctx.Done():
-				return false, ctx.Err()
+				return false, context.Cause(ctx)
 			}
 		}
 		if activation.done != nil && activation.finished && activation.err != nil {
@@ -331,7 +331,7 @@ func (r *runTreeOwner) requestCancel(
 			select {
 			case <-inflight.done:
 			case <-ctx.Done():
-				return false, ctx.Err()
+				return false, context.Cause(ctx)
 			}
 		}
 		r.mu.Lock()

@@ -159,7 +159,7 @@ class MCPServerMutationGeneration {
 /** Owns MCP server commands, authorization polling, and cache projection for
  * one exact Plugin Host and Runtime generation. */
 export class MCPServerMutationOwner {
-  static #materialGeneration = 0;
+  static #materialGeneration = 0n;
   static readonly #materialListeners = new Set<() => void>();
 
   readonly #gateway: MCPServerGateway;
@@ -184,7 +184,7 @@ export class MCPServerMutationOwner {
     return owner;
   }
 
-  static materialGeneration(): number {
+  static materialGeneration(): bigint {
     return MCPServerMutationOwner.#materialGeneration;
   }
 
@@ -239,7 +239,7 @@ export class MCPServerMutationOwner {
   }
 
   static #advanceMaterialGeneration(): void {
-    MCPServerMutationOwner.#materialGeneration += 1;
+    MCPServerMutationOwner.#materialGeneration += 1n;
     for (const listener of MCPServerMutationOwner.#materialListeners) listener();
   }
 }

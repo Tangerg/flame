@@ -2,10 +2,35 @@ package promptqueue
 
 import (
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
+
+func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
+	t.Parallel()
+	if _, err := NewEntryID(0); err == nil {
+		t.Fatal("zero queue entry identity was constructed")
+	}
+	if err := (EntryID{}).Validate(); err == nil {
+		t.Fatal("zero queue entry identity was validated")
+	}
+	queue := New()
+	queue.nextID = math.MaxUint64
+	if _, err := queue.Enqueue("session", agent.Message{Text: "must not wrap"}); err == nil {
+		t.Fatal("exhausted queue identity sequence wrapped")
+	}
+	if snapshot := queue.Snapshot("session"); len(snapshot.Entries) != 0 {
+		t.Fatalf("identity exhaustion mutated queue: %+v", snapshot)
+	}
+}
+
+func sameDispatchReservation(left, right State) bool {
+	leftID, leftPresent := left.DispatchingID()
+	rightID, rightPresent := right.DispatchingID()
+	return leftPresent == rightPresent && (!leftPresent || leftID == rightID)
+}
 
 func TestQueueKeepsSessionQueuesIsolatedAndSnapshotsDetached(t *testing.T) {
 	queue := New()
@@ -78,12 +103,12 @@ func TestQueuePromotesAnEntryWithoutChangingItsIdentity(t *testing.T) {
 	if len(got) != 3 || got[0].ID != third.ID || got[1].ID != first.ID || got[2].ID != second.ID {
 		t.Fatalf("promoted queue = %+v", got)
 	}
-	revision := queue.Snapshot("session").Revision
+	before := queue.Snapshot("session")
 	if err := queue.Promote("session", third.ID); err != nil {
 		t.Fatal(err)
 	}
-	if got := queue.Snapshot("session").Revision; got != revision {
-		t.Fatalf("promoting the front entry changed revision from %d to %d", revision, got)
+	if got := queue.Snapshot("session"); len(got.Entries) != len(before.Entries) || got.Entries[0].ID != before.Entries[0].ID {
+		t.Fatalf("promoting the front entry changed the queue: before=%+v after=%+v", before, got)
 	}
 }
 
@@ -124,7 +149,7 @@ func TestQueueRejectsInvalidMessagesWithoutMutation(t *testing.T) {
 	if _, err := queue.Enqueue("session", agent.Message{}); err == nil {
 		t.Fatal("empty message was accepted")
 	}
-	if snapshot := queue.Snapshot("session"); len(snapshot.Entries) != 0 || snapshot.Revision != 0 {
+	if snapshot := queue.Snapshot("session"); len(snapshot.Entries) != 0 {
 		t.Fatalf("invalid enqueue mutated queue: %+v", snapshot)
 	}
 }
@@ -150,15 +175,19 @@ func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 	if err := queue.Restore("session", []agent.StartRun{command}, command.CommandID); err == nil {
 		t.Fatal("durable restore accepted invalid run options")
 	}
+	entryID, idErr := NewEntryID(99)
+	if idErr != nil {
+		t.Fatal(idErr)
+	}
 	state := State{Entries: []Entry{{
-		ID: 99, CommandID: command.CommandID, SessionID: command.SessionID,
+		ID: entryID, CommandID: command.CommandID, SessionID: command.SessionID,
 		Message: command.Message, Options: command.Options,
-	}}, DispatchingID: 99}
+	}}, Dispatching: new(entryID)}
 	if err := queue.RestoreState("session", state); err == nil {
 		t.Fatal("transaction restore accepted invalid run options")
 	}
 	after := queue.State("session")
-	if len(after.Entries) != 1 || after.Entries[0].ID != existing.ID || after.DispatchingID != before.DispatchingID ||
+	if len(after.Entries) != 1 || after.Entries[0].ID != existing.ID || !sameDispatchReservation(after, before) ||
 		after.Entries[0].CommandID != before.Entries[0].CommandID {
 		t.Fatalf("invalid options mutated queue: before=%+v after=%+v", before, after)
 	}
@@ -197,8 +226,8 @@ func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if next.ID <= second.ID {
-		t.Fatalf("new entry reused identity %d after restoring through %d", next.ID, second.ID)
+	if second.ID == next.ID {
+		t.Fatalf("new entry reused identity %s after restoring %s", next.ID, second.ID)
 	}
 }
 
@@ -208,22 +237,22 @@ func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 		t.Fatal(err)
 	}
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
 	}
 	if err := queue.Restore("session", commands, ""); err != nil {
 		t.Fatal(err)
 	}
 	snapshot := queue.Snapshot("session")
-	if len(snapshot.Entries) != 2 || snapshot.Entries[0].ID == 0 ||
-		snapshot.Entries[0].ID >= snapshot.Entries[1].ID || snapshot.Entries[0].CommandID != commands[0].CommandID ||
+	if len(snapshot.Entries) != 2 || snapshot.Entries[0].ID.Validate() != nil ||
+		snapshot.Entries[0].ID == snapshot.Entries[1].ID || snapshot.Entries[0].CommandID != commands[0].CommandID ||
 		snapshot.Entries[1].Message.Text != commands[1].Message.Text {
 		t.Fatalf("restored durable queue = %+v", snapshot)
 	}
 	if err := queue.Restore("session", nil, ""); err != nil {
 		t.Fatal(err)
 	}
-	if got := queue.State("session"); len(got.Entries) != 0 || got.DispatchingID != 0 {
+	if got := queue.State("session"); len(got.Entries) != 0 || got.Dispatching != nil {
 		t.Fatalf("empty restore left queue state: %+v", got)
 	}
 }
@@ -231,8 +260,8 @@ func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 func TestQueueRestoresADurableDispatchReservationAtomically(t *testing.T) {
 	queue := New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "queued"}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "queued"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
 	}
 	if err := queue.Restore("session", commands, commands[0].CommandID); err != nil {
 		t.Fatal(err)
@@ -257,15 +286,15 @@ func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
 	existing, _ := queue.Enqueue("session", agent.Message{Text: "existing"})
 	before := queue.State("session")
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
 	}
 	if err := queue.Restore("session", commands, commands[1].CommandID); err == nil {
 		t.Fatal("queue accepted a non-front durable dispatch")
 	}
 	after := queue.State("session")
 	if len(after.Entries) != 1 || after.Entries[0].ID != existing.ID || after.Entries[0].CommandID != before.Entries[0].CommandID ||
-		after.DispatchingID != before.DispatchingID {
+		!sameDispatchReservation(after, before) {
 		t.Fatalf("invalid durable restore mutated queue: before=%+v after=%+v", before, after)
 	}
 }
@@ -284,7 +313,9 @@ func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.
 		t.Fatal(err)
 	}
 	entries := queue.Snapshot("session").Entries
-	if len(entries) != 3 || entries[0].ID != first.ID || queue.State("session").DispatchingID != first.ID ||
+	state := queue.State("session")
+	dispatchingID, reserved := state.DispatchingID()
+	if len(entries) != 3 || entries[0].ID != first.ID || !reserved || dispatchingID != first.ID ||
 		entries[1].ID != third.ID || entries[2].ID != second.ID {
 		t.Fatalf("priority edit crossed dispatch boundary: %+v", entries)
 	}
@@ -327,7 +358,9 @@ func TestRestoreStatePreservesDispatchReservation(t *testing.T) {
 		t.Fatalf("restored dispatch = %+v, %t", dispatching, ok)
 	}
 	entries := queue.Snapshot("session").Entries
-	if len(entries) != 2 || entries[1].ID != second.ID || queue.State("session").DispatchingID != first.ID {
+	state := queue.State("session")
+	dispatchingID, reserved := state.DispatchingID()
+	if len(entries) != 2 || entries[1].ID != second.ID || !reserved || dispatchingID != first.ID {
 		t.Fatalf("restored snapshot = %+v", entries)
 	}
 }
@@ -338,13 +371,13 @@ func TestRestoreStateRejectsInvalidDispatchWithoutChangingTheQueue(t *testing.T)
 	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
 	before := queue.State("session")
 	invalid := before
-	invalid.DispatchingID = second.ID
+	invalid.Dispatching = new(second.ID)
 
 	if err := queue.RestoreState("session", invalid); err == nil {
 		t.Fatal("snapshot reserved a non-front entry")
 	}
 	after := queue.State("session")
-	if after.DispatchingID != before.DispatchingID || len(after.Entries) != 2 ||
+	if !sameDispatchReservation(after, before) || len(after.Entries) != 2 ||
 		after.Entries[0].ID != first.ID || after.Entries[1].ID != second.ID {
 		t.Fatalf("invalid restore mutated queue: before=%+v after=%+v", before, after)
 	}
@@ -360,7 +393,7 @@ func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
 	if err := queue.RequeueDispatch("session", first.CommandID, replacement); err != nil {
 		t.Fatal(err)
 	}
-	if queue.State("session").DispatchingID != 0 {
+	if _, reserved := queue.State("session").DispatchingID(); reserved {
 		t.Fatal("requeued dispatch retained its reservation")
 	}
 	next, ok := queue.BeginDispatch("session")

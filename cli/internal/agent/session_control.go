@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/runidentity"
+	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 )
 
 // RestoreScope is the portion of a session rollback rewinds.
@@ -39,11 +42,16 @@ func (r RollbackSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if strings.TrimSpace(r.SessionID) == "" {
-		problems = append(problems, errors.New("session id is empty"))
+	if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+		problems = append(problems, err)
 	}
 	if err := r.Scope.Validate(); err != nil {
 		problems = append(problems, err)
+	}
+	if r.ToRunID != "" {
+		if _, err := runidentity.ParseRun(r.ToRunID); err != nil {
+			problems = append(problems, err)
+		}
 	}
 	if r.ToRunID == "" && r.Scope != RestoreHistory {
 		problems = append(problems, errors.New("file restoration requires a run boundary"))
@@ -108,8 +116,8 @@ func (d DroppedRun) Clone() DroppedRun {
 }
 
 func (d DroppedRun) Validate() error {
-	if strings.TrimSpace(d.RunID) == "" {
-		return errors.New("dropped run id is empty")
+	if _, err := runidentity.ParseRun(d.RunID); err != nil {
+		return fmt.Errorf("dropped run: %w", err)
 	}
 	for index, content := range d.Input {
 		if err := content.Validate(); err != nil {

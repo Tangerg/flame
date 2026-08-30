@@ -127,21 +127,21 @@ func TestWorkspaceGetFileHead(t *testing.T) {
 	}
 	s := newWorkspaceServer(dir)
 
-	got, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: 2})
+	got, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: valuePtr(2)})
 	if err != nil {
 		t.Fatalf("getFileHead: %v", err)
 	}
 	if len(got.Lines) != 2 || got.Lines[0].LineNumber != 1 || got.Lines[0].Text != "line-001" || got.Lines[1].LineNumber != 2 {
 		t.Fatalf("lines = %+v, want first two lines numbered 1,2", got.Lines)
 	}
-	capped, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: 1000})
+	capped, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: valuePtr(1000)})
 	if err != nil {
 		t.Fatalf("get capped file head: %v", err)
 	}
 	if len(capped.Lines) != 400 || capped.Lines[399].LineNumber != 400 {
 		t.Fatalf("capped head has %d lines, want 400", len(capped.Lines))
 	}
-	if _, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "wide.txt", Lines: 1}); !errors.Is(err, protocol.ErrInvalidParams) {
+	if _, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "wide.txt", Lines: valuePtr(1)}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("byte-truncated head error = %v, want invalid_params", err)
 	}
 
@@ -161,7 +161,7 @@ func TestWorkspaceListFilesPaginatesInspectedEntries(t *testing.T) {
 	}
 	s := newWorkspaceServer(dir)
 
-	first, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{Recursive: true, PageQuery: protocol.PageQuery{Limit: 2}})
+	first, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{Recursive: true, PageQuery: protocol.PageQuery{Limit: valuePtr(2)}})
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestWorkspaceListFilesPaginatesInspectedEntries(t *testing.T) {
 
 	second, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{
 		Recursive: true,
-		PageQuery: protocol.PageQuery{Cursor: first.NextCursor, Limit: 2},
+		PageQuery: protocol.PageQuery{Cursor: first.NextCursor, Limit: valuePtr(2)},
 	})
 	if err != nil {
 		t.Fatalf("second page: %v", err)
@@ -192,19 +192,19 @@ func TestWorkspaceListFilesPaginatesInspectedEntries(t *testing.T) {
 	}
 	if _, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{
 		Recursive: true,
-		PageQuery: protocol.PageQuery{Limit: -1},
+		PageQuery: protocol.PageQuery{Limit: valuePtr(-1)},
 	}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("negative limit error = %v, want invalid_params", err)
 	}
 	if _, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{
 		Recursive: true,
-		PageQuery: protocol.PageQuery{Cursor: "!", Limit: 1},
+		PageQuery: protocol.PageQuery{Cursor: "!", Limit: valuePtr(1)},
 	}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("invalid cursor error = %v, want invalid_params", err)
 	}
 	if _, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{
 		Recursive: false,
-		PageQuery: protocol.PageQuery{Cursor: first.NextCursor, Limit: 1},
+		PageQuery: protocol.PageQuery{Cursor: first.NextCursor, Limit: valuePtr(1)},
 	}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("cross-query cursor error = %v, want invalid_params", err)
 	}
@@ -257,7 +257,7 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 	}
 	s := newWorkspaceServer(dir)
 
-	got, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "f.txt", StartLine: 2, EndLine: 3})
+	got, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "f.txt", StartLine: valuePtr(2), EndLine: valuePtr(3)})
 	if err != nil {
 		t.Fatalf("read window: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 		t.Fatalf("window = %+v, want lines 2..3 with truncated=true", got)
 	}
 
-	capped, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "long.txt", MaxBytes: 3})
+	capped, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "long.txt", MaxBytes: valuePtr(3)})
 	if err != nil {
 		t.Fatalf("read capped: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestWorkspaceReadFileOwnsDefaultAndMaximumByteBudgets(t *testing.T) {
 		}
 	})
 	t.Run("maximum", func(t *testing.T) {
-		clamped, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "maximum.txt", MaxBytes: 16 << 20})
+		clamped, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "maximum.txt", MaxBytes: valuePtr(16 << 20)})
 		if err != nil {
 			t.Fatalf("read with oversized budget: %v", err)
 		}
@@ -338,11 +338,13 @@ func TestWorkspaceReadFileRejectsInvalidRange(t *testing.T) {
 	s := newWorkspaceServer(dir)
 
 	cases := []protocol.ReadFileRequest{
-		{Path: "f.txt", StartLine: -1},
-		{Path: "f.txt", EndLine: -1},
-		{Path: "f.txt", MaxBytes: -1},
-		{Path: "f.txt", EndLine: 2},
-		{Path: "f.txt", StartLine: 3, EndLine: 2},
+		{Path: "f.txt", StartLine: valuePtr(-1)},
+		{Path: "f.txt", StartLine: valuePtr(0)},
+		{Path: "f.txt", EndLine: valuePtr(-1)},
+		{Path: "f.txt", MaxBytes: valuePtr(-1)},
+		{Path: "f.txt", MaxBytes: valuePtr(0)},
+		{Path: "f.txt", EndLine: valuePtr(2)},
+		{Path: "f.txt", StartLine: valuePtr(3), EndLine: valuePtr(2)},
 	}
 	for _, tc := range cases {
 		if _, err := s.ReadWorkspaceFile(context.Background(), tc); !errors.Is(err, protocol.ErrInvalidParams) {

@@ -13,14 +13,14 @@ import (
 
 type stubStore struct {
 	steps []plandomain.Step
-	state plandomain.State
+	state plandomain.Current
 }
 
 func (s *stubStore) Replace(_ context.Context, _ string, steps []plandomain.Step) (plandomain.State, error) {
 	s.steps = steps
 	next, err := s.state.Replace(steps, time.Now())
 	if err == nil {
-		s.state = next
+		s.state, err = plandomain.CurrentOf(next)
 	}
 	return next, err
 }

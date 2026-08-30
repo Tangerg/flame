@@ -7,6 +7,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -16,6 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 )
 
 func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *persistence.ExecutorCheckpointStore) {
@@ -36,7 +39,7 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 	return runs.ExecutorCheckpoint{
 		RootMemberID: rootMemberID,
 		Payload:      []byte(payload),
-		BuildID:      "sha256:checkpoint-build",
+		BuildID:      identityfixture.BuildID,
 		Scope: runs.ExecutionScope{
 			SessionID:         sessionID,
 			CWD:               "/workspace/" + sessionID,
@@ -44,11 +47,11 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 			GoalIncarnationID: "lease-" + sessionID,
 		},
 		ModelSelection: selection,
-		Limits: run.Limits{
-			MaxTotalTokens: 8_192,
-			MaxBudgetUSD:   2.5,
-			MaxSteps:       16,
-		},
+		Limits: runfixture.MustLimits(run.LimitValues{
+			MaxTotalTokens: runfixture.Pointer[int64](8_192),
+			MaxBudgetUSD:   runfixture.Pointer(2.5),
+			MaxSteps:       runfixture.Pointer(16),
+		}),
 		Capabilities: run.Capabilities{
 			ChildRuns:      true,
 			InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
@@ -97,29 +100,35 @@ func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) 
 	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
-	for name, mutate := range map[string]func(*runs.ExecutorCheckpoint){
-		"build":            func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = "other-build" },
-		"cwd":              func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.CWD = "/other" },
-		"isolation":        func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.Isolated = false },
-		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other-lease" },
-		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
+	mutations := []struct {
+		name   string
+		mutate func(*runs.ExecutorCheckpoint)
+	}{
+		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = identityfixture.AlternateBuildID }},
+		{name: "cwd", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.CWD = "/other" }},
+		{name: "isolation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.Isolated = false }},
+		{name: "goal incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other-lease" }},
+		{name: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "claude")
-		},
-		"model": func(checkpoint *runs.ExecutorCheckpoint) {
+		}},
+		{name: "model", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("anthropic", "claude-sonnet")
-		},
-		"reasoning effort": func(checkpoint *runs.ExecutorCheckpoint) {
+		}},
+		{name: "reasoning effort", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.NewWithReasoningEffort("anthropic", "claude", "medium")
-		},
-		"limits": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Limits.MaxSteps++ },
-		"capabilities": func(checkpoint *runs.ExecutorCheckpoint) {
+		}},
+		{name: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+			checkpoint.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(17)})
+		}},
+		{name: "capabilities", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = false
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
+		}},
+	}
+	for _, mutation := range mutations {
+		t.Run(mutation.name, func(t *testing.T) {
 			replacement := first.Clone()
 			replacement.Payload = []byte(`{"tree":"replacement"}`)
-			mutate(&replacement)
+			mutation.mutate(&replacement)
 			if err := store.SaveCheckpoint(t.Context(), replacement); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
 				t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
 			}
@@ -211,25 +220,84 @@ func TestExecutorCheckpointStoreRoundTripsApplicationEnvelope(t *testing.T) {
 	}
 }
 
-func TestExecutorCheckpointStoreRejectsUnversionedOrMalformedCapabilities(t *testing.T) {
-	tests := map[string]string{
-		"unversioned policy":     `{"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_incarnation_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16},"capabilities":{"child_runs":true,"interrupt_kinds":["approval","question"]}}`,
-		"retired lease field":    `{"schema_version":2,"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_lease_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16},"capabilities":{"child_runs":true,"interrupt_kinds":["approval","question"]}}`,
-		"retired policy version": `{"schema_version":1,"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_incarnation_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16},"capabilities":{"child_runs":true,"interrupt_kinds":["approval","question"]}}`,
-		"missing capability set": `{"schema_version":2,"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_incarnation_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16}}`,
-		"noncanonical kinds":     `{"schema_version":2,"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_incarnation_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16},"capabilities":{"child_runs":true,"interrupt_kinds":["question","approval"]}}`,
-		"unknown kind":           `{"schema_version":2,"scope":{"session_id":"session-1","cwd":"/workspace/session-1","workspace_cwd":"","isolated":true,"goal_incarnation_id":"lease-session-1"},"provider":"anthropic","model":"claude","limits":{"max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16},"capabilities":{"child_runs":true,"interrupt_kinds":["approval","future"]}}`,
+func TestExecutorCheckpointStorePersistsUnlimitedPolicyWithoutCaps(t *testing.T) {
+	database, store := newExecutorCheckpointStorage(t)
+	want := storedExecutorCheckpoint("member_unlimited", "session-unlimited", `{"opaque":true}`)
+	want.Limits = run.UnlimitedLimits()
+	if err := store.SaveCheckpoint(t.Context(), want); err != nil {
+		t.Fatalf("SaveCheckpoint: %v", err)
 	}
-	for name, policy := range tests {
+	got, err := store.LoadCheckpoint(t.Context(), want.RootMemberID)
+	if err != nil || got.Limits != want.Limits {
+		t.Fatalf("LoadCheckpoint = (%+v, %v), want unlimited", got, err)
+	}
+	var policy string
+	if err := database.QueryRowContext(t.Context(),
+		`SELECT policy FROM executor_checkpoints WHERE root_member_id = ?`, want.RootMemberID,
+	).Scan(&policy); err != nil {
+		t.Fatalf("read policy: %v", err)
+	}
+	if !strings.Contains(policy, `"limits":{"type":"unlimited"}`) || strings.Contains(policy, `"max_steps"`) || strings.Contains(policy, `"max_total_tokens"`) || strings.Contains(policy, `"max_budget_usd"`) {
+		t.Fatalf("unlimited policy = %s", policy)
+	}
+}
+
+func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
+	const limits = `"limits":{"type":"limited","max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16}`
+	tests := map[string]func(string) string{
+		"unversioned policy": func(policy string) string {
+			comma := bytes.IndexByte([]byte(policy), ',')
+			return "{" + policy[comma+1:]
+		},
+		"retired policy version": func(policy string) string {
+			comma := bytes.IndexByte([]byte(policy), ',')
+			return `{"schema_version":0` + policy[comma:]
+		},
+		"retired lease field": func(policy string) string {
+			return strings.Replace(policy, `"goal_incarnation_id"`, `"goal_lease_id"`, 1)
+		},
+		"missing capability set": func(policy string) string {
+			return strings.Replace(policy, `"capabilities":{"child_runs":true,"interrupt_kinds":["approval","question"]}`, `"capabilities":null`, 1)
+		},
+		"noncanonical kinds": func(policy string) string {
+			return strings.Replace(policy, `["approval","question"]`, `["question","approval"]`, 1)
+		},
+		"unknown kind": func(policy string) string {
+			return strings.Replace(policy, `["approval","question"]`, `["approval","future"]`, 1)
+		},
+		"old zero sentinels": func(policy string) string {
+			return strings.Replace(policy, limits, `"limits":{"max_total_tokens":0,"max_budget_usd":0,"max_steps":0}`, 1)
+		},
+		"limited zero": func(policy string) string {
+			return strings.Replace(policy, limits, `"limits":{"type":"limited","max_steps":0}`, 1)
+		},
+		"limited empty": func(policy string) string {
+			return strings.Replace(policy, limits, `"limits":{"type":"limited"}`, 1)
+		},
+		"unlimited with cap": func(policy string) string {
+			return strings.Replace(policy, limits, `"limits":{"type":"unlimited","max_steps":16}`, 1)
+		},
+	}
+	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
 			db, store := newExecutorCheckpointStorage(t)
 			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"opaque":true}`)
 			if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 				t.Fatalf("SaveCheckpoint: %v", err)
 			}
+			var policy string
+			if err := db.QueryRowContext(t.Context(),
+				`SELECT policy FROM executor_checkpoints WHERE root_member_id = ?`, checkpoint.RootMemberID,
+			).Scan(&policy); err != nil {
+				t.Fatalf("read policy: %v", err)
+			}
+			corrupted := mutate(policy)
+			if corrupted == policy {
+				t.Fatalf("corruption %q did not change policy %s", name, policy)
+			}
 			if _, err := db.ExecContext(t.Context(),
 				`UPDATE executor_checkpoints SET policy = ? WHERE root_member_id = ?`,
-				policy,
+				corrupted,
 				checkpoint.RootMemberID,
 			); err != nil {
 				t.Fatalf("corrupt policy: %v", err)
@@ -343,7 +411,7 @@ func TestExecutorCheckpointSchemaContainsNoFrameworkTopology(t *testing.T) {
 	if err != nil {
 		t.Fatalf("table_info: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var columns []string
 	for rows.Next() {
 		var cid, notNull, primaryKey int
