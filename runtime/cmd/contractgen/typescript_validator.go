@@ -60,7 +60,12 @@ func newWireChecks(registry *operation.Registry, shapes *dispatch.Shapes, set *s
 
 	var out strings.Builder
 	out.WriteString(checksHeader)
-	fmt.Fprintf(&out, "import { %s } from \"./wireCheck\";\n", strings.Join(slices.Sorted(maps.Keys(emitter.used)), ", "))
+	// `distinctViolations` is not a schema keyword, so it never lands in `used`.
+	// Every entry point below returns through it, so it is always imported.
+	imports := slices.Sorted(maps.Keys(emitter.used))
+	imports = append(imports, "distinctViolations")
+	slices.Sort(imports)
+	fmt.Fprintf(&out, "import { %s } from \"./wireCheck\";\n", strings.Join(imports, ", "))
 	out.WriteString("import type { WireCheck, WireViolation } from \"./wireCheck\";\n\n")
 	out.WriteString("import type { WireMethodName } from \"./wire.methods.generated\";\n\n")
 	if len(shapes.Notifications()) > 0 || len(runtimehttp.Contract().Endpoints) > 0 {
@@ -127,7 +132,7 @@ const checksEntryPoint = `
 export function validateWire(type: WireTypeName, value: unknown): WireViolation[] {
   const out: WireViolation[] = [];
   CHECKS[type](value, type, out);
-  return out;
+  return distinctViolations(out);
 }
 `
 
@@ -153,7 +158,7 @@ func (c *checkEmitter) methodResults(registry *operation.Registry) string {
 export function validateMethodResult(method: WireMethodName, value: unknown): WireViolation[] {
   const out: WireViolation[] = [];
   METHOD_RESULTS[method](value, ` + "`${method}.result`" + `, out);
-  return out;
+  return distinctViolations(out);
 }
 `)
 	return out.String()
@@ -205,7 +210,7 @@ export function validateNotificationParams(
 ): WireViolation[] {
   const out: WireViolation[] = [];
   NOTIFICATION_PARAMS[method](value, ` + "`${method}.params`" + `, out);
-  return out;
+  return distinctViolations(out);
 }
 `)
 	return out.String()

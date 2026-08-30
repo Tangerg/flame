@@ -7,7 +7,7 @@
 // What each call MEANS lives in wireCheck.ts. This file only says which rule
 // applies where.
 
-import { absent, allOf, anyOf, anything, array, enumOf, exclusiveMinimum, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "./wireCheck";
+import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, exclusiveMinimum, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "./wireCheck";
 import type { WireCheck, WireViolation } from "./wireCheck";
 
 import type { WireMethodName } from "./wire.methods.generated";
@@ -3480,7 +3480,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
 export function validateMethodResult(method: WireMethodName, value: unknown): WireViolation[] {
   const out: WireViolation[] = [];
   METHOD_RESULTS[method](value, `${method}.result`, out);
-  return out;
+  return distinctViolations(out);
 }
 
 const HTTP_RESPONSES: Record<Wire.HTTPSidecarEndpointName, WireCheck> = {
@@ -3529,7 +3529,7 @@ export function validateNotificationParams(
 ): WireViolation[] {
   const out: WireViolation[] = [];
   NOTIFICATION_PARAMS[method](value, `${method}.params`, out);
-  return out;
+  return distinctViolations(out);
 }
 
 /**
@@ -3542,5 +3542,5 @@ export function validateNotificationParams(
 export function validateWire(type: WireTypeName, value: unknown): WireViolation[] {
   const out: WireViolation[] = [];
   CHECKS[type](value, type, out);
-  return out;
+  return distinctViolations(out);
 }

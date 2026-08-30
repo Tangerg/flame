@@ -44,19 +44,23 @@ export interface McpToolsQuery {
 export const MCP_SERVERS_KEY = "mcp-servers";
 export const MCP_TOOLS_KEY = "mcp-tools";
 
+// Keyed by the WIRE name, which the protocol constrains to
+// `^[a-z0-9][a-z0-9._-]{0,31}$` — lowercase, no spaces. Display-cased keys can
+// never match a name the runtime is able to send, which is how every server was
+// falling back to the generic glyph.
 const MCP_ICON: Record<string, string> = {
-  Filesystem: "folder",
-  Git: "branch",
-  Shell: "terminal",
-  "Web Search": "globe",
-  Linear: "list",
-  GitHub: "git",
-  Postgres: "tool",
-  Slack: "chat",
+  filesystem: "folder",
+  git: "branch",
+  github: "git",
+  linear: "list",
+  shell: "terminal",
+  slack: "chat",
+  "web-search": "globe",
+  websearch: "globe",
 };
 
 export function mcpServerIcon(name: string): string {
-  return MCP_ICON[name] ?? "tool";
+  return MCP_ICON[name.toLowerCase()] ?? "tool";
 }
 
 export const useMCPServers = createDataQuery<MCPServerSettings[]>(MCP_SERVERS_KEY);

@@ -23,8 +23,6 @@ export interface UiState {
   motionScale: number;
   streamReveal: "smooth" | "typewriter";
   sidebarCollapsed: boolean;
-  /** Who collapsed it. A window that grows back only reopens what it closed. */
-  sidebarCollapsedBy: "manual" | "auto" | null;
   sidebarWidth: number;
   dockWidthRatio: number | null;
   completionSound: boolean;

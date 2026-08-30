@@ -48,20 +48,20 @@ describe("runtime MCP data providers", () => {
     respondSuccess(transport, request.id, {
       data: [
         {
-          name: "Git",
+          name: "git",
           description: "Branches, commits",
           connection: { type: "stdio", command: "mcp-git" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "connected", toolCount: 2 },
         },
         {
-          name: "Flaky",
+          name: "flaky",
           connection: { type: "stdio", command: "mcp-flaky" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "failed", error: { type: "mcp_dial_failed" } },
         },
         {
-          name: "Cloud",
+          name: "cloud",
           connection: { type: "streamableHttp", url: "https://mcp.example/rpc" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "needsAuth", error: { type: "mcp_authorization_required" } },
@@ -71,7 +71,7 @@ describe("runtime MCP data providers", () => {
 
     await expect(pending).resolves.toMatchObject([
       {
-        id: "Git",
+        id: "git",
         desc: "Branches, commits",
         tools: 2,
         status: "connected",
@@ -82,14 +82,14 @@ describe("runtime MCP data providers", () => {
         toolCount: 2,
       },
       {
-        id: "Flaky",
+        id: "flaky",
         tools: 0,
         status: "failed",
         errorDetail: "Couldn't reach this server — check the command or URL and retry.",
         enabled: true,
       },
       {
-        id: "Cloud",
+        id: "cloud",
         tools: 0,
         status: "needsAuth",
         errorDetail: "This server needs you to sign in before it can be used.",
@@ -106,13 +106,13 @@ describe("runtime MCP data providers", () => {
     const fetcher = await provider<MCPToolSummary[]>("mcp-tools");
 
     await expect(fetcher()).rejects.toThrow('Data provider "mcp-tools" requires parameters');
-    const pending = fetcher({ server: "Git" });
+    const pending = fetcher({ server: "git" });
     const request = await waitForRequest(transport, "mcp.tools.list");
-    expect(request.params).toEqual({ server: "Git" });
+    expect(request.params).toEqual({ server: "git" });
     respondSuccess(transport, request.id, {
       data: [
-        { server: "Git", name: "status" },
-        { server: "Git", name: "log", description: "Read history" },
+        { server: "git", name: "status" },
+        { server: "git", name: "log", description: "Read history" },
       ],
     });
 

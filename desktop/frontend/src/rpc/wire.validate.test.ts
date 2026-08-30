@@ -438,7 +438,7 @@ describe("the generated wire checks", () => {
     ).toEqual([]);
     expect(
       validateWire("AgentMemoryUpdateRequest", {
-        id: "mem_01",
+        id: "mem_0123456789abcdef0123456789abcdef",
         content: `${boundaryMemory}😀`,
       }),
     ).toEqual([
@@ -449,7 +449,7 @@ describe("the generated wire checks", () => {
     ]);
     expect(
       validateMethodResult("agentMemory.add", {
-        id: "mem_01",
+        id: "mem_0123456789abcdef0123456789abcdef",
         scope: "user",
         content: `${boundaryMemory}😀`,
         origin: "user",
@@ -619,10 +619,10 @@ describe("the generated wire checks", () => {
       parentRunId: "run_02",
       rootRunId: "run_02",
     };
-    // Named once per edge that demands it: the rule is all-or-none stated per edge,
-    // so both surviving edges independently require the missing one.
+    // Named ONCE, though the rule is stated per edge and both surviving edges
+    // independently demand the missing field. How many edges happen to state a
+    // rule is a fact about how the schema is factored, not about the frame.
     expect(validateWire("RunRef", rootChild)).toEqual([
-      { path: "RunRef.parentRunId", detail: "is required" },
       { path: "RunRef.parentRunId", detail: "is required" },
     ]);
     // The counter-example: all three edges together is what a child looks like.
@@ -726,10 +726,16 @@ describe("the generated wire checks", () => {
       { path: "RuntimeLimits.runReplay", detail: "is required" },
     ]);
     expect(
-      validateWire("IdempotencyLimits", { namespace: "idp_test", retentionSeconds: 0 }),
+      validateWire("IdempotencyLimits", {
+        namespace: "idp_fedcba9876543210fedcba9876543210",
+        retentionSeconds: 0,
+      }),
     ).toEqual([{ path: "IdempotencyLimits.retentionSeconds", detail: "expected at least 1" }]);
     expect(validateWire("IdempotencyLimits", { namespace: "", retentionSeconds: 1 })).toEqual([
-      { path: "IdempotencyLimits.namespace", detail: "expected at least 1 character(s)" },
+      {
+        path: "IdempotencyLimits.namespace",
+        detail: "expected to match ^idp_[0-9a-f]{32}$",
+      },
     ]);
     expect(validateWire("MCPAuthorizationAttemptLimits", { retentionSeconds: 0 })).toEqual([
       { path: "MCPAuthorizationAttemptLimits.retentionSeconds", detail: "expected at least 1" },

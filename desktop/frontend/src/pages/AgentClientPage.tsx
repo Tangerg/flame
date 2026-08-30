@@ -1,7 +1,5 @@
-import { useCallback } from "react";
 import { AgentAppShell } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { shouldReclaimDrawer } from "@/lib/shellGeometry";
 import { Slot } from "@/plugins/host/Slot";
 import { useActiveWorkspaceViewId } from "@/plugins/builtin/workspace/public/navigation";
 import {
@@ -16,12 +14,6 @@ export function AgentClientPage() {
   const activeViewId = useActiveWorkspaceViewId();
   const singleMode = activeViewId === "settings";
 
-  const setAutoCollapsed = drawer.setAutoCollapsed;
-  const onShellWidth = useCallback(
-    (shellWidth: number) => setAutoCollapsed(shouldReclaimDrawer(shellWidth, width)),
-    [setAutoCollapsed, width],
-  );
-
   return (
     <AgentAppShell
       sidebarLabel={t("shell.region.workIndex")}
@@ -30,7 +22,6 @@ export function AgentClientPage() {
       sidebarWidth={width}
       onResize={setWidth}
       onSidebarToggle={drawer.toggle}
-      onShellWidth={onShellWidth}
       sidebarExpandLabel={t("sidebar.action.expand")}
       sidebarCollapseLabel={t("sidebar.action.collapse")}
       sidebar={singleMode ? undefined : <Slot name="app.sidebar" />}

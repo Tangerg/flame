@@ -29,20 +29,6 @@ export function canPresentDock(rowWidth: number): boolean {
   return rowWidth >= DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX;
 }
 
-/**
- * Whether the window has to take the drawer's measure back before the flank can
- * keep working.
- *
- * The drawer is what the reading plane shares the window with, so it is the first
- * thing a narrow window reclaims — folding the flank instead would drop a whole
- * work surface while a navigation aid kept its space. Nothing here decides that a
- * drawer STAYS closed: a window that grows back hands the measure straight back,
- * and a drawer the person closed themselves is not the window's to reopen.
- */
-export function shouldReclaimDrawer(shellWidth: number, sidebarWidth: number): boolean {
-  return !canPresentDock(shellWidth - clampSidebarWidth(sidebarWidth, shellWidth));
-}
-
 export function clampSidebarWidth(width: number, shellWidth: number): number {
   return Math.round(Math.min(maxSidebarWidth(shellWidth), Math.max(SIDEBAR_MIN_WIDTH_PX, width)));
 }

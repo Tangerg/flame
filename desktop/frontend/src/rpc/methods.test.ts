@@ -920,7 +920,7 @@ describe("methods factory", () => {
         jsonrpc: JSONRPC_VERSION,
         method: RUNTIME_EVENT_METHOD,
         params: {
-          event: { type: "schedules.changed", sequence: 1, scheduleIds: ["schedule_1"] },
+          event: { type: "schedules.changed", sequence: 1, scheduleIds: ["sch_01"] },
         },
       },
       undefined,

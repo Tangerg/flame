@@ -12,7 +12,6 @@ import {
   maxSidebarWidth,
   minDockWidth,
   SIDEBAR_DEFAULT_WIDTH_PX,
-  shouldReclaimDrawer,
   SIDEBAR_MIN_WIDTH_PX,
 } from "./shellGeometry";
 
@@ -76,18 +75,5 @@ describe("dock geometry", () => {
     expect(defaultDockWidth(1440, 500)).toBe(800);
     expect(defaultDockWidth(800, 900)).toBe(448);
     expect(defaultDockWidth(500, 900)).toBe(DOCK_MIN_WIDTH_PX);
-  });
-});
-
-describe("what a narrow window reclaims", () => {
-  it("takes the drawer's measure back before the flank has to fold", () => {
-    expect(shouldReclaimDrawer(1120, 275)).toBe(false);
-    expect(shouldReclaimDrawer(1120, 520)).toBe(true);
-    expect(shouldReclaimDrawer(912, 240)).toBe(false);
-    expect(shouldReclaimDrawer(900, 240)).toBe(true);
-  });
-
-  it("measures against the drawer the window would actually draw", () => {
-    expect(shouldReclaimDrawer(1120, 9000)).toBe(shouldReclaimDrawer(1120, 520));
   });
 });

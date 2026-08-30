@@ -38,6 +38,29 @@ export type WireCheck = (
   out: WireViolation[],
 ) => void;
 
+/**
+ * The distinct facts a check found, in the order it found them.
+ *
+ * A schema may state one constraint twice — a request that narrows a field of a
+ * shared shape restates the shape's own bound in an `allOf` branch, and both
+ * branches then report the same miss. That is one fact about the frame, not two,
+ * and a caller rendering the list would otherwise show it twice.
+ */
+export function distinctViolations(
+  violations: readonly WireViolation[],
+): WireViolation[] {
+  if (violations.length < 2) return [...violations];
+  const seen = new Set<string>();
+  const out: WireViolation[] = [];
+  for (const violation of violations) {
+    const key = `${violation.path}\u0000${violation.detail}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(violation);
+  }
+  return out;
+}
+
 /** `type: "object"` together with the `properties` / `required` it carries. */
 export function object(
   properties: Record<string, WireCheck>,

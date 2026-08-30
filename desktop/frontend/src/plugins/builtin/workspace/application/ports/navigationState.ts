@@ -26,8 +26,6 @@ export interface WorkspaceOptionalColumnWidth {
 export interface WorkspaceDrawer {
   collapsed: boolean;
   toggle: () => void;
-  /** The window's own collapse. Never overrides or restores a manual one. */
-  setAutoCollapsed: (collapsed: boolean) => void;
 }
 
 export interface WorkspaceDockSnapshot {

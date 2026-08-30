@@ -30,7 +30,7 @@ function advertising(
       ]),
     ),
     limits: {
-      idempotency: { namespace: "idp_test", retentionSeconds: 86_400 },
+      idempotency: { namespace: "idp_fedcba9876543210fedcba9876543210", retentionSeconds: 86_400 },
       runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2048, maxBytes: 16_777_216 },
       mcpAuthorizationAttempts: { retentionSeconds: 600 },
       runtimeSubscription: { maxTopics: 32, maxWatches: 32 },

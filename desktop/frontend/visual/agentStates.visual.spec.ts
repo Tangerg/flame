@@ -457,8 +457,10 @@ test("model capabilities drive the picker and image admission together", async (
   await page.getByRole("menuitem", { name: "high", exact: true }).click();
   await expect(effort).toHaveText("high");
   await page.getByRole("button", { name: "Switch model" }).click();
-  await expect(page.getByRole("menuitem", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
-  await page.getByRole("menuitem", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
+  // The model picker is a combobox, not a menu: it filters, so its rows are
+  // options. Only the effort control above is a menu.
+  await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
+  await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
 
   await expect(attach).toBeDisabled();
   await expect(effort).toHaveCount(0);

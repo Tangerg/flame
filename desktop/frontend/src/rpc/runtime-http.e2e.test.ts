@@ -3307,7 +3307,9 @@ for await (const line of lines) {
     await expect(client.mcp.authorizationAttempts.create(server)).rejects.toSatisfy(
       (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
     );
-    await expect(client.mcp.authorizationAttempts.get("mcpauth_missing")).rejects.toSatisfy(
+    await expect(
+      client.mcp.authorizationAttempts.get("mcpauth_ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+    ).rejects.toSatisfy(
       (error: unknown) =>
         error instanceof RpcError &&
         errorType(error.data) === "mcp_authorization_attempt_not_found",
