@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"strings"
@@ -58,6 +59,51 @@ func TestPortableArtifactDecoderRejectsUnknownDiscriminators(t *testing.T) {
 				t.Fatalf("portableArtifactFromWire error = %v, want ErrInvalidParams", err)
 			}
 		})
+	}
+}
+
+func TestPortableArtifactDecoderRejectsMessageFieldsItWouldDiscard(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+	}{
+		{
+			name:    "message",
+			message: `{"role":"user","parts":[{"kind":"text","text":"hello"}],"futureOwner":"lost"}`,
+		},
+		{
+			name:    "part",
+			message: `{"role":"user","parts":[{"kind":"text","text":"hello","futureOwner":"lost"}]}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			artifact := validArtifact()
+			artifact.Messages = []json.RawMessage{json.RawMessage(test.message)}
+
+			_, err := portableArtifactFromWire(artifact)
+			if !errors.Is(err, protocol.ErrInvalidParams) {
+				t.Fatalf("portableArtifactFromWire error = %v, want ErrInvalidParams", err)
+			}
+		})
+	}
+}
+
+func TestPortableArtifactDecoderPreservesOpenMessageMetadata(t *testing.T) {
+	artifact := validArtifact()
+	artifact.Messages = []json.RawMessage{json.RawMessage(`{
+		"parts": [{"metadata": {"futurePart": {"ratio": 1.0}}, "text": "hello", "kind": "text"}],
+		"metadata": {"futureMessage": {"nested": true}},
+		"role": "user"
+	}`)}
+
+	portable, err := portableArtifactFromWire(artifact)
+	if err != nil {
+		t.Fatalf("portableArtifactFromWire: %v", err)
+	}
+	if len(portable.Messages) != 1 || len(portable.Messages[0].Metadata) != 1 ||
+		len(portable.Messages[0].Parts) != 1 || len(portable.Messages[0].Parts[0].Metadata) != 1 {
+		t.Fatalf("decoded message metadata = %+v", portable.Messages)
 	}
 }
 

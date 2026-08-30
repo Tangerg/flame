@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"math"
 	"time"
@@ -47,9 +49,10 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	}
 	messages := make([]chat.Message, 0, len(art.Messages))
 	for index, encoded := range art.Messages {
-		var message chat.Message
-		if unmarshalErr := json.Unmarshal(encoded, &message); unmarshalErr != nil {
-			return sessions.PortableSnapshot{}, invalidArtifact(fmt.Sprintf("artifact.messages[%d]", index), "%v", unmarshalErr)
+		path := fmt.Sprintf("artifact.messages[%d]", index)
+		message, decodeErr := portableMessageFromArtifact(path, encoded)
+		if decodeErr != nil {
+			return sessions.PortableSnapshot{}, decodeErr
 		}
 		messages = append(messages, message)
 	}
@@ -91,6 +94,37 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 		},
 		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults, Plan: plan,
 	}, nil
+}
+
+// portableMessageFromArtifact accepts only the exact current Scope message
+// document. SessionArtifact.Messages uses RawMessage to keep the public
+// protocol independent of Scope types, so the outer strict request decoder
+// cannot see fields that Scope's custom JSON codecs would ignore. Comparing
+// canonical JSON before and after the typed decode closes that escape hatch
+// without treating object order, whitespace, or equivalent number spellings as
+// contract differences. Open metadata and tool-result details survive the
+// round trip and therefore remain valid.
+func portableMessageFromArtifact(path string, encoded json.RawMessage) (chat.Message, error) {
+	var message chat.Message
+	if err := json.Unmarshal(encoded, &message); err != nil {
+		return chat.Message{}, invalidArtifact(path, "%v", err)
+	}
+	reencoded, err := json.Marshal(message)
+	if err != nil {
+		return chat.Message{}, invalidArtifact(path, "re-encode: %v", err)
+	}
+	input := jsontext.Value(bytes.Clone(encoded))
+	if err := input.Canonicalize(); err != nil {
+		return chat.Message{}, invalidArtifact(path, "canonicalize input: %v", err)
+	}
+	output := jsontext.Value(reencoded)
+	if err := output.Canonicalize(); err != nil {
+		return chat.Message{}, invalidArtifact(path, "canonicalize decoded value: %v", err)
+	}
+	if !bytes.Equal(input, output) {
+		return chat.Message{}, invalidArtifact(path, "contains fields or values unsupported by artifact version %d", protocol.SessionArtifactVersion)
+	}
+	return message, nil
 }
 
 // portablePlanFromArtifact reads the archived Plan. The artifact carries the one
