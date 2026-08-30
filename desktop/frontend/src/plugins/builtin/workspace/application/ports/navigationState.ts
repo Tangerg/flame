@@ -23,6 +23,13 @@ export interface WorkspaceOptionalColumnWidth {
   setWidth: (width: number) => void;
 }
 
+export interface WorkspaceDrawer {
+  collapsed: boolean;
+  toggle: () => void;
+  /** The window's own collapse. Never overrides or restores a manual one. */
+  setAutoCollapsed: (collapsed: boolean) => void;
+}
+
 export interface WorkspaceDockSnapshot {
   open: boolean;
   viewIds: string[];
@@ -39,7 +46,7 @@ export interface WorkspaceNavigationPort {
   useSelectedToolId(): string;
   useSelectTool(): (id: string) => void;
   useToggleTool(): (id: string) => void;
-  useSidebarDrawer(): { collapsed: boolean; toggle: () => void };
+  useSidebarDrawer(): WorkspaceDrawer;
   useSidebarWidth(): WorkspaceColumnWidth;
   useDockWidth(): WorkspaceOptionalColumnWidth;
   selectChat(): void;

@@ -48,6 +48,7 @@ export function installWorkspaceNavigationPort(): () => void {
     useSidebarDrawer: () => ({
       collapsed: useUiStore((state) => state.sidebarCollapsed),
       toggle: useUiStore((state) => state.toggleSidebar),
+      setAutoCollapsed: useUiStore((state) => state.setSidebarAutoCollapsed),
     }),
     useSidebarWidth: () => ({
       width: useUiStore((state) => state.sidebarWidth),

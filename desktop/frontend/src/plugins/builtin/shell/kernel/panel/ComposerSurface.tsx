@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
 import { Composer, SlashSuggestions } from "@/plugins/builtin/chat/composer/public/ui";
 import { useSelectedModel } from "@/plugins/builtin/chat/composer/public/selectedModel";
@@ -15,7 +16,11 @@ import {
   useSetComposerText,
 } from "@/plugins/builtin/chat/composer/public/draft";
 
-export function ComposerSurface({ onSend }: { onSend: (input: UserInput) => boolean }) {
+export const ComposerSurface = memo(function ComposerSurface({
+  onSend,
+}: {
+  onSend: (input: UserInput) => boolean;
+}) {
   const value = useComposerText();
   const setValue = useSetComposerText();
   const clear = useClearComposerDraft();
@@ -45,4 +50,4 @@ export function ComposerSurface({ onSend }: { onSend: (input: UserInput) => bool
       />
     </>
   );
-}
+});

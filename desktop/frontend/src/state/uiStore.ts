@@ -41,6 +41,7 @@ const uiPersistSchema = z.object({
   motionScale: z.number(),
   streamReveal: z.enum(["smooth", "typewriter"]),
   sidebarCollapsed: z.boolean(),
+  sidebarCollapsedBy: z.enum(["manual", "auto"]).nullable(),
   sidebarWidth: z.number(),
   dockWidthRatio: z.number().min(0).max(1).nullable(),
   completionSound: z.boolean(),
@@ -69,6 +70,9 @@ interface UiActions {
   setMotionScale: (scale: number) => void;
   setStreamReveal: (mode: "smooth" | "typewriter") => void;
   toggleSidebar: () => void;
+  /** Collapse or restore the drawer on the window's behalf. Never overrides a
+   *  manual collapse, and never restores one. */
+  setSidebarAutoCollapsed: (collapsed: boolean) => void;
   setSidebarWidth: (width: number) => void;
   setDockWidthRatio: (ratio: number | null) => void;
   setCompletionSound: (on: boolean) => void;
@@ -76,7 +80,7 @@ interface UiActions {
 
 export const useUiStore = create<UiState & UiActions>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: "light",
       visualStyle: "flame",
       accent: "#3574f0",
@@ -92,6 +96,7 @@ export const useUiStore = create<UiState & UiActions>()(
       motionScale: 1,
       streamReveal: "smooth",
       sidebarCollapsed: false,
+      sidebarCollapsedBy: null,
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
       dockWidthRatio: null,
       completionSound: false,
@@ -110,7 +115,24 @@ export const useUiStore = create<UiState & UiActions>()(
       setRadiusScale: (radiusScale) => set({ radiusScale }),
       setMotionScale: (motionScale) => set({ motionScale }),
       setStreamReveal: (streamReveal) => set({ streamReveal }),
-      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      toggleSidebar: () =>
+        set((s) => ({
+          sidebarCollapsed: !s.sidebarCollapsed,
+          sidebarCollapsedBy: s.sidebarCollapsed ? null : "manual",
+        })),
+      setSidebarAutoCollapsed: (collapsed) => {
+        // Driven from a ResizeObserver, so it must not commit on a tick that
+        // changes nothing: zustand replaces the state object on every set, and
+        // a resize is observed far more often than the answer moves.
+        const current = get();
+        if (collapsed) {
+          if (current.sidebarCollapsed) return;
+          set({ sidebarCollapsed: true, sidebarCollapsedBy: "auto" });
+          return;
+        }
+        if (current.sidebarCollapsedBy !== "auto") return;
+        set({ sidebarCollapsed: false, sidebarCollapsedBy: null });
+      },
       setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
       setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
       setCompletionSound: (completionSound) => set({ completionSound }),
@@ -118,7 +140,7 @@ export const useUiStore = create<UiState & UiActions>()(
     {
       name: "flame.ui",
       storage: createJSONStorage(() => localStorage),
-      version: 12,
+      version: 13,
       migrate: discardOlderVersions,
       merge: (persisted, current) => {
         if (persisted === undefined) return current;

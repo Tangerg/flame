@@ -53,7 +53,7 @@ export function useScrollLock<T extends HTMLElement = HTMLElement>(
     const resetPosition = () => {
       scrollContainer.scrollTop = scrollPosition;
     };
-    scrollContainer.addEventListener("scroll", resetPosition);
+    scrollContainer.addEventListener("scroll", resetPosition, { passive: true });
 
     const timeoutId = setTimeout(
       () => {

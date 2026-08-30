@@ -1,5 +1,5 @@
 import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
@@ -31,6 +31,20 @@ interface Props {
 
 const RAIL =
   "absolute top-0 bottom-[var(--composer-overlay,0px)] z-1 hidden w-[var(--reading-rail-width)] flex-col @min-[1152px]:flex pointer-events-none [&>*]:pointer-events-auto right-[calc(50%+var(--reading-column-max)/2)]";
+
+const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
+  return (
+    <div className={cn(READING_COLUMN, READING_GUTTER, "shrink-0")}>
+      <CwdMissingBanner key={sessionId} />
+      <RunErrorBanner />
+      <Slot
+        name="chat.banner.top"
+        wrapper
+        className="pointer-events-auto flex flex-col gap-1.5 py-1.5"
+      />
+    </div>
+  );
+});
 
 export function ChatStream({ onSend }: Props) {
   const sessionId = useActiveSessionId();
@@ -96,22 +110,10 @@ export function ChatStream({ onSend }: Props) {
     };
   }, [started]);
 
-  const banners = (
-    <div className={cn(READING_COLUMN, READING_GUTTER, "shrink-0")}>
-      <CwdMissingBanner key={sessionId} />
-      <RunErrorBanner />
-      <Slot
-        name="chat.banner.top"
-        wrapper
-        className="pointer-events-auto flex flex-col gap-1.5 py-1.5"
-      />
-    </div>
-  );
-
   if (!started) {
     return (
       <>
-        {banners}
+        <ChatBanners sessionId={sessionId} />
         <div className="panel-scroll flex flex-1 flex-col items-center justify-center gap-5 pb-[6vh]">
           <div className={cn(READING_COLUMN, READING_GUTTER)}>
             <h1 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
@@ -133,7 +135,7 @@ export function ChatStream({ onSend }: Props) {
 
   return (
     <div ref={paneRef} className="@container relative flex min-h-0 flex-1 flex-col">
-      {banners}
+      <ChatBanners sessionId={sessionId} />
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className={RAIL}>
           <Slot name="chat.rail.start" />

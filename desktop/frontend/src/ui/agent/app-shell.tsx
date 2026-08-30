@@ -14,6 +14,9 @@ interface AgentAppShellProps {
   onSidebarToggle: () => void;
   sidebarExpandLabel: string;
   sidebarCollapseLabel: string;
+  /** The shell's own measure, reported whenever it changes, so the caller can
+   *  decide whether the window still has room for everything it is showing. */
+  onShellWidth?: (shellWidth: number) => void;
   main: ReactNode;
   overlay?: ReactNode;
 }
@@ -28,16 +31,23 @@ export function AgentAppShell({
   onSidebarToggle,
   sidebarExpandLabel,
   sidebarCollapseLabel,
+  onShellWidth,
   main,
   overlay,
 }: AgentAppShellProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const hasSidebar = sidebar !== undefined;
 
+  const reportWidth = useRef(onShellWidth);
+  useLayoutEffect(() => {
+    reportWidth.current = onShellWidth;
+  });
+
   useLayoutEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
     const syncWidth = () => {
+      reportWidth.current?.(shell.clientWidth);
       if (shell.hasAttribute("data-resizing")) return;
       shell.style.setProperty(
         SIDEBAR_WIDTH_PROPERTY,

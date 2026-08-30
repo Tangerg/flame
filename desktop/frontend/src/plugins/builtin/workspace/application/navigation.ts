@@ -1,6 +1,7 @@
 import {
   workspaceNavigation,
   type WorkspaceColumnWidth,
+  type WorkspaceDrawer,
   type WorkspaceOptionalColumnWidth,
   type WorkspaceDockSnapshot,
   type WorkspaceFileFocusSnapshot,
@@ -45,7 +46,7 @@ export function useToggleWorkspaceTool(): (id: string) => void {
   return workspaceNavigation().useToggleTool();
 }
 
-export function useSidebarDrawer(): { collapsed: boolean; toggle: () => void } {
+export function useSidebarDrawer(): WorkspaceDrawer {
   return workspaceNavigation().useSidebarDrawer();
 }
 
