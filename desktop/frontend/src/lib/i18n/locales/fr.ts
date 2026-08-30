@@ -899,6 +899,7 @@ export const fr: Record<string, string> = {
   "mcp.import.confirm": "Importer",
   "mcp.importing": "Import en cours…",
   "mcp.import.ok": "{{count}} serveur(s) importé(s)",
+  "mcp.import.renamed": "Renommés pour que le runtime les accepte : {{names}}",
   "mcp.import.error": "Impossible d'importer cette configuration.",
   "mcp.tools.manage": "Gérer les outils",
   "mcp.tools.tool": "Outil",

@@ -881,6 +881,7 @@ export const zhTW: Record<string, string> = {
   "mcp.import.confirm": "匯入",
   "mcp.importing": "正在匯入…",
   "mcp.import.ok": "已匯入 {{count}} 個伺服器",
+  "mcp.import.renamed": "已重新命名以符合執行階段的要求：{{names}}",
   "mcp.import.error": "無法匯入該設定。",
   "mcp.tools.manage": "管理工具",
   "mcp.tools.tool": "工具",

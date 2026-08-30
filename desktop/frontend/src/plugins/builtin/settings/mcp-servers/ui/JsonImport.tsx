@@ -17,9 +17,17 @@ export function JsonImport() {
     setBusy(true);
     setError(undefined);
     try {
-      const { servers } = parseMcpImport(text);
+      const { servers, renamed } = parseMcpImport(text);
       for (const server of servers) await create(server);
       notifyInfo(t("mcp.import.ok", { count: servers.length }), { source: "mcp" });
+      if (renamed.length > 0) {
+        notifyInfo(
+          t("mcp.import.renamed", {
+            names: renamed.map((entry) => `${entry.from} → ${entry.to}`).join(", "),
+          }),
+          { source: "mcp" },
+        );
+      }
       setText("");
       setOpen(false);
     } catch (err) {

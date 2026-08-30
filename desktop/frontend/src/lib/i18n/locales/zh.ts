@@ -349,6 +349,7 @@ export const zh: Record<string, string> = {
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok": "已导入 {{count}} 个服务器",
+  "mcp.import.renamed": "已重命名以符合运行时的要求：{{names}}",
   "mcp.import.error": "无法导入该配置。",
   "mcp.tools.manage": "管理工具",
   "mcp.tools.tool": "工具",

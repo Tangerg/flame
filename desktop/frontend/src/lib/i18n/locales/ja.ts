@@ -886,6 +886,7 @@ export const ja: Record<string, string> = {
   "mcp.import.confirm": "インポート",
   "mcp.importing": "インポート中…",
   "mcp.import.ok": "{{count}} 個のサーバーをインポートしました",
+  "mcp.import.renamed": "ランタイムが受け付ける形式に改名しました: {{names}}",
   "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.tools.manage": "ツールを管理",
   "mcp.tools.tool": "ツール",

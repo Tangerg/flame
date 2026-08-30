@@ -58,6 +58,27 @@ function headersExceptAuth(s: ParsedServer): Record<string, string> | undefined 
 
 export interface McpImportResult {
   servers: MCPServerInput[];
+  /** Entries whose key was not a wire name, as `from → to`, so the pane can say
+   *  what it renamed rather than letting the difference surface as a mismatch
+   *  later. Empty when every key was already one. */
+  renamed: { from: string; to: string }[];
+}
+
+/**
+ * The protocol admits `^[a-z0-9][a-z0-9._-]{0,31}$` and nothing else, while the
+ * clients people paste from name servers "Git" or "Brave Search". Passing the key
+ * through unchanged imported cleanly and then failed at the configure request,
+ * where the pane has no way to explain itself — so the name is made into one here,
+ * at the boundary that can still tell the person what happened.
+ */
+export function wireServerName(name: string): string | null {
+  const shaped = name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^[^a-z0-9]+/, "")
+    .slice(0, 32)
+    .replace(/[-._]+$/, "");
+  return /^[a-z0-9][a-z0-9._-]{0,31}$/.test(shaped) ? shaped : null;
 }
 
 /**
@@ -77,7 +98,13 @@ export function parseMcpImport(text: string): McpImportResult {
     throw new Error('Expected {"mcpServers": { "<name>": { … } }}');
   }
   const servers: MCPServerInput[] = [];
-  for (const [name, s] of Object.entries(parsed.data.mcpServers)) {
+  const renamed: { from: string; to: string }[] = [];
+  for (const [key, s] of Object.entries(parsed.data.mcpServers)) {
+    const name = wireServerName(key);
+    if (name === null) {
+      throw new Error(`Server "${key}" has no name the runtime can accept`);
+    }
+    if (name !== key) renamed.push({ from: key, to: name });
     // Every url-based type collapses onto `streamableHttp`, the one remote transport.
     const type = s.type
       ? s.type === "stdio"
@@ -89,7 +116,7 @@ export function parseMcpImport(text: string): McpImportResult {
           ? "streamableHttp"
           : undefined;
     if (type === undefined) {
-      throw new Error(`Server "${name}" has neither a command (stdio) nor a url (streamableHttp)`);
+      throw new Error(`Server "${key}" has neither a command (stdio) nor a url (streamableHttp)`);
     }
     if (type === "stdio") {
       servers.push({
@@ -115,5 +142,5 @@ export function parseMcpImport(text: string): McpImportResult {
     }
   }
   if (servers.length === 0) throw new Error("No servers found under mcpServers");
-  return { servers };
+  return { servers, renamed };
 }

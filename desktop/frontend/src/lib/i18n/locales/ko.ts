@@ -879,6 +879,7 @@ export const ko: Record<string, string> = {
   "mcp.import.confirm": "가져오기",
   "mcp.importing": "가져오는 중…",
   "mcp.import.ok": "서버 {{count}}개를 가져왔습니다",
+  "mcp.import.renamed": "런타임이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.tools.manage": "도구 관리",
   "mcp.tools.tool": "도구",
