@@ -268,6 +268,36 @@ func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
 	}
 }
 
+func TestTerminalCarriesOneBackendCompositionManifest(t *testing.T) {
+	root := moduleRoot(t)
+	config := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "run.go"), "Config")
+	if got := config["Services"]; got != "backend.Services" {
+		t.Fatalf("terminal.Config.Services type = %q, want backend.Services", got)
+	}
+	appConfig := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "application.go"), "appConfig")
+	if got := appConfig["services"]; got != "backend.Services" {
+		t.Fatalf("terminal.appConfig.services type = %q, want backend.Services", got)
+	}
+	for _, retired := range []struct{ public, private string }{
+		{public: "Runtime", private: "runtime"}, {public: "RuntimeProfile"},
+		{public: "Workspaces", private: "workspaces"}, {public: "Changes", private: "changes"},
+		{public: "Transfers", private: "transfers"}, {public: "Usage", private: "usage"},
+		{public: "ModelConfig", private: "modelConfig"}, {public: "Goals", private: "goals"},
+		{public: "Skills", private: "skills"}, {public: "MCP", private: "mcp"},
+		{public: "Schedules", private: "schedules"}, {public: "AgentMemory", private: "agentMemory"},
+		{public: "Knowledge", private: "knowledge"}, {public: "DiagnosticTools", private: "diagnosticTools"},
+		{public: "AuthoringContext", private: "authoringContext"}, {public: "Hooks", private: "hooks"},
+		{public: "Feedback", private: "feedback"},
+	} {
+		if _, exists := config[retired.public]; exists {
+			t.Errorf("terminal.Config restored exploded backend service %s", retired.public)
+		}
+		if _, exists := appConfig[retired.private]; retired.private != "" && exists {
+			t.Errorf("terminal.appConfig restored exploded backend service %s", retired.private)
+		}
+	}
+}
+
 func TestEmbeddedRuntimeDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
 	root := moduleRoot(t)
 	profilePath := filepath.Join(root, "internal", "runtimeprofile", "profile.go")
@@ -1323,7 +1353,7 @@ var allowed = map[string][]string{
 
 	// Delivery adapters compose inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; cmd is the application composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
+	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "backend", "commandreplay", "extensions", "failure", "mutation", "oneshot", "render", "retry", "runtimeprofile", "session", "sessiondeletion", "settings", "sideload", "terminal", "workbench"},
 	"arch":     nil,

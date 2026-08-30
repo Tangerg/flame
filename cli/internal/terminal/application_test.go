@@ -21,6 +21,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/extensions"
 	"github.com/Tangerg/flame/cli/internal/failure"
@@ -63,9 +64,7 @@ func runUIWithSettings(t *testing.T, backend agent.Runtime, configured settings.
 
 func runUIConfigured(t *testing.T, backend agent.Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
-	return runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: workspace, Plugins: plugins, Settings: configured,
-	})
+	return runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: workspace, Plugins: plugins, Settings: configured})
 }
 
 func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
@@ -97,7 +96,7 @@ func runUIForSession(t *testing.T, backend agent.Runtime, sessionID string) (*pr
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, SessionID: sessionID, Host: host})
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend}, SessionID: sessionID, Host: host})
 	}()
 
 	var once sync.Once
@@ -119,8 +118,7 @@ func runUIWithState(t *testing.T, backend agent.Runtime, workspace, sessionID, s
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{
-			Runtime: backend, Workspace: workspace, SessionID: sessionID,
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend}, Workspace: workspace, SessionID: sessionID,
 			StateDirectory: stateDirectory, Host: host,
 		})
 	}()
@@ -153,8 +151,7 @@ func runUIWithReplayState(
 ) (*programtest.Host, func()) {
 	t.Helper()
 	profile := steerReplayTestProfile(t, workspace)
-	return runUIFromConfig(t, Config{
-		Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
+	return runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend, RuntimeProfile: &profile}, Workspace: workspace,
 		SessionID: sessionID, StateDirectory: stateDirectory,
 	})
 }
@@ -1324,8 +1321,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: runtime, RuntimeProfile: &profile}, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "complete")
@@ -1393,8 +1389,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: runtime, RuntimeProfile: &profile}, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "complete")
@@ -1433,8 +1428,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	stateDirectory := t.TempDir()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	profile.Limits.CommandReplay = testCommandReplay(t, profile.Limits.CommandReplay.Namespace(), time.Second)
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: runtime, RuntimeProfile: &profile}, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "Ask flame")
@@ -1958,9 +1952,7 @@ func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{
-			Runtime: backend, Workspace: "/tmp/flame-cli-test", Host: host,
-		})
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend}, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 
 	host.Shows(t, "Ask flame")
@@ -2139,7 +2131,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{Services: backendcontract.AgentOnly(runtime), Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2189,9 +2181,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{
-			Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host,
-		})
+		done <- Run(ctx, Config{Services: backendcontract.AgentOnly(runtime), Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2229,9 +2219,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{
-			Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host,
-		})
+		done <- Run(ctx, Config{Services: backendcontract.AgentOnly(runtime), Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2265,8 +2253,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{
-			Runtime: base, Workspace: "/tmp/flame-cli-test",
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: base}, Workspace: "/tmp/flame-cli-test",
 			StateDirectory: stateDirectory, Host: host,
 		})
 	}()
@@ -2428,8 +2415,7 @@ func TestAPluginSourceCanAddACommand(t *testing.T) {
 	}
 	backend := mock.New()
 	backend.Instant = true
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: "/tmp/flame-cli-test",
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: "/tmp/flame-cli-test",
 		PluginSources: []extensions.Source{extensions.StaticSource{Name: "test", Plugins: []extensions.Plugin{plugin}}},
 	})
 	host.Shows(t, "Ask flame")
@@ -2763,9 +2749,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
-	})
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	originalSession := firstRuntimeSession(t, base)
 	host.Type("/new")
@@ -3052,11 +3036,9 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	if err := os.Symlink(workspace, workspace); err != nil {
 		t.Fatal(err)
 	}
-	err := Run(t.Context(), Config{
-		Runtime:   mock.New(),
-		Workspace: workspace,
-		Host:      programtest.New(t, programtest.Config{Width: 80, Height: 24}),
-		Settings:  new(settings.Default()),
+	err := Run(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: workspace,
+		Host:     programtest.New(t, programtest.Config{Width: 80, Height: 24}),
+		Settings: new(settings.Default()),
 	})
 	if err == nil || !strings.Contains(err.Error(), "session attachments") {
 		t.Fatalf("Run error = %v, want attachment workspace failure", err)
@@ -3066,9 +3048,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T) {
 	configured := settings.Default()
 	configured.UI.Mouse = false
-	prepared, err := prepareSession(t.Context(), Config{
-		Runtime: mock.New(), Workspace: t.TempDir(), Settings: new(configured),
-	})
+	prepared, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: t.TempDir(), Settings: new(configured)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3076,7 +3056,7 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 		t.Fatal("explicit mouse=false was replaced by the default")
 	}
 
-	defaults, err := prepareSession(t.Context(), Config{Runtime: mock.New(), Workspace: t.TempDir()})
+	defaults, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

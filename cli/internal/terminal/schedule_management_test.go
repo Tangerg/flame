@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 )
@@ -175,7 +176,7 @@ func applySchedulePatch(scheduled *schedule.Schedule, patch schedule.Patch) {
 
 func TestScheduleCatalogReader(t *testing.T) {
 	service := newScheduleServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/schedules")
 	host.Press(input.Enter)
@@ -186,7 +187,7 @@ func TestScheduleCatalogReader(t *testing.T) {
 
 func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	service := newScheduleServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/schedule-create")
 	host.Press(input.Enter)
@@ -253,9 +254,7 @@ func TestWorkspaceReplacementRetiresAPresentedScheduleForm(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, Schedules: service, Changes: source, SessionID: "ses_demo_1",
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Schedules: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime invalidation subscription")
 	host.Type("/schedule-create")
@@ -304,9 +303,7 @@ func TestScheduleMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", Schedules: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Schedules: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/schedule-run sch_review")
@@ -353,7 +350,7 @@ func TestScheduleMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 func TestScheduleEditEnableRunAndDeleteCommands(t *testing.T) {
 	t.Run("edit", func(t *testing.T) {
 		service := newScheduleServiceStub()
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 		host.Shows(t, "Ask flame")
 		host.Type("/schedule-edit sch_review")
 		host.Press(input.Enter)
@@ -370,7 +367,7 @@ func TestScheduleEditEnableRunAndDeleteCommands(t *testing.T) {
 
 	t.Run("disable", func(t *testing.T) {
 		service := newScheduleServiceStub()
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 		host.Shows(t, "Ask flame")
 		host.Type("/schedule-disable sch_review")
 		host.Press(input.Enter)
@@ -386,7 +383,7 @@ func TestScheduleEditEnableRunAndDeleteCommands(t *testing.T) {
 		service := newScheduleServiceStub()
 		service.schedules[0].Enabled = false
 		service.schedules[0].NextRunAt = nil
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 		host.Shows(t, "Ask flame")
 		host.Type("/schedule-enable sch_review")
 		host.Press(input.Enter)
@@ -400,7 +397,7 @@ func TestScheduleEditEnableRunAndDeleteCommands(t *testing.T) {
 
 	t.Run("run now", func(t *testing.T) {
 		service := newScheduleServiceStub()
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 		host.Shows(t, "Ask flame")
 		host.Type("/schedule-run sch_review")
 		host.Press(input.Enter)
@@ -413,7 +410,7 @@ func TestScheduleEditEnableRunAndDeleteCommands(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		service := newScheduleServiceStub()
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service}})
 		host.Shows(t, "Ask flame")
 		host.Type("/schedule-delete sch_review")
 		host.Press(input.Enter)
@@ -434,7 +431,7 @@ func TestSchedulesChangedRefetchesOnlyTheOpenScheduleReader(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.SchedulesChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Schedules: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Schedules: service, Changes: source}})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "schedule invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.SchedulesChanged {

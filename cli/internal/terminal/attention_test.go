@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {
@@ -70,7 +71,7 @@ func runUIWithAttentionHost(t *testing.T, backend agent.Runtime) (*attentionTest
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspace: "/tmp/flame-attention-test", Host: host})
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend}, Workspace: "/tmp/flame-attention-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

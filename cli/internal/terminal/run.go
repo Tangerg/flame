@@ -15,64 +15,34 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/attachment"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
-	"github.com/Tangerg/flame/cli/internal/changefeed"
+	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/feedback"
-	"github.com/Tangerg/flame/cli/internal/goal"
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
-	"github.com/Tangerg/flame/cli/internal/mcp"
-	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
 	"github.com/Tangerg/flame/cli/internal/sessionrollback"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
-	"github.com/Tangerg/flame/cli/internal/skills"
 	"github.com/Tangerg/flame/cli/internal/steering"
-	"github.com/Tangerg/flame/cli/internal/usage"
 	"github.com/Tangerg/flame/cli/internal/workbench"
-	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 // Config describes one terminal application instance.
 type Config struct {
-	Runtime          agent.Runtime
-	RuntimeProfile   *runtimeprofile.Profile
-	Workspaces       workspace.Service
-	Changes          changefeed.Source
-	Transfers        sessiontransfer.Service
-	Usage            usage.Service
-	ModelConfig      modelconfig.Service
-	Goals            goal.Service
-	Skills           skills.Service
-	MCP              mcp.Service
-	Schedules        schedule.Service
-	AgentMemory      agentmemory.Service
-	Knowledge        knowledge.Service
-	DiagnosticTools  diagnostictool.Service
-	AuthoringContext authoringcontext.Service
-	Hooks            hookpolicy.Service
-	Feedback         feedback.Service
-	ClientVersion    string
-	SessionID        string
-	Workspace        string
-	InitialPrompt    string
-	Plugins          []extensions.Plugin
-	PluginSources    []extensions.Source
-	Host             program.Host
-	Settings         *settings.Config
-	StateDirectory   string
+	Services       backend.Services
+	ClientVersion  string
+	SessionID      string
+	Workspace      string
+	InitialPrompt  string
+	Plugins        []extensions.Plugin
+	PluginSources  []extensions.Source
+	Host           program.Host
+	Settings       *settings.Config
+	StateDirectory string
 }
 
 // Run opens and owns the terminal interface until the user leaves.
@@ -110,15 +80,9 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	err = program.Run(ctx, program.Config{
 		Root: func(loop *program.Runtime) program.Component {
 			active = newApp(loop, appConfig{
-				context: ctx, runtime: cfg.Runtime, snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
+				context: ctx, services: cfg.Services, snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
 				runtimeProfile: prepared.runtimeProfile,
-				workspaces:     cfg.Workspaces, changes: cfg.Changes,
-				transfers: cfg.Transfers, usage: cfg.Usage, modelConfig: cfg.ModelConfig,
-				goals: cfg.Goals, skills: cfg.Skills, mcp: cfg.MCP, schedules: cfg.Schedules,
-				agentMemory: cfg.AgentMemory, knowledge: cfg.Knowledge,
-				diagnosticTools:  cfg.DiagnosticTools,
-				authoringContext: cfg.AuthoringContext, hooks: cfg.Hooks, feedback: cfg.Feedback,
-				registry: registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
+				registry:       registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
 				attachments: prepared.attachments,
 				settings:    prepared.settings, reconnectPolicy: prepared.reconnectPolicy,
 				options: prepared.options, keyBindings: prepared.keyBindings, queue: queue,
@@ -153,8 +117,8 @@ type preparedSession struct {
 }
 
 func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
-	if cfg.Runtime == nil {
-		return preparedSession{}, errors.New("session: a runtime is required")
+	if err := cfg.Services.Validate(); err != nil {
+		return preparedSession{}, fmt.Errorf("session: %w", err)
 	}
 	profile, configured, bindings, err := validatedSessionConfig(cfg)
 	if err != nil {
@@ -168,7 +132,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
 	}
-	if err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile); err != nil {
+	if err := recoverSessionCommands(ctx, cfg.Services.Agent, authoring, profile); err != nil {
 		return preparedSession{}, err
 	}
 	return openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
@@ -183,8 +147,8 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 
 func validatedSessionConfig(cfg Config) (*runtimeprofile.Profile, settings.Config, keyBindings, error) {
 	var profile *runtimeprofile.Profile
-	if cfg.RuntimeProfile != nil {
-		cloned := cfg.RuntimeProfile.Clone()
+	if cfg.Services.RuntimeProfile != nil {
+		cloned := cfg.Services.RuntimeProfile.Clone()
 		if err := cloned.Validate(); err != nil {
 			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 		}
@@ -241,7 +205,7 @@ func openPreparedSession(
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session run options: %w", err)
 	}
-	opened, err := session.Open(ctx, cfg.Runtime, cfg.SessionID, cfg.Workspace)
+	opened, err := session.Open(ctx, cfg.Services.Agent, cfg.SessionID, cfg.Workspace)
 	if err != nil {
 		return preparedSession{}, err
 	}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/skills"
 )
@@ -148,7 +149,7 @@ func (s *skillServiceStub) decide(reference skills.ProposalReference, approve bo
 
 func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	service := newSkillServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Skills: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/skills")
 	host.Press(input.Enter)
@@ -204,7 +205,7 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *testing.T) {
 	service := newSkillServiceStub()
 	service.ignoreLifecycle = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Skills: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-archive review")
 	host.Press(input.Enter)
@@ -216,7 +217,7 @@ func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *test
 func TestSkillProposalDoesNotReportSuccessWhenReviewedRevisionRemainsPending(t *testing.T) {
 	service := newSkillServiceStub()
 	service.ignoreDecision = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Skills: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-approve user/release-checks")
 	host.Press(input.Enter)
@@ -238,7 +239,7 @@ func TestSkillsChangedRefetchesOnlyAnOpenSkillProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.SkillsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Skills: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Skills: service, Changes: source}})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "skill invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.SkillsChanged {
@@ -273,9 +274,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", Skills: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Skills: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/skill-archive review")

@@ -22,7 +22,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
-	"github.com/Tangerg/flame/cli/internal/backend"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/terminal"
 )
 
@@ -371,7 +371,9 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	backend := mock.New()
 	backend.Instant = true
 	backend.Script = func(string) mock.Script { return mixedInteractionPTYScript() }
-	if err := terminal.Run(t.Context(), terminal.Config{Runtime: backend, Workspace: t.TempDir()}); err != nil {
+	if err := terminal.Run(t.Context(), terminal.Config{
+		Services: backendcontract.AgentOnly(backend), Workspace: t.TempDir(),
+	}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -438,7 +440,9 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
-	if err := terminal.Run(t.Context(), terminal.Config{Runtime: backend, Workspace: t.TempDir()}); err != nil {
+	if err := terminal.Run(t.Context(), terminal.Config{
+		Services: backendcontract.AgentOnly(backend), Workspace: t.TempDir(),
+	}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -930,8 +934,8 @@ type scriptedRuntimeOwner struct {
 	closes      int
 }
 
-func (*scriptedRuntimeOwner) Runtime(context.Context) (backend.Services, error) {
-	return backend.Services{}, nil
+func (*scriptedRuntimeOwner) Runtime(context.Context) (backendcontract.Services, error) {
+	return backendcontract.Services{}, nil
 }
 
 func (s *scriptedRuntimeOwner) Close() error {

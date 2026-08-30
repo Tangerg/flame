@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/goal"
@@ -60,9 +61,7 @@ func (blockingUsageService) Summary(context.Context, usage.SummaryPeriod) (usage
 
 func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	models := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Usage: usageServiceStub{}, ModelConfig: models,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Usage: usageServiceStub{}, ModelConfig: models}})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage 30")
 	host.Press(input.Enter)
@@ -137,7 +136,7 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), RuntimeProfile: &profile})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), RuntimeProfile: &profile}})
 	host.Shows(t, "Ask flame")
 	host.Type("/status")
 	host.Press(input.Enter)
@@ -180,7 +179,7 @@ func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time
 
 func TestSessionReplacementCancelsAnOutstandingSideQuery(t *testing.T) {
 	usageService := blockingUsageService{started: make(chan struct{}), canceled: make(chan struct{})}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Usage: usageService})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Usage: usageService}})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage")
 	host.Press(input.Enter)
@@ -309,7 +308,7 @@ func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string
 
 func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing.T) {
 	models := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), ModelConfig: models})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models}})
 	host.Shows(t, "Ask flame")
 	host.Type("/providers")
 	host.Press(input.Enter)
@@ -361,9 +360,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", ModelConfig: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, ModelConfig: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/provider-config deepseek")
@@ -569,7 +566,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 2), supported: []changefeed.Topic{changefeed.GoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: goals, Changes: source}})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "goal invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.GoalsChanged {
@@ -658,7 +655,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: goals, Changes: source}})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -690,7 +687,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: goals, Changes: source}})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -723,7 +720,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: goals, Changes: source}})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -774,9 +771,7 @@ func TestLatestReaderQueryRetiresAnOlderBoundedContextProjection(t *testing.T) {
 		started:              make(chan struct{}, 1),
 		canceled:             make(chan struct{}, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspaces: workspaces, Goals: new(goalServiceStub),
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Workspaces: workspaces, Goals: new(goalServiceStub)}})
 	host.Shows(t, "Ask flame")
 	host.Type("/workspaces")
 	host.Press(input.Enter)
@@ -822,7 +817,7 @@ func TestReaderRefreshDoesNotCancelAGoalLifecycleCommand(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), Goals: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)
@@ -857,9 +852,7 @@ func TestGoalMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", Goals: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Goals: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/goal-stop")
@@ -890,7 +883,7 @@ func TestGoalMutationDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), SessionID: "ses_demo_1", Goals: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Goals: service}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)

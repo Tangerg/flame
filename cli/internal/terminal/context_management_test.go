@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 )
@@ -265,9 +266,7 @@ func (k *knowledgeServiceStub) Save(ctx context.Context, update knowledge.Update
 func TestAgentMemoryAndKnowledgeReadersShowScopeAndProvenance(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
 	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", AgentMemory: memory, Knowledge: knowledgeStore,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory, Knowledge: knowledgeStore}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory project")
 	host.Press(input.Enter)
@@ -284,9 +283,7 @@ func TestAgentMemoryAndKnowledgeReadersShowScopeAndProvenance(t *testing.T) {
 
 func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", AgentMemory: memory,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-add user")
 	host.Press(input.Enter)
@@ -309,9 +306,7 @@ func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 
 func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", AgentMemory: memory,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-approve project mem_pending")
 	host.Press(input.Enter)
@@ -343,9 +338,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", AgentMemory: memory, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, AgentMemory: memory, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/memory-approve project mem_pending")
@@ -390,9 +383,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), SessionID: "ses_demo_1", AgentMemory: memory,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-unpin user mem_user")
 	host.Press(input.Enter)
@@ -420,9 +411,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 
 func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", AgentMemory: memory,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 
 	host.Type("/memory-edit user mem_user")
@@ -483,9 +472,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 
 func TestKnowledgeReadUsesTheRequestedScope(t *testing.T) {
 	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/knowledge-read home")
 	host.Press(input.Enter)
@@ -500,9 +487,7 @@ func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.KnowledgeChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore, Changes: source}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "knowledge change subscription")
 	if !slices.Equal(subscription.Topics, []changefeed.Topic{changefeed.KnowledgeChanged}) {
@@ -529,9 +514,7 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.KnowledgeChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore, Changes: source}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "knowledge resync subscription")
 	host.Type("/knowledge-read home")
@@ -552,9 +535,7 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 
 func TestKnowledgeEditorPreservesMultilineContentAcrossResize(t *testing.T) {
 	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/knowledge-edit projectRoot")
 	host.Press(input.Enter)
@@ -579,9 +560,7 @@ func TestKnowledgeEditorPreservesMultilineContentAcrossResize(t *testing.T) {
 func TestKnowledgeEditorRetainsDraftWhenRuntimeSaveFails(t *testing.T) {
 	knowledgeStore := newKnowledgeServiceStub()
 	knowledgeStore.failNext = true
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/knowledge-edit projectRoot")
 	host.Press(input.Enter)
@@ -610,9 +589,7 @@ func TestKnowledgeEditorDoesNotLoseEditsMadeWhileSaving(t *testing.T) {
 	release := make(chan struct{})
 	knowledgeStore.blockNext = release
 	knowledgeStore.started = make(chan string, 1)
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: mock.New(), Workspace: "/workspace", Knowledge: knowledgeStore,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), Knowledge: knowledgeStore}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/knowledge-edit projectRoot")
 	host.Press(input.Enter)
@@ -649,9 +626,7 @@ func TestKnowledgeEditorSaveOutlivesSameSessionProjectionReplacement(t *testing.
 		applied: make(chan changefeed.Event, 1),
 	}
 	backend := mock.New()
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", Knowledge: knowledgeStore, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Knowledge: knowledgeStore, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/knowledge-edit projectRoot")

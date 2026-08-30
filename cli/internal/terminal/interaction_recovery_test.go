@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 )
 
 type invalidEventAfterInterruptRuntime struct {
@@ -139,9 +140,7 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory,
-	})
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise local resume persistence")
 	host.Press(input.Enter)
@@ -186,9 +185,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory,
-	})
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise question resume persistence")
 	host.Press(input.Enter)
@@ -221,9 +218,7 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 	answers := make(chan []agent.InterruptAnswer, 1)
 	backend.Script = func(string) mock.Script { return multiInteractionReviewScript(answers) }
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory,
-	})
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise batch resume persistence")
 	host.Press(input.Enter)

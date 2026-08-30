@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 )
@@ -257,9 +258,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", MCP: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, MCP: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-auth docs")
@@ -319,9 +318,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: backend, SessionID: "ses_demo_1", MCP: service, Changes: source,
-	})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, MCP: service, Changes: source}, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-reconnect docs")
@@ -367,7 +364,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 
 func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), MCP: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp")
 	host.Press(input.Enter)
@@ -459,7 +456,7 @@ func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 
 func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), MCP: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-probe")
 	host.Press(input.Enter)
@@ -490,7 +487,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 
 func TestMCPStdioWizardKeepsEveryFieldVisibleAndSecretsMasked(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), MCP: service}})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-create")
 	host.Press(input.Enter)
@@ -553,7 +550,7 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.MCPChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: mock.New(), MCP: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), MCP: service, Changes: source}})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "MCP invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.MCPChanged {

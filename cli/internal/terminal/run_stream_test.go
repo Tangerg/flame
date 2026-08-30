@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/workbench"
@@ -330,9 +331,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: runtime, Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
-	})
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.AgentOnly(runtime), Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	host.Type("preserve a refused start")
 	host.Press(input.Enter)
@@ -864,8 +863,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			runtime := &recordingRuntime{Runtime: base}
 			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 			profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute)
-			host, stop := runUIFromConfig(t, Config{
-				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+			host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: runtime, RuntimeProfile: &profile}, SessionID: "ses_demo_1",
 				Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 			})
 			host.Shows(t, test.want)

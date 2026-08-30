@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/retry"
@@ -198,7 +199,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
 		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/model")
@@ -217,7 +218,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
 		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/models")
@@ -235,9 +236,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model roles", func(t *testing.T) {
 		models := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{
-			Runtime: mock.New(), ModelConfig: models, Changes: source,
-		})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/roles")
@@ -262,9 +261,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("providers", func(t *testing.T) {
 		models := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{
-			Runtime: mock.New(), ModelConfig: models, Changes: source,
-		})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/providers")
@@ -286,7 +283,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("approval rules", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
 		source := runtimeResourceChangeSource(changefeed.ApprovalsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ApprovalsChanged)
 		host.Type("/rules")
@@ -307,9 +304,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
 		source := runtimeResourceChangeSource(changefeed.AgentMemoryChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{
-			Runtime: mock.New(), Workspace: "/workspace", AgentMemory: memory, Changes: source,
-		})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory, Changes: source}, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.AgentMemoryChanged)
 		host.Type("/memory project")
@@ -335,7 +330,7 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
 		Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog}})
 	host.Shows(t, "Ask flame")
 	host.Type("/rules")
 	host.Press(input.Enter)
@@ -366,7 +361,7 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
 		Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog}})
 	host.Shows(t, "Ask flame")
 	host.Type("/rule-delete rule_external_123")
 	host.Press(input.Enter)
@@ -1288,7 +1283,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime agent.Runtime, workspa
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
+		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: runtime, Workspaces: workspaces, Changes: source}, SessionID: sessionID, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -1536,8 +1531,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 		applied: make(chan changefeed.Event, 1),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: base, Changes: source, SessionID: "ses_demo_1",
+	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: base, Changes: source}, SessionID: "ses_demo_1",
 		StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "Ask flame")
