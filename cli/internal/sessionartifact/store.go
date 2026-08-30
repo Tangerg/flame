@@ -15,8 +15,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 )
 
-const maximumArtifactBytes int64 = 64 << 20
-
 // Store owns the filesystem boundary for session documents. Its zero value is
 // ready to use and publishes without overwriting different existing content.
 type Store struct{}
@@ -67,15 +65,15 @@ func (Store) Load(workspace, selectedPath string) (sessiontransfer.Document, err
 	if !info.Mode().IsRegular() {
 		return sessiontransfer.Document{}, errors.New("session artifact is not a regular file")
 	}
-	if info.Size() > maximumArtifactBytes {
-		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", maximumArtifactBytes)
+	if info.Size() > int64(sessiontransfer.MaximumDocumentBytes) {
+		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", sessiontransfer.MaximumDocumentBytes)
 	}
-	body, err := io.ReadAll(io.LimitReader(file, maximumArtifactBytes+1))
+	body, err := io.ReadAll(io.LimitReader(file, sessiontransfer.MaximumDocumentBytes+1))
 	if err != nil {
 		return sessiontransfer.Document{}, fmt.Errorf("read session artifact: %w", err)
 	}
-	if int64(len(body)) > maximumArtifactBytes {
-		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", maximumArtifactBytes)
+	if len(body) > sessiontransfer.MaximumDocumentBytes {
+		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", sessiontransfer.MaximumDocumentBytes)
 	}
 	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, body)
 	if err != nil {
@@ -171,9 +169,6 @@ func stage(root string, body []byte) (path string, err error) {
 	}()
 	if _, err = temporary.Write(body); err != nil {
 		return "", fmt.Errorf("write session document staging file: %w", err)
-	}
-	if _, err = temporary.Write([]byte("\n")); err != nil {
-		return "", fmt.Errorf("terminate session document staging file: %w", err)
 	}
 	if err = temporary.Sync(); err != nil {
 		return "", fmt.Errorf("sync session document staging file: %w", err)

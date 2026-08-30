@@ -1,6 +1,7 @@
 package sessionartifact
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,6 +26,13 @@ func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
 	}
 	if first != filepath.Join(canonicalWorkspace, "archive.json") {
 		t.Fatalf("first path = %q", first)
+	}
+	published, err := os.ReadFile(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(published, document.Bytes()) {
+		t.Fatalf("published bytes = %q, want exact document %q", published, document.Bytes())
 	}
 	if writeFileErr := os.WriteFile(first, []byte("different"), 0o600); writeFileErr != nil {
 		t.Fatal(writeFileErr)

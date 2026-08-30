@@ -21,6 +21,10 @@ type Format string
 const (
 	Markdown Format = "md"
 	JSON     Format = "json"
+
+	// MaximumDocumentBytes is the complete encoded size accepted by every CLI
+	// session export/import boundary.
+	MaximumDocumentBytes = 64 << 20
 )
 
 func ParseFormat(value string) (Format, error) {
@@ -60,27 +64,38 @@ type Document struct {
 }
 
 func NewDocument(format Format, body []byte) (Document, error) {
-	if err := format.Validate(); err != nil {
+	body, err := validateDocumentBody(format, body)
+	if err != nil {
 		return Document{}, err
+	}
+	return Document{format: format, body: slices.Clone(body)}, nil
+}
+
+func validateDocumentBody(format Format, body []byte) ([]byte, error) {
+	if err := format.Validate(); err != nil {
+		return nil, err
+	}
+	if len(body) > MaximumDocumentBytes {
+		return nil, fmt.Errorf("session document exceeds %d bytes", MaximumDocumentBytes)
 	}
 	body = bytes.TrimSpace(body)
 	if len(body) == 0 {
-		return Document{}, errors.New("session document is empty")
+		return nil, errors.New("session document is empty")
 	}
 	if !utf8.Valid(body) {
-		return Document{}, errors.New("session document is not valid UTF-8")
+		return nil, errors.New("session document is not valid UTF-8")
 	}
 	if format == JSON && !json.Valid(body) {
-		return Document{}, errors.New("session artifact is not valid JSON")
+		return nil, errors.New("session artifact is not valid JSON")
 	}
-	return Document{format: format, body: slices.Clone(body)}, nil
+	return body, nil
 }
 
 func (d Document) Format() Format { return d.format }
 func (d Document) Bytes() []byte  { return slices.Clone(d.body) }
 
 func (d Document) Validate() error {
-	_, err := NewDocument(d.format, d.body)
+	_, err := validateDocumentBody(d.format, d.body)
 	return err
 }
 

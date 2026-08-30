@@ -1,6 +1,9 @@
 package sessiontransfer
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	body := []byte(`{"version":17}`)
@@ -23,5 +26,12 @@ func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	}
 	if markdown.Importable() {
 		t.Fatal("Markdown document is importable")
+	}
+}
+
+func TestDocumentRejectsOversizedPortableContent(t *testing.T) {
+	body := bytes.Repeat([]byte("x"), MaximumDocumentBytes+1)
+	if _, err := NewDocument(Markdown, body); err == nil {
+		t.Fatal("oversized session document was accepted")
 	}
 }
