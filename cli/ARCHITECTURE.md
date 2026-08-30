@@ -68,6 +68,8 @@ Commands do not import Oolong, inspect Runtime protocol DTOs, mutate workbench r
 
 Viper is a configuration input, not application state. The command boundary resolves defaults, config files, environment, and flags before constructing a use-case request.
 
+One-shot `run` owns its external stdin byte-stream envelope before building an authoring Message. It reads at most 4 MiB plus one overflow byte, requires exact UTF-8, and rechecks the argument + stdin composition against the same 4 MiB limit before creating a Session or Run. This is a CLI process-memory boundary, not a duplicate model-context/token policy; Runtime仍按 selected model 的完整请求预算决定可执行性。
+
 ## Runtime boundary
 
 The process lazily opens at most one embedded Runtime and fully closes it before exit. The adapter:
