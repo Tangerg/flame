@@ -254,6 +254,51 @@ func TestInteractiveBinaryConsumesTheStartupBrandOnce(t *testing.T) {
 	quitInteractiveSession(t, session)
 }
 
+func TestInteractiveBinaryKeepsSlashCompletionAboveComposer(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	binary := buildTestBinary(t)
+	size := ptytest.Size{Cols: 80, Rows: 24}
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: size,
+		Env: terminalTestEnvironment(t, map[string]string{
+			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+		}),
+	}, binary, "--mouse=false", "--notifications=false")
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	waitForVisibleTerminalText(t, session, size, "Ask flame")
+	writeTerminalInput(t, session, "/")
+	assertSeparated := func(size ptytest.Size) {
+		t.Helper()
+		screen := waitForVisibleTerminalText(t, session, size, "commands", "enter complete")
+		rows := screen.Rows()
+		completionBottom := slices.IndexFunc(rows, func(row string) bool {
+			return strings.Contains(row, "enter complete")
+		})
+		composerBody := slices.IndexFunc(rows, func(row string) bool {
+			return strings.Contains(row, "│ ❯ /")
+		})
+		if completionBottom < 0 || composerBody < 1 || completionBottom >= composerBody-1 {
+			t.Fatalf("slash completion overlaps the composer at %dx%d:\n%s", size.Cols, size.Rows, strings.Join(rows, "\n"))
+		}
+	}
+	assertSeparated(size)
+	narrow := ptytest.Size{Cols: 36, Rows: 18}
+	if err := session.Resize(narrow); err != nil {
+		t.Fatal(err)
+	}
+	assertSeparated(narrow)
+	quitInteractiveSession(t, session)
+}
+
 func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 	if !ptytest.Supported() {
 		t.Skip("no pty on this platform")

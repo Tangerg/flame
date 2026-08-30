@@ -117,7 +117,7 @@
 | Q2 | 建立真实 DeepSeek E2E 场景基线 | 已完成 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume、进程强杀 long-running Tool 后的 lost recovery 与同 Session 再运行均已通过 | `e93eab5`、`61ce5d7`、`ceb2e3f` |
 | Q3 | 收敛 CLI 过度分包与贫血模型 | 进行中 | composition manifest 已收敛；provider 环境凭据覆盖、exact key 与源码 worktree 的真实配置发现已验证；继续按 consumer proof 审计 | `7875a20`、`8170949`、`4224eff`、`d538ff4` |
 | Q4 | 收敛 Runtime owner、抽象与 corner cases | 进行中 | endpoint provider 环境凭据、URL 校验与单消费者假边界已根治；继续审计 recovery/lifecycle | `c0cd320`、`18413c7`、`2a3c7de` |
-| Q5 | 对齐 Grok Build 的 TUI 体验 | 进行中 | 已收敛 Goal/Plan/Run/composer 信息层级，并从真实 PTY 移除遗留 LYRA welcome mark；继续以 render + PTY + live Runtime flow 验证 | `f77bb98`、`0c45695`、本批提交 |
+| Q5 | 对齐 Grok Build 的 TUI 体验 | 进行中 | 已收敛 Goal/Plan/Run/composer 信息层级；真实 PTY 移除遗留旧品牌标记，并证明 slash completion 在 80×24 与 36×18 不再与完整 composer chrome 重叠 | `f77bb98`、`0c45695`、`a788455`、本批提交 |
 
 ## 当前下一步
 

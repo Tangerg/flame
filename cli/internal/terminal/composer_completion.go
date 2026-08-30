@@ -172,7 +172,10 @@ func (a *app) drawCompletion(frame headless.Frame) {
 	}
 	popupWidth := min(max(a.completion.Width()+4, 32), width-2)
 	popupHeight := min(rows+2, height)
-	y := max(height-a.composer.Measure(width)-popupHeight, 0)
+	// The popup is anchored to the complete prompt chrome, not just the editor
+	// body. The panel border, model footer and help row occupy real terminal
+	// cells; ignoring them lets the popup and composer paint the same rows.
+	y := max(height-a.prompt.Measure(width)-popupHeight, 0)
 	area := grid.Rect(1, y, popupWidth, popupHeight)
 	inner := box.InnerRect(area.Size())
 	box.Draw(frame.View.Sub(area))
