@@ -206,7 +206,7 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderOpenAI, defaultOpenAIModel, "OPENAI_API_KEY", buildOpenAIResponsesModel).
 		withEmbedding(bundledModels(defaultOpenAIEmbeddingModel), buildOpenAIEmbeddingModel),
 	bundledProvider(ProviderGoogle, google.ModelGemini36Flash, "GOOGLE_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return google.NewChat(google.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o})
+		return google.NewChat(google.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}).withEmbedding(bundledModels(google.ModelGeminiEmbedding2), buildGoogleEmbeddingModel),
 
 	// OpenAI-compatible vendors — each adapter encodes its own endpoint.

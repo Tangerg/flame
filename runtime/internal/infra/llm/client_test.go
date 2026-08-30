@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"
+	"github.com/Tangerg/scope/models/google"
 )
 
 func mustClientSpec(t testing.TB, provider Provider, model, apiKey, baseURL string) ClientSpec {
@@ -146,6 +147,39 @@ func TestBuildClient_DeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	assistant := findWireAssistant(t, secondRequest.Messages)
 	if _, exists := assistant["reasoning_content"]; exists {
 		t.Fatalf("ordinary prior turn replayed reasoning_content: %#v", assistant)
+	}
+}
+
+func TestBuildClientGoogleUsesConfiguredEndpoint(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		if !strings.Contains(request.URL.Path, ":generateContent") {
+			t.Errorf("Google request path = %q, want generateContent", request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{
+  "responseId":"custom-endpoint","modelVersion":"gemini-3.6-flash",
+  "candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"custom endpoint"}]},"finishReason":"STOP"}],
+  "usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":2,"totalTokenCount":3}
+}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := BuildClient(mustClientSpec(t, ProviderGoogle, google.ModelGemini36Flash, "test-key", server.URL))
+	if err != nil {
+		t.Fatalf("BuildClient: %v", err)
+	}
+	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("route this request")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Call(t.Context(), request)
+	if err != nil {
+		t.Fatalf("Call through configured endpoint: %v", err)
+	}
+	if response.Text() != "custom endpoint" || requests.Load() != 1 {
+		t.Fatalf("configured endpoint response = %q; requests = %d", response.Text(), requests.Load())
 	}
 }
 
