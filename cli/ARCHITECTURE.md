@@ -112,6 +112,8 @@ Workbench persists only CLI-authored facts that Runtime does not own:
 
 Each record uses an explicit current shape. Invalid or old local shapes fail closed; active development does not keep migration or compatibility readers.
 
+Every Workbench file is one complete JSON document with a 16 MiB encoded limit shared by reads and writes. A read must reject an oversized file, trailing value, or truncated document instead of accepting a valid prefix; a write must fail before durable replacement and in-memory mutation when its next process could not reopen the result.
+
 Queue and replay are rich aggregates. They own identity, ordering, selection, dispatch state, acknowledgement policy, and legal edits. Terminal code issues commands to those aggregates instead of mutating slices and flags independently.
 
 ## Provider presentation
