@@ -2,7 +2,7 @@
 
 > 状态：强制执行
 >
-> 适用范围：`runtime` 及其直接 Desktop 合同爆炸半径的设计、实现、测试、评审、提交和文档维护
+> 适用范围：`runtime`、`runtime/localruntime` 及其直接 CLI 合同爆炸半径的设计、实现、测试、评审、提交和文档维护。Desktop 由用户并行修改，不属于当前质量 Goal。
 
 本文把仓库级规则具体化为 Runtime 重构的完成标准。目标架构见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，已接受的取舍见 [`DECISIONS.md`](DECISIONS.md)。任何阶段都不能以“迁移中”为理由违反这里的边界。
 
@@ -41,7 +41,7 @@
 
 ### 1.5 不过度设计和过度防御
 
-产品只有一个 Desktop actor 和一个逻辑 Runtime。Runtime 可以经 HTTP、socket 或同进程 binding 接入；进程重启、连接重建和 binding 变化只是同一逻辑 Runtime 的实现生命周期，不据此建模“旧服务端”“后继服务端”或多客户端协调协议。Desktop 与 CLI 共享同一数据目录是独立的存储并发场景，只在已经存在的 SQLite、文件和工作区 owner 边界处理。
+产品通常只有一个 CLI 或 Desktop actor 和一个逻辑 Runtime。Runtime 可以经 HTTP、socket 或同进程 binding 接入；进程重启、连接重建和 binding 变化只是同一逻辑 Runtime 的实现生命周期，不据此建模“旧服务端”“后继服务端”或通用多客户端协调协议。CLI 与 Desktop 共享同一数据目录时，只验证已经存在的 SQLite、文件和工作区 owner 合同。
 
 - 只为当前产品中可发生的状态、替换点和失败窗口建模，不为假设中的多窗口、多服务端、多 transport 组合或未来部署形态预埋层次；
 - 输入、required dependency 和 immutable identity 在其边界验证一次。只有相关事实可能在异步间隙变化时才重新证明，不能把重复校验当成安全感；
@@ -429,9 +429,9 @@ Agent Framework 迁移不能只用 mock Engine 证明。必须运行真实 Inter
 - breaking change 必须一次删除旧 contract、调用方、codec、测试和文档，不保留 alias、fallback、dual read/write 或 shadow owner；
 - 删除能力前必须同时证明静态引用、动态注册、生成入口、持久 shape、外部发布义务和直接消费者；确认删除后按 Domain→Application→Adapter/Infra→Delivery/Protocol→consumer 的完整纵切收口，共享机制只按剩余真实消费者重新归属，不能因原 owner 消失而机械删除；
 - 只有改动涉及异步交接、事务或 replacement 时，才说明 admission identity、linearization point、durable winner 和失败行为；普通局部重构只需说明真实 owner、被删除边界和可观察结果；
-- 后端参考 `/Users/tangerg/Desktop/study/codex-server/codex-rs`，前端主参考 `/Users/tangerg/Desktop/study/codex`，zcode/minimax 只作补充。参考只提供反证与机制证据，不授权复制 package、状态流或多 connection 产品设计；
-- 测试优先覆盖一个 Desktop 与一个逻辑 Runtime 内的真实交错、SQLite 不变量、同一 Runtime 的进程重启、SIGKILL/回执丢失、renderer replacement、长对话和异步泄露。Desktop 与 CLI 共享目录时，只测试已经存在的存储并发合同；不扩张成通用多客户端 race；
-- 精确暂存本批文件，提交前确认只有已授权 scope 和无关改动未进入 diff；`app/cli` 默认不动，只有用户对明确 direct-consumer 纵切另行授权时才可同步删除该消费链。使用浏览器自动化后关闭本批会话和 daemon，不关闭用户已有 Wails/Vite/Chrome 进程。
+- 协议机制参考 `/Users/tangerg/Desktop/study/codex-server/codex-rs`，CLI/TUI 参考 `/Users/tangerg/Desktop/grok-build`，provider 参考 `/Users/tangerg/Desktop/opencode`。参考只提供反例与机制证据，不授权复制 package、状态流、plugin、daemon 或多 connection 产品设计；
+- 测试优先覆盖一个 CLI 与一个逻辑 Runtime 的真实流程、SQLite 不变量、进程重启、SIGKILL/回执丢失、Goal/Plan/steer/HITL、长对话和压缩。共享目录只测试已经存在的存储并发合同，不扩张成通用多客户端 race；
+- 精确暂存本批文件，提交前确认只有 `runtime`、`runtime/localruntime`、`cli` 与拥有它们规则的根文档进入 diff。Desktop 当前由用户并行修改，禁止编辑、生成、暂存或提交。
 
 ## 9. 文档纪律
 

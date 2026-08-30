@@ -1,6 +1,6 @@
 # flame/doc — 文档索引
 
-> Runtime 模块的目标架构、实施治理和协议规范。模块级强约束以 [`../CLAUDE.md`](../CLAUDE.md) 为入口。
+> Runtime 模块的目标架构、实施治理和协议规范。模块级强约束以 [`../AGENTS.md`](../AGENTS.md) 为入口。
 >
 > 组织约定：文档平铺在本目录；每份文档只有一个事实 owner。禁止把目标架构复制到进度台账、把进度复制到能力台账，或把 generated contract catalog 复制到人读规范。
 

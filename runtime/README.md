@@ -2,7 +2,7 @@
 
 **Flame Runtime — 产品级通用 agent 运行时后端（Go）。** 实现 Flame Runtime Protocol（JSON-RPC 2.0，MCP-inspired），通过 streamable HTTP 服务桌面/Web 客户端，并为 Go CLI/TUI/宿主程序提供公共 embedded binding。
 
-> 模块级上下文见 [`CLAUDE.md`](./CLAUDE.md)；重构目标架构见 [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)；阶段、当前事实和全部文档入口见 [`doc/README.md`](./doc/README.md)。
+> 模块级约束见 [`AGENTS.md`](./AGENTS.md)；目标架构见 [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)；当前计划、合同和全部文档入口见 [`doc/README.md`](./doc/README.md)。
 
 ---
 
@@ -10,7 +10,7 @@
 
 以 **Run 生命周期**（而非 agent loop）为中心的 Agent 应用后端。**协议层薄、业务层厚、binding 同源**：公共 `protocol` 是唯一合同，HTTP 与公共 `embedded.Runtime` 共用 binding-neutral operation；`internal/application/*` 驱动 Run/Session/能力生命周期，`internal/adapter/agentexec` 隔离 Agent Framework，`internal/domain/*` 按限界上下文表达产品规则，`internal/infra/*` 提供技术机制。
 
-当前生产执行只消费唯一的 [`agent`](../../agent) Framework Baseline 20 canonical module，并通过 `internal/adapter/agentexec` 完成防腐翻译。Runtime 不解析 Framework private state，也不复制 Process loop、tree scheduler 或 Tool loop。
+当前生产执行只消费唯一的 [`github.com/Tangerg/scope/agent`](https://pkg.go.dev/github.com/Tangerg/scope/agent) Framework Baseline 20 canonical module，并通过 `internal/adapter/agentexec` 完成防腐翻译。Runtime 不解析 Framework private state，也不复制 Process loop、tree scheduler 或 Tool loop。
 
 ## 架构（Clean Arch 同心环，依赖向内，`internal/arch` 机器强制）
 
@@ -84,7 +84,7 @@ for event, streamErr := range events {
 _ = started
 ```
 
-`Runtime` 是数据目录、恢复器与后台任务的唯一 owner；同一 canonical 数据目录同一时刻只能由一个进程打开，宿主必须完成 `Close`。调用错误支持 `errors.Is(err, protocol.Err…)`；需要结构化恢复信息时，可用 `errors.As` 取得 `protocol.ProblemError`。CLI/TUI 应在消费侧定义自己真正需要的窄接口，不复制协议 DTO，也不要求 Runtime 导出胖接口。
+每个 `Runtime` instance 拥有自己的恢复器、后台任务和关闭图；兼容 build 可以共享同一 canonical 数据目录，冲突写入由 Runtime 的 Session、working-tree 与 SQLite owner fail closed。宿主必须完成 `Close`。调用错误支持 `errors.Is(err, protocol.Err…)`；需要结构化恢复信息时，可用 `errors.As` 取得 `protocol.ProblemError`。CLI/TUI 在消费侧定义真正需要的窄接口，不复制协议 DTO，也不要求 Runtime 导出胖接口。
 
 ## 不做（刻意）
 

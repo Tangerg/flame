@@ -230,22 +230,14 @@ checkpoint contracts; there is no compatibility reader or global-directory
 single-instance fallback. TUI code may consume the CLI-owned narrow port and
 protocol values rather than opening an unnecessary third Runtime.
 
-P153 synchronizes the in-tree CLI's direct Codebase consumer deletion: its
-narrow port, embedded adapter, three TUI commands, change topic, feature gate,
-tests, architecture inventory, and docs are gone. This is the only CLI scope
-authorized by that batch; the CLI's separately accumulated Runtime-contract
-drift remains a distinct migration and cannot justify a Runtime compatibility
-shim. The affected backend/changefeed/runtimeprofile/terminal/arch/cmd packages
-pass standalone tests; the broader `runtimeembedded` package still fails on
-unrelated pre-existing Session/Question/Knowledge contract changes. Absence from
-this list is not evidence that an out-of-tree consumer is compatible.
+The in-tree CLI consumes the current public embedded Runtime and protocol values through its sole `internal/runtimeembedded` adapter. Any later Runtime breaking change must migrate that adapter and CLI-owned values in the same authorized batch; Runtime does not retain a compatibility shim for the CLI.
 
 ## Consumer acceptance
 
 A consumer migration is complete only when it:
 
 1. vendors or generates from the current Runtime-owned contract;
-2. sends `protocolVersion: "2026-08-29"` and rejects any different discovered
+2. sends `protocolVersion: "2026-08-30"` and rejects any different discovered
    range instead of guessing compatibility;
 3. accepts only `runtimeInstanceRootSegment` for `RunReplayScope`;
 4. imports/exports Session artifact v27 with required exact bounded provider/model identity, optional model-owned reasoning effort on Session and every Run, bounded usage-map model keys, presence-based Run limits, explicit `plan`, and a required human-readable summary on every compaction Item, including durable root-run context footprints, authored AgentMessage phases, accepted Question answers, and exact human ToolCall approval decisions, without rewriting prior documents;
