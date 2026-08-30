@@ -19,6 +19,7 @@ const (
 	liveConfigDirectoryEnvironment = "FLAME_LIVE_CONFIG_DIR"
 	liveGoalMarker                 = "LIVE_GOAL_PLAN_OK"
 	liveSteerMarker                = "LIVE_STEER_APPLIED"
+	liveHITLMarker                 = "LIVE_HITL_RESUMED"
 	liveOriginMarker               = "LIVE_CONTEXT_ORIGIN_7D3A91"
 )
 
@@ -149,6 +150,72 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 	assertDeepSeekRun(t, run)
 }
 
+func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
+	fixture := newLiveDeepSeekFixture(t, 4*time.Minute)
+	session := fixture.createSession(t, "Live DeepSeek HITL Restart E2E")
+	requestMeta := protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
+		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
+	}}
+	maxSteps := 6
+	started, events, err := fixture.runtime.StartRun(fixture.ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input: []protocol.ContentBlock{{
+			Type: protocol.ContentBlockText,
+			Text: "Call ask_user exactly once with one free-text question asking for a release codename. " +
+				"After the tool returns, reply with exactly " + liveHITLMarker + " and nothing else. " +
+				"Do not use another tool and do not answer before asking the question.",
+		}},
+		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
+	}, embedded.RunCommandOptions{RequestMeta: requestMeta})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, eventErr := range events {
+		if eventErr != nil {
+			t.Fatal(eventErr)
+		}
+	}
+	waiting, err := fixture.runtime.GetRun(
+		fixture.ctx, protocol.GetRunRequest{RunID: started.RunID}, embedded.CallOptions{RequestMeta: requestMeta},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if waiting.Status != protocol.RunStatusWaiting {
+		t.Fatalf("Run before restart = %+v, want waiting", waiting)
+	}
+	pending := fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
+
+	fixture.restart(t)
+	pending = fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
+	resumed, resumedEvents, err := fixture.runtime.ResumeRun(fixture.ctx, protocol.ResumeRunRequest{
+		RunID: started.RunID,
+		Responses: []protocol.InterruptResponse{{
+			ItemID: pending.Interrupts[0].ItemID,
+			Response: protocol.InterruptResponseValue{
+				Type:    protocol.InterruptResponseAnswer,
+				Answers: [][]string{{"phoenix"}},
+			},
+		}},
+	}, embedded.RunCommandOptions{RequestMeta: requestMeta})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.RunID != started.RunID || resumed.SegmentID == started.SegmentID {
+		t.Fatalf("Resume response = %+v, want same Run and a new Segment", resumed)
+	}
+	for _, eventErr := range resumedEvents {
+		if eventErr != nil {
+			t.Fatal(eventErr)
+		}
+	}
+	run := fixture.getCompletedRun(t, started.RunID)
+	if got := strings.TrimSpace(fixture.finalAnswer(t, started.RunID)); got != liveHITLMarker {
+		t.Fatalf("post-restart final answer = %q, want %q", got, liveHITLMarker)
+	}
+	assertDeepSeekRun(t, run)
+}
+
 func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 5*time.Minute)
 	session := fixture.createSession(t, "Live DeepSeek Long Context Compaction E2E")
@@ -208,12 +275,15 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 }
 
 type liveDeepSeekFixture struct {
-	ctx       context.Context
-	runtime   *embedded.Runtime
-	workspace string
+	ctx               context.Context
+	runtime           *embedded.Runtime
+	workspace         string
+	dataDirectory     string
+	userHome          string
+	configDirectories []string
 }
 
-func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) liveDeepSeekFixture {
+func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFixture {
 	t.Helper()
 	if os.Getenv(liveDeepSeekEnvironment) != "1" {
 		t.Skipf("set %s=1 to run paid live DeepSeek E2E", liveDeepSeekEnvironment)
@@ -232,26 +302,72 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) liveDeepSeekFix
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	t.Cleanup(cancel)
-	runtime, err := embedded.Open(ctx, embedded.Config{
-		DataDirectory:        filepath.Join(t.TempDir(), "runtime"),
-		DefaultWorkspacePath: workspace,
-		UserHomePath:         t.TempDir(),
-		ConfigDirectories:    []string{configDirectory},
-	})
+	fixture := &liveDeepSeekFixture{
+		ctx:               ctx,
+		workspace:         workspace,
+		dataDirectory:     filepath.Join(t.TempDir(), "runtime"),
+		userHome:          t.TempDir(),
+		configDirectories: []string{configDirectory},
+	}
+	runtime, err := embedded.Open(ctx, fixture.config())
 	if err != nil {
 		t.Fatal(err)
 	}
+	fixture.runtime = runtime
 	t.Cleanup(func() {
 		var closeErr error
 		for range 3 {
-			closeErr = runtime.Close()
+			closeErr = fixture.runtime.Close()
 			if closeErr == nil || errors.Is(closeErr, embedded.ErrClosed) {
 				return
 			}
 		}
 		t.Errorf("close live Runtime: %v", closeErr)
 	})
-	return liveDeepSeekFixture{ctx: ctx, runtime: runtime, workspace: workspace}
+	return fixture
+}
+
+func (f *liveDeepSeekFixture) config() embedded.Config {
+	return embedded.Config{
+		DataDirectory:        f.dataDirectory,
+		DefaultWorkspacePath: f.workspace,
+		UserHomePath:         f.userHome,
+		ConfigDirectories:    f.configDirectories,
+	}
+}
+
+func (f *liveDeepSeekFixture) restart(t *testing.T) {
+	t.Helper()
+	if err := f.runtime.Close(); err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := embedded.Open(f.ctx, f.config())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.runtime = runtime
+}
+
+func (f *liveDeepSeekFixture) pendingQuestion(
+	t *testing.T,
+	sessionID, runID string,
+	requestMeta protocol.RequestMeta,
+) protocol.PendingInterruptSet {
+	t.Helper()
+	interrupts, err := f.runtime.ListInterrupts(f.ctx, protocol.ListInterruptsRequest{
+		SessionID: sessionID,
+	}, embedded.CallOptions{RequestMeta: requestMeta})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(interrupts.Data) != 1 || interrupts.Data[0].RootRunID != runID ||
+		len(interrupts.Data[0].Interrupts) != 1 ||
+		interrupts.Data[0].Interrupts[0].Type != protocol.InterruptQuestion ||
+		interrupts.Data[0].Interrupts[0].Payload == nil ||
+		interrupts.Data[0].Interrupts[0].Payload.Question == nil {
+		t.Fatalf("pending interrupts = %+v, want one question for Run %s", interrupts.Data, runID)
+	}
+	return interrupts.Data[0]
 }
 
 func (f liveDeepSeekFixture) createSession(t *testing.T, title string) *protocol.Session {
