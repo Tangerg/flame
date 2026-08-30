@@ -24,15 +24,8 @@ const SCHEME_SUNKEN: Record<Scheme, string> = {
 // buildTokenMap — spec → flat CSS-variable map
 
 /**
- * Build the flat CSS-variable map a theme registers as `tokens`. Pure
- * function — same input always produces the same output, no I/O.
- *
- * Resolution rules:
- *  - accentBorder / accentPress auto-derive from spec.brand.accent via
- *    colord unless the spec passes explicit overrides
- *  - CTA defaults to accent-driven (accent fill + textOnAccent ink);
- *    spec.cta overrides individual fields
- *  - spec.extras wins on collision (last spread)
+ * PURE. `accentBorder` / `accentPress` auto-derive from the accent unless overridden, CTA
+ * defaults to accent-driven, and `extras` wins on collision.
  */
 export function buildTokenMap(spec: ColorThemePluginSpec): Record<string, string> {
   // Auto-derive accentBorder / accentPress from the base accent via

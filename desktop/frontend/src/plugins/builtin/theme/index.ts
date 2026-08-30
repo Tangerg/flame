@@ -1,10 +1,5 @@
-// The appearance package: colour themes, visual styles and the document painter.
-//
-// Adding a theme = drop a new file under `theme/themes/`, add it to the array
-// below, done — mirrors `i18n/` (pack entry + `locales/` data files). The
-// manifest pulls in this single pack and never touches individual theme
-// imports. `themes/` holds the data files; `kit/` holds the shared
-// theme-authoring helper (`defineColorThemePlugin` + tokens + types).
+// Adding a theme is a file under `themes/` plus an entry in the array below: the manifest
+// pulls in this one pack and never names an individual theme.
 
 import type { AnyPlugin } from "dougong";
 import { appearancePainter } from "./appearancePainter";

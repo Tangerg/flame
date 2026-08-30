@@ -1,8 +1,4 @@
-// Run error banner — a dismissible warning strip pinned above the message
-// stream when the agent's last run ended with an error. Offers retry (resume
-// the same run), timeline (open timeline view), diagnostics (open diagnostics
-// view), and dismiss. Dismissing clears the error from the view state; it
-// persists in the timeline regardless.
+// Dismissing clears the error from the VIEW state only; it persists in the timeline.
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon, IconButton } from "@/ui";
@@ -50,26 +46,12 @@ interface RetryCountdown {
   remaining: number;
 }
 
-// RunErrorBanner — surfaces an run error.
+// Where the words come from when the runtime had none: `message` carries only the
+// per-occurrence detail it actually reported, so a classified-but-unelaborated failure
+// falls through to this locale's copy for the symbol.
 //
-// The reducer parks the error message on `state.error` until the next
-// RUN_STARTED clears it, or until the user dismisses it explicitly.
-//
-// This is where the words come from when the runtime had none: `message` is
-// only the per-occurrence detail the runtime actually reported, so a failure it
-// classified but couldn't elaborate on (an internal error must not put its
-// internals on the wire) falls through to this locale's copy for the symbol.
-// The runtime deliberately does not supply that sentence — it would be one
-// locale's copy authored where no translator can see it.
-// Sits above the message stream so a render error inside MessageStream
-// doesn't take the error notice down with it. The negative cue stays on the
-// icon/title/action and a 1px edge rather than washing the full reading width —
-// without the edge the container said nothing, so a failed run looked like an
-// ordinary card that happened to have red words in it.
-//
-// UX review §3.3: error must not be a dead end — gives the user a
-// concrete next step (Retry / Open timeline / Open diagnostics) instead
-// of forcing them to scroll up and figure out the recovery themselves.
+// Rendered OUTSIDE MessageStream, so a render error inside the transcript cannot take the
+// error notice down with it.
 export function RunErrorBanner() {
   const t = useT();
   const error = useActiveSessionProblem();

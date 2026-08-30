@@ -1,9 +1,6 @@
 /**
- * Handing a file to the user, and taking one back.
- *
- * A port because the use case ("export this conversation as markdown") is ours
- * while the browser owns the mechanism (an anchor with a blob URL or a hidden
- * file input).
+ * A port because the use case — "export this conversation as markdown" — is ours while the
+ * browser owns the mechanism.
  */
 export interface FileTransferPort {
   download(filename: string, content: string, mime: string): void;

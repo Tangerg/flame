@@ -1,6 +1,3 @@
-// Approval policy mutations. Reads live in this context's query module; these
-// commands invalidate the matching keys after the runtime accepts the write.
-
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
 import type { ApprovalRuleSummary } from "./approvalPolicyQueries";
 import type { ApprovalMode } from "../domain/hitl";
@@ -28,7 +25,6 @@ export function setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode> {
   });
 }
 
-/** Forget one persisted approval rule within one captured Agent generation. */
 export async function forgetRule(id: string): Promise<void> {
   return forgetRules([id]);
 }

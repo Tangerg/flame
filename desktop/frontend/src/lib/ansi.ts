@@ -1,17 +1,10 @@
 /**
- * Program output carries SGR escapes — `go test`, npm, eslint and every linter a
- * coding agent runs colour their output — and until now they were drawn as text: a
- * failing test read `[0;31mFAIL[0m` instead of a red FAIL.
- *
- * Hand-written rather than `anser` / `ansi-to-html`, and the reason is the palette.
- * Those emit inline styles or an HTML string carrying literal colours, which is the
- * one thing this app cannot accept: a literal cannot follow the scheme, the contrast
- * preference or a contributed theme, and ANSI red on a dark well at whatever hex a
- * library picked is exactly the class of failure the tone tokens exist to prevent.
- * What comes out of here is spans plus a TONE, and the renderer dresses them.
+ * Hand-written rather than `anser` / `ansi-to-html` because of the PALETTE: those emit
+ * inline styles or HTML carrying literal colours, and a literal cannot follow the scheme,
+ * the contrast preference or a contributed theme. What comes out here is spans plus a TONE,
+ * and the renderer dresses them.
  */
 
-/** Which of the app's tones an SGR colour maps to. */
 export type AnsiTone = "negative" | "success" | "warning" | "info" | "accent" | "muted";
 
 export interface AnsiSpan {
@@ -73,11 +66,9 @@ function applySgr(style: Style, params: string): Style {
 }
 
 /**
- * Split text into styled spans, dropping every escape sequence that is not a colour.
- *
- * Cursor moves and erases are dropped rather than honoured: this is a transcript, not
- * a terminal — there is no cursor to move, and a progress bar that redraws itself with
- * `\r` and `ESC[K` would otherwise leave its intermediate frames stacked in the log.
+ * Cursor moves and erases are DROPPED rather than honoured: this is a transcript, not a
+ * terminal, so there is no cursor to move and a progress bar redrawing itself with `\r`
+ * would otherwise stack every intermediate frame in the log.
  */
 export function parseAnsi(input: string): AnsiSpan[] {
   const spans: AnsiSpan[] = [];

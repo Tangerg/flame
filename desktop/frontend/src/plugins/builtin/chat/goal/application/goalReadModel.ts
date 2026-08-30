@@ -13,12 +13,8 @@ export interface GoalUsage {
 }
 
 /**
- * Why the loop stopped, when it has.
- *
- * The runtime states this as a closed code plus optional detail so a surface can
- * word it in the reader's language. Spelled in this context's own words
- * like `GoalStatus` beside it: a read model that published the wire enum would make
- * every consumer of this key a consumer of the protocol.
+ * Spelled in this context's own words rather than the wire enum: a read model publishing
+ * the protocol's vocabulary makes every consumer of this key a consumer of the protocol.
  */
 export type GoalStopCode =
   | "stoppedByUser"

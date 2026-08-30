@@ -60,12 +60,10 @@ export function useComposerInputController({
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const [caret, setCaret] = useState(0);
-  // IME composition guard (CJK-first). While a syllable is still being composed
-  // the textarea fires intermediate change/select events; broadcasting the caret
-  // then would drive the @-mention / slash lookup off half-composed text. We keep
-  // the controlled value in sync throughout (React would otherwise snap the
-  // textarea back to a stale value mid-composition) but defer the caret broadcast
-  // until composition commits (compositionend).
+  // While a syllable is still being composed the textarea fires intermediate events, and
+  // broadcasting the caret then drives the @-mention lookup off half-composed text. The
+  // controlled value stays in sync throughout — React would otherwise snap the textarea back
+  // mid-composition — but the caret broadcast waits for `compositionend`.
   const composingRef = useRef(false);
   // Some Chinese IMEs commit raw Latin text with compositionend and then emit
   // an unmarked Enter from the same physical action. Keep that exact lifecycle
@@ -130,9 +128,8 @@ export function useComposerInputController({
   const handleCompositionEnd = (event: CompositionEvent<HTMLTextAreaElement>): void => {
     composingRef.current = false;
     compositionCommitPendingRef.current = true;
-    // Composition committed: sync the final value (event ordering vs. the last
-    // input event varies by browser) and broadcast the caret once so the
-    // mention/slash lookup runs against real text.
+    // Sync the final value — ordering against the last input event varies by browser — and
+    // broadcast the caret once, so the lookup runs against real text.
     const target = event.currentTarget;
     onChange(target.value);
     setCaret(target.selectionStart ?? target.value.length);

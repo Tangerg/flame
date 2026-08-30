@@ -1,10 +1,5 @@
-// Built-in plugin: "Tool stats" workspace view — where this session's tool time
-// went, and what did not come back.
-//
-// The transcript answers "what happened, in order"; it cannot answer "which tool
-// is slow" or "which one keeps failing" without a person counting rows by eye.
-// Everything here is derived from tool calls the fold already holds, and the
-// durations are the runtime's own measurements — nothing is timed in the client.
+// Derived entirely from tool calls the fold already holds; the durations are the RUNTIME's
+// own measurements, so nothing here is timed in the client.
 
 import type { IconName } from "@/ui";
 import type { ToolStat, ToolStatsSummary } from "../application/toolStats";

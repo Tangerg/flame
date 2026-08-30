@@ -8,9 +8,7 @@ import { createContext, use } from "react";
 export interface ViewPlacement {
   /** "full" = the view has the whole content card; "dock" = beside the chat. */
   placement: "full" | "dock";
-  /** May this view sit in the dock? Drives the "open in the dock" affordance. */
   splittable: boolean;
-  /** Move a full-width view into the dock. */
   onOpenInDock: () => void;
   /** Dismiss this view — full → back to the chat; dock → close the dock. */
   onClose: () => void;

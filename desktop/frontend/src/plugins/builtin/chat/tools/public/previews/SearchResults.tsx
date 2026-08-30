@@ -1,8 +1,5 @@
-// Web-search result cards — a grid of source cards (favicon-letter badge +
-// domain + title + snippet). Shared presentation: the `web_search` tool preview
-// renders it from the call result, and the (dormant) `search` content block
-// reuses it. Fields mirror the wire WebSearchResult (API.md §4.5); `domain` is
-// derived from the url at projection time, `url` keys the card.
+// Fields mirror the wire `WebSearchResult` (API.md §4.5); `domain` is derived from the url
+// at projection time, and `url` keys the card.
 import { ExternalLink } from "@/ui";
 export interface SearchResult {
   url: string;
@@ -15,12 +12,9 @@ export function SearchResults({ results }: { results: SearchResult[] }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
       {results.map((r) => (
-        // A LINK, not a div. These have looked like cards from a search engine since
-        // they were written and did nothing when clicked — the one thing a person
-        // wants from a search result is the page.
-        //
-        // `url` is the natural unique, stable key — survives re-ordering, where an
-        // index would swap DOM nodes by position and clobber hover/focus.
+        // A LINK, not a div: the one thing a person wants from a search result is the page.
+        // `url` keys it because an index swaps DOM nodes by position on re-order and
+        // clobbers hover/focus.
         <ExternalLink
           key={r.url}
           href={r.url}

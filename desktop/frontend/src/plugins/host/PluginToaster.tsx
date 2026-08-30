@@ -1,10 +1,5 @@
-// Mounts in PluginProvider; listens for the toast event the SDK dispatches
-// from `host.notify(...)` and renders animated stacked toasts via sonner —
-// the de-facto Tailwind community choice for toasts (Linear / Vercel /
-// Resend / shadcn default).
-//
-// We keep this as a separate component (not part of the SDK) so notification
-// producers do not depend on React's portal / motion machinery.
+// Separate from the SDK so notification producers do not depend on React's portal and
+// motion machinery; it listens for the event `host.notify(...)` dispatches.
 
 import type { PluginToastDetail } from "../sdk/hostToast";
 import { useEffect } from "react";

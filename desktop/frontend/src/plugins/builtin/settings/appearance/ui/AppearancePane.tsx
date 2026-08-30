@@ -1,6 +1,3 @@
-// Composer for the appearance settings pane. The component itself only lays out
-// sections; each section owns its own preference subscription.
-
 import { SettingsGroup } from "../../public";
 import { AccentSection } from "./AccentSection";
 import { AccentTintSection } from "./AccentTintSection";

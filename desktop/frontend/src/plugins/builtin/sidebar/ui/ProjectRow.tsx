@@ -18,7 +18,6 @@ export function ProjectRow({
   project: WorkProject;
   active: boolean;
   open: boolean;
-  /** Sessions inside the group — mirrors what expanding will show. */
   count: number;
   onToggle: () => void;
   onNewSession: (project: WorkProject) => void;

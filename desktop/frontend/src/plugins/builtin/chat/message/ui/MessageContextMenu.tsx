@@ -1,14 +1,6 @@
-// Right-click context menu for a chat message. Mirrors the inline
-// `message.header.end` action buttons (Copy / Edit / Regenerate) but
-// reaches them via right-click anywhere on the message body — the
-// header icons are 16px hover targets, easy to miss; the context menu
-// is a Mac/Win-native discovery path users already reach for.
-//
-// Subscribes to *nothing*: every store read happens inside the
-// onSelect handlers via getState(). The component mounts once per
-// message in the stream, so subscribing here would mean N selectors
-// re-evaluating on every streaming token delta — a real perf cliff
-// once history grows past a handful of turns.
+// Subscribes to NOTHING: every store read happens inside the onSelect handlers via
+// getState(). This mounts once per message, so a subscription here means N selectors
+// re-evaluating on every token delta (CLAUDE.md §5).
 
 import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import type { ReactElement, ReactNode } from "react";

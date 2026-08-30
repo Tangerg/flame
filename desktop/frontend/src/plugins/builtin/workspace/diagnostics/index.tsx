@@ -1,11 +1,6 @@
-// Diagnostics plugin — registers the "Diagnostics" workspace view that
-// renders the local telemetry sink (traces / metrics / logs).
-//
-// The OTel providers are installed always-on by the bootstrap plugin
-// (lib/observability, mirroring the backend's setup-at-start), NOT lazily by
-// this view — traces + trace-context propagation must work whether or not
-// anyone opened Diagnostics. This plugin is now a pure consumer of the
-// in-memory stores.
+// A pure CONSUMER of the in-memory stores: the OTel providers are installed always-on by
+// the bootstrap plugin, never lazily here, because trace-context propagation must work
+// whether or not anyone opened Diagnostics.
 
 import { definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";

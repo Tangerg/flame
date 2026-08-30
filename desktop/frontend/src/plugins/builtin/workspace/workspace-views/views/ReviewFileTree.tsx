@@ -1,11 +1,6 @@
-// The review panel's changed-file navigator: a filterable tree of the diff's own
-// files, beside the diff rather than instead of it.
-//
-// Selecting a row does NOT swap the panel's content — it scrolls the diff to that
-// file's card. Before this existed, reaching a file meant opening the Files view
-// in the dock and clicking a row, which replaced the list with the diff: the one
-// thing you need while reviewing (where am I in the change) was the thing the
-// click threw away.
+// Selecting a row does NOT swap the panel's content — it scrolls the diff to that file's
+// card. Replacing the list with the diff throws away the one thing a reviewer needs: where
+// they are in the change.
 
 import { useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
@@ -131,7 +126,6 @@ function TreeRow({
   /** The full text, for the row's tooltip — `label` may already be truncating it. */
   title: string;
   expanded?: boolean;
-  /** The row's figure, right-aligned in a column of its own. */
   trailing?: ReactNode;
   onClick: () => void;
 }) {
@@ -167,7 +161,6 @@ export function ReviewFileTree({
   onClose,
 }: {
   files: WorkspaceFileDiff[];
-  /** The file the diff is scrolled to, so the tree can say where you are. */
   selectedPath: string;
   onSelectFile: (path: string) => void;
   onClose: () => void;

@@ -23,14 +23,8 @@ export interface CatalogPickerGroup {
   items: CatalogPickerItem[];
 }
 
-/**
- * A searchable launcher for a grouped catalog of application surfaces.
- *
- * The trigger stays compact enough for desktop chrome while the popup carries
- * the catalog's real information architecture. Base UI owns filtering, arrow
- * navigation, focus return and selection; callers only provide translated
- * labels and handle the chosen item.
- */
+// Base UI owns filtering, arrow navigation, focus return and selection; callers only
+// supply translated labels and handle the chosen item.
 export function CatalogPicker({
   groups,
   label,

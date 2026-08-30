@@ -1,17 +1,8 @@
-// Thin wrapper over i18next + react-i18next so the rest of the app
-// stays on a stable `useT() / setLocale() / useLocale()` API.
+// The kernel ships ONLY the English bundle; every other language is a built-in plugin that
+// registers itself at setup, and the picker reads the plugin registry rather than a
+// hardcoded array here.
 //
-// The kernel ships **only the English bundle** — every other language
-// (zh / zh-TW / ja / ko / es / fr / de) is a built-in plugin under
-// `plugins/builtin/locales/` that calls `host.i18n.addBundle()` +
-// `host.extensions.contribute(LOCALE, …)` in its setup. The picker is driven by
-// the plugin store's `locales` registry (read via `useExtensionPoint(LOCALE)` from
-// the SDK), not a hardcoded array here.
-//
-// Locale type stays `string` because selection and browser preference are
-// runtime values. The kernel knows statically what "English" looks like (the
-// bootstrap dict so first paint always has strings) and how to detect the
-// user's preferred locale from `navigator.language`.
+// `Locale` stays `string` because selection and browser preference are runtime values.
 
 import i18next from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
@@ -39,53 +30,43 @@ function detectInitial(): Locale {
     /* ignore */
   }
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
-  // Fold zh-* variants to the simplified / traditional split here; the
-  // locale plugin loader (later) tolerates either "zh" or "zh-CN".
   const low = nav.toLowerCase();
   if (low.startsWith("zh")) {
     return low.includes("tw") || low.includes("hk") || low.includes("mo") ? "zh-TW" : "zh";
   }
-  // For everything else, hand i18next the primary subtag — it'll fall
-  // back to English if the matching plugin hasn't registered (yet).
+  // The primary subtag: i18next falls back to English if that plugin has not registered.
   return low.split("-")[0] || "en";
 }
 
 const initial = detectInitial();
 
 void i18next.use(initReactI18next).init({
-  // Only English is bootstrapped — locale plugins add the rest at
-  // plugin-setup time via `addLocaleBundle()`.
   resources: { en: { translation: en } },
   lng: initial,
   fallbackLng: "en",
-  // Keys are dotted strings ("sidebar.action.newSession") — treat them as
-  // literal, not as nested paths.
+  // Keys are dotted LITERALS ("sidebar.action.newSession"), not nested paths.
   keySeparator: false,
   nsSeparator: false,
   interpolation: { escapeValue: false },
   returnNull: false,
 });
 
-// `lang` attribute on <html> drives browser-side a11y, font selection,
-// and Intl APIs that read `document.documentElement.lang`.
+// `<html lang>` drives a11y, font selection and any Intl API that reads it.
 function syncHtmlLang(loc: Locale): void {
   if (typeof document === "undefined") return;
-  // Only "zh" needs remapping to the explicit "zh-CN" region; every other
-  // locale (incl. "zh-TW") already equals its lang attribute.
+  // Only "zh" needs the explicit region; every other locale already equals its lang value.
   document.documentElement.lang = loc === "zh" ? "zh-CN" : loc;
 }
 syncHtmlLang(initial);
 
 function getLocale(): Locale {
-  // `language` is the requested locale identity; `resolvedLanguage` may be the
-  // English fallback while that locale's lazy plugin has not loaded yet. Using
-  // the fallback here made cold-start setup believe the user had selected
-  // English, so it never loaded the requested dictionary. Keep selection
-  // identity separate from resource-resolution fallback.
+  // `language` is the requested identity; `resolvedLanguage` may be the English fallback
+  // while that locale's lazy plugin has not loaded. Reading the fallback makes cold-start
+  // setup believe English was selected, so it never loads the requested dictionary.
   return i18next.language ?? i18next.resolvedLanguage ?? "en";
 }
 
-/** The active language tag, read outside React (plugin setup, bootstrap). */
+/** For reads OUTSIDE React (plugin setup, bootstrap). */
 export function activeLocale(): Locale {
   return getLocale();
 }
@@ -106,17 +87,11 @@ export function t(key: string, params?: Record<string, string | number>): string
 }
 
 /**
- * A translator, as the contribution factories take one.
- *
- * Nine modules had each declared this locally — and they had already drifted:
- * eight spelled `(key) => string` while one carried interpolation params, so the
- * same contract existed in two shapes. It is `typeof t` because that is what it
- * always was: the function these factories are handed. A caller that only reads
- * keys still satisfies it — fewer parameters is assignable.
+ * `typeof t` because that is exactly what the contribution factories are handed; a caller
+ * that only reads keys still satisfies it, since fewer parameters is assignable.
  */
 export type Translate = typeof t;
 
-/** Reactive locale hook — components using this re-render on change. */
 export function useLocale(): Locale {
   const { i18n } = useTranslation();
   return i18n.language ?? i18n.resolvedLanguage ?? "en";
@@ -133,14 +108,9 @@ export function useT(): typeof t {
 }
 
 /**
- * Merge `dict` into the dictionary for `locale`. Existing keys are
- * overwritten; new keys land alongside the kernel's strings. Used by
- * `host.i18n.addBundle` so plugins can contribute their own labels.
- *
- * i18next has no public per-key removal, so plugin unload doesn't roll
- * the bundle back. In practice this is fine — keys are unreferenced
- * after the plugin's UI is gone, and a same-name reload overwrites
- * cleanly.
+ * i18next has no public per-key removal, so a plugin unload does NOT roll its bundle back.
+ * Harmless in practice: the keys are unreferenced once the plugin's UI is gone, and a
+ * same-name reload overwrites cleanly.
  */
 export function addLocaleBundle(locale: string, dict: Record<string, string>): void {
   i18next.addResourceBundle(locale, "translation", dict, true, true);

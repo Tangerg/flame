@@ -36,9 +36,8 @@ export function grepToolPreview(component: ToolPreviewComponent): ToolPreviewCon
   return toolPreviews({ grep: component });
 }
 
-// One operation-dispatched tool: diagnostics is an `operation` of `lsp`, and the
-// runtime asserts no separate lsp_diagnostics coexists with it. The preview reads
-// the operation to decide which face to wear.
+// `diagnostics` is an OPERATION of `lsp`, not a separate tool, so the preview reads the
+// operation to decide which face to wear.
 export function lspToolPreview(component: ToolPreviewComponent): ToolPreviewContribution[] {
   return toolPreviews({ lsp: component });
 }

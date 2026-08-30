@@ -1,15 +1,5 @@
-// Plugin error log — every catch site in the plugin pipeline pushes here.
-//
-// Why centralize:
-//   - "your plugin is broken" should be findable in one place
-//   - the settings UI can show a per-plugin error list
-//   - automated tests can assert against the log
-//
-// Sources we feed in:
-//   - PluginBoundary  (render errors)
-//   - loadPlugin      (setup errors)
-//   - reducer         (event handler errors)
-//   - Composer.submit (slash command run errors)
+// Every catch site in the plugin pipeline pushes here, so "your plugin is broken" is
+// findable in one place and assertable from tests.
 
 import { create } from "zustand";
 import { ExactSequence } from "@/foundation/exactSequence";
@@ -22,7 +12,6 @@ export interface PluginError {
   plugin: string;
   source: PluginErrorSource;
   message: string;
-  /** Optional component stack / call site. */
   detail?: string;
 }
 
@@ -77,9 +66,8 @@ export function reportPluginError(
   usePluginErrorStore.getState().push({ plugin, source, message, detail: trace });
 }
 
-// Run `fn` in a try/catch and log to console with a tag on failure. Used
-// throughout the plugin pipeline so a misbehaving subscriber / disposable
-// / lifecycle hook can't crash the kernel.
+// Used throughout the plugin pipeline so a misbehaving subscriber, disposable or lifecycle
+// hook cannot crash the kernel.
 export function safeCall(fn: () => void, tag: string): void {
   try {
     fn();

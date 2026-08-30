@@ -1,9 +1,7 @@
 import { toolCategory } from "@/plugins/builtin/agent/public/viewState";
 
-// "What am I being asked to allow?" — phrased per tool family, in the language
-// the user is reading. Derived at render rather than at fold time: the fold ran
-// once, so a headline baked there kept the wording it was born with even after
-// the user switched languages.
+// Derived at RENDER, not at fold time: the fold runs once, so a headline baked there keeps
+// the wording it was born with after the user switches languages.
 export function approvalHeadline(
   t: (key: string, params?: Record<string, string | number>) => string,
   toolName: string | undefined,

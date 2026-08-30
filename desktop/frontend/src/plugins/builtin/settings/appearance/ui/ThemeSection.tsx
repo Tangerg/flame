@@ -56,7 +56,6 @@ function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; acc
   );
 }
 
-// "System" follows the OS appearance (the default) — a split dark/light chip.
 function SystemSwatch() {
   return (
     <span className="relative block h-4 w-6 shrink-0 overflow-hidden rounded-2xs media-edge">

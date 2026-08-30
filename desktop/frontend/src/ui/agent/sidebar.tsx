@@ -2,15 +2,8 @@ import type { ReactNode } from "react";
 import { clampSidebarWidth, maxSidebarWidth, SIDEBAR_MIN_WIDTH_PX } from "@/lib/shellGeometry";
 import { ResizeHandle } from "@/ui/atoms/resize-handle";
 
-/**
- * The work-index drawer: an in-flow spacer that reserves the width, plus a
- * fixed-position panel that slides. Both read `--sidebar-width` from the shell,
- * so a resize is one custom-property write and a collapse is one attribute flip.
- *
- * `label` names the region for assistive tech and comes from the caller: what
- * this drawer holds is the application's business, and a design-system ring that
- * knows the phrase "work index" is a ring that knows the product.
- */
+// An in-flow spacer reserving the width plus a fixed-position panel that slides. Both read
+// `--sidebar-width`, so a resize is one custom-property write and a collapse one attribute.
 export function AgentSidebar({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
@@ -22,16 +15,8 @@ export function AgentSidebar({ label, children }: { label: string; children: Rea
   );
 }
 
-/**
- * Resize separator for the drawer↔reading-plane seam. It draws no resting line:
- * the reading plane owns that boundary, while this rail only strengthens the
- * same coordinate on hover, focus and drag.
- *
- * The gesture belongs to the `ResizeHandle` atom; what is declared here is only what
- * is true of this seam — which side of the drawer it sits on, where the width lives,
- * and that the drawer animates its own width and so must be told to stop while the
- * user is moving it.
- */
+// Draws no resting line — the reading plane owns that boundary; this only strengthens the
+// same coordinate on hover, focus and drag.
 export function AgentSeamRail({
   label,
   width,
@@ -58,8 +43,6 @@ export function AgentSeamRail({
   );
 }
 
-/** Where the drawer's width lives. The rail writes it during a gesture and the shell
- *  re-syncs it from the persisted preference, so both must spell it the same way. */
 export const SIDEBAR_WIDTH_PROPERTY = "--sidebar-width";
 
 function readSidebarWidth(shell: HTMLElement): number {

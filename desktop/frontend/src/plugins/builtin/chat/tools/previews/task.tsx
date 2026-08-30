@@ -1,7 +1,3 @@
-// delegate_task (sub-agent) preview — the result is the sub-agent's final reply.
-// The child run itself streams on the same tree (spawnedByItemId); this preview
-// is the parent-side summary of what came back.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";

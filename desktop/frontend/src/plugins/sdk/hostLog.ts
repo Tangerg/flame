@@ -1,10 +1,6 @@
-// Where a plugin's log line goes.
-//
-// `ctx.log` is Core's, already bound to the plugin: it forwards to the Host's
-// logger with the calling installation's `meta` as the second argument. So
-// attribution, the OTel bridge and the LOG_SUBSCRIBER fan-out all hang off that
-// one seam — `createHost({ logger })` — rather than off a wrapper around the
-// context, which would have shadowed a capability Core already provides.
+// `ctx.log` is Core's and already bound to the plugin, so attribution, the OTel bridge and
+// the LOG_SUBSCRIBER fan-out all hang off ONE seam — `createHost({ logger })` — rather than
+// a context wrapper that would shadow a capability Core already provides.
 
 import type { InstanceMeta, Logger } from "dougong";
 import { emitLog as emitOtelLog } from "@/lib/observability/logBridge";
@@ -44,7 +40,6 @@ function write(level: LogLevel, message: unknown, details: unknown[]): void {
   }
 }
 
-/** The Host's logger. Every `ctx.log.*` call in every plugin lands here. */
 export const kernelLogger: Logger = {
   debug: (message, ...details) => write("debug", message, details),
   info: (message, ...details) => write("info", message, details),

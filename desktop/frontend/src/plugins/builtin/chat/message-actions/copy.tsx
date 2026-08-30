@@ -1,6 +1,5 @@
-// Copy action — a dropdown in `message.actions`. Default click writes Markdown
-// (preserves headings / lists / fences as rendered). The submenu surfaces the
-// alternate: Plain text drops markup so it pastes flat into editors.
+// A plain click writes MARKDOWN, preserving headings, lists and fences as rendered; plain
+// text is the submenu alternate, for pasting flat into an editor.
 
 import { DropdownMenu, Tooltip } from "@/ui";
 import { writeToClipboard } from "@/lib/clipboard";

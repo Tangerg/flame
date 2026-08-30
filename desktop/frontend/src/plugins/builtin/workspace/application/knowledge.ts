@@ -148,7 +148,6 @@ export class KnowledgeOwner {
 
 const knowledgePublication = createPublicationSlot<KnowledgeOwner>();
 
-/** Immutable editor material for one exact Knowledge document. */
 export class KnowledgeDraft {
   private constructor(
     readonly content: string,

@@ -1,6 +1,3 @@
-// Composer — the chat input surface layout. Input behavior (mentions,
-// placeholder, paste, key bindings, autosize) lives in useComposerInputController
-// so this component stays focused on composition.
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
 import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
 import { useRecordComposerHistory } from "@/plugins/builtin/chat/composer/public/history";

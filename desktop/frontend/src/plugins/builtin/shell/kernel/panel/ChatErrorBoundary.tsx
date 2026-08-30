@@ -4,20 +4,14 @@ import { ErrorBoundary } from "react-error-boundary";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/ui";
 
-// ChatErrorBoundary — wraps the chat surface so a render error in one
-// message, code block, or mermaid diagram doesn't crash the whole tab.
-//
-// Backed by `react-error-boundary` — covers every edge case we need
-// (resetKeys, onReset, onError, fallback component) in ~3KB. Our shell
-// supplies the localized fallback UI and forwards `resetKey` so
-// switching sessions clears a stuck card.
+// Wraps the chat surface so a render error in one message, code block or diagram does not
+// take the whole tab. `resetKey` is forwarded so switching sessions clears a stuck card.
 
 interface Props {
   /** Identifier (typically the active session id) that resets the
    *  boundary on change. Lets the user "escape" a stuck session by
    *  switching tabs. */
   resetKey?: unknown;
-  /** Optional label included in the console log. */
   label?: string;
   children: ReactNode;
 }

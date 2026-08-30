@@ -1,12 +1,8 @@
-// The running kernel, as leaf code sees it. The SDK sits below the glue ring
-// that owns startup, so the Host is published down here rather than imported up.
-// Reads answer empty before boot; the Host is fail-closed, so there is no
-// half-booted state for them to paper over.
-//
-// Contributions come straight off `host.contributions(token)` — Core's read for
-// code outside the graph. What this adds is the app's own policy: `single`/`multi`
-// resolution, the sort, and a by-reference caching contract the selectors'
-// secondary indexes hang off.
+// The SDK sits BELOW the glue ring that owns startup, so the Host is published DOWN here
+// rather than imported up; reads answer empty before boot and the Host is fail-closed, so
+// there is no half-booted state to paper over. What this adds over Core's raw
+// `contributions(token)` is the app's policy: single/multi resolution, the sort, and the
+// by-reference caching contract the selectors' secondary indexes hang off.
 
 import { useSyncExternalStore } from "react";
 import type { ContributionView, Host } from "dougong";
@@ -21,8 +17,8 @@ let names: ReadonlyArray<string> = EMPTY_NAMES;
 const listeners = new Set<() => void>();
 const pluginNamesByHost = new WeakMap<Host, Set<string>>();
 
-// Per point, resolved on first read and held until the kernel is retracted: the
-// view's subscription is what invalidates the cached array.
+// Resolved on first read and held until the kernel is retracted: the view's subscription is
+// what invalidates the cached array.
 let views = new Map<string, ContributionView<Contribution<unknown>>>();
 let releases: Array<() => void> = [];
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
@@ -121,11 +117,9 @@ function resolve<T>(
 }
 
 /**
- * Every contribution to `point`, sorted, with `single` points resolved to one
- * entry per domain key.
- *
- * Stable by reference until that point's contributions change — the contract the
- * selectors' WeakMap-keyed secondary indexes depend on.
+ * Sorted, with `single` points resolved to one entry per domain key. Stable BY REFERENCE
+ * until that point's contributions change — the contract the selectors' WeakMap-keyed
+ * secondary indexes depend on.
  */
 export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Contribution<T>> {
   const cached = entries.get(point.id);
@@ -142,11 +136,8 @@ function subscribe(onChange: () => void): () => void {
 }
 
 /**
- * Subscribe to "some contribution changed", across kernel restarts.
- *
- * Registers against the kernel rather than one point's view, so a plugin
- * subscribing during its own setup — before any view exists — still hears about
- * later changes instead of holding a silently dead subscription.
+ * Registers against the KERNEL rather than one point's view, so a plugin subscribing during
+ * its own setup — before any view exists — does not end up holding a dead subscription.
  */
 export function subscribeContributions(listener: () => void): () => void {
   return subscribe(listener);

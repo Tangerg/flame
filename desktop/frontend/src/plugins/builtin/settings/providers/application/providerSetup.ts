@@ -6,11 +6,9 @@ export interface ProviderCredentialSummary {
 }
 
 /**
- * Whether the install has no way to reach a model yet.
- *
- * `undefined` is "still loading" and deliberately not "needs setup": the query
- * resolves a beat after mount, and answering true there flashed the setup prompt on
- * every cold start of a fully configured app.
+ * `undefined` is "still loading" and deliberately NOT "needs setup": the query resolves a
+ * beat after mount, and answering true there flashes the setup prompt on every cold start
+ * of a fully configured app.
  */
 export function needsProviderSetup(providers: ProviderCredentialSummary[] | undefined): boolean {
   return providers !== undefined && !providers.some((provider) => provider.configured);

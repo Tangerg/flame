@@ -1,10 +1,6 @@
-// Built-in plugin: "Approvals" settings pane (B9). Registration only — the UI
-// lives in ui/ (ApprovalsPane + ModeRow + RulesRow), the RPC use cases in
-// application/approvalConfig.
-//
-// Approval is a core capability (not feature-gated per the backend), but the
-// approval.* methods only exist on a B9 runtime — a pre-B9 one rejects getMode,
-// so the pane degrades to an inert "unavailable" state (handled in ApprovalsPane).
+// Approval is a core capability and NOT feature-gated, so an older runtime that lacks the
+// `approval.*` methods rejects `getMode` instead of advertising its absence — the pane
+// degrades to an inert "unavailable" state on that rejection.
 
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";

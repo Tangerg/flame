@@ -23,7 +23,6 @@ export const AGENT_SESSIONS_KEY = "sessions";
 
 export const useAgentSessions = createDataQuery<AgentSessionSummary[]>(AGENT_SESSIONS_KEY);
 
-/** Refresh the session collection after a session command succeeds. */
 export function invalidateAgentSessions(): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: [AGENT_SESSIONS_KEY] });
 }
@@ -53,13 +52,10 @@ export function recoverAgentSessionSummaryField(
 }
 
 /**
- * Observe one semantic projection of the Session collection.
- *
- * TanStack Query emits cache events for observer attachment, option changes,
- * fetch state, invalidation, and successful data writes. Consumers that react
- * to every one of those internal events create feedback loops: a Session
- * rerender can invalidate an unrelated query, whose rerender updates the
- * Session observer again. Project first and notify only when that value moves.
+ * Projects FIRST and notifies only when that value moves. TanStack Query emits cache events
+ * for observer attachment, option changes, fetch state and invalidation alike, and a
+ * consumer reacting to all of them feeds back: a Session rerender invalidates an unrelated
+ * query, whose rerender updates the Session observer again.
  */
 export function subscribeAgentSessionProjection<T>(
   project: (sessions: readonly AgentSessionSummary[] | undefined) => T,

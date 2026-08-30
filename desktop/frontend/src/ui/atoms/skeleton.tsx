@@ -1,11 +1,6 @@
-// Skeleton primitives for loading states. Only `SkeletonList` is exported;
-// `Line` + `Row` are internal building blocks.
-//
-// The shimmer is a translated overlay, not a scrolling background. `background-position`
-// repaints the whole element every frame, and a list is eight of these at once — on the
-// main thread, usually beside a streaming transcript. A transform costs nothing per
-// frame because the compositor owns it. Honors prefers-reduced-motion via
-// `motion-reduce:animate-none` on the moving part.
+// The shimmer is a translated overlay, not a scrolling background: `background-position`
+// repaints the whole element every frame, and a list runs eight of these at once beside a
+// streaming transcript. A transform stays on the compositor.
 
 import type { CSSProperties } from "react";
 
@@ -53,9 +48,7 @@ export function SkeletonList({
 }: {
   count?: number;
   style?: CSSProperties;
-  /** Screen-reader announcement. Default matches the visual shimmer's intent. */
   label?: string;
-  /** Compact rows fit navigation surfaces; stacked rows fit content lists. */
   variant?: SkeletonListVariant;
 }) {
   return (

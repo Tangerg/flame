@@ -8,71 +8,49 @@ import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import { Pressable, RichTooltip } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
 
-/** How far the pointer's reach carries, in marks. Beyond this a mark is at its
- *  resting length. Three is enough to read as a swell and short enough that the
- *  run still shows the conversation's own shape underneath it. */
+/** How far the pointer's reach carries, in marks — short enough that the run still shows
+ *  the conversation's own shape underneath the swell. */
 const REACH = 3;
 
-/** Longest a mark gets from the pointer alone, in px. */
+/** px added by the pointer alone. */
 const MAGNIFY = 16;
 
 /** Floor length, so a one-line exchange is a mark rather than a speck. */
 const FLOOR = 8;
 
-/** How much of a mark's length its share of the transcript can buy. */
+/** px a mark's share of the transcript can buy. */
 const SHARE = 10;
 
-/**
- * The track every mark is drawn in — the longest one of them can be.
- *
- * The rows are the tooltip's anchor, so this is also how far from the marks the
- * preview card opens. Stretched to the gutter (which is what `w-full` did) the
- * card detached from the rail entirely and opened a clear 260px away, over the
- * text, pointing at nothing.
- */
+// Also the tooltip's anchor width: stretched to the gutter, the preview card detaches from
+// the rail and opens hundreds of pixels away, over the text, pointing at nothing.
 const TRACK = FLOOR + SHARE + MAGNIFY;
 
 /**
- * A map of the conversation, one mark per question asked.
+ * One mark per EXCHANGE — a question and everything answering it. The mark stays lit for
+ * the whole exchange; marking assistant turns separately doubles the rail's length while
+ * halving what each mark tells you.
  *
- * One mark per exchange — a question and everything that answers it. A conversation's
- * shape is the questions in it; an assistant turn is the answer to the mark above it,
- * and giving both a mark would double the rail's length while halving what each one
- * tells you. The mark stays lit for the whole exchange, answer included, which is the
- * bug this once had: the highlight went out the moment you scrolled past the question
- * into its own answer.
- *
- * The marks are rules, not dots, and their resting length is the share of the
- * transcript that exchange occupies — measured, not guessed. Equal dots say only
- * "there were eight turns"; a scaled rule says which two of them are the whole
- * session, which is the question someone reaches for a map to answer.
- *
- * Renders into the gutter the reading column reserves for it; whether that gutter
- * exists at the current width is the column's decision, not this one's.
+ * Mark length is the measured share of the transcript, not a fixed dot: equal dots say only
+ * "there were eight turns", while a scaled rule says which two of them are the session.
  */
 export function TurnRail() {
   const t = useT();
   const messages = useActiveConversationMessages();
   const { visibleTurnId, turns: extents } = useTranscriptMap();
   const [reached, setReached] = useState<number | null>(null);
-  // The same fold the measurement uses, so a mark exists for every exchange the
-  // reading line can name. Derived from messages rather than from the measured
-  // extents so the rail is drawn on first paint, before any layout has happened.
+  // The SAME fold the measurement uses, so a mark exists for every exchange the reading
+  // line can name. Derived from messages rather than measured extents so the rail draws on
+  // first paint, before any layout has happened.
   const turns = foldExchanges(messages);
   if (turns.length < 2) return null;
 
   const shareOf = (id: string) => extents.find((extent) => extent.id === id)?.share ?? 0;
-  // The pointer swells the marks around it, not just the one under it. At this
-  // pitch a single mark changing length is a flicker you can miss; a swell tells
-  // you where in the run you are reaching before you have read anything.
+  // Swells the marks AROUND the pointer, not just the one under it: at this pitch a single
+  // mark changing length is a flicker easy to miss.
   const swell = (index: number) =>
     reached === null ? 0 : Math.max(0, 1 - Math.abs(index - reached) / REACH);
 
   return (
-    // Centred as a block and packed tight. A map is read as a shape — the run of
-    // marks together, and where in it you are — so it wants to be one small dense
-    // object beside the text, not a ladder of widely spaced rungs starting at the
-    // top of the pane.
     <nav
       aria-label={t("narrative.rail.turns")}
       className="flex h-full w-fit flex-col items-start justify-center overflow-hidden py-6 pl-6"
@@ -80,8 +58,7 @@ export function TurnRail() {
     >
       {turns.map((turn, index) => {
         const active = turn.id === visibleTurnId;
-        // The pointer outranks the reading position: while you are reaching into
-        // the rail, the mark you are on is the one you want marked.
+        // The pointer outranks the reading position while reaching into the rail.
         const lead = reached === null ? active : reached === index;
         return (
           <RichTooltip
@@ -110,11 +87,10 @@ export function TurnRail() {
                 <span
                   className={cn(
                     "h-[2px] rounded-pill transition-[background-color,width] duration-[var(--dur-fast)]",
-                    // The one hand-picked alpha left in the tree, and deliberately:
-                    // a resting mark is 2px of ink between the faint step and a
-                    // hairline, and the ramp has no rung there — `fg-faint` reads as
-                    // a scale of text and `border-soft` as an edge. `check-design-tokens`
-                    // covers alpha on FILLS built from full ink, which this is not.
+                    // The one hand-picked alpha left in the tree, deliberately: a resting
+                    // mark is 2px of ink between the faint step and a hairline and the ramp
+                    // has no rung there. `check-design-tokens` covers alpha on fills built
+                    // from full ink, which this is not.
                     lead ? "bg-fg" : "bg-fg-faint/55",
                   )}
                   style={
@@ -150,7 +126,6 @@ function answerAfter(messages: Message[], turnId: string): Message | undefined {
   return messages.slice(index + 1).find((message) => message.role === "assistant");
 }
 
-/** First prose of a message, flattened to one paragraph's worth of plain text. */
 function proseOf(message: Message | undefined): string {
   if (!message) return "";
   for (const block of message.blocks) {
@@ -165,13 +140,6 @@ function proseOf(message: Message | undefined): string {
   return "";
 }
 
-/**
- * What that exchange was about, without going back to it.
- *
- * The question in one line and the answer's opening under it. No timestamp: when
- * you asked something is never what you are scanning a conversation for, and the
- * mark's own tooltip already carries it for assistive tech.
- */
 function TurnPreview({ turn, answer }: { turn: Message; answer: Message | undefined }) {
   const t = useT();
   const question = proseOf(turn);

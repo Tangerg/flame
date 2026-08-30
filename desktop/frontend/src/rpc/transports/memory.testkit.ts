@@ -1,14 +1,4 @@
-// Shared test helpers for scenarios driven against MemoryTransport.
-//
-// Before extraction, three test files (client / methods / smoke) each
-// rolled their own "wait for next outbound Request" helper with slightly
-// different signatures. This module collects the most expressive
-// version (smoke's `waitForRequest`, which filters by method + has a
-// timeout) plus a small palette of inject helpers so scenario tests
-// stay declarative.
-//
-// Only imported from `*.test.ts` files — production code never sees
-// this module.
+// Imported ONLY from `*.test.ts`; production code never sees this module.
 
 import type { MemoryTransport } from "./memory";
 import type { TransportRequest } from "../transport";
@@ -19,15 +9,8 @@ import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../types";
 
 // Outbound (client → server) — synchronisation helpers
 
-/**
- * Wait until a Request with the given method name appears in the
- * transport's outbox, then return it. Polls microtask-by-microtask up
- * to ~50 ticks (more than enough — the client typically queues the
- * request before the next microtask cycle).
- *
- * Use to grab the id the client allocated so you can craft a matching
- * Response via {@link respondSuccess} / {@link respondError}.
- */
+/** Polls the outbox microtask-by-microtask for ~50 ticks. Use it to grab the id the client
+ *  allocated, then answer with {@link respondSuccess} / {@link respondError}. */
 export async function waitForRequest<M extends WireMethodName>(
   t: MemoryTransport,
   method: M,
@@ -44,12 +27,10 @@ export async function waitForRequest<M extends WireMethodName>(
 
 // Inbound (server → client) — message synthesis
 
-/** Inject a JSON-RPC success Response matching a prior Request id. */
 export function respondSuccess(t: MemoryTransport, id: RpcId, result: unknown): void {
   t.inject({ jsonrpc: JSONRPC_VERSION, id, result } as RpcMessage);
 }
 
-/** Inject a server-side Notification with arbitrary method + params. */
 export function injectNotification(
   t: MemoryTransport,
   requestRpcId: RpcId,

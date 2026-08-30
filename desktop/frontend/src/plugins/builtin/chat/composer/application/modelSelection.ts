@@ -18,12 +18,9 @@ export interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
 }
 
 /**
- * Resolve the model shown by the Composer.
- *
- * A deliberate in-process preference wins across sessions. Before one exists,
- * an already-durable Session owns the default for its next Run; only the
- * no-session welcome surface falls back to the first enabled catalog entry.
- * `undefined` means the active Session summary is still resolving, so callers
+ * A deliberate in-process preference wins across sessions; before one exists, a durable
+ * Session owns the default for its next Run, and only the no-session welcome surface falls
+ * back to the catalog. `undefined` means the Session summary is still resolving — callers
  * must not race that read by materializing the catalog fallback as an override.
  */
 export function resolveComposerModelSelection<T extends ComposerModelOption>(

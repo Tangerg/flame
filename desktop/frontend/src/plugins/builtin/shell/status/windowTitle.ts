@@ -1,16 +1,9 @@
-// Built-in plugin: window-title working indicator.
+// WINDOW-level by design: any Session whose current root is Running lights it, not just the
+// active tab's. Descendant lifecycle stays inside its root-owned tree — a child never
+// becomes an unrelated window-level activity fact.
 //
-// Prefixes the document title with a "●" while any root run is in progress, so
-// a user who tabbed away can tell at a glance — from the OS window list / dock
-// — that this window still has work cooking (T1.1 of the UX polish backlog).
-// Window-level by design: any Session whose current root is Running lights it,
-// not just the active tab's. Descendant lifecycle stays inside that root-owned
-// tree; a child never becomes an unrelated window-level activity fact.
-//
-// Implemented as a module-level store subscription (app-lifetime side effect,
-// HMR-guarded), the same pattern as completionNotify. It writes through the
-// registry's single title composer (setWindowWorking → syncDocumentTitle) so
-// the dot and the count badge compose instead of clobbering each other.
+// Writes through the registry's single title composer so the dot and the count badge
+// compose instead of clobbering each other.
 
 import { disposeOnHmr } from "@/lib/hmr";
 import { subscribeAnySessionRunning } from "@/plugins/builtin/agent/public/run";

@@ -6,20 +6,15 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 export interface ToolPreviewProps {
   tool: ToolCall;
-  /** Open this tool's workspace view (terminal / diff).
-   *  Absent when the tool has no such view (search / glob / lsp / skill / …) —
-   *  the preview then hides its "view details" foot instead of offering a dead
-   *  button (PreviewFoot self-hides when given no onClick). */
+  /** Absent when the tool has no workspace view, in which case the preview hides its foot
+   *  rather than offering a dead button. */
   onOpenView?: () => void;
 }
 export type ToolPreviewComponent = ComponentType<ToolPreviewProps>;
 
 /**
- * A button rendered on every ToolCard's header, before the expand button.
- * The optional `predicate` lets a plugin scope the action to a subset of
- * tool calls (e.g. only `shell` tools, only completed tools).
- *
- * Common use cases: copy-command, rerun, open-file, view-stderr.
+ * A button on every ToolCard header, before the expand button. The optional `predicate`
+ * scopes the action to a subset of tool calls.
  */
 export interface ToolActionSpec {
   id: string;
@@ -29,11 +24,10 @@ export interface ToolActionSpec {
    *  (see `CommandSpec.label`: a contribution is registered once, and nothing
    *  re-registers on a language switch). */
   title: string;
-  /** Sort hint — lower comes first. Built-ins use 0..99. */
+  /** Lower comes first. */
   order?: number;
   /** Optional gate — return false to hide the action for this tool. */
   predicate?: (tool: ToolCall) => boolean;
-  /** Click handler. */
   run: (tool: ToolCall) => void | Promise<void>;
 }
 

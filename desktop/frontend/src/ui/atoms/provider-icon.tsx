@@ -1,12 +1,6 @@
-// Brand icon for an LLM provider, from @lobehub/icons. Maps a provider id
-// (Provider.type / Model.provider, e.g. "deepseek") to its brand mark; falls
-// back to a neutral spark glyph for providers we don't have a brand for.
-//
-// We import each brand's Mono component by deep path
-// (`es/<Brand>/components/Mono`) rather than the package barrel: the barrel
-// (and each brand's index) pulls in the `.Avatar` variant, which depends on
-// `@lobehub/ui` (not installed) and breaks the build. Mono is monochrome
-// (currentColor), which also keeps the picker visually consistent.
+// Each brand's Mono component is imported by DEEP PATH (`es/<Brand>/components/Mono`), not
+// the package barrel: the barrel pulls in the `.Avatar` variant, which depends on
+// `@lobehub/ui` (not installed) and breaks the build.
 
 import type { ComponentType } from "react";
 import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
@@ -24,8 +18,7 @@ import { Icon } from "@/ui/icons";
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
-// Keyed by lowercased provider id/type. Aliases map vendor synonyms onto the
-// same brand mark (e.g. kimi → Moonshot, claude → Anthropic).
+// Keyed by LOWERCASED provider id/type; aliases map vendor synonyms onto one brand mark.
 const BRAND: Record<string, BrandIcon> = {
   deepseek: DeepSeek,
   openai: OpenAI,
@@ -45,9 +38,7 @@ const BRAND: Record<string, BrandIcon> = {
 
 export function ProviderIcon({ provider, size = "md" }: { provider: string; size?: IconSize }) {
   const Brand = BRAND[provider.toLowerCase()];
-  // A brand mark is a filled logo, not a stroked glyph, so it takes the ladder's
-  // box but none of its stroke. The box comes from the custom property rather than
-  // a number because these sit inline with labels that follow the user's base size.
+  // A filled logo, not a stroked glyph: takes the ladder's box but none of its stroke.
   if (Brand) {
     return (
       <span

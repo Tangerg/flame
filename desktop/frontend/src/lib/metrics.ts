@@ -1,18 +1,8 @@
-// Thin wrapper over @opentelemetry/api metrics. Kernel + plugin code calls
-// the `measure*` helpers; the instruments they record into are created by
-// `bindMetricInstruments()`.
-//
-// IMPORTANT — why instruments are bound late, not at module load:
-//   The metrics API has NO proxy meter (unlike trace's ProxyTracer / logs'
-//   ProxyLogger). `metrics.getMeter()` before a MeterProvider is registered
-//   returns a Noop meter, and an instrument created from it is a
-//   NoopInstrument *forever* — a later setGlobalMeterProvider does NOT
-//   upgrade it. This module loads very early (the reducer imports it), long
-//   before observability is installed, so creating instruments here at module
-//   load would make every measurement a permanent no-op.
-//   Instead `lib/observability/setup` calls bindMetricInstruments() right
-//   after it registers the MeterProvider — that's when the real instruments
-//   come into being. Until then `measure*` are cheap no-ops.
+// Instruments are bound LATE, not at module load: the metrics API has no proxy meter, so
+// an instrument created before a MeterProvider is registered is a NoopInstrument FOREVER —
+// a later `setGlobalMeterProvider` does not upgrade it. This module loads very early (the
+// reducer imports it), so `lib/observability/setup` calls `bindMetricInstruments()` right
+// after registering the provider. Until then `measure*` are cheap no-ops.
 
 import type { Counter, Histogram } from "@opentelemetry/api";
 import { metrics } from "@opentelemetry/api";

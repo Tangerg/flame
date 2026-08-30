@@ -1,14 +1,9 @@
-// UI density — how much air the chrome gets.
+// A SEPARATE axis from the type ladder on purpose: type size is legibility, density is how
+// many rows fit, and scaling type to get a denser list makes the list unreadable.
 //
-// A separate axis from the type ladder (lib/typography.ts) on purpose: type size
-// is about legibility, density is about how many rows fit on screen, and people
-// want them independently. Scaling type to get a denser list makes the list
-// unreadable; scaling rows leaves the text alone.
-//
-// Chrome-bar heights deliberately do NOT scale. The content header, the drawer
-// header and the macOS traffic-light gutter are all pinned to one number
-// (`--surface-header-height`) so they line up across the seam — a density pick
-// must not be able to break that alignment.
+// Chrome-bar heights deliberately do NOT scale: the content header, drawer header and the
+// macOS traffic-light gutter share one number so they line up across the seam, and a
+// density pick must not break that.
 
 export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];

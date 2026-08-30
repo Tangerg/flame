@@ -1,9 +1,6 @@
-// The map of the conversation, in the gutter beside the reading column.
-//
-// It lives beside the scroller rather than inside it so they hold still while
-// the transcript moves — which is the only reason a map is useful — and it is a
-// contribution rather than shell furniture because a navigation aid over the
-// narrative is exactly the kind of thing a plugin should be able to replace.
+// Beside the scroller rather than inside it, so the map holds still while the transcript
+// moves — which is the only reason a map is useful. A contribution rather than shell
+// furniture, because a navigation aid over the narrative is replaceable by definition.
 
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { TurnRail } from "./ui/TurnRail";

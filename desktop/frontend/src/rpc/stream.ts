@@ -1,17 +1,7 @@
-// Server-notification stream → typed AsyncIterable bridge (API.md §5 / §10,
-// TRANSPORT.md §7-§9).
-//
-// v2 collapses run streaming onto ONE notification method:
-// `notifications.run.event`, params = RunEvent. There is no separate
-// "run closed" method — the terminal signal is a `segment.finished`
-// StreamEvent for the ROOT SEGMENT, delivered inside the same stream.
-//
-// A single response stream is rooted on ONE segment (the segment `runs.start` /
-// `runs.resume` / `runs.subscribe` opened). The transport stamps every message
-// with the request id of the HTTP response that carried it, so that response is
-// the one membership authority for the whole run tree. Reconstructing membership
-// from earlier `segment.started` events fails when a reattach begins after those
-// events. The stream ends only when the ROOT SEGMENT's `segment.finished` arrives.
+// API.md §5 / §10. There is no "run closed" method: the terminal signal is a
+// `segment.finished` for the ROOT SEGMENT on the same stream. Tree membership is
+// authoritative from the REQUEST ID the transport stamps on every message, never from
+// earlier `segment.started` events — those are already gone when a reattach begins.
 
 import { createPushPullChannel, type PushPullChannel } from "./channel";
 import type { RpcClient } from "./client";
@@ -28,10 +18,6 @@ import { RpcConnectionError } from "./errors";
 
 export const RUN_EVENT_METHOD = NOTIFICATIONS_RUN_EVENT;
 export const RUNTIME_EVENT_METHOD = NOTIFICATIONS_RUNTIME_EVENT;
-
-// ---------------------------------------------------------------------------
-// Bound run-response projection
-// ---------------------------------------------------------------------------
 
 interface RunReplayBudget {
   maxEvents: number;
@@ -58,7 +44,6 @@ class RunReplayMemory {
     }
   }
 
-  /** Remember replay identities within the negotiated or local safety window. */
   alreadyDelivered(eventId: string): boolean {
     if (this.delivered.has(eventId)) return true;
     const bytes = this.encoder.encode(eventId).byteLength;
@@ -75,14 +60,12 @@ class RunReplayMemory {
   }
 }
 
-/** Live previews have no replay identity and may arrive indefinitely. This is
- * the Desktop SDK's own short-burst allowance above the Runtime's advertised
- * authoritative replay count; saturation drops only previews. */
+/** Previews have no replay identity and may arrive indefinitely, so saturation drops ONLY
+ * previews. */
 export const MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS = 256;
 
-/** Low-level SDK consumers may intentionally omit discovery. That cannot turn
- * absence of a negotiated replay promise into infinite client retention: these
- * are local safety envelopes, and overflow remains observable/recoverable. */
+/** A consumer omitting discovery must not turn the absence of a negotiated replay promise
+ * into unbounded client retention. Overflow stays observable and recoverable. */
 const MAXIMUM_UNNEGOTIATED_REPLAY_IDENTITIES = 2_048;
 const MAXIMUM_UNNEGOTIATED_REPLAY_ID_BYTES = 16 * 1024 * 1024;
 
@@ -116,19 +99,14 @@ class RunEventInbox {
 class BoundRunResponse {
   constructor(private readonly rootSegmentId: string) {}
 
-  /** True once the ROOT SEGMENT has finished — ends the stream. A subagent's
-   *  segment.finished carries a different segmentId, so it never closes the tree. */
+  /** A subagent's `segment.finished` carries a different segmentId, so it never closes
+   *  the tree. */
   isRootFinish(ev: RunEvent): boolean {
     return ev.segmentId === this.rootSegmentId && ev.event.type === "segment.finished";
   }
 }
 
-// ---------------------------------------------------------------------------
-// Channel → AsyncIterable plumbing (shared by every stream below)
-// ---------------------------------------------------------------------------
-
-/** Wrap a push-pull channel as a self-cleaning AsyncIterable: `cleanup` runs
- *  once when the iterator drains (done) or the consumer breaks early. */
+/** Self-cleaning: `cleanup` runs once when the iterator drains or the consumer breaks. */
 function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
@@ -158,23 +136,16 @@ function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncI
 }
 
 interface StreamLifecycle {
-  /** Release transport registrations without discarding buffered channel values. */
+  /** Releases transport registrations WITHOUT discarding buffered channel values. */
   cleanup(): void;
-  /** Source-side successful termination. */
   close(): void;
-  /** Source-side failed termination. */
   fail(error: unknown): void;
-  /** Attach registrations after they have been created. */
   bind(unsub: () => void): void;
 }
 
-/** Own a channel's transport registrations and cancellation signal.
- *
- * Source termination must release registrations immediately, even when no
- * consumer ever asks the AsyncIterator for `done`. Binding is deliberately
- * deferred until both registrations exist; if an already-aborted signal or a
- * synchronous source callback terminates first, cleanup is remembered and
- * performed as soon as the registrations are attached. */
+/** Source termination must release registrations IMMEDIATELY, even when no consumer ever
+ * asks the iterator for `done`. Binding is deferred until both registrations exist, so a
+ * termination that arrives first is remembered and performed once they attach. */
 function createStreamLifecycle<T>(
   channel: PushPullChannel<T>,
   lifetime: StreamLifetime,
@@ -224,9 +195,8 @@ function createStreamLifecycle<T>(
 }
 
 interface StreamLifetime {
-  /** Combined caller + stream-owned signal passed to the transport request. */
   signal: AbortSignal;
-  /** End only this stream without mutating the caller-owned signal. */
+  /** Ends ONLY this stream, without mutating the caller-owned signal. */
   abort(): void;
 }
 
@@ -238,41 +208,27 @@ function createStreamLifetime(parent?: AbortSignal): StreamLifetime {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Run-event streams
-// ---------------------------------------------------------------------------
-
-/** A run-event stream plus its teardown. `dispose` exists for the case where
- *  the stream's owning call FAILS before anyone iterates `events` — without
- *  it the subscription (and, for the deferred variant, its grow-forever
- *  pre-bind buffer) leaks, since iterableOf's cleanup only runs on iteration. */
+/** `dispose` exists for the case where the owning call FAILS before anyone iterates
+ *  `events`: `iterableOf`'s cleanup only runs on iteration, so the subscription and its
+ *  pre-bind buffer would otherwise leak. */
 export interface RunEventStream {
   events: AsyncIterable<RunEvent>;
-  /** Signal owned by this stream and passed to its opening RPC request. */
   requestSignal: AbortSignal;
   dispose: () => void;
 }
 
 export interface RunEventStreamOptions {
   signal?: AbortSignal;
-  /** Exact retention window advertised by `capabilities.limits.runReplay`.
-   *  When discovery is unavailable, the SDK applies a bounded local safety
-   *  envelope without claiming a replay promise the Runtime never advertised. */
+  /** From `capabilities.limits.runReplay`. Without discovery the SDK applies a bounded
+   *  LOCAL envelope rather than claiming a replay promise the Runtime never advertised. */
   replayLimits?: RunReplayLimits;
 }
 
 /**
- * Subscribe to run events BEFORE the root segment id is known, then bind once
- * `runs.start` / `runs.resume` / `runs.subscribe` returns. Under streamable
- * HTTP the call's response and its event frames arrive on one ordered stream
- * (TRANSPORT.md §6.4), so the head events land right after the response —
- * subscribing only after the response resolves races and drops them. So we
- * subscribe immediately, bind the transport-owned request id before send, buffer
- * that response stream's events until `bind(segmentId)` supplies the
- * runtime-assigned terminal identity, then replay the buffer in response order.
- * (Every stream-opening method returns its root segmentId, so this is the single
- * run-event stream builder — a Run's runId is stable, but the segment being
- * streamed is only known from the response.)
+ * Subscribes BEFORE the root segment id is known, buffering until `bind(segmentId)` supplies
+ * the terminal identity. Under streamable HTTP the response and its event frames share ONE
+ * ordered stream (TRANSPORT.md §6.4), so head events land immediately after the response
+ * and subscribing once it resolves would drop them.
  */
 export function streamRunEvents(
   client: RpcClient,
@@ -282,13 +238,12 @@ export function streamRunEvents(
   bind: (rootSegmentId: string) => void;
 } {
   const lifetime = createStreamLifetime(options.signal);
-  // Validate and snapshot advertised budgets before transport registrations
-  // exist; a malformed SDK capability cannot leave a half-open stream behind.
+  // Validated BEFORE any transport registration exists, so a malformed capability cannot
+  // leave a half-open stream behind.
   const inbox = new RunEventInbox(options.replayLimits);
   const channel = inbox.channel;
-  // A root finish is the final event in its response stream. Until the ack
-  // supplies the root identity, retaining the latest finished segment is
-  // therefore sufficient and cannot grow with a wide subagent tree.
+  // A root finish is the final event in its response stream, so retaining only the latest
+  // finished segment is sufficient and cannot grow with a wide subagent tree.
   let latestFinishedBeforeBind: string | undefined;
   let ownerRequestRpcId: RpcId | undefined;
   let response: BoundRunResponse | null = null;
@@ -346,24 +301,16 @@ export function streamRunEvents(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Runtime event stream
-// ---------------------------------------------------------------------------
-
-/** The runtime notification stream plus its teardown (see RunEventStream).
- *  Connection-scoped and lossy: no terminal frame, no replay — the stream
- *  ends when its POST stream does, reported as a typed transport stream-end event.
- *  The consumer resubscribes and treats reconnect as `resync`. */
+/** Connection-scoped and LOSSY: no terminal frame, no replay. The stream ends when its POST
+ *  stream does, and the consumer resubscribes, treating reconnect as `resync`. */
 export interface RuntimeEventStream {
   events: AsyncIterable<RuntimeEvent>;
-  /** Signal owned by this stream and passed to its opening RPC request. */
   requestSignal: AbortSignal;
   dispose: () => void;
 }
 
-/** Connection-scoped invalidations are deliberately compact; sustained lag is
- * recovered by ending this generation and resubscribing with an explicit
- * resync, never by retaining an unbounded second invalidation log. */
+/** Deliberately small: sustained lag is recovered by ending this generation and
+ * resubscribing with an explicit resync, NEVER by retaining a second invalidation log. */
 export const MAXIMUM_BUFFERED_RUNTIME_EVENTS = 64;
 
 export function streamRuntimeEvents(

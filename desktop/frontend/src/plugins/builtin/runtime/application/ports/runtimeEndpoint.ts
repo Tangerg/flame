@@ -1,11 +1,8 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 /**
- * The application-facing source of the active Runtime endpoint.
- *
- * The port deliberately says nothing about Zustand, Host configuration or
- * persistence. Those are adapter mechanisms; the use case only needs to read
- * and replace one value.
+ * Deliberately says nothing about Zustand, Host configuration or persistence — those are
+ * adapter mechanisms, and the use case only reads and replaces one value.
  */
 export interface RuntimeEndpointConfiguration {
   read(): string | undefined;

@@ -1,10 +1,6 @@
-// An in-memory Navigator, for the two harnesses that need a location but not a
-// router: unit tests, and the visual fixtures (which render production
-// components against frozen state and would otherwise have to stand up routing
-// to photograph a dock tab).
-//
-// It keeps a real history stack, so a test can assert that going back returns
-// to where it came from — the behaviour the router-backed one exists to provide.
+// For the harnesses that need a location but not a router: unit tests and the visual
+// fixtures. It keeps a REAL history stack, so a test can assert that going back returns
+// where it came from — the behaviour the router-backed one exists to provide.
 
 import { useSyncExternalStore } from "react";
 import {

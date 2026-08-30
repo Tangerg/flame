@@ -1,7 +1,5 @@
-// grep preview — matches from the call's own result (output_mode honors
-// glob/type/context filters a re-query can't reproduce), falling back to the
-// workspace.files.search re-query. The query comes off `tool.fn` (search → query, the
-// §4.4.2 projection).
+// Prefers the call's OWN result: its output mode honours glob/type/context filters a
+// re-query cannot reproduce. The query comes off `tool.fn` per the §4.4.2 projection.
 
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";

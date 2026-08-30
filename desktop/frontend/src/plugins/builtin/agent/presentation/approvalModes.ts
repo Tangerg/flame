@@ -1,6 +1,3 @@
-// The runtime's approval stances in backend order. Labels/descriptions are i18n
-// keys resolved by consumers.
-
 import type { ApprovalMode } from "../domain/hitl";
 
 export interface ApprovalModeOption {

@@ -17,7 +17,6 @@ export function BannerAction({
   label: string;
   onClick: () => void;
   primary?: boolean;
-  /** The owning banner's severity — tints the primary variant. */
   tone?: "negative" | "warning";
   /** Inert + dimmed (e.g. a retry still counting down its backoff). */
   disabled?: boolean;

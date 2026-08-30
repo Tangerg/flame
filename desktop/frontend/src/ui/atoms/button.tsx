@@ -4,23 +4,16 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-// Every variant carries a border — transparent where there is nothing to draw.
-// Without it a bordered variant is 2px taller and 2px wider than a borderless one
-// at the same size, so an outline button and a ghost button never sit on the same
-// baseline in a toolbar. The horizontal padding is likewise 1px short of the
-// nominal step, compensating for that border so the ink lands where it would have
-// without one.
-//
-// Glyphs ride at 80%: a chrome icon should read a step behind its label. The
-// `:not([class*='opacity-'])` guard is the escape hatch — a semantic glyph (a
-// warning triangle, a status dot) sets its own opacity and keeps it.
+// Every variant carries a border, transparent where there is nothing to draw: without it
+// a bordered variant is 2px larger than a borderless one at the same size and the two never
+// share a baseline in a toolbar. Horizontal padding is 1px short of the nominal step to
+// compensate.
+// The `:not([class*='opacity-'])` guard lets a semantic glyph keep its own opacity.
 export const buttonStyles = cva(
   [
     "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap",
-    // `leading-tight`, not `leading-none`. The height comes from the size variant and
-    // the content is centred, so the line box does not move anything — but a label
-    // inside a button often truncates, and `truncate` clips vertically too, so at a
-    // line box the height of the font size the descenders were outside it.
+    // `leading-tight`, not `leading-none`: `truncate` clips vertically too, and at a line
+    // box the height of the font size the descenders fall outside it.
     "border-[length:var(--control-edge-width)] border-transparent font-sans font-medium leading-tight outline-none",
     "transition-[background-color,border-color,color,scale] duration-[var(--dur-fast)] ease-out",
     "disabled:cursor-not-allowed disabled:opacity-64 disabled:active:scale-100",
@@ -34,11 +27,6 @@ export const buttonStyles = cva(
         outline: "border-field bg-transparent text-fg-soft hover:bg-hover hover:text-fg",
         primary: "bg-cta text-cta-text hover:bg-cta-hover",
         danger: "bg-transparent text-negative hover:bg-negative-wash",
-        // A filled action in the tone of what it acts on — the emphasis button
-        // on a banner. Rests at the wash and lifts to the chip weight on hover,
-        // the same two steps every other tonal surface takes; `tone` picks which
-        // pair. The classes are the library's vocabulary: a banner had been
-        // spelling them itself, at its own third alpha.
         tonal: "font-semibold",
       },
       /** Only read by `variant: "tonal"`. */

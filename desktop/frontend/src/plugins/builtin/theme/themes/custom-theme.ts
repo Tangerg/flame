@@ -1,16 +1,8 @@
-// Built-in plugin: the user-editable "Custom" theme.
+// Three base colours; the full palette is DERIVED with CSS `color-mix()` so the browser
+// resolves the ladders against bg/fg at paint time rather than hand-computing hexes.
 //
-// A custom theme is just three base colors (accent / bg / fg, in
-// uiStore.customTheme). The full palette — surface + ink + border ladders,
-// semantic colors — is DERIVED here so the user only ever touches three
-// pickers (the Codex/Linear model). Derivation uses CSS `color-mix()` for
-// the ladders (the browser resolves them against bg/fg at paint time), so we
-// don't hand-compute 15 hex values; `scheme` is inferred from bg luminance.
-//
-// The theme registers under id "custom" like any other, so the picker,
-// scheme resolution, and applyTheme treat it uniformly. It re-registers on
-// every customTheme change → the registry mutates → uiStore re-applies it →
-// live preview while dragging the pickers.
+// Registers under id "custom" like any other theme, and RE-registers on every change —
+// that mutation is what gives live preview while dragging the pickers.
 
 import { colord } from "colord";
 import type { Scheme } from "@/lib/appearance";

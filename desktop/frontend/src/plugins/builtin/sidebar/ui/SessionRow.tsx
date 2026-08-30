@@ -9,7 +9,6 @@ import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex"
 interface Props {
   session: WorkSession;
   active: boolean;
-  /** Nested under a project header, so its label aligns with the folder's. */
   indented?: boolean;
   /**
    * Trailing timestamp. On by default and off inside a project, where the group
@@ -17,24 +16,16 @@ interface Props {
    */
   showTime?: boolean;
   onSelect: (id: string) => void;
-  /** When set, right-click reveals a Rename action (inline title edit). */
   onRename?: (id: string, expectedRevision: number, title: string) => void;
-  /** When set, right-click reveals a Fork action (whole-session copy). */
   onFork?: (id: string) => void;
-  /** When set, right-click reveals a Delete action. */
   onDelete?: (id: string) => void;
-  /** When set, right-click reveals a Pin / Unpin action (favorite toggle). */
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
 }
 
-// Session row — sidebar list item.
-//
-// One line. The title is what you scan for, and the trailing slot answers ONE
-// question at a time: a session that needs you says so, and a session that
-// doesn't falls back to when it last moved. Stacking both (which is what the
-// two-line version did) spent a third of the column's height restating an order
-// the list is already sorted in. Accent stays reserved for live state,
-// selection is the soft fill.
+// One line, and the trailing slot answers ONE question at a time: a session that needs you
+// says so, otherwise it shows when it last moved. Stacking both spends a third of the
+// column restating the order the list is already sorted in. Accent stays reserved for live
+// state; selection is the soft fill.
 export function SessionRow({
   session,
   active,

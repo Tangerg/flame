@@ -4,7 +4,6 @@ import { Divider, Icon } from "@/ui";
 // do not share it: Codex gives approvals a larger, role-specific request surface
 // whose identity, material and scoped actions form a different hierarchy.
 
-/** Settled "done" row — shared by approval (approved) + question (answered). */
 export function HitlSettledRow({ label }: { label: string }) {
   return (
     <Divider icon={<Icon name="check" size="xs" />} intent="accent">

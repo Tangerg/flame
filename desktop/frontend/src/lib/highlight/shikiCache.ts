@@ -1,14 +1,6 @@
-// LRU cache for Shiki-highlighted HTML.
-//
-// Streamdown's block-level memo means completed code blocks rarely
-// re-render — but they DO re-mount on scroll-away/back, theme toggle,
-// and when the parent MarkdownBlock's memo key invalidates in long
-// histories. Each re-mount would re-run the tokenizer (~3-10ms) without
-// a cache.
-//
-// Bounded so a long session can't grow the map unboundedly; `quick-lru`
-// gives real LRU eviction (get/set both refresh recency) in a tiny ESM
-// package.
+// Completed code blocks rarely re-render, but they DO re-mount on scroll-away/back, theme
+// toggle, and memo-key invalidation in long histories — each re-mount re-runs the tokenizer
+// at ~3-10ms. Bounded so a long session cannot grow the map without limit.
 
 import QuickLRU from "quick-lru";
 

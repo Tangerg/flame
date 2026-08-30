@@ -11,7 +11,6 @@ import type {
 import { selectCurrentRootRun } from "../view/runTree";
 import { reduceAgentEvent } from "./reducer";
 
-/** The accounting of a run that has reported none. */
 export const noMetrics: RunMetrics = {
   steps: 0,
   activeDurationMillis: 0,
@@ -92,11 +91,8 @@ export function foldTestEvent(
 }
 
 /**
- * runFinished builds a `segment.finished` frame.
- *
- * Every reducer suite needs one and they all needed the same one, so it lives
- * here: metrics ride the frame beside the outcome now, and eight copies of the
- * builder is eight places to remember that.
+ * Metrics ride the `segment.finished` frame beside the outcome, and a per-suite copy of this
+ * builder is one more place to remember that.
  */
 export const runFinished = (
   outcome: SegmentOutcome,

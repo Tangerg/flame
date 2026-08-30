@@ -1,12 +1,7 @@
-// Completion chime — a soft two-note arpeggio synthesized via Web Audio, the
-// optional audible companion to the OS completion notification (lib/osNotify).
-// No audio asset: two short sine envelopes, so there's nothing to bundle or
-// decode. The CALLER owns the gate (toggle + focus) exactly like osNotify.
-//
-// A single AudioContext is created lazily and reused. Browsers start it
-// "suspended" until a user gesture, but by run-completion the user has already
-// clicked send, so resume() succeeds; if it's somehow still suspended the notes
-// just don't sound (no error surfaces).
+// Synthesized rather than an audio asset so there is nothing to bundle or decode. The
+// CALLER owns the gate (toggle + focus), like osNotify. Browsers start an AudioContext
+// suspended until a user gesture, but by run-completion the user has already clicked send;
+// if it is somehow still suspended the notes silently don't sound.
 
 let ctx: AudioContext | null = null;
 
@@ -16,16 +11,14 @@ function audioContext(): AudioContext | null {
   return ctx;
 }
 
-// playCompletionChime plays one soft two-note chime when Web Audio is
-// available; otherwise a no-op.
 export function playCompletionChime(): void {
   const ac = audioContext();
   if (!ac) return;
   void ac.resume();
 
   const now = ac.currentTime;
-  // E5 then B5 — a gentle rising fifth. Each note is a sine with a fast attack
-  // and exponential decay so it reads as a chime, not a beep.
+  // A rising fifth, each note a sine with fast attack and exponential decay so it reads as
+  // a chime rather than a beep.
   [659.25, 987.77].forEach((freq, i) => {
     const osc = ac.createOscillator();
     const gain = ac.createGain();

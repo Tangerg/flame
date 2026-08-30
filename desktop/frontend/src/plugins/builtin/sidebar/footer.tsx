@@ -1,5 +1,3 @@
-// Sidebar footer — pinned at the bottom of the expanded Work Index so global
-// status and settings stay reachable regardless of list length.
 import { AnimatePresence, motion } from "motion/react";
 import { AgentRow, AgentWorkIndexFooter } from "@/ui/agent";
 import { Button, Icon } from "@/ui";

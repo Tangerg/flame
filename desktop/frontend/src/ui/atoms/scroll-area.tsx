@@ -6,33 +6,16 @@ interface Props {
   style?: CSSProperties;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
-  /**
-   * Hide the scrollbar chrome while keeping the area scrollable.
-   * Use on dense surfaces (sidebar lists) where macOS WebKit's
-   * default overlay thumb visually crowds row content (e.g. time
-   * badges that sit at the right edge). Users can still scroll via
-   * trackpad / mouse wheel; the visual cue is the natural content
-   * cutoff at the top/bottom of the column.
-   */
+  /** For dense surfaces where WebKit's overlay thumb crowds row content. */
   hideScrollbar?: boolean;
 }
 
-// Vertical scroll container with our project-wide scrollbar styling.
-// Native scrollbar — a headless scroll-area primitive would add virtual track overhead
-// for no real benefit on the surfaces we use this on (Settings rail,
-// workspace view bodies, etc.).
-//
-// Reuses the `.panel-scroll` class so the WebKit thumb (10px wide,
-// inset via `background-clip: content-box`) gets its own layout column.
-// Pass `hideScrollbar` to suppress the chrome entirely on surfaces
-// where a visible thumb fights with row content.
+// Native scrollbar rather than a headless scroll-area primitive: virtual track overhead
+// buys nothing on the surfaces this is used on.
 export function ScrollArea({ className, style, children, hideScrollbar, ref }: Props) {
-  // When `hideScrollbar` is set we deliberately drop the `.panel-scroll`
-  // class — its `::-webkit-scrollbar { width: 10px }` rule is defined
-  // in globals.css, which comes after Tailwind utilities in the cascade
-  // and would otherwise override `[&::-webkit-scrollbar]:hidden` (both
-  // selectors have identical specificity; source order wins). Using
-  // utility-only layout sidesteps the conflict.
+  // `hideScrollbar` DROPS `.panel-scroll` rather than layering on it: that class's
+  // `::-webkit-scrollbar { width: 10px }` lives in globals.css, which comes after Tailwind
+  // utilities in the cascade, and at equal specificity source order wins.
   return (
     <div
       ref={ref}

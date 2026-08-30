@@ -1,15 +1,7 @@
-// The SDK's capability preflight.
-//
-// API.md §9 and contract §11.1 name three consumers of the capability rules — the
-// dispatcher that enforces them, discovery that advertises them, and this — and
-// forbid any of them keeping a second switch. The rules themselves are therefore
-// read from the generated table, not restated; what lives here is how a rule's
-// condition is evaluated, which mirrors the runtime's own matcher.
-//
-// It refuses ONLY what the server has already said it cannot do. With no
-// negotiated snapshot — before discovery, or on a build where nothing installed
-// one — every call goes out and the runtime stays authoritative: a client guessing
-// "probably unsupported" would take away a feature the server offers.
+// The rules are READ from the generated table, never restated — API.md §9 forbids a second
+// switch. Refuses only what the server has already said it cannot do: with no negotiated
+// snapshot every call goes out and the runtime stays authoritative, because a client
+// guessing "probably unsupported" takes away a feature the server offers.
 
 import type { ClientCapabilities, ServerCapabilities } from "@flame/runtime-contract/wire";
 import {
@@ -62,7 +54,6 @@ function matches(condition: WireCapabilityCondition, params: unknown): boolean {
   return value !== undefined && !isEmpty(value);
 }
 
-/** Walks a dotted field path through the request. */
 function lookup(params: unknown, path: string): unknown {
   let value = params;
   for (const segment of path.split(".")) {

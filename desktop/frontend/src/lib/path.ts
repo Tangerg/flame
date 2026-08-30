@@ -9,11 +9,8 @@ export function basename(path: string): string {
 }
 
 /**
- * A path split for a two-line row: the name you scan for, and the directory you
- * check once you have found it.
- *
- * `directory` is "" for a path with no separator, which is the signal for "no second
- * line" — an empty one would reserve the height and say nothing.
+ * A path split for a two-line row. `directory` is "" for a path with no separator, which is
+ * the signal for "no second line" — an empty one reserves the height and says nothing.
  */
 export function splitFilePath(path: string): { directory: string; name: string } {
   const cut = path.replace(/\/+$/, "").lastIndexOf("/");

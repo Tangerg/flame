@@ -1,16 +1,7 @@
-// Built-in plugin: "Inbox" workspace view — everything, in every session, that
-// is waiting on a person.
-//
-// The sidebar puts a dot on a waiting session, which answers "is this one
-// blocked". It does not answer "what is waiting on me", and an approval card
-// that has scrolled out of its own transcript answers nothing at all: with
-// several sessions open, the only way to find the blocked ones was to hunt dots.
-//
-// Rows are the runtime's own order (longest wait first) and a row IS a
-// destination — clicking it opens that session, which is where the ask is
-// answered. Deliberately NOT a place to approve from: a decision needs the
-// transcript around it, and a queue that let you approve blind would be a queue
-// that made approving-without-reading the fast path.
+// Rows keep the runtime's own order (longest wait first) and a row is a DESTINATION:
+// clicking it opens the session. Deliberately NOT a place to approve from — a decision
+// needs the transcript around it, and approving from a queue makes
+// approving-without-reading the fast path.
 
 import type { PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";

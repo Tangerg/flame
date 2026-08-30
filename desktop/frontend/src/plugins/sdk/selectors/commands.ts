@@ -1,17 +1,12 @@
-// Command surface with real logic: imperative execution plus slash-command key
-// pairing and owner attribution. Plain reads (a single command / shortcut by id)
-// go through the generic substrate: `lookupExtensionByKey(COMMAND, id)`,
-// `useExtensionPoint(SHORTCUT)`, etc.
+// Only the reads with real logic — imperative execution, slash-command key pairing, owner
+// attribution. A plain read goes through the generic substrate.
 
 import { useMemo } from "react";
 import type { SlashCommandSpec } from "../types";
 import { COMMAND, SLASH_COMMAND } from "../kernelPoints";
 import { lookupExtensionByKey, lookupExtensionOwner, useExtensionEntries } from "./extensions";
 
-/**
- * Run a command by id — the imperative cross-plugin call. Warns and no-ops when
- * nothing matches; args forward to the command's `run`.
- */
+/** Warns and no-ops when nothing matches. */
 export function executeCommand(id: string, ...args: unknown[]): Promise<void> {
   const command = lookupExtensionByKey(COMMAND, id);
   if (!command) {
@@ -29,7 +24,6 @@ export function useSlashCommands(): Array<{ cmd: string; spec: SlashCommandSpec 
   return useMemo(() => entries.map((entry) => ({ cmd: entry.key, spec: entry.item })), [entries]);
 }
 
-/** Owner plugin of a slash command — used for error attribution when one throws. */
 export function lookupSlashCommandOwner(cmd: string): string | undefined {
   return lookupExtensionOwner(SLASH_COMMAND, cmd);
 }

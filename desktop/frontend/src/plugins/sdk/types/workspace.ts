@@ -1,77 +1,48 @@
-// Workspace + layout + routes + settings panes — every "surface a
-// component" plugin contribution that isn't already covered by a more
-// specific file (composer, sidebar, message).
-
 import type { ComponentType } from "react";
 
 export interface SettingsPaneSpec {
-  /** Stable id used as the rail key + storage namespace if needed. */
   id: string;
-  /** Sidebar label. */
+  /** A catalog key resolved at RENDER time, not a literal. */
   label: string;
-  /** Optional pane summary rendered by the settings shell below the title.
-   *  Like `label`, this is a catalog key resolved at render time. */
+  /** A catalog key, like `label`. */
   description?: string;
-  /** Optional icon name (any `IconName` the host exposes). */
   icon?: string;
-  /** Sort hint — lower comes first. Built-ins use 0..99; plugins ≥ 100. */
+  /** Lower comes first. Built-ins use 0..99; plugins ≥ 100. */
   order?: number;
-  /** Group the pane sorts under in the settings rail (a group id the
-   *  SettingsPage knows: general / models / agent / integrations / advanced).
-   *  Omitted / unknown falls into the trailing group, so nothing is dropped. */
+  /** An omitted or unknown group falls into the trailing group, so nothing is dropped. */
   group?: string;
-  /** The pane content. Receives no props in v1. */
   component: ComponentType;
 }
 
 /**
- * A plugin-contributed view that participates in the workspace layout.
- * Unlike `LayoutSlotSpec`, a workspace view doesn't pick a position — the
- * user does (open, close, switch tabs). The kernel only needs `id` +
- * the component; everything else is a hint.
+ * Unlike `LayoutSlotSpec`, a workspace view does not pick its position — the user does. The
+ * kernel needs only `id` and the component; everything else is a hint.
  */
 export interface WorkspaceViewSpec {
-  /** Stable id — used as the layout persistence key. */
+  /** The layout PERSISTENCE key: renaming one strands a saved layout. */
   id: string;
-  /** Tab title shown in the panel header — a catalog key, resolved where the tab
-   *  renders. A key the catalog doesn't have renders as itself, which is how a
-   *  file view passes a filename.
+  /** A catalog key resolved where the tab renders. A key the catalog does not have renders
+   *  as itself, which is how a file view passes a filename.
    *  (See `CommandSpec.label`: a contribution outlives the moment it is made, and
    *  nothing re-registers on a language switch.) */
   title: string;
-  /** Icon name for the tab header. */
   icon?: string;
-  /**
-   * A live count for the tab — "2" changed files, "3/5" plan steps.
-   *
-   * A component rather than a value because only the view knows where its own
-   * number comes from, and the tab strip must not subscribe to every view's data
-   * just to label it. Keep it to a few characters: this renders inside a 28px
-   * tab beside a truncating title.
-   */
+  /** A COMPONENT, not a value: only the view knows where its number comes from, and the
+   *  tab strip must not subscribe to every view's data just to label it. A few characters
+   *  at most — it renders inside a 28px tab beside a truncating title. */
   badge?: ComponentType;
-  /** Sort hint within the default location. Lower comes first. */
+  /** Lower comes first. */
   order?: number;
-  /**
-   * May this view sit BESIDE the chat stream (resizable split), not just replace
-   * it?
-   *
-   * Required in practice for anything a user can reach: every Context Dock
-   * destination opens in the dock, so a view that cannot live there is a one-way
-   * trip with no way back (see dockDestinations.test).
-   */
+  /** Required in practice for anything a user can reach: every Context Dock destination
+   *  opens in the dock, so a view that cannot live there is a one-way trip. */
   splittable?: boolean;
-  /** The body component. Receives no props. */
   component: ComponentType;
 }
 
 export type ContextDockDestinationScope = "workspace" | "session" | "run";
 
-// A dock destination references a WorkspaceViewSpec by id — the view owns the
-// title / icon / component (single source of truth), so this spec carries no
-// metadata of its own. It only declares which view appears in the Context Dock
-// and under which scope; placement is implied by the CONTEXT_DOCK_DESTINATION
-// extension point itself (everything here lands in the dock).
+// Carries NO metadata of its own: the referenced WorkspaceViewSpec owns title, icon and
+// component, and placement is implied by the extension point itself.
 export interface ContextDockDestinationSpec {
   viewId: string;
   scope: ContextDockDestinationScope;
@@ -79,42 +50,25 @@ export interface ContextDockDestinationSpec {
 }
 
 /**
- * Plugin-contributed kernel region.
- *
- * The kernel renders `<Slot name="..."/>` for each region (sidebar, main,
- * statusbar, overlay). Plugins fill regions by registering a component +
- * sort hint. Most regions are conceptually singletons (sidebar / main)
- * but the registry allows multiple contributions so power users can
- * stack overlays without forking the kernel.
- *
- * The component receives no props — slot consumers read from app stores
- * (Zustand) and react-query hooks directly. That keeps the registration
- * descriptor flat and prevents the kernel from having to thread N props
- * down to N plugins.
+ * Most regions are conceptually singletons, but multiple contributions are allowed so
+ * overlays can stack without forking the kernel. The component receives NO props — slot
+ * consumers read stores and query hooks directly, so the kernel threads nothing down.
  */
 export interface LayoutSlotSpec {
-  /** Stable id — multiple registrations to the same slot use this to dedupe. */
+  /** Multiple registrations to the same slot dedupe on this. */
   id: string;
-  /** Sort hint — lower comes first. Built-ins use 0..99; plugins ≥ 100. */
+  /** Lower comes first. Built-ins use 0..99; plugins ≥ 100. */
   order?: number;
-  /** Optional className applied to the wrapper div around `component`. */
   className?: string;
-  /** Component that renders the region. Receives no props. */
   component: ComponentType;
 }
 
-/**
- * A top-level route — registers a path → component pair. The router is
- * rebuilt from the registry at AppRouter mount time, so additions take
- * effect on next reload (or by calling `rebuildRouter()` from the host).
- */
+/** The router is rebuilt from the registry at AppRouter mount, so additions take effect on
+ *  the next reload or an explicit `rebuildRouter()`. */
 export interface RouteSpec {
-  /** Stable id — used as the TanStack route id. */
   id: string;
-  /** URL path (TanStack syntax, e.g. "/", "/runs/$runId"). */
   path: string;
-  /** Page component. */
   component: ComponentType;
-  /** Sort hint — does not affect matching, only listing order. */
+  /** Listing order only; does not affect matching. */
   order?: number;
 }

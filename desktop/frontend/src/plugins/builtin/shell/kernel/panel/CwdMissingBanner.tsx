@@ -1,11 +1,7 @@
-// CwdMissingBanner — surfaces the cwdMissing degrade state (API.md §4.1):
-// the session's working directory is gone from disk, so the runtime degrades
-// the agent to plain chat (no filesystem tools) until the folder comes back
-// or the session is relocated. The relocate entry (sessions.update cwd) is
-// gated on features.relocate; without it the banner is informational only.
-//
-// Sits with RunErrorBanner above the message stream. Warning-toned, not
-// negative: the session still works, just degraded.
+// The cwdMissing degrade state (API.md §4.1): the runtime drops the agent to plain chat
+// until the folder returns or the session is relocated. Relocate is gated on
+// `features.relocate`; without it the banner is informational only. Warning-toned rather
+// than negative — the session still works, just degraded.
 
 import { useRef, useState } from "react";
 import { SystemMessage, TextField } from "@/ui";

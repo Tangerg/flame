@@ -3,11 +3,7 @@ import { ProgressPrimitive } from "@/ui/primitives";
 
 interface ProgressBarProps {
   value: number;
-  /**
-   * What is at this percentage. Required, because a bar is a `progressbar` and a
-   * progressbar with no name is announced as a bare number. Each caller already
-   * displays the answer beside the bar.
-   */
+  /** Required: a `progressbar` with no name is announced as a bare number. */
   label: string;
   className?: string;
   indicatorClassName?: string;

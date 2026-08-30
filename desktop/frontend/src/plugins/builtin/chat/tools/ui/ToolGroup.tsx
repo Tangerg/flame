@@ -15,16 +15,9 @@ interface Props {
   superseded?: boolean;
 }
 
-/**
- * A run of adjacent read-only tool calls, folded into one collapsible summary
- * row so a long agent turn stays scannable. Auto-expands while any child is
- * still running or has errored, then settles closed once they finish — unless
- * the user has pinned it open or closed.
- *
- * The `line` shell is a summary row with indented children and no enclosing card.
- * Its children are read-only calls, so they
- * are lines too — a card around a stack of lines would put the weight back.
- */
+// Auto-expands while any child is running or errored, then settles closed — unless the user
+// has pinned it. Takes the `line` shell because its children are lines too, and a card
+// around a stack of lines puts the weight back.
 export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, superseded }: Props) {
   const [pinned, setPinned] = useState<ToolGroupPinnedState>(null);
   const t = useT();

@@ -1,6 +1,4 @@
-// file preview — read. Reads its query off `tool.fn` (the §4.4.2 projection
-// bakes read → path into the display name; see agent fold toolLabel), then
-// fetches the lines via useFileToolPreview against the active session's cwd.
+// Reads its query off `tool.fn`, into which the §4.4.2 projection bakes the path.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";

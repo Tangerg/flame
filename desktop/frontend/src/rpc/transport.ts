@@ -1,12 +1,6 @@
-// Transport interface — request output plus typed inbound transport events.
-// See runtime/doc/TRANSPORT.md §2. Implementations: transports/http.ts (Web /
-// future facade), transports/memory.ts (tests).
-//
-// Send() is fire-and-forget: it returns when the message has been
-// handed off, not when the peer has processed it. Recv() returns a
-// channel-like AsyncIterable that yields inbound messages and transport lifecycle
-// events until close.
-// Response correlation by `id` is the RpcClient's job, not Transport's.
+// TRANSPORT.md §2. `send()` is fire-and-forget — it returns once the message is handed off,
+// not once the peer processed it — and `recv()` yields inbound messages plus transport
+// lifecycle events until close. Correlating responses by `id` is the RpcClient's job.
 
 import type { RpcId, RpcMessage, RpcRequest } from "./types";
 import type { WireMethodName, WireStreamingMethodName } from "@flame/runtime-contract/methods";
@@ -16,9 +10,7 @@ export const RUNTIME_SUBSCRIBE_METHOD = "runtime.subscribe" satisfies WireMethod
 
 export type TransportRequest = Omit<RpcRequest, "method"> & { method: WireMethodName };
 
-/** Typed response metadata carried outside the JSON-RPC envelope. */
 export interface TransportResponseMetadata {
-  /** Runtime-generated HTTP Request-Id used to correlate logs and traces. */
   requestId?: string;
 }
 
@@ -26,7 +18,6 @@ export type TransportEvent =
   | {
       type: "message";
       message: RpcMessage;
-      /** Outbound JSON-RPC request whose response stream carried this frame. */
       requestRpcId: RpcId;
       metadata?: TransportResponseMetadata;
     }
@@ -34,7 +25,6 @@ export type TransportEvent =
   | {
       type: "streamEnd";
       method: WireStreamingMethodName;
-      /** Outbound JSON-RPC request that owned the ended response stream. */
       requestRpcId: RpcId;
       error?: Error;
       metadata?: TransportResponseMetadata;
@@ -49,7 +39,6 @@ export interface Transport {
    * — RpcClient is the sole consumer.
    */
   recv(): AsyncIterable<TransportEvent>;
-  /** Tear down the transport — abort any pending send, close recv stream. */
   close(): Promise<void>;
 }
 

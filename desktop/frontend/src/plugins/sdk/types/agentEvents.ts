@@ -10,7 +10,6 @@ import type {
   AgentPlan,
 } from "./agentSessionView";
 
-/** Product-owned message input observed from an Agent run. */
 export type AgentMessagePart =
   { type: "text"; text: string } | { type: "image"; data: string; mime: string };
 
@@ -109,7 +108,6 @@ export type AgentItemDelta =
   | { type: "toolArguments"; argumentsTextDelta: string }
   | { type: "toolOutput"; text: string };
 
-/** Complete durable or event-carried Run fact after transport validation. */
 export interface AgentRunFact {
   id: string;
   sessionId: string;
@@ -166,7 +164,6 @@ export type AgentStreamEvent =
   | { type: "item.completed"; item: AgentItem }
   | { type: "plan.updated"; plan: AgentPlan };
 
-/** Provenance that every live Agent fact carries independent of transport. */
 export interface AgentEventEnvelope {
   event: AgentStreamEvent;
   eventId: string;

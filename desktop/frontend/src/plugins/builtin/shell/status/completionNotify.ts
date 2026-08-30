@@ -1,16 +1,8 @@
-// Built-in plugin: focus-gated run-completion notifications.
+// Fires only while the window is UNFOCUSED: with the window focused the stream itself is
+// the signal.
 //
-// When a current root makes an exact Running/Waiting → Waiting/Finished
-// transition while the app window is UNFOCUSED, fire one OS notification so a
-// user who tabbed away learns whether the turn needs input, completed, failed,
-// was canceled, or reached a limit. Never fires while focused (the stream
-// itself is the signal) — the universal focus-gate pattern.
-//
-// Implemented as a module-level store subscription (app-lifetime side effect,
-// disposeOnHmr-guarded against dev hot-reload stacking duplicates — the same
-// pattern as other app-lifetime bridges). The plugin entry exists so the bridge
-// joins the builtin manifest and primes notification permission at load (while
-// the window is focused, so the prompt is allowed).
+// The plugin entry exists so the bridge joins the builtin manifest and primes notification
+// permission AT LOAD, while the window is focused and the prompt is allowed.
 
 import { playCompletionChime } from "./chime";
 import { disposeOnHmr } from "@/lib/hmr";

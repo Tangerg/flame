@@ -5,11 +5,9 @@ import { agentRuntime } from "../ports/runtimeGateway";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner } from "../agentCommandOwner";
 
-/** Relocate a session (sessions.update cwd — features.relocate gated,
- *  API.md §7.2). Refreshing session summaries also re-points the git-state
- *  watch: the workspace-events plugin follows the sessions cache, so the
- *  new cwd propagates without a tab switch. Returns whether it stuck —
- *  the banner keeps its input open on failure. */
+/** Gated on `features.relocate` (API.md §7.2). Refreshing session summaries also re-points
+ *  the git-state watch, since the workspace-events plugin follows the sessions cache — so
+ *  the new cwd propagates without a tab switch. Returns whether it stuck. */
 export function useRelocateSession(): (
   id: string,
   expectedRevision: number,

@@ -1,11 +1,6 @@
-// Tool activity — one agent tool invocation as a disclosure in the Narrative's
-// shared activity grammar. Expands inline to the plugin-contributed preview (or the
-// ToolInspector fallback); selected state drives the inspector pane through the
-// workspace navigation wiring.
-//
-// Which shell and tone the row wears are the MODEL's answers, not this component's.
-// Every invocation stays on the same transparent Codex work-narrative plane; the
-// disclosed terminal, diff or structured result is the material surface.
+// Which shell and tone the row wears are the MODEL's answers, not this component's. Every
+// invocation stays on the same transparent work-narrative plane; the disclosed terminal,
+// diff or structured result is the material surface.
 import type { IconName } from "@/ui";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { DiffStat, IconButton, StatusDot } from "@/ui";

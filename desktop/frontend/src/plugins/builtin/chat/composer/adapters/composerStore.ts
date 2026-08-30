@@ -21,91 +21,62 @@ import {
 } from "../domain/draftArchive";
 import { parsePersistedComposerDrafts, persistedComposerDrafts } from "./persistedDrafts";
 
-// Store adapter for the composer draft read model.
-
-/** One conversation's unsent composer content, kept PER SESSION so switching
- *  tabs never shows — or clobbers — another conversation's half-written
- *  message. Only `value` (text) is durable; staged images + pastes are
- *  transient (meant to be sent immediately, and heavy), so they're dropped on
- *  reload. */
+// Drafts are kept PER SESSION so switching tabs never shows — or clobbers — another
+// conversation's half-written message. Only `value` is durable; staged images and pastes
+// are heavy and meant to be sent immediately, so they are dropped on reload.
 
 interface ComposerState {
-  // value/images/pastes MIRROR the active session's draft so existing selectors
-  // (`useComposerStore(s => s.value)`) keep working unchanged; `drafts` is the
-  // per-session archive, swapped into the mirror by loadSession on the
-  // active-session edge.
+  // MIRROR the active session's draft so plain selectors keep working; `drafts` is the
+  // per-session archive, swapped into the mirror by `loadSession`.
   value: string;
   images: ComposerImage[];
   pastes: PastedText[];
-  // modelPreference is a GLOBAL in-process preference — an explicit pick
-  // carries across sessions (it's not per-conversation work), so they stay
-  // top-level and unmirrored. On a cold start the active durable Session owns
-  // the fallback; the catalog owns it only on the no-session welcome surface.
+  // GLOBAL, not mirrored: an explicit model pick is not per-conversation work and carries
+  // across sessions.
   modelPreference: ComposerModelPreference;
-  /** Per-session draft archive, keyed by sessionId ("" = the no-session scratch
-   *  draft on the welcome screen). */
+  /** Keyed by sessionId; "" is the no-session scratch draft on the welcome screen. */
   drafts: ComposerDraftArchive;
-  /** The session id `value`/`images` currently mirror. */
   activeSid: string;
-  /** Per-session sent-message history (newest last, capped) for ↑/↓ recall.
-   *  In-memory only — the transcript already survives reload; this is just the
-   *  shell-style input ring for the current app session. */
+  /** In-memory only — the transcript already survives reload; this is the input ring. */
   history: ComposerHistoryArchive;
-  /** Recall cursor into the active session's history: -1 = not navigating, 0 =
-   *  most recent, 1 = next older … Reset whenever the user types or switches. */
+  /** -1 = not navigating, 0 = most recent, 1 = next older … */
   histIndex: number;
-  /** The in-progress text saved when history recall began, so stepping back
-   *  past the newest entry (↓) restores what was being typed. */
+  /** Saved when recall begins, so stepping past the newest entry restores it. */
   histDraft: string;
 }
 
 interface ComposerActions {
   setValue: (v: string) => void;
   setModel: (preference: ComposerModelPreference) => void;
-  /** Wipe the active session's text + every staged image (one call per submit). */
   clear: () => void;
-  /** Stage one or more already-decoded images (ids auto-assigned). */
   addImages: (imgs: Omit<ComposerImage, "id">[]) => void;
-  /** Read raw image Files (paste / drop / file-picker) to base64 and stage
-   *  them — the File-ingesting counterpart to `addImages`. Fire-and-forget;
-   *  per-file tolerant; dropped entirely if the composer is cleared/submitted
-   *  OR the active session switches mid-decode, so a late image can't leak into
-   *  the next message or another conversation's draft. */
+  /** Fire-and-forget and per-file tolerant. Dropped entirely if the composer is cleared or
+   *  the active session switches mid-decode, so a late image cannot leak into the next
+   *  message or another conversation's draft. */
   addImageFiles: (files: File[]) => void;
   removeImage: (id: string) => void;
-  /** Stash a large pasted blob as a removable attachment chip, kept out of the
-   *  textarea and re-inlined into the message on send (T2.3, large-paste). */
+  /** Keeps a large blob out of the textarea; re-inlined into the message on send. */
   addPaste: (text: string) => void;
   removePaste: (id: string) => void;
-  /** Swap the mirrored draft to session `sid` — driven by the active-session
-   *  subscription below. Mutations keep drafts[activeSid] current, so this only
-   *  loads the target (nothing to archive). */
+  /** Mutations keep `drafts[activeSid]` current, so this only LOADS the target. */
   loadSession: (sid: string) => void;
-  /** Drop drafts whose session tab closed (mirrors agentStore's view prune) so
-   *  the archive can't grow unbounded; the scratch ("") + active draft survive. */
+  /** Bounds the archive when a session tab closes; the scratch and active drafts survive. */
   pruneDrafts: (liveSids: Set<string>) => void;
-  /** Record a submitted message in the active session's recall history. */
   pushHistory: (text: string) => void;
-  /** Step to the previous (older) history entry, saving the in-progress draft on
-   *  the first step. Returns false when there's no history to recall (so the key
-   *  falls through to normal cursor movement). */
+  /** False when there is no history to recall, so the key falls through to cursor movement. */
   historyPrev: () => boolean;
-  /** Step to the next (newer) entry, restoring the saved draft past the newest.
-   *  Returns false when not currently navigating history. */
+  /** False when not currently navigating history. */
   historyNext: () => boolean;
 }
 
-// Per-session recall ring depth — enough to step back through a working
-// session, bounded so it can't grow without limit.
 const HISTORY_CAP = 50;
 
 export const useComposerStore = create<ComposerState & ComposerActions>()(
   persist(
     (set, get) => {
-      // Replaced on every clear() (i.e. every submit). addImageFiles captures it
-      // when its decode starts and drops the result if it advanced — so an
-      // image still decoding when the user submits is discarded rather than
-      // leaking into the NEXT message.
+      // Replaced on every clear(). `addImageFiles` captures it when its decode starts and
+      // drops the result if it advanced, so an image still decoding at submit time is
+      // discarded rather than leaking into the NEXT message.
       let stagingLease: object = {};
       return {
         value: "",
@@ -117,7 +88,6 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         history: {},
         histIndex: -1,
         histDraft: "",
-        // Editing (and clearing) exits history-recall mode (histIndex: -1).
         setValue: (value) => set((s) => ({ ...mirrorComposerDraft(s, { value }), histIndex: -1 })),
         setModel: (modelPreference) => set({ modelPreference }),
         clear: () => {
@@ -133,13 +103,11 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         addImageFiles: (files) => {
           const lease = stagingLease;
           const sid = get().activeSid;
-          // allSettled, not all: one unreadable file must not discard the whole
-          // batch, and the chain must never reject (no global rejection handler).
+          // `allSettled`, not `all`: one unreadable file must not discard the batch, and
+          // the chain must never reject (there is no global rejection handler).
           void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
-            // Discard if the composer was cleared/submitted (lease replaced) OR the
-            // active session changed during decode — a late image must leak
-            // neither into the next message NOR into another conversation's
-            // draft (addImages writes the CURRENT activeSid's mirror).
+            // `addImages` writes the CURRENT activeSid's mirror, so a stale lease or a
+            // switched session must drop the result entirely.
             if (lease !== stagingLease || get().activeSid !== sid) return;
             const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
             if (ok.length > 0) get().addImages(ok);
@@ -205,9 +173,8 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
       storage: createJSONStorage(() => localStorage),
       version: 1,
       migrate: discardOlderVersions,
-      // Persist text-only drafts. value/images/modelPreference are NOT persisted:
-      // value/images rehydrate from drafts via the cold-start loadSession below,
-      // images are transient; model fallback comes from the active Session.
+      // Text-only: `value` rehydrates from `drafts` via the cold-start loadSession below,
+      // images are transient, and the model fallback comes from the active Session.
       partialize: (s) => ({ drafts: persistedComposerDrafts(s.drafts) }),
       merge: (persisted, current) => {
         const drafts = parsePersistedComposerDrafts(persisted);

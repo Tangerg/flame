@@ -1,7 +1,6 @@
 import { SidebarExpanded } from "./SidebarExpanded";
 
-// The work-index sidebar. There is no collapsed "rail" variant — collapsing
-// hides the sidebar entirely (the shell drops the column), Codex-style.
+// There is no collapsed "rail" variant — collapsing drops the column entirely.
 export function SidebarPanel() {
   return <SidebarExpanded />;
 }

@@ -11,13 +11,10 @@ import { LOCALE } from "@/plugins/sdk/kernelPoints";
 import { activeLocale, addLocaleBundle } from "@/lib/i18n";
 
 /**
- * A built-in locale = the picker entry (`LocaleSpec`), whose `load` fetches the
- * dictionary the first time that language is selected. English omits `load`:
- * lib/i18n bootstraps it so first paint always has strings.
- *
- * Registration is the entry only — no dictionary is read at setup. Eight
- * languages statically imported at setup meant eight dictionaries in the entry
- * payload, seven of which the reader will never see.
+ * Registers the picker entry ONLY — `load` fetches the dictionary on first selection, since
+ * statically importing every language put eight dictionaries in the entry payload, seven of
+ * which the reader never sees. English omits `load`: lib/i18n bootstraps it so first paint
+ * always has strings.
  */
 export function defineLocale(spec: LocaleSpec): AnyPlugin {
   return definePlugin({

@@ -41,27 +41,17 @@ func desktopApplicationOptions(host *DesktopHost) application.Options {
 	}
 }
 
-// The window: a real titled window whose title bar is transparent and empty, with the
-// content running the full height underneath it. The platform draws its own three
-// controls over that content and the app reserves a gutter for them from the geometry it
-// measures (DesktopHost.WindowChrome); the window moves through the draggable chrome
-// bars.
+// A real titled window with a transparent, empty title bar and content running full height
+// underneath it. The platform draws its own three controls over that content; the app
+// reserves a gutter for them from measured geometry (DesktopHost.WindowChrome).
 //
 // UseToolbar is here for its HEIGHT, not for a toolbar: it is what makes the titlebar
-// taller than 32pt, and the frame buttons are centered in whatever height it has. The
-// compact style then pins that height at 40pt, which puts the marks 20pt down — within a
-// pixel of the center line of a 42pt header. That last pixel is why the marks' center is
-// measured rather than assumed: the control beside them centers on THEM and the header's
-// text on the header, and at the 5pt apart that a toolbarless window leaves them, no
-// amount of measuring makes those two read as one row.
+// taller than 32pt, and the compact style then pins it at 40pt so the frame buttons land
+// within a pixel of a 42pt header's center line. An empty toolbar does NOT take clicks in
+// that band — verified by hit-testing the frame view at 8/16/24/36/44pt.
 //
-// An empty toolbar was verified not to take the clicks in that band: hit-testing the
-// frame view 8, 16, 24, 36 and 44pt below the window top returns the content view in all
-// three toolbar styles, so the header's own controls keep working under it.
-//
-// `Hide` stays false deliberately. Setting it drops NSWindowStyleMaskTitled, which
-// removes the buttons — and the window frame with them, leaving square corners and no
-// shadow.
+// `Hide` stays false deliberately: setting it drops NSWindowStyleMaskTitled, which removes
+// the buttons and the window frame with them, leaving square corners and no shadow.
 func desktopWindowOptions() application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
 		Title:            productName,

@@ -26,41 +26,31 @@ import {
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
 
-// Chat scroll surface, backed by use-stick-to-bottom. `sessionId`
-// re-keys the subtree on session switch so a new thread lands at the
-// bottom. That landing is `initial="instant"` (a jump, not an animation):
-// a smooth initial replays a visible top→bottom scroll through the whole
-// history on every mount / session switch / remount — which reads as the
-// chat "auto-scrolling on open" and flashes content-visibility gaps as it
-// flies past unrendered messages. Only the resize catch-up below stays
-// smooth. Follow state is published by ControlsRelay below.
+// The initial landing is `initial="instant"`, a jump: a smooth initial replays a visible
+// top→bottom scroll through the whole history on every mount and session switch, which
+// reads as auto-scrolling on open and flashes content-visibility gaps on the way past.
 
 interface Props {
   rows: readonly TranscriptRow[];
   ctx: BlockCtx;
-  /** Exact transcript owner; also re-keys scroll position + follow state. */
+  /** Also RE-KEYS scroll position and follow state. */
   sessionId: string;
   controllerRef?: Ref<MessageStreamController>;
 }
 
 export interface MessageStreamController {
-  /** Reconcile geometry that becomes known during the parent's first layout. */
   settleInitialBottom(): void;
 }
 
-// Publishes StickToBottom's follow state out of the provider, for the
-// jump-to-bottom button — which has to be a sibling of the scroller to sit over
-// the composer, so it cannot read the context itself.
-//
-// Publishing rather than calling a parent's setState: the context object is rebuilt
-// on every scroll event, so reporting it upward re-rendered the component that owns
-// the composer at scroll frequency (see streamFollow.ts).
+// The jump-to-bottom button must be a SIBLING of the scroller to sit over the composer, so
+// it cannot read the context itself. Published rather than lifted through setState: the
+// context object is rebuilt on every scroll event, so reporting it upward re-renders the
+// composer's owner at scroll frequency.
 function ControlsRelay() {
   const ctx = useStickToBottomContext();
-  // In an effect, not during render: the publish notifies subscribers, and doing
-  // that mid-render would be updating one component while another is rendering. No
-  // dep array — this runs on each of this (null-rendering) component's renders, so
-  // the click handler it hands out is never a stale closure.
+  // In an effect, not during render: the publish notifies subscribers, which mid-render
+  // would update one component while another is rendering. No dep array, so the click
+  // handler handed out is never a stale closure.
   useEffect(() => {
     publishStreamFollow({
       atBottom: ctx.isAtBottom,
@@ -70,13 +60,9 @@ function ControlsRelay() {
   return null;
 }
 
-// A date, once, where the date changes. The clock time lives in every turn's own
-// caption now, so a separator that repeated the full stamp above each turn was
-// saying the same thing twice and saying it loudest at the boundary that carried
-// the least information.
 function DaySeparator({ createdAt }: { createdAt?: string }) {
-  // useT() keeps this reactive on locale toggle even though the
-  // translation function itself isn't used for the timestamp label.
+  // Subscribes to locale changes: the label is formatted, not translated, so nothing else
+  // here would re-render on a locale toggle.
   useT();
   const label = formatDay(createdAt);
   if (!label) return null;
@@ -87,15 +73,10 @@ function DaySeparator({ createdAt }: { createdAt?: string }) {
   );
 }
 
-/**
- * The calendar day a turn falls on, remembered against the turn itself.
- *
- * `dayKey` parses a timestamp, and the day rule needs one per turn on every render of
- * the list — which is every token of a live run. At a few hundred turns that was a few
- * hundred date parses per frame, growing with the conversation for a grouping that
- * cannot change: a turn's timestamp is fixed once the fold has written it. Keyed on the
- * message object so an entry is collectable the moment the fold replaces it.
- */
+// The day rule needs one parse per turn on every render of the list, which is every token
+// of a live run — hundreds of date parses per frame for a grouping that cannot change once
+// the fold has written the timestamp. A WeakMap keyed on the MESSAGE makes each entry
+// collectable the moment the fold replaces it.
 const dayKeyByMessage = new WeakMap<Message, string | null>();
 
 function turnDayKey(message: Message): string | null {
@@ -107,8 +88,8 @@ function turnDayKey(message: Message): string | null {
 }
 
 function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[] {
-  // A turn with no timestamp neither opens a day nor breaks the chain: absent
-  // means no information, not a different day.
+  // A turn with no timestamp neither opens a day nor breaks the chain: absent means no
+  // information, not a different day.
   let previousDay: string | null = null;
   return rows.map((row) => {
     const currentDay = turnDayKey(row.message);
@@ -118,10 +99,8 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
   });
 }
 
-/** Two distances, not one. A flat gap made a turn's own blocks sit as far apart as two
- *  separate turns, so nothing on the page said "these belong together" — the reference
- *  spends 4px inside a turn and 16px between them, and that ratio is what groups a
- *  thought, its tool call and its answer into one thing you can read as a unit. */
+// Two distances, not one: a flat gap makes a turn's own blocks sit as far apart as two
+// separate turns, so nothing groups a thought, its tool call and its answer.
 const TURN_GAP = {
   none: "",
   sameSpeaker: "mt-1",
@@ -136,22 +115,16 @@ interface TurnProps {
   isRunning: boolean;
   answerFollows: boolean;
   terminalRun: CurrentRootMaterial | null;
-  /** A new calendar day starts here. Decided by the list, because it is a relationship
-   *  between two turns and no turn can see the one above it. */
+  /** Decided by the LIST: it is a relationship between two turns, and no turn can see the
+   *  one above it. */
   opensDay: boolean;
   gap: keyof typeof TURN_GAP;
 }
 
-/**
- * One turn in the transcript, with the chrome that positions it.
- *
- * Its own component, and memoised, because the list re-renders on every token of a live
- * run: without this boundary React re-rendered every row's `motion.div` on every delta
- * — Motion components are not memoised, so the wrapper did its full prop diff and
- * visual-element update several hundred times a frame while the content inside it (which
- * WAS memoised) bailed out. Every prop here is a primitive or a reference the transcript
- * projection keeps stable, so an untouched turn costs nothing.
- */
+// Memoised because the list re-renders on every token of a live run: Motion components are
+// NOT memoised, so without this boundary every row's `motion.div` ran a full prop diff and
+// visual-element update per delta while the content inside it bailed out. Every prop here
+// is a primitive or a reference the transcript projection keeps stable.
 const TranscriptTurn = memo(function TranscriptTurn({
   row,
   ctx,
@@ -166,31 +139,20 @@ const TranscriptTurn = memo(function TranscriptTurn({
   return (
     <>
       {opensDay && <DaySeparator createdAt={row.message.createdAt} />}
-      {/* No `layout` prop — Motion's layout animation re-tweens the block on every
-          text delta, making the whole bubble (avatar included) bobble while streaming.
-          enterUp is enough: first paint slides in, then the block grows naturally with
-          the DOM.
+      {/* NO `layout` prop: Motion re-tweens the block on every text delta, making the
+          whole bubble bobble while streaming.
 
-          `content-visibility:auto` lets the browser skip layout+paint for off-screen
-          messages (the long-conversation scaling cliff) while keeping every node IN the
-          DOM — so ⌘F's TreeWalker + CSS-highlight search, copy-all, and
-          stick-to-bottom's height all still work (true virtualization would unmount
-          nodes and break those). The `auto` intrinsic-size remembers each message's
-          real height after its first render, so the scroll height stays accurate; the
-          220px fallback only covers never-yet-rendered messages far below. */}
-      {/* `data-turn-id` is the anchor the narrative rails navigate by. An attribute
-          rather than a registry: the rails need the element's position in the scroller,
-          which only the DOM has. */}
+          `content-visibility:auto` skips layout+paint for off-screen messages while
+          keeping every node IN the DOM, so ⌘F search, copy-all and stick-to-bottom's
+          height all keep working — true virtualization would unmount them. */}
       <motion.div
         {...enterUp}
         data-turn-id={row.message.id}
         data-turn-role={row.message.role}
-        // The gutter lives HERE, not on the scroller's content, and that is what gives
-        // this box slack on either side of its own text. `content-visibility` brings
-        // paint containment with it: anything drawn past this element's edge is
-        // clipped, and the turn's last row is a strip of round buttons deliberately
-        // inset outward so their glyphs line up with the text. Against a box that
-        // hugged the text they came out sliced.
+        // The gutter lives HERE, not on the scroller's content: `content-visibility` brings
+        // paint containment, and the turn's last row insets its buttons outward so their
+        // glyphs line up with the text. Against a box that hugged the text they come out
+        // sliced.
         className={cn(READING_GUTTER, TURN_GAP[gap], transcriptTurnContentVisibility(isLast))}
       >
         <MessageBlock
@@ -214,24 +176,20 @@ const TranscriptTurn = memo(function TranscriptTurn({
 });
 
 export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
-  // Transcript height changes are geometry reconciliation, not navigation
-  // motion. Keep the reader's distance from the tail exact while following;
-  // the library's user-escape state still decides whether it may move at all.
-  // A smooth resize spring both lags streaming and can strand terminal Shiki /
-  // content-visibility growth above the tail after the spring gives up.
+  // Height changes are geometry reconciliation, not navigation motion: a smooth resize
+  // spring lags streaming and can strand late Shiki / content-visibility growth above the
+  // tail once it gives up. The library's user-escape state still decides whether it may
+  // move at all.
   const currentRoot = useCurrentRootMaterial();
   const running = currentRoot.running;
   const terminalTurnIndex = currentRoot.terminalTurnIndex(rows);
   const stickContextRef = useRef<StickToBottomContext>(null);
 
-  // The library observes the content box, but two tail-height sources sit outside
-  // that measurement: async Markdown mutates the subtree before its size event,
-  // and the measured composer clearance changes padding in the border box. At a
-  // compact height the latter can add the only overflow, so a content-box observer
-  // never follows it and leaves the blocking HITL action under the composer.
-  // Reconcile both signals against the library's authoritative follow bit and its
-  // exact target; a real reader escape still withdraws writes, with no parallel
-  // scroll state or clock.
+  // The library observes the CONTENT box, but two tail-height sources sit outside it: async
+  // Markdown mutates the subtree before its size event, and composer clearance changes
+  // padding in the BORDER box. At a compact height the latter can be the only overflow, so
+  // a content-box observer never follows it and leaves a blocking HITL action under the
+  // composer. Both signals reconcile against the library's own follow bit and target.
   useLayoutEffect(() => {
     const stickContext = stickContextRef.current;
     const viewport = stickContext?.scrollRef.current;
@@ -241,9 +199,8 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
     const reconcileFollowingTail = () => {
       const current = stickContextRef.current;
       const currentViewport = current?.scrollRef.current;
-      // The public convenience value also stays true inside the library's
-      // 70px "near bottom" band. Only the raw lock is allowed to move the
-      // viewport: wheel-up releases it immediately, before that band is left.
+      // The RAW lock, not the public convenience value: that one stays true inside the
+      // library's 70px "near bottom" band, while the lock releases on wheel-up immediately.
       if (!current?.state.isAtBottom || !currentViewport) return;
       currentViewport.scrollTop = current.state.calculatedTargetScrollTop;
     };
@@ -257,11 +214,10 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
     };
   }, [sessionId]);
 
-  // Keep the scroll library behind MessageStream's local controller. The
-  // parent owns shared composer/transcript geometry, but it should not know
-  // which package implements transcript following. `scrollToBottom` performs
-  // its write on the next frame, after the parent's custom-property update has
-  // been included in the content height.
+  // Keeps the scroll library behind a local controller: the parent owns shared
+  // composer/transcript geometry but must not know which package implements following.
+  // The write lands on the NEXT frame, after the parent's custom-property update has been
+  // included in the content height.
   useImperativeHandle(
     controllerRef,
     () => ({
@@ -270,19 +226,15 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
         const viewport = stickContext?.scrollRef.current;
         if (!viewport) return;
 
-        // Reading scrollHeight commits the parent's just-published composer
-        // clearance before the library calculates its first target. From the
-        // following frame onward, its ResizeObserver owns late Markdown/code
-        // growth. `ignoreEscapes` covers only that library-owned initial
-        // reconciliation: content-visibility can replace estimated heights on
-        // adjacent frames and its scroll events are not reader intent. Once the
-        // instant reconciliation has no pending target the library clears the
-        // animation, and its ordinary wheel/scroll escape owns every later
-        // interaction. A bounded RAF loop here used to overwrite a reader-owned
-        // position until its unrelated clock expired.
-        // Use the library's exact target rather than scrollHeight. Its target is
-        // one pixel above the browser maximum; overshooting then being corrected
-        // upward can otherwise be misread as a reader escape during first layout.
+        // Reading `scrollHeight` commits the parent's just-published composer clearance
+        // before the library computes its first target.
+        //
+        // `ignoreEscapes` covers ONLY this initial reconciliation: content-visibility
+        // replaces estimated heights on adjacent frames and those scroll events are not
+        // reader intent. The library's ordinary escape owns every later interaction.
+        //
+        // The library's exact target, not `scrollHeight`: its target sits one pixel above
+        // the browser maximum, and overshooting then correcting upward reads as an escape.
         viewport.scrollTop = stickContext.state.calculatedTargetScrollTop;
         void stickContext.scrollToBottom({
           animation: "instant",

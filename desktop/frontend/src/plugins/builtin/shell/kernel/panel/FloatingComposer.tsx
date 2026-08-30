@@ -69,18 +69,10 @@ export function ComposerOverlayTop() {
 }
 
 /**
- * The composer, resting over the tail of the transcript.
- *
- * Paints NOTHING of its own — the panel it holds is glass, and a backing behind
- * glass is just an opaque bar with a translucent sticker on it. What keeps the text
- * from colliding with the panel is the scroller's own dissolve
- * (`.msg-scroll-viewport`), which fades the last strip out; the text under the
- * panel itself stays, blurred, because that is the whole point of the material.
- *
- * Exactly the COLUMN wide, never the pane. A full-width overlay is a bottom bar
- * however it is positioned: it paints across the whole pane, which reads as
- * chrome, and it takes the scrollbar's bottom inch with it. Nothing outside the
- * column has anything to hide anyway — the transcript is centred and capped.
+ * Paints NOTHING of its own: the panel it holds is glass, and a backing behind glass is an
+ * opaque bar with a translucent sticker on it — the scroller's own dissolve keeps text off
+ * the panel. Exactly the COLUMN wide, never the pane: a full-width overlay reads as chrome
+ * however it is positioned, and takes the scrollbar's bottom inch with it.
  */
 export function FloatingComposer({
   overlayRef,

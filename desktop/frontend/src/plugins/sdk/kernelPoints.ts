@@ -1,9 +1,4 @@
-// Kernel extension points — the typed handles for every contribution surface
-// the kernel itself owns. Built-ins contribute via `host.extensions.contribute
-// (POINT, …)` (or one of the few retained thin facades), and the per-domain
-// selectors read these.
-//
-// Adding a kernel point = one `defineExtensionPoint` block here + one selector.
+// Adding a kernel point is one `defineExtensionPoint` block here plus one selector.
 
 import type {
   AgentRunOptionsProviderSpec,
@@ -163,9 +158,8 @@ export const TOOL_VIEW_OPENER = defineExtensionPoint<ToolViewOpenerSpec>({
   id: "flame.tool.viewOpener",
   keying: "single",
 });
-// Keyed by an explicit arg (tool fn name / block kind), not a field on the
-// item — contributors pass `opts.key`. The item is the renderer/component
-// itself (or, for icons, the icon name string).
+// Keyed by an explicit `opts.key` rather than a field on the item, because the item IS the
+// component.
 export const TOOL_PREVIEW = defineExtensionPoint<ToolPreviewComponent>({
   id: "flame.tool.preview",
   keying: "single",
@@ -174,15 +168,11 @@ export const TOOL_ICON = defineExtensionPoint<string>({
   id: "flame.tool.icon",
   keying: "single",
 });
-// A tool whose whole outcome is already on screen somewhere that stays on screen.
-// Keyed by tool name; the value names the surface, so the claim is answerable ("who
-// says so?") rather than a bare flag. The narrative then does not repeat it — the
-// plan was being drawn twice, in the active surface above the composer and
-// again as a tool row inside it.
-//
-// Claim only what the surface shows in FULL. A tool that asks the person something
-// is not presented by that surface however much of the plan it echoes: `exit_plan_mode`
-// interrupts for approval of the plan, and hiding it would hide the question.
+// A tool whose whole outcome already sits on a surface that STAYS on screen, so the
+// narrative need not repeat it. The value names that surface rather than being a bare flag,
+// so the claim stays answerable. Claim only what the surface shows in FULL: a tool that
+// asks the person something is not presented by it however much it echoes — hiding
+// `exit_plan_mode` would hide the question.
 export const TOOL_STANDING_SURFACE = defineExtensionPoint<string>({
   id: "flame.tool.standingSurface",
   keying: "single",

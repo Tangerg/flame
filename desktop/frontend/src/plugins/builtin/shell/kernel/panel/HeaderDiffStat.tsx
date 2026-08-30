@@ -9,11 +9,9 @@ import {
 } from "@/plugins/builtin/workspace/public/queries";
 
 /**
- * Working-tree churn at a glance — `+added −removed`, opening the diff view.
- *
- * Renders nothing rather than zeros when there is no churn, when the git
- * capability is off, or while the query is in flight: a header readout that is
- * always present but usually says "+0 −0" trains the eye to skip it.
+ * Renders NOTHING rather than zeros when there is no churn, when the git capability is off,
+ * or while the query is in flight: a readout that is always present but usually says
+ * "+0 −0" trains the eye to skip it.
  */
 export function HeaderDiffStat({ className }: { className?: string }) {
   const t = useT();

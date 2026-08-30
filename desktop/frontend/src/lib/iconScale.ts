@@ -1,18 +1,9 @@
-// Icon scale — every glyph in the app is one of five sizes, derived from the same
-// base the type ladder uses.
+// Sizes derive from the type base, so a glyph beside a label grows when the label does.
 //
-// Why a ladder rather than a number at the call site: the app had drifted to
-// eleven icon sizes (10 through 30) and four stroke weights. Lucide draws on a
-// 24-unit grid, so a stroke of 2 renders at `2 × size / 24` on screen — which put
-// the app's on-screen stroke anywhere between 0.83px and 1.5px. Glyphs that differ
-// by 80% in weight read as several icon sets pasted together, and the fractional
-// widths blur on top of it.
-//
-// Two rules fix both halves. Sizes come from the type base, so a glyph beside a
-// label grows when the label does. Stroke is derived per size to hold ONE
-// on-screen weight, which is the opposite of Lucide's own constant-ratio default:
-// a ratio keeps small icons proportionally heavy, and at chrome sizes that reads
-// as blobby rather than delicate.
+// Stroke is derived PER SIZE to hold one on-screen weight — the opposite of Lucide's
+// constant-ratio default. Lucide draws on a 24-unit grid, so a fixed stroke renders at
+// `stroke × size / 24`, which leaves small icons proportionally heavy and reads as several
+// icon sets pasted together.
 
 import { normalizeUiFontSize } from "./typography";
 
@@ -50,7 +41,6 @@ export function iconStrokeWidth(sizePx: number): number {
   return Math.round(Math.min(STROKE_MAX, Math.max(STROKE_MIN, derived)) * 100) / 100;
 }
 
-/** The ladder as the custom properties `ui/icons/icon.tsx` reads. */
 export function iconScaleCssVariables(
   basePx: number | null | undefined,
 ): Readonly<Record<string, string>> {

@@ -22,7 +22,6 @@ interface TextEditorDialogProps {
   onSave: () => void;
 }
 
-/** Compact modal editor for one user-authored block of text. */
 export function TextEditorDialog({
   open,
   onOpenChange,

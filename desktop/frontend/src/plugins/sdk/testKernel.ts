@@ -10,12 +10,9 @@ import { trackInstalledPlugin } from "./kernel";
 let running: Host | undefined;
 
 /**
- * Add plugins to the spec's kernel, booting one if this is the first call.
- *
- * Additive, because a fixture builds its world in several calls and a
- * replace-all would run the previous batch's cleanups — unbinding the ports the
- * next batch renders through. `src/test/setup.ts` tears the kernel down between
- * specs, so nothing leaks across them.
+ * ADDITIVE: a fixture builds its world across several calls, and a replace-all would run the
+ * previous batch's cleanups and unbind the ports the next batch renders through.
+ * `src/test/setup.ts` tears the kernel down between specs.
  */
 export async function loadPluginsForTest(...plugins: AnyPlugin[]): Promise<Host> {
   if (running) {
@@ -37,7 +34,6 @@ export async function addPluginsForTest(
   for (const plugin of plugins) trackInstalledPlugin(host, plugin.name);
 }
 
-/** Boot a kernel whose only plugin contributes whatever the test needs. */
 export async function contributeForTest(
   setup: (ctx: PluginContext) => void,
   name = "test.contributor",

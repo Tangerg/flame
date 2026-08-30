@@ -30,12 +30,9 @@ export function DockResizer() {
 }
 
 /**
- * The dock's live width, preferring what it actually occupies.
- *
- * The rendered width is the truth a drag has to start from: the column is laid out by
- * the row's grid, so it can end up narrower than the property asked for. The property is
- * the fallback for the one case where there is no rendered width to read — before the
- * dock has been laid out at all.
+ * The RENDERED width is what a drag must start from: the row's grid lays the column out, so
+ * it can end up narrower than the property asked for. The property is the fallback for the
+ * one case with nothing rendered to read — before the dock has been laid out at all.
  */
 function readDockWidth(row: HTMLElement): number {
   const dock = row.querySelector<HTMLElement>(".agent-context-dock");

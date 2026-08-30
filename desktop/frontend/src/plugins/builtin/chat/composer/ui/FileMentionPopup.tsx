@@ -12,14 +12,9 @@ interface Props {
   onHover: (i: number) => void;
 }
 
-// @file picker — a floating panel anchored above the composer. The selected row tracks
-// keyboard ↑/↓ (driven by useFileMentions); hovering a row also selects it so click and
-// key land on the same target. Basename emphasized, directory dimmed — the path reads as
-// "name · where".
-//
-// A listbox of options, wired by hand: focus stays in the textarea (the caret has
-// to keep blinking where the user is typing), so the selected row is announced
-// through aria-activedescendant rather than by moving focus.
+// Hovering a row also SELECTS it, so click and key land on the same target. A listbox wired
+// by hand: focus stays in the textarea — the caret has to keep blinking where the user is
+// typing — so the selected row is announced through aria-activedescendant instead.
 export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
   const t = useT();
   return (

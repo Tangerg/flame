@@ -33,13 +33,10 @@ function lightAccent(darkHex: string): string {
 }
 
 /**
- * Contrast preference → the surface-ladder step every derived rung reads.
- *
- * Doubled on dark, because equal ink percentages do not buy equal separation.
- * Mixing 4% of a near-white ink into a near-black surface moves it roughly a
- * third as far in perceived lightness as mixing 4% of a near-black ink into a
- * near-white one — so at the contrast setting that reads right on light, every
- * dark scheme's regions, chips and row states collapsed into one flat value.
+ * Doubled on dark because equal ink percentages do not buy equal separation: 4% of a
+ * near-white ink into a near-black surface moves roughly a third as far in perceived
+ * lightness as the reverse, so one setting that reads right on light flattened every dark
+ * scheme's regions, chips and row states into a single value.
  */
 function depthStep(scheme: Scheme, contrast: number): string {
   const step = (2 + (contrast / 100) * 8) * (scheme === "dark" ? 2 : 1);
@@ -62,12 +59,9 @@ let appliedColorTokens: string[] = [];
 let appliedStyleTokens: string[] = [];
 
 /**
- * The neutral family, rewritten onto the live accent for a theme that opted in.
- *
- * A theme's `surfaces` / `borders` literals are the same family at the DEFAULT accent —
- * they are what the pre-paint script and the stylesheet mirror carry — so this returns
- * an override rather than the whole map, and returns nothing at all for a palette theme
- * (Solarized's base3 is Solarized, not a tint of whatever is selected).
+ * A theme's `surfaces` / `borders` literals are already that family at the DEFAULT accent —
+ * what the pre-paint script and stylesheet mirror carry — so this returns an OVERRIDE, and
+ * nothing at all for a palette theme: Solarized's base3 is Solarized, not a tint.
  */
 function neutralOverride(
   spec: ColorThemeSpec | undefined,

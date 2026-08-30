@@ -4,9 +4,6 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-// The project's primary CTA shape — outlined / solid / accent / danger
-// variants in two sizes. These controls sit inside dense toolbars, so they
-// stay compact while using softer native-pill corners.
 const styles = cva(
   "inline-flex items-center gap-1.5 rounded-pill font-sans font-medium tracking-normal " +
     "transition-[background-color,color,scale] duration-[var(--dur-fast)] ease-out active:scale-[var(--press-scale)] " +

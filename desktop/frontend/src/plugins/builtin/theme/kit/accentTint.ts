@@ -1,42 +1,14 @@
-// Deriving the neutral family's hue from the live accent.
-//
-// The family sits on the accent's hue at a chroma chosen per surface by area (see
-// themes/flame-light.ts). Expressing that in CSS as
-// `oklch(from var(--color-accent) <L> <C> h)` looks like the whole answer and is not:
-// a GREY ACCENT HAS NO HUE, and CSS reads the powerless channel as 0, which is RED —
-// so choosing pure black painted every surface pink. A colour function cannot branch,
-// so the derivation lives here.
-//
-// The rule is Material's, from the Fidelity and Content schemes: a neutral palette's
-// chroma is PROPORTIONAL TO THE SOURCE COLOUR'S OWN (`sourceColorHct.chroma / 8.0` in
-// material-color-utilities). That single choice does three things a fixed number
-// cannot — a grey accent yields grey surfaces with no special case, a muted accent
-// tints less than a vivid one, and the amount is always relative to how much colour
-// the user actually asked for.
-//
-// The other two systems worth reading agree on the shape and differ on the details:
-//
-//   Material  neutral chroma is a fixed low number per SCHEME VARIANT — TonalSpot 6,
-//             Vibrant 10, Neutral 2 — or `sourceChroma / 8` for Fidelity/Content.
-//             Expressive rotates the neutral hue +15°. Gamut safety comes from HCT
-//             solving for the closest achievable chroma at each tone.
-//   Ant       branches on hue, but to compensate DRIFT, not to damp colour: inside
-//             60–240° a lighter step rotates -2° and a darker one +2°, and outside
-//             that range the direction flips. Greys (h=0,s=0) are left alone.
-//   Apple     does not derive surfaces at all. System colours are curated per
-//             appearance, contrast and vibrancy, and the accent tints CONTROLS.
-//
-// Notably none of the three scales chroma by hue, so neither do we: a violet accent
-// gives violet-tinted surfaces, which under Material's model is the point of a
-// personalised palette. Whether that is too much is a taste axis, and Material settles
-// taste axes with a variant — hence `AccentTint` below rather than a constant someone
-// has to argue with.
+// NOT expressible as `oklch(from var(--color-accent) <L> <C> h)`: a grey accent has no hue,
+// CSS reads the powerless channel as 0, and 0 is RED — so picking pure black paints every
+// surface pink. A colour function cannot branch, so the derivation lives here. Neutral
+// chroma is PROPORTIONAL to the accent's own, which is what makes a grey accent yield grey
+// surfaces with no special case.
 
 import type { AccentTint } from "@/lib/appearance";
 import { DEFAULT_ACCENT_TINT } from "@/lib/appearance";
 import type { NeutralStep } from "@/plugins/sdk";
 
-/** OKLCH, degrees for hue. */
+/** Hue in DEGREES. */
 export interface Oklch {
   l: number;
   c: number;
@@ -86,13 +58,10 @@ function inSrgbGamut(colour: Oklch): boolean {
 }
 
 /**
- * OKLCH → `#rrggbb`, giving up CHROMA rather than hue when a request leaves sRGB.
- *
- * Clamping the channels instead — what a naive conversion does, and what the browser
- * does at paint time — lands the colour on whichever channel saturated first and takes
- * the hue with it. Walking the chroma down keeps the hue and lightness that were asked
- * for and surrenders only the part the display cannot show. This is what HCT does
- * inside `Hct.from`, by the same binary search.
+ * OKLCH → `#rrggbb`, giving up CHROMA rather than hue when a request leaves sRGB. Clamping
+ * the channels instead — what a naive conversion and the browser both do — lands the colour
+ * on whichever channel saturated first and drags the hue with it. Same binary search HCT
+ * runs inside `Hct.from`.
  */
 export function oklchToHex(colour: Oklch): string {
   let fitted = colour;
@@ -119,14 +88,10 @@ const TINT_SCALE: Record<AccentTint, number> = { off: 0, soft: 0.5, standard: 1 
 const MAX_CHROMA_FACTOR = 1.5;
 
 /**
- * Multiplier applied to every surface's declared chroma budget.
- *
- * The reference is the accent THE THEME ITSELF DECLARES, not a module constant.
- * Dividing by the theme's own accent — rather than by Material's constant 8, which is
- * in HCT units — is what makes an untouched accent reproduce that theme's declared
- * literals exactly, so the derivation is a no-op until someone picks something else. A
- * single constant could not do that: the two schemes ship different accents (#2b5fd0
- * light, #3574f0 dark), so whichever one the constant matched, the other drifted.
+ * The reference is the accent THE THEME ITSELF DECLARES, not a module constant: that is what
+ * makes an untouched accent reproduce the theme's literals exactly, so the derivation is a
+ * no-op until someone picks something else. One constant cannot do it — the two schemes ship
+ * different accents, so whichever the constant matched, the other drifted.
  */
 export function neutralChromaFactor(
   accentChroma: number,
@@ -138,14 +103,10 @@ export function neutralChromaFactor(
 }
 
 /**
- * One neutral step, rewritten onto the accent's hue.
- *
- * Returns a hex rather than an `oklch(…)` string so a caller can hand it straight to a
- * token map, and so a test and devtools both read the value that will actually paint.
- *
- * One step at a time rather than a generic over the whole family: an interface has no
- * index signature, so a `Record<string, NeutralStep>` constraint rejects the very type
- * the theme spec publishes, and working around that costs more than the loop it saves.
+ * Returns HEX rather than an `oklch(…)` string so a token map takes it directly and a test
+ * reads the value that will actually paint. One step at a time rather than a generic over
+ * the family: an interface has no index signature, so a `Record<string, NeutralStep>`
+ * constraint rejects the very type the theme spec publishes.
  */
 export function accentTintedNeutral(
   accentHex: string,

@@ -23,39 +23,31 @@ import { createRunCancellationController } from "./runCancellationController";
 import { revalidateRunTermination } from "../application/run/revalidateRunTermination";
 
 export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string): AgentSession {
-  // Driver construction belongs to the session effect, but the adapter factory
-  // is supplied during render and may change independently. An Effect Event
-  // gives the effect the latest factory without turning factory identity into a
-  // second, accidental lifecycle key.
+  // An Effect Event gives the effect the latest factory without turning factory identity
+  // into a second, accidental lifecycle key.
   const createDriver = useEffectEvent(makeDriver);
 
   useEffect(() => {
-    // Welcome screen (no active session) mounts the kernel chat with an empty
-    // id — there is nothing to drive: no slice to seed, and items.list("")
-    // would just be a guaranteed-failing RPC on every mount.
+    // The welcome screen mounts the chat with an EMPTY id: no slice to seed, and
+    // `items.list("")` would be a guaranteed-failing RPC on every mount.
     if (!sessionId) return;
     const driver = createDriver();
     const client = () => getContainer().client();
     const store = () => useAgentStore.getState();
 
-    // Explicit selection already holds the Session open, but a URL deep-link
-    // or browser history move mounts this lifecycle without passing through
-    // that action. Establish the same invariant before creating its material
-    // view: open-set subscribers use membership to prune Agent/composer state,
-    // so an active-but-unheld Session could otherwise be deleted underneath
-    // this still-mounted driver by an unrelated reconciliation.
+    // A deep-link or history move mounts this lifecycle WITHOUT passing through the
+    // selection action, so the invariant is established here: open-set subscribers prune
+    // by membership, and an active-but-unheld Session would be dropped underneath this
+    // still-mounted driver.
     const sessionMemory = useAgentSessionStore.getState();
     sessionMemory.holdOpen(sessionId);
     sessionMemory.rememberSession(sessionId);
-    // Preserve an already-materialized view while the authoritative refresh
-    // is in flight; a first mount creates the empty slice.
     store().ensureSession(sessionId);
 
     let abort: AbortController | null = null;
     let cancelled = false;
-    // Set as soon as this driver accepts a local command. The initial durable
-    // read must not commit after that command, even before its first stream
-    // event has advanced the store revision.
+    // The initial durable read must not commit AFTER a local command, even before that
+    // command's first stream event has advanced the store revision.
     let interacted = false;
     let projectionSynchronization: ReturnType<
       typeof createSessionProjectionSynchronization
@@ -68,8 +60,8 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
       applyRunSnapshot: (run) => store().applyRunSnapshot(sessionId, run),
-      // A run keeps executing when its stream drops. Reattaching is what makes that a
-      // gap instead of a transcript that stops moving until the next reload.
+      // A run keeps EXECUTING when its stream drops; reattaching makes that a gap rather
+      // than a transcript frozen until the next reload.
       reattach: createRunStreamReattach({
         sessionId,
         client,
@@ -83,10 +75,9 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 
-    // Persisted draft ownership survives reload, but the proof that this process
-    // just created an empty Session does not. Only a same-process fresh draft may
-    // skip its initial durable read; a cold draft must verify whether another
-    // client added history while this one was away.
+    // Draft OWNERSHIP survives reload, but the proof that this process just created an
+    // empty Session does not — a cold draft must verify whether another client added
+    // history while this one was away.
     const recoverExistingSession = !useAgentSessionStore
       .getState()
       .freshDraftSessionIds.has(sessionId);
@@ -139,13 +130,9 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       const currentRoot = store().sessions[sessionId]?.view;
       if (currentRoot && selectCurrentRootRun(currentRoot)?.status === "waiting") return false;
       const wireInput = agentInputToContentBlocks(input);
-      // Optimistically render the user's own bubble with a local id. The
-      // runtime DOES stream the userMessage Item back (with its own server id),
-      // a round-trip later — so when runs.start resolves we relabel this
-      // placeholder to the returned `userItemId`, and the streamed Item then
-      // dedupes by exact id (no duplicate, no content-text heuristic). The
-      // bubble carries the SAME input the run does, so inlined images show
-      // immediately and survive the relabel (which only swaps the id).
+      // Relabelled to the ack's `userItemId` when `runs.start` resolves, so the streamed
+      // Item dedupes by EXACT id rather than by a content-text heuristic. The bubble
+      // carries the same input the run does, so inlined images survive the relabel.
       const optimistic = createOptimisticUserMessage(wireInput);
       store().appendLocalMessage(sessionId, optimistic.message);
       runOpening.begin(
@@ -156,10 +143,8 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
           // graduates out of draft and into the session list only at acceptance.
           useAgentSessionStore.getState().graduateDraft(sessionId);
         },
-        // The run never opened (channel-a error, e.g. session_busy because the
-        // session has a run in flight / an open interrupt) — drop the optimistic
-        // bubble so it doesn't strand below an error banner for a message that
-        // wasn't accepted. The banner (set in begin's catch) carries the reason.
+        // A channel-a error means the run never opened, so the optimistic bubble goes rather
+        // than stranding below an error banner for a message nobody accepted.
         () => store().dropMessage(sessionId, optimistic.localId),
       );
       return true;

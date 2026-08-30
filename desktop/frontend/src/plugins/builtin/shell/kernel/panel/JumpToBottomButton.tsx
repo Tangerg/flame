@@ -3,13 +3,9 @@ import { IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
-// Floating "scroll to bottom" affordance, out of the layout flow and anchored to
-// the composer's own top edge — which is where the transcript visibly ends, and
-// the only anchor that stays right as the composer grows.
-//
-// Animates in/out via opacity + translateY rather than mount/unmount, so the
-// user gets a soft reveal instead of a pop-in. When `visible` is false it's still
-// in the DOM but pointer-events: none + opacity: 0.
+// Anchored to the composer's own top edge — where the transcript visibly ends, and the only
+// anchor that stays right as the composer grows. Stays MOUNTED when hidden, fading via
+// opacity rather than unmounting, so it reveals softly instead of popping in.
 export function JumpToBottomButton() {
   const t = useT();
   // Reads the follow snapshot itself: a scroll that crosses the tail re-renders

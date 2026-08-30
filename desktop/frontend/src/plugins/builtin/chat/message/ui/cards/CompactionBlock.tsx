@@ -1,6 +1,5 @@
-// CompactionBlock — a context-compaction boundary (B10, 613). Renders as a
-// quiet Codex activity row between turns. Its required Runtime summary expands
-// inline on click without turning the context boundary into a card.
+// A context-compaction boundary reads as a quiet activity row BETWEEN turns: its summary
+// expands inline rather than turning the boundary into a card.
 
 import { useId, useState } from "react";
 import { Collapsible, Icon, TextButton } from "@/ui";

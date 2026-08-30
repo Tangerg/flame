@@ -8,7 +8,6 @@ import { draftMentions, removeMention } from "../application/draftContext";
 interface Props {
   images: ComposerImage[];
   pastes: PastedText[];
-  /** The draft, for the files it references. */
   value: string;
   onChange: (value: string) => void;
   onRemoveImage: (id: string) => void;
@@ -60,12 +59,8 @@ export function ComposerAttachments({
 }
 
 /**
- * The files the draft references, as chips.
- *
- * An `@path` in the text is an attachment and needs a distinct visual identity.
- * Derived from the draft on every render rather
- * than tracked, because the text is what gets sent: a second list could disagree with
- * the message.
+ * Derived from the draft on every render rather than tracked: the TEXT is what gets sent, so
+ * a second list could disagree with the message.
  */
 function DraftContext({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const mentions = draftMentions(value);

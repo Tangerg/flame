@@ -1,107 +1,66 @@
-// Theme type surface — palette sections + override knobs consumed by
-// `defineColorThemePlugin` and the token-builder. Lives in its own file so
-// `tokens.ts` can import these without forming a cycle with
-// `defineColorThemePlugin.ts` (which also imports token defaults from
-// `tokens.ts`).
+// Its own file so `tokens.ts` can import these without forming a cycle with
+// `defineColorThemePlugin.ts`, which imports token defaults back from `tokens.ts`.
 
 import type { ThemeNeutralSteps } from "@/plugins/sdk";
 import type { Scheme } from "@/lib/appearance";
 
-/** Single accent color + the ink that reads on top of it. The two
- *  derived shades (accentBorder for hover, accentPress for :active) are
- *  computed from `accent` via colord unless a theme passes explicit
- *  overrides — saves 20 hand-tuned hex values across the 10 builtins. */
 export interface ThemeBrand {
-  /** Primary accent. Used scarcely — live indicator, active tab line,
-   *  focus ring, CTA fill (when CTA is accent-driven). */
   accent: string;
-  /** Ink color that reads on top of an accent fill. Usually black on a
-   *  light accent, white on a dark accent. */
   textOnAccent: string;
-  /** Optional override — slightly darker than accent, used for hover
-   *  borders / focus rings. Default: `colord(accent).darken(0.08)`. */
+  /** Defaults to `colord(accent).darken(0.08)`. */
   accentBorder?: string;
-  /** Optional override — two steps darker than accent, used for
-   *  `:active` press states on CTAs. Default: `colord(accent).darken(0.16)`. */
+  /** Defaults to `colord(accent).darken(0.16)`. */
   accentPress?: string;
 }
 
-/** The four surface anchors.
- *
- *  `bg` and `surface` are the two region materials. The surface-2 / -3 / -4 steps
- *  above `surface` are ALWAYS derived by color-mix off `--depth-step`: a theme
- *  cannot pin them, because the contrast preference drives that step and a pinned
- *  ladder would make the slider partially dead.
- *
- *  `elevated` and `sunken` are anchors rather than rungs on that ladder because
- *  the ladder walks one direction only — toward the ink. A card lifts AWAY from
- *  the ink on a light palette (white over off-white) and TOWARD it on a dark one,
- *  while a well recedes under both. One monotonic mix cannot say all three, which
- *  is how the card fill — spelled as a ladder step — came out grey on light. */
+/**
+ * The surface-2/-3/-4 steps are ALWAYS derived by color-mix off `--depth-step`; a theme
+ * cannot pin them, or the contrast slider goes partially dead. `elevated` and `sunken` are
+ * anchors rather than rungs on that ladder: it walks one direction only, toward the ink,
+ * while a card lifts away from the ink on light and toward it on dark.
+ */
 export interface ThemeSurfaces {
-  /** Page-level background — the reading plane. */
   bg: string;
-  /** Region chrome — the drawer, the dock, the bars that frame the plane. */
   surface: string;
-  /** Card fill: a message, a tool card, the composer — anything that reads as an
-   *  object placed on a region. Defaults to the first ladder step. */
+  /** Defaults to the first ladder step. */
   elevated?: string;
-  /** Recessed well: code bodies, terminal panes, diff hunks, text fields,
-   *  progress tracks. Cut INTO the surface in both schemes. Defaults to a fixed
-   *  per-scheme neutral, deliberately off the ladder — a control's own fill must
-   *  not drift when the contrast slider moves. */
+  /** Defaults to a fixed per-scheme neutral, deliberately OFF the ladder: a control's own
+   *  fill must not drift when the contrast slider moves. */
   sunken?: string;
 }
 
-/** The five-step ink ladder. Each step has a defined role — see
- *  DESIGN.md §2 for the hierarchy. */
+/** See DESIGN.md §2 for the hierarchy each step carries. */
 export interface ThemeInk {
-  /** Headlines + emphasized body. The anchor — the soft/muted/faint ramp
-   *  derives from this when omitted. */
+  /** The anchor: the soft/muted/faint ramp derives from this when omitted. */
   text: string;
-  /** True maximum-contrast text — pure white on dark, pure black on
-   *  light. Used for h1-h3 and `<strong>`. */
   textBright: string;
-  /** Body paragraph default. Omit to auto-derive as `text` at ~82% alpha
-   *  (Apple-label style) — adapts to the surface behind it. Pin an explicit
-   *  hue when the palette's ink ramp is intentional (Solarized, Catppuccin). */
+  /** Omit to auto-derive at ~82% alpha, which adapts to the surface behind it. Pin a hue
+   *  only when the palette's own ink ramp is intentional (Solarized, Catppuccin). */
   textSoft?: string;
-  /** Secondary / inactive nav / meta. Omit to auto-derive (~56% alpha).
-   *  Must clear WCAG AA at 11-12px. */
+  /** Omit to auto-derive (~56% alpha). Must clear WCAG AA at 11-12px. */
   textMuted?: string;
-  /** Tertiary / disabled / footnotes. Omit to auto-derive (~38% alpha).
-   *  Must clear WCAG AA at 11-12px on both canvas and surface. */
+  /** Omit to auto-derive (~38% alpha). Must clear WCAG AA at 11-12px on canvas AND surface. */
   textFaint?: string;
 }
 
-/** The three-step hairline ladder. DESIGN.md §2: use literal hex, not
- *  alpha-blended, so borders read as precise rather than approximate. */
+/** Literal hex, NOT alpha-blended (DESIGN.md §2), so borders read as precise. */
 export interface ThemeBorders {
-  /** Default 1px border on cards / dividers / table rows. */
   border: string;
-  /** Input focus border, emphasized divider. */
   borderSoft: string;
-  /** Nested-surface borders, deeper contrast. */
   divider: string;
 }
 
-/** Four meaning-carrying colors. Used SPARINGLY per DESIGN.md §9 —
- *  never decoratively. */
+/** Used SPARINGLY per DESIGN.md §9 — never decoratively. */
 export interface ThemeSemantic {
-  /** Errors. RUN_ERROR banner, tool failure status, destructive CTA. */
   negative: string;
-  /** User attention required. Approval card, waiting state dot. */
   warning: string;
-  /** Inline links, info badges. */
   info: string;
-  /** Run finished cleanly, action confirmed. NOT the brand accent —
-   *  accent is "live", success is "finished cleanly". */
+  /** NOT the brand accent: accent means "live", success means "finished cleanly". */
   success: string;
 }
 
-/** Primary CTA color trio. Defaults to accent-driven (most themes), but
- *  e.g. Flame Light overrides this to pure black-on-white (Vercel
- *  signature) so the accent can stay reserved for "live" state. */
+/** Defaults to accent-driven, but a theme may override it so the accent stays reserved
+ *  for "live" state. */
 export interface ThemeCta {
   cta: string;
   ctaHover: string;
@@ -109,37 +68,27 @@ export interface ThemeCta {
 }
 
 export interface ColorThemePluginSpec {
-  /** Stable id — what `uiStore` persists to `flame.ui`. */
+  /** Persisted by `uiStore`, so renaming one strands a user's saved choice. */
   id: string;
-  /** User-facing label. */
   label: string;
   /** Drives the structural `theme-{scheme}` class and scheme-aware assets. */
   scheme: Scheme;
-  /** Icon for the picker row. Defaults to moon/sun based on scheme. */
   icon?: string;
-  /** Sort hint — lower comes first. */
+  /** Lower comes first. */
   order?: number;
 
-  /** Required palette sections — TypeScript enforces full coverage. */
   brand: ThemeBrand;
   surfaces: ThemeSurfaces;
   ink: ThemeInk;
   borders: ThemeBorders;
   semantic: ThemeSemantic;
 
-  /** Optional overrides — leave undefined to inherit scheme defaults. */
   cta?: Partial<ThemeCta>;
 
   /**
-   * Opt in to having the neutral family follow the LIVE accent.
-   *
-   * A theme that sets this declares where each neutral sits — its lightness, and the
-   * chroma it carries at the reference accent — and the shell rewrites those onto
-   * whatever accent the user picked (see `kit/accentTint`). The literals in `surfaces`
-   * and `borders` stay as the first-paint values for the default accent.
-   *
-   * Palette themes must NOT set it: Solarized's base3 is Solarized, not a tint of
-   * whatever accent happens to be selected.
+   * Opt in to having the neutral family follow the LIVE accent; `surfaces` and `borders`
+   * stay the first-paint values for the default accent. A palette theme must NOT set it —
+   * Solarized's base3 is Solarized, not a tint of the selected accent.
    */
   neutralSteps?: ThemeNeutralSteps;
 

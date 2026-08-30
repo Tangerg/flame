@@ -2,13 +2,8 @@ import type { VisualStyleSpec } from "@/plugins/sdk";
 import { visualStyleTokens, WORKBENCH_MOTION } from "./tokens";
 
 /**
- * The product's one built-in workbench language.
- *
- * JetBrains tool windows: a quiet reading plane framed by opaque chrome columns,
- * separated by value and a half-pixel hairline at each seam, with borderless
- * cards and technical type set in mono. Colour stays semantic, so every colour
- * theme inherits the same region algorithm without hard-coded light or dark
- * values — the style says where the depth is, the theme says how dark.
+ * The style says WHERE the depth is, the theme says HOW DARK: colour stays semantic here so
+ * every colour theme inherits the same region algorithm with no hard-coded light or dark.
  */
 export const flameStyle: VisualStyleSpec = {
   id: "flame",

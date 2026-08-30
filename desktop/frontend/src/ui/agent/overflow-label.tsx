@@ -10,12 +10,9 @@ interface Props {
   text: string;
 }
 
-/**
- * A single-line label that reveals overflow the same way the Codex task row
- * does: measure the real rendered text, then move only the inner track on the
- * owning row's hover/focus. The title itself stays one DOM/text identity; the
- * caller may use that same string for the row's accessible name and hover card.
- */
+// Measures the real rendered text, then moves only the inner track on the owning row's
+// hover/focus, so the label keeps ONE DOM/text identity the caller can reuse for the row's
+// accessible name and hover card.
 export function AgentOverflowLabel({ text }: Props) {
   const viewportRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
@@ -28,7 +25,7 @@ export function AgentOverflowLabel({ text }: Props) {
 
     const distance = Math.max(0, track.getBoundingClientRect().width - viewport.clientWidth);
     const fontSize = Number.parseFloat(getComputedStyle(track).fontSize) || 13;
-    // Codex's task marquee advances at two em per second and stops at the end.
+    // Two em per second, stopping at the end.
     const duration = distance > 0 ? distance / (fontSize * 2) : 0;
     setGeometry((current) =>
       Math.abs(current.distance - distance) < 0.5 && Math.abs(current.duration - duration) < 0.01

@@ -4,12 +4,9 @@ export type WorkIndexItemScope = "global" | "session";
 export type WorkIndexItemVariant = "expanded" | "rail";
 
 /**
- * Plugin-contributed Work Index item.
- *
- * The Work Index is the left-side agent work index, not a generic feature menu.
- * Contributors must declare whether the item is app-global or tied to the
- * current session list, and which sidebar variant it renders in — the expanded
- * source list or the collapsed rail.
+ * The Work Index is the agent's work index, NOT a generic feature menu: an item must declare
+ * whether it is app-global or tied to the session list, and which sidebar variant it
+ * renders in.
  */
 export interface WorkIndexItemSpec {
   id: string;

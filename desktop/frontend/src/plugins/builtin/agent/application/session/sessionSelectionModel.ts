@@ -1,17 +1,12 @@
-// The set of sessions held open, and which session the app should be on after a
-// change to it.
-//
-// `activeSessionId` appears here as an INPUT read from the location and as an
-// OUTPUT the caller navigates to — never as a field anyone stores. Closing the
-// session you are looking at has to answer "then where?", and that answer is a
-// move, not a write.
+// `activeSessionId` appears as an INPUT read from the location and as an OUTPUT the caller
+// navigates to — never as a field anyone stores. Closing the session you are looking at has
+// to answer "then where?", and that answer is a move, not a write.
 
 export interface AgentOpenSessions {
   activeSessionId: string;
   openSessionIds: string[];
 }
 
-/** The tab set after holding `sessionId` open. */
 export function openSession(openSessionIds: string[], sessionId: string): string[] {
   return openSessionIds.includes(sessionId) ? openSessionIds : [...openSessionIds, sessionId];
 }

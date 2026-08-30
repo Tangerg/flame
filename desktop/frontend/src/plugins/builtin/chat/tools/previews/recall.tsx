@@ -1,9 +1,6 @@
-// search_memory / search_conversations previews — what the agent already knew.
-//
-// Both tools answer in prose the model reads, so both previews are a parse of it:
-// a recalled memory is one paragraph, a conversation hit is a speaker and a day in
-// front of a snippet. The two are separate renderers because the second has
-// metadata worth aligning into a column and the first has none.
+// Both tools answer in PROSE the model reads, so both previews are a parse of it. Separate
+// renderers because a conversation hit has metadata worth aligning into a column and a
+// recalled memory has none.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";

@@ -22,12 +22,9 @@ export function useRenameSession(): (
     const owner = agentCommandOwner();
     const runtime = agentRuntime();
     let effect: AgentCommandEffect | undefined;
-    // Optimistic: paint the new title in the session summary list right away so the
-    // row doesn't flash back to the old title while the RPC + refetch settle.
-    // Cancel any in-flight sessions refetch FIRST: one started before this
-    // optimistic write (a background workspace resync / reconnect invalidate)
-    // would otherwise resolve with pre-rename data and clobber the optimistic
-    // title. Snapshot after cancelling so rollback restores the right state.
+    // Cancel any in-flight sessions refetch FIRST: one started before this optimistic write
+    // resolves with pre-rename data and clobbers it. Snapshot after cancelling, so rollback
+    // restores the right state.
     try {
       await owner.settle(queryClient.cancelQueries({ queryKey: [AGENT_SESSIONS_KEY] }));
       owner.assertCurrent();

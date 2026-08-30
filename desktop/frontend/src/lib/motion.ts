@@ -27,35 +27,21 @@ function scaled(duration: "fastMs" | "mediumMs" | "disclosureMs"): Transition {
   return t;
 }
 
-/** Expand/collapse and banner replacement: enough time for structure to read. */
 export const disclosureTransition: Transition = scaled("disclosureMs");
 
-/** Small content entrance: shorter than structural disclosure motion. */
 const contentEnterTransition: Transition = scaled("mediumMs");
 
 /**
- * A selection travelling from one place to another — the segmented control's chip.
- *
- * The only kind of motion CSS genuinely cannot express: the lifted chip is a fill on
- * whichever segment is active, and a transition animates a property WITHIN one
- * element, never between two. So a chip either appeared where it landed or you built
- * a separate absolutely-positioned indicator and measured its offsets by hand, which
- * is what `layoutId` does correctly and for free.
+ * A selection travelling between elements — the one kind of motion CSS cannot express, since
+ * a transition animates a property WITHIN one element. `layoutId` does for free what would
+ * otherwise be a hand-measured absolutely-positioned indicator.
  */
 export const selectionTransition: Transition = scaled("fastMs");
 
 /**
- * Something the user just added or took away — an attachment chip, a paste.
- *
- * Scale from just under, not a slide: a chip has no direction to come from, and the
- * exit matters more than the entrance. Without one, removing an attachment made the
- * chips after it jump left in a single frame with nothing to say the one you clicked
- * had been the thing that left.
- *
- * Presence ONLY. Pair it with `layout` and the survivors would slide into the gap
- * instead of jumping — for the price of a measurement on every render of whatever
- * holds them, and the composer re-renders on every keystroke. A nicety on the rare
- * interaction is not worth a cost on the constant one.
+ * PRESENCE only. Adding `layout` would slide the survivors into the gap instead of letting
+ * them jump, at the price of a measurement on every render of whatever holds them — and the
+ * composer re-renders on every keystroke.
  */
 export const chipPresence = {
   initial: { opacity: 0, scale: 0.92 },

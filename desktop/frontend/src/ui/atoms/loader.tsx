@@ -1,13 +1,5 @@
-// Pure-CSS loading indicators. Every variant embeds an sr-only <output>
-// ("Loading") — an implicit live status region — so assistive tech announces
-// the activity while the visual marks stay presentational; the
-// motion honors prefers-reduced-motion via the blanket rule in globals.css.
-// Keyframes (`flame-loader-*`) live in styles/globals.css; `pulse-dot` reuses
-// the shared `animate-pulse-dot` and `text-shimmer` the shared `animate-shimmer`.
-//
-// Skeleton (skeleton.tsx) already covers block/placeholder loading, so the
-// spinner-style variants from the source library are dropped — these are the
-// inline "agent is working" marks that sit next to text.
+// Inline "agent is working" marks that sit next to text; block/placeholder loading is
+// skeleton.tsx. Keyframes live in styles/globals.css.
 
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
@@ -20,7 +12,7 @@ export type LoaderSize = "sm" | "md" | "lg";
 export interface LoaderProps {
   variant?: LoaderVariant;
   size?: LoaderSize;
-  /** Label rendered by the `text-shimmer` variant; ignored by the others. */
+  /** Rendered by the `text-shimmer` variant only. */
   text?: string;
   className?: string;
 }
@@ -31,19 +23,16 @@ const CONTAINER: Record<LoaderSize, string> = {
   lg: "h-6",
 };
 
-// Ladder steps. These were Tailwind's own named sizes, which are fixed rem values: they
-// do not move with the user's UI size preference, and that is the one thing the ladder
-// exists to guarantee. (Naming those classes here would trip the guard that now forbids
-// them — check-design-tokens reads whole lines, comments included.)
+// Ladder steps, not Tailwind's named sizes: those are fixed rem values and do not move
+// with the user's UI size preference.
 const TEXT: Record<LoaderSize, string> = {
   sm: "text-ui-xs",
   md: "text-ui-sm",
   lg: "text-ui-md",
 };
 
-// The live status region: `<output>` carries an implicit role=status +
-// aria-live=polite (the semantic AT hook), so the visual container elements
-// stay presentational — no `role` attribute needed on them.
+// `<output>` carries an implicit role=status + aria-live=polite, so the visual marks stay
+// presentational and need no `role` of their own.
 function Loading() {
   const t = useT();
   return <output className="sr-only">{t("common.loading")}</output>;

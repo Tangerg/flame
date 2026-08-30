@@ -1,10 +1,5 @@
-// Message content rendering — the integrated whole that turns one Message
-// into its rendered form: the message shell (avatar / header / outline /
-// context menu), the markdown sub-module, and the content-block card renderers.
-//
-// This is the module's only public API. Everything else (BlockRenderer
-// internals, MessageContextMenu, the markdown renderer + components, HitlCard)
-// is private to the folder. The stream/panel chrome consumes MessageBlock.
+// The module's ONLY public API — BlockRenderer internals, the context menu, the markdown
+// renderer and HitlCard stay private to the folder.
 
 export { MessageBlock } from "./MessageBlock";
 export { RootRunOutcome } from "./RootRunOutcome";

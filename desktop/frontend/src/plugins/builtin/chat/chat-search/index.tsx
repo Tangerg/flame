@@ -10,7 +10,6 @@ export default definePlugin({
       order: 50,
       component: ChatSearchOverlay,
     });
-    // A command keeps the shortcut description and handler in one declaration.
     ctx.contribute(COMMAND, {
       id: "chat.search",
       label: "command.chatSearch",

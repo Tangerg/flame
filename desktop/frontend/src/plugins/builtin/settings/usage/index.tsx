@@ -1,6 +1,3 @@
-// Built-in plugin: "Usage" settings pane. Registration only — the UI lives in
-// ui/UsagePane, the usage.summary RPC use cases in application/usageConfig.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../public";

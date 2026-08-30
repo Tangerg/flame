@@ -8,25 +8,16 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
-  /** What the action will do, in the user's words. Rendered as the dialog's
-   *  description, so it is announced with the title — which is also why it is
-   *  required: a confirmation with nothing but a verb is not one. */
+  /** Required: rendered as the dialog's description and announced with the title. */
   body: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
-  /** Colour the confirm button as a loss. */
   destructive?: boolean;
   onConfirm: () => void;
 }
 
-/**
- * The last step before something the user cannot undo.
- *
- * Controlled and trigger-less: what needs confirming is usually a menu item that
- * has already closed by the time this opens, so the caller owns `open`. Copy is
- * passed in — the design system draws the shape, the feature knows what it is
- * about to destroy.
- */
+// Controlled and trigger-less: what needs confirming is usually a menu item that has
+// already closed by the time this opens, so the caller owns `open`.
 export function ConfirmDialog({
   open,
   onOpenChange,

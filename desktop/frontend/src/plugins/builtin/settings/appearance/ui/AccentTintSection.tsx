@@ -1,10 +1,6 @@
-// How much of the accent's hue the neutral surfaces carry.
-//
-// A preference rather than a constant because it is a taste axis, and the systems that
-// have solved this settle taste axes the same way: Material ships it as a scheme variant
-// (neutral chroma 6 for Tonal Spot, 10 for Vibrant, 2 for Neutral) rather than picking
-// one and defending it. `standard` is what every surface in this app was measured
-// against, so the default changes nothing.
+// A preference rather than a constant because it is a taste axis — Material ships the same
+// thing as a scheme variant rather than picking one chroma and defending it. `standard` is
+// what every surface here was measured against, so the default changes nothing.
 
 import type { SegmentedOption } from "@/ui";
 import { Segmented } from "@/ui";

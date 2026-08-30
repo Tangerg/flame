@@ -16,22 +16,11 @@ import { ExactSequence } from "@/foundation/exactSequence";
 
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 /**
- * The single send entry point for the composer — both the textarea Enter
- * path and the Send button route through here so they can't diverge.
- *
- *   - active session present → send into it.
- *   - no active session (welcome screen) → reject submission without clearing
- *     the draft; selecting a project creates and mounts the Session first.
- *   - a run is already streaming → STEER the running turn (runs.steer): the
- *     message injects into the active loop and the model reads it on its next
- *     tool round (true mid-run steer). The steered message is rendered
- *     OPTIMISTICALLY (a local-* user bubble) the moment it's sent, so the user
- *     sees their input land immediately instead of waiting for the next round
- *     boundary; the runtime streams the real userMessage Item back when it
- *     drains the steer, and the fold reconciles the placeholder by content. If
- *     the run finished between typing and sending (run_not_found), the steer is
- *     no longer deliverable — roll the optimistic bubble back and fall back to a
- *     fresh turn so the message is never lost (and never duplicated).
+ * The single send entry point, so Enter and the Send button cannot diverge. With a run
+ * already streaming this STEERS it rather than opening a turn: the message renders
+ * optimistically and the fold reconciles it by content when the runtime drains the steer. A
+ * run that finished between typing and sending (`run_not_found`) rolls the bubble back and
+ * opens a fresh turn, so it is never lost and never duplicated.
  */
 export function useChatSend(): (input: AgentInput) => boolean {
   const send = agentSessionView().useAction("send");
@@ -84,11 +73,8 @@ export function canAcceptChatInput(
   return Boolean(sessionId) && mountedSendAvailable && rootStatus !== "waiting";
 }
 
-// Optimistic steer bubble: render the user's steered message immediately under a
-// local-* id (a distinct "steer-" suffix so it can't collide with send()'s own
-// local-N counter). The fold reconciles it against the streamed userMessage Item
-// by content match (appendUserMessage) once the runtime drains the steer — no
-// explicit relabel, since runs.steer returns no item id.
+// A distinct "steer-" suffix so these cannot collide with send()'s own local-N counter.
+// The fold reconciles them by CONTENT match, since runs.steer returns no item id.
 const steerBubbleIds = new ExactSequence();
 
 interface SteerRunningTurnInput {
@@ -121,24 +107,19 @@ function steerRunningTurn({
     (err: unknown) => {
       if (!owner.isCurrent()) return;
       effect.rollback();
-      // The run this steer addressed is no longer executing: it finished, parked, or
-      // moved to another segment while the person was typing. Sending the input as a
-      // fresh turn is what they meant, and it is the runtime — not a guess here —
-      // that says which of those happened.
+      // The addressed run finished, parked, or moved segment while the person typed. The
+      // RUNTIME says which — not a guess here — and a fresh turn is what they meant.
       if (runtime.isRunGone(err)) {
         if (send?.(input, runOptions) !== true) {
-          // The Run parked rather than finished. The input remains in composer
-          // history, but it was not accepted as a new turn; make that explicit
-          // instead of silently discarding an optimistic steer.
+          // Parked rather than finished: the input was not accepted as a new turn, so say
+          // so instead of silently discarding an optimistic steer.
           notifyError(describeRpcError(err) ?? t("session.error.steer"), { source: "session" });
         }
         return;
       }
-      // Any other failure means the steer may or may not have reached the loop, so
-      // the optimistic bubble goes either way: if it did land, the runtime streams
-      // the real userMessage Item back and the fold shows it. Leaving the bubble up
-      // was the one outcome that lies — the message sits there looking sent, with
-      // no reply and nothing said about why.
+      // The steer may or may not have reached the loop, so the optimistic bubble goes
+      // either way: if it landed the runtime streams the real Item back. Leaving it up is
+      // the one outcome that lies — a message looking sent with no reply and no reason.
       console.error("[session] steer failed:", err);
       notifyError(describeRpcError(err) ?? t("session.error.steer"), { source: "session" });
     },

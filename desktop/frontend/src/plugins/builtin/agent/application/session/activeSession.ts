@@ -59,14 +59,10 @@ export function useActiveSession(): AgentSessionSummary | undefined {
 }
 
 /**
- * Resolve the workspace identity independently from its eventual transport use.
- *
- * No active session deliberately means the app's default workspace. An active
- * id absent from the current Session projection means something very different:
- * the projection is still catching up (most visibly just after create or on a
- * cold restore). Keeping that state explicit prevents callers from turning
- * "unknown" into the Runtime's default workspace and reading or mutating the
- * wrong project.
+ * No active session means the app's default workspace. An active id ABSENT from the current
+ * Session projection means something else entirely — the projection is still catching up,
+ * most visibly right after create or on a cold restore. The two stay distinct so no caller
+ * resolves "unknown" to the default workspace and mutates the wrong project.
  */
 export function activeSessionWorkspaceSelection(
   activeSessionId: string,

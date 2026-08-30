@@ -17,7 +17,6 @@ export function useRuntimeCommandsAvailable(): boolean {
   return runtimeServiceAcceptsCommands(useRuntimeServiceStatus());
 }
 
-/** Event-handler form of useRuntimeCommandsAvailable. */
 export function runtimeCommandsAvailable(): boolean {
   return runtimeServiceAcceptsCommands(runtimeServiceStatus().snapshot());
 }

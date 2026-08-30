@@ -14,11 +14,8 @@ import type { WireStreamingMethodName } from "@flame/runtime-contract/methods";
 import { isResponse, type RpcId, type RpcMessage } from "../types";
 
 export interface MemoryTransport extends Transport {
-  /** Push a message as if it arrived from the runtime. */
   inject(msg: RpcMessage, metadata?: TransportResponseMetadata, requestRpcId?: RpcId): void;
-  /** End one streaming response as if reported by the transport. */
   endStream(method: WireStreamingMethodName, requestRpcId: RpcId): void;
-  /** Drain all messages the client has sent so far. */
   outbox(): TransportRequest[];
 }
 

@@ -1,6 +1,5 @@
-// apply_patch preview — one quiet row per file mutation from this ToolCall's
-// own persisted PatchResult. The Runtime does not publish line-level diffs here,
-// so this surface never substitutes the current worktree or invents diff stats.
+// Reads this ToolCall's OWN persisted PatchResult. The Runtime publishes no line-level diff
+// here, so this must never substitute the current worktree or invent diff stats.
 
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";

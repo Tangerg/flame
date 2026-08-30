@@ -18,8 +18,6 @@ export interface ToolCardModel {
   denied: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
-  /** `+n −m` for a call that changed lines, rendered by the same atom the diff
-   *  views use. Absent when there is nothing to report. */
   diffStat?: { added: number; removed: number };
   metaItems: ToolMetaItem[];
   shell: ActivityShell;
@@ -36,15 +34,13 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     isError,
     denied: tool.status === "denied",
     intent,
-    // An error message replaces the subject: what went wrong outranks what it was
-    // going to act on, and a failure is prose, never a path.
+    // Always `text`: a failure is prose, never a path, so it must not be left-truncated.
     detail: isError && tool.error ? { kind: "text", value: tool.error } : intent.detail,
     diffStat,
     metaItems,
     shell: toolActivityShell(tool),
-    // Lifecycle truth is carried by inline text/dot metadata. Colouring the
-    // identity glyph turned errors and refusals back into status cards even after
-    // the outer fill was removed.
+    // Always neutral: lifecycle is carried by inline text/dot metadata, and colouring the
+    // identity glyph turns errors and refusals back into status cards.
     tone: "neutral",
   };
 }

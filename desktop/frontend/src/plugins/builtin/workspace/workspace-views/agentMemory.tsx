@@ -1,10 +1,6 @@
-// Built-in workspace view: "Agent Memory" — the HITL review surface over the
-// agent's self-maintained memory (agentMemory.*). The agent mines durable facts
-// from sessions; they wait as `pending` until the user approves them, and only
-// `active` items are recalled into future turns or returned by memory_search.
-// Distinct from "Knowledge" (knowledge.tsx), which edits the user-authored FLAME.md
-// cascade. A scope toggle switches between the current project and the
-// cross-project user store.
+// The HITL review surface over the agent's SELF-maintained memory: mined facts wait as
+// `pending` until approved, and only `active` items are recalled into future turns.
+// Distinct from Knowledge, which edits the user-authored FLAME.md cascade.
 
 import { useCallback, useRef, useState } from "react";
 import { DataView, EmptyState, Icon, IconButton, PillButton, SectionLabel, TextArea } from "@/ui";
@@ -29,8 +25,8 @@ import {
 
 type Scope = AgentMemoryQuery["scope"];
 
-// Run a mutation with a synchronous re-entrancy latch (state lags a render) and
-// a shared error toast. Returns the runner + a busy flag for disabling buttons.
+// The latch is synchronous because `busy` state lags a render, so a double-click before
+// the disabled state applies would otherwise fire two writes.
 function useRowAction(): { busy: boolean; run: (op: () => Promise<void>) => void } {
   const t = useT();
   const pending = useRef(false);

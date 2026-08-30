@@ -1,8 +1,6 @@
-// rehype plugin: wraps each word in <span class="fade-in"> so the
-// per-token CSS animation lands as new words arrive. Stable hast
-// positions across renders mean already-rendered spans don't replay;
-// only the freshly-appended tail animates. Skips <pre>/<code> (Shiki
-// handles those as one chunk) and any container with `data-no-fade`.
+// Stable hast positions across renders are what keep already-rendered spans from replaying,
+// so only the freshly-appended tail animates. Skips <pre>/<code>, which Shiki handles as one
+// chunk, and anything under `data-no-fade`.
 
 import type { Element, Root, Text } from "hast";
 import { visit } from "unist-util-visit";
@@ -22,13 +20,10 @@ export function rehypeFadeIn() {
 
     visit(tree, "text", (node: Text, index, parent) => {
       if (index === undefined || parent === undefined) return;
-      // Type guard: parent could be a Root (top-level text — rare) or an
-      // Element (the common case). Only the Element case has tagName.
       if (parent.type === "element" && SKIP_TAGS.has(parent.tagName)) return;
       if (parent.type === "element") {
-        // Honour opt-out marker on any ancestor — but we don't have
-        // ancestor info here from visit(). Cheap check: just the immediate
-        // parent.
+        // `visit()` gives no ancestor chain, so the opt-out marker is only honoured on the
+        // IMMEDIATE parent.
         const props = parent.properties ?? {};
         if (props.dataNoFade || props["data-no-fade"]) return;
       }
@@ -37,8 +32,7 @@ export function rehypeFadeIn() {
       if (!value) return;
 
       const segments = segmentWords(value);
-      // Skip the wrap if everything is whitespace — no visible effect to
-      // animate, and we'd just bloat the DOM.
+      // All-whitespace has no visible effect to animate; wrapping it only bloats the DOM.
       if (segments.every((s) => /^\s+$/.test(s))) return;
 
       const replacement: Array<Element | Text> = segments.map((seg) => {

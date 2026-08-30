@@ -1,30 +1,22 @@
-// The changed-file navigator's read model.
-//
-// Reviewing a multi-file change needs two things at once: every file's diff in
-// one scroll, and a way to reach a file without scrolling past the others. The
-// diff list already answers the first; this folds the same flat file list into
-// the tree the navigator renders. It is the diff's own file set — NOT the
-// working tree — so nothing is fetched and nothing lazy-loads: the whole shape
-// is known the moment the diff arrives.
+// Built from the DIFF's own file set, not the working tree, so nothing is fetched and
+// nothing lazy-loads: the whole shape is known the moment the diff arrives.
 
 import type { WorkspaceFileDiff } from "./workspaceQueries";
 
-/** How much a node changed. Carried on both node kinds so a row never has to walk
- *  its own children to say what it is worth. */
+/** Carried on BOTH node kinds, so a row never has to walk its children to say what it
+ *  is worth. */
 export interface ReviewTreeStat {
   added: number;
   removed: number;
-  /** A binary file has no line counts at all — distinct from a pair of zeroes,
-   *  which would claim it was touched and changed nothing. */
+  /** Distinct from a pair of zeroes, which would claim the file was touched and changed
+   *  nothing. */
   binary: boolean;
 }
 
 export interface ReviewTreeFileNode extends ReviewTreeStat {
   kind: "file";
-  /** Final path segment — what the row shows. */
   name: string;
-  /** Full repo-relative path: the selection id, the React key, and the scroll
-   *  anchor the diff list marks each file card with. */
+  /** Also the selection id, the React key and the diff list's scroll anchor. */
   path: string;
 }
 
@@ -45,10 +37,8 @@ interface MutableDirectory {
   files: ReviewTreeFileNode[];
 }
 
-/** A directory's own worth is the sum of what is under it — the aggregate both
- *  reference sheets put on a container row, and the only figure a collapsed
- *  directory can honestly show. Binary children contribute no lines but do make
- *  the total binary-tainted, so the flag rides up rather than being lost. */
+/** Binary children contribute no lines but DO taint the total, so the flag rides up
+ *  rather than being lost. */
 function rollUp(children: readonly ReviewTreeStat[]): ReviewTreeStat {
   let added = 0;
   let removed = 0;
@@ -65,15 +55,14 @@ function directory(name: string, path: string): MutableDirectory {
   return { name, path, directories: new Map(), files: [] };
 }
 
-// Natural order, case-insensitive: `item2` before `item10`, and a capitalised
-// name does not sort into its own block ahead of the lowercase ones.
+// Natural and case-insensitive: `item2` before `item10`, and a capitalised name does not
+// sort into its own block ahead of the lowercase ones.
 function compareName(left: string, right: string): number {
   return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
-// Collapse an unbranched directory chain into one row (`src` → `plugins` reads
-// as `src/plugins`). A repo-relative diff path is mostly unbranched prefix, so
-// without this the navigator spends its first four rows saying nothing.
+// A repo-relative diff path is mostly unbranched prefix, so without collapsing the
+// navigator spends its first rows saying nothing.
 function compress(node: ReviewTreeDirectoryNode): ReviewTreeDirectoryNode {
   let current = node;
   while (current.children.length === 1) {
@@ -114,7 +103,6 @@ function finalize(node: MutableDirectory): ReviewTreeNode[] {
   return [...directories, ...node.files];
 }
 
-/** Fold a diff's flat file list into a sorted, path-compressed tree. */
 export function buildReviewFileTree(files: readonly WorkspaceFileDiff[]): ReviewTreeNode[] {
   const root = directory("", "");
   for (const file of files) {

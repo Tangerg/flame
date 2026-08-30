@@ -1,46 +1,20 @@
 /**
- * The built-in tools, in families, each with the one glyph it wears.
+ * In lib because the transcript needs the glyph and the catalog needs the family, and those
+ * two contexts may not import each other.
  *
- * Two facts about a tool NAME and nothing else, which is why this sits in lib and
- * not in either context that reads it: the transcript needs the glyph (chat/tools
- * contributes this table to the icon registry) and the catalog needs the family
- * (the workspace Tools view groups by it), and those two contexts may not import
- * each other. Same placement, and the same reason, as `activityShell`.
- *
- * ONE GLYPH PER TOOL, and a test holds it that way. This ran 16 glyphs across 32
- * tools: `list` stood for reading shell output, three plan-mode calls and a
- * deferred result; `search` for grep, two recall families and the tool catalog;
- * `sparkle` for all four Skill calls; `clock` for all three schedules; `loop` for
- * all three goal calls. A scrolled transcript was a column of four repeating
- * shapes, which is the same as no shape at all — the glyph is the only part of a
- * folded row a reader takes in without reading, and it was spending that on
- * nothing.
- *
- * Colour is deliberately NOT part of the differentiation: tone means state
- * (running, failed, refused), and spending it on tool identity would leave a
- * failed read and a successful one looking equally alarming. The shapes carry the
- * variety; the palette keeps its job.
- *
- * It is the built-in vocabulary, not the live inventory: `tools.list` remains the
- * authority for which tools are currently exposed, while this table assigns a
- * family and glyph to each of the Runtime's 30 built-ins. Unknown MCP tools still
- * render with the generic glyph and remain unplaced in the built-in catalog.
- *
- * The FAMILIES are what someone browsing the catalog is asking about — can it run
- * commands, does it remember, can it reach the network — and deliberately not the
- * runtime's safety classes: 22 of the 30 are `safe`, so that taxonomy sorts the
- * catalog into one long bucket and three short ones. The safety class stays on the
- * row, where it answers the other question.
+ * ONE GLYPH PER TOOL, held by a test. Colour is deliberately NOT part of the
+ * differentiation: tone means STATE, so spending it on identity leaves a failed read and a
+ * successful one equally alarming. This is the built-in VOCABULARY, not the live inventory —
+ * `tools.list` stays the authority for what is exposed.
  */
 export interface ToolFamily {
-  /** i18n key suffix — `tools.family.<id>`. */
+  /** i18n key suffix: `tools.family.<id>`. */
   id: string;
   tools: readonly { name: string; icon: string }[];
 }
 
 export const TOOL_FAMILIES: readonly ToolFamily[] = [
   {
-    // A prompt, its scrollback, and the stop.
     id: "shell",
     tools: [
       { name: "shell", icon: "terminal" },
@@ -49,7 +23,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Read a file or apply one model-authored patch.
     id: "files",
     tools: [
       { name: "read", icon: "eye" },
@@ -57,7 +30,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Finding things — inside files, by filename, and by symbol.
     id: "search",
     tools: [
       { name: "grep", icon: "text-search" },
@@ -66,7 +38,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Three different acts: query the web, pull one page, call an endpoint.
     id: "network",
     tools: [
       { name: "web_search", icon: "globe" },
@@ -75,7 +46,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // The shelf, one taken down, a page out of it, and a new one offered.
     id: "skills",
     tools: [
       { name: "list_skills", icon: "library" },
@@ -85,7 +55,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Asking: another agent, or the person.
     id: "delegation",
     tools: [
       { name: "delegate_task", icon: "users" },
@@ -93,7 +62,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Plan mode — entering it, writing the plan, leaving it.
     id: "plan",
     tools: [
       { name: "enter_plan_mode", icon: "map" },
@@ -102,8 +70,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // What it remembered, what was said before, what tools exist, and a result it
-    // had set aside.
     id: "recall",
     tools: [
       { name: "search_memory", icon: "brain" },
@@ -113,7 +79,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Read the calendar, add to it, take something off it.
     id: "schedules",
     tools: [
       { name: "list_schedules", icon: "clock" },
@@ -122,7 +87,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     ],
   },
   {
-    // Set the target, check the target, report what came of it.
     id: "goals",
     tools: [
       { name: "create_goal", icon: "target" },
@@ -132,12 +96,8 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
   },
 ];
 
-/**
- * Which family a tool name belongs to, or `undefined` for one this table has never
- * heard of — an MCP tool, or a built-in added on the backend before the client
- * learns its glyph. Nothing here fabricates a family for it; the catalog gives the
- * unplaced ones their own heading at the end.
- */
+/** `undefined` for a tool this table has never heard of. Nothing here FABRICATES a family;
+ *  the catalog gives unplaced tools their own heading. */
 export function toolFamilyId(name: string): string | undefined {
   return FAMILY_BY_TOOL.get(name);
 }

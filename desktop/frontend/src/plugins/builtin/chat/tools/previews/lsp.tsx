@@ -1,6 +1,5 @@
-// lsp preview family — the runtime exposes ONE `lsp` tool and dispatches on its
-// `operation` argument; diagnostics is one of those operations, not a tool of its
-// own (the runtime asserts the two never coexist).
+// The runtime exposes ONE `lsp` tool and dispatches on its `operation` argument, so
+// diagnostics is an operation rather than a tool of its own.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
@@ -12,10 +11,8 @@ import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResult
 import { lspToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
-// Result is one line per hit: `path:line:col` (locations) or
-// `kind Name (in Container) — path:line:col` (symbols), or a "No X found."
-// sentence. Symbol lines split on the em-dash so the location reads as metadata
-// next to the symbol.
+// One line per hit: `path:line:col`, or `kind Name (in Container) — path:line:col` for a
+// symbol, split on the em-dash so the location reads as metadata beside it.
 function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
@@ -106,8 +103,6 @@ function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
   );
 }
 
-// One renderer per shape the result takes: prose for hover, severity-tinted lines
-// for diagnostics, locations for everything else.
 function LspPreview(props: ToolPreviewProps) {
   if (props.tool.operation === "hover") return <LspHoverPreview {...props} />;
   if (props.tool.operation === "diagnostics") return <LspDiagnosticsPreview {...props} />;

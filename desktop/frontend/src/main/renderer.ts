@@ -14,7 +14,6 @@ export interface DesktopRendererDependencies {
   ): void;
 }
 
-/** Owns one renderer generation from bootstrap admission through final close. */
 export class DesktopRenderer {
   readonly #dependencies: DesktopRendererDependencies;
   #active = true;

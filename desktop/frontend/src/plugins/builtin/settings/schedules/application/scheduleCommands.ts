@@ -174,7 +174,6 @@ class ScheduleMutationGeneration {
   }
 }
 
-/** Owns schedule commands, revisions, cache projection, and run navigation for one generation. */
 export class ScheduleMutationOwner {
   readonly #gateway: ScheduleGateway;
   #generation: ScheduleMutationGeneration;
@@ -248,8 +247,6 @@ export async function updateSchedule(
   return ScheduleMutationOwner.current().update(input);
 }
 
-// setScheduleEnabled flips just the enablement without dropping the schedule's
-// other persisted fields.
 export async function setScheduleEnabled(
   s: ScheduleConfig,
   enabled: boolean,
@@ -261,8 +258,7 @@ export async function deleteSchedule(id: string): Promise<void> {
   return ScheduleMutationOwner.current().remove(id);
 }
 
-// runScheduleNow fires the schedule immediately. Re-read the schedules so the
-// row's lastRunAt updates when the runtime reports the run.
+// Re-reads the schedules so `lastRunAt` updates once the runtime reports the run.
 export async function runScheduleNow(id: string): Promise<ScheduledRunIdentity> {
   return ScheduleMutationOwner.current().runNow(id);
 }

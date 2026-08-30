@@ -1,6 +1,3 @@
-// Regenerate action (assistant messages only) — replay the preceding user
-// prompt via the shared regenerate message action.
-
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk";
 import { canRegenerateMessage } from "./application/messageActionAvailability";

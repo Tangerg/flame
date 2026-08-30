@@ -1,15 +1,9 @@
-// TanStack Router tree, built dynamically from plugin-registered routes, and
-// the app's only Navigator implementation.
+// Mounts AFTER PluginProvider, so the route registry is already populated. Plugin routes
+// do not appear in `<Link to="…">` autocomplete: the declare module is keyed off the router
+// shape, not the runtime route list.
 //
-// AppRouter mounts after PluginProvider so the registry is already populated.
-// Plugin routes are queried by id; they don't show up in the type-safe
-// `<Link to="…">` autocomplete (the declare module below is keyed off the router
-// shape, not the runtime route list).
-//
-// The search params are where the user's location lives — see lib/navigation for
-// the ownership rule. They are declared on the root route so every plugin route
-// inherits them: "which session / view / dock / settings pane" is a property of
-// the app, not of one page.
+// Search params are declared on the ROOT route so every plugin route inherits them — the
+// user's location is a property of the app, not of one page (see lib/navigation).
 
 import { useSyncExternalStore } from "react";
 import {
@@ -55,13 +49,10 @@ function locationFrom(read: (key: string) => unknown): AppLocation {
   };
 }
 
-// The location lives in the URL, and the URL is owned by ONE history instance —
-// created here, handed to the router below, and read by the Navigator. It exists
-// before any plugin loads, which is what the Navigator needs: ports are
-// installed while plugins load and several of them read or subscribe to the
-// location immediately, whereas the router cannot be built until those same
-// plugins have registered their routes. The Navigator therefore binds directly
-// to history rather than depending on the later router construction boundary.
+// ONE history instance owns the URL, created here before any plugin loads. The Navigator
+// binds directly to it rather than to the router, because ports are installed DURING plugin
+// load and several read the location immediately, while the router cannot be built until
+// those same plugins have registered their routes.
 const history = createBrowserHistory();
 
 function readLocation(): AppLocation {

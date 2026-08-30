@@ -1,7 +1,5 @@
-// One reporting path for session-mutation failures (create / delete /
-// rename / fork / relocate). Every mutation notifies on failure — a silent
-// console.error reads as "the click did nothing" in the UI — while the
-// console keeps the raw error object for diagnostics.
+// Every session mutation NOTIFIES on failure: a silent console.error reads as "the click did
+// nothing". The console still keeps the raw error object.
 
 import { t } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";

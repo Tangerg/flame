@@ -1,6 +1,3 @@
-// A CSS Custom Highlight API adapter: painting a match is done by handing Ranges
-// to the browser, so this is document-facing plumbing rather than application
-// logic — it lives with the DOM walk that produces those Ranges.
 const HIGHLIGHTS_AVAILABLE = typeof CSS !== "undefined" && "highlights" in CSS;
 const HIGHLIGHT_STYLE_ID = "flame-chat-search-highlight-styles";
 const HIGHLIGHT_STYLES = `
@@ -15,13 +12,9 @@ const HIGHLIGHT_STYLES = `
 `;
 
 /**
- * Install the browser-owned paint rules beside the adapter that owns
- * `CSS.highlights`.
- *
- * Lightning CSS does not yet parse Custom Highlight selectors, so running these
- * valid platform rules through the application stylesheet creates a false build
- * warning. A runtime style is also the tighter ownership boundary: uninstalling
- * the search UI removes both its Range registry entries and its paint rules.
+ * A runtime style rather than the application stylesheet: Lightning CSS cannot yet parse
+ * Custom Highlight selectors and warns on these valid platform rules — and uninstalling the
+ * search UI should take its paint rules with its Range registry entries.
  */
 export function installChatSearchHighlightStyles(): () => void {
   const existing = document.getElementById(HIGHLIGHT_STYLE_ID);

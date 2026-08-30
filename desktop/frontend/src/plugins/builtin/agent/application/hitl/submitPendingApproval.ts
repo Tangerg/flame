@@ -1,12 +1,7 @@
-// Imperative HITL approval submit — the keyboard path behind ⌘↩ (approve) and
-// ⇧⌘⌫ (deny) in the composer keymap. The card path goes through
-// useApprovalSubmit / useInterruptResume (per-card optimistic state); this is
-// the card-less equivalent: find the active session's first unstaged approval
-// and add its answer to the shared atomic response set.
-//
-// Returns true when an approval is pending or staged (so the keybinding never
-// falls through into chat send while the barrier is open), false when the set
-// contains no approval. The coordinator owns staging, deduplication and rollback.
+// The card-less keyboard path behind ⌘↩ / ⇧⌘⌫: answer the active session's first unstaged
+// approval into the shared atomic response set. Returns true whenever an approval is
+// pending OR staged, so the keybinding never falls through into chat send while the barrier
+// is open. Staging, deduplication and rollback belong to the coordinator.
 
 import { agentSessionState } from "../ports/sessionState";
 import { agentSessionView } from "../ports/sessionView";

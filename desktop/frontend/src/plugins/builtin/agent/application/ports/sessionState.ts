@@ -19,7 +19,6 @@ export interface AgentSessionStatePort {
   selectSession(id: string): void;
   closeSession(id: string): void;
   useDraftSessionIds(): Set<string>;
-  /** Is this session a draft — created by a "New" gesture and never used? */
   isDraftSession(id: string): boolean;
   reconcileSessions(liveIds: string[]): void;
   /**

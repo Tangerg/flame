@@ -16,13 +16,11 @@ const monoModules = import.meta.glob<{ default: ComponentType<{ size?: number }>
 export const IconMap: Record<string, ComponentType<{ size?: number }>> = {};
 for (const [path, mod] of Object.entries(monoModules)) {
   const match = path.match(/\/es\/([^/]+)\/components\/Mono\.js$/);
-  // match[1] is the captured group — defined when match is non-null.
   if (match) IconMap[match[1]!] = mod.default;
 }
 
 export { rawToc };
 export type TocEntry = (typeof rawToc)[number];
 
-// Quick lookup: id -> toc metadata.
 export const TocById: Record<string, TocEntry> = {};
 for (const e of rawToc) TocById[e.id] = e;

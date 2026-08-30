@@ -1,9 +1,5 @@
-// A single clickable file:line reference — opens the file viewer at the line.
-// Shared by the tool-output LinkedText (dense refs: build errors, grep hits)
-// and the markdown-prose linkifier (rehypeFileRefs → markdownComponents `a`),
-// so a file reference looks and behaves identically wherever it appears. That
-// sameness is the point of sharing one component: divergent styling would read
-// as two different kinds of link.
+// ONE component behind both the tool-output linkifier and the markdown-prose one: divergent
+// styling would read as two different kinds of link.
 
 import { openWorkspaceFile } from "@/plugins/builtin/workspace/public/navigation";
 import { TextButton } from "@/ui";

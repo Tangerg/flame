@@ -1,14 +1,8 @@
-// Public message-text projection for surfaces that need to flatten an agent
-// message: message actions, conversation export, and error recovery prompts.
-
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 
 /**
- * Best-effort plaintext extraction from a Message's content blocks. Only text +
- * reasoning (the prose-bearing kinds) contribute; tool / approval / question and
- * other UI-only blocks are dropped — their `text` is a card label (e.g. an
- * approval's "Run command"), not prose, so it must not leak into copied/exported
- * plaintext.
+ * Only the prose-bearing kinds contribute. A UI-only block's `text` is a card LABEL, not
+ * prose, so it must never leak into copied or exported plaintext.
  */
 export function flattenText(blocks: Message["blocks"]): string {
   return blocks
@@ -18,10 +12,8 @@ export function flattenText(blocks: Message["blocks"]): string {
 }
 
 /**
- * Markdown reconstruction — keeps the original markup so the consumer
- * sees the same headings / fences / lists they were rendered from.
- * Reasoning blocks render as italic block-quotes (LLM scratchpad). Other
- * non-text kinds are dropped — they're UI-only.
+ * Keeps the original markup, so the consumer sees the same headings, fences and lists they
+ * were rendered from. UI-only kinds are dropped.
  */
 export function flattenMarkdown(blocks: Message["blocks"]): string {
   const out: string[] = [];

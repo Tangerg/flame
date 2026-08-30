@@ -1,7 +1,5 @@
-// Shared composer submit use case — used by the textarea Enter path, the send
-// button, and plugin key bindings. Owns slash routing + the
-// clear-after-accepted-submit invariant; draft interpretation stays in the
-// composer domain layer.
+// One submit path for the Enter key, the send button and plugin key bindings, so they
+// cannot diverge. Owns slash routing and the clear-only-after-accepted invariant.
 
 import {
   buildInput,
@@ -22,23 +20,16 @@ import {
 } from "@/plugins/sdk";
 
 export interface SubmitDeps {
-  /** Current textarea contents. */
   value: string;
-  /** Wipe the textarea + its image attachments. Called once per successful submit. */
   clear: () => void;
-  /** Forward the composed user input (text + inlined images) to the agent. */
   sendInput: (input: UserInput) => boolean;
-  /** Image attachments to inline alongside the text (empty = text-only). */
   images: InputImage[];
-  /** Large pasted text attachments staged on the active draft. */
   pastes: PastedText[];
-  /** Record a submitted typed message for shell-style history recall. */
   recordHistory: (text: string) => void;
-  /** Whether a non-command input can open or steer a Run right now. */
   canSend: () => boolean;
 }
 
-/** Run the composer submit pipeline. Safe to call on empty text + no images. */
+/** Safe to call on empty text with no attachments. */
 export function submitComposer({
   value,
   clear,
@@ -49,8 +40,6 @@ export function submitComposer({
   canSend,
 }: SubmitDeps): void {
   const intent = createComposerSendIntent({ value, images, pastes });
-  // An image-only / paste-only send (a screenshot or a dropped blob with no
-  // caption) is valid.
   if (!intent.shouldSend) return;
 
   const modeDraft = {
@@ -96,9 +85,8 @@ export function submitComposer({
     return;
   }
 
-  // Slash routing applies only to a text command — an attached image / paste
-  // isn't a command argument. A "/cmd" still routes as the command (attachments
-  // dropped: commands take plain string args, §slash).
+  // Slash routing applies only to a TEXT command: attachments are not command arguments,
+  // so a "/cmd" still routes as the command and drops them.
   const slash = intent.slash;
   if (slash) {
     const spec = lookupExtensionByKey(SLASH_COMMAND, slash.cmd);

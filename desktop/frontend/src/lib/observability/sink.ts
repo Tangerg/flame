@@ -1,12 +1,6 @@
-// Local sink — the dev-visibility exporters for all three signals, feeding
-// the bounded in-memory stores the Diagnostics view renders. Mirror of the
-// backend's otel/slog exporters (one local stream per signal).
-//
-// Every exporter BATCHES before touching the store: a burst of spans/logs
-// buffers for one flush window and lands as a single Zustand commit, so
-// render cost is bounded regardless of telemetry volume (the perf concern
-// that shapes this whole module). Metrics already arrive batched from the
-// SDK's PeriodicExportingMetricReader.
+// Every exporter BATCHES before touching the store: a burst of spans or logs buffers for
+// one flush window and lands as a single Zustand commit, bounding render cost regardless of
+// telemetry volume. Metrics already arrive batched from PeriodicExportingMetricReader.
 
 import type { HrTime } from "@opentelemetry/api";
 import type {
@@ -47,15 +41,10 @@ function flattenAttrs(
   return out;
 }
 
-// Generic batcher: collect items, flush them through `drain` once per window.
-//
-// Deliberately not Pacer's `Batcher`, which is otherwise the same shape: it
-// clears and restarts its timer on every `addItem`, so the window follows the
-// LAST item. A telemetry buffer has to bound latency from the FIRST one —
-// while a run streams, spans and logs arrive closer together than the window,
-// and a debounced batch would not flush until the run went quiet. The
-// Diagnostics view would sit empty for exactly as long as there was something
-// to watch.
+// Deliberately NOT Pacer's `Batcher`, which is otherwise the same shape but restarts its
+// timer on every `addItem`, so the window follows the LAST item. Telemetry has to bound
+// latency from the FIRST: while a run streams, items arrive closer together than the
+// window, so a debounced batch would not flush until the run went quiet.
 class Batcher<T> {
   private buf: T[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;

@@ -9,7 +9,6 @@ import { AgentWorkspaceView } from "@/ui/agent";
 import { ViewHeader, type ViewHeaderProps } from "./ViewHeader";
 
 interface Props extends ViewHeaderProps {
-  /** Extra classes on the scroll container (e.g. "py-1" for inset rows). */
   scrollClassName?: string;
   /** Ref to the scroll container — lets a view drive its own scroll position
    *  (the Diff view anchors to the bottom on open). */

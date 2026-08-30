@@ -10,13 +10,8 @@ import { cn } from "@/lib/classNames";
 // session reachable: the index is the only place some of them appear.
 const VISIBLE_CAP = 5;
 
-/**
- * A list of sessions with its own fold.
- *
- * Both places sessions appear need the identical cap, the identical fold copy
- * and the identical row wiring, and they had drifted apart the moment there
- * were two of them.
- */
+/** Both places sessions appear need the identical cap, fold copy and row wiring, and they
+ *  drifted apart the moment there were two of them. */
 export function SessionList({
   sessions,
   actions,

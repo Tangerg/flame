@@ -1,12 +1,6 @@
-// Typed wrappers for every method in runtime/doc/API.md §7. Grouped by namespace
-// so callers do `methods.runs.start(...)` rather than
-// `client.call("runs.start")`. The factory takes an RpcClient and returns
-// the full typed surface.
-//
-// Streaming methods (runs.start / runs.resume / runs.subscribe) return
-// `{ result, events }` where `events` is an AsyncIterable. Run streams
-// carry the whole run tree and end on the root segment's `segment.finished`
-// (see ./stream).
+// Typed wrappers for every method in runtime/doc/API.md §7. Streaming methods return
+// `{ result, events }`; a run stream carries the whole run tree and ends on the ROOT
+// segment's `segment.finished` (see ./stream).
 
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
@@ -128,12 +122,8 @@ export interface StreamingResult<R, E> {
   events: AsyncIterable<E>;
 }
 
-// How THIS client calls, composed from what the contract publishes: the generated
-// table fixes the method names and the shapes each one carries, and the options are
-// this transport's business (§12 keeps the wire narrow and lets the SDK add the
-// handles). Before it, every call site below restated its own method name and result
-// type, so a method renamed in the Registry surfaced as a runtime method_not_found
-// instead of a compile error.
+// Composed from the GENERATED table, so a method renamed in the Registry is a compile
+// error rather than a runtime `method_not_found`.
 type WirePerform = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
@@ -165,11 +155,9 @@ type WireCall = <M extends WireMethodName>(
   options?: RpcCallOptions,
 ) => WireCallResult<M>;
 
-// Invariant shared by every streaming method: the subscription is opened
-// BEFORE the call (head-drop race, see runs.start), so if the call REJECTS
-// the stream must be disposed explicitly — nobody will ever iterate
-// `events`, its self-cleaning iterator never runs, and the subscription
-// (plus any pre-bind buffer) would leak and accumulate forever.
+// Every streaming method opens its subscription BEFORE the call (head-drop race), so a
+// REJECTED call must dispose explicitly: nobody will iterate `events`, its self-cleaning
+// iterator never runs, and the subscription plus its pre-bind buffer leak forever.
 async function callOrDispose<R>(
   stream: { dispose: () => void },
   call: () => Promise<R>,
@@ -183,7 +171,6 @@ async function callOrDispose<R>(
 }
 
 export interface WorkspaceMethods {
-  /** The immutable resource identity bound to every operation below. */
   readonly ref: Readonly<WorkspaceRef>;
   changes: {
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceFileChange>>;
@@ -206,10 +193,9 @@ export interface WorkspaceMethods {
   hooks: {
     list: () => Promise<HooksListResult>;
   };
-  // Discovery and the proposal review queue are both workspace-scoped, so both
-  // live on the bound client. `SkillProposalRef` carries a workspace of its own:
-  // taking it from the binding rather than the caller is what stops a decision
-  // from naming one workspace while the list it was read from named another.
+  // `SkillProposalRef` carries a workspace of its own; taking it from the BINDING rather
+  // than the caller stops a decision naming one workspace while its source list named
+  // another.
   skills: {
     listDiscovered: () => Promise<Page<Skill>>;
     listProposals: () => Promise<Page<SkillProposal>>;
@@ -245,9 +231,9 @@ export interface Methods {
   sessions: {
     list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Session>;
-    // One transactionally coherent material read for a mounted Session. This is
-    // deliberately distinct from the independently pageable resource methods:
-    // a recovery fold must not combine facts from different database snapshots.
+    // ONE transactionally coherent read, deliberately distinct from the independently
+    // pageable resource methods: a recovery fold must not combine facts from different
+    // database snapshots.
     snapshot: (
       sessionId: SessionId,
       includeDescendants?: boolean,
@@ -257,12 +243,11 @@ export interface Methods {
     update: (params: UpdateSessionRequest) => MutationPromise<Session>;
     delete: (sessionId: SessionId) => MutationPromise<void>;
     fork: (params: ForkSessionRequest) => MutationPromise<Session>;
-    // Turn-granular history truncation (AUX_API §4.1). Rejected with
-    // session_busy while a run is in flight. restoreType files|both also
-    // restores the working tree (gated features.checkpoints).
+    // Rejected with `session_busy` while a run is in flight. `restoreType` files|both also
+    // restores the working tree (gated `features.checkpoints`).
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
     export: (sessionId: SessionId, format?: "md" | "json") => Promise<ExportSessionResponse>;
-    // Restore semantics — rebuilds under the artifact's original id (idempotent).
+    // Rebuilds under the artifact's ORIGINAL id, so it is idempotent.
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   runs: {
@@ -274,34 +259,28 @@ export interface Methods {
       params: ResumeRunRequest,
       signal?: AbortSignal,
     ) => MutationPromise<StreamingResult<ResumeRunResponse, RunEvent>>;
-    // Reattach to a run's live segment. Both ids are required: a subscription that
-    // named only the run would attach to whatever segment happens to be executing,
-    // and a client folding an earlier one would continue into a different execution
-    // without being able to tell. A mismatch is stale_segment.
+    // BOTH ids are required: naming only the run attaches to whatever segment happens to
+    // be executing, and a client folding an earlier one would continue into a different
+    // execution without being able to tell. A mismatch is `stale_segment`.
     subscribe: (
       params: SubscribeRunRequest,
       signal?: AbortSignal,
-      // A reattach resumes from the last event the caller folded: the runtime replays
-      // from just after it, or refuses (replay_unavailable / replay_cursor_invalid)
-      // when that position is no longer addressable. Omitted means tail-only — the
-      // history belongs to items.list, not to a stream that would deliver it twice.
+      // The last event the caller FOLDED. Omitted means tail-only: history belongs to
+      // items.list, not to a stream that would deliver it twice.
       options?: { lastEventId?: string },
     ) => Promise<StreamingResult<SubscribeRunResponse, RunEvent>>;
     cancel: (runId: RunId, reason?: string) => MutationPromise<CancelRunResponse>;
-    // Mid-run steering (§6): inject structured user content into the segment the caller
-    // believes is executing, so the model reads it next tool round. The segment is
-    // named for the same reason: a run that parked and resumed between typing and
-    // sending must refuse (stale_segment) rather than deliver the instruction to
-    // work the person never saw.
+    // The segment is named so a run that parked and resumed between typing and sending
+    // REFUSES (`stale_segment`) rather than delivering the instruction to work the person
+    // never saw.
     steer: (
       runId: RunId,
       expectedSegmentId: SegmentId,
       input: ContentBlock[],
     ) => MutationPromise<void>;
-    // One run by id — current or terminal — without knowing its session (§7.3).
     get: (runId: RunId, signal?: AbortSignal) => Promise<RunRef>;
-    // The durable run history, newest first (§7.3). Omitting statuses returns every
-    // position; asking for descendants requires negotiated features.subagents.
+    // Omitting `statuses` returns every position; descendants require negotiated
+    // `features.subagents`.
     list: (
       query?: PageQuery & {
         sessionId?: SessionId;
@@ -312,22 +291,20 @@ export interface Methods {
     ) => AutoPagingPromise<Page<RunRef>>;
   };
   plan: {
-    // The Plan's cold read (§5.3). An unwritten Session omits state; an explicit
-    // clear returns a committed state with a positive revision and no steps.
+    // An UNWRITTEN session omits `state`; an explicit clear returns a committed state with
+    // a positive revision and no steps.
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Plan>;
   };
   interrupts: {
-    // Durable HITL discovery — the waiting sets, longest wait first (§7.3 / §10.2).
-    // A page never splits a set: a set is what runs.resume answers in one call.
+    // A page never SPLITS a set: a set is what one `runs.resume` answers.
     list: (
       query?: PageQuery & { sessionId?: SessionId; rootRunId?: RunId },
       signal?: AbortSignal,
     ) => AutoPagingPromise<Page<PendingInterruptSet>>;
   };
   items: {
-    // The scope is required and closed (§7.4): a whole session timeline, or one
-    // run's own items. `order` defaults to "asc" — the order the runtime produced,
-    // which is the one a fold can replay.
+    // `order` defaults to "asc": the order the runtime produced, which is the one a fold
+    // can replay.
     list: (
       params: {
         scope: ItemListScope;
@@ -341,49 +318,45 @@ export interface Methods {
   workspaces: {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceSummary>>;
-    /** Resolve the runtime default when omitted, then bind a scoped client. */
+    /** Resolves the runtime default when `ref` is omitted. */
     open: (ref?: WorkspaceRef) => Promise<WorkspaceMethods>;
   };
-  /** Bind one workspace once; every resource operation inherits its identity. */
+  /** Bind ONCE; every resource operation inherits the identity. */
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
-  // The app-wide change-signal channel (§7): lossy "this moved → read it again"
-  // events, connection-scoped, no replay. One stream per app; resubscribing IS the
-  // resync. `topics` is required — a subscription says what it can fold.
+  // Lossy "this moved → read it again" signals with NO replay. One stream per app;
+  // resubscribing IS the resync. `topics` is required — a subscription says what it folds.
   runtimeEvents: {
     subscribe: (
       params: RuntimeSubscribeRequest,
       signal?: AbortSignal,
     ) => Promise<StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>>;
   };
-  // Trust changes target the canonical root returned by
-  // workspace(ref).hooks.list(); discovery itself remains workspace-scoped.
+  // Targets the CANONICAL root returned by `workspace(ref).hooks.list()`; discovery itself
+  // stays workspace-scoped.
   hooks: {
     setTrust: (projectRoot: string, trusted: boolean) => MutationPromise<void>;
   };
-  // Self-authored skill management (§7.7). The library surface adds archived
-  // skills and archive/restore (never deleting); it is workspace-independent
-  // because a managed skill is addressed by name alone. The workspace-scoped
-  // half — discovery and the proposal review queue — lives on the bound client.
+  // Workspace-INDEPENDENT because a managed skill is addressed by name alone; archive and
+  // restore never delete. Discovery and the proposal queue live on the bound client.
   skills: {
     listLibrary: () => Promise<Page<ManagedSkill>>;
     archive: (name: string) => MutationPromise<void>;
     restore: (name: string) => MutationPromise<void>;
   };
   mcp: {
-    // One resource carries durable configuration and live state. Create and
-    // update are distinct; update uses exact omission=preserve semantics.
+    // ONE resource carries both durable configuration and live state. `update` uses exact
+    // omission=preserve semantics, which is why it is distinct from `create`.
     list: () => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
     delete: (server: string) => MutationPromise<void>;
-    // Dry-run connection probe (NOT persisted). A failed probe is
-    // `{ ok:false, error }`, never an RPC error (mirrors providers.test).
+    // NOT persisted, and a failed probe is `{ ok:false, error }` rather than an RPC error.
     test: (params: MCPServerCandidate) => Promise<MCPTestResult>;
     listTools: (server?: string) => Promise<Page<MCPTool>>;
     reconnect: (server: string) => MutationPromise<void>;
     authorizationAttempts: {
-      // Interactive OAuth is an asynchronous resource, not a command ACK. Create
-      // opens the browser; get observes its terminal outcome after reconnects.
+      // An asynchronous RESOURCE, not a command ack: `get` observes the terminal outcome
+      // across reconnects.
       create: (server: string, signal?: AbortSignal) => MutationPromise<MCPAuthorizationAttempt>;
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };
@@ -395,14 +368,10 @@ export interface Methods {
   };
   models: {
     list: (provider?: string) => Promise<Page<Model>>;
-    // The (provider, model) the in-house maintenance work (compaction /
-    // extraction / titling) runs on. Empty model = unset → it runs on the main
-    // turn model. setUtilityRole validates by resolving the client server-side.
+    // An EMPTY model means unset, so maintenance work runs on the main turn model.
     getUtilityRole: () => Promise<UtilityRole>;
     setUtilityRole: (params: UtilityRole) => MutationPromise<UtilityRole>;
-    // The optional embedding-capable provider and model for agent-memory ranking.
-    // Empty model leaves Agent Memory on keyword ranking. setEmbeddingRole
-    // validates configured selections by building the client server-side.
+    // An EMPTY model leaves Agent Memory on keyword ranking.
     getEmbeddingRole: () => Promise<EmbeddingRole>;
     setEmbeddingRole: (params: EmbeddingRole) => MutationPromise<EmbeddingRole>;
   };
@@ -410,16 +379,12 @@ export interface Methods {
     list: () => Promise<Page<ToolSpec>>;
     invoke: (params: InvokeToolRequest) => MutationPromise<unknown>;
   };
-  // Read-only spend reporting aggregated from the durable run history (§7.7).
   usage: {
     session: (sessionId: SessionId, signal?: AbortSignal) => Promise<Usage>;
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
-  // agentMemory.* (§7.7, capability-gated): the HITL review surface over the
-  // agent's self-maintained memory — list active + pending items (pending
-  // first), approve/reject a proposal, edit content / pin an item, delete one,
-  // or add a user-authored active item. Distinct from `memory` (the FLAME.md
-  // cascade). capability_not_negotiated when the store is not wired.
+  // The HITL review surface over the agent's SELF-maintained memory. Distinct from the
+  // FLAME.md cascade; `capability_not_negotiated` when the store is not wired.
   agentMemory: {
     list: (target: AgentMemoryTarget) => Promise<AgentMemoryList>;
     review: (id: string, decision: "approve" | "reject") => MutationPromise<void>;
@@ -477,7 +442,6 @@ export interface Methods {
   };
 }
 
-/** Options for [createMethods]. */
 export interface MethodsOptions {
   /**
    * What the server said it can do, or null before discovery — the capability

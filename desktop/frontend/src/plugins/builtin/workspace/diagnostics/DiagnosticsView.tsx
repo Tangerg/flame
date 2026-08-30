@@ -1,12 +1,6 @@
-// Diagnostics view — renders the local telemetry sink (lib/observability):
-// the OTel triad as three tabs. Dev-time triage, not a dashboard.
-//
-// Perf: telemetry volume is high, so spans/logs are bounded ring buffers in
-// the store and rendered with @tanstack/react-virtual (only on-screen rows
-// mount). Each panel subscribes to ONLY its signal's slice, so switching
-// tabs / a metrics flush never re-renders the trace or log list. The Traces
-// tab + its span-detail rows live in ./TracesPanel; shared list chrome (Row /
-// Cell / Empty / VirtualList) in ./primitives.
+// Telemetry volume is high, so rows are virtualized and each panel subscribes to ONLY its
+// own signal's slice — a metrics flush or a tab switch must not re-render the trace or log
+// list.
 
 import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
@@ -56,7 +50,6 @@ export function DiagnosticsView() {
   );
 }
 
-// ── Logs ────────────────────────────────────────────────────────────────
 function LogsPanel() {
   const t = useT();
   const logs = useTelemetryStore((s) => s.logs);
@@ -105,7 +98,6 @@ function severityTone(sev: string): string {
   return SEVERITY_TONE[sev] ?? "text-fg-muted";
 }
 
-// ── Metrics ─────────────────────────────────────────────────────────────
 function MetricsPanel() {
   const t = useT();
   const metrics = useTelemetryStore((s) => s.metrics);

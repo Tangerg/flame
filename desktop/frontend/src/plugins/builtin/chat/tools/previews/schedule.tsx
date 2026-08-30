@@ -1,10 +1,5 @@
-// Schedule previews — one component per action. Creating and listing both use
-// the shared schedule row grammar; deleting renders the removed identity as a
-// receipt instead of falling through to a JSON inspector.
-//
-// The cron expression stays verbatim: it is the thing the user would edit, and a
-// prose translation of it ("every weekday at 9") is a second reading that can
-// disagree with the first.
+// The cron expression stays VERBATIM: it is what the user would edit, and a prose
+// translation of it is a second reading that can disagree with the first.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { Badge, Icon } from "@/ui";

@@ -2,18 +2,10 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
 /**
- * Pins the nearest scrollable ancestor's scroll position for the duration of a
- * height animation, so a growing/shrinking block doesn't yank the surrounding
- * view. Returns a function to call right before the height change begins.
- *
- * Why this exists: when a block's height changes mid-scroll the browser's own
- * scroll anchoring / clamping can shift the viewport, and the sticky-bottom
- * chat scroller reads the transient as a jump. We snapshot scrollTop, hide the
- * scrollbar (compensating its gutter so centered content doesn't slide), and
- * re-assert the snapshot on every scroll event until the animation window
- * closes — then restore everything.
- *
- * @param animatedElementRef ref to the element whose height animates
+ * Call the returned function right BEFORE a height change begins: browser scroll anchoring
+ * shifts the viewport when a block resizes mid-scroll, and the sticky-bottom chat scroller
+ * reads that transient as a jump. The snapshot is re-asserted on every scroll event until
+ * the animation window closes.
  */
 export function useScrollLock<T extends HTMLElement = HTMLElement>(
   animatedElementRef: RefObject<T | null>,
@@ -21,8 +13,8 @@ export function useScrollLock<T extends HTMLElement = HTMLElement>(
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  // A lock in flight when the component unmounts would leave the scrollbar
-  // hidden and the padding shim in place; tear it down.
+  // A lock in flight at unmount would leave the scrollbar hidden and the padding shim in
+  // place on an element that outlives this component.
   useEffect(() => () => cleanupRef.current?.(), []);
 
   return useCallback(() => {
@@ -47,9 +39,8 @@ export function useScrollLock<T extends HTMLElement = HTMLElement>(
     const scrollPosition = scrollContainer.scrollTop;
     const previousScrollbarWidth = scrollContainer.style.scrollbarWidth;
 
-    // Hiding the scrollbar collapses its gutter on classic scrollbars, which
-    // shifts centered content horizontally; compensate with padding on the
-    // side the scrollbar occupies (the left side in RTL).
+    // Hiding the scrollbar collapses its gutter on classic scrollbars, shifting centered
+    // content horizontally; compensated with padding on the side it occupied.
     const computed = getComputedStyle(scrollContainer);
     const paddingSide = computed.direction === "rtl" ? "paddingLeft" : "paddingRight";
     const previousPadding = scrollContainer.style[paddingSide];

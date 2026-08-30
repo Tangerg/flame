@@ -1,9 +1,8 @@
 import { MESSAGE_CONTENT_SELECTOR } from "@/plugins/builtin/chat/message/public/rendering";
 
-// A DOM adapter, not application logic: finding what the user searched for means
-// walking the text the browser actually laid out, so this is the seam where the
-// context touches the document. The subtree it walks is named by the message
-// context rather than spelled here — see MESSAGE_CONTENT_SELECTOR.
+// Finding what the user searched for means walking the text the browser actually LAID OUT,
+// so this is the seam where the context touches the document. The subtree it walks is named
+// by the message context rather than spelled here.
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

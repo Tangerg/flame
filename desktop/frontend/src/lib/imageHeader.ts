@@ -1,20 +1,8 @@
-// An image's pixel size, read from the front of its own bytes.
-//
-// WHY, when the browser will happily work it out: it works it out one frame too late.
-// An `<img>` with no width/height occupies nothing until it has decoded, so a transcript
-// holding one lays out at zero height and then jumps — measured on a 400x300 attachment,
-// the row went 0 -> 0 -> 256px, which in a bottom-pinned stream is 256px of everything
-// below it moving while the reader is looking at it. Explicit dimensions on the element
-// are the standard answer to that, and they need the size before paint.
-//
-// Every image here arrives as inline base64 (MULTIMODAL_IMAGE_INPUT, API.md §4.3), so the
-// bytes are already in hand and the size is in the first few dozen of them. Only the
-// header is decoded — enough base64 for the largest container below, not the whole
-// payload, which for a photo is megabytes of work nobody asked for.
-//
-// Returns null when the format is unknown or the header is truncated. That is a real
-// answer, not a failure: the caller falls back to letting the browser decide, which is
-// exactly today's behaviour.
+// The browser works the size out one frame TOO LATE: an `<img>` with no width/height
+// occupies nothing until it decodes, so a bottom-pinned transcript jumps by the image's
+// full height under the reader. Only the HEADER is decoded — the whole payload would be
+// megabytes of work nobody asked for. `null` is a real answer, not a failure: the caller
+// falls back to letting the browser decide.
 
 export interface PixelSize {
   width: number;
@@ -106,10 +94,8 @@ function webpSize(b: Uint8Array): PixelSize | null {
 }
 
 /**
- * The pixel size of a base64-encoded image, or null if its header does not say.
- *
- * Covers the formats a webview will render from a data URL: PNG, JPEG, GIF, WebP. AVIF is
- * absent on purpose — its size sits inside a nested ISOBMFF box tree, which is a parser
+ * The pixel size of a base64-encoded image, or null if its header does not say. AVIF is
+ * absent on purpose: its size sits inside a nested ISOBMFF box tree, which is a parser
  * rather than a header read, and no adapter produces one today.
  */
 export function imageSizeFromBase64(base64: string): PixelSize | null {

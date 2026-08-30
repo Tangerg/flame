@@ -6,18 +6,13 @@ import { CheckboxPrimitive } from "@/ui/primitives";
 interface CheckboxProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  /** Visible caption. Also the control's accessible name — the box is wrapped in
-   *  the label element, so the two can never drift apart. */
   label: ReactNode;
   disabled?: boolean;
-  /** Layout only (`ml-auto`, `mt-1`); tone and size come from the atom. */
   className?: string;
 }
 
-// The box owns its label rather than documenting "remember to pair me with one".
-// Wrapping associates the two implicitly, so there is no id to invent, no
-// `htmlFor` to keep in sync, and no `aria-label` to fall out of step with the
-// text the user can actually see.
+// The box wraps its own label: no id to invent, no `htmlFor` to keep in sync, and no
+// `aria-label` that can fall out of step with the visible text.
 export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
   return (
     <label

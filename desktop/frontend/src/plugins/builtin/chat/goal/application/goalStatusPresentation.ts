@@ -1,13 +1,8 @@
-// What the standing Goal surface shows, decided here rather than in the view.
-
 import type { GoalReadModel, GoalStatus, GoalStopCode } from "./goalReadModel";
 
 /**
- * How each status reads: a paused goal is a thing to notice, a blocked one a thing
- * to fix.
- *
- * An exhaustive table keeps Runtime lifecycle additions from silently falling
- * through to an untranslated key.
+ * A paused goal is a thing to notice, a blocked one a thing to fix. Exhaustive so a new
+ * Runtime lifecycle state cannot fall through to an untranslated key.
  */
 export const GOAL_STATUS_I18N = {
   active: { label: "goal.summary.active" },

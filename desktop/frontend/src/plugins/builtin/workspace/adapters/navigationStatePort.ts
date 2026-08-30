@@ -21,7 +21,6 @@ function dockSnapshot() {
   };
 }
 
-/** Show a dock destination, and remember it as the one to return to. */
 function showDockView(id: string, alsoLeavePromotedView: boolean): void {
   // Remembered by the mover rather than by a subscriber on the location: this
   // port is installed while plugins load, before the router exists.

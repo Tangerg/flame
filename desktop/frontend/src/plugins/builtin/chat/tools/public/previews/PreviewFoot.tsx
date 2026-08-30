@@ -1,9 +1,8 @@
 import { Button, Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
 
-// Shared footer with a single "open the full view" affordance. `label` is an
-// i18n key resolved here, so callsites pass a key (a literal still passes
-// through t() unchanged) — one useT instead of one per preview component.
+// `label` is an i18n key resolved HERE, so the previews share one `useT` instead of one
+// each.
 export function PreviewFoot({ label, onClick }: { label: string; onClick?: () => void }) {
   const t = useT();
   // No view to open (search / glob / lsp / skill / …) → render no foot, rather

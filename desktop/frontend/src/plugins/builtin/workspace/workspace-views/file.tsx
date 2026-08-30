@@ -1,6 +1,3 @@
-// Built-in plugin: "File" workspace view — renders a bounded file window at a
-// target line, opened by a clickable file:line reference in the conversation.
-
 import { DataView, FilePath } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { FileView } from "./views/FileView";

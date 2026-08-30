@@ -1,14 +1,8 @@
-// Slot — a named kernel region filled by plugin contributions.
+// Each contribution is wrapped in its OWN PluginBoundary, so one bad render cannot take
+// down the kernel.
 //
-// `<Slot name="app.sidebar"/>` renders every plugin component registered
-// for that slot, ordered by `order ?? 100`. Each contribution is wrapped
-// in its own PluginBoundary so one bad render doesn't take down the kernel.
-//
-// By default the slot is *transparent* (renders as a Fragment) — important
-// because most kernel slots sit inside a CSS grid whose layout depends on
-// the immediate children being the panels themselves. Pass `wrapper=true`
-// if you want a real `<div data-slot=...>` (e.g. for hit-testing or zone
-// styling).
+// TRANSPARENT by default (a Fragment): most kernel slots sit inside a CSS grid whose layout
+// depends on the immediate children being the panels themselves.
 
 import { Fragment, memo } from "react";
 import { useLayoutSlot } from "@/plugins/sdk";

@@ -1,17 +1,6 @@
-// Working-tree file list — the content body of the Files workspace view.
-//
-// Two lines per row, and which half goes on which line matters: the basename is what
-// you scan for and takes the strong line, the directory is what you check once you
-// have found it and sits under. One line of full path put the identifying part at the
-// far end of a truncating column, so a list of files under the same deep directory
-// read as one repeated prefix.
-//
-// The row is `AgentRow` rather than a local one. Seven views in this dock had written
-// their own, which is why not one of them had a second line, a figure column or a
-// hover action: the row that already knows how to carry all three had four consumers,
-// every one of them in the left sidebar.
-//
-// Selecting a row publishes a file-focus intent and opens the Diff view.
+// Basename on the strong line, directory under it: one line of full path puts the
+// identifying part at the far end of a truncating column, so files under one deep
+// directory read as a repeated prefix.
 import type {
   FileChangeRowViewModel,
   FileChangesViewModel,

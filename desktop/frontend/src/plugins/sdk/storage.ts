@@ -1,13 +1,5 @@
-// Namespaced key-value storage handed to each plugin.
-//
-//   const storage = createStorage("flame.builtin.my-plugin");
-//   storage.set("threshold", 0.42);
-//   const stored = storage.get("threshold");
-//   const threshold = typeof stored === "number" ? stored : undefined;
-//
-// Keys live under `flame.plugin.<plugin-name>.<key>` in localStorage so two
-// plugins can never read each other's data and a stale plugin's keys are
-// trivially purgeable.
+// Keys live under `flame.plugin.<plugin-name>.<key>`, so two plugins can never read each
+// other's data and a stale plugin's keys are trivially purgeable.
 
 const ROOT = "flame.plugin";
 
@@ -16,9 +8,8 @@ export interface KeyValueStore {
   get: (key: string) => unknown;
   set: (key: string, value: unknown) => void;
   remove: (key: string) => void;
-  /** Clear *all* keys this plugin has stored. Used on unload by tests. */
   clear: () => void;
-  /** List the plugin's keys (without the prefix). */
+  /** WITHOUT the plugin prefix. */
   keys: () => string[];
 }
 

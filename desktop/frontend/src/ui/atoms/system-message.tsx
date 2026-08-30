@@ -1,8 +1,3 @@
-// SystemMessage — inline notice banner (info / warning / error / success).
-// Tinted fill + matching foreground drawn from the semantic tokens; no border
-// or inset ring, per the "no cheap lines" rule. Text and the leading icon share
-// the variant color (Icon strokes with currentColor).
-
 import type { VariantProps } from "class-variance-authority";
 import type { ComponentProps, ReactNode } from "react";
 import { cva } from "class-variance-authority";
@@ -22,8 +17,7 @@ const banner = cva("flex flex-row items-center gap-3 rounded-lg px-3 py-2", {
   defaultVariants: { variant: "info" },
 });
 
-// The icon set has no info-/error-circle, so these are the nearest available
-// glyphs; a consumer can override via the `icon` prop.
+// The icon set has no info-/error-circle; these are the nearest available glyphs.
 const DEFAULT_ICON: Record<NonNullable<VariantProps<typeof banner>["variant"]>, IconName> = {
   info: "question",
   warning: "alert",
@@ -33,11 +27,8 @@ const DEFAULT_ICON: Record<NonNullable<VariantProps<typeof banner>["variant"]>, 
 
 export type SystemMessageProps = ComponentProps<"div"> &
   VariantProps<typeof banner> & {
-    /** Override the per-variant leading icon. */
     icon?: IconName;
-    /** Drop the leading icon entirely. */
     hideIcon?: boolean;
-    /** Trailing call-to-action rendered as a scope Button. */
     action?: { label: string; onClick?: () => void; variant?: ButtonProps["variant"] };
     children: ReactNode;
   };
@@ -58,8 +49,8 @@ export function SystemMessage({
     <div role={role} className={cn(banner({ variant }), className)} {...props}>
       <div className="flex min-w-0 flex-1 flex-row items-start gap-2.5 leading-normal">
         {!hideIcon && (
-          // h-[1lh] pins the icon box to one line's height so it aligns to the
-          // first line of text, not the block's center, when copy wraps.
+          // `h-[1lh]` pins the box to one line so the glyph aligns to the FIRST line of
+          // text rather than the block's centre when copy wraps.
           <span className="flex h-[1lh] shrink-0 items-center justify-center">
             <Icon name={iconName} size="md" />
           </span>

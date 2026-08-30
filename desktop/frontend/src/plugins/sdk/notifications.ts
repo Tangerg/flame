@@ -1,14 +1,5 @@
-// Persistent notification feed — every `host.notify(...)` call appends here.
-//
-// Why separate from the transient toaster:
-//   - the visual toast disappears after a few seconds, but users often want
-//     to scroll back through what happened ("did anything fail?")
-//   - workspace views / settings panes can read this without subscribing to DOM
-//     events
-//   - plugins can ingest the feed as a stream
-//
-// Capped at MAX_ENTRIES — oldest dropped first. Same store pattern as
-// `usePluginErrorStore` for consistency.
+// Separate from the transient toaster because a toast that has vanished cannot answer "did
+// anything fail?", and because views can read this without subscribing to DOM events.
 
 import type { NotificationEntry, NotificationLevel } from "./types";
 import { dispatchToast } from "./hostToast";
@@ -44,7 +35,6 @@ export const useNotificationStore = create<NotificationStoreState & Notification
         timestamp: Date.now(),
       };
       const next = [...get().log, entry];
-      // Cap from the front when we exceed the limit.
       const trimmed = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
       set({ log: trimmed });
       return entry;
@@ -62,26 +52,14 @@ export const useNotificationStore = create<NotificationStoreState & Notification
   }),
 );
 
-// --------------------------------------------------------------------------
-// App-side notification service — the non-plugin twin of host.notify
-// (plugins/sdk/host.ts). Same contract: a durable entry in the
-// notification feed (the Notifications workspace view) PLUS a transient
-// toast. The feed exists exactly so users can scroll back through "did
-// anything fail?" — an error that only toasts vanishes when dismissed.
-//
-// Success confirmations ("Copied", "Imported …") stay toast-only
-// (toast.success directly): they're feedback on an action the user just
-// watched succeed, not events worth re-reading.
+// The non-plugin twin of `host.notify`, with the same contract: a durable feed entry PLUS a
+// transient toast. Success confirmations stay toast-only — they are feedback on an action
+// the user just watched succeed, not events worth re-reading.
 
 /**
- * Who the feed credits an app-side notification to.
- *
- * A closed set, and an identifier rather than copy: it renders in the same column
- * as a plugin's name (`host.notify` credits the plugin that called it), so it
- * stays untranslated for the same reason plugin ids do — a mixed column reads as
- * neither. Closed because it was `string`, and the same word was spelled at up to
- * five callsites: one typo would have opened a second, silent attribution bucket
- * that looks like a new subsystem in the feed.
+ * An IDENTIFIER, not copy: it renders in the same column as a plugin's name, so it stays
+ * untranslated for the same reason plugin ids do. CLOSED because as a `string` one typo
+ * opens a second, silent attribution bucket that reads as a new subsystem.
  */
 export type NotifySource =
   | "composer"
@@ -131,13 +109,10 @@ export function notifyError(message: string, opts?: NotifyOptions): void {
 }
 
 /**
- * A plugin's own notification, attributed to it in the feed. Reaches "warn",
- * which the app-side helpers above deliberately don't.
- *
- * The feed entry is written before the toast is dispatched, so anything reacting
- * to the toast can already cross-reference it. The toast goes out as an event
- * rather than a `toast()` call so a plugin's notification path pulls no React
- * portal machinery into the SDK.
+ * A plugin's own notification, attributed to it in the feed and reaching "warn", which the
+ * app-side helpers deliberately do not. The feed entry is written BEFORE the toast so
+ * anything reacting to the toast can cross-reference it, and the toast goes out as an event
+ * so this path pulls no React portal machinery into the SDK.
  */
 export function notifyFrom(plugin: string, message: string, level: NotificationLevel): void {
   useNotificationStore.getState().push({ plugin, level, message });

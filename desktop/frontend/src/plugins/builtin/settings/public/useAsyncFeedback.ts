@@ -4,15 +4,10 @@ export type AsyncFeedback =
   { state: "idle" | "busy" } | { state: "ok" } | { state: "error"; reason: string };
 
 /**
- * Drive an inline async-operation indicator with stale-result de-racing.
- *
- * An exact lease guards every {@link run}: a result whose lease is no longer
- * current — a newer run started, or `reset` bumped it — is dropped, so a slow
- * operation cannot overwrite feedback for a newer intent or replacement resource.
- * An optional material generation retires both completed feedback and in-flight
- * results without remounting or discarding the caller's draft fields.
- * `reset` invalidates any in-flight run and clears the readout; `fail` sets an
- * error directly (for flows, like delete, that don't need the de-race guard).
+ * A LEASE guards every {@link run}: a result whose lease is no longer current is dropped, so
+ * a slow operation cannot overwrite feedback for a newer intent. The optional material
+ * generation retires completed and in-flight results WITHOUT remounting or discarding the
+ * caller's draft fields.
  */
 export function useAsyncFeedback(materialGeneration?: unknown) {
   const generation = useRef(materialGeneration);

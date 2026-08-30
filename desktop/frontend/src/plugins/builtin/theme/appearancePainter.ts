@@ -1,11 +1,7 @@
-// The plugin that paints appearance preferences onto the document.
-//
-// It installs during setup rather than at module eval, which is also when it
-// first becomes useful: the painter resolves palette and style contributions
-// registry, so a module-eval install (where this lived before) ran before any
-// theme had registered and applied nothing, relying on a follow-up repaint. The
-// scheme class itself is not at risk either way — index.html sets it inline from
-// localStorage before any module loads, so first paint is never unstyled.
+// Installs during SETUP, not at module eval: the painter resolves palette and style
+// contributions, so evaluating earlier runs before any theme has registered and applies
+// nothing. First paint is safe either way — index.html sets the scheme class inline from
+// localStorage before any module loads.
 
 import { definePlugin } from "@/plugins/sdk";
 import { disposeOnHmr } from "@/lib/hmr";

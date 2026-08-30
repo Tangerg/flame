@@ -11,15 +11,9 @@ export interface ColorThemeSpec {
   /** CSS custom properties without the leading `--`. */
   tokens?: Record<string, string>;
   /**
-   * Opt in to having this theme's neutral family follow the LIVE accent.
-   *
-   * Each step says where a neutral sits — its OKLCH lightness, and the chroma it
-   * carries at the reference accent. The shell rewrites them onto whatever accent the
-   * user picked; the literals in `tokens` remain the family at the default accent, and
-   * are what a cold boot paints.
-   *
-   * A palette theme must leave this undefined: Solarized's base3 is Solarized, not a
-   * tint of whatever accent happens to be selected.
+   * Opt in to having the neutral family follow the LIVE accent; `tokens` stays the family at
+   * the default accent and is what a cold boot paints. A palette theme MUST leave this
+   * undefined — Solarized's base3 is Solarized, not a tint of the selected accent.
    */
   neutralSteps?: ThemeNeutralSteps;
 }
@@ -58,12 +52,10 @@ export interface VisualStylePreview {
 }
 
 /**
- * A complete component and region design language, independent from colour.
- *
- * `traits` expose structural intent to shell CSS through data attributes. Tokens
- * own the metrics and materials consumed by the shell and shared atoms. Keeping
- * both in one contribution lets a third-party style change pane relationships,
- * not merely repaint existing controls.
+ * A complete component and region design language, independent from colour. `traits` expose
+ * structural intent to shell CSS as data attributes while tokens own metrics and materials,
+ * and keeping both in ONE contribution is what lets a third-party style change pane
+ * relationships rather than merely repaint existing controls.
  */
 export interface VisualStyleSpec {
   id: string;

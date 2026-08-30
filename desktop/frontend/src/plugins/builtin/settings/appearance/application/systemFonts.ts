@@ -1,10 +1,6 @@
-// System font discovery for the Appearance → Font picker.
-//
-// The candidate list, curated cross-platform. Whether a given family is actually
-// installed is asked through the font-availability port — see that port for why
-// enumeration isn't an option. The app ships no bundled webfont: the default is
-// the OS stack (SF Pro / PingFang on macOS), and this picker only offers an
-// explicit override.
+// A curated cross-platform candidate list; whether a family is installed is asked through
+// the font-availability port, which explains why enumeration is not an option. The app
+// bundles no webfont — the default is the OS stack and this picker is an override only.
 
 import { useMemo } from "react";
 import { fontAvailability } from "./ports/fontAvailability";
@@ -24,8 +20,6 @@ const CANDIDATE_UI_FONTS = [
   "Arial",
 ];
 
-// Monospace candidates — the usual dev-font lineup. SF Mono / Menlo lead on
-// macOS; the rest cover other platforms + popular code-editor picks.
 const CANDIDATE_CODE_FONTS = [
   "SF Mono",
   "Menlo",

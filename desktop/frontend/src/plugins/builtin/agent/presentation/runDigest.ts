@@ -1,10 +1,5 @@
-// Run digest — pure derivation from AgentSessionView.timeline + toolCalls.
-//
-// Picks the selected root Run's first available start and walks that exact Run
-// identity across every continuation Segment, bucketing changed/read files,
-// commands, approvals, and errors. The Run Summary workspace view consumes
-// this; the derivation lives here so it can be unit-tested in isolation (and so
-// future surfaces — telemetry export, end-of-run toasts — can reuse it).
+// Walks ONE root Run identity across every continuation Segment, from its first available
+// start, bucketing changed/read files, commands, approvals and errors.
 
 import type { Translate } from "@/lib/i18n";
 import type { ApprovalDecision } from "../domain/hitl";
@@ -52,15 +47,12 @@ export interface RunDigestSource {
   outcome: AgentRunOutcome | null;
 }
 
-// First non-whitespace token of a tool args string — used as the path
-// for file-touching tools whose first arg is the path.
 function firstToken(args: string): string {
   const m = args.match(/^([^\s(,]+)/);
   return m ? (m[1] ?? "") : "";
 }
 
-// A read tool's path lives in its args object (JSON) — pull `path`/`file`,
-// else fall back to the first token (a bare path string).
+// Falls back to the first token, since a read tool's path may arrive as a bare string.
 function argPath(args: string): string {
   const t = args.trim();
   if (t[0] === "{") {
@@ -131,8 +123,6 @@ export function deriveLatestRun(source: RunDigestSource): RunDigest | null {
     }
   }
 
-  // Pull the categorised tool details from view.toolCalls — that's
-  // where the args, status, added/removed counts already live.
   for (const id of materializedTools) {
     const tool = source.toolCalls[id];
     if (!tool || tool.runId !== runId) continue;
@@ -206,15 +196,10 @@ export function durationText(t: Translate, start: number, end: number | null): s
   return t("duration.minutes", { min, sec: sec % 60 });
 }
 
-/** Plaintext rendering — for "Copy summary" / paste-into-PR workflows.
- *
- *  The section captions come from the catalogs like any other copy: this is what
- *  the user copies out of the app, and there is no reason their notes should be in
- *  a language the rest of the UI isn't. What stays verbatim is the runtime's own
- *  vocabulary — a run status, a command status, an approval decision — because
- *  those are the wire's words, and the bracketed slots would otherwise mix
- *  languages. A missing decision reads as "—" rather than a translated
- *  "pending" for the same reason. */
+/** Section captions are translated — this is what the user copies out of the app. The
+ *  runtime's own vocabulary (run status, command status, approval decision) stays verbatim
+ *  because those are the wire's words; a missing decision reads "—" rather than a
+ *  translated "pending" for the same reason. */
 export function buildPlaintext(t: Translate, d: RunDigest): string {
   const lines: string[] = [];
   lines.push(t("runDigest.plaintext.run", { id: d.runId ?? "—", status: d.status }));

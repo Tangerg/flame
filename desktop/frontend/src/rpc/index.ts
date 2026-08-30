@@ -1,16 +1,5 @@
-// Public surface of the Flame Runtime Protocol v2 client. See runtime/doc/API.md.
-//
-// The SDK is transport-agnostic: inject a `Transport`, get a typed client.
-//
-//   const client = createFlameClient(createHttpTransport({ baseUrl, localToken }));
-//   await client.runtime.discover();            // optional capability discovery
-//   const sessions = await client.sessions.list();
-//   const allSessions = await client.sessions.list().autoPagingToArray();
-//   const { result, events } = await client.runs.start({ ... });
-//   await client.close();
-//
-// Sidecar metadata (/v2/info, /v2/health/{live,ready}) is HTTP-only — see
-// createSidecarClient.
+// Public surface of the Flame Runtime Protocol client (runtime/doc/API.md). Sidecar
+// metadata is HTTP-only and lives behind `createSidecarClient`.
 
 export {
   isErrorType,

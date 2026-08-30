@@ -3,7 +3,6 @@ import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
 
-/** A Run segment this client opened and can immediately pump. */
 export type RunOpening = { runId: RunId; segmentId: SegmentId };
 
 interface RunOpeningControllerOptions {

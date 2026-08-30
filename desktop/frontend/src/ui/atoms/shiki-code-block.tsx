@@ -13,15 +13,9 @@ import { IconButton } from "./icon-button";
 interface Props {
   lang: string;
   code: string;
-  /**
-   * Optional filename to display in the header. When set, the lang pill
-   * sits on the left and the filename takes the centre column.
-   */
   file?: string;
-  /** Optional rendered interpretation of the source. The code remains the copy
-   *  payload and the header remains shared; only the body changes. */
+  /** A rendered interpretation of the source. `code` remains the copy payload. */
   preview?: ReactNode;
-  /** Accessible name for the focusable preview scroll region. */
   previewLabel?: string;
 }
 
@@ -32,10 +26,8 @@ interface HighlightedCode {
   html: string;
 }
 
-// We debounce `code` so the Shiki tokenizer (3-10ms per pass) doesn't
-// run on every stream-reveal delta during streaming. While it's settling,
-// raw code shows in a <pre> fallback.
-
+// `code` is debounced so the Shiki tokenizer (3-10ms per pass) does not run on every
+// stream-reveal delta; a raw <pre> shows while it settles.
 export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Props) {
   const t = useT();
   const shikiTheme = useShikiTheme();
@@ -44,10 +36,8 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
   const [debouncedCode] = useDebouncedValue(code, { wait: 120 });
   const isSettling = code !== debouncedCode;
 
-  // Seed from cache synchronously so a re-mount (scroll away/back, theme
-  // toggle returning to a prior theme, MarkdownBlock memo invalidation
-  // on a long history) skips both the async highlighter resolution and
-  // the tokenizer call. Cache key is (lang, theme, exact-code).
+  // Seeded synchronously so a re-mount (scroll away/back, theme toggle, memo
+  // invalidation on a long history) skips both the async resolution and the tokenizer.
   const cachedHtml = getCachedHighlight(lang, shikiTheme, debouncedCode);
   const [highlighted, setHighlighted] = useState<HighlightedCode | null>(() =>
     cachedHtml === undefined
@@ -65,7 +55,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
   const { copied, copy } = useCopyFeedback(code);
 
   useEffect(() => {
-    // Fast path — cache hit means we never wake the async highlighter.
     if (cachedHtml !== undefined) return;
 
     let cancelled = false;
@@ -92,13 +81,11 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
     };
   }, [cachedHtml, lang, debouncedCode, shikiTheme]);
 
-  // Streaming → raw <pre> fallback; settled → swap to highlighted.
-  // Falls back indefinitely if the highlighter never resolves.
   const showHighlighted = !isSettling && html !== null;
 
   return (
-    // `shiki-block` is a CSS hook for markdown.css rules that style the
-    // `<pre class="shiki">` + child `<code>` Shiki emits as a string.
+    // `shiki-block` is a CSS hook: markdown.css styles the `<pre class="shiki">` markup
+    // Shiki emits as a string.
     <div
       dir="ltr"
       data-variant={isPreview ? "preview" : "code"}
@@ -150,8 +137,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           size="xs"
           onClick={() => void copy()}
           title={copied ? t("message.code.copied") : t("message.code.copy")}
-          // Ordinary source keeps its primary action visible. A rendered preview
-          // gives the artifact the visual lead and reveals copy on hover/focus.
           className={cn(
             copied ? "text-success" : "text-fg-faint hover:bg-hover hover:text-fg",
             isPreview &&
@@ -164,8 +149,8 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           className="shiki-preview-body grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
           role="region"
           aria-label={previewLabel}
-          // Overflow regions need a keyboard entry point; the linter cannot
-          // infer scrollability from the utility classes above.
+          // A scroll region needs a keyboard entry point; the linter cannot infer
+          // scrollability from the utility classes above.
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
         >
@@ -178,8 +163,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           dangerouslySetInnerHTML={{ __html: html! }}
         />
       ) : (
-        // `shiki-fallback` is a CSS hook — the markdown.css rule sets
-        // colour + whitespace-pre on this pre while we wait for Shiki.
         <pre className="shiki-body shiki-fallback m-0" data-wrap={wrapCode}>
           {code}
         </pre>

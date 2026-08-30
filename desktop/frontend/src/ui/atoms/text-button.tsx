@@ -4,11 +4,8 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-// A word that acts, with no box around it: "Import JSON", "3 more", "Edit args".
-// Distinct from `Button` rather than a variant of it — Button is a control with
-// metrics (a height, an inset, a fill that answers the pointer), and everything
-// it puts in the base class is something this has to undo. Here the affordance
-// IS the type: the tone lifts toward full ink on hover, and nothing moves.
+// Distinct from `Button` rather than a variant of it: Button's base class is metrics
+// (height, inset, a fill that answers the pointer), all of which this would have to undo.
 const styles = cva(
   "inline-flex items-center gap-1.5 bg-transparent p-0 text-left transition-colors " +
     "disabled:cursor-not-allowed disabled:opacity-50",

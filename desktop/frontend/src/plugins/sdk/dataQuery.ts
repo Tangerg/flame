@@ -1,8 +1,6 @@
-// Cached read hooks over the DATA_PROVIDER extension point — the read half of
-// the contract whose write half is `contributeDataProvider`. It sat in `lib/`
-// and imported the SDK from there, which let a utility module depend on the
-// plugin registry; the hooks ARE the registry's read surface, so they live with
-// it.
+// The read half of the contract whose write half is `contributeDataProvider`. These hooks
+// ARE the registry's read surface, so they live with it rather than in `lib/`, where a
+// utility module would end up depending on the plugin registry.
 
 import type { Query, UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -151,7 +149,6 @@ const dataQueryOwner = new DataQueryOwner();
 
 if (import.meta.hot) import.meta.hot.dispose(() => dataQueryOwner.dispose());
 
-/** Build a cached read hook for a parameterless data-provider contract. */
 export function createDataQuery<T>(key: string): () => UseQueryResult<T> {
   return () =>
     useQuery({

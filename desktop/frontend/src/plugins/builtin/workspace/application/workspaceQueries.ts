@@ -26,7 +26,6 @@ export interface BuiltinToolSummary {
 export interface WorkspaceSkill {
   name: string;
   description: string;
-  /** Which library it was discovered in — project-local or the user's own. */
   scope: "project" | "user";
 }
 

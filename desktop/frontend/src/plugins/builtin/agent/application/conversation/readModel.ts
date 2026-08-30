@@ -14,12 +14,8 @@ export function useActiveConversationMessages(): Message[] {
   return agentSessionView().useRootNarrativeMessages();
 }
 
-/**
- * The transcript as rows, each carrying only the session facts that row shows.
- *
- * What the renderer consumes. The narrowing is load-bearing, not tidiness — see
- * `TurnFacts`.
- */
+/** The transcript as rows, each carrying only the session facts that row shows. The
+ *  narrowing is load-bearing, not tidiness — see `TurnFacts`. */
 export function useActiveConversationRows(): readonly TranscriptRow[] {
   return agentSessionView().useTranscriptRows();
 }

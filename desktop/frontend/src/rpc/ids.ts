@@ -1,17 +1,9 @@
-// Branded ID types for the Flame Runtime Protocol (API.md §2.2). Each
-// opaque string id carries a phantom tag so TypeScript stops you from
-// passing a `RunId` where an `ItemId` is expected — both are strings at
-// runtime, but the type checker treats them as distinct.
+// Phantom tags so a `RunId` cannot be passed where an `ItemId` is expected; both are plain
+// strings at runtime.
 //
-// Business resource ids are ALWAYS server-generated and carry a type
-// prefix on the wire: ses_ / run_ / item_ / evt_. The
-// client never mints business ids (§2.2) — only the JSON-RPC envelope id.
-//
-// Adopt these at boundaries that get ids from the server (RPC method
-// returns + notification params). At the wire boundary plain strings
-// arrive from JSON.parse; use the `as<X>` helpers to assert intent at the
-// parse site — TS can't validate the brand at runtime, so the cast marks
-// "I've checked this came from the right field" and stays searchable.
+// Business ids are ALWAYS server-generated (API.md §2.2) — the client mints only the
+// JSON-RPC envelope id. The brand cannot be validated at runtime, so the `as<X>` helpers
+// mark "checked at the parse site" and stay searchable.
 
 declare const sessionIdBrand: unique symbol;
 declare const runIdBrand: unique symbol;

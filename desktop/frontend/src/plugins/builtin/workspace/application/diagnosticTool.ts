@@ -77,7 +77,6 @@ class DiagnosticToolGeneration {
   }
 }
 
-/** Owns direct Tool invocations for one exact Plugin Host and Runtime generation. */
 export class DiagnosticToolOwner {
   static #materialGeneration = 0n;
   static readonly #listeners = new Set<() => void>();

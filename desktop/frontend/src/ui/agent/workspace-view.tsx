@@ -2,14 +2,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { IconButton } from "@/ui/atoms/icon-button";
 
-/**
- * The frame every dock view fills: a column on the canvas that owns no chrome of
- * its own beyond the ground it stands on.
- *
- * It is also the container the two tracks below measure themselves against —
- * what decides whether a navigator fits beside a diff is the width of THIS view,
- * which the dock's resize handle changes without the window changing at all.
- */
+// The container the tracks below measure against: the dock's resize handle changes this
+// view's width without the window changing at all, so the breakpoint is a container query.
 export function AgentWorkspaceView({
   children,
   className,
@@ -25,21 +19,15 @@ export function AgentWorkspaceView({
 }
 
 /**
- * A view's body split into a navigator and the content it navigates.
- *
- * The caller passes two slots and no geometry. Which track yields at which width
- * is a fact about this shape, not about diffs or file trees, and it had been
- * spelled as a percentage at the one callsite that has it — a share is the wrong
- * response here, because the navigator wants a roughly constant width (a path is
- * as wide as a path) while the content has a hard floor (a line of code). Below
- * the width where both fit, the navigator withdraws and takes its toggle with it
- * (see the container query in globals.css).
+ * Two slots and no geometry: which track yields at which width is a fact about this shape,
+ * not about diffs or file trees. Not a percentage split — the navigator wants a roughly
+ * constant width while the content has a hard floor. Below the width where both fit, the
+ * navigator withdraws and takes its toggle with it (container query in globals.css).
  */
 export function AgentViewSplit({
   navigator,
   children,
 }: {
-  /** An `AgentViewNavigator`, or nothing when the caller has it hidden. */
   navigator?: ReactNode;
   children: ReactNode;
 }) {
@@ -51,14 +39,8 @@ export function AgentViewSplit({
   );
 }
 
-/**
- * The control that shows and hides the navigator.
- *
- * Part of the split's contract rather than the view's own header furniture: the
- * width at which a navigator stops fitting is this shape's to know, and the
- * control has to disappear on the same breakpoint or it becomes a button that
- * reports a state nothing on screen can reach.
- */
+// Part of the split's contract, not the view's header furniture: it must disappear on the
+// same breakpoint as the navigator or it reports a state nothing on screen can reach.
 export function AgentViewNavigatorToggle({
   open,
   onToggle,
@@ -82,21 +64,14 @@ export function AgentViewNavigatorToggle({
   );
 }
 
-/**
- * The navigator track: the seam against the content, its width, and an optional
- * control strip above the list.
- *
- * The seam is the dock's own pane split, which is why this is a shape here and
- * not a class a view reaches for — a boundary is drawn by whatever owns both
- * sides of it.
- */
+// A shape here rather than a class a view reaches for: a boundary is drawn by whatever
+// owns both sides of it, and this seam is the dock's own pane split.
 export function AgentViewNavigator({
   label,
   header,
   children,
 }: {
   label: string;
-  /** Filter field, close button — the strip that sits over the list. */
   header?: ReactNode;
   children: ReactNode;
 }) {

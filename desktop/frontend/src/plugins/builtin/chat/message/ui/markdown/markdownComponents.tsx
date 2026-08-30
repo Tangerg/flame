@@ -15,10 +15,9 @@ import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownTable } from "./MarkdownTable";
 import { SvgArtifact } from "./SvgArtifact";
 
-// `pre` unwraps because the `code` override below emits its own block
-// container. `a` forces target=_blank because a click inside the
-// Wails WebView would otherwise navigate the chrome-less window away
-// from the app.
+// `pre` unwraps because the `code` override emits its own block container. `a` forces
+// target=_blank: a click inside the Wails WebView would otherwise navigate the chrome-less
+// window away from the app.
 function visibleText(children: ReactNode): string {
   return Children.toArray(children)
     .map((child) => {
@@ -170,12 +169,9 @@ const sharedMarkdownComponents: Components = {
     return <blockquote dir="auto">{children}</blockquote>;
   },
   pre({ children }) {
-    // react-markdown gives fenced blocks without an info string a plain
-    // `<code>` child. The code renderer cannot distinguish that node from
-    // inline code by className alone, but this parent can: only block code is
-    // wrapped in `<pre>`. Keep every fence on the same code-block surface so
-    // an unlabelled shell snippet still has scrolling, highlighting fallback,
-    // and the copy affordance.
+    // A fence with no info string arrives as a plain `<code>`, which the code renderer
+    // cannot tell from inline code by className — but this parent can, since only block code
+    // is wrapped in `<pre>`. That keeps every fence on the same code-block surface.
     const child = Children.toArray(children)[0];
     if (
       Children.count(children) === 1 &&
@@ -204,7 +200,6 @@ const sharedMarkdownComponents: Components = {
         </code>
       );
     }
-    // Regex has a capture group, so match[1] is defined when match is.
     const lang = match[1]!.toLowerCase();
     const codeStr = String(children ?? "").replace(/\n$/, "");
     if (lang === "mermaid") return <MermaidBlock code={codeStr} />;
@@ -252,9 +247,8 @@ const sharedMarkdownComponents: Components = {
     return <MarkdownImage src={src} alt={alt} title={title} allowWide={allowWide} />;
   },
   a({ href, title, children, ...rest }) {
-    // A `data-file-ref` anchor is emitted by rehypeFileRefs (not a real link) —
-    // render it as a FileRefLink that opens the file viewer instead of
-    // navigating. `data-file-line` is "0" / absent when no line was parsed.
+    // `data-file-ref` marks a rehypeFileRefs anchor, not a real link: it opens the file
+    // viewer instead of navigating. `data-file-line` is "0" or absent when no line parsed.
     const r = rest as { "data-file-ref"?: string; "data-file-line"?: string };
     if (r["data-file-ref"]) {
       return <FileRefLink path={r["data-file-ref"]} line={Number(r["data-file-line"]) || 0} />;

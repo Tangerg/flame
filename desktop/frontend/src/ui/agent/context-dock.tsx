@@ -8,7 +8,6 @@ export interface AgentDockTab {
   id: string;
   title: ReactNode;
   icon?: IconName;
-  /** A few characters of live count, set after the title. */
   badge?: ReactNode;
   active?: boolean;
   onSelect?: () => void;
@@ -16,21 +15,8 @@ export interface AgentDockTab {
   closeLabel?: string;
 }
 
-/**
- * The right-hand workspace column.
- *
- * Deliberately a real column and not a floating overlay: it hosts full views
- * (diff, file tree, terminal), and the whole point of the dock is reading those
- * BESIDE the conversation — an overlay would cover the thing being compared
- * against. It lives inside the content card, so its left edge is an internal pane
- * split and takes the active visual style's boundary rather than inventing its
- * own background step.
- *
- * It carries no state of its own. Whether the flank is showing is a fact about the row
- * it and the conversation share — the row is what has to reflow, and the bar that
- * reaches the plane's trailing corner has to know it too — so the row declares it once
- * and this stays pure structure, the same way the drawer reads it off the shell.
- */
+// Carries no state: whether the flank is showing is a fact about the row it shares with
+// the conversation, so the row declares it once and this stays pure structure.
 export function AgentContextDock({ children }: { children: ReactNode }) {
   return <aside className="agent-context-dock agent-pane-split">{children}</aside>;
 }
@@ -55,10 +41,8 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
-/** Dock tabs share one structural pattern while the visual style chooses the
- *  active treatment (quiet chip, underline, or elevation). The tab primitive
- *  owns roving focus and arrow-key navigation; styling buttons to resemble tabs
- *  without those semantics made the dock keyboard-hostile. */
+// Goes through the tab primitive for roving focus and arrow-key navigation: buttons styled
+// to resemble tabs without those semantics make the dock keyboard-hostile.
 export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaLabel: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
@@ -107,16 +91,11 @@ export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaL
               key={tab.id}
               data-active={tab.active ? "" : undefined}
               className={cn(
-                // Keep labels readable; the strip owns horizontal overflow and
-                // brings the active identity into view when navigation changes it.
                 "group flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
                 "text-fg-muted transition-[background-color,color] duration-[var(--dur-color)] ease-out",
                 "hover:bg-hover hover:text-fg focus-within:text-fg",
-                // The selected tab fills with the PANEL's ground, not with a
-                // selection wash: a tab is the top of the thing it opens, and the
-                // shared value is the only part of that claim a static bar can
-                // make. A wash instead made the strip read as a row of chips that
-                // happened to sit above some content.
+                // Fills with the PANEL's ground, not a selection wash: a tab is the top of
+                // the thing it opens, and a wash makes the strip read as a row of chips.
                 "data-[active]:bg-[var(--dock-tab-active-surface)] data-[active]:text-fg",
               )}
             >
@@ -125,9 +104,6 @@ export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaL
                 data-chrome-focus=""
                 className={cn(
                   "inline-flex h-full min-w-0 max-w-40 items-center gap-1.5 rounded-[inherit] border-0 bg-transparent py-0 text-ui-sm font-normal text-inherit focus-visible:outline-none",
-                  // Symmetric unless a close button already occupies the trailing
-                  // side — the inset is there to keep the label off the tab's edge,
-                  // and with a control there the control is what does that.
                   tab.onClose ? "pl-2 pr-1" : "px-2",
                 )}
               >

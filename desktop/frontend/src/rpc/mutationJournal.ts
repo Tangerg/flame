@@ -181,11 +181,9 @@ class RendererMutationAuthority implements MutationJournal {
 }
 
 /**
- * Retain unresolved mutation identities across renderer and Runtime restarts.
- *
- * Construction publishes the successor renderer authority before retiring its
- * predecessor. No owner, lease, heartbeat, or renderer generation is persisted:
- * the durable journal answers only which command identity remains unresolved.
+ * Retains unresolved mutation identities across renderer and Runtime restarts. Construction
+ * publishes the successor authority BEFORE retiring its predecessor. No owner, lease or
+ * heartbeat is persisted: the journal answers only which command identity is unresolved.
  */
 export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
   const successor = new RendererMutationAuthority(

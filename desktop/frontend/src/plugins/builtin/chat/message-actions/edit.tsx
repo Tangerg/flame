@@ -1,6 +1,5 @@
-// Edit action (user messages only) — load the text back into the composer so
-// the user can tweak and re-send. Doesn't mutate the original message; sending
-// creates a new user turn.
+// Loads the text back into the composer WITHOUT mutating the original: sending creates a
+// new user turn.
 
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk";

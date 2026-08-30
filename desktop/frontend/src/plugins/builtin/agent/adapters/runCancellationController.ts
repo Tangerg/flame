@@ -29,14 +29,13 @@ class RunCancellationGenerationRetiredError extends Error {
   }
 }
 
-/** Own one cancellation command per Run inside one replaceable Runtime generation.
+/** One cancellation command per Run inside one replaceable Runtime generation.
  *
- * A successful response is a snapshot captured at command commit time, so it
- * may only fold while the material view still has the event epoch and revision
- * from which the command started. Retirement settles admitted work immediately;
- * a failed current-generation command is revalidated through the neutral Agent
- * projection, where another client reaching terminal is objective success and
- * an active authoritative Run preserves the original command failure.
+ * A successful response is a snapshot taken at commit time, so it may only fold while the
+ * material view still holds the epoch and revision the command started from. A failed
+ * current-generation command is revalidated through the neutral Agent projection, where
+ * another client reaching terminal counts as objective success and an active authoritative
+ * Run preserves the original failure.
  */
 export function createRunCancellationController<Response>({
   markInteracted,

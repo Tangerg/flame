@@ -1,7 +1,3 @@
-// Kernel infrastructure surface — anything that's a transport,
-// observability, or background service rather than a user-facing
-// component contribution.
-
 import type { ComponentType } from "react";
 import type { LogLevel } from "@/lib/observability/logBridge";
 import type {
@@ -16,31 +12,18 @@ import type {
 
 export type NotificationLevel = "info" | "warn" | "error";
 
-/**
- * One entry in the persistent notification feed. Created every time a
- * plugin calls `host.notify(...)`. The transient toast is just the visual
- * surface; the feed is what plugins (e.g. workspace view, settings pane)
- * read.
- */
+/** The DURABLE half of `host.notify`: the toast is only the transient visual surface. */
 export interface NotificationEntry {
-  /** Monotonic id assigned by the host. */
   id: string;
-  /** Plugin that called `host.notify`. */
   plugin: string;
   level: NotificationLevel;
   message: string;
-  /** Created-at timestamp (ms). */
   timestamp: number;
-  /** Set when the user dismisses the toast / clears the feed entry. */
   dismissed?: boolean;
 }
 
 export type { LogLevel };
 
-/**
- * One log event. `plugin` records who emitted it, so a UI that consumes
- * logs (notifications pane, dev panel) can group / filter by plugin.
- */
 export interface LogEvent {
   plugin: string;
   level: LogLevel;
@@ -48,26 +31,19 @@ export interface LogEvent {
   timestamp: number;
 }
 
-/** Subscriber for log events. Errors thrown inside are caught by the host. */
+/** Errors thrown inside are caught by the host. */
 export type LogSubscriber = (event: LogEvent) => void;
 
 /**
- * A data fetcher registered against a key. TanStack-Query hooks in the app
- * resolve their `queryFn` by looking up the provider for their key. The
- * fetcher must return a fully-typed result, but the registry erases that
- * type so all providers fit in one map — call sites cast on their way out.
- *
- * Plugins can swap the underlying transport (HTTP, in-memory mock)
- * without callers having to know.
+ * Query hooks resolve their `queryFn` by looking up the provider for their key, so a plugin
+ * can swap the transport without callers knowing. The registry ERASES the result type so
+ * every provider fits one map; call sites cast on the way out.
  */
 export interface DataProviderSpec<T = unknown, P = unknown> {
-  /** Query key — must match the consumer hook's expected key. */
+  /** Must match the consumer hook's expected key. */
   key: string;
-  /** Async fetcher. Throw for failure; TanStack-Query handles the rest.
-   *  Parameterized resources (grep / file-head) receive the consumer hook's
-   *  params object; list resources ignore the argument. Query-owned reads also
-   *  receive their generation signal so a replaced Runtime cannot retain the
-   *  cache writer or an underlying transport resource. */
+  /** Throw for failure. Query-owned reads receive their generation signal, so a replaced
+   *  Runtime cannot retain the cache writer or an underlying transport resource. */
   fetcher: (params?: P, signal?: AbortSignal) => Promise<T>;
 }
 
@@ -85,16 +61,12 @@ export interface AgentRunOptionsProviderSpec {
 }
 
 /**
- * Drives one chat session over the Flame Runtime Protocol: starts runs and
- * resumes interrupted ones, returning the RunEvent stream for each. The
- * orchestration (pumping events into agentStore, abort/cancel) lives in
- * `useAgentSession`; the driver is just the session-bound RPC surface.
+ * The session-bound RPC surface ONLY. Orchestration — pumping events into agentStore,
+ * abort and cancel — lives in `useAgentSession`.
  */
 export interface AgentDriver {
-  /** Start a new run from the user's message input (text + any inlined image
-   *  blocks); resolves with the run's event stream. `userItemId` is the opening
-   *  userMessage Item's id — used to reconcile the optimistic bubble by exact id
-   *  (see useAgentSession). */
+  /** `userItemId` is the opening userMessage Item's id, used to reconcile the optimistic
+   *  bubble by exact identity rather than by content. */
   start: (
     input: ContentBlock[],
     options: AgentRunStartOptions,
@@ -102,15 +74,12 @@ export interface AgentDriver {
   ) => Promise<
     StreamingResult<{ runId: RunId; segmentId: SegmentId; userItemId: ItemId }, RunEvent>
   >;
-  /**
-   * Resume the run `runId` with HITL responses — opens a NEW segment of the
-   * SAME run (runId unchanged) and returns its event stream (API.md §6).
-   */
+  /** Opens a NEW segment of the SAME run — `runId` is unchanged (API.md §6). */
   resume: (
     runId: RunId,
     options: {
       responses: InterruptResponse[];
-      /** Optional follow-up committed in the same opening as the HITL answers. */
+      /** Committed in the SAME opening as the HITL answers. */
       input?: ContentBlock[];
     },
     signal?: AbortSignal,
@@ -119,28 +88,17 @@ export interface AgentDriver {
   >;
 }
 
-/**
- * A provider for the agent driver that powers the chat. The default drives
- * the local Flame Runtime over JSON-RPC; alternative sources can implement a
- * recorded-fixture replayer, a mock streamer, etc.
- *
- * Only one source is active at a time — kernel-chat resolves to the first
- * spec sorted by `priority`. Higher priority wins; a user plugin can
- * override the built-in by registering at priority > 0.
- */
+/** Exactly ONE source is active: the chat resolves the highest `priority` spec, so a user
+ *  plugin overrides the built-in by registering above 0. */
 export interface AgentSourceSpec {
   id: string;
   label: string;
   /** Higher wins. Built-in defaults use 0. */
   priority?: number;
-  /** Build a fresh driver for each session. */
+  /** Builds a FRESH driver per session. */
   factory: () => AgentDriver;
 }
 
-/**
- * Props passed to the registered error-fallback renderer when a plugin
- * component throws inside `PluginBoundary`.
- */
 export interface PluginErrorFallbackProps {
   /** Plugin name OR boundary context label, e.g. "view:diff" / "layout:app.main:chat". */
   plugin: string;
@@ -150,7 +108,7 @@ export interface PluginErrorFallbackProps {
 
 export interface PluginErrorFallbackSpec {
   id: string;
-  /** Sort hint — highest priority wins. Built-ins use 0; plugins ≥ 100. */
+  /** Highest wins. Built-ins use 0; plugins ≥ 100. */
   priority?: number;
   component: ComponentType<PluginErrorFallbackProps>;
 }

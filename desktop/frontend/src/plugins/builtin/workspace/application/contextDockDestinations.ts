@@ -1,12 +1,8 @@
 import type { ContextDockDestinationSpec } from "@/plugins/sdk";
 
-// Which workspace views appear in the Context Dock, and under which scope.
-// title / icon / component come from each view's own WorkspaceViewSpec (see
-// workspace-views/), joined at launch time — a test guards that every viewId
-// here resolves to a registered view.
-//
-// Every registered view a user can navigate to is listed so the add-panel menu
-// remains the discoverable entry point for the whole right workspace.
+// Only the scope lives here; title / icon / component are joined at launch time from each
+// view's own spec, and a test guards that every id resolves. Every navigable view is listed,
+// so the add-panel menu stays the discoverable entry point for the whole right workspace.
 export const builtinContextDockDestinations: ContextDockDestinationSpec[] = [
   { viewId: "search", scope: "workspace", order: 10 },
   // Not session-scoped: the queue is every session's, which is the whole reason

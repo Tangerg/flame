@@ -1,10 +1,7 @@
-// Focusing the composer is a capability of the composer, not a DOM lookup any
-// caller may perform. Callers cannot depend on its internal selector or mount shape.
-//
-// A module-level handle rather than a threaded ref: there is exactly one composer
-// per window, and the callers sit on the far side of two context boundaries. A
-// ref would have to travel through both, which is how the shortcut ended up
-// reaching for a class name instead.
+// Focusing the composer is a CAPABILITY of the composer, never a DOM lookup a caller may
+// perform. A module-level handle rather than a threaded ref: there is one composer per
+// window and its callers sit on the far side of two context boundaries, which a ref would
+// have to travel through — that is how a shortcut once ended up reaching for a class name.
 
 let target: HTMLTextAreaElement | null = null;
 

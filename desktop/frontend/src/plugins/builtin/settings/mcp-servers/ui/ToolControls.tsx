@@ -1,17 +1,9 @@
-// Per-tool gating for one connected MCP server. For each tool the server
-// advertises (mcp.tools.list) it renders two switches:
+// A controlled editor over two lists the parent owns and persists. Auto-approve is forced
+// off while a tool is disabled: a hidden tool can never be called.
 //
-//   - Enabled    — off ⇒ the tool joins disabledTools, hidden from the model.
-//   - Auto-approve — on ⇒ the tool joins autoApproveTools, skipping the approval
-//                    prompt. Disabled (and forced off) while the tool itself is
-//                    disabled — a hidden tool can never be called, so pre-
-//                    approving it is meaningless.
-//
-// The parent (ServerForm) owns the two lists and persists them on Save; this
-// component is the controlled editor over them. Both lists key on the BARE tool
-// name (the server scopes them); the runtime qualifies to "<server>_<tool>"
-// when it enforces. The lists are sparse by design — only non-default entries
-// are stored (every tool enabled, none auto-approved unless listed).
+// Both lists key on the BARE tool name — the server scopes them, and the runtime qualifies
+// to "<server>_<tool>" when it enforces. They are SPARSE by design: only non-default
+// entries are stored.
 
 import { DataView, Switch } from "@/ui";
 import { useT } from "@/lib/i18n";

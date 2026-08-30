@@ -1,5 +1,4 @@
-// Shell-family previews. They share the terminal material, but each tool owns a
-// component and can evolve without changing its siblings' rendering contract.
+// Each tool owns a component so it can evolve without touching a sibling's contract.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";

@@ -1,13 +1,7 @@
-// rehype plugin: walk text nodes and turn file:line references (parseFileRefs)
-// into `<a data-file-ref data-file-line>` elements. The markdownComponents `a`
-// handler picks these up and renders a FileRefLink that opens the file viewer
-// — the same affordance the tool-output LinkedText gives, now in prose (T2.3).
-//
-// Skips <pre>/<code>/<a>/<sup> so code samples, real markdown links, and
-// citation badges don't get re-linkified. Caller mounts this only on SETTLED
-// blocks (see MarkdownMessage) — never the streaming tail, where a half-typed
-// path would flash as a link — and BEFORE rehypeFadeIn so it sees whole text
-// nodes rather than per-word spans.
+// Mount only on SETTLED blocks — on the streaming tail a half-typed path flashes as a
+// link — and BEFORE rehypeFadeIn, which splits text into per-word spans this can no longer
+// scan. Skips <pre>/<code>/<a>/<sup> so code samples, real links and citation badges are
+// not re-linkified.
 
 import type { Element, Root, Text } from "hast";
 import { visit } from "unist-util-visit";
@@ -29,7 +23,6 @@ export function rehypeFileRefs() {
       if (parent.type === "element" && SKIP_TAGS.has(parent.tagName)) return;
 
       const segments = parseFileRefs(node.value);
-      // A ref-free string parses back to a single [text] segment — nothing to do.
       if (segments.length === 1 && typeof segments[0] === "string") return;
 
       const parts: Array<Element | Text> = [];

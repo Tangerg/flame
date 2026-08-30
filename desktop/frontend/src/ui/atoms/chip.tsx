@@ -7,18 +7,11 @@ import { Tooltip } from "./tooltip";
 interface Props {
   icon?: IconName;
   children: ReactNode;
-  /** Tooltip label shown on hover — useful when the chip's text is
-   *  truncated. Renders via app Tooltip rather than the native title
-   *  attribute (200ms snappier, works on focus). */
+  /** Renders via app Tooltip, not the native `title`: snappier and works on focus. */
   title?: string;
   onClose?: () => void;
 }
 
-// A compact rounded label used for composer attachments, file refs, etc.
-//
-// The close affordance (×) is hidden until the chip is hovered/focused —
-// keeps a row of chips quiet visually, only surfacing the controls when
-// the user reaches for them. Tailwind `group` enables that hover-reveal.
 export function Chip({ icon, children, title, onClose }: Props) {
   const t = useT();
   return (

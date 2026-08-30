@@ -5,11 +5,7 @@ import { agentSessionState } from "../ports/sessionState";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner } from "../agentCommandOwner";
 
-/**
- * Delete a backend session, close its tab (reselecting a neighbour if it was
- * active), and refetch the session summaries so the row drops. Counterpart to
- * {@link useCreateSession}.
- */
+/** Closes the tab as well, reselecting a neighbour when the deleted session was active. */
 export function useDeleteSession(): (id: string) => Promise<void> {
   return useCallback(async (id) => {
     const owner = agentCommandOwner();

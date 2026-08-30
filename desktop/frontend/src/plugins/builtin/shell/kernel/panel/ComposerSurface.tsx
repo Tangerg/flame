@@ -15,13 +15,9 @@ import {
   useSetComposerText,
 } from "@/plugins/builtin/chat/composer/public/draft";
 
-// The composer surface — status strip, slash hints, input.
-//
-// Its own component so the draft text lives in the smallest component that needs
-// it. Held one level up (in ChatStream, which also renders the transcript), every
-// keystroke re-rendered the message list, and every streamed token re-rendered the
-// composer. Neither has anything to say to the other: the transcript changes when
-// the run produces something, the composer changes when the user types.
+// Its own component so the draft text lives in the smallest component that needs it. One
+// level up — beside the transcript — every keystroke re-rendered the message list and every
+// streamed token re-rendered the composer, though neither has anything to say to the other.
 export function ComposerSurface({ onSend }: { onSend: (input: UserInput) => boolean }) {
   const value = useComposerText();
   const setValue = useSetComposerText();

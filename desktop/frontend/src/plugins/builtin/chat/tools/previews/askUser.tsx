@@ -1,7 +1,3 @@
-// ask_user preview family — echoes the user's answer once given, otherwise a
-// quiet waiting hint (the interactive card lives elsewhere; this is the
-// settled-tool summary).
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";

@@ -1,33 +1,18 @@
-// Local telemetry sink — the in-memory mirror of the three OTel signals,
-// rendered by the Diagnostics view. This is the frontend analogue of the
-// backend's dev slog sink (scope otel/slog): ephemeral, for live triage.
+// A LIVE WINDOW, not a telemetry database: durable telemetry leaves the device via OTLP.
+// In-memory only — localStorage blocks the main thread on every write at this volume, and
+// IndexedDB buys nothing for live triage.
 //
-// Storage decision (deliberate — telemetry volume is high):
-//   - In-memory Zustand ONLY. NOT localStorage (synchronous, ~5MB cap,
-//     blocks the main thread on every write) and NOT IndexedDB (async
-//     complexity that buys nothing for live triage). High-volume / durable
-//     telemetry does not belong in the frontend at all — it leaves the
-//     device via OTLP to the backend collector (see ./setup). The frontend
-//     is a live window, not a telemetry database.
-//   - Spans + logs are append streams, so each is a BOUNDED ring buffer
-//     (keep the newest N, drop the oldest). Metrics are CUMULATIVE and
-//     bounded by attribute cardinality, so they're keyed rows, not a stream.
-//
-// Writes are throttled by the sink (./sink batches a frame's worth before
-// calling these), so a burst of spans is one store commit, not N.
+// Spans and logs are append streams, so each is a bounded ring buffer; metrics are
+// CUMULATIVE and bounded by attribute cardinality, so they are keyed rows instead.
 
 import type { ResourceMetrics } from "@opentelemetry/sdk-metrics";
 import { create } from "zustand";
 
-// Ring-buffer caps. Newest-wins; the view shows the tail. Sized so a long
-// session can't grow memory without bound — the durable record is the
-// collector's job, not ours.
 const SPAN_CAP = 500;
 const LOG_CAP = 1000;
 
-// Mirror of `DataPointType.HISTOGRAM` — inlined so this module doesn't pull
-// the metrics SDK into the static graph (the SDK is dynamic-imported by
-// ./setup, kept off the first-paint path).
+// Inlined rather than imported so this module does not pull the metrics SDK into the
+// static graph — ./setup dynamic-imports it, keeping it off the first-paint path.
 const HISTOGRAM_DATA_POINT = 0;
 
 type Attrs = Record<string, string | number | boolean>;
@@ -184,13 +169,10 @@ function stableKey(attrs: Attrs): string {
     .join(",");
 }
 
-// Estimate P50/P95 from explicit bucket boundaries + counts. Walk in order,
-// return the upper boundary of the bucket the percentile lands in — errs high
-// for finite buckets. Exception: the unbounded overflow bucket (everything above
-// the last boundary) has no upper boundary, so it returns the last finite
-// boundary as a LOWER bound (under-reports the tail). The histogram keeps only
-// counts, not raw observations, so this can't be made exact — fine for the
-// dev "is this slow?" eyeball, not a precise SLO number.
+// Returns the upper boundary of the bucket the percentile lands in, so it errs HIGH — except
+// in the unbounded overflow bucket, which has no upper boundary and so under-reports the
+// tail. The histogram keeps counts rather than observations, so this cannot be made exact:
+// fine for a dev "is this slow?" eyeball, not an SLO number.
 function estimatePercentiles(buckets: HistogramValue["buckets"]): { p50: number; p95: number } {
   const total = buckets.counts.reduce((a, b) => a + b, 0);
   if (total === 0) return { p50: 0, p95: 0 };

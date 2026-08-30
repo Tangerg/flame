@@ -13,14 +13,9 @@ import { useCanSendToAgent } from "@/plugins/builtin/agent/public/input";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-// The composer's action target: one control whose glyph changes across steer /
-// send / stop, so the place you click never moves.
-//
-// A DISC, and deliberately the only one in the window. The
-// controls beside it are ghosts: no fill, no edge, they are labels you can press.
-// This one is the solid primary, and being a different shape is how it says so
-// without shouting in colour. The reference sits its send on the same row of
-// ghost dropdowns and makes it round for exactly this reason.
+// ONE control whose glyph changes across steer / send / stop, so the place you click never
+// moves. A disc, and deliberately the only one in the window: the controls beside it are
+// ghosts, so being a different shape is how this says "primary" without shouting in colour.
 const ACTION =
   "size-[var(--control-height-md)] shrink-0 rounded-full bg-cta text-cta-text hover:bg-cta-hover hover:text-cta-text active:translate-y-[0.5px]";
 const ACTION_OFF =

@@ -1,12 +1,6 @@
-// Dev-only inspector for the two TanStack subsystems the app leans on hardest:
-// the query cache — invalidated from dozens of places, with no way to watch one
-// land — and the router.
-//
-// Gated twice on purpose. `import.meta.env.DEV` folds to `false` in a build, so
-// the ternary below is dead code and the dynamic import is never emitted: the
-// panels cannot reach production even by accident, which is why the three
-// packages behind them are devDependencies. check-bundle-size is the proof —
-// the startup payload does not move.
+// Gated twice on purpose: `import.meta.env.DEV` folds to `false` in a build, so the ternary
+// is dead code and the dynamic import is never emitted. That is what lets the three
+// packages behind these panels stay devDependencies.
 
 import { lazy, Suspense } from "react";
 import type { AnyRouter } from "@tanstack/react-router";

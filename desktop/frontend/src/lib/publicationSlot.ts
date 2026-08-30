@@ -8,11 +8,9 @@ export interface PublicationSlot<T extends object> {
 }
 
 /**
- * The process-local identity primitive shared by replaceable application owners.
- *
- * It deliberately owns no tasks, events, caches, errors, or business state. Those
- * remain on the concrete owner; this slot only supplies the common successor-first
- * publication linearization point and exact stale-disposer check.
+ * The process-local identity primitive shared by replaceable application owners. It owns no
+ * tasks, events, caches or business state — only the successor-first publication
+ * linearization point and the exact stale-disposer check.
  */
 export function createPublicationSlot<T extends object>(): PublicationSlot<T> {
   let current: T | null = null;

@@ -1,6 +1,3 @@
-// Built-in plugin: "Plugins" settings pane. Registration only — the UI lives in
-// ui/PluginsPane.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../public";

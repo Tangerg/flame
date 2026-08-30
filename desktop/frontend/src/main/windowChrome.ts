@@ -1,16 +1,8 @@
-// The window's own controls are the platform's, and on macOS they sit over the app's
-// content. This is where the app learns their geometry instead of assuming it.
-//
-// Two numbers, because two things depend on them. The gutter is where the cluster
-// ends, so the header's first control clears it. The centre line is what that control
-// centres ON: the header's own centre is a pixel away from the marks', and aligning to
-// the wrong one is exactly the 5px error the hand-drawn controls carried (they were
-// measured against a titlebar this window does not have).
-//
-// Applied before the first render (main.tsx awaits it) so the header is never laid out
-// against one number and then moved, and re-read on resize because the titlebar is
-// rebuilt entering and leaving fullscreen — where the marks are gone entirely and the
-// gutter has to collapse.
+// The platform's window controls sit OVER the content on macOS, so their geometry is
+// measured, not assumed: the gutter the header's first control clears, and the centre line
+// it centres ON — the header's own centre is a pixel away from the marks', and aligning to
+// the wrong one is visible. Applied BEFORE first render so the header is never laid out then
+// moved, and re-read on resize because fullscreen rebuilds the titlebar without the marks.
 
 import { getContainer } from "@/main/container";
 

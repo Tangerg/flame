@@ -1,6 +1,5 @@
 import { MAXIMUM_PAGINATION_CURSOR_CHARACTERS } from "@flame/runtime-contract/wire";
 
-/** The structural contract every cursor page carries. */
 export interface CursorPage<T = unknown> {
   data: T[];
   nextCursor?: string;
@@ -77,16 +76,9 @@ export class PaginationError extends Error {
 }
 
 /**
- * A paged call is still a real Promise: `await call` returns its first wire page.
- * It also owns the continuation behavior generated for that method:
- *
- * - `for await (const row of call)` visits every row;
- * - `call.pages()` visits whole pages, preserving page-level side data;
- * - `call.autoPagingToArray()` collects all rows;
- * - `call.autoPagingEach(visitor)` walks rows without materializing them.
- *
- * Iteration starts from the exact cursor supplied to the original request and
- * preserves every other request field on continuation calls.
+ * Still a real Promise: `await call` returns its FIRST wire page while the auto-paging
+ * members walk the rest, starting from the cursor the original request supplied and
+ * preserving every other request field on continuation calls.
  */
 export interface AutoPagingPromise<P extends CursorPage>
   extends Promise<P>, AsyncIterable<PageItem<P>> {

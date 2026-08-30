@@ -1,9 +1,6 @@
-// Public SDK surface — the one door into the plugin system. Plugin authors AND
-// the kernel's own built-ins import from here; there is no privileged back door.
-// Contributions are written with `host.extensions.contribute(POINT, …)` (POINT
-// from kernelPoints, re-exported below) and read with the generic substrate
-// hooks (useExtensionPoint / lookupExtensionByKey / …). The named selectors are
-// only the few reads that add real logic on top of a plain read.
+// The ONE door into the plugin system: the kernel's own built-ins import from here too,
+// with no privileged back door. The named selectors are only the few reads that add real
+// logic on top of the generic substrate.
 
 // App-wide config store.
 export { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
@@ -48,10 +45,8 @@ export type { NotifyOptions, NotifySource } from "./notifications";
 // Cached read hooks over a contributed data provider.
 export { createDataQuery, createParameterizedDataQuery } from "./dataQuery";
 export type { ParameterizedQueryOptions } from "./dataQuery";
-// The registry store — imperative observation of contributions (subscribe /
-// getState). `normalizeCombo` + the toast-event contract stay internal to
-// `./registry` / `./hostToast` (plugins don't need them — points normalize combos
-// on contribute, and toasts go through `host.notify`).
+// `normalizeCombo` and the toast-event contract stay internal: points normalize combos on
+// contribute, and toasts go through `host.notify`.
 
 // Read side. Plain reads use the generic substrate (use/lookupExtensionPoint,
 // use/lookupExtensionByKey); the rest are selectors with real logic.
@@ -147,8 +142,6 @@ export type {
 } from "./types";
 export type { NotificationEntry, NotificationLevel } from "./types";
 
-// Per-message context hooks. The context + hooks live in the SDK (the
-// plugin-integration seam) so plugin authors only ever import from
-// `@/plugins/sdk`; kernel UI (`MessageBlock`) imports the Provider from
-// `./messageContext` directly.
+// The context lives in the SDK so plugin authors import from one place; kernel UI takes the
+// Provider from `./messageContext` directly.
 export { useCurrentMessage, useCurrentMessageSessionId } from "./messageContext";

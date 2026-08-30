@@ -119,7 +119,6 @@ export interface AgentSessionViewPort {
   /** Revoke snapshot tokens and queued live-event cohorts without clearing the
    * currently visible material or starting a successor read. */
   retireProjectionGeneration(sessionIds: readonly string[]): void;
-  /** Replace one-server product material with an empty successor generation. */
   replaceServerScope(sessionIds: readonly string[]): void;
   clearProblem(sessionId: string): void;
   resolveInterrupt(

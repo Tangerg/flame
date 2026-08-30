@@ -28,21 +28,19 @@ import { runtimeAgentEvent, runtimeCancelResult, runtimeRunFact } from "./runtim
 
 interface SessionEntry {
   view: AgentSessionView;
-  /** Bumped before an authoritative rewrite. The useAgentSession rAF
-   *  batcher stamps its queue with the epoch it saw at enqueue time and
-   *  drops the batch if it changed — a flush scheduled before the replacement
-   *  must not append the old run's tail events into the rebuilt view. */
+  /** Bumped before an authoritative rewrite. The useAgentSession rAF batcher stamps its
+   *  queue with the epoch seen at enqueue time and drops the batch if it changed — a flush
+   *  scheduled before the replacement must not append the old run's tail into the rebuilt
+   *  view. */
   viewEpoch: bigint;
-  /** Changes after every material projection write. Authoritative refreshes
-   *  compare this revision before replacing the view, so a fetch started
-   *  before a user action or live event cannot overwrite it. */
+  /** Advances on every material projection write, so a fetch started before a user action
+   *  or live event cannot overwrite it. */
   viewRevision: bigint;
-  /** Changes only when a durable authoritative projection commits. Command
-   * recovery uses this boundary instead of mistaking a live event or local
-   * optimistic write for proof of remote mutation settlement. */
+  /** Advances only when a DURABLE authoritative projection commits. Command recovery uses
+   *  this boundary rather than mistaking a live event or optimistic write for proof of
+   *  remote settlement. */
   authoritativeRevision: bigint;
-  /** Latest refresh request for this session. A newer read supersedes an older
-   *  in-flight read even while the material view itself is unchanged. */
+  /** A newer read supersedes an older in-flight read even while the view is unchanged. */
   refreshSequence: bigint;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
@@ -53,18 +51,12 @@ interface SessionEntry {
 
 interface AgentStore {
   sessions: Record<string, SessionEntry>;
-  /** Monotonic high-water mark for every mounted projection generation in this
-   * renderer. Session material may be pruned, but its retired identity must
-   * never become available to a later remount of the same Session. */
+  /** Monotonic high-water mark across mounted projection generations: session material may
+   *  be pruned, but a retired identity must never become available to a later remount. */
   projectionGenerationSequence: bigint;
 
-  /**
-   * Fold a batch of {event, runId} into the named session's view state with a
-   * single `set()` — used by the per-frame batcher in useAgentSession so a
-   * burst of streaming item.delta events produces one React commit per frame
-   * instead of one per delta.
-   */
-  /** True when the complete batch was folded against the mounted Session. */
+  /** Folds a whole batch under ONE `set()` so a burst of item.delta events produces one
+   *  React commit per frame. Returns false if the batch did not match the mounted Session. */
   applyRunEvents: (sessionId: string, events: RunEvent[]) => boolean;
   applyRunSnapshot: (sessionId: string, run: RunRef) => void;
   commitCancelResponse: (
@@ -73,8 +65,7 @@ interface AgentStore {
     response: CancelRunResponse,
   ) => boolean;
   appendLocalMessage: (sessionId: string, message: Message) => void;
-  /** Create the mounted session slice if absent. Existing projection state is
-   *  retained while a new authoritative read is in flight. */
+  /** Retains existing projection state while a new authoritative read is in flight. */
   ensureSession: (sessionId: string) => void;
   beginViewRefresh: (
     sessionId: string,
@@ -87,41 +78,22 @@ interface AgentStore {
   ) => boolean;
   retireProjectionGeneration: (sessionIds: readonly string[]) => void;
   replaceServerScope: (sessionIds: readonly string[]) => void;
-  /**
-   * Reconcile an optimistic placeholder with the server id named by the run
-   * acknowledgement. If the streamed item won the race and already occupies
-   * that id, the placeholder is collapsed into it.
-   */
+  /** Collapses the placeholder into the target id when the streamed item won the race. */
   reconcileMessageIdentity: (sessionId: string, fromId: string, toId: string) => void;
-  /** Remove one message by id. Used to roll back an optimistic steer bubble
-   *  when the run ended mid-type (run_not_found) and the send falls back to a
-   *  fresh turn that mints its own bubble. No-op if the id is gone. */
+  /** Rolls back an optimistic steer bubble when the run ended mid-type (run_not_found). */
   dropMessage: (sessionId: string, id: string) => void;
-  /** Remove a session entry entirely (freeing its view state). */
   dropSession: (sessionId: string) => void;
-  /** Bind / unbind the imperative stop action for a session. */
   setStop: (sessionId: string, action: StopCurrentRootRunAction | null) => void;
-  /** Bind / unbind the imperative send action for a session. */
   setSend: (sessionId: string, action: SendAgentInputAction | null) => void;
-  /** Bind / unbind the imperative HITL resume action for a session. */
   setResume: (sessionId: string, action: ResumeRunAction | null) => void;
-  /** Bind / unbind authoritative query + tail synchronization. */
   setSynchronize: (sessionId: string, action: SynchronizeSessionAction | null) => void;
-  /** Bind / unbind committed root-or-child Run cancellation. */
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
-  /** Dismiss the error banner for a session without resetting the rest. */
   clearProblem: (sessionId: string) => void;
-  /** Surface a channel-a failure (a rejected runs.start / runs.resume, API.md
-   *  §8.1) on the run-error banner — the stream never opened, so no
-   *  segment.finished{error} will arrive to carry it. */
+  /** For a channel-a failure (API.md §8.1): the stream never opened, so no
+   *  `segment.finished{error}` will arrive to carry it. */
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;
-  /**
-   * Optimistically settle a HITL block after its complete interrupt set has
-   * opened a continuation through `runs.resume`:
-   * stamp the approval/question block (by interrupt itemId) + drop the
-   * matching open interrupt. The continuation Run streams the real
-   * follow-up; this just flips the card out of its requires-action state.
-   */
+  /** Optimistic only — flips the card out of requires-action; the continuation Run streams
+   *  the real follow-up. */
   resolveInterrupt: (
     sessionId: string,
     itemId: string,
@@ -149,12 +121,10 @@ const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   cancelRun: null,
 });
 
-// Patch an EXISTING session entry. Never resurrects a dropped slice:
-// ensureSession (run once at mount) is the sole creator, so a write that can't
-// find its session — a late rAF flush, an in-flight snapshot resolving, or
-// the unmount cleanup nulling send/stop after the prune subscriber already
-// dropped the session — must no-op rather than re-seed a ghost entry that prune
-// will never collect again (it only fires on the next openSessionIds change).
+// Never resurrects a dropped slice: `ensureSession` is the sole creator, so a write that
+// cannot find its session (a late rAF flush, an in-flight snapshot resolving, unmount
+// cleanup after the prune subscriber ran) must no-op rather than re-seed a ghost entry —
+// prune only fires on the next openSessionIds change and would never collect it.
 function patchSession(
   sessions: Record<string, SessionEntry>,
   sessionId: string,
@@ -385,13 +355,11 @@ export const useAgentStore = create<AgentStore>((set) => ({
 }));
 
 /**
- * Exact Plugin Host generation allowed to commit authoritative snapshot reads.
- *
- * Refresh sequence and view revision order writes within one generation. They cannot
- * distinguish an old port object retained across adapter replacement, because both
- * objects target this process-wide store. This owner adds that missing outer identity:
- * installing a successor synchronously revokes every token held by its predecessor,
- * and a stale disposer can retire only itself.
+ * The exact Plugin Host generation allowed to commit authoritative snapshot reads. Refresh
+ * sequence and view revision order writes WITHIN a generation but cannot see an old port
+ * object retained across adapter replacement, since both target this process-wide store —
+ * so installing a successor synchronously revokes every token its predecessor held, and a
+ * stale disposer can retire only itself.
  */
 export class AgentViewRefreshOwner {
   #disposed = false;
@@ -437,9 +405,8 @@ export class AgentViewRefreshOwner {
 
 const agentViewRefreshPublication = createPublicationSlot<AgentViewRefreshOwner>();
 
-// Prune sessions no longer held open. The view slice (messages, toolCalls,
-// shared, plan) can be megabytes of streamed markdown per session — without
-// this it accumulates forever.
+// The view slice can be megabytes of streamed markdown per session, so an unpruned one
+// accumulates forever.
 const unsubPruneSessions = useAgentSessionStore.subscribe((state, prev) => {
   if (state.openSessionIds === prev.openSessionIds) return;
   const live = new Set(state.openSessionIds);

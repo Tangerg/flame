@@ -9,8 +9,6 @@ export type ToolGroupPinnedState = boolean | null;
 
 export interface ToolGroupModel {
   summary: string;
-  /** The tool the group is mostly made of; the renderer resolves its glyph through
-   *  the same icon registry as a single row. */
   dominantTool: string;
   count: number;
   needsAttention: boolean;
@@ -19,13 +17,10 @@ export interface ToolGroupModel {
 }
 
 /**
- * `superseded` — the turn has started answering, so this group is the account of how
- * it got there rather than the thing in flight. Auto-open is for the live wave only;
- * a pin still wins, because a user who opened a group meant it.
- *
- * A failed child no longer forces it open either. That was the affordance for "you
- * need to see this", and the failure now carries its own flagged edge on the row —
- * visible closed, which is what makes collapsing safe.
+ * Auto-open is for the LIVE wave only: once the turn starts answering the group is the
+ * account of how it got there, not the thing in flight. A pin still wins. A failed child
+ * does not force it open either — the row carries a flagged edge visible while closed,
+ * which is what makes collapsing safe.
  */
 export function toolGroupModel(
   t: Translate,
@@ -46,11 +41,9 @@ export function toolGroupModel(
 }
 
 /**
- * What the group is mostly made of.
- *
- * A tie goes to whichever came first, which is the tool the group opened with —
- * the same thing the summary counts. Empty is not a group the renderer produces,
- * but the type allows it, so it answers with nothing and the glyph falls back.
+ * A tie goes to whichever came FIRST, the tool the group opened with, which is also what the
+ * summary counts. An empty group is not something the renderer produces but the type allows
+ * it, so it answers with nothing and the glyph falls back.
  */
 function dominantTool(tools: readonly ToolCall[]): string {
   const counts = new Map<string, number>();

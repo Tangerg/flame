@@ -77,7 +77,6 @@ class HookTrustMutationGeneration {
   }
 }
 
-/** Owns hook trust commands and projection repair for one exact Host and Runtime generation. */
 export class HookTrustMutationOwner {
   readonly #gateway: HookTrustGateway;
   #generation: HookTrustMutationGeneration;

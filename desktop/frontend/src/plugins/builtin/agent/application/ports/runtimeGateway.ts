@@ -43,11 +43,9 @@ export interface AgentRuntimeGateway {
   }): Promise<{ revision: number }>;
   forkSession(input: { sessionId: string; fromRunId?: string }): Promise<{ id: string }>;
   /**
-   * Read every durable fact needed to rebuild the Agent projection. The adapter
-   * owns capability-aware query scope; callers always receive one canonical
-   * snapshot shape and commit it atomically. Null means the Runtime
-   * authoritatively reports that the Session no longer exists; transport and
-   * other operational failures still reject.
+   * Every durable fact needed to rebuild the Agent projection, as ONE canonical snapshot the
+   * caller commits atomically; the adapter owns capability-aware query scope. Null means the
+   * Runtime authoritatively reports the Session gone — operational failures still reject.
    */
   loadSessionSnapshot(
     sessionId: string,

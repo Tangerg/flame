@@ -9,52 +9,34 @@ import { cn } from "@/lib/classNames";
 interface Props {
   text: string;
   status: BlockStatus;
-  /** The turn has started answering. Thinking is then the account of how the answer
-   *  was reached, not the thing to read, so it folds away without waiting for its own
-   *  terminal status — some models keep a reasoning block open while prose streams. */
+  /** Folds the block away WITHOUT waiting for its own terminal status: some models keep a
+   *  reasoning block open while prose streams. */
   superseded?: boolean;
 }
 
-// Collapsible "thinking" aside. Auto-opens while the agent streams, then collapses
-// once the reasoning is done. User can toggle anytime to override.
-//
-// The `line` shell, and a left rule on the body. Reasoning is an ASIDE, not an
-// activity: it produced nothing, it acted on nothing, and it is the one block in a
-// turn that is prose rather than data. Wearing the same card as a tool call was the
-// single loudest reason a transcript read as one grey stack — both references say
-// the same thing about it and neither gives it a card: quiet ink, an indent, a rule
-// down the side, and the roomiest leading in the ladder.
-//
-// AgentActivityDisclosure owns the Base UI disclosure/button semantics. This
-// feature owns only the derived policy: streaming drives `open` until the
-// user's first toggle takes over.
-//
-// Streaming auto-follow (ResizeObserver pin-to-bottom) + top/bottom gradient
-// fades ported from assistant-ui canonical reasoning component technique.
+// Reasoning is an ASIDE, not an activity — it produced nothing and acted on nothing — so it
+// takes the `line` shell rather than a tool call's card.
 export function ReasoningBlock({ text, status, superseded = false }: Props) {
   const t = useT();
   const streaming = status === "running";
-  // null delegates to the domain policy; a boolean is the user's explicit
-  // override. This is one state machine, not two booleans that can disagree.
+  // `null` delegates to the automatic policy; a boolean is the user's explicit override.
+  // One state machine, not two booleans that can disagree.
   const [openOverride, setOpenOverride] = useState<boolean | null>(null);
   const isOpen = openOverride ?? (streaming && !superseded);
 
-  // Flip relative to what the user *sees* (isOpen), not the underlying
-  // automatic policy. Anchoring on isOpen makes every click match its arrow.
+  // Flips relative to what the user SEES, not the automatic policy, so every click matches
+  // the arrow it was aimed at.
   const toggle = () => {
     setOpenOverride(!isOpen);
   };
 
   const label = streaming ? t("reasoning.thinking") : t("reasoning.thought");
 
-  // ---- Bounded scroll + auto-follow + fades ----
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  // The three fades need three booleans, not three pixel counts. Measuring
-  // positions put a state write on every scroll tick of a box that auto-follows a
-  // stream — so it re-rendered the reasoning body continuously while tokens
-  // arrived. Reduced at the measure site and compared before it is stored, a scroll
-  // that doesn't cross a threshold re-renders nothing.
+  // Three BOOLEANS, not three pixel counts: storing positions puts a state write on every
+  // scroll tick of a box that auto-follows a stream. Reduced at the measure site and
+  // compared before storing, a scroll that crosses no threshold re-renders nothing.
   const [edges, setEdges] = useState({ scrolled: false, atBottom: true, overflowing: false });
   const measure = useCallback(() => {
     const el = scrollRef.current;
@@ -73,21 +55,18 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     );
   }, []);
 
-  // ResizeObserver: pin to bottom while streaming so new tokens stay visible.
   useEffect(() => {
     if (!streaming) return;
     const scrollEl = scrollRef.current;
     const contentEl = contentRef.current;
     if (!scrollEl || !contentEl) return;
-    // Pin only when the user is already at the bottom — if they've scrolled
-    // up to read, new tokens must not yank them back. Re-arms automatically:
-    // the next content growth after they scroll back down pins again.
+    // Pins ONLY when already at the bottom: a reader who scrolled up must not be yanked
+    // back. Re-arms by itself on the next growth after they scroll down again.
     const pin = () => {
       const distanceFromBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
       if (distanceFromBottom < 4) {
         scrollEl.scrollTop = scrollEl.scrollHeight;
       }
-      // Eagerly update the edges so fade states stay in sync.
       measure();
     };
     pin();
@@ -96,7 +75,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     return () => ro.disconnect();
   }, [streaming, measure]);
 
-  // Keep the edges in sync when content or open state changes.
   useEffect(() => {
     measure();
   }, [text, isOpen, measure]);
@@ -112,11 +90,8 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}
-      // The rule replaces the card: it marks the aside's extent down the margin
-      // instead of boxing it, so a long chain of thought does not become the
-      // largest object in the turn. `border-field` and not `border-divider` — a
-      // divider separates peers in a list, and at 7% ink it does not read as a
-      // margin rule; this is the same job `.md blockquote` does, one step up.
+      // `border-field`, not `border-divider`: a divider separates peers in a list and at
+      // 7% ink does not read as a margin rule.
       contentClassName="ml-5 border-l border-field pt-0.5 pl-6"
     >
       <div

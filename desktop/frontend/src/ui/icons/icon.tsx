@@ -94,17 +94,8 @@ import {
   Webhook,
 } from "lucide-react";
 
-// Project-wide icon adapter — app icon name → lucide-react component.
-//
-// lucide-react gives us:
-//   - 1500+ icons available out-of-the-box (Feather-derived, consistent)
-//   - tree-shaking: only icons referenced here ship in the bundle
-//     (~150-300 bytes per icon)
-//   - sane defaults (24x24 viewBox, currentColor stroke, rounded ends)
-//   - consistent stroke width without hand-tuning each path
-//
-// Plugins consume the app icon vocabulary (<Icon name="search" size="sm" />)
-// instead of depending on lucide component names directly.
+// Plugins consume this vocabulary rather than lucide component names directly, so the
+// bundle only ships glyphs named here and a glyph can be re-pointed in one place.
 
 export type IconName =
   | "search"
@@ -176,8 +167,6 @@ export type IconName =
   | "bot"
   | "question"
   | "star"
-  // Built-in tools use distinct glyphs so a scrolled transcript preserves the
-  // kind of work performed instead of collapsing unrelated calls into one mark.
   | "scroll"
   | "replace"
   | "text-search"
@@ -202,10 +191,6 @@ export type IconName =
   | "zoom-in"
   | "zoom-out";
 
-// Mapping from our project's icon vocabulary to lucide components.
-// Names on the left are the project's IconName tokens used at every
-// callsite; names on the right are the Feather/Lucide-canonical
-// equivalents we render under the hood.
 const ICON_MAP = {
   search: Search,
   plus: Plus,
@@ -219,9 +204,6 @@ const ICON_MAP = {
   file: File,
   filetext: FileText,
   send: Send,
-  // The composer sends with an upward arrow, not a paper plane: the plane is the
-  // "compose a message" affordance, and using it for both made two different
-  // actions wear one glyph.
   "send-arrow": ArrowUp,
   stop: Square,
   play: Play,
@@ -245,8 +227,6 @@ const ICON_MAP = {
   edit: Pencil,
   image: ImageIcon,
   command: Command,
-  // "panel" + "panel-r" are aliases for the right-side panel layout —
-  // callsites use either interchangeably.
   panel: PanelRight,
   "panel-l": PanelLeft,
   "panel-r": PanelRight,
@@ -307,33 +287,22 @@ const ICON_MAP = {
 } satisfies Record<IconName, LucideIcon>;
 
 /**
- * The vocabulary as data, for the tables that name a glyph in a plain string.
- *
- * `Icon` itself is typed, so a component naming a glyph the map lacks cannot
- * compile. A registry contribution cannot say that: the tool-icon table is
- * `Record<string, string>` because a plugin contributes into it, so its glyph
- * names are checked by the test that reads this instead of by the compiler.
+ * The vocabulary as data, for tables that name a glyph in a plain string. `Icon` itself is
+ * typed; a registry contribution is `Record<string, string>`, so its glyph names are
+ * checked by the test that reads this rather than by the compiler.
  */
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
 interface Props {
   name: IconName;
-  /** A step on the icon ladder (`lib/iconScale.ts`). Defaults to a glyph sized for
-   *  body text. Numeric sizes are deliberately not accepted: they are how the app
-   *  ended up with eleven of them. */
   size?: IconSize;
   style?: CSSProperties;
   className?: string;
 }
 
-/**
- * One glyph at one of the five ladder sizes.
- *
- * Geometry rides CSS custom properties rather than props so a change to the user's
- * base size reaches every glyph without re-rendering anything, and so stroke width
- * stays paired with the size that derives it — the two must move together or the
- * on-screen weight drifts, which is the failure this ladder exists to end.
- */
+// Geometry rides CSS custom properties rather than props so a change to the user's base
+// size reaches every glyph without a re-render, and so stroke width cannot drift away from
+// the size that derives it.
 export function Icon({ name, size = "sm", style, className }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;

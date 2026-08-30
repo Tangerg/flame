@@ -54,12 +54,9 @@ export default definePlugin({
       order: 4,
       component: GoalModeIndicator,
     });
-    // Setting the goal and reading it back are both answered by the quiet standing
-    // row, which carries only the objective, lifecycle and action available now.
-    // Runtime constraints stay out of persistent front-end chrome.
-    //
-    // `report_goal_outcome` is NOT claimed: the banner shows the stop code, not
-    // whatever the agent wrote about the outcome.
+    // The standing row answers both setting and reading a goal, carrying only the objective,
+    // lifecycle and currently available action. `report_goal_outcome` is NOT claimed: the
+    // banner shows the stop CODE, not whatever the agent wrote about the outcome.
     for (const key of ["create_goal", "get_goal"]) {
       ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
     }

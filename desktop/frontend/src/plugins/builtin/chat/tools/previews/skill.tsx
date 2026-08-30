@@ -1,5 +1,4 @@
-// Skill previews — the catalog, loaded instructions, one resource and a proposal
-// are separate components. Text-shaped tools share typography, not identity.
+// Separate components per tool: text-shaped tools share typography, not identity.
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";

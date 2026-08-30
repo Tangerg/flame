@@ -1,13 +1,8 @@
-// Manifest of all built-in plugins.
+// Started as ONE Host transaction, with service contracts resolved from each plugin's
+// `requires`/`provides` — this array's order is only a tie-breaker between independent
+// plugins, not dependency semantics.
 //
-// dougong starts this set as one Host transaction and resolves declared
-// service contracts from each plugin's `requires` / `provides`. This array's
-// order is only a tie-breaker between independent plugins — the groups below
-// are for human readability, not dependency semantics.
-//
-// Slot ordering (which contribution wins for last-write-wins slots like
-// previews / themes) is still array-order driven, so keep destructive
-// overrides later in the manifest.
+// Last-write-wins slots ARE array-order driven, so keep destructive overrides later.
 
 import type { AnyPlugin } from "dougong";
 import appearance from "./settings/appearance";
@@ -121,8 +116,6 @@ import {
 // first-class Items now, so the built-in agent fold owns the whole fold.
 const protocol: AnyPlugin[] = [agentFold];
 
-// Configuration & infrastructure.
-
 const infrastructure: AnyPlugin[] = [
   nativeShell,
   observability,
@@ -131,8 +124,6 @@ const infrastructure: AnyPlugin[] = [
   runtime,
   workspaceBootstrap,
   defaultDataProviders,
-  // After bootstrap: watches the discovery result and opens the app's one
-  // runtime.subscribe stream.
   workspaceEvents,
   workspaceSessionNavigation,
   rpcAgent,
@@ -143,8 +134,8 @@ const infrastructure: AnyPlugin[] = [
   mainRoute,
 ];
 
-// Message rendering — roles and per-message actions. Protocol content blocks
-// render directly in the message module; there is no second renderer registry.
+// Protocol content blocks render directly in the message module; there is deliberately no
+// second renderer registry.
 const messageRendering: AnyPlugin[] = [
   defaultRoles,
   messageCopy,
@@ -183,8 +174,6 @@ export const toolRenderingPlugins: AnyPlugin[] = [
   toolIcons,
 ];
 
-// Composer — slash commands, modes, toolbar, status chips, send & hint.
-
 const composer: AnyPlugin[] = [
   composerBootstrap,
   slashHints,
@@ -196,8 +185,6 @@ const composer: AnyPlugin[] = [
   composerKeymap,
   composerSend,
 ];
-
-// Settings panes + workspace views (each spec is independent).
 
 const panes: AnyPlugin[] = [
   appearance,
@@ -234,15 +221,9 @@ const panes: AnyPlugin[] = [
   diagnostics,
 ];
 
-// Kernel layout regions — fill the named slots in AgentClientPage.
-
 const kernel: AnyPlugin[] = [kernelSidebar, kernelChat, kernelSettings];
 
-// Sidebar internals — the sections that fill the expanded work-index view.
-
 const sidebar: AnyPlugin[] = [sidebarActions, sidebarProjects, sidebarRecents, sidebarFooter];
-
-// Overlays + chrome — toasts, search, shortcuts, status, …
 
 const overlays: AnyPlugin[] = [
   toaster,

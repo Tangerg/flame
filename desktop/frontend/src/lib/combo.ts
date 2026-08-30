@@ -1,12 +1,5 @@
-// Combo → platform-native display glyphs. "Mod+Shift+K" → ["⌘","⇧","K"] on
-// Mac, ["Ctrl","Shift","K"] elsewhere. Keeps the canonical combo for matching
-// but presents the keys the way the OS prints them. Detection is one-shot at
-// module load — switching OS mid-session isn't a thing.
-//
-// Pure formatting util shared by the shortcuts pane (one <kbd> per part) and
-// the welcome screen. Lives in
-// lib/ so any plugin can consume it without reaching into another plugin's
-// directory.
+// Keeps the canonical combo for MATCHING and presents the keys the way the OS prints them.
+// Platform detection is one-shot at module load — switching OS mid-session isn't a thing.
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/.test(navigator.platform);
 
@@ -83,20 +76,12 @@ function dispatchKey(key: string): string {
 }
 
 /**
- * Combo → a tinykeys binding, e.g. "Mod+Shift+K" → "$mod+Shift+KeyK".
+ * Letters and digits become PHYSICAL key codes, because a shortcut is a position on the
+ * keyboard rather than a character: `KeyboardEvent.key` carries whatever the active layout
+ * prints there, so ⌘K under Cyrillic reports `"к"` and matches no registration.
  *
- * Letters and digits become PHYSICAL key codes, because a shortcut is a
- * position on the keyboard rather than a character. `KeyboardEvent.key` carries
- * whatever the active layout prints at that position, so matching on it meant
- * every letter shortcut was dead under a Cyrillic, Greek or Dvorak layout —
- * ⌘K there reports `key: "к"`, which no registration was ever looking for.
- *
- * Anything else passes through: tinykeys compares against `KeyboardEvent.key`
- * case-insensitively, so "escape" and "arrowup" already match, and a
- * punctuation key has no code worth guessing at.
- *
- * Space-separated presses are a sequence ("Mod+K Mod+S"), matched with a
- * timeout between presses.
+ * Everything else passes through — tinykeys compares `KeyboardEvent.key` case-insensitively,
+ * and a punctuation key has no code worth guessing at.
  */
 export function dispatchBinding(combo: string): string {
   return combo

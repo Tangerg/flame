@@ -5,10 +5,8 @@ import { useInterruptResume } from "./useInterruptResume";
 
 export type { RememberScope } from "../../domain/hitl";
 
-// Submits the user's HITL approval decision (API.md §6, R-model) over the shared
-// useInterruptResume scaffold (which owns session pinning, the pending latch,
-// the guard, and the deferred settle). This hook only builds the approval-
-// specific wire payload (editedArgs / remember) and decision patch.
+// Session pinning, the pending latch and the deferred settle belong to useInterruptResume;
+// only the approval-specific wire payload is built here (API.md §6).
 
 export interface ApprovalSubmitOptions {
   /** Forwarded only when the user tweaked the tool's arguments before

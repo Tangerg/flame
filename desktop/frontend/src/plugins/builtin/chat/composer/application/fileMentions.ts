@@ -1,22 +1,10 @@
-// @file autocomplete (T2.3): detect an `@token` at the caret, fuzzy-match it
-// against the workspace file list (workspace.files.list, recursive), and let the
-// user pick a path that's spliced back into the composer text. The picker owns
-// ↑/↓/Enter/Tab/Esc while open (Composer routes keydowns here before its normal
-// keymap). The file list is fetched lazily (only once a mention opens) and
-// cached per cwd by react-query.
-//
-// Hand-rolled rather than Base UI's Combobox (the §4 exemption, stated): a
-// Combobox owns an input and treats its value as the query, and here the query is
-// one `@token` inside a message that is otherwise free text — the input's value is
-// the whole draft. What that exemption costs is the ARIA the primitive would have
-// supplied, so the composer wires the combobox pattern by hand off these ids:
-// `MENTION_LISTBOX_ID` on the popup, `mentionOptionId(i)` per row, and
-// aria-activedescendant on the textarea.
+// Hand-rolled rather than Base UI's Combobox — the documented §4 exemption. A Combobox owns
+// an input and treats its VALUE as the query, but here the query is one `@token` inside
+// otherwise free text. That costs the ARIA the primitive supplies, so the composer wires the
+// pattern by hand off `MENTION_LISTBOX_ID` and aria-activedescendant on the textarea.
 
-/** The popup's element id — `aria-controls` points at it only while mounted. */
 export const MENTION_LISTBOX_ID = "composer-mention-listbox";
 
-/** Per-row element id — `aria-activedescendant` names the focused one. */
 export function mentionOptionId(index: number): string {
   return `composer-mention-option-${index}`;
 }
@@ -34,9 +22,8 @@ interface Mention {
   end: number; // caret
 }
 
-/** The active `@token` at `caret`, or null. The '@' must start a token (string
- *  start or after whitespace) so "user@host" doesn't trigger; the token runs to
- *  the caret and contains no whitespace. */
+/** The `@` must START a token (string start or after whitespace), so `user@host` does not
+ *  trigger. */
 export function activeMention(value: string, caret: number): Mention | null {
   let i = caret - 1;
   for (; i >= 0; i--) {
@@ -54,7 +41,6 @@ interface Args {
   value: string;
   caret: number;
   cwd: string | undefined;
-  /** Replace the composer text and move the caret (Composer wires the textarea). */
   apply: (text: string, caret: number) => void;
 }
 
@@ -64,8 +50,7 @@ export interface FileMentions {
   index: number;
   setIndex: (i: number) => void;
   accept: (path: string) => void;
-  /** Returns true (and the caller should preventDefault) when the picker
-   *  consumed the key — only while open. */
+  /** True when the picker consumed the key; the caller must then preventDefault. */
   handleKeyDown: (e: { key: string; shiftKey: boolean }) => boolean;
 }
 
@@ -74,14 +59,12 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     candidateKey: string;
     index: number;
   } | null>(null);
-  // The '@' position a user dismissed with Esc — suppresses the popup for that
-  // one mention until they move off it (a new '@' reopens).
+  // Suppresses the popup for the ONE mention dismissed with Esc; a new `@` reopens.
   const [dismissedStart, setDismissedStart] = useState<number | null>(null);
 
   const mention = useMemo(() => activeMention(value, caret), [value, caret]);
   const open = mention !== null && mention.start !== dismissedStart;
 
-  // Lazy + cached: the recursive list is fetched only once a mention is open.
   const { data: files } = useWorkspaceListFiles(
     open && cwd !== undefined ? { cwd, recursive: true, limit: FETCH_LIMIT } : undefined,
   );
@@ -95,9 +78,8 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     );
   }, [open, mention, files]);
 
-  // Selection belongs to one concrete candidate set. Deriving the visible
-  // index from that identity resets it during render when the mention or
-  // results change, without an effect and its one-frame stale selection.
+  // Selection belongs to ONE concrete candidate set: deriving the visible index from that
+  // identity resets it during render, avoiding an effect and its one-frame stale selection.
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
   const index =
     selection?.candidateKey === candidateKey && selection.index < items.length

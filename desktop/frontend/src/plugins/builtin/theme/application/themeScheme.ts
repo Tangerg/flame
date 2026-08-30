@@ -5,17 +5,9 @@ import { systemAppearance } from "./ports/systemAppearance";
 import { themePreference } from "./ports/themePreference";
 
 /**
- * Which scheme a theme id paints in.
- *
- * Callers wanting "is this light?" (the Shiki preset, the Mermaid theme, the
- * accent variant) must resolve through here rather than comparing the id against
- * `"light"` — a contributed id like `"solarized-light"` would mis-classify.
- * Unregistered ids read as dark: that covers early boot and a saved id whose
- * plugin is gone.
- *
- * This lived in the kernel's theme selector, where nothing in the kernel used it
- * — the scheme of a contributed theme is this context's business, and it owns
- * both the COLOR_THEME point the answer comes from and the meaning of `"system"`.
+ * Callers asking "is this light?" MUST resolve through here rather than comparing the id
+ * against `"light"`: a contributed id like `"solarized-light"` mis-classifies. Unregistered
+ * ids read as dark, which covers early boot and a saved id whose plugin is gone.
  */
 export function resolveThemeScheme(themeId: string): Scheme {
   if (themeId === "system") return systemAppearance().scheme();
@@ -27,16 +19,9 @@ export function isLightTheme(themeId: string): boolean {
 }
 
 /**
- * Flip to the primary theme of the opposite scheme.
- *
- * Lives here rather than on the store: picking *which* theme comes next needs
- * the COLOR_THEME registry and its contributed order, and a store that reaches into
- * the plugin registry is a store that knows about the plugin system. The store
- * keeps `setTheme` — it holds the value; this decides it.
- *
- * `lookupExtensionPoint` returns themes already sorted by `order`, so the first
- * match is the opposite scheme's primary — the same order the appearance pane
- * shows.
+ * Here rather than on the store: picking WHICH theme comes next needs the COLOR_THEME
+ * registry, and a store reaching into the plugin registry is a store that knows about the
+ * plugin system. The store holds the value; this decides it.
  */
 export function toggleThemeScheme(): void {
   const preference = themePreference();

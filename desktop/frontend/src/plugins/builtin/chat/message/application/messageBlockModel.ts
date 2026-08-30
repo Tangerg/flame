@@ -12,14 +12,10 @@ import {
 } from "@/plugins/builtin/agent/public/messagePresentation";
 
 /**
- * The blocks the narrative tells, which is not every block the turn produced: a tool
- * whose outcome is held by a surface that stays on screen has nothing left to say here.
- *
- * Dropped before planning rather than skipped while rendering, because the units carry
- * counts and grouping — a folded wave that says "4 steps" and shows 3, or a run of
- * adjacent reads broken by a row nobody can see, are both worse than the duplication.
- * The call itself is untouched: it is still in `toolCalls`, so Tool stats and the
- * timeline still account for it.
+ * Drops blocks whose outcome is held by a surface that stays on screen — BEFORE planning
+ * rather than skipped while rendering, because units carry counts and grouping: a folded
+ * wave saying "4 steps" while showing 3 is worse than the duplication. The call stays in
+ * `toolCalls`, so stats and the timeline still account for it.
  */
 export function narratedBlocks(
   blocks: ContentBlock[],
@@ -27,9 +23,8 @@ export function narratedBlocks(
   standing: (toolName: string) => boolean,
 ): ContentBlock[] {
   return blocks.filter((block) => {
-    // Pending questions temporarily own the composer rung, like Codex's native
-    // request panel. The same durable block returns here once it settles; only
-    // its active presentation moves, so there is still one source and one echo.
+    // A pending question temporarily owns the composer rung; the same durable block returns
+    // here once it settles, so only its active presentation moves.
     if (block.kind === "question" && block.status === "requires-action" && !block.answered) {
       return false;
     }
@@ -60,7 +55,6 @@ export function messageBlockRenderUnits(
   });
 }
 
-/** Whether the next row is the Runtime-authored final answer for this exact work turn. */
 export function finalAnswerFollows(message: Message, next?: Message): boolean {
   return (
     message.role === "assistant" &&
@@ -77,13 +71,10 @@ export function messageBlocksRenderInstant(role: MessageRole): boolean {
 }
 
 /**
- * Whether the turn still owns material that can change beneath its action row.
- *
- * Current/root attention is deliberately not part of this value. The exact Run named
- * by the message owns the whole turn: completing one agentMessage Item does not settle
- * controls while that Run can still append another Item, and a successor Run cannot
- * settle its predecessor. Blocks, ToolCalls, delegated Runs, and the visible-text
- * projection then narrow that lifecycle further.
+ * Whether the turn still owns material that can change beneath its action row. Current/root
+ * attention is deliberately NOT part of it: the exact Run named by the message owns the
+ * whole turn, so one completed agentMessage Item does not settle controls while that Run
+ * can still append another, and a successor Run cannot settle its predecessor.
  */
 export function messageActionMaterialization(row: TranscriptRow): MessageActionMaterialization {
   if (

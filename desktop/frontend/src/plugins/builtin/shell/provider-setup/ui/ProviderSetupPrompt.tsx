@@ -8,16 +8,10 @@ import {
 } from "@/plugins/builtin/settings/providers/public/queries";
 
 /**
- * The one thing that may still appear on an otherwise empty home: an install with no
- * key anywhere cannot send a message, so the way to fix that has to be on the screen
- * you land on. Renders nothing in the normal case, which is what keeps the home to a
- * title and an input.
- *
- * It lives on the SHELL side and asks the providers context its question through that
- * context's public surface, rather than living inside providers and reaching back out
- * to the workspace to open a pane — that direction closes a cycle (workspace already
- * consumes provider queries) and `check-builtin-contexts` says so. Consumer →
- * provider's public API is the direction that composes.
+ * Renders NOTHING in the normal case: an install with no key anywhere cannot send a message,
+ * so the fix has to be on the screen you land on. Lives on the SHELL side and asks the
+ * providers context through its public surface — the reverse direction closes a cycle
+ * `check-builtin-contexts` rejects.
  */
 export function ProviderSetupPrompt() {
   const t = useT();

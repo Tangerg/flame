@@ -1,6 +1,3 @@
-// Accent picker — one swatch per registered AccentSpec plus a custom
-// color slot that opens the OS-native color wheel.
-
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { ACCENT, useExtensionPoint } from "@/plugins/sdk";

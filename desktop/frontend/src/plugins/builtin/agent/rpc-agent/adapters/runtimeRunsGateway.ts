@@ -12,14 +12,9 @@ function runOpeningIdentity(method: "start" | "resume", params: unknown): string
 }
 
 /**
- * The runs gateway the RPC agent source drives, bound to the live client.
- *
- * This lived as an object literal inside the plugin's `setup()`, which put the
- * two things a root is not supposed to hold — reaching the composition root, and
- * coercing the app's session id into the wire's branded one — in the file whose
- * whole job is assembly. Every sibling context keeps that pair in `adapters/`;
- * the rule was written down for `defaults/` only, so it read as a local
- * exception rather than the shape it is.
+ * The runs gateway the RPC agent source drives, bound to the live client. Lives in
+ * `adapters/` rather than the plugin's `setup()` because it reaches the composition root
+ * and coerces app session ids into the wire's branded ones — neither belongs to assembly.
  */
 export interface RuntimeRunsGateway extends RpcRunsGateway {
   /** Retire every opening and stream admitted by the previous Runtime process. */

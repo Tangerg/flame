@@ -1,8 +1,6 @@
-// Subsequence fuzzy match + ranking for file paths — the @file picker's
-// matcher (T2.3). Scores higher for hits in the basename, consecutive runs,
-// and segment/word starts, so "cmp" surfaces Composer.tsx above a deep
-// incidental match. Small and dependency-free; the candidate set is the
-// already-bounded workspace.files.list result.
+// Scores basename hits, consecutive runs and segment starts higher, so "cmp" surfaces
+// Composer.tsx above a deep incidental match. Dependency-free because the candidate set is
+// the already-bounded file list.
 
 interface Hit {
   path: string;

@@ -1,8 +1,5 @@
-// Detect file:line references in agent / tool output text (T2.3) so the UI can
-// render them as clickable links into the file viewer. Precision over recall:
-// a token counts as a file ref only when it has a path separator OR a known
-// source-file extension, so prose like "e.g." or a version "1.2.3" doesn't
-// light up. An optional :line (and :col, ignored) follows.
+// Precision over recall: a token qualifies only with a path separator OR a known source-file
+// extension, so prose like "e.g." and a version "1.2.3" do not light up.
 
 export interface FileRef {
   path: string;
@@ -11,8 +8,6 @@ export interface FileRef {
 
 export type RefSegment = string | FileRef;
 
-// Common source / text extensions — the allowlist that lets an extension-only
-// token (no slash) qualify as a file ref.
 const FILE_EXT = new Set([
   "ts",
   "tsx",
@@ -82,8 +77,7 @@ const FILE_EXT = new Set([
   "conf",
 ]);
 
-// A path-ish run (letters/digits/._-/ and slashes), then an optional :line and
-// :col. The lookbehind keeps it from starting mid-token (inside an email/path).
+// The lookbehind is what keeps a match from starting mid-token, inside an email or path.
 const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::\d+)?/g;
 
 function isFileRef(path: string): boolean {

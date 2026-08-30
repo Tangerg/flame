@@ -19,14 +19,11 @@ import {
 
 export interface Container {
   /**
-   * Shared, lazily-constructed Flame Runtime Protocol SDK client for app use.
-   * Builds the transport lazily and caches one client per active endpoint and
-   * local-token signature. Runtime configuration is restored before discovery;
-   * changing it produces a new client instead of leaving callers pinned to the
-   * startup default. Tests can override with `setContainer({ client })`.
+   * One cached client per active endpoint and local-token signature. Runtime configuration
+   * is restored before discovery, and changing it produces a NEW client rather than leaving
+   * callers pinned to the startup default.
    */
   client: () => FlameClient;
-  /** Typed HTTP operational endpoints owned by the Runtime transport adapter. */
   sidecar: () => SidecarClient;
   /** App-owned Wails capability boundary. It never becomes Runtime Protocol. */
   desktop: DesktopHostClient;

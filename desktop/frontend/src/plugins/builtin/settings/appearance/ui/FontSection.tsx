@@ -22,8 +22,6 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
   const t = useT();
   const fonts = useSystemFonts(mono);
   const customEnabled = value !== "";
-  // Display name on the trigger: the chosen family, or the localized
-  // "Default (Geist…)" placeholder when the checkbox is off.
   const triggerLabel = customEnabled ? value : defaultLabel;
 
   return (

@@ -1,10 +1,7 @@
-// The bar a workspace view puts above its body — one shape per placement.
-//
-// Full width, the view owns the window's top-left corner, so the bar carries the
-// drawer toggle, the view's identity and its way out. In the dock, the dock's own
-// bar already names the view and owns the container controls, so this one appears
-// only when the view has something of its own to add (subtext, actions) — two
-// stacked bars saying the same word in a 400px column was the old shape.
+// One shape per placement. At full width the view owns the window's top-left corner, so the
+// bar carries the drawer toggle, identity and exit. In the dock, the dock's own bar already
+// names the view, so this one appears only when the view adds something — two stacked bars
+// saying the same word in a 400px column was the old shape.
 
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
@@ -17,7 +14,6 @@ import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlaceme
 export interface ViewHeaderProps {
   icon: IconName;
   title: ReactNode;
-  /** Material identity that remains meaningful inside a generic dock tab. */
   dockIdentity?: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;

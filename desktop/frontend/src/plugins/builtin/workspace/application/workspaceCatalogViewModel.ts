@@ -52,7 +52,6 @@ export interface WorkspaceAgentDocRowViewModel {
   scopeLabelKey: string;
 }
 
-// The scope words live in the catalogs; this maps a scope to its key.
 const SCOPE_LABEL_KEY: Record<WorkspaceKnowledgeScope, string> = {
   cwd: "knowledge.scope.cwd",
   projectRoot: "knowledge.scope.projectRoot",

@@ -1,22 +1,12 @@
-// Parser for the common `mcpServers` MCP-client interchange block → our
-// settings MCP config input. Pasted JSON is an
-// EXTERNAL trust boundary (§3), so it's validated with Zod before any field is
-// trusted; everything downstream (the configure call) gets a well-typed value.
-//
-// Accepted per-server shape (lenient — different tools emit subsets):
-//   { "command": "...", "args": [...], "env": {KEY:val} | ["KEY=val"], "type"? }
-//   { "url": "...", "type"?, "headers"? | "authorization"?, "timeout"? }
-// `type` is optional: absent → inferred (command ⇒ stdio, url ⇒ http). An
-// Authorization header is split out to the dedicated bearer field; every OTHER
-// header is preserved (no silent drop).
+// Pasted JSON is an EXTERNAL trust boundary (CLAUDE.md §3), so it is validated with Zod
+// before any field is trusted. The accepted shape is LENIENT because different MCP clients
+// emit different subsets; `type` is inferred when absent (command ⇒ stdio, url ⇒ http).
 
 import { z } from "zod";
 import type { MCPServerInput } from "./mcpServerInput";
 import { mcpHandshakeTimeoutFromOptionalSeconds } from "./mcpHandshakeTimeout";
 
-// env may be a map ({KEY:"val"}) or a "KEY=value" array; both normalize to the
-// KEY→value map our config input carries (split on the FIRST '=' so a value may
-// itself contain '=').
+// Split on the FIRST '=', so a value may itself contain one.
 const envSchema = z
   .union([z.record(z.string(), z.string()), z.array(z.string())])
   .optional()
@@ -33,10 +23,7 @@ const envSchema = z
   });
 
 const serverSchema = z.object({
-  // Standard mcpServers vocab — accept it all (stdio | streamableHttp | http |
-  // sse | anything). stdio stays stdio; every url-based type collapses onto our
-  // one remote transport (streamableHttp). Lenient string, not an enum, so a
-  // novel type value pastes in rather than failing.
+  // A lenient string, NOT an enum, so a novel type value pastes in rather than failing.
   type: z.string().optional(),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
@@ -44,8 +31,7 @@ const serverSchema = z.object({
   dir: z.string().optional(),
   cwd: z.string().optional(),
   url: z.string().optional(),
-  // A bearer token may arrive bare or as a Headers "Authorization" entry; it's
-  // pulled into the dedicated bearer field, the rest of headers is preserved.
+  // A bearer token may arrive bare OR as a Headers "Authorization" entry.
   authorization: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   timeout: z.number().optional(), // seconds; 0/absent = unbounded
@@ -58,9 +44,8 @@ function authorizationFrom(s: ParsedServer): string | undefined {
   return raw;
 }
 
-// headersExceptAuth keeps every imported header EXCEPT Authorization (which goes
-// to the dedicated bearer field). Returns undefined when nothing remains, so an
-// Authorization-only headers block doesn't store an empty map.
+// `undefined` when nothing remains, so an Authorization-only block does not store an
+// empty map.
 function headersExceptAuth(s: ParsedServer): Record<string, string> | undefined {
   if (!s.headers) return undefined;
   const out: Record<string, string> = {};
@@ -93,8 +78,7 @@ export function parseMcpImport(text: string): McpImportResult {
   }
   const servers: MCPServerInput[] = [];
   for (const [name, s] of Object.entries(parsed.data.mcpServers)) {
-    // stdio stays stdio; any other (http / streamableHttp / sse / …) or a bare
-    // url collapses onto streamableHttp — our one remote transport.
+    // Every url-based type collapses onto `streamableHttp`, the one remote transport.
     const type = s.type
       ? s.type === "stdio"
         ? "stdio"

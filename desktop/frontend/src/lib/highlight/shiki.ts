@@ -1,16 +1,8 @@
-// Lazy singleton Shiki highlighter.
+// A lazy singleton: `createHighlighter` is async and loads grammars from bundled JSON, so
+// it is created once on first request and shared app-wide.
 //
-// Shiki's `createHighlighter` is async (loads grammars / themes from
-// bundled JSON). We create it once on first request and share the same
-// instance across the whole app. Themes follow the app's light/dark
-// scheme; languages are a curated list covering what an LLM is likely
-// to emit in chat. Adding a language is cheap — extend `LANGS` below.
-//
-// The `shiki` module itself is also dynamic-imported so the core
-// (~400KB) and its grammar JSONs don't ship in the main chunk;
-// they're fetched the first time a code block actually renders.
-//
-// Tokenizer output caching lives next door in `shikiCache.ts`.
+// The `shiki` module is ALSO dynamic-imported, keeping its ~400KB core and grammar JSONs
+// out of the main chunk until a code block first renders.
 
 import type { Highlighter } from "shiki";
 

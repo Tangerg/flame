@@ -5,11 +5,9 @@ export type PressableProps = Omit<ButtonPrimitiveProps, "children"> & {
   children?: ReactNode;
 };
 
-// A composite surface whose content owns its layout and visual language: rows,
-// cards, swatches, previews and disclosure headers. Pressable contributes only
-// button semantics and the primitive's accessibility baseline. Ordinary actions
-// belong to Button, IconButton or TextButton, which intentionally own metrics
-// and presentation.
+// For composite surfaces whose content owns its own layout (rows, cards, swatches,
+// disclosure headers): contributes button semantics and nothing else. Ordinary actions
+// belong to Button / IconButton / TextButton, which own metrics and presentation.
 export function Pressable({ children, ...props }: PressableProps) {
   return <ButtonPrimitive {...props}>{children}</ButtonPrimitive>;
 }

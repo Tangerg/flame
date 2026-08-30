@@ -21,7 +21,6 @@ export function IconGallery() {
   const t = useT();
   const [query, setQuery] = useState("");
 
-  // Filter once per query — cheap (≤300 entries).
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rawToc;
@@ -30,7 +29,6 @@ export function IconGallery() {
     );
   }, [query]);
 
-  // Group by `group` and keep alphabetical order inside each.
   const grouped = useMemo(() => {
     const buckets: Record<GroupKey, typeof rawToc> = {
       model: [],

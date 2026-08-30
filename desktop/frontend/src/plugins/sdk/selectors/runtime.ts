@@ -1,7 +1,3 @@
-// Runtime / data-layer selectors — routes, agent sources, data providers,
-// and plugin error fallback. The grab-bag of "things plugins
-// register that don't belong to a specific UI surface".
-
 import type {
   AgentRunStartOptions,
   AgentRunOptionsProviderSpec,
@@ -11,10 +7,7 @@ import type {
 import { AGENT_RUN_OPTIONS, AGENT_SOURCE, DATA_PROVIDER, ERROR_FALLBACK } from "../kernelPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "./extensions";
 
-/**
- * Pick the active agent source — highest priority wins, ties broken by
- * insertion order. Returns undefined if none registered.
- */
+/** Highest priority wins, ties broken by insertion order. */
 export function pickAgentSource(): AgentSourceSpec | undefined {
   const sources = lookupExtensionPoint(AGENT_SOURCE);
   if (sources.length === 0) return undefined;
@@ -33,11 +26,7 @@ export function resolveAgentRunStartOptions(): AgentRunStartOptions {
   return pickAgentRunOptionsProvider()?.resolve() ?? {};
 }
 
-/**
- * Look up the fetcher for a data-provider key. Type is erased — callers
- * cast to their expected return shape. Returns undefined when nothing
- * registered (consumer hooks should throw or fall back).
- */
+/** The type is ERASED so every provider fits one map; callers cast on the way out. */
 export function lookupDataProvider<T = unknown, P = unknown>(
   key: string,
 ): ((params?: P, signal?: AbortSignal) => Promise<T>) | undefined {
@@ -45,11 +34,7 @@ export function lookupDataProvider<T = unknown, P = unknown>(
   return spec ? (spec.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>) : undefined;
 }
 
-/**
- * Pick the highest-priority registered error fallback. Tied priorities
- * resolve by insertion order (later wins). Returns undefined when nothing
- * is registered.
- */
+/** Ties resolve by insertion order, so the later registration wins. */
 export function pickPluginErrorFallback(): PluginErrorFallbackSpec | undefined {
   const specs = lookupExtensionPoint(ERROR_FALLBACK);
   if (specs.length === 0) return undefined;

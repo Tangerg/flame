@@ -19,9 +19,8 @@ interface ChoiceListProps {
   children: ReactNode;
 }
 
-// Standard arrows, Home/End, focus movement, checked state, and form semantics
-// belong to Base UI. The numbered shortcut is Flame's extra desktop interaction,
-// so it stays as the only keyboard behavior owned by this atom.
+// Arrows, Home/End, focus movement, checked state and form semantics belong to Base UI.
+// The numbered shortcut is the only keyboard behaviour this atom owns.
 export function ChoiceList({
   multiple,
   value,

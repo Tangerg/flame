@@ -1,14 +1,7 @@
-// The built-in panes' ids — one home for the vocabulary.
+// A SYMBOL both the declaration and the link share: spelled as literals, renaming a pane
+// still compiles and the click just lands nowhere.
 //
-// A pane's id is how the rest of the app links to it: `openWorkspaceSettingsPane`
-// takes one, and four foreign callsites (the sidebar's two shortcuts, the welcome
-// screen, the workspace's MCP rows) had been spelling them as literals. Nothing
-// checked those against the panes that declare them — rename a pane and the call
-// still compiles, the click just lands nowhere. So the id is a symbol both the
-// declaration and the link share, the way a data-provider key is.
-//
-// Third-party panes keep declaring free-form ids (`SettingsPaneSpec.id` is a
-// string, and the point is open); this is the built-in set.
+// Third-party panes keep declaring free-form ids; this is the built-in set.
 
 export const APPEARANCE_PANE = "appearance";
 export const PERSONALIZATION_PANE = "personalization";

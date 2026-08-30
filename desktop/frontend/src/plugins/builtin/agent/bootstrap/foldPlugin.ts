@@ -1,5 +1,5 @@
-// Runtime Protocol fold composition — wire dispatch is an Adapter concern;
-// product folds remain in Application and receive translated state values.
+// Wire dispatch is an Adapter concern; product folds stay in Application and receive
+// already-translated state values.
 
 import { definePlugin, STREAM_EVENT_HANDLER } from "@/plugins/sdk";
 import { RUNTIME_EVENT_HANDLERS } from "../adapters/runtimeEventHandlers";

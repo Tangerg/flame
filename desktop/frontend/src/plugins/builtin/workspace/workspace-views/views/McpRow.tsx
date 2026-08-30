@@ -31,8 +31,6 @@ const STATUS_CLASSES: Record<MCPServerSettings["status"], { key: string; classes
   needsAuth: { key: "tools.status.login", classes: "bg-warning-wash text-warning" },
 };
 
-// Expanded detail: the server's tool list (mcp.tools.list), fetched
-// lazily on first expand and kept fresh by mcp.serverChanged invalidation.
 function McpToolList({ server }: { server: string }) {
   const t = useT();
   const { data: tools, isLoading } = useMCPServerToolConfigs(server);
@@ -83,8 +81,6 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
   const reconnectingRef = useRef(false);
   const [reconnecting, setReconnecting] = useState(false);
   const connecting = reconnecting || server.status === "connecting";
-  // Click the row to expand its tool list — the "N tools" badge finally has
-  // a detail behind it.
   const [open, setOpen] = useState(false);
   const panelId = useId();
 

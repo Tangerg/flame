@@ -14,7 +14,6 @@ interface Props {
   /** Block lifecycle. `"requires-action"` shows the request surface;
    *  `"complete"` collapses to a settled checkpoint driven by `decision`. */
   status: BlockStatus;
-  /** Runtime tool awaiting the exact Run/Item decision. */
   toolName?: string;
   cmd: string;
   reason: string;
@@ -28,7 +27,6 @@ interface Props {
   /** Tool arguments about to be executed. When present, the user may edit them
    *  before approving (approve-with-modified-args, §4.3). */
   args?: Record<string, unknown>;
-  /** Whether this approval may create a standing allow rule. */
   rememberable?: boolean;
 }
 
@@ -41,11 +39,9 @@ const REMEMBER_ACTIONS: readonly {
   { scope: "global", labelKey: "approval.action.allowGlobal" },
 ];
 
-// Approval request — one Codex request surface around Runtime-authored material.
-// Submission coordination remains in useApprovalCardActions:
-//   - Allow once and the registered keyboard action omit remember scope.
-//   - A scope appears only when the user explicitly picks a scoped allow action.
-//   - Deny never inherits an allow scope.
+// Submission coordination stays in useApprovalCardActions: allow-once and the keyboard
+// action omit remember scope, a scope appears only on an explicitly scoped allow, and deny
+// never inherits one.
 export function ApprovalCard({
   status,
   toolName,

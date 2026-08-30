@@ -12,12 +12,9 @@ export interface DesktopBootstrap {
 
 /**
  * Where the platform put the window's own controls, in CSS pixels from the window's
- * top-left.
- *
- * `null` means there was nothing to ask — a browser tab, a visual fixture, a
- * platform whose controls sit outside the content — and the stylesheet's own header
- * height and gutter stand. A measured `controlsInlineEnd` of 0 is a different answer
- * and a real one: the window is fullscreen and the marks are gone with the menu bar.
+ * top-left. `null` means there was nothing to ask — a browser tab, a fixture, a platform
+ * whose controls sit outside the content — so the stylesheet's own header height stands. A
+ * measured `controlsInlineEnd` of 0 is a real answer: fullscreen, marks gone.
  */
 export interface WindowChrome {
   /** Distance down from the window's top to the marks' centre line — what a control
@@ -30,10 +27,9 @@ export interface WindowChrome {
 /**
  * The four Go methods this app can reach, by the name the runtime knows them by.
  *
- * `package.Type.Method`, which for a `main` package is what Go's own reflection reports —
- * so these are the full names, not a shortened form. v3 can generate typed wrappers for
- * them instead; this calls by name deliberately, because a wrapper returns `any` and
- * validates nothing, and everything crossing this boundary is Zod-checked below.
+ * `package.Type.Method` — the full name Go's reflection reports for a `main` package. v3
+ * can generate typed wrappers instead; calling by name is deliberate, because a wrapper
+ * returns `any` and validates nothing while everything here is Zod-checked below.
  */
 const HOST_METHOD = {
   bootstrap: "main.DesktopHost.Bootstrap",
@@ -78,14 +74,10 @@ const DesktopBootstrapSchema = z.object({
 });
 
 /**
- * The Wails runtime, or nothing.
- *
- * `window._wails` is what the injected runtime installs, so its presence is the honest
- * test for "is there a host to ask". The import is dynamic because of what is on the
- * other side of that question: `@wailsio/runtime` has side effects on import — it
- * installs listeners and starts talking to a host — and this module is loaded in a plain
- * browser too, by the visual fixtures. Importing it eagerly would run all of that in a
- * page with no Wails behind it.
+ * `window._wails` is what the injected runtime installs, so its presence is the honest test
+ * for "is there a host to ask". The import is DYNAMIC because `@wailsio/runtime` has import
+ * side effects — it installs listeners and starts talking to a host — and this module also
+ * loads in a plain browser under the visual fixtures.
  */
 async function wailsDesktopHostBinding(): Promise<DesktopHostBinding | undefined> {
   if (!("_wails" in globalThis)) return undefined;

@@ -1,10 +1,6 @@
-// The dev inspector's actual panels. Reached only through the dynamic import in
-// Devtools.tsx, which is what keeps these three dev packages out of the
-// shipped bundle.
-//
-// One shell hosting both panels rather than two floating widgets: they would
-// otherwise stack their own triggers in the same corner of a window that is
-// already dense.
+// Reached ONLY through the dynamic import in Devtools.tsx, which is what keeps these three
+// dev packages out of the shipped bundle. One shell hosts both panels because two floating
+// widgets stack their triggers in the same corner.
 
 import type { AnyRouter } from "@tanstack/react-router";
 import { TanStackDevtools } from "@tanstack/react-devtools";

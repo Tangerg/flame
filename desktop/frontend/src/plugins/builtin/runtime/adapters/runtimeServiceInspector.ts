@@ -60,7 +60,6 @@ function assertRuntimeProcessGeneration(
   return generation;
 }
 
-/** Translate typed sidecar responses into Runtime context service facts. */
 export function runtimeServiceInspector(): RuntimeConnectionInspector<ServerCapabilities> {
   const sidecar = getContainer().sidecar();
   const client = getContainer().client();

@@ -1,11 +1,6 @@
-// App-wide configuration store.
-//
-// Distinct from `host.storage` (per-plugin namespaced). Config is for app-level
-// settings that any plugin can read or change — feature flags, debug toggles,
-// HTTP base URL overrides, etc.
-//
-// In-memory only. Persistence is the plugin's responsibility: a plugin
-// can subscribe to a key and mirror it to localStorage if needed.
+// App-level settings any plugin may read or change, distinct from `host.storage`, which is
+// per-plugin namespaced. In-memory ONLY: a plugin that wants persistence subscribes to a
+// key and mirrors it itself.
 
 import type { Disposable } from "./types/common";
 import { create } from "zustand";
@@ -63,13 +58,12 @@ export const useConfigStore = create<ConfigStoreState & ConfigStoreActions>((set
   },
 }));
 
-/** Imperative read with optional fallback. Callers narrow dynamic keys at their boundary. */
+/** Callers narrow dynamic keys at their own boundary. */
 export function getConfig(key: string, defaultValue?: ConfigValue): ConfigValue | undefined {
   const v = useConfigStore.getState().values.get(key);
   return v === undefined ? defaultValue : v;
 }
 
-/** Imperative write. */
 export function setConfig(key: string, value: ConfigValue): void {
   useConfigStore.getState().set(key, value);
 }

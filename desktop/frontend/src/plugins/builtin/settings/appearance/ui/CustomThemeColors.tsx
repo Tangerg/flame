@@ -41,7 +41,6 @@ export function CustomThemeColors() {
   const t = useT();
   const { theme, customTheme, setCustomTheme } = useCustomThemePreference();
 
-  // Only relevant while the Custom theme is the active one.
   if (theme !== "custom") return null;
 
   return (

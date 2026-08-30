@@ -7,9 +7,8 @@ import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
 
-// `beautiful-mermaid` is heavy (~200KB) and only mounts when an
-// agent actually emits a mermaid fence. Cached module promise so
-// every subsequent block reuses the same load.
+// `beautiful-mermaid` is ~200KB, so it loads only when an agent emits a mermaid fence. The
+// promise is cached so every subsequent block reuses one load.
 type MermaidRenderer = typeof import("beautiful-mermaid").renderMermaidSVG;
 let rendererPromise: Promise<MermaidRenderer> | null = null;
 function loadRenderer(): Promise<MermaidRenderer> {
@@ -32,9 +31,8 @@ interface SettledMermaidRender {
   result: MermaidRenderResult;
 }
 
-// Resolve token vars to literal hex — beautiful-mermaid bakes the
-// values into stroke/fill on the SVG output and browsers won't honor
-// raw `var(--x)` text there.
+// Resolves token vars to literal hex: beautiful-mermaid bakes values into stroke/fill on
+// the SVG, where browsers do not honour raw `var(--x)` text.
 function readThemeColors(_tokenRevision: object) {
   const root = document.documentElement;
   const cs = getComputedStyle(root);
@@ -49,23 +47,18 @@ function readThemeColors(_tokenRevision: object) {
   };
 }
 
-// Debounced 300ms — every parse on an in-progress diagram throws
-// (malformed until the closing fence lands), each throw is 30-100ms,
-// and stream-reveal feeds chars at ~30 Hz. Until the source settles we
-// show a quiet "pending" pre-block; settled + parses → SVG snaps in.
+// Debounced 300ms: an in-progress diagram is malformed until the closing fence lands, every
+// parse throws, each throw costs 30-100ms, and stream-reveal feeds chars at ~30 Hz.
 export function MermaidBlock({ code }: Props) {
   const t = useT();
   const fencedCode = useMemo(() => `\`\`\`mermaid\n${code}\n\`\`\``, [code]);
   const { copied, copy } = useCopyFeedback(fencedCode);
-  // Mermaid is handed literal colours, so this reads the computed tokens — and
-  // needs re-reading whenever the painter rewrites them. The revision is that
-  // signal and covers every input, including contrast-derived surface depth.
+  // The computed tokens must be re-read whenever the painter rewrites them; this revision
+  // is that signal and covers every input, including contrast-derived surface depth.
   const tokenRevision = useTokenRevision();
   const [debouncedCode] = useDebouncedValue(code, { wait: 300 });
   const isSettling = code !== debouncedCode;
 
-  // Lazy-loaded renderer. Stays null until the import resolves; the
-  // pending pre-block below covers the gap.
   const [renderer, setRenderer] = useState<MermaidRenderer | null>(null);
   useEffect(() => {
     let alive = true;
@@ -84,8 +77,7 @@ export function MermaidBlock({ code }: Props) {
     void Promise.resolve().then(() => {
       let result: MermaidRenderResult;
       try {
-        // The revision is an invalidation token for the mutable computed styles
-        // read by this adapter, not a colour value in its own right.
+        // Passed as an invalidation token for the mutable computed styles, not a value.
         const c = readThemeColors(tokenRevision);
         const start = performance.now();
         const svg = renderer(debouncedCode, {
@@ -188,7 +180,6 @@ export function MermaidBlock({ code }: Props) {
     );
   }
 
-  // A settled parse error is source material, not an endless loader. Reuse the
-  // standard code surface so the text stays selectable, wrappable and copyable.
+  // A settled parse error is source material, not an endless loader.
   return <ShikiCodeBlock lang="mermaid" code={code} />;
 }

@@ -1,12 +1,9 @@
-// Tool-action owner lookup — for error attribution when a tool action throws.
-// Plain message-surface reads (content block / role / tool preview / actions /
-// icon) go through the generic substrate: `useExtensionByKey(MESSAGE_ROLE, id)`,
-// `useExtensionPoint(TOOL_ACTION)`, `lookupExtensionByKey(TOOL_ICON, fn)`, etc.
+// Owner lookup for error attribution when a tool action throws; every plain message-surface
+// read goes through the generic substrate.
 
 import { TOOL_ACTION, TOOL_VIEW_OPENER } from "../kernelPoints";
 import { lookupExtensionOwner } from "./extensions";
 
-/** Owner plugin of a tool action — used for error attribution when one throws. */
 export function lookupToolActionOwner(id: string): string | undefined {
   return lookupExtensionOwner(TOOL_ACTION, id);
 }

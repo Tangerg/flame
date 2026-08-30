@@ -83,12 +83,9 @@ function domainOf(url: string): string {
   }
 }
 
-// ── Text-returning tools ─────────────────────────────────────────────────────
-//
-// These four answer in prose the model reads, not JSON, so their projection is a
-// parse of that prose. Each parser is anchored on the ONE piece of structure the
-// runtime actually emits and degrades to "no structure found" otherwise, so a
-// wording change on the backend costs a plain-text preview rather than a wrong one.
+// These answer in PROSE the model reads, not JSON, so each projection parses it — anchored
+// on the ONE piece of structure the runtime emits and degrading to "no structure found", so
+// a backend wording change costs a plain-text preview rather than a wrong one.
 
 /** `search_memory`: `N. content`, one entry per recalled item, content may wrap. */
 export function projectRecalledMemories(result: string | undefined): string[] {
@@ -140,8 +137,6 @@ export function projectToolSearchGroups(result: string | undefined): ToolSearchG
   }
   return groups;
 }
-
-// ── JSON-returning tools ─────────────────────────────────────────────────────
 
 export interface SchedulePreview {
   id: string;

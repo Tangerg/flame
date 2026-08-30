@@ -56,14 +56,9 @@ async function waitForReplay(seconds: number, signal?: AbortSignal): Promise<voi
 }
 
 /**
- * Drive one logical mutation to a determinate response.
- *
- * Commands are registered with Runtime replay semantics: the same key never
- * executes the business handler twice. One transport recovery replay closes
- * the common "commit succeeded, response was lost" window. If that replay
- * meets the original execution, Runtime supplies the one typed backoff we may
- * honor. Budgets are deliberately finite so a dead transport/claim still
- * returns control to the product, whose explicit retry keeps the same key.
+ * The same key NEVER executes the business handler twice, so one transport recovery replay
+ * closes the "commit succeeded, response was lost" window. Budgets are deliberately finite:
+ * a dead transport must return control to the product, whose explicit retry keeps the key.
  */
 async function settleMutation<T>(
   execute: MutationExecution<T>,

@@ -3,16 +3,10 @@ import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/pu
 import { resolveComposerModelSelection } from "../application/modelSelection";
 import { useComposerModelPreference } from "./modelPreference";
 
-/** The model the next run will use: composerStore's provider+model pair
- *  resolved against the live model list, then the active durable Session's
- *  exact provider/model selection before the first explicit pick, then the catalog default when no
- *  Session is active. While an active Session summary is loading there is no
- *  fallback: choosing early would turn a query race into a model override.
- *  `undefined` when no provider is enabled yet.
- *
- *  One home for "which model is selected" so the surfaces that gate on its
- *  exact input modalities — the toolbar attach button and the composer's
- *  paste/drop image staging — can't disagree. */
+/** The model the next run will use: the composer's explicit pick, else the active
+ *  Session's own selection, else the catalog default. While an active Session summary is
+ *  loading there is deliberately NO fallback — choosing early turns a query race into a
+ *  model override. `undefined` when no provider is enabled yet. */
 export function useSelectedModelSelection() {
   const { data: models = [] } = useModels();
   const preference = useComposerModelPreference();

@@ -8,8 +8,7 @@ import { cn } from "@/lib/classNames";
 // in one Shiki pass and split into per-line HTML, while startLine preserves the
 // source file's gutter identity.
 
-// Split a full highlight into per-line inner HTML by stripping the <pre><code>
-// wrapper and splitting on the newlines Shiki places between line spans.
+// Depends on Shiki placing a newline between line spans.
 function highlightLines(h: Highlighter, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));
   return stripCodeWrapper(h.codeToHtml(code, { lang, theme }), "").split("\n");
@@ -28,15 +27,12 @@ export function FileView({
 }) {
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
 
-  // Plain lines drive the gutter + the fallback render; the highlighted variant
-  // (when ready) renders inline. Both have the same length, so they align.
   const plain = useMemo(() => content.split("\n"), [content]);
   const highlighted = useMemo(
     () => (highlighter ? highlightLines(highlighter, content, shikiTheme, path) : null),
     [highlighter, content, shikiTheme, path],
   );
 
-  // Centre the target line once it (and the content) are in the DOM.
   const targetRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (targetLine > 0) targetRef.current?.scrollIntoView({ block: "center" });

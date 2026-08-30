@@ -14,7 +14,6 @@ interface SegmentedProps<T extends string | number> {
   options: SegmentedOption<T>[];
   onChange: (value: T) => void;
   ariaLabel: string;
-  /** Render labels in tabular mono — for numeric segments (e.g. font size). */
   mono?: boolean;
   className?: string;
 }
@@ -27,9 +26,8 @@ export function Segmented<T extends string | number>({
   mono = false,
   className,
 }: SegmentedProps<T>) {
-  // Per instance: two segmented controls on one row (the diff header has exactly
-  // that) would otherwise share one layout identity and hand the chip back and
-  // forth between them.
+  // Per instance: two segmented controls on one row would otherwise share a layout
+  // identity and hand the chip back and forth between them.
   const chipId = useId();
   return (
     <TabsPrimitive.Root

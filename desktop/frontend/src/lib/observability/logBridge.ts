@@ -1,27 +1,17 @@
-// host.log → OpenTelemetry logs bridge. Mirror of the backend's otelslog
-// bridge (slog.Default() → LoggerProvider): a frontend log call becomes an
-// OTel LogRecord, so logs are the third pillar — correlated with the active
-// span (the SDK fills trace_id / span_id from context.active() at emit time)
-// and backend-swappable (the same record goes to the local sink in dev and
-// OTLP in prod, zero call-site change).
+// Turns a log call into an OTel LogRecord, correlated with the active span because the SDK
+// fills trace_id/span_id from `context.active()` at emit time.
 //
-// No provider installed yet (before setupObservability runs, or in tests) →
-// logs.getLogger returns a no-op logger and emit() is a cheap no-op.
-//
-// host.log is NOT a hot path (CLAUDE.md §5 forbids per-event logging), so
-// bridging every call is fine — no batching needed here (the sink batches).
+// Before a provider is installed, `logs.getLogger` returns a no-op and `emit()` is cheap.
+// `host.log` is NOT a hot path (CLAUDE.md §5), so every call is bridged and the SINK does
+// the batching.
 
 import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 
 /**
- * The severities a log call can carry — the SDK's `LogEvent.level` is this type.
- *
- * Declared here, not in the plugin SDK, because these four exist for exactly one
- * reason: they are the OTel severities this bridge maps onto, and `SEVERITY`
- * below is only exhaustive by construction if both come from one declaration.
- * The SDK cannot own it and be imported here — `lib` may not depend on the
- * plugin layer — so the vocabulary lives at the bottom and the contract above
- * re-exports the name.
+ * Declared here rather than in the plugin SDK: these four exist only as the OTel severities
+ * `SEVERITY` below maps onto, and that map is exhaustive by construction only if both come
+ * from one declaration. `lib` may not depend on the plugin layer, so the vocabulary lives
+ * at the bottom and the SDK re-exports the name.
  */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 

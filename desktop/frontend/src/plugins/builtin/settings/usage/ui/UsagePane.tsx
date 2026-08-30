@@ -17,8 +17,6 @@ import {
   useUsageReport,
 } from "../application/usageConfig";
 
-// One breakdown section (provider / model / day): a titled list of buckets,
-// each a label + its cost + token count, right-aligned and tabular.
 function BreakdownSection({
   title,
   buckets,

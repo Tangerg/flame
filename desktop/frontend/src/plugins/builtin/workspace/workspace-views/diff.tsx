@@ -1,10 +1,6 @@
-// Built-in plugin: the review panel — the change as a whole, one collapsible
-// card per file, with a changed-file navigator beside it.
-//
-// The panel shows the WHOLE change, not just the focused file, preserving where
-// each file sits in the change. The active file is a focus target (what the navigator
-// highlights, what the panel scrolls to on open), and the diff is always the
-// whole comparison. Structured per-file diff comes from workspace.diff.get (AUX_API §2.3).
+// The panel shows the WHOLE change, never just the focused file: the active file is a focus
+// target — what the navigator highlights and the panel scrolls to — and the diff stays the
+// whole comparison, so each file keeps its place in it.
 
 import { useEffect, useId, useRef, useState } from "react";
 import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented } from "@/ui";
@@ -247,8 +243,7 @@ export function DiffWorkspaceSurface() {
   );
 }
 
-// How many files the working tree has moved, on the tab. Silent on a clean tree
-// and while the query is in flight, for the same reason the header stat is.
+// Silent on a clean tree and while the query is in flight, like the header stat.
 function DiffTabBadge() {
   const gitEnabled = useWorkspaceCapability("git");
   const workspace = useActiveSessionWorkspace();

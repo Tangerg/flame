@@ -5,21 +5,10 @@
 
 import { activeLocale } from "./i18n";
 
-// One place decides what a decimal point looks like. `toFixed` always writes a period,
-// which is wrong in five of the eight locales this app ships — a German reader's "1.2k"
-// is a thousand, not one and a fifth.
-//
-// What is deliberately NOT delegated to Intl:
-//   * `notation: "compact"`, which would replace the k/M scale below with the locale's
-//     own — and Japanese counts in 万, so a token readout would change magnitude words
-//     and width depending on the language, in a mono column sized for neither.
-//   * grouping, off everywhere here. These are compact readouts, never above three
-//     digits before their unit, so grouping can only ever add a separator that widens
-//     one column and not its neighbour.
-//   * the unit itself (k / M / s / m / $). Those sit in a mono column beside each other,
-//     and a translated "分" or a repositioned currency symbol breaks the alignment that
-//     makes the column readable at a glance. The NUMBER follows the locale; the unit is
-//     notation.
+// The NUMBER follows the locale; the UNIT is notation. `toFixed` always writes a period,
+// wrong in five of the eight locales shipped here. Deliberately NOT `Intl` compact
+// notation: Japanese counts in 万, so a token readout would change magnitude word and width
+// per language inside a mono column, and a translated unit breaks the same alignment.
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function decimal(value: number, fractionDigits: number, exact = false): string {

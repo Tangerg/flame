@@ -8,56 +8,40 @@ import type { DelegatedRunNarrativesByItemId } from "../view/runTree";
 import { selectDelegatedRunNarratives, selectRootNarrativeMessages } from "../view/runTree";
 
 /**
- * The session facts one turn renders from, narrowed to that turn.
- *
- * The narrowing is the whole point. A turn that shows no tool call holds an empty map,
- * so a tool streaming its arguments elsewhere in the session cannot invalidate it. The
- * projection hands each turn only its own tool calls, keeping unrelated stream deltas
- * out of that turn's render inputs.
- *
- * Reaches through delegation transitively: a delegated turn renders with the facts of
- * the turn that spawned it, and a subagent may delegate again.
+ * The session facts one turn renders from, NARROWED to that turn — a turn showing no tool
+ * call holds an empty map, so a tool streaming arguments elsewhere in the session cannot
+ * invalidate it. Reaches through delegation transitively.
  */
 export interface TurnFacts {
   toolCalls: Record<string, ToolCall>;
   delegatedRuns: DelegatedRunNarrativesByItemId;
 }
 
-/** The exact Run lifecycle that owns a transcript turn.
- *
- * The root narrative selector excludes material whose Run is absent. The remaining
- * null case is therefore only an optimistic turn that has not received its Run id. */
+// `unassigned` is only ever an optimistic turn that has not received its Run id: the root
+// narrative selector already excludes material whose Run is absent.
 export type TranscriptRunOwner =
   { kind: "unassigned" } | { kind: "owned"; runId: string; status: AgentRunStatus };
 
-/** One row of the transcript: a turn, its exact Run owner, and the facts it renders. */
 export interface TranscriptRow {
   message: Message;
   runOwner: TranscriptRunOwner;
   facts: TurnFacts;
 }
 
-// Shared empties, deliberately. A row survives a rebuild only when everything it holds
-// is identical, so giving each turn its own `{}` would make every text-only row a fresh
-// object on every delta — exactly the cost this projection exists to remove.
+// SHARED empties: a row survives a rebuild only when everything it holds is identical, so
+// per-turn `{}` would make every text-only row a fresh object on every delta.
 const NO_TOOL_CALLS: Record<string, ToolCall> = {};
 const NO_DELEGATED_RUNS: DelegatedRunNarrativesByItemId = {};
 const NO_FACTS: TurnFacts = { toolCalls: NO_TOOL_CALLS, delegatedRuns: NO_DELEGATED_RUNS };
 const NO_ROWS: readonly TranscriptRow[] = [];
 
-/** A row together with the object identities it was built from — the invalidation rule. */
 interface CachedRow {
   row: TranscriptRow;
   identities: readonly unknown[];
 }
 
-/**
- * Rows carried from one build to the next, so a turn nothing touched keeps its identity
- * and React can skip it entirely.
- *
- * Opaque to callers: hand back whatever the previous build returned. Starting from
- * `EMPTY_TRANSCRIPT_ROW_CACHE` is always correct — it costs one full rebuild.
- */
+/** Opaque to callers: hand back whatever the previous build returned. Starting from
+ *  `EMPTY_TRANSCRIPT_ROW_CACHE` is always correct — it costs one full rebuild. */
 export type TranscriptRowCache = ReadonlyMap<string, CachedRow>;
 
 export const EMPTY_TRANSCRIPT_ROW_CACHE: TranscriptRowCache = new Map();
@@ -68,12 +52,8 @@ interface TranscriptRowBuild {
 }
 
 /**
- * Projects the active conversation into rows, reusing every row whose facts are
- * unchanged.
- *
- * Pure: same `(view, previous)` gives the same result, and `previous` is only ever read.
- * The returned cache holds the rows this build produced, and feeding it back is what
- * makes the reuse compound across a stream.
+ * Pure: same `(view, previous)` gives the same result and `previous` is only ever read.
+ * Feeding the returned cache back is what makes row reuse compound across a stream.
  */
 export function buildTranscriptRows(
   view: AgentSessionView,
@@ -119,14 +99,9 @@ function runOwnerIdentity(owner: TranscriptRunOwner): string {
   return owner.kind === "owned" ? `${owner.kind}:${owner.status}` : owner.kind;
 }
 
-/**
- * Collects what one turn shows, and the identities that decide whether it changed.
- *
- * Both come out of the same walk because they are the same question asked twice: the
- * facts are what the turn renders, and the identities are those same objects in a flat
- * list a cheap `===` sweep can compare. Deriving them separately would let them drift,
- * and a drifted invalidation rule shows up as a turn that stops updating.
- */
+// Facts and identities come out of ONE walk on purpose: they are the same question asked
+// twice, and deriving them separately lets the invalidation rule drift from what is
+// rendered — which shows up as a turn that stops updating.
 function readTurnFacts(
   message: Message,
   sessionToolCalls: Record<string, ToolCall>,
@@ -136,10 +111,9 @@ function readTurnFacts(
   let toolCalls: Record<string, ToolCall> | undefined;
   let delegatedRuns: DelegatedRunNarrativesByItemId | undefined;
 
-  // Breadth-first over the turn and everything it delegated to, cursor rather than
-  // shift() so the queue is not re-indexed per step. `visitedRuns` bounds the walk: a
-  // malformed lineage pointing a subagent back at an ancestor's item would otherwise
-  // never terminate here.
+  // Cursor rather than shift() so the queue is not re-indexed per step. `visitedRuns`
+  // bounds the walk: a malformed lineage pointing a subagent back at an ancestor's item
+  // would otherwise never terminate.
   const pending: Message[] = [message];
   const visitedRuns = new Set<string>();
 
@@ -164,9 +138,8 @@ function readTurnFacts(
       for (const narrative of narratives) {
         if (visitedRuns.has(narrative.run.id)) continue;
         visitedRuns.add(narrative.run.id);
-        // The narrative wrapper is rebuilt on every projection, so its own identity
-        // says nothing. What it holds — the run and its messages — comes from the view
-        // and is stable until the fold replaces it.
+        // The wrapper is rebuilt on every projection, so its own identity says nothing;
+        // what it HOLDS comes from the view and is stable until the fold replaces it.
         identities.push(narrative.run);
         for (const nested of narrative.messages) {
           identities.push(nested);

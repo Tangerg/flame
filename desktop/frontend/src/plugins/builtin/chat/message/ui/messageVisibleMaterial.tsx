@@ -20,12 +20,10 @@ interface VisibleProjection {
 /**
  * Owns the presentation generation of one exact transcript message.
  *
- * Runtime completion and DOM completion are different facts while the smooth
- * Markdown reveal drains its accepted source backlog. Terminal message actions
- * belong to their intersection: they cannot exist while either the durable
- * block or any mounted visible-text projection can still grow. A settled
- * projection belongs to one accepted transcript generation; its result cannot
- * be lent to a later terminal update before that update reaches the screen.
+ * Runtime completion and DOM completion are different facts while the smooth Markdown
+ * reveal drains its backlog, so terminal message actions live at their intersection: not
+ * while either the durable block or any mounted visible-text projection can still grow. A
+ * settled projection belongs to one accepted generation and cannot be lent to a later one.
  */
 export class MessageVisibleMaterialOwner {
   readonly identity: string;
@@ -122,7 +120,6 @@ export function useVisibleActionMaterialization(
   return owner.actionsMaterialization(source, generation);
 }
 
-/** Bind one mounted visible-text projection to the exact message owner. */
 export function useVisibleTextMaterial(settled: boolean): void {
   const material = useContext(MessageVisibleMaterialContext);
   const [token] = useState<VisibleMaterialToken>(() => Symbol("visible-text-material"));

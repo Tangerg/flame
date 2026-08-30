@@ -10,9 +10,8 @@ import { agentRuntime } from "../ports/runtimeGateway";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner, type AgentCommandEffect } from "../agentCommandOwner";
 
-/** Pin / unpin a session (sessions.update favorite) and refresh session summaries.
- *  Optimistic: flips the star in the list right away so the row reorders
- *  without waiting for the RPC + refetch; rolls back on failure. */
+/** Optimistic so the row reorders without waiting for the RPC and refetch; rolls back on
+ *  failure. */
 export function useToggleFavorite(): (
   id: string,
   expectedRevision: number,

@@ -28,6 +28,5 @@ export function forkSessionAt(id: string, fromRunId?: string): Promise<void> {
 }
 
 export function useForkSession(): (id: string) => Promise<void> {
-  // Stable identity for React callers; the imperative core owns the logic.
   return useCallback((id) => forkSessionAt(id), []);
 }

@@ -1,27 +1,8 @@
-// HTTPTransport — JSON-RPC over HTTP for the web frontend, using
-// **streamable HTTP** (runtime/doc/TRANSPORT.md §6): a streaming method's POST
-// response body IS its event stream. There is no separate notification
-// connection — every server→client message rides the POST response it
-// belongs to.
-//
-// send():  POST /v2/rpc, then branch on the response Content-Type
-//   - application/json   → one JSON-RPC message, pushed to the channel
-//   - text/event-stream  → the call's response (first frame) + its
-//                          notifications, drained frame-by-frame into the
-//                          channel by a background reader (send() returns
-//                          once headers are in, NOT at stream end)
-// recv():  the merged inbound channel RpcClient consumes — responses
-//   correlate by JSON-RPC id, notifications route by method. Fed entirely by
-//   the POST responses above; there is no GET stream.
-//
-// SSE wire framing is delegated to eventsource-parser. Reconnection is a
-// per-run concern (runs.subscribe + Last-Event-Id, TRANSPORT.md §9.2) handled
-// above the transport — there is no standing-connection reconnect loop here.
-//
-// HTTP status (runtime/doc/TRANSPORT.md §6.3): 200 = JSON-RPC response (json) or
-// stream opened (event-stream). The runtime reserves 204/202 for client
-// notifications, but this closed SDK sends Requests only, so either is a protocol
-// mismatch here. Any other status is a transport failure → RpcTransportError.
+// Streamable HTTP (TRANSPORT.md §6): a streaming method's POST response body IS its event
+// stream — no separate notification connection, no GET stream — so `send()` returns once
+// headers are in, not at stream end. Reconnection is a per-run concern handled ABOVE the
+// transport (§9.2), and 200 is the only success: 204/202 are reserved for client
+// notifications this SDK never sends, so either is a protocol mismatch (§6.3).
 
 import {
   context,
@@ -54,17 +35,14 @@ import {
   type WireStreamingMethodName,
 } from "@flame/runtime-contract/methods";
 
-/** Absolute transport-safety envelope for one decoded SSE frame. Runtime run
- * replay has a much smaller negotiated retained-material budget; this ceiling
- * only prevents a malformed/non-Flame peer from growing an unterminated parser
- * frame forever before discovery can exist. Callers embedding a differently
+/** A transport-safety ceiling ONLY: it stops a malformed or non-Flame peer growing an
+ * unterminated parser frame forever before discovery can exist. Callers embedding a
+ * differently
  * provisioned compatible Runtime may lower or raise it explicitly. */
 export const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
 
-// Delegating tracer — resolves to the global provider once observability is
-// installed (no-op spans before then). One CLIENT span per RPC call; the
-// W3C `traceparent` it injects extends the backend's existing OTel trace
-// (TRANSPORT.md §2: trace context rides headers, never the JSON-RPC body).
+// Resolves to the global provider once observability is installed, no-op spans before then.
+// The injected `traceparent` rides HEADERS, never the JSON-RPC body (TRANSPORT.md §2).
 const tracer = trace.getTracer("flame-frontend");
 
 function endSpan(span: Span, err?: unknown): void {
@@ -78,17 +56,14 @@ function endSpan(span: Span, err?: unknown): void {
 }
 
 export interface HttpTransportConfig {
-  /** Runtime base URL, e.g. "http://127.0.0.1:17171". No trailing slash. */
+  /** No trailing slash. */
   baseUrl: string;
   /**
-   * Local-loopback data-directory gate token (read from `~/.flame/local-token` by the
-   * host shell, passed in here). Sent as `Authorization: Bearer`. Not a
-   * user-auth credential — see runtime/doc/TRANSPORT.md §11.
+   * The local-loopback gate token, sent as `Authorization: Bearer`. NOT a user-auth
+   * credential (TRANSPORT.md §11).
    */
   localToken?: string;
-  /** Custom fetch impl (tests inject one). Defaults to globalThis.fetch. */
   fetch?: typeof fetch;
-  /** Hard decoded-character envelope for one SSE frame. */
   maximumEventStreamFrameCharacters?: number;
 }
 
@@ -96,10 +71,8 @@ interface EventStreamTextParser {
   feed(chunk: string): void;
 }
 
-/** Feed one physical SSE line at a time. eventsource-parser
- * remains the framing authority (including CR/LF/CRLF and multi-data-line
- * semantics); this splitter only gives each completed frame an async boundary
- * where delivery can apply backpressure before parsing the next line. */
+/** eventsource-parser stays the framing authority; this splitter only gives each completed
+ * frame an async boundary where delivery can apply backpressure. */
 async function feedEventStreamText(
   parser: EventStreamTextParser,
   text: string,
@@ -137,12 +110,11 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     throw new RangeError("event-stream frame capacity must be a positive safe integer");
   }
 
-  // RpcClient owns exactly one receive loop. A rendezvous channel makes that
-  // consumer's acceptance the permit for every HTTP body reader to continue;
-  // it cannot become a second replay/live queue with different loss semantics.
+  // Capacity 0 on purpose: a rendezvous channel makes the single consumer's acceptance the
+  // permit for every body reader, so it cannot become a second queue with its own loss
+  // semantics.
   const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
-  // Active SSE body readers — close() cancels in-flight streams through these.
   const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>();
   const activeSends = new Set<Promise<void>>();
   const activeDrains = new Set<Promise<void>>();
@@ -154,22 +126,12 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     return headers;
   }
 
-  // Drain a text/event-stream POST response into the channel. Runs detached
-  // (a run may stream for minutes); not awaited by send(). The first frame is
-  // the call's JSON-RPC response (correlated by id upstream), the rest are
-  // `notifications.run.event` frames. SSE framing → eventsource-parser.
-  //
-  // A stream that dies any way OTHER than a caller abort (network drop,
-  // runtime restart, premature EOS) must not strand its consumers: without a
-  // signal, the call whose response never arrived hangs its pending promise
-  // forever, and a run mid-stream leaves the UI stuck "running". So we sniff
-  // whether `requestId`'s response was delivered, then report a lifecycle event
-  // owned by that exact request. It never impersonates a JSON-RPC response or
-  // notification.
-  //
-  // For runtime.subscribe, which has no terminal frame, any non-abort end —
-  // graceful EOS included — means "subscription over, resubscribe"
-  // (AUX_API §3.1).
+  // Runs DETACHED — a run may stream for minutes — so `send()` never awaits it. A stream
+  // dying any way other than a caller abort must not strand consumers: the call whose
+  // response never arrived would hang forever and the UI would stay stuck "running", so
+  // this reports a lifecycle event owned by that exact request and never impersonates a
+  // JSON-RPC response. `runtime.subscribe` has no terminal frame, so ANY non-abort end —
+  // graceful EOS included — means "resubscribe" (AUX_API §3.1).
   async function drainStream(
     body: ReadableStream<Uint8Array>,
     requestId: RpcId,
@@ -234,8 +196,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
       if (!(await feedEventStreamText(parser, decoder.decode(), deliverParsedEvent))) return;
     } catch (err) {
-      // Aborts (stop / switch session / superseded run / transport close) are
-      // expected teardown via the fetch signal — not failures, stay quiet.
+      // Aborts are expected teardown via the fetch signal, not failures.
       aborted = signal?.aborted === true || (err instanceof Error && err.name === "AbortError");
       if (!aborted && !channel.closed) {
         streamError =
@@ -288,9 +249,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       ? AbortSignal.any([signal, closeController.signal])
       : closeController.signal;
 
-    // CLIENT span for this call. Created synchronously before the first await
-    // so its parent is whatever context is active at the call site (the run
-    // span, when useAgentSession wrapped the dispatch) — see lib/observability.
+    // Created SYNCHRONOUSLY before the first await, so its parent is whatever context is
+    // active at the call site rather than whatever happens to be active on resumption.
     const span = tracer.startSpan(`rpc ${method}`, {
       kind: SpanKind.CLIENT,
       attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
@@ -304,7 +264,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       headers["Idempotency-Namespace"] = options.idempotencyNamespace;
     }
     if (options.lastEventId) headers["Last-Event-Id"] = options.lastEventId;
-    // Write `traceparent` (+ baggage) for THIS span into the request headers.
     propagation.inject(trace.setSpan(context.active(), span), headers);
 
     let res: Response;

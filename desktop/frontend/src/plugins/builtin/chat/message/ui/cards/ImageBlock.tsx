@@ -1,6 +1,5 @@
-// Inlined user-image block — renders a userMessage's image attachment as a
-// rounded thumbnail; click zooms it full-size in a dialog lightbox. The wire form is mime + raw base64
-// (MULTIMODAL_IMAGE_INPUT, API.md §4.3); the data URL is rebuilt here for <img>.
+// The wire form is mime plus raw base64 (API.md §4.3); the data URL is rebuilt here for
+// `<img>`.
 
 import { useMemo } from "react";
 import { Pressable } from "@/ui";

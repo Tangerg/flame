@@ -1,14 +1,5 @@
-// The "Plugins" settings pane.
-//
-// Lists every installed plugin with its error count.
-// Errored rows expand inline to show each error's source, message, and
-// stack (captured at the catch site, see sdk/errors.ts) so a broken
-// plugin is debuggable without opening the browser console. Errored rows
-// surface a Clear-errors button.
-//
-// No per-row reload: installation is part of one boot transaction and
-// reinstalling one plugin alone would leave the graph in a state the Host never
-// agreed to.
+// NO per-row reload: installation is one boot transaction, and reinstalling a single plugin
+// would leave the graph in a state the Host never agreed to.
 
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { useState } from "react";
@@ -25,7 +16,6 @@ export function PluginsPane() {
   const clearFor = usePluginErrorStore((s) => s.clearFor);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  // Newest-first list per plugin (the count is the list length).
   const errorsByPlugin = new Map<string, PluginError[]>();
   for (const err of log) {
     const list = errorsByPlugin.get(err.plugin);
@@ -33,7 +23,6 @@ export function PluginsPane() {
     else errorsByPlugin.set(err.plugin, [err]);
   }
 
-  // Errored plugins float to the top, then names sort alphabetically.
   const rows = [...installed].sort((a, b) => {
     const ea = errorsByPlugin.get(a)?.length ?? 0;
     const eb = errorsByPlugin.get(b)?.length ?? 0;
@@ -102,7 +91,6 @@ export function PluginsPane() {
   );
 }
 
-// Where the error was caught (sdk/errors.ts PluginErrorSource).
 const SOURCE_LABEL: Record<PluginErrorSource, string> = {
   setup: "setup",
   render: "render",

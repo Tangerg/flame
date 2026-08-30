@@ -10,19 +10,11 @@ const SIDEBAR_MAX_WIDTH_PX = 520;
 const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 
 export const DOCK_MIN_WIDTH_PX = 420;
-/** One stable workspace width. Switching tabs must not make both reading
- *  columns jump; the live row clamp still protects chat on narrow windows.
+/** ONE width for every workspace view, so switching tabs does not make both reading columns
+ *  jump. Sized for diffs and terminals, not for a list of names: at ~336 a unified diff has
+ *  around 22 characters of code per line after its gutters.
  *
- *  Sized for what this flank actually holds. 336 came from outline panels (Nova
- *  336, Zed 320, JetBrains 300) — navigators, where the content is a list of
- *  names. This one hosts diffs, terminals and file viewers, and the two shipping
- *  agent desktops that host the same things both land on 640 (Codex's right
- *  panel, MiniMax's file panel), with Codex refusing to go under 500 at all. At
- *  336 a unified diff had ~22 characters of code per line after its gutters and
- *  a navigator beside it, which is a column that renders but cannot be read.
- *
- *  On a narrow window `maxDockWidth` still takes this down to half the row, so
- *  the number is a ceiling the user drags away from rather than a promise. */
+ *  A CEILING, not a promise — `maxDockWidth` still takes it to half the row when narrow. */
 export const DOCK_DEFAULT_WIDTH_PX = 640;
 
 /** Floor for the chat column beside an open dock. The transcript, composer and

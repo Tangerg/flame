@@ -8,8 +8,6 @@ import { LinkedText } from "@/plugins/builtin/chat/file-references/public/Linked
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 
-/** How much output a row shows before it offers the rest. Nine lines is about what
- *  reads as "a glance at the output" rather than "the output". */
 const COLLAPSED_LINES = 9;
 
 const TONE_CLASS: Record<AnsiTone, string> = {
@@ -31,15 +29,8 @@ function spanClass(span: AnsiSpan): string | undefined {
   return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
-/**
- * One line of program output.
- *
- * Plain text goes through `LinkedText`, which turns `path:line` into something
- * clickable — the single most useful thing in a compiler's output. A coloured line
- * cannot: the tones split it into spans, and a reference broken across two of them is
- * not a reference. Colour wins there, because a line the tool went out of its way to
- * paint red is a line the reader is looking for.
- */
+// Only PLAIN text goes through `LinkedText`: ANSI tones split a line into spans, and a
+// `path:line` reference broken across two of them is not a reference. Colour wins there.
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
   return (
@@ -54,25 +45,13 @@ function OutputLine({ text }: { text: string }) {
 }
 
 interface ToolOutputPanelProps {
-  /** The merged output as the runtime projected it. */
   output: string | undefined;
   status: ToolCall["status"];
   /** The runtime capped the output — the reader has to know the tail is missing. */
   truncated?: boolean;
-  /** What the placeholder says while there is nothing yet. */
   idleLabel?: string;
 }
 
-/**
- * The panel that holds program output in a tool row.
- *
- * One panel, for every tool whose result is text a program wrote, because the parts
- * that make output readable were missing from all of them and worth writing once: the
- * escapes it is coloured with, a count of what is being withheld, a way to get the
- * rest, and a way to take it somewhere else. A preview that shows nine lines and
- * nothing else makes the reader open the full view to learn whether it was worth
- * opening.
- */
 export function ToolOutputPanel({
   output,
   status,

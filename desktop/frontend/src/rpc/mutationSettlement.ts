@@ -25,7 +25,6 @@ export interface UnaryMutationSettler {
     open: (signal: AbortSignal) => MutationPromise<T>,
     timeoutMs?: number,
   ): Promise<T>;
-  /** Revoke this adapter generation and release every process-local identity. */
   dispose(): void;
 }
 

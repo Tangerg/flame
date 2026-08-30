@@ -16,7 +16,6 @@ const INACTIVE: GoalComposerModeSnapshot = {
 
 const publication = createPublicationSlot<GoalComposerModeOwner>();
 
-/** Owns the one transient Goal execution mode attached to the one composer. */
 export class GoalComposerModeOwner {
   #snapshot: GoalComposerModeSnapshot = INACTIVE;
   #replacement: (() => void) | null = null;

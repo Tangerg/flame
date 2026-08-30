@@ -1,6 +1,3 @@
-// EmptyState — universal "nothing here yet" surface. Vertically
-// centred; sizes via `size` prop ("compact" / "comfortable").
-
 import type { VariantProps } from "class-variance-authority";
 import type { CSSProperties, ReactNode } from "react";
 import { cva } from "class-variance-authority";
@@ -33,9 +30,7 @@ const iconWrap = cva("grid place-items-center rounded-full bg-surface-2 text-fg-
 type Props = VariantProps<typeof root> & {
   icon?: IconName;
   title: string;
-  /** Secondary line — usually a short phrase explaining the empty state. */
   sub?: string;
-  /** Optional CTA (button, link). Rendered below the sub text. */
   action?: ReactNode;
   style?: CSSProperties;
 };

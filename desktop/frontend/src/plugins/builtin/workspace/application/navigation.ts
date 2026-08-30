@@ -44,7 +44,6 @@ export function useToggleWorkspaceTool(): (id: string) => void {
   return workspaceNavigation().useToggleTool();
 }
 
-/** The drawer preference consumed by the window shell's single stable control. */
 export function useSidebarDrawer(): { collapsed: boolean; toggle: () => void } {
   return workspaceNavigation().useSidebarDrawer();
 }

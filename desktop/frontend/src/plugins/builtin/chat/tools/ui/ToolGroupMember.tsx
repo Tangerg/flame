@@ -13,17 +13,9 @@ interface Props {
   onToggleExpand: () => void;
 }
 
-/**
- * One call inside a group, as a FLAT row.
- *
- * Members have no independent disclosure chrome. The one identity mark remains:
- * it is the visual contract that a read, search and language query do not collapse
- * into indistinguishable text.
- *
- * Clicking still opens the call's own preview, underneath, at the row's text column —
- * the capability is unchanged, it just is not advertised by a permanent arrow on every
- * row of a list where every row has one.
- */
+// A FLAT row: members carry no disclosure chrome, only the identity mark that keeps a read,
+// a search and a language query from collapsing into indistinguishable text. Clicking still
+// opens the call's preview; it just is not advertised by an arrow on every row.
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);

@@ -1,10 +1,6 @@
-// Jumping to a session by name.
-//
-// What is left of ⌘K after the command palette went: the one thing only it did.
-// The sidebar lists every session but cannot filter, and it loads all of them, so
-// finding one by name means scrolling. This is that, and nothing else — no
-// commands (they have buttons and shortcuts, and the shortcuts pane lists them),
-// no panels (the dock's own picker groups them by scope and shows what is open).
+// Jumping to a session by NAME, and nothing else: commands have buttons and shortcuts, and
+// the dock's own picker groups panels by scope. The sidebar lists every session but cannot
+// filter, so finding one by name means scrolling.
 
 import type { AgentSessionSummary } from "@/plugins/builtin/agent/public/session";
 
@@ -18,13 +14,9 @@ function byNewest(a: AgentSessionSummary, b: AgentSessionSummary): number {
 }
 
 /**
- * The sessions to offer, newest first.
- *
- * An empty query answers with the most recent rather than with nothing — this
- * surface exists to go somewhere, and opening it to a blank list would make the
- * common case (back to what I was just doing) the slowest one. The command
- * palette's version returned nothing on an empty query, which was right there:
- * it had commands to show instead.
+ * An empty query answers with the most recent rather than with nothing: this surface exists
+ * to go somewhere, so a blank list would make the common case — back to what I was just
+ * doing — the slowest one. The command palette differs because it has commands to show.
  */
 export function matchSessions(
   sessions: readonly AgentSessionSummary[],

@@ -1,6 +1,5 @@
-// Message-level use cases shared by inline message action buttons and the
-// right-click context menu. External callers use the public facade; store reads
-// stay inside handlers via getState() so per-message UI does not subscribe.
+// Store reads stay inside handlers via getState() so per-message UI does not subscribe
+// (CLAUDE.md §5).
 
 import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import { t } from "@/lib/i18n";
@@ -28,8 +27,6 @@ function prefillComposer(msg: Message): void {
   replaceComposerDraft(messageDraftContent(msg));
 }
 
-// Known rollback business errors get user copy; unexpected failures keep the
-// raw error visible for debugging.
 function reportRollbackError(err: unknown): void {
   const copy = describeRpcError(err);
   if (!copy) console.error("[message] rollback failed:", err);
@@ -42,8 +39,6 @@ export interface RollbackActionOptions {
   restoreFiles?: boolean;
 }
 
-// Regeneration rewinds to the prompt's run and sends it again; unreconciled
-// prompts fall back to a fresh turn.
 export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): void {
   const conversation = activeAgentConversation();
   if (!conversation) return;
@@ -60,10 +55,9 @@ export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): v
   void rollbackSessionToBeforeRun(sessionId, prompt.runId, opts?.restoreFiles ? "both" : "history")
     .then((rollback) => {
       if (rollback.status === "inFlight") return;
-      // resetView kept the binding, but the tab could have been torn down —
-      // or merely switched away, which nulls send via useAgentSession's
-      // cleanup — while the rollback was in flight. No live binding ⇒ we
-      // can't resend; surface it instead of dropping the regenerate silently.
+      // The tab may have been torn down, or merely switched away (which nulls `send` via
+      // useAgentSession's cleanup), while the rollback was in flight. No live binding means
+      // no resend, and that must surface rather than drop the regenerate silently.
       const input =
         rollback.status === "committed" && rollback.userInput
           ? rollback.userInput
@@ -77,14 +71,13 @@ export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): v
     .catch(reportRollbackError);
 }
 
-// Non-destructive composer prefill; sending creates a new user turn.
 export function editMessageInComposer(msg: Message): void {
   if (!messageHasDraftContent(msg)) return;
   prefillComposer(msg);
 }
 
-// Edit-and-rerun rewinds a reconciled user turn before prefill; unreconciled
-// messages fall back to the non-destructive edit path.
+// Rewinds a RECONCILED user turn before prefill; unreconciled messages fall back to the
+// non-destructive edit path.
 export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions): void {
   const conversation = activeAgentConversation();
   if (!conversation || !messageHasDraftContent(msg)) return;

@@ -1,13 +1,8 @@
-// The "Hooks" settings pane. Reviews the lifecycle hooks the runtime
-// discovered for the active project (hooks.list) — global
-// (~/.flame) + project (<root>/.flame) — and toggles whether the project's hooks
-// are trusted to run (hooks.setTrust).
+// TRUST is the security seam: a cloned repo's hooks run shell commands, so project hooks
+// stay inert until explicitly trusted here. Global hooks are always active.
 //
-// Trust is the security seam: a cloned repo's hooks run shell commands, so they
-// stay inert (shown dimmed + "inactive") until the user explicitly trusts the
-// project here. Global hooks are always active. The pane is read-only over the
-// hook definitions themselves — those live in hooks.json files the user edits
-// directly; the GUI only audits them and grants/revokes project trust.
+// READ-ONLY over the definitions themselves — those live in files the user edits directly;
+// this pane only audits them and grants or revokes project trust.
 
 import { DataView, EmptyState, Icon, Surface, Switch } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";

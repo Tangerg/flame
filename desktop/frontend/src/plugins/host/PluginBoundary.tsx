@@ -16,16 +16,9 @@ interface State {
 }
 
 /**
- * Error boundary wrapped around every plugin-contributed component.
- *
- * Failure mode:
- *   - the misbehaving region renders a small red note (default) OR a
- *     plugin-provided fallback registered via
- *     `host.extensions.contribute(ERROR_FALLBACK, ...)`
- *   - main app keeps running
- *   - console gets the full stack, the error store gets a structured entry
- *
- * This is the cheapest insurance we can buy for trust-on-install plugins.
+ * Wraps EVERY plugin-contributed component: a misbehaving region renders a fallback while
+ * the rest of the app keeps running, and the failure reaches both the console and the
+ * error store.
  */
 export class PluginBoundary extends Component<Props, State> {
   override state: State = { error: null };
@@ -45,9 +38,8 @@ export class PluginBoundary extends Component<Props, State> {
     const fallback = pickPluginErrorFallback();
     if (fallback) {
       const Body = fallback.component;
-      // Render OUTSIDE another PluginBoundary — if the fallback itself
-      // throws, React will surface that via the next enclosing boundary
-      // (or crash, which is fine: the host should ship a working fallback).
+      // Rendered OUTSIDE another PluginBoundary: a fallback that throws is the host's bug,
+      // and should surface rather than be swallowed.
       return <Body plugin={this.props.plugin} label={this.props.label} error={this.state.error} />;
     }
 

@@ -1,25 +1,13 @@
-// JSON-RPC 2.0 envelope for the Flame Runtime Protocol.
-//
-// See runtime/doc/API.md §1 for the full spec. Three message kinds share one
-// shape (discriminated by which optional fields are populated):
-//
-//   Request:      { jsonrpc, id, method, params? }
-//   Response:     { jsonrpc, id, result? | error? }    (mutually exclusive)
-//   Notification: { jsonrpc, method, params? }         (no id)
-//
-// Flame currently uses notifications only for runtime→client event delivery
-// (`notifications.run.event` and `notifications.runtime.event`). Mutations
-// such as `sessions.update` are ordinary requests with correlated responses.
+// JSON-RPC 2.0 envelope for the Flame Runtime Protocol (API.md §1). Notifications are used
+// ONLY for runtime→client event delivery; every mutation is a correlated request.
 
 import { z } from "zod";
 
 export const JSONRPC_VERSION = "2.0" as const;
 
-// JSON-RPC 2.0 spec allows string | number for id; we lock to string
-// (runtime/doc/API.md §1.1). Type uniformity across the wire — every id in the
-// protocol (sessionId / runId / requestId / envelope id) is a string, so
-// dispatch + correlation never branch on id type. The client allocates
-// monotonic integers but stringifies them before they hit the wire.
+// JSON-RPC allows string | number; Flame locks to STRING (API.md §1.1) so dispatch and
+// correlation never branch on id type. The client allocates monotonic integers and
+// stringifies them before they hit the wire.
 export type RpcId = string;
 
 export interface RpcRequest<P = unknown> {
@@ -57,19 +45,13 @@ export interface RpcErrorPayload {
   data?: unknown;
 }
 
-// ---------------------------------------------------------------------------
-// Error codes (§9.2).
-// ---------------------------------------------------------------------------
-//
-// The five JSON-RPC standard codes, and deliberately nothing else. A business
-// failure is identified by `error.data.type` — the symbolic name — never by its
-// number: the numeric space is the runtime's to assign, it has retired codes and
-// left holes, and a mirror of it here is a second copy of a table that only one
-// side edits. Use errorType(err.data) to branch; use lib/rpcErrors for words.
+// Standard JSON-RPC codes and deliberately NOTHING else: a business failure is identified
+// by `error.data.type`, never by number. The numeric space is the runtime's to assign, it
+// has retired codes and left holes, and mirroring it here is a second copy of a table only
+// one side edits.
 export const RPC_METHOD_NOT_FOUND = -32601;
 
-// Read the stable symbolic error name from an RPCError.data.type (§8.2).
-// This is the canonical way to branch on errors — never compare codes.
+/** The canonical way to branch on an error (§8.2). Never compare codes. */
 export function errorType(data: unknown): string | undefined {
   if (data && typeof data === "object" && "type" in data) {
     const t = (data as { type: unknown }).type;
@@ -78,10 +60,7 @@ export function errorType(data: unknown): string | undefined {
   return undefined;
 }
 
-// The per-occurrence `detail` a ProblemData carried (§8.3), and nothing else.
-// Absence must remain observable so the layer that owns user-facing copy can
-// supply it. Callers needing words use lib/rpcErrors (describeProblem /
-// rpcErrorText); branch logic uses errorType.
+// Absence must stay OBSERVABLE so the layer that owns user-facing copy can supply it.
 export function errorDetail(data: unknown): string | undefined {
   if (data && typeof data === "object") {
     const d = (data as { detail?: unknown }).detail;
@@ -105,7 +84,6 @@ export function errorRetryAfterSeconds(data: unknown): number | undefined {
   return undefined;
 }
 
-// Discriminators — used by transport layer to route inbound messages.
 export function isResponse(msg: RpcMessage): msg is RpcResponse {
   return "id" in msg && msg.id !== undefined && !("method" in msg);
 }
@@ -118,13 +96,9 @@ export function isErrorResponse(msg: RpcResponse): msg is RpcResponseError {
   return "error" in msg;
 }
 
-// ---------------------------------------------------------------------------
-// Inbound envelope gate (trust boundary — CLAUDE.md §3).
-// ---------------------------------------------------------------------------
-
-// Payloads stay unknown here and are checked against generated per-method schemas
-// by RpcClient after response correlation / notification routing. The envelope is
-// open to extension, but its three JSON-RPC shapes remain mutually exclusive.
+// The inbound trust boundary (CLAUDE.md §3). Payloads stay `unknown` here and are checked
+// against generated per-method schemas after correlation. The envelope is open to
+// extension, but its three JSON-RPC shapes stay mutually exclusive.
 const RpcEnvelopeSchema = z
   .looseObject({
     jsonrpc: z.literal(JSONRPC_VERSION),
@@ -154,12 +128,9 @@ const RpcEnvelopeSchema = z
     }
   });
 
-// Parse + envelope-validate one raw inbound wire message (the trust boundary
-// where untrusted bytes become an RpcMessage). Returns the message on success,
-// or null when the text isn't valid JSON or doesn't match the accepted
-// JSON-RPC top-level envelope shape — the caller decides whether that means
-// "skip this stream frame" or "fail this call". Rejecting garbage here means
-// correlation and notification dispatch downstream never see a non-envelope.
+/** `null` when the text is not valid JSON or not an accepted envelope — the CALLER decides
+ *  whether that means "skip this frame" or "fail this call". Rejecting here is what keeps
+ *  correlation and notification dispatch from ever seeing a non-envelope. */
 export function parseRpcMessage(text: string): RpcMessage | null {
   let json: unknown;
   try {

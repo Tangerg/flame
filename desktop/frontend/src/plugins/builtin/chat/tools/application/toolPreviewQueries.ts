@@ -18,9 +18,8 @@ interface GrepPreviewRow {
   text: string;
 }
 
-// The runtime projects every grep shape — matches, file names, per-file counts — into
-// one `hits: [{path, snippet?, lineNumber?}]` envelope, so a call's own rows come from
-// that and nothing has to guess which output mode produced them.
+// The runtime projects every grep output mode into one `hits` envelope, so nothing here
+// has to guess which mode produced the rows.
 function inlineGrepRows(result: string | undefined): GrepPreviewRow[] | undefined {
   const hits = parseJsonResult(result)?.hits;
   if (!Array.isArray(hits)) return undefined;

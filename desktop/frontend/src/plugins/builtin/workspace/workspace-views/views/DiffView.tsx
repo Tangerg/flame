@@ -9,8 +9,7 @@ import { cn } from "@/lib/classNames";
 /** Unified (one column, +/− interleaved) vs split (old left, new right). */
 export type DiffLayout = "unified" | "split";
 
-// A diff row's line numbers plus a small ordinal are enough to produce a
-// stable key without relying on row content collisions.
+// Line numbers plus an ordinal, so the key never collides on identical row content.
 function keyFor(row: WorkspaceDiffRow, i: number): string {
   if (row.type === "hunk") return `h:${i}:${row.text}`;
   if (row.type === "added") return `+:${row.rightLine}`;
@@ -18,8 +17,6 @@ function keyFor(row: WorkspaceDiffRow, i: number): string {
   return `=:${row.leftLine}-${row.rightLine}`;
 }
 
-// Per-line presentation keyed by row type — one lookup beats three parallel
-// ternary chains switching on the same field.
 const ROW_STYLE: Record<
   "added" | "deleted" | "context",
   { tone: string; meta: string; sign: string }
@@ -37,15 +34,10 @@ const ROW_STYLE: Record<
   context: { tone: "", meta: "text-fg-faint", sign: " " },
 };
 
-// Word-level change mark, on the exact changed sub-range of a replaced line.
-//
-// An underline and not a fill. A fill has to stay translucent for the syntax
-// foreground to show through, and on dark that translucency is the problem: the
-// palette is Shiki's, its darkest member needs a ground no lighter than a luminance
-// of 0.035, and a word fill strong enough to see landed at 0.100 — three times over,
-// measured at 2.76:1 against the purple. An underline changes nothing about the
-// ground, so the mark can be as strong as it likes. It draws in the row's own meta
-// ink, which is the colour the sign in the gutter already uses.
+// An underline, not a fill: a fill must stay translucent for the syntax foreground to show
+// through, and on dark the ground Shiki's darkest member needs (luminance 0.035) is three
+// times darker than the weakest legible word fill. An underline changes nothing about the
+// ground, so the mark can be as strong as it likes.
 const wordMark = (ink: string) =>
   `text-decoration-line:underline;text-decoration-color:${ink};text-decoration-thickness:2px;text-underline-offset:2px;text-decoration-skip-ink:none`;
 const WD_DEL_STYLE = wordMark("var(--color-diff-deleted-meta)");
@@ -92,14 +84,10 @@ function computeWordRanges(rows: WorkspaceDiffRow[]): Map<WorkspaceDiffRow, [num
   return ranges;
 }
 
-// The code cell. `pre-wrap` keeps indentation and still wraps, which is the only
-// mechanism that loses nothing here: this pane holds a file tree beside the diff, so
-// the code column measures ~125px with no horizontal scroller. A markdown code
-// block scrolls instead, and can: it owns the whole reading column.
-//
-// `wrap-anywhere` and not `break-words`: it also makes the min-content width one
-// character, so an unbreakable token — a minified line, a base64 blob — cannot blow
-// the grid column back out.
+// `pre-wrap` keeps indentation and still wraps — the only mechanism that loses nothing when
+// a file tree sits beside the diff and the code column has no horizontal scroller.
+// `wrap-anywhere` rather than `break-words` because it also pins min-content width to one
+// character, so a minified line or base64 blob cannot blow the grid column back out.
 const CODE_CELL = "min-w-0 whitespace-pre-wrap wrap-anywhere";
 
 function CodeCell({ code, html }: { code: string; html: string | undefined }) {
@@ -179,8 +167,6 @@ function HunkRow({ text }: { text: string }) {
   );
 }
 
-// ── split (side-by-side) ────────────────────────────────────────────────────
-
 // One side of a split row: a context/deleted cell on the left, a
 // context/added cell on the right, or absent (the other side changed and this
 // side has no counterpart).
@@ -258,8 +244,6 @@ function DiffSide({
   // as one-sided rather than as an edit to a blank line.
   if (!row) return <div className="bg-sunken" />;
   const style = ROW_STYLE[row.type];
-  // deleted lives on the left, added on the right; a context line shows this
-  // side's own number. A context row keeps no +/− sign (it's unchanged).
   const lnum =
     row.type === "deleted"
       ? row.leftLine

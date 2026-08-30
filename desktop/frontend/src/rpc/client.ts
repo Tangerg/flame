@@ -1,10 +1,6 @@
-// Typed JSON-RPC client wrapping a Transport. Owns id allocation,
-// response correlation, notification dispatch. See runtime/doc/API.md §1.
-//
-// Correlation pattern borrowed from kimi-code's controlledPromise idea:
-// each Request creates a pending entry with resolve/reject handles;
-// the recv() loop pops the entry by id and settles the promise.
-// Notifications go through subscribe() — no id, no waiter.
+// Owns id allocation, response correlation and notification dispatch (API.md §1). Each
+// Request creates a pending entry with resolve/reject handles; the recv() loop pops it by
+// id. Notifications go through subscribe() — no id, no waiter.
 
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import {
@@ -64,17 +60,15 @@ export interface RpcClientOptions {
 export interface RpcCallOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
-  /** Expected durable replay store. Runtime refuses the key before business
-   * admission if this no longer matches discovery. */
+  /** The runtime refuses the key BEFORE business admission when this no longer matches
+   *  discovery. */
   idempotencyNamespace?: string;
-  /** Resume a stream from the last event this client folded (§5.5). The runtime
-   *  replays from just after it, or refuses when the cursor is not addressable —
-   *  which is the caller's signal to rebuild from a cold read instead. */
+  /** The last event this client FOLDED (§5.5). The runtime replays from just after it, or
+   *  refuses when the cursor is not addressable — the caller's signal to cold-read. */
   lastEventId?: string;
   /**
-   * Metadata snapshot selected by a typed call. This keeps capability preflight
-   * and the emitted request on the same client declaration even when the
-   * configured metadata provider is dynamic.
+   * A SNAPSHOT, so capability preflight and the emitted request stay on the same client
+   * declaration even when the configured metadata provider is dynamic.
    */
   requestMeta?: RequestMeta | null;
   /** Bind a stream owner before Transport.send can deliver its first frame. */
@@ -82,20 +76,17 @@ export interface RpcCallOptions {
 }
 
 export interface RpcClient {
-  /** Send a Request and resolve with its result, or reject with RpcError. */
   call<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
     options?: RpcCallOptions,
   ): Promise<WireResult<M>>;
-  /** Subscribe to inbound notifications matching `method`. Returns an unsubscribe fn. */
+  /** Returns an unsubscribe fn. */
   subscribe<M extends WireNotificationName>(
     method: M,
     observer: NotificationObserver<M>,
   ): () => void;
-  /** Observe transport-level termination of one streaming response. */
   onStreamEnd(handler: StreamEndHandler): () => void;
-  /** Tear down the client + underlying transport. */
   close(): Promise<void>;
 }
 
@@ -106,13 +97,10 @@ interface Pending {
 }
 
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
-  // The wire id is always a decimal string (RpcId, §1.1). Arbitrary precision
-  // keeps it unique for the full client lifetime instead of eventually
+  // Arbitrary precision keeps the id unique for the full client lifetime instead of
   // repeating at JavaScript's safe-integer boundary.
   const requestIds = new ExactSequence();
   const pending = new Map<RpcId, Pending>();
-  // method → handlers. We allow multiple subscribers per method so multiple
-  // UI consumers can listen to the same stream.
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
   const streamEndHandlers = new Set<StreamEndHandler>();
   let closed = false;
@@ -133,12 +121,9 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     streamEndHandlers.clear();
   }
 
-  // Long-running pump that drains the transport's recv() into pending
-  // promises + subscribers. When the stream ends — whether it throws or
-  // closes cleanly — no further Responses can arrive, so every in-flight
-  // request must be settled (rejected). Handling only the throw path left
-  // pending calls hung forever on a clean EOS (for example, an InProcess
-  // transport whose recv() ends without an exception).
+  // When the stream ends — whether it throws OR closes cleanly — no further Responses can
+  // arrive, so every in-flight request must be settled. Handling only the throw path leaves
+  // pending calls hung forever on a clean EOS.
   const receiveLoop = (async () => {
     try {
       for await (const event of transport.recv()) {
@@ -163,9 +148,9 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       return;
     }
     if (isResponse(event.message) && event.message.id !== event.requestRpcId) {
-      // A Transport merges many concurrent response bodies into one receive
-      // channel. Its source request is authoritative: trusting only the envelope
-      // id would let a malformed frame from request A settle request B and strand A.
+      // The SOURCE request is authoritative, not the envelope id: a transport merges many
+      // concurrent response bodies into one channel, so a malformed frame from request A
+      // could otherwise settle request B and strand A.
       const entry = pending.get(event.requestRpcId);
       if (entry) {
         pending.delete(event.requestRpcId);
@@ -207,8 +192,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
             return;
           }
         }
-        // The generated validator above is the trust boundary that turns the raw
-        // envelope payload into the generated discriminated union.
         entry.reject(
           new RpcError(
             {
@@ -257,14 +240,13 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         try {
           observer.next(msg.params as WireNotificationParams[typeof msg.method], requestRpcId);
         } catch (err) {
-          // Subscribers must not crash the dispatch loop. Log and move on.
+          // A subscriber must never crash the dispatch loop.
           console.error(`[rpc] notification handler for "${msg.method}" threw:`, err);
         }
       }
       return;
     }
-    // Unexpected: server-initiated Requests are not in our protocol.
-    // Drop them — see runtime/doc/API.md §1.1 (we don't do server→client RPC).
+    // The protocol has no server→client RPC (API.md §1.1), so this is always a mismatch.
     console.warn("[rpc] dropping unexpected server-initiated Request", msg);
   }
 

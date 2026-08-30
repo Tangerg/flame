@@ -12,9 +12,6 @@ import type { ProviderRole } from "./providerModels";
 import type { ProviderUpdate } from "./ports/providerGateway";
 import { ProviderMutationOwner, providerMutationWasRetired } from "./providerMutationOwner";
 
-// Provider configuration mutations (providers.update / providers.test).
-// Counterpart to the read-side useProviders() query.
-
 export type { ProviderConfiguration };
 
 export function useProviderConfigs() {
@@ -86,13 +83,9 @@ export function useUpdateProvider(): (input: ProviderUpdate) => Promise<Provider
 }
 
 /**
- * Point the maintenance work (compaction / extraction / titling) at a
- * (provider, model) — an empty model clears it back to the main turn model
- * (models.setUtilityRole). The runtime validates by resolving the client, so
- * an unconfigured provider / unknown model fails server-side; we flatten that
- * to `{ ok:false, error }` here (mirroring useTestProvider) so the pane —
- * which must not import @/rpc — renders the reason inline. On success the
- * utility-role query is refetched so the pane reflects the stored value.
+ * Points maintenance work (compaction / extraction / titling) at a (provider, model); an
+ * empty model clears it back to the main turn model. Validation is server-side, and the
+ * failure is flattened to `{ ok, error }` here because the pane must not import `@/rpc`.
  */
 export async function setUtilityRole(role: ProviderRole): Promise<TestOutcome> {
   const owner = ProviderMutationOwner.current();
@@ -110,11 +103,9 @@ export async function setUtilityRole(role: ProviderRole): Promise<TestOutcome> {
 }
 
 /**
- * Select the optional embedding model for agent-memory ranking. An empty model
- * leaves memory search keyword-only (models.setEmbeddingRole).
- * Validated server-side (the provider must be embedding-capable + configured);
- * flattened to `{ ok, error }` so the pane renders the reason inline. Refetches
- * the embedding-role query on success.
+ * The optional embedding model for agent-memory ranking; empty leaves memory search
+ * keyword-only. Validated server-side and flattened to `{ ok, error }` so the pane, which
+ * must not import `@/rpc`, renders the reason inline.
  */
 export async function setEmbeddingRole(role: ProviderRole): Promise<TestOutcome> {
   const owner = ProviderMutationOwner.current();

@@ -1,11 +1,6 @@
-// Intra-line (word-level) diff for a REPLACED line pair — the changed
-// sub-range within an old/new line, so the diff view can highlight exactly the
-// characters that changed instead of tinting the whole line (T2.2). Uses a
-// common-prefix + common-suffix trim: the differing middle is the change. It's
-// not a full word-LCS, but for typical single-line edits it pinpoints the
-// change, and it never UNDER-marks — at worst it marks a contiguous superset
-// (e.g. two disjoint edits collapse into one span), never less than what
-// changed. Cheap (two scans), allocation-free.
+// Common-prefix + common-suffix trim, not a word-LCS: two scans, allocation-free. It can
+// OVER-mark — two disjoint edits collapse into one span — but never under-mark, which is
+// what makes the cheap version safe here.
 
 /** Changed sub-ranges `[start, end)` on each side of a replaced line, or null
  *  when that side has no marked region (a pure insertion / deletion, or the

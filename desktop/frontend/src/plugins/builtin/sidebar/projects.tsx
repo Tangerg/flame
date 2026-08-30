@@ -16,7 +16,6 @@ import {
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { definePlugin } from "@/plugins/sdk";
 
-// One project node: header + (when open) its session list.
 function ProjectGroupNode({
   group,
   actions,

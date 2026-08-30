@@ -1,11 +1,9 @@
-// Plain session projection consumed by the Agent UI and plugin extensions.
-// The Runtime owns Session → Run → Item facts; this model keeps one
-// session-scoped narrative while preserving each source Run independently.
+// The session projection consumed by the Agent UI and plugin extensions. The Runtime owns
+// Session → Run → Item facts; this model keeps one session-scoped narrative while
+// preserving each source Run independently.
 
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 
-// Narrow view-side roles. userMessage → "user", everything the agent
-// produces → "assistant", protocol notes → "system".
 export type MessageRole = "user" | "assistant" | "system";
 export type AgentMessagePhase = "commentary" | "finalAnswer";
 
@@ -15,22 +13,14 @@ export interface PlanStep {
   readonly status: "done" | "active" | "pending";
 }
 
-/** Session-scoped latest Plan. Revision orders whole replacements; it is never
- * derived from mutable step content. */
+/** `revision` orders whole REPLACEMENTS; it is never derived from mutable step content. */
 export interface AgentPlan {
   readonly revision: number;
   readonly steps: readonly PlanStep[];
 }
 
-// Client-side display convention (API.md §4.4.2) — maps a domain-neutral tool
-// `name` to a presentation category. This is NOT on the wire: the protocol core
-// only knows `{ name, arguments, result }`; how a tool renders richly is client
-// knowledge. Adding a new tool = a row here (or a TOOL_ICON/TOOL_PREVIEW
-// contribution), never a protocol change. Unknown names → "generic" (JSON tree
-// fallback). Used by the fold (projections), runDigest, and tool icon routing.
-// Tool-call display state, derived from toolCall Item status + error.
-// `denied` is a user decision (HITL decline → error.type "denied_by_user"),
-// NOT a failure — it gets a neutral treatment, not the alarming "err" red.
+// `denied` is a user DECISION (HITL decline → `denied_by_user`), not a failure, so it takes
+// a neutral treatment rather than the alarming "err" red.
 export type ToolCallStatus = "running" | "ok" | "err" | "denied" | "requires-action";
 export type AgentSafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -43,111 +33,76 @@ export type ToolDiffRow =
 export interface ToolCall {
   id: string;
   runId: string;
-  name: string; // wire tool identity (ToolInvocation.name) — drives icon/preview routing (display label is `fn`)
-  fn: string; // tool display name / command
-  /** Set when `fn` is a PATH — the file categories label themselves with the file
-   *  they acted on. The row truncates a path from the other end, and only the
+  /** Wire identity (ToolInvocation.name), which drives icon/preview routing. The DISPLAY
+   *  label is `fn`. */
+  name: string;
+  fn: string;
+  /** Set when `fn` is a PATH: the row truncates a path from the other end, and only the
    *  projection that chose what to put in `fn` knows which case this is. */
   fnKind?: "path";
-  args: string; // accumulated arg text (toolArguments deltas, pre-parse)
+  /** Accumulated `toolArguments` delta text, pre-parse. */
+  args: string;
   status: ToolCallStatus;
   added?: number;
   removed?: number;
-  /** Call-scoped structured diff for an edit tool (FileEdit.diff, §12.1 C) —
-   *  the literal patch THIS edit applied, rendered inline instead of
-   *  re-querying the whole worktree. Absent for write / non-edit tools. */
+  /** The patch THIS call applied, so the row does not re-query the whole worktree. */
   diff?: ToolDiffRow[];
   hits?: number;
-  /** fileEdit-category: how many files this one call touched. A count, not a
-   *  sentence — the meta chip words it in the reader's language. */
   files?: number;
-  /** read-category: how long the file is (`result.total_lines`). The row reports the
-   *  size of what it opened, so a 4000-line read and a 12-line one are not the same
-   *  glance. */
   lines?: number;
-  /** command-category (`shell`) exit code, from result.exitCode (§4.4.2).
-   *  Surfaced for visibility; a non-zero exit is shown but does NOT force the
-   *  status red (exit≠0 isn't always failure — e.g. grep "no match"). Real
-   *  failures set the toolCall Item's `error`. */
+  /** A non-zero exit does NOT force `status: "err"` — exit≠0 is not always failure (grep
+   *  "no match"). Real failures set the Item's `error`. */
   exitCode?: number;
   result?: string;
-  /** fileEdit-category: the head of what a `write` put in the file, from the call's
-   *  own arguments — a write reports no diff rows, so this is the only route the
-   *  content has to the row that names it. Bounded on purpose: a session holds every
-   *  call it made, and the row can only show a handful of lines. */
+  /** A `write` reports no diff rows, so this is the content's only route to the row.
+   *  BOUNDED: a session holds every call it made. */
   written?: string[];
-  /** How many lines the write had in total, so the row can say what `written` omits. */
   writtenLines?: number;
-  /** command-category: the shell command this call ran (`arguments.command`). The
-   *  label is the human `description` the runtime requires, so the command needs a
-   *  field of its own — it is the line a reader verifies. */
+  /** Its own field because `fn` carries the human `description`, and this is the line a
+   *  reader actually verifies. */
   command?: string;
-  /** Human-readable failure reason from the toolCall Item's `error`
-   *  (ProblemData.detail ?? type, API.md §8.1 channel b). Set when status="err". */
   error?: string;
-  /** The `operation` argument of an operation-dispatched tool (`lsp`), when it has
-   *  one. Read from the call's arguments rather than from `args`, which is empty
-   *  whenever the label already names the target. */
+  /** Read from the call's ARGUMENTS, not from `args`, which is empty whenever the label
+   *  already names the target. */
   operation?: string;
-  /** The runtime's side-effect class for this call (toolCall Item safetyClass).
-   *  Absent for a tool the runtime has no class for; treated as unknown, which
-   *  reads as "not a read" — the same fail-conservative default the approval gate
-   *  applies. This is what replaced a hand-maintained read-only tool list here. */
+  /** Absent for a tool the runtime has no class for, and treated as "not a read" — the
+   *  same fail-conservative default the approval gate applies. */
   safetyClass?: AgentSafetyClass;
-  /** read-category: the line span actually returned, when it is not the whole file.
-   *  From the result (`start_line`/`end_line`), not the request: the runtime clamps,
-   *  and what a reader needs is the window they are looking at. Absent for a whole
-   *  file, where the span would only restate `lines`. */
+  /** From the RESULT, not the request: the runtime clamps. Absent for a whole file, where
+   *  the span would only restate `lines`. */
   range?: { start: number; end: number };
-  /** plan-writing calls: the step the agent is on. A row's subject is the fact a
-   *  reader verifies, which for a plan is not the tool's name but the work in
-   *  hand — the same reason `command` has a field of its own. */
   step?: string;
-  /** plan-writing calls: how far the plan has got. Not a formatted ratio: the
-   *  reader's language decides how "3 of 7" is worded. */
+  /** Not a formatted ratio: the reader's language decides how "3 of 7" is worded. */
   progress?: { done: number; total: number };
-  /** How long the Tool actually executed, measured by the runtime (toolCall Item
-   *  durationMillis). Approval and other pre-execution waits are excluded. Absent
-   *  when the execution interval is not known — a client-side stopwatch would be
-   *  measuring its own render loop, not the Tool. */
+  /** Measured by the runtime, excluding approval and other pre-execution waits. Absent when
+   *  unknown — a client stopwatch would be timing its own render loop. */
   durationMillis?: number;
-  /** Exact human verdict accepted for this ToolCall. Absent means the call did
-   *  not cross a human approval boundary; it must never be inferred from the
-   *  current policy or terminal status. */
+  /** Absent means the call never crossed a human approval boundary. MUST NOT be inferred
+   *  from the current policy or terminal status. */
   approvalDecision?: "approved" | "declined";
 }
 
 export interface Message {
   id: string;
   role: MessageRole;
-  /** Runtime-authored AgentMessage role. Commentary owns the working narrative;
-   *  finalAnswer owns the terminal response and its message actions. Absent for
-   *  user/system messages and legacy synthesized fixtures. */
+  /** Absent for user/system messages. */
   phase?: AgentMessagePhase;
-  /** Raw ISO-8601 from the wire. Formatting belongs to the caller at render so
-   *  locale changes reach messages already on screen.
+  /** RAW ISO-8601 from the wire; formatting belongs to the caller at render, so a locale
+   *  change reaches messages already on screen.
    *
-   *  Optional because a synthesized assistant turn has no Item of its own: it
-   *  takes the timestamp of the Item whose first block opened it, and where even
-   *  that is unavailable it carries none. The fold does NOT reach for the clock
-   *  to fill the gap — the wall clock is an effect, and a turn stamped by the
-   *  client sits in a stream stamped by the runtime (the date separator above it
-   *  would disagree with the messages beside it on a skewed machine). Renderers
-   *  already treat it as optional. */
+   *  Optional because a synthesized turn has no Item of its own, and the fold does NOT
+   *  reach for the clock to fill the gap: a client-stamped turn in a runtime-stamped stream
+   *  makes the date separator disagree with the messages beside it on a skewed machine. */
   createdAt?: string;
-  /** Owning Run (Item.runId) — anchors run-boundary actions and prevents
-   *  interleaved child Items from joining a different Run's assistant turn.
-   *  (edit-and-rerun via sessions.rollback, fork-from-run). Absent on
-   *  optimistic local bubbles use null until the real Item reconciles. */
+  /** Prevents interleaved child Items from joining a different Run's assistant turn.
+   *  `null` on optimistic local bubbles until the real Item reconciles. */
   runId: string | null;
   blocks: ContentBlock[];
 }
 
-/** Token + cost readout for the current/last run (API.md §4.6 Usage, the
- *  cumulative-over-rounds total). Tokens are inclusive totals — inputTokens
- *  already counts the cacheRead portion. costUsd is ABSENT (not 0) when the
- *  served model isn't in the pricing table, so the UI shows tokens without a
- *  fabricated price. */
+/** Tokens are INCLUSIVE totals — `inputTokens` already counts the cacheRead portion.
+ *  `costUsd` is ABSENT, not 0, when the served model is not in the pricing table, so the
+ *  UI shows tokens rather than a fabricated price. */
 export interface RunUsage {
   inputTokens: number;
   outputTokens: number;
@@ -156,16 +111,11 @@ export interface RunUsage {
 }
 
 export interface AgentProblem {
-  /** The per-occurrence note the runtime reported (ProblemData.detail). Absent
-   *  when it said nothing — the banner supplies the words from `code` in that
-   *  case, because a fallback sentence in the fold is one locale's copy in the
-   *  layer that folds wire events. */
+  /** Absent when the runtime said nothing; the banner then supplies words from `code`,
+   *  because a fallback sentence in the fold is one locale's copy in the wrong layer. */
   message?: string;
-  /** The symbolic problem type. Everything that branches on the failure — copy,
-   *  the Retry affordance — reads this, never a derived flag. */
+  /** Everything that branches on the failure reads THIS, never a derived flag. */
   code?: string;
-  /** Provider-requested backoff in seconds (ProblemData.retryAfterSeconds) —
-   *  drives the Retry countdown. Absent when the provider sent none. */
   retryAfterSeconds?: number;
 }
 
@@ -196,9 +146,8 @@ export interface AgentRunProgress {
   contextTokens?: number;
 }
 
-/** Exact model identity frozen when a Run is admitted. Session selection may
- * be edited while this Run is still active, so runtime-facing UI must prefer
- * this value for capability and context-window decisions. */
+/** FROZEN when the Run is admitted. Session selection can be edited while the Run is still
+ *  active, so capability and context-window decisions must prefer this value. */
 export interface AgentModelSelection {
   provider: string;
   model: string;
@@ -221,10 +170,8 @@ export interface AgentRunView {
   finishedAt: string | null;
 }
 
-/** One entry on the per-session event timeline. Drives the Run Timeline
- *  workspace view — the message stream is for *reading*, the timeline is for
- *  *auditing* what the agent did. Renderers may collapse / filter / group by
- *  `runId`. */
+/** Drives the Run Timeline view: the message stream is for READING, the timeline for
+ *  AUDITING. Renderers may collapse, filter or group by `runId`. */
 export type TimelineEntryKind =
   | "run-start"
   | "run-end"
@@ -239,11 +186,9 @@ export interface TimelineEntry {
   ts: number;
   kind: TimelineEntryKind;
   runId: string | null;
-  /** Optional short label — tool fn name, approval command, error msg. */
   summary?: string;
-  /** ItemId / reasoningId — used to deeplink + dedupe. */
+  /** ItemId / reasoningId — used to deeplink and dedupe. */
   refId?: string;
-  /** Settled status for tool-end / approval-result / run-end / run-error. */
   status?: "ok" | "err" | "approved" | "declined";
 }
 

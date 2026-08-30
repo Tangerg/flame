@@ -1,32 +1,19 @@
-// Push-pull async channel — single-consumer AsyncIterableIterator backed
-// by an optional internal buffer + FIFO consumer/producer queues. The four sites that used
-// to roll their own version (memory transport, http transport, run
-// event stream, terminal/background stream) all delegate to this now.
+// SINGLE-CONSUMER: `iterator()` returns a fresh object over a SHARED queue, so two
+// iterators race for buffered values.
 //
-// Contract:
-//   - push(value) buffers OR resolves a waiting next() call.
-//     It is the synchronous API for intentionally unbounded channels; on a
-//     bounded channel it throws instead of silently violating capacity.
-//   - send(value) applies producer backpressure. It resolves true only after
-//     the value is buffered or accepted by next(), false if close wins first.
-//     fail rejects blocked producers with the channel failure.
-//   - close() drains pending values to the consumer and then returns
-//     done=true. Idempotent.
-//   - fail(error) drains pending values, then rejects iteration with that error.
-//   - iterator() returns a fresh iterator object; the underlying queue
-//     is shared, so callers must treat the channel as single-consumer
-//     (multiple iterators would race for buffered values).
-//   - iterator().return() closes the channel — used by `for await` to
-//     clean up when the loop breaks out early.
+//   push  — synchronous, for intentionally unbounded channels; throws on a bounded one
+//           rather than silently violating capacity.
+//   send  — applies producer backpressure; resolves false when close wins first.
+//   close / fail — drain pending values first, then terminate. Idempotent.
 
 export interface PushPullChannel<T> {
   /** Attempt synchronous delivery without exceeding capacity. */
   tryPush(value: T): boolean;
   push(value: T): void;
   send(value: T): Promise<boolean>;
-  /** Close the channel. Idempotent. */
+  /** Idempotent. */
   close(): void;
-  /** Terminate the channel with an error. Idempotent. */
+  /** Idempotent. */
   fail(error: unknown): void;
   readonly closed: boolean;
   iterator(): AsyncIterableIterator<T>;

@@ -2,14 +2,8 @@ import type { FileTransferPort } from "../application/ports/fileTransfer";
 
 const OBJECT_URL_REVOCATION_DELAY_MS = 1_000;
 
-// How a browser hands a file to the user and takes one back.
-//
-// Both are pure mechanism — an anchor with a blob URL, a hidden file input — and
-// both touch `document`. They sat in the application layer beside the export use
-// case, which meant "export this conversation as markdown" and "this is how
-// Chromium saves a file" were the same module. The use case is ours; these two
-// are the browser's, and an application layer that reaches for `document` is an
-// application layer in the wrong folder.
+// Pure browser mechanism — an anchor with a blob URL, a hidden file input — kept out of the
+// application layer, which must not reach for `document`.
 
 function downloadFile(filename: string, content: string, mime: string): void {
   const blob = new Blob([content], { type: mime });

@@ -1,4 +1,3 @@
-/** One filesystem mutation from Runtime `PatchResult.changes`. */
 export interface PatchChange {
   path: string;
   status: "added" | "deleted" | "modified" | "moved";

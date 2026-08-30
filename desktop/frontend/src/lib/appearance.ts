@@ -1,48 +1,23 @@
-// The active appearance, as leaf code sees it.
+// A PASSIVE snapshot: leaf modules read the active appearance without reaching into the
+// preference store or plugin registry, which would invert the dependency ring from leaf UI
+// into application composition. The theme context publishes into it from the painter.
+// Nothing here reads a store, a registry, or the DOM.
 //
-// Leaf modules use it for scheme-aware rendering and style-aware motion without
-// reaching into the preference store or plugin registry, which would invert the
-// dependency ring from leaf UI into application composition.
-//
-// So the dependency runs the other way. This holds a passive snapshot; the
-// context that owns appearance (theme) publishes into it from the painter — the
-// one place where a preference becomes visible. Nothing here reads a store, a
-// registry, or the DOM.
-//
-// The defaults are what a snapshot-less app looks like (unscaled motion, dark):
-// they apply only before the first publish, and in tests that don't install the
-// painter.
+// The defaults apply only before the first publish, and in tests that install no painter.
 
 import { useSyncExternalStore } from "react";
 
-/**
- * Light or dark, the app's whole vocabulary for it.
- *
- * Declared here because this is the one module every ring may import — the
- * design system, the plugin SDK's theme contract, the theme context's rules and
- * kit, and the panes that preview a swatch all need the same two words. Eight
- * modules had spelled the union out inline instead, which is eight places that
- * must agree forever with nothing checking that they do.
- */
+// Declared here because this is the ONE module every ring may import, so the design system,
+// the SDK theme contract and the theme kit cannot spell the union out separately.
 export type Scheme = "dark" | "light";
 export type ColorThemeId = string;
 export type VisualStyleId = string;
 
-/**
- * How much of the accent's hue the neutral surfaces carry.
- *
- * The enum lives here rather than beside the maths that consumes it (see
- * `theme/kit/accentTint`) for the same reason every other appearance value does: the
- * preference store persists it, and `state` sits below the plugins.
- *
- * A preference rather than a constant because it is a taste axis, and the systems that
- * have solved this settle taste axes the same way — Material ships it as a scheme
- * variant (neutral chroma 6 / 10 / 2) rather than picking one and defending it.
- */
+// Lives here rather than beside the maths in `theme/kit/accentTint` because the preference
+// store persists it and `state` sits BELOW the plugins.
 export const ACCENT_TINTS = ["off", "soft", "standard"] as const;
 export type AccentTint = (typeof ACCENT_TINTS)[number];
 
-/** What every surface in this app was measured against, so the default changes nothing. */
 export const DEFAULT_ACCENT_TINT: AccentTint = "standard";
 
 export interface VisualStyleMotion {
@@ -60,14 +35,8 @@ export interface VisualStyleMotion {
   pressScale: number;
 }
 
-/**
- * What motion is before a visual style publishes its own — the first frames, and any
- * consumer standing without the theme pack installed.
- *
- * Every value here has to match the shipped style (WORKBENCH_MOTION); a fallback that
- * disagrees is a fallback nobody notices is wrong. `drawerMs` had drifted to 300 against
- * the style's 240 that way.
- */
+/** Every value MUST match the shipped style (WORKBENCH_MOTION): a fallback that disagrees
+ *  is a fallback nobody notices is wrong. */
 const DEFAULT_MOTION: VisualStyleMotion = {
   instantMs: 80,
   fastMs: 150,
@@ -95,7 +64,6 @@ function announce(): void {
   for (const listener of listeners) listener();
 }
 
-/** Publish the scheme the painter just applied. */
 export function publishScheme(next: Scheme): void {
   if (next === scheme) return;
   scheme = next;
@@ -115,14 +83,12 @@ export function publishTokens(): void {
   announce();
 }
 
-/** Publish the motion multiplier the painter just applied. */
 export function publishMotionScale(next: number): void {
   if (scale === next) return;
   scale = next;
   announce();
 }
 
-/** Publish the active style's motion language for non-CSS animation consumers. */
 export function publishVisualStyleMotion(next: VisualStyleMotion): void {
   motion = next;
 }
@@ -144,7 +110,6 @@ function snapshot(): Scheme {
   return scheme;
 }
 
-/** Reactive read — re-renders on a theme switch. */
 export function useScheme(): Scheme {
   return useSyncExternalStore(subscribe, snapshot);
 }

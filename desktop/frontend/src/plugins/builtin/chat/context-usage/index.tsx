@@ -1,6 +1,4 @@
-// How full the model's context window is, on the row you type into.
-//
-// The composer, not the title bar: a fixed 16px dial does not reflow the control
+// On the composer rather than the title bar: a fixed-size dial does not reflow the control
 // row, and its numbers stay in the tooltip where they cost no layout at all.
 
 import { contributeLayout, definePlugin } from "@/plugins/sdk";

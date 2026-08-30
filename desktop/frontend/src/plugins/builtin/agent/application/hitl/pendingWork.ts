@@ -1,16 +1,6 @@
-// Everything, in every session, that is waiting on a person.
-//
-// The sidebar already puts a dot on a session that is waiting, which answers
-// "is this one blocked" for the session you are looking at. It does not answer
-// "what is waiting on me right now" — for that you scan the list hunting dots,
-// and an approval card that has scrolled out of its own transcript says nothing
-// at all. This is the read model behind the surface that does answer it.
-//
-// Sourced from `interrupts.list` with NO session filter: the runtime already
-// keeps the waiting sets ordered longest-wait-first across the whole install,
-// which is the order a queue of things blocking you wants to be read in. Deriving
-// the same list from session status would lose both the ordering and what each
-// session is actually waiting FOR.
+// Sourced from `interrupts.list` with NO session filter: the runtime already orders the
+// waiting sets longest-wait-first across the whole install. Deriving the same list from
+// session status loses both that ordering and what each session is waiting FOR.
 
 import type { AgentInterrupt, AgentPendingInterruptSet } from "@/plugins/sdk";
 import type { PendingInterruptKind } from "@/plugins/sdk/types/agentSessionView";

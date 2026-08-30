@@ -15,17 +15,11 @@ interface RunStreamReattachOptions {
 }
 
 /**
- * Reattach a run whose stream ended before the run did.
- *
- * The cursor is handed back verbatim, and the runtime either replays from just after
- * it or refuses. The two refusals mean different things and get different answers:
- *
- *   - the run is not attachable (finished, waiting on a person, or already on another
- *     segment) — there is nothing to follow, so the durable projection is re-read;
- *   - the replay window has moved past the cursor — the events are unrecoverable, but
- *     the Items they produced are persisted, so the history is re-read and the stream
- *     is reattached tail-only. Attaching tail-first without that read would leave a
- *     transcript missing whatever the gap contained.
+ * The cursor is handed back VERBATIM. The runtime's two refusals mean different things:
+ * "not attachable" leaves nothing to follow, so the durable projection is re-read; a
+ * replay window that has moved past the cursor loses the events but not the Items they
+ * produced, so history is re-read BEFORE reattaching tail-only — reattaching first would
+ * leave the transcript missing whatever the gap contained.
  */
 export function createRunStreamReattach({
   sessionId,

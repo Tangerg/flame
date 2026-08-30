@@ -99,8 +99,7 @@ function AttachButton() {
   );
 }
 
-// Approval-mode pill — the composer's primary access control.
-// A ghost pill that turns warning-toned when full access ("yolo") is on.
+// Turns warning-toned when full access is on.
 function ApprovalModePill() {
   const t = useT();
   const { data: mode, isError } = useApprovalMode();

@@ -55,7 +55,6 @@ export class ProviderCredential {
   }
 }
 
-/** Immutable provider configuration used by every Desktop consumer. */
 export class ProviderConfiguration {
   private constructor(
     readonly id: string,

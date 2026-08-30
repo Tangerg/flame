@@ -77,17 +77,12 @@ export function toolCatalogViewModel(servers: readonly MCPServerSettings[]): Too
 }
 
 /**
- * The runtime's tools, grouped into the families someone browsing them asks in.
+ * Driven by `tools.list` and only ANNOTATED by the local table: enumerating the table
+ * instead would advertise what the client believes rather than what it can call. A tool the
+ * runtime adds first still lists, under the trailing family with the generic glyph.
  *
- * Driven by `tools.list` and only ANNOTATED by the local table: what exists is the
- * runtime's answer, so a tool it stops shipping disappears from here without an
- * edit, and one it adds before the client knows the name still lists — under the
- * trailing family, with the generic glyph. A catalog that enumerated the table
- * instead would advertise whatever the client believed rather than what it can call.
- *
- * Family order is the table's, never by size: the reader is scanning for a heading,
- * and a catalog that reshuffles itself as a runtime gains a tool is one where
- * nothing is ever in the place it was last time.
+ * Family order is the TABLE's, never by size: a catalog that reshuffles as the runtime
+ * gains a tool is one where nothing is ever where it was last time.
  */
 export function builtinToolCatalogViewModel(
   tools: readonly BuiltinToolSummary[],

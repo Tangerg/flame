@@ -1,10 +1,6 @@
-// The storage boundary for composer drafts: what gets written to disk, and what
-// it is allowed to be when it comes back. Untrusted input is validated here
-// because here is where it enters; the domain remains independent of localStorage
-// and its validation library.
-//
-// Only the text is durable. Staged images and pastes are meant to be sent
-// immediately and are heavy, so they are dropped on reload rather than persisted.
+// Untrusted input is validated HERE because here is where it enters, leaving the domain
+// independent of localStorage and its validation library. Only the text is durable: staged
+// images and pastes are heavy and meant to be sent immediately, so a reload drops them.
 
 import { z } from "zod";
 import type { ComposerDraftArchive } from "../domain/draftArchive";

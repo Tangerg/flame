@@ -19,15 +19,9 @@ const contextDockPersistSchema = z.object({
 
 type PersistedDockScope = z.infer<typeof persistedDockScopeSchema>;
 
-// What the dock has open, per session — not which destination is showing. That
-// is the app's location (see lib/navigation), so history holds it and the dock
-// no longer has a `dockOpen` flag that could disagree with the view it shows:
-// the dock is open exactly when the location names a destination.
-//
-// `lastViewId` is the memory a re-open reads: collapsing drops the destination
-// from the location, and showing the dock again should return to the tab you
-// were on rather than the first one. Written from the location, never back into
-// it.
+// What the dock has OPEN per session — never which destination is showing, which belongs
+// to the location so no flag here can disagree with the view on screen. `lastViewId` is the
+// memory a re-open reads, written FROM the location and never back into it.
 
 export interface WorkspaceFileViewer {
   path: string;

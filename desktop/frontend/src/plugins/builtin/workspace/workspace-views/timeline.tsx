@@ -1,12 +1,5 @@
-// Built-in plugin: "Timeline" workspace view — the per-thread audit log
-// of run-significant events accumulated by the protocol reducer.
-//
-// UX review §2.2 / §4.1: users need a single surface that answers
-// "what did the agent actually do this run". Tool cards live inline in
-// the message stream; this view aggregates them under durable Run lineage,
-// then keeps each source Run's events chronological.
-//
-// Pure renderer — data comes from the agent public run read model.
+// Groups events under durable Run lineage, then keeps each source Run's own events
+// chronological — the inline tool cards in the stream carry no lineage at all.
 
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/builtin/agent/public/viewState";
@@ -34,7 +27,6 @@ import {
 } from "@/plugins/builtin/workspace/application/timelineViewModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-// i18n key → icon. Labels are resolved at render via t().
 const KIND_ICON: Record<TimelineEntryKind, IconName> = {
   "run-start": "play",
   "run-end": "check",
@@ -76,8 +68,6 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
             {t(KIND_I18N[entry.kind])}
           </span>
           {entry.summary && (
-            // `title=` preserves full text when the inline column
-            // truncates a long command / tool name on hover.
             <span title={entry.summary} className="truncate font-mono text-ui-sm text-fg-muted">
               {entry.summary}
             </span>
@@ -231,8 +221,7 @@ export const timelineView = defineWorkspaceView({
   id: "timeline",
   title: "workspace.view.title.timeline",
   icon: "history",
-  // Sits between Diff (10) / Files (20) / Plan (30) and Tools (40).
-  // Timeline is "what happened" — closer to Plan than Tools.
+  // Between Plan (30) and Tools (40): "what happened" sits closer to Plan.
   order: 140,
   splittable: true,
   component: TimelineTab,

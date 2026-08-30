@@ -3,16 +3,12 @@ import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePr
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { toolIconFor, toolRoutingKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 
-// Lives in the ui ring, not application: an icon name is a UI vocabulary and
-// `toolIconFor` reads the icon registry, so this is presentation glue — the same
-// reason `tools/public/toolIcon` sits where it does rather than in a model.
+// In the ui ring, not application: an icon name is UI vocabulary and `toolIconFor` reads the
+// icon registry.
 
 /**
- * The mark of a folded wave: what it opened with.
- *
- * One mark, because the row has one slot for it (see AgentActivityDisclosure's
- * gutter). What the wave DID rides in the label as words, which is a slot
- * that can hold a tally without pushing anything sideways.
+ * ONE mark, because the row has one gutter slot for it. What the wave DID rides in the label
+ * as words, a slot that can hold a tally without pushing anything sideways.
  */
 export function waveGlyph(
   units: readonly MessageRenderUnit[],

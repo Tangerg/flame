@@ -1,8 +1,5 @@
-// search_tools preview — which tools the agent just pulled into reach.
-//
-// The result names them grouped by where they came from (built-in, an MCP server,
-// an A2A agent), and that grouping is the useful part: "it loaded three Sentry
-// tools" is a different fact from "it loaded three tools".
+// Grouping by SOURCE is the useful part: "it loaded three Sentry tools" is a different fact
+// from "it loaded three tools".
 
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { Badge } from "@/ui";

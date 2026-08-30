@@ -65,7 +65,6 @@ export function runtimeSupportsTopic(topic: string): boolean {
   );
 }
 
-/** Install the read-only capability boundary used by tests without a Runtime owner. */
 export function installRuntimeCapabilityPort(): () => void {
   return configureRuntimeCapabilityPort({
     useCapability: useServerFeature,

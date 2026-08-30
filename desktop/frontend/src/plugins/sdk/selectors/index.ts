@@ -1,7 +1,4 @@
-// Read side of the plugin registry. Plain reads (a list / one item by key) use
-// the generic substrate below; this barrel only adds the selectors with real
-// logic on top of it (weighted-random, priority pick, cached sub-index, owner
-// attribution).
+// This barrel adds only the selectors with real logic on top of the generic substrate.
 
 // Open extension points — the one read API for plain reads (kernel + plugins).
 export {

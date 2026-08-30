@@ -1,23 +1,11 @@
-// Frontend mirror of the backend's setupObservability
-// (scope flame/cmd/flame/observability.go): the ONE place all three OTel signals
-// are wired onto the global providers. Everything else just calls the static
-// otel accessors (trace.getTracer / metrics.getMeter / logs.getLogger) — no
-// injection.
+// The ONE place all three OTel signals are wired onto the global providers; everything else
+// calls the static accessors, with no injection.
 //
-//   - Traces:  WebTracerProvider, AlwaysSample, local span sink (+ OTLP).
-//   - Metrics: MeterProvider, PeriodicReader → local metric sink (+ OTLP).
-//   - Logs:    LoggerProvider → local log sink (+ OTLP); host.log records flow
-//              through it AS OTel log records (trace_id/span_id filled from the
-//              active span — see ../logBridge).
-//   - Context: W3C trace-context + baggage propagator, so the `traceparent`
-//              this frontend injects on every RPC extends into the backend's
-//              existing OTel trace (full-link tracing).
+// The local in-memory sink is always on; OTLP is added only when an endpoint is configured,
+// so swapping to a real collector costs zero call-site changes. The W3C propagator is what
+// makes the `traceparent` injected on every RPC extend the backend's existing trace.
 //
-// Swappable exporter, exactly like the backend: the local in-memory sink is
-// always on (dev visibility, ../stores); OTLP is added only when an endpoint
-// is configured — the production swap to the real collector, zero call-site
-// change. The whole module (incl. the ~SDK) is dynamic-imported by the
-// bootstrap plugin, so none of it touches the first-paint path.
+// The whole module is dynamic-imported by the bootstrap plugin, keeping it off first paint.
 
 import { metrics } from "@opentelemetry/api";
 import { logs } from "@opentelemetry/api-logs";

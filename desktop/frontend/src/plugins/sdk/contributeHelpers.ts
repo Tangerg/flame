@@ -1,7 +1,5 @@
-// Layout contributions need a stable id so re-registering a slot entry replaces
-// rather than stacks.
-// Free functions over an explicit ctx, not methods on an ambient host — the
-// difference being that a plugin has to import what it uses.
+// Layout contributions need a STABLE id, or re-registering a slot entry stacks rather than
+// replaces. Free functions over an explicit ctx, so a plugin has to import what it uses.
 
 import type { Contributor } from "./definePlugin";
 import { LAYOUT_SLOT } from "./kernelPoints";

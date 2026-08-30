@@ -1,15 +1,9 @@
-// Thin tracing helpers for app-layer code (state / plugins / components).
-// One-line span creation in the spirit of lib/metrics' measure* helpers.
+// SPAN GRANULARITY IS DELIBERATELY COARSE: one span per agent run and one per RPC call,
+// NEVER per StreamEvent or token. A run streams ~30 events/sec, so per-event spans would be
+// thousands per run; that signal belongs in metrics.
 //
-// SPAN GRANULARITY IS DELIBERATELY COARSE — one span per agent run and one
-// per RPC call, never per StreamEvent / item.delta / token. A run streams
-// ~30 events/sec; a span per event would be thousands of spans per run. The
-// per-event signal lives in metrics (lib/metrics' reducer histogram), not
-// traces.
-//
-// The rpc/ layer is independent and can't import this module; the HTTP
-// transport instruments its own CLIENT span directly against @opentelemetry/api
-// (an external lib). This module is for everything above rpc/.
+// For everything ABOVE rpc/ — the rpc layer cannot import this and instruments its own
+// CLIENT span directly against @opentelemetry/api.
 
 import { context, type Span, SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 
@@ -31,7 +25,7 @@ export function withSpan<T>(span: Span, fn: () => T): T {
   return context.with(trace.setSpan(context.active(), span), fn);
 }
 
-/** Settle + end a span. Pass the error to mark it failed. */
+/** Pass the error to mark the span failed. */
 export function endSpan(span: Span, err?: unknown): void {
   if (err !== undefined && err !== null) {
     span.setStatus({

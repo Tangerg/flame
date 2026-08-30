@@ -1,12 +1,6 @@
-// Sidebar global actions — the Work Index opens with search and the app-level
-// entry points.
-//
-// Global entry points for starting work, choosing where it runs, inspecting
-// unattended work, and configuring what the agent can reach. The list below is
-// the work itself, so anything that is merely a way of FINDING that work does
-// not earn another row here — ⌘K is on every surface and needs no signpost in
-// the one place sessions are already listed. Search is different: it scales
-// beyond the visible fold while keeping the index itself compact.
+// Rows here are entry points for STARTING work, not ways of finding it — ⌘K is on every
+// surface and needs no signpost where sessions are already listed. Search earns its row by
+// scaling past the visible fold while keeping the index compact.
 
 import { comboGlyph } from "@/lib/combo";
 import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/public/panes";

@@ -1,20 +1,9 @@
-// `definePlugin` — what every plugin default-exports.
+// Owns exactly ONE thing over Core's `definePlugin`: `contribute` takes a point HANDLE
+// rather than a raw key and applies that handle's policy — key derivation and
+// normalization — into the envelope the read side needs. Applying it per call site instead
+// is how the policy stops being a policy.
 //
-// A thin layer over Core's `definePlugin`, and it earns its keep by owning
-// exactly one thing: `contribute`. Core's is `contribute(token, key, value)`,
-// where `key` is a raw string it then qualifies with the owner. Ours takes a
-// point HANDLE and applies the policy that handle carries — the key derivation
-// (`opts.key` → `point.keyOf` → `item.id`), the key
-// normalizer — and stores the result in the envelope the read side needs. Doing
-// that at the call site 146 times is how the policy stops being a policy.
-//
-// Everything else on the context is Core's, untouched: `cleanup`, `lifetime`,
-// `spawn`, `on`, `emit`, `signal`, `meta`, `log` (already bound to the plugin —
-// see `hostLog`), and each declared requirement under its alias.
-//
-// No `version` field: a version is distribution metadata and lives on the
-// platform Manifest, which is the only place anything reads one. Built-ins had
-// carried `version: "1.0.0"` each and nothing ever looked.
+// No `version` field: a version is distribution metadata and lives on the platform Manifest.
 
 import {
   definePlugin as defineContractPlugin,
@@ -34,10 +23,6 @@ import type { ExtensionContributionOptions, ExtensionPoint } from "./types/exten
 import type { NotificationLevel, TaskStartOptions } from "./types/infra";
 import { ExactSequence } from "@/foundation/exactSequence";
 
-/**
- * The plugin context: Core's, with `contribute` replaced by the point-aware one
- * and the two identity-scoped shell capabilities added beside Core's own `log`.
- */
 export type PluginContext<Requires extends Requirements = Requirements> = Omit<
   ContractContext<Requires>,
   "contribute"
@@ -54,7 +39,7 @@ export interface PluginSpec<
   Requires extends Requirements = Requirements,
   Provides extends Provisions = Provisions,
 > {
-  /** Unique identifier. Built-ins use the `flame.builtin.*` namespace. */
+  /** Built-ins use the `flame.builtin.*` namespace. */
   readonly name: string;
   readonly requires?: Requires;
   readonly provides?: Provides;
@@ -63,10 +48,9 @@ export interface PluginSpec<
   ) => Awaitable<keyof Provides extends never ? void : { [K in keyof Provides]: unknown }>;
 }
 
-// Monotonic id minter for `multi` contributions with no explicit `opts.id`
-// (event handlers, log hooks, lifecycle observers). Uniqueness only has to hold
-// within one point's keyspace under one owner; a global counter is simpler than
-// per-point ones and the ids never reach plugin code.
+// For `multi` contributions with no explicit `opts.id`. Uniqueness only has to hold within
+// one point's keyspace under one owner, so a global counter is simpler than per-point ones
+// and the ids never reach plugin code.
 const mintedIds = new ExactSequence();
 
 function itemId(item: unknown): string | undefined {
@@ -131,8 +115,6 @@ export function definePlugin<Requires extends Requirements = {}, Provides extend
   });
 }
 
-/**
- * The minimum a registration helper needs. Helpers took the whole Host before,
- * which is how they quietly grew a second and third thing they touched.
- */
+/** The MINIMUM a registration helper needs: a helper handed the whole Host quietly grows a
+ *  second and third thing it touches. */
 export type Contributor = Pick<PluginContext, "contribute">;

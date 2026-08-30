@@ -1,13 +1,5 @@
-// One run of the agent's own work, folded.
-//
-// A turn alternates between doing and answering. Everything it did before an answer is
-// the account of how that answer was reached — worth keeping, not worth reading first —
-// so it collapses to a single row and the transcript reads as work · answer · work ·
-// answer. Open it and the members are exactly the rows that would have been there
-// inline; close it again and they go back.
-//
-// The `line` shell, because a fold over process is process: a card here would make the
-// thing being hidden heavier than the answer it sits above.
+// Takes the `line` shell: a fold over process is itself process, and a card here would
+// make the thing being hidden heavier than the answer it sits above.
 
 import { useState, type ReactNode } from "react";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
@@ -37,27 +29,20 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const tools = waveToolCalls(units, facts.toolCalls);
-  // What the round DID, in the same tally a tool group uses, with the total behind
-  // the row in the meta column. A row that only counted its steps ("6 steps") asked
-  // the reader to open it to learn whether anything had been changed or run — which
-  // is the one thing a folded account of past work has to be able to say closed.
-  // A round of pure thinking has no acts to tally, so the count carries it alone.
+  // A count alone ("6 steps") makes the reader open the row to learn whether anything was
+  // changed or run — the one thing a folded account of past work must say while closed.
   const summary = summarizeActivity(t, tools);
   const steps = t("agent.steps", { count: waveStepCount(units) });
 
   return (
     <AgentActivityDisclosure
       shell="line"
-      // What kind of round this was — the act it opened with. One glyph, because
-      // the gutter is one slot wide for every row in the transcript.
       icon={waveGlyph(units, facts.toolCalls) ?? "sparkle"}
       label={summary || steps}
       trailing={summary ? steps : undefined}
       open={open}
       onToggle={() => setOpen((value) => !value)}
-      // A wave holds a whole round of work — reasoning plus every tool call in
-      // it — so it is routinely taller than the reading column. Its sticky header
-      // keeps the count and round identity visible while the body scrolls.
+      // A wave holds a whole round of work and is routinely taller than the reading column.
       stickyHeader
     >
       {/* Each member already knows it is superseded — this wave exists BECAUSE an
