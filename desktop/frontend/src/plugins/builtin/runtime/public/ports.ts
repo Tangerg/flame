@@ -29,6 +29,28 @@ export interface RuntimeStreamPorts {
 
 export const RUNTIME_STREAM_PORTS = service<RuntimeStreamPorts>("flame.runtime.streamPorts");
 
+/**
+ * Call `onAdvance` only when the generation REALLY changed.
+ *
+ * `subscribeConnection` fires on connection activity, not only on replacement, so a
+ * consumer that acts on every notification retires its in-flight mutations against a
+ * generation that never moved. Eight setup blocks each hand-wrote this comparison; the
+ * port owns it now, and the caller is left with the decision that is actually theirs —
+ * what a replaced (or absent) generation means for them.
+ */
+export function followRuntimeGeneration(
+  ports: RuntimeStreamPorts,
+  onAdvance: (generation: RuntimeConnectionGeneration | null) => void,
+): () => void {
+  let current = ports.connectionGeneration();
+  return ports.subscribeConnection(() => {
+    const next = ports.connectionGeneration();
+    if (next === current) return;
+    current = next;
+    onAdvance(next);
+  });
+}
+
 /** A configured endpoint change replaces the product's one server scope. */
 export interface RuntimeServerScopePorts {
   subscribeReplacement: (onReplace: () => void) => () => void;

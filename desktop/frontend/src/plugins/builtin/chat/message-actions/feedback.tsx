@@ -5,7 +5,10 @@ import {
   useCurrentMessage,
   useCurrentMessageSessionId,
 } from "@/plugins/sdk";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RUNTIME_STREAM_PORTS,
+  followRuntimeGeneration,
+} from "@/plugins/builtin/runtime/public/ports";
 import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import type { MessageFeedbackRating } from "./domain/feedback";
 import { canRateMessage } from "./application/messageActionAvailability";
@@ -58,13 +61,9 @@ export const messageFeedback = definePlugin({
   requires: { runtime: RUNTIME_STREAM_PORTS },
   setup(ctx) {
     const gateway = installRuntimeFeedbackGateway();
-    let connectionGeneration = ctx.runtime.connectionGeneration();
-    const unsubscribeRuntime = ctx.runtime.subscribeConnection(() => {
-      const next = ctx.runtime.connectionGeneration();
-      if (next === connectionGeneration) return;
-      connectionGeneration = next;
-      gateway.replaceRuntimeGeneration();
-    });
+    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
+      gateway.replaceRuntimeGeneration(),
+    );
     contributeLayout(ctx, "message.actions", {
       id: "feedback",
       order: 15,

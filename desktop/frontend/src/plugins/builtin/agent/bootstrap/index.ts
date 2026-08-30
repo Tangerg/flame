@@ -12,7 +12,10 @@ import {
   subscribeAgentSessionLifecycle,
 } from "@/plugins/builtin/agent/public/session";
 import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RUNTIME_STREAM_PORTS,
+  followRuntimeGeneration,
+} from "@/plugins/builtin/runtime/public/ports";
 
 export default definePlugin({
   name: "flame.builtin.agent-bootstrap",
@@ -23,13 +26,9 @@ export default definePlugin({
     const disposeState = installAgentStatePorts();
     const disposeDefaultSession = installAgentDefaultSessionPort();
     const runtimeGateway = installAgentRuntimeGateway();
-    let connectionGeneration = ctx.runtime.connectionGeneration();
-    const unsubscribeRuntime = ctx.runtime.subscribeConnection(() => {
-      const next = ctx.runtime.connectionGeneration();
-      if (next === connectionGeneration) return;
-      connectionGeneration = next;
-      runtimeGateway.replaceRuntimeGeneration();
-    });
+    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
+      runtimeGateway.replaceRuntimeGeneration(),
+    );
     const disposeInterruptResponses = installInterruptResponseCoordinator();
     // After the ports it reads through.
     const disposeDraftCleanup = installAbandonedDraftCleanup();

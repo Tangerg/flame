@@ -9,7 +9,10 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 import { installGoalRuntimeAdapter } from "./adapters/runtimeGoalCommandsGateway";
 import { GoalStatusSurface } from "./ui/GoalStatusSurface";
 import { GoalModeIndicator } from "./ui/GoalModeIndicator";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RUNTIME_STREAM_PORTS,
+  followRuntimeGeneration,
+} from "@/plugins/builtin/runtime/public/ports";
 import { getActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { getAgentSessionSharedMaterial } from "@/plugins/builtin/agent/public/sessionMaterial";
 import { getComposerText } from "@/plugins/builtin/chat/composer/public/draft";
@@ -32,17 +35,12 @@ export default definePlugin({
   requires: { runtime: RUNTIME_STREAM_PORTS },
   setup(ctx) {
     const composerMode = GoalComposerModeOwner.install();
-    let connectionGeneration = ctx.runtime.connectionGeneration();
-    const runtimeAdapter = installGoalRuntimeAdapter(connectionGeneration !== null);
-    const unsubscribeRuntime = ctx.runtime.subscribeConnection(() => {
-      const next = ctx.runtime.connectionGeneration();
-      if (next === connectionGeneration) return;
-      connectionGeneration = next;
-      if (next === null) {
-        runtimeAdapter.retireRuntimeGeneration();
-        return;
-      }
-      runtimeAdapter.replaceRuntimeGeneration();
+    const runtimeAdapter = installGoalRuntimeAdapter(ctx.runtime.connectionGeneration() !== null);
+    // Goal is the only follower that distinguishes losing the connection from getting a new
+    // one: a retired generation stops its commands, a replaced one re-arms them.
+    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
+      if (next === null) runtimeAdapter.retireRuntimeGeneration();
+      else runtimeAdapter.replaceRuntimeGeneration();
     });
     contributeLayout(ctx, "composer.overlay.top", {
       id: "goal",
