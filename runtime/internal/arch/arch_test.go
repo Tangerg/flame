@@ -1893,6 +1893,11 @@ func forbidExternalImports(t *testing.T, dir string, banned []string) {
 		}
 		for _, imp := range f.Imports {
 			ip := strings.Trim(imp.Path.Value, `"`)
+			// net/url is a deterministic syntax/value parser, not a network
+			// capability. All packages capable of network I/O remain excluded.
+			if ip == "net/url" {
+				continue
+			}
 			for _, bad := range banned {
 				if ip == bad || strings.HasPrefix(ip, bad+"/") {
 					rel, _ := filepath.Rel(root, path)

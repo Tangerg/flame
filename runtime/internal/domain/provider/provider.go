@@ -6,6 +6,7 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -51,19 +52,18 @@ func NewBaseURL(value string) (BaseURL, error) {
 		strings.IndexFunc(value, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }) >= 0 {
 		return BaseURL{}, ErrBaseURLInvalid
 	}
-	scheme, remainder, found := strings.Cut(value, "://")
-	scheme = strings.ToLower(scheme)
-	if !found || (scheme != "http" && scheme != "https") {
+	parsed, err := url.Parse(value)
+	if err != nil {
 		return BaseURL{}, ErrBaseURLInvalid
 	}
-	authority, path, hasPath := strings.Cut(remainder, "/")
-	if !validHTTPAuthority(authority) {
+	scheme := strings.ToLower(parsed.Scheme)
+	if (scheme != "http" && scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Opaque != "" ||
+		!validHTTPAuthority(parsed.Host) {
 		return BaseURL{}, ErrBaseURLInvalid
 	}
-	normalized := scheme + "://" + strings.ToLower(authority)
-	if hasPath {
-		normalized += "/" + path
-	}
+	parsed.Scheme = scheme
+	parsed.Host = strings.ToLower(parsed.Host)
+	normalized := parsed.String()
 	return BaseURL{value: strings.TrimRight(normalized, "/")}, nil
 }
 

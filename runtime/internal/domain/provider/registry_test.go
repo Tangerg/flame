@@ -102,6 +102,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 	for _, value := range []string{
 		"", "api.example.test", "ftp://api.example.test", "https://user@api.example.test",
 		"https://api.example.test?token=secret", "https://api.example.test#fragment",
+		"https://api.example.test/%zz",
 	} {
 		if _, err := NewBaseURL(value); !errors.Is(err, ErrBaseURLInvalid) {
 			t.Errorf("NewBaseURL(%q) error = %v", value, err)
