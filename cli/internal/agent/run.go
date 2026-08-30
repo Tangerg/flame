@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"mime"
 	"slices"
 	"strings"
 	"time"
@@ -186,6 +187,12 @@ func (a Attachment) Validate() error {
 	}
 	if !slices.Contains([]AttachmentKind{AttachmentImage, AttachmentText}, a.Kind) {
 		problems = append(problems, fmt.Errorf("kind %q is invalid", a.Kind))
+	}
+	if a.Kind == AttachmentImage {
+		mediaType, _, err := mime.ParseMediaType(a.MimeType)
+		if err != nil || !strings.HasPrefix(mediaType, "image/") {
+			problems = append(problems, fmt.Errorf("image MIME %q is invalid", a.MimeType))
+		}
 	}
 	if strings.TrimSpace(a.Name) == "" {
 		problems = append(problems, errors.New("name is empty"))

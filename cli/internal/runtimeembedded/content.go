@@ -1,6 +1,7 @@
 package runtimeembedded
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -90,6 +92,9 @@ func (r *Runtime) projectInput(ctx context.Context, message agent.Message) ([]pr
 		}
 		switch attachment.Kind {
 		case agent.AttachmentText:
+			if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
+				return nil, fmt.Errorf("read attachment %q: content is not valid text", attachment.Name)
+			}
 			blocks = append(blocks, protocol.ContentBlock{
 				Type: protocol.ContentBlockText,
 				Text: fmt.Sprintf("--- attached file: %q ---\n%s\n--- end attached file ---", attachment.Name, data),

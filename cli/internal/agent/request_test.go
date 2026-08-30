@@ -96,6 +96,11 @@ func TestDurableAttachmentMayLackLocalPathButDraftMayNot(t *testing.T) {
 	if err := (Message{Attachments: []Attachment{durable}}).Validate(); err == nil || !strings.Contains(err.Error(), "local path") {
 		t.Fatalf("draft attachment error = %v", err)
 	}
+	invalidMIME := durable
+	invalidMIME.MimeType = "text/plain"
+	if err := invalidMIME.Validate(); err == nil || !strings.Contains(err.Error(), "image MIME") {
+		t.Fatalf("image attachment MIME error = %v", err)
+	}
 }
 
 func TestSegmentStreamValidatesOperationSpecificUserItemIdentity(t *testing.T) {

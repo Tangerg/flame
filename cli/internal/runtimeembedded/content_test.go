@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -64,6 +65,33 @@ func TestProjectInputRejectsImagesBeforeReadingWithoutMultimodalCapability(t *te
 	}
 	if blocks != nil || reads != 0 {
 		t.Fatalf("projectInput = (%+v, %v), want no blocks or attachment reads", blocks, reads)
+	}
+}
+
+func TestProjectInputRejectsInvalidTextBytesAtDispatch(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{name: "invalid UTF-8", data: []byte{'o', 'k', 0xff}},
+		{name: "NUL", data: []byte{'o', 'k', 0}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runtime := &Runtime{loadAttachment: func(context.Context, string, int64) ([]byte, error) {
+				return test.data, nil
+			}}
+			blocks, err := runtime.projectInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
+				ID: "text", Kind: agent.AttachmentText, Name: "notes.txt", Path: "/notes.txt",
+				MimeType: "text/plain", Size: int64(len(test.data)),
+			}}})
+			if err == nil || !strings.Contains(err.Error(), "not valid text") {
+				t.Fatalf("projectInput error = %v, want invalid text", err)
+			}
+			if blocks != nil {
+				t.Fatalf("projectInput blocks = %+v, want nil", blocks)
+			}
+		})
 	}
 }
 
