@@ -118,6 +118,8 @@ Each record uses an explicit current shape. Invalid or old local shapes fail clo
 
 Every Workbench file is one complete JSON document with a 16 MiB encoded limit shared by reads and writes. Its versioned envelope and value use a closed field vocabulary, including custom rich-state codecs such as pending HITL resume; an older process must reject state it does not understand instead of silently dropping fields on its next save. A read must reject an oversized file, trailing value, truncated document, or unknown field instead of accepting a valid prefix; a write must fail before durable replacement and in-memory mutation when its next process could not reopen the result.
 
+Authored attachments are dynamic local path references, not frozen file snapshots: selection owns stable UI identity and declared kind, while dispatch reopens the path and reads the current bytes under the 20 MiB envelope. That does not permit lossy projection. An image attachment rich value must carry a valid `image/*` MIME before filesystem I/O; a text attachment's complete dispatch-time bytes must be valid UTF-8 without NUL before conversion to a Protocol text block. CLI does not add mtime/hash locking, content sniffing, or a second provider capability policy.
+
 Queue and replay are rich aggregates. They own identity, ordering, selection, dispatch state, acknowledgement policy, and legal edits. Terminal code issues commands to those aggregates instead of mutating slices and flags independently.
 
 ## Provider presentation
