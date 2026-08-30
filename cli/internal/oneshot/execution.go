@@ -385,7 +385,9 @@ func consume(stream agent.EventStream, conversation *agent.Conversation, rendere
 		case agent.RunInterrupted:
 			followed.interactions = agent.CloneInteractions(payload.Interactions)
 		case agent.RunFinished:
-			followed.outcome = new(payload.Outcome)
+			if event.RunID == conversation.RunID() {
+				followed.outcome = new(payload.Outcome)
+			}
 		}
 	}
 	return followed

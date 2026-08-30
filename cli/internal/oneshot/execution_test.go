@@ -19,6 +19,22 @@ import (
 
 type invalidOpeningRuntime struct{ *mock.Runtime }
 
+type treeReconnectRuntime struct {
+	*mock.Runtime
+	initial       agent.SegmentStream
+	rebound       agent.SegmentStream
+	subscriptions []agent.SubscribeRun
+}
+
+func (t *treeReconnectRuntime) StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error) {
+	return t.initial, nil
+}
+
+func (t *treeReconnectRuntime) SubscribeRun(_ context.Context, input agent.SubscribeRun) (agent.SegmentStream, error) {
+	t.subscriptions = append(t.subscriptions, input)
+	return t.rebound, nil
+}
+
 type refusingCancellationRuntime struct {
 	*mock.Runtime
 
@@ -367,6 +383,83 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testing.T) {
+	base := mock.New()
+	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := agent.Run{
+		ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
+		Status: agent.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
+	}
+	lineage, err := agent.NewChildRunLineage("run_child", "item_delegate", root.ID, root.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := agent.Run{
+		ID: "run_child", SessionID: session.ID, Lineage: lineage,
+		Status: agent.RunStatusRunning, ActiveSegmentID: "seg_child", Limits: agent.UnlimitedRunLimits(),
+	}
+	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
+		return agent.RunEvent{
+			EventID: id, RunID: runID, SegmentID: segmentID, StreamSegmentID: root.ActiveSegmentID,
+			At: time.Unix(1, 0), Event: payload,
+		}
+	}
+	initialEvents := []agent.RunEvent{
+		event("event_root_started", root.ID, root.ActiveSegmentID, agent.SegmentStarted{Run: root}),
+		event("event_child_started", child.ID, child.ActiveSegmentID, agent.SegmentStarted{Run: child}),
+		event("event_child_finished", child.ID, child.ActiveSegmentID, agent.RunFinished{
+			Outcome: agent.Outcome{Status: agent.OutcomeMaxSteps, Detail: "child limit"},
+		}),
+	}
+	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, agent.RunFinished{
+		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+	})
+	stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
+		return func(yield func(agent.RunEvent, error) bool) {
+			for _, item := range events {
+				if !yield(item, nil) {
+					return
+				}
+			}
+			if terminal != nil {
+				yield(agent.RunEvent{}, terminal)
+			}
+		}
+	}
+	runtime := &treeReconnectRuntime{
+		Runtime: base,
+		initial: agent.SegmentStream{
+			RunID: root.ID, SegmentID: root.ActiveSegmentID, UserItemID: "item_user",
+			Events: stream(initialEvents, agent.ErrDisconnected),
+		},
+		rebound: agent.SegmentStream{
+			RunID: root.ID, SegmentID: root.ActiveSegmentID,
+			Events: stream([]agent.RunEvent{rootFinished}, nil),
+		},
+	}
+	renderer := new(recordingRenderer)
+	err = Execute(t.Context(), Invocation{
+		Runtime: runtime, Renderer: renderer,
+		ReplayPolicy:      commandreplay.UnavailablePolicy(),
+		Start:             unlimitedStart(session.ID, "delegate then continue"),
+		ReconnectAttempts: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runtime.subscriptions) != 1 || runtime.subscriptions[0].AfterEventID != "event_child_finished" {
+		t.Fatalf("subscriptions = %+v", runtime.subscriptions)
+	}
+	if !slices.ContainsFunc(renderer.events, func(item agent.RunEvent) bool {
+		return item.EventID == rootFinished.EventID
+	}) {
+		t.Fatalf("root terminal event was not rendered: %+v", renderer.events)
 	}
 }
 
