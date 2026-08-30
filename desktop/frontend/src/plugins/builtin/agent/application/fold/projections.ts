@@ -150,7 +150,22 @@ export function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
   return labelSource(tool).path ? "path" : "text";
 }
 
+// Every label lands in a SINGLE-LINE row, and each branch below reads a model-produced
+// argument — a path, description, query or summary can carry a newline. Collapsing once
+// here keeps the invariant with the projection that owns the label, rather than asking
+// every row that shows one to defend itself.
+function oneLine(text: string): string {
+  if (!text.includes("\n")) return text;
+  const first = text.split("\n").find((line) => line.trim() !== "");
+  return first?.trim() ?? text.replace(/\s+/g, " ").trim();
+}
+
 function labelSource(tool: AgentToolInvocation): { text: string; path: boolean } {
+  const source = rawLabelSource(tool);
+  return { text: oneLine(source.text), path: source.path };
+}
+
+function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolean } {
   const byName = nameLabel(tool);
   if (byName) return { text: byName, path: false };
   const a = tool.arguments ?? {};
