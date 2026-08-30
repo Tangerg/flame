@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -18,6 +19,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/session"
 )
+
+const maximumPromptBytes = 4 << 20
 
 func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
 	flags := new(runFlags)
@@ -233,7 +236,14 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 	if len(parts) == 0 {
 		return "", errNoPrompt
 	}
-	return strings.Join(parts, "\n\n"), nil
+	prompt := strings.Join(parts, "\n\n")
+	if len(prompt) > maximumPromptBytes {
+		return "", fmt.Errorf("prompt exceeds the %d-byte limit", maximumPromptBytes)
+	}
+	if !utf8.ValidString(prompt) {
+		return "", errors.New("prompt is not valid UTF-8")
+	}
+	return prompt, nil
 }
 
 // readPipedPrompt reads stdin when it is not a terminal. A terminal is left alone: a
@@ -248,9 +258,15 @@ func readPipedPrompt(in io.Reader) (string, error) {
 			return "", nil
 		}
 	}
-	b, err := io.ReadAll(in)
+	b, err := io.ReadAll(io.LimitReader(in, maximumPromptBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
+	}
+	if len(b) > maximumPromptBytes {
+		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", maximumPromptBytes)
+	}
+	if !utf8.Valid(b) {
+		return "", errors.New("piped prompt is not valid UTF-8")
 	}
 	return strings.TrimSpace(string(b)), nil
 }

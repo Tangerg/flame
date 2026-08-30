@@ -524,6 +524,23 @@ func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	}
 }
 
+func TestReadPipedPromptRejectsUnboundedOrInvalidInput(t *testing.T) {
+	const intendedLimit = 4 << 20
+	for _, test := range []struct {
+		name  string
+		input io.Reader
+	}{
+		{name: "oversized", input: strings.NewReader(strings.Repeat("x", intendedLimit+1))},
+		{name: "invalid UTF-8", input: bytes.NewReader([]byte{0xff})},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if prompt, err := readPipedPrompt(test.input); err == nil {
+				t.Fatalf("invalid piped prompt was accepted with %d bytes", len(prompt))
+			}
+		})
+	}
+}
+
 func TestRunAttachesRepeatedFilesAndAllowsAttachmentOnlyPrompts(t *testing.T) {
 	workspace := t.TempDir()
 	first := filepath.Join(workspace, "notes.txt")
