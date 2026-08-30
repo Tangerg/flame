@@ -46,8 +46,11 @@ const INDEX_HTML = join(DIST, "index.html");
 // dependency graph before first paint. Headroom is ~14% — loose enough that
 // adding a normal feature doesn't bump it, tight enough that pulling a
 // heavyweight dependency onto the startup path fails here.
+// 2026-08-30: lowered from 3_000_000 after splitting OpenTelemetry per package
+// took 110 KB of SDKs and exporters off the startup path. A ceiling left at the
+// old value would have let that space refill without anyone noticing.
 const BUDGETS = {
-  js: 3_000_000,
+  js: 2_850_000,
   css: 135_000,
 };
 

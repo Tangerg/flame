@@ -116,13 +116,27 @@ export default defineConfig({
           if (id.includes("node_modules/katex/")) return "katex";
           // Mermaid
           if (id.includes("node_modules/beautiful-mermaid")) return "mermaid";
-          // OpenTelemetry. Eager, despite `setupObservability` being
-          // dynamic-imported: app code on ordinary paths opens spans and emits
-          // metrics against the API. Splitting the API out of this group was
-          // measured and bought nothing (a 422-byte chunk, the SDK still
-          // static-reachable), so it stays one group until the eager edge into
-          // the SDK is found.
-          if (id.includes("node_modules/@opentelemetry")) return "otel";
+          // OpenTelemetry, ONE CHUNK PER PACKAGE, which is not the tidy
+          // grouping it looks like it should be.
+          //
+          // Only `api` and `api-logs` are eager: app code on ordinary paths
+          // opens spans and emits metrics against them, and `lib/metrics` is
+          // imported by the reducer itself. The SDKs and exporters are reachable
+          // only through the dynamic `setupObservability`. But every hand-drawn
+          // two-group split measured here put the whole family back on the
+          // startup path — the API and the SDK share modules, and once they are
+          // named into groups Rolldown resolves that overlap by folding the
+          // shared modules in with the SDK, so the eager API edge drags 110 KB
+          // of exporters along behind it.
+          //
+          // Per package, each one's eagerness is decided by its own edges
+          // instead, and the SDKs fall off the entry: 122.8 KB to 12.2 KB.
+          // The extra chunk count costs nothing — these are read from a local
+          // disk, and only the startup path is a budget.
+          {
+            const otel = /node_modules\/@opentelemetry\/([^/]+)/.exec(id);
+            if (otel) return `otel-${otel[1]}`;
+          }
           // Leave unrelated dependencies to Rollup's graph-aware chunking. A
           // catch-all vendor bucket merged otherwise independent lazy features
           // into one 9MB raw chunk and defeated the explicit boundaries above.
