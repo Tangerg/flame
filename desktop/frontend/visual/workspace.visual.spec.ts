@@ -166,6 +166,19 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   await openWorkspace(page, { state: "dock-light" });
   await starveTheRow(page);
 
+  // Two settles before any synchronous read. The fold is a store round-trip away from the
+  // resize, and `visibility` is then transitioned with a delay equal to the slide-out, so the
+  // dock stays visible for the whole fold BY DESIGN. Reading a frame instead of the end state
+  // is what made this flaky.
+  await expect(page.getByTestId("dock-open")).toHaveText("false");
+  await expect
+    .poll(() =>
+      page
+        .locator(".agent-dock-row .agent-context-dock")
+        .evaluate((dock) => getComputedStyle(dock).visibility),
+    )
+    .toBe("hidden");
+
   const geometry = await page.locator(".agent-dock-row").evaluate((row) => {
     const conversation = row.firstElementChild;
     const dock = row.querySelector(".agent-context-dock");
@@ -178,7 +191,6 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   expect(geometry.rowWidth).toBeLessThan(DOCK_SAFE_AREA_PX + DOCK_MIN_WIDTH_PX);
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
-  await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(
     page.getByRole("button", { name: "Widen the window to open the right workspace" }),
   ).toBeDisabled();

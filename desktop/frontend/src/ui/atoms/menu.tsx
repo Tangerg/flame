@@ -18,7 +18,6 @@ type ContextPopupProps = ComponentProps<typeof ContextMenuPrimitive.Popup>;
 interface FloatingContentProps {
   children: ReactNode;
   className?: string;
-  positionerClassName?: string;
   side?: DropdownPositionerProps["side"];
   align?: DropdownPositionerProps["align"];
   sideOffset?: DropdownPositionerProps["sideOffset"];
@@ -46,7 +45,6 @@ interface ContextIconItemProps extends Omit<ContextItemProps, "children" | "onCl
 function DropdownContent({
   children,
   className,
-  positionerClassName,
   side,
   align,
   sideOffset,
@@ -60,7 +58,7 @@ function DropdownContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn(FLOATING_LAYER, positionerClassName)}
+        className={FLOATING_LAYER}
       >
         <MenuPrimitive.Popup {...popupProps} className={cn(MENU_CONTENT_CLASSES, className)}>
           {children}
@@ -73,7 +71,6 @@ function DropdownContent({
 function ContextContent({
   children,
   className,
-  positionerClassName,
   side,
   align,
   sideOffset,
@@ -87,7 +84,7 @@ function ContextContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn(FLOATING_LAYER, positionerClassName)}
+        className={FLOATING_LAYER}
       >
         <ContextMenuPrimitive.Popup {...popupProps} className={cn(MENU_CONTENT_CLASSES, className)}>
           {children}

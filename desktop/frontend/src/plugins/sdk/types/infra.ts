@@ -1,4 +1,3 @@
-import type { ComponentType } from "react";
 import type { LogLevel } from "@/lib/observability/logBridge";
 import type {
   ContentBlock,
@@ -23,16 +22,6 @@ export interface NotificationEntry {
 }
 
 export type { LogLevel };
-
-export interface LogEvent {
-  plugin: string;
-  level: LogLevel;
-  args: unknown[];
-  timestamp: number;
-}
-
-/** Errors thrown inside are caught by the host. */
-export type LogSubscriber = (event: LogEvent) => void;
 
 /**
  * Query hooks resolve their `queryFn` by looking up the provider for their key, so a plugin
@@ -97,20 +86,6 @@ export interface AgentSourceSpec {
   priority?: number;
   /** Builds a FRESH driver per session. */
   factory: () => AgentDriver;
-}
-
-export interface PluginErrorFallbackProps {
-  /** Plugin name OR boundary context label, e.g. "view:diff" / "layout:app.main:chat". */
-  plugin: string;
-  label?: string;
-  error: Error;
-}
-
-export interface PluginErrorFallbackSpec {
-  id: string;
-  /** Highest wins. Built-ins use 0; plugins ≥ 100. */
-  priority?: number;
-  component: ComponentType<PluginErrorFallbackProps>;
 }
 
 // Task types are declared by the store that implements them (`state/tasksStore`)

@@ -10,7 +10,6 @@ interface LightboxDialogProps {
   title: ReactNode;
   children: ReactNode;
   className?: string;
-  closeOnContentClick?: boolean;
 }
 
 export function LightboxDialog({
@@ -20,7 +19,6 @@ export function LightboxDialog({
   title,
   children,
   className,
-  closeOnContentClick = false,
 }: LightboxDialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -29,11 +27,9 @@ export function LightboxDialog({
         <DialogPrimitive.Backdrop className={cn(MODAL_SCRIM, "cursor-zoom-out")} />
         <DialogPrimitive.Popup
           aria-describedby={undefined}
-          onClick={closeOnContentClick ? () => onOpenChange(false) : undefined}
           className={cn(
             "fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-fit max-h-[90vh] max-w-[min(1400px,95vw)] overflow-auto rounded-[var(--floating-panel-radius)] bg-card shadow-[var(--shadow-modal)] outline-none",
             FLOATING_MOTION,
-            closeOnContentClick && "cursor-zoom-out",
             className,
           )}
         >

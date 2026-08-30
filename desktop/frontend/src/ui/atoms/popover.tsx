@@ -9,7 +9,6 @@ type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
 interface PopoverContentBaseProps {
   children: ReactNode;
   className?: string;
-  positionerClassName?: string;
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: PositionerProps["sideOffset"];
@@ -22,7 +21,6 @@ type PopoverContentProps = PopoverContentBaseProps &
 function PopoverContent({
   children,
   className,
-  positionerClassName,
   side,
   align,
   sideOffset,
@@ -36,7 +34,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn(FLOATING_LAYER, positionerClassName)}
+        className={FLOATING_LAYER}
       >
         <PopoverPrimitive.Popup {...popupProps} className={cn(FLOATING_PANEL, className)}>
           {children}

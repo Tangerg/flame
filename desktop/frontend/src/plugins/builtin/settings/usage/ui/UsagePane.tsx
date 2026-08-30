@@ -92,6 +92,16 @@ export function UsagePane() {
                   {t("usage.cache")} {fmtTokens(total?.cacheReadTokens ?? 0)}
                 </span>
               )}
+              {(total?.cacheWriteTokens ?? 0) > 0 && (
+                <span className="text-fg-faint">
+                  {t("usage.cacheWrite")} {fmtTokens(total?.cacheWriteTokens ?? 0)}
+                </span>
+              )}
+              {(total?.reasoningTokens ?? 0) > 0 && (
+                <span className="text-fg-faint">
+                  {t("usage.reasoning")} {fmtTokens(total?.reasoningTokens ?? 0)}
+                </span>
+              )}
               <span className="text-fg-faint">
                 · {t("usage.sessions", { count: data.sessions ?? 0 })} ·{" "}
                 {t("usage.runs", { count: data.runs ?? 0 })}

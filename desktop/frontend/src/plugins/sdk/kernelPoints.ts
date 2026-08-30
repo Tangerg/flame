@@ -11,9 +11,7 @@ import type {
   DataProviderSpec,
   LayoutSlotSpec,
   LocaleSpec,
-  LogSubscriber,
   MessageRoleSpec,
-  PluginErrorFallbackSpec,
   ReadyHandler,
   RouteSpec,
   SettingsPaneSpec,
@@ -66,11 +64,6 @@ export const DATA_PROVIDER = defineExtensionPoint<DataProviderSpec>({
   keying: "single",
   keyOf: (s) => s.key,
 });
-export const ERROR_FALLBACK = defineExtensionPoint<PluginErrorFallbackSpec>({
-  id: "flame.plugin.errorFallback",
-  keying: "single",
-});
-
 // Slash trigger lives in the map key, not on the spec — contributors pass it
 // via `opts.key`. `normalizeKey` folds the leading "/" so callers can register
 // "ping" or "/ping" and look it up either way.
@@ -119,11 +112,6 @@ export const CONTEXT_DOCK_DESTINATION = defineExtensionPoint<ContextDockDestinat
 });
 
 // ---- multi-handler surfaces (every contribution coexists, runs in order) --
-export const LOG_SUBSCRIBER = defineExtensionPoint<LogSubscriber>({
-  id: "flame.log.subscriber",
-  keying: "multi",
-});
-
 export const READY_HANDLER = defineExtensionPoint<ReadyHandler>({
   id: "flame.lifecycle.ready",
   keying: "multi",

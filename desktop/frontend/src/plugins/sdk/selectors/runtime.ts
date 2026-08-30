@@ -1,10 +1,5 @@
-import type {
-  AgentRunStartOptions,
-  AgentRunOptionsProviderSpec,
-  AgentSourceSpec,
-  PluginErrorFallbackSpec,
-} from "../types";
-import { AGENT_RUN_OPTIONS, AGENT_SOURCE, DATA_PROVIDER, ERROR_FALLBACK } from "../kernelPoints";
+import type { AgentRunStartOptions, AgentRunOptionsProviderSpec, AgentSourceSpec } from "../types";
+import { AGENT_RUN_OPTIONS, AGENT_SOURCE, DATA_PROVIDER } from "../kernelPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "./extensions";
 
 /** Highest priority wins, ties broken by insertion order. */
@@ -32,11 +27,4 @@ export function lookupDataProvider<T = unknown, P = unknown>(
 ): ((params?: P, signal?: AbortSignal) => Promise<T>) | undefined {
   const spec = lookupExtensionByKey(DATA_PROVIDER, key);
   return spec ? (spec.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>) : undefined;
-}
-
-/** Ties resolve by insertion order, so the later registration wins. */
-export function pickPluginErrorFallback(): PluginErrorFallbackSpec | undefined {
-  const specs = lookupExtensionPoint(ERROR_FALLBACK);
-  if (specs.length === 0) return undefined;
-  return specs.reduce((best, cur) => ((cur.priority ?? 0) >= (best.priority ?? 0) ? cur : best));
 }

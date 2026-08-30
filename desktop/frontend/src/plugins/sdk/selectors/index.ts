@@ -30,11 +30,6 @@ export {
 export { lookupToolActionOwner, lookupToolViewOpenerOwner } from "./messages";
 
 // Runtime / data-layer: priority picks + data-provider fetcher.
-export {
-  lookupDataProvider,
-  pickAgentSource,
-  pickPluginErrorFallback,
-  resolveAgentRunStartOptions,
-} from "./runtime";
+export { lookupDataProvider, pickAgentSource, resolveAgentRunStartOptions } from "./runtime";
 
 // Theme scheme resolution.

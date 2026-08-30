@@ -1,7 +1,7 @@
 import { Trans } from "@/lib/i18n";
 import type { ErrorInfo, ReactNode } from "react";
 import { Component } from "react";
-import { pickPluginErrorFallback, reportPluginError } from "../sdk";
+import { reportPluginError } from "../sdk";
 
 interface Props {
   plugin: string;
@@ -27,12 +27,6 @@ export class PluginBoundary extends Component<Props, State> {
 
   override render(): ReactNode {
     if (!this.state.error) return this.props.children;
-
-    const fallback = pickPluginErrorFallback();
-    if (fallback) {
-      const Body = fallback.component;
-      return <Body plugin={this.props.plugin} label={this.props.label} error={this.state.error} />;
-    }
 
     return (
       <div className="plugin-boundary-error">

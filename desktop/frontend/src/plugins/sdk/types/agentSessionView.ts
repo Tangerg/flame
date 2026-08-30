@@ -54,10 +54,6 @@ export interface ToolCall {
    *  "no match"). Real failures set the Item's `error`. */
   exitCode?: number;
   result?: string;
-  /** A `write` reports no diff rows, so this is the content's only route to the row.
-   *  BOUNDED: a session holds every call it made. */
-  written?: string[];
-  writtenLines?: number;
   /** Its own field because `fn` carries the human `description`, and this is the line a
    *  reader actually verifies. */
   command?: string;
