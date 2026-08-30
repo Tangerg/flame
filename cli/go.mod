@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20260828224447-a2e937181e11
+	github.com/Tangerg/flame/runtime v0.0.0-20260830193934-290ea4a16c12
 	github.com/Tangerg/oolong/components v0.16.0
 	github.com/Tangerg/oolong/core v0.16.0
 	github.com/Tangerg/oolong/highlight v0.16.0
@@ -22,40 +22,39 @@ require (
 	cloud.google.com/go/auth v0.23.2 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260828224447-a2e937181e11 // indirect
-	github.com/Tangerg/scope/a2a v0.0.1 // indirect
-	github.com/Tangerg/scope/agent v0.2.0 // indirect
-	github.com/Tangerg/scope/core v0.0.3 // indirect
-	github.com/Tangerg/scope/mcp v0.0.1 // indirect
-	github.com/Tangerg/scope/models/alibaba v0.0.2 // indirect
-	github.com/Tangerg/scope/models/anthropic v0.0.3 // indirect
-	github.com/Tangerg/scope/models/azureopenai v0.0.2 // indirect
-	github.com/Tangerg/scope/models/catalog v0.0.2 // indirect
-	github.com/Tangerg/scope/models/deepseek v0.0.2 // indirect
-	github.com/Tangerg/scope/models/fireworks v0.0.2 // indirect
-	github.com/Tangerg/scope/models/google v0.0.3 // indirect
-	github.com/Tangerg/scope/models/groq v0.0.2 // indirect
-	github.com/Tangerg/scope/models/huggingface v0.0.2 // indirect
-	github.com/Tangerg/scope/models/minimax v0.0.2 // indirect
-	github.com/Tangerg/scope/models/mistral v0.0.2 // indirect
-	github.com/Tangerg/scope/models/moonshot v0.0.2 // indirect
-	github.com/Tangerg/scope/models/openai v0.0.3 // indirect
-	github.com/Tangerg/scope/models/openrouter v0.0.2 // indirect
-	github.com/Tangerg/scope/models/perplexity v0.0.2 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.0.3 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.0.3 // indirect
-	github.com/Tangerg/scope/models/together v0.0.2 // indirect
-	github.com/Tangerg/scope/models/xai v0.0.2 // indirect
-	github.com/Tangerg/scope/models/xiaomi v0.0.2 // indirect
-	github.com/Tangerg/scope/models/zhipu v0.0.2 // indirect
-	github.com/Tangerg/scope/skills v0.0.1 // indirect
-	github.com/Tangerg/scope/tools v0.0.2-0.20260828195634-f382905a017c // indirect
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260830193934-290ea4a16c12 // indirect
+	github.com/Tangerg/scope/a2a v0.11.0 // indirect
+	github.com/Tangerg/scope/agent v0.11.0 // indirect
+	github.com/Tangerg/scope/core v0.11.0 // indirect
+	github.com/Tangerg/scope/mcp v0.11.0 // indirect
+	github.com/Tangerg/scope/models/alibaba v0.11.0 // indirect
+	github.com/Tangerg/scope/models/anthropic v0.11.0 // indirect
+	github.com/Tangerg/scope/models/azureopenai v0.11.0 // indirect
+	github.com/Tangerg/scope/models/catalog v0.11.0 // indirect
+	github.com/Tangerg/scope/models/deepseek v0.11.0 // indirect
+	github.com/Tangerg/scope/models/fireworks v0.11.0 // indirect
+	github.com/Tangerg/scope/models/google v0.11.0 // indirect
+	github.com/Tangerg/scope/models/groq v0.11.0 // indirect
+	github.com/Tangerg/scope/models/huggingface v0.11.0 // indirect
+	github.com/Tangerg/scope/models/minimax v0.11.0 // indirect
+	github.com/Tangerg/scope/models/mistral v0.11.0 // indirect
+	github.com/Tangerg/scope/models/moonshot v0.11.0 // indirect
+	github.com/Tangerg/scope/models/openai v0.11.0 // indirect
+	github.com/Tangerg/scope/models/openrouter v0.11.0 // indirect
+	github.com/Tangerg/scope/models/perplexity v0.11.0 // indirect
+	github.com/Tangerg/scope/models/protocol/anthropic v0.11.0 // indirect
+	github.com/Tangerg/scope/models/protocol/openai v0.11.0 // indirect
+	github.com/Tangerg/scope/models/together v0.11.0 // indirect
+	github.com/Tangerg/scope/models/xai v0.11.0 // indirect
+	github.com/Tangerg/scope/models/xiaomi v0.11.0 // indirect
+	github.com/Tangerg/scope/models/zhipu v0.11.0 // indirect
+	github.com/Tangerg/scope/skills v0.11.0 // indirect
+	github.com/Tangerg/scope/tools v0.11.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
-	github.com/anthropics/anthropic-sdk-go v1.67.0 // indirect
+	github.com/anthropics/anthropic-sdk-go v1.68.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.39 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.40 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.6.0 // indirect
@@ -68,9 +67,8 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
-	github.com/clipperhouse/uax29/v2 v2.4.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.7.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
@@ -88,7 +86,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.14.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/mattn/go-runewidth v0.0.27 // indirect
+	github.com/mattn/go-runewidth v0.0.28 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.7.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/openai/openai-go/v3 v3.54.0 // indirect
@@ -130,7 +128,7 @@ require (
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	google.golang.org/api v0.294.0 // indirect
+	google.golang.org/api v0.295.0 // indirect
 	google.golang.org/genai v1.70.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
 	google.golang.org/grpc v1.83.2 // indirect

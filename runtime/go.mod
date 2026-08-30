@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/runtime
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260830185102-f9cab5a73a84
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260830193934-290ea4a16c12
 	github.com/Tangerg/scope/a2a v0.11.0
 	github.com/Tangerg/scope/agent v0.11.0
 	github.com/Tangerg/scope/core v0.11.0
@@ -121,7 +121,7 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	google.golang.org/api v0.294.0 // indirect
+	google.golang.org/api v0.295.0 // indirect
 	google.golang.org/genai v1.70.0 // indirect
 	google.golang.org/genproto v0.0.0-20260825221802-da73d73af1c5 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260825221802-da73d73af1c5 // indirect
