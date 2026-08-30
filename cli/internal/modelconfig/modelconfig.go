@@ -261,10 +261,6 @@ func (p Provider) Credential() (Credential, bool) {
 
 func (p Provider) BaseURL() (string, bool) { return p.baseURL, p.baseURL != "" }
 
-func (p Provider) KeyEditable() bool {
-	return p.credential == (Credential{}) || !p.credential.FromEnvironment()
-}
-
 type ChangeKind string
 
 const (

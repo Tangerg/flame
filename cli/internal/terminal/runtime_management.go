@@ -418,16 +418,17 @@ func (a *app) openProviderConfig(provider modelconfig.Provider) {
 		},
 	}
 	keyChoice := &headless.Select[formChange]{Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
-	keyOptions := []headless.Option[formChange]{{Label: "Keep current key", Value: formChangeKeep}}
-	if provider.KeyEditable() {
-		keyOptions = append(keyOptions,
-			headless.Option[formChange]{Label: "Set a new key", Value: formChangeSet},
-			headless.Option[formChange]{Label: "Clear stored key", Value: formChangeClear},
-		)
+	keyOptions := []headless.Option[formChange]{
+		{Label: "Keep current key", Value: formChangeKeep},
+		{Label: "Set a stored key", Value: formChangeSet},
+	}
+	credential, hasCredential := provider.Credential()
+	if hasCredential && credential.Stored() {
+		keyOptions = append(keyOptions, headless.Option[formChange]{Label: "Clear stored key", Value: formChangeClear})
 	}
 	keyChoice.SetOptions(keyOptions)
 	keyPlaceholder := ""
-	if credential, configured := provider.Credential(); configured {
+	if hasCredential {
 		keyPlaceholder = credential.Masked()
 	}
 	keyField := &headless.Text{

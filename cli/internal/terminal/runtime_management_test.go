@@ -344,6 +344,33 @@ func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing
 	stop()
 }
 
+func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
+	models := newModelConfigServiceStub()
+	models.providers[0] = terminalTestProvider(
+		"deepseek", "https://api.deepseek.example", "sk****env", modelconfig.KeyEnvironment,
+	)
+	host, stop := runUIWithRuntimeServices(t, Config{
+		Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models},
+	})
+	host.Shows(t, "Ask flame")
+	host.Type("/provider-config deepseek")
+	host.Press(input.Enter)
+	host.Shows(t, "Configure provider · deepseek")
+	host.Shows(t, "Set a stored key")
+	host.Press(input.Tab)
+	host.Press(input.Tab)
+	host.Press(input.Down)
+	host.Press(input.Tab)
+	host.Type("STORED_PROVIDER_OVERRIDE")
+	host.Press(input.Enter)
+	host.Shows(t, "provider updated · deepseek")
+	update := awaitValue(t, models.updates, "environment provider override")
+	if update.APIKey == nil || update.APIKey.Kind != modelconfig.SetValue || update.APIKey.Value != "STORED_PROVIDER_OVERRIDE" {
+		t.Fatalf("provider update = %+v", update)
+	}
+	stop()
+}
+
 func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	baseService := newModelConfigServiceStub()
 	service := &blockingProviderUpdateService{
