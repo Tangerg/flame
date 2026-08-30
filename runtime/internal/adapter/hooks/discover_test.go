@@ -72,6 +72,25 @@ func TestLoad_MalformedReturnsError(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsUnknownPolicyFields(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "document", body: `{"hooks":[],"hookz":[]}`},
+		{name: "hook", body: `{"hooks":[{"event":"PreToolUse","matchr":"shell","command":"true"}]}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cwd := t.TempDir()
+			writeHooks(t, cwd, test.body)
+			if hooks, err := Load(t.Context(), cwd, ""); err == nil {
+				t.Fatalf("Load accepted unknown policy field: %+v", hooks)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 	tests := []struct {
 		name string
