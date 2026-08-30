@@ -12,8 +12,9 @@ export function bcp47(): string {
   return lng;
 }
 
-// Intl formatters are expensive to construct and are asked for once per message row. Keyed
-// on the LOCALE so switching language rebuilds them instead of serving a stale one.
+// Intl formatters are expensive to construct and are asked for once per ROW — every session
+// in the Work Index, every inbox item, every notification, on every render. Keyed on the
+// LOCALE so switching language builds a new one instead of serving a stale one.
 const dateTimeCache = new Map<string, Intl.DateTimeFormat>();
 
 function dateTimeFormat(shape: string, opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
@@ -26,8 +27,15 @@ function dateTimeFormat(shape: string, opts: Intl.DateTimeFormatOptions): Intl.D
   return created;
 }
 
+const relativeTimeCache = new Map<string, Intl.RelativeTimeFormat>();
+
 function relative(value: number, unit: Intl.RelativeTimeFormatUnit): string {
-  return new Intl.RelativeTimeFormat(bcp47(), { numeric: "auto" }).format(value, unit);
+  const locale = bcp47();
+  const cached = relativeTimeCache.get(locale);
+  if (cached) return cached.format(value, unit);
+  const created = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  relativeTimeCache.set(locale, created);
+  return created.format(value, unit);
 }
 
 function absolute(d: Date, sameYear: boolean): string {
