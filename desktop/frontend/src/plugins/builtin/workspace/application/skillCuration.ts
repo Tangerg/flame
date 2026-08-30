@@ -1,7 +1,7 @@
 import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type { SkillCurationGateway, SkillProposalHandle } from "./ports/skillCurationGateway";
 import {
@@ -31,7 +31,7 @@ interface SkillCurationCommand {
 class SkillCurationGeneration {
   readonly #gateway: SkillCurationGateway;
   readonly #cohort = new RetirableTaskCohort(new SkillCurationRetiredError());
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: SkillCurationGateway) {
     this.#gateway = gateway;
@@ -79,33 +79,26 @@ class SkillCurationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
   }
 
   #run(identity: string, command: SkillCurationCommand): Promise<void> {
-    const result = this.#settle(this.#tails.get(identity) ?? Promise.resolve()).then(async () => {
-      this.#assertCurrent();
-      try {
-        await this.#settle(command.execute());
-      } catch (error) {
-        if (this.#cohort.retired) throw error;
+    return this.#chain.chain(identity, (tail) =>
+      this.#settle(tail).then(async () => {
+        this.#assertCurrent();
+        try {
+          await this.#settle(command.execute());
+        } catch (error) {
+          if (this.#cohort.retired) throw error;
+          await this.#repair(command.repair());
+          throw error;
+        }
+        this.#assertCurrent();
+        command.commit();
         await this.#repair(command.repair());
-        throw error;
-      }
-      this.#assertCurrent();
-      command.commit();
-      await this.#repair(command.repair());
-      this.#assertCurrent();
-    });
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
+        this.#assertCurrent();
+      }),
     );
-    this.#tails.set(identity, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
-    });
-    return result;
   }
 
   async #repair(filters: readonly QueryFilters[]): Promise<void> {

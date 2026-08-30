@@ -1,6 +1,6 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
   AgentMemoryAddInput,
@@ -30,7 +30,7 @@ class AgentMemoryMutationGeneration {
   readonly #gateway: AgentMemoryGateway;
   readonly #retiredError = new AgentMemoryMutationRetiredError();
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: AgentMemoryGateway) {
     this.#gateway = gateway;
@@ -70,28 +70,21 @@ class AgentMemoryMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
   }
 
   #run<T>(identity: string, mutation: AgentMemoryMutation<T>): Promise<T> {
-    const result = this.#settle(this.#tails.get(identity) ?? Promise.resolve()).then(async () => {
-      this.#assertCurrent();
-      const value = await this.#settle(mutation.execute());
-      this.#assertCurrent();
-      mutation.commit?.(value);
-      await this.#repairProjection();
-      this.#assertCurrent();
-      return value;
-    });
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
+    return this.#chain.chain(identity, (tail) =>
+      this.#settle(tail).then(async () => {
+        this.#assertCurrent();
+        const value = await this.#settle(mutation.execute());
+        this.#assertCurrent();
+        mutation.commit?.(value);
+        await this.#repairProjection();
+        this.#assertCurrent();
+        return value;
+      }),
     );
-    this.#tails.set(identity, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
-    });
-    return result;
   }
 
   async #repairProjection(): Promise<void> {

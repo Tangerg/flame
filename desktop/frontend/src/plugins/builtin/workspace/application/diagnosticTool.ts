@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
   DiagnosticToolGateway,
@@ -38,7 +38,7 @@ class DiagnosticToolGeneration {
   readonly #gateway: DiagnosticToolGateway;
   readonly #retiredError = new DiagnosticToolGenerationRetiredError();
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: DiagnosticToolGateway) {
     this.#gateway = gateway;
@@ -46,26 +46,19 @@ class DiagnosticToolGeneration {
 
   invoke(input: InvokeDiagnosticToolInput): Promise<unknown> {
     const identity = tupleKey(input.cwd ?? "", input.name);
-    const result = this.#settle(this.#tails.get(identity) ?? Promise.resolve()).then(async () => {
-      this.#assertCurrent();
-      const value = await this.#settle(this.#gateway.invoke(input));
-      this.#assertCurrent();
-      return value;
-    });
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
+    return this.#chain.chain(identity, (tail) =>
+      this.#settle(tail).then(async () => {
+        this.#assertCurrent();
+        const value = await this.#settle(this.#gateway.invoke(input));
+        this.#assertCurrent();
+        return value;
+      }),
     );
-    this.#tails.set(identity, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
-    });
-    return result;
   }
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
   }
 
   #settle<T>(operation: Promise<T>): Promise<T> {

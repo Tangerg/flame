@@ -1,7 +1,7 @@
 import { HOOKS_KEY } from "./hookQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 
 export interface HookTrustGateway {
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void>;
@@ -19,15 +19,15 @@ class HookTrustMutationGeneration {
   readonly #gateway: HookTrustGateway;
   readonly #retiredError = new HookTrustMutationRetiredError();
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: HookTrustGateway) {
     this.#gateway = gateway;
   }
 
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void> {
-    const result = this.#settle(this.#tails.get(projectRoot) ?? Promise.resolve()).then(
-      async () => {
+    return this.#chain.chain(projectRoot, (tail) =>
+      this.#settle(tail).then(async () => {
         this.#assertCurrent();
         try {
           await this.#settle(this.#gateway.setProjectTrust(projectRoot, trusted));
@@ -40,22 +40,13 @@ class HookTrustMutationGeneration {
         this.#assertCurrent();
         await this.#repairProjection();
         this.#assertCurrent();
-      },
+      }),
     );
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    this.#tails.set(projectRoot, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(projectRoot) === settlement) this.#tails.delete(projectRoot);
-    });
-    return result;
   }
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
   }
 
   async #repairProjection(): Promise<void> {

@@ -1,5 +1,5 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import {
   type GoalCommandsGateway,
   type GoalCommandReceipt,
@@ -32,7 +32,7 @@ class GoalCommandGeneration {
   readonly #repairProjection: GoalProjectionRepair;
   readonly #retiredError = new GoalCommandGenerationRetiredError();
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: GoalCommandsGateway, repairProjection: GoalProjectionRepair) {
     this.#gateway = gateway;
@@ -61,22 +61,13 @@ class GoalCommandGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
   }
 
   #run(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
-    const result = this.#settle(this.#tails.get(sessionId) ?? Promise.resolve()).then(() =>
-      this.#mutate(sessionId, command),
+    return this.#chain.chain(sessionId, (tail) =>
+      this.#settle(tail).then(() => this.#mutate(sessionId, command)),
     );
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    this.#tails.set(sessionId, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(sessionId) === settlement) this.#tails.delete(sessionId);
-    });
-    return result;
   }
 
   async #mutate(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {

@@ -1,7 +1,7 @@
 import { SCHEDULES_KEY, useSchedules } from "./scheduleQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
-import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import type { ScheduleConfig, ScheduleConfigInput, ScheduledRunIdentity } from "./scheduleConfig";
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
 export type { ScheduleConfig, ScheduleConfigInput } from "./scheduleConfig";
@@ -32,7 +32,7 @@ class ScheduleMutationGeneration {
   readonly #gateway: ScheduleGateway;
   readonly #retiredError = new ScheduleMutationRetiredError();
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #tails = new Map<string, Promise<void>>();
+  readonly #chain = new SerialTaskChain();
   readonly #accepted = new Map<string, ScheduleConfig>();
 
   constructor(gateway: ScheduleGateway) {
@@ -91,7 +91,7 @@ class ScheduleMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#tails.clear();
+    this.#chain.clear();
     this.#accepted.clear();
   }
 
@@ -101,18 +101,9 @@ class ScheduleMutationGeneration {
     commit: (value: T) => void,
     afterRepair?: (value: T) => void,
   ): Promise<T> {
-    const result = this.#settle(this.#tails.get(identity) ?? Promise.resolve()).then(() =>
-      this.#executeMutation(execute, commit, afterRepair),
+    return this.#chain.chain(identity, (tail) =>
+      this.#settle(tail).then(() => this.#executeMutation(execute, commit, afterRepair)),
     );
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    this.#tails.set(identity, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
-    });
-    return result;
   }
 
   async #executeMutation<T>(
