@@ -2,8 +2,10 @@ package operation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -432,5 +434,60 @@ func TestReplayRejectsUnversionedStoredOutcome(t *testing.T) {
 	)
 	if !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("replay failure = %v, want internal_error", result.Failure)
+	}
+}
+
+func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
+	t.Parallel()
+
+	method, ok := contract.lookup("runs.cancel")
+	if !ok {
+		t.Fatal("runs.cancel is not registered")
+	}
+	response, err := (&countingCancelService{}).CancelRun(
+		t.Context(), protocol.CancelRunRequest{RunID: "run_1"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid, err := encodeStoredOutcome(Result{Value: response})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(valid, &envelope); err != nil {
+		t.Fatal(err)
+	}
+
+	withUnknownEnvelope := maps.Clone(envelope)
+	withUnknownEnvelope["future"] = json.RawMessage(`true`)
+	unknownEnvelope, err := json.Marshal(withUnknownEnvelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var storedResult map[string]json.RawMessage
+	if err := json.Unmarshal(envelope["value"], &storedResult); err != nil {
+		t.Fatal(err)
+	}
+	storedResult["future"] = json.RawMessage(`true`)
+	unknownResult, err := json.Marshal(storedResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withUnknownResult := maps.Clone(envelope)
+	withUnknownResult["value"] = unknownResult
+	unknownResultPayload, err := json.Marshal(withUnknownResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, payload := range [][]byte{unknownEnvelope, unknownResultPayload} {
+		result := newReplayStore(newMemoryIdempotencyStore()).replay(
+			t.Context(), method, payload, &countingCancelService{},
+		)
+		if !errors.Is(result.Failure, protocol.ErrInternalError) {
+			t.Fatalf("replay failure = %v, want internal_error", result.Failure)
+		}
 	}
 }

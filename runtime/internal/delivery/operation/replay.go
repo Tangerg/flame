@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"iter"
 	"reflect"
 	"sort"
@@ -107,11 +108,14 @@ func (r *replayStore) invoke(
 
 func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte, target any) Result {
 	var stored storedOutcome
-	if err := json.Unmarshal(payload, &stored); err != nil {
+	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
 	}
 	if stored.Version != storedOutcomeVersion {
 		return failed(ProjectError(fmt.Errorf("idempotency: unsupported stored outcome version %d", stored.Version)))
+	}
+	if (len(stored.Value) == 0) == (stored.Problem == nil) {
+		return failed(ProjectError(errors.New("idempotency: stored outcome must contain exactly one value or problem")))
 	}
 	if stored.Problem != nil {
 		return failed(failureFromData(*stored.Problem))
@@ -171,7 +175,7 @@ func decodeStoredValue(resultType reflect.Type, encoded json.RawMessage) (any, e
 		return nil, errors.New("stored result is absent")
 	}
 	target := reflect.New(resultType)
-	if err := json.Unmarshal(encoded, target.Interface()); err != nil {
+	if err := decodeStoredJSON(encoded, target.Interface()); err != nil {
 		return nil, err
 	}
 	value := target.Elem().Interface()
@@ -179,6 +183,21 @@ func decodeStoredValue(resultType reflect.Type, encoded json.RawMessage) (any, e
 		return nil, err
 	}
 	return value, nil
+}
+
+func decodeStoredJSON(encoded []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("unexpected trailing JSON value")
+		}
+		return err
+	}
+	return nil
 }
 
 func runOpeningIdentity(value any) (runID, segmentID string, ok bool) {
