@@ -195,7 +195,6 @@ type Provider struct {
 	id                    string
 	baseURL               string
 	credential            Credential
-	configured            bool
 	credentialRequirement CredentialRequirement
 	requiresBaseURL       bool
 	embeddingCapable      bool
@@ -203,7 +202,7 @@ type Provider struct {
 
 func NewProvider(spec ProviderSpec) (Provider, error) {
 	provider := Provider{
-		id: spec.ID, configured: spec.Configured, credentialRequirement: spec.CredentialRequirement,
+		id: spec.ID, credentialRequirement: spec.CredentialRequirement,
 		requiresBaseURL: spec.RequiresBaseURL, embeddingCapable: spec.EmbeddingCapable,
 	}
 	if spec.BaseURL != nil {
@@ -217,6 +216,14 @@ func NewProvider(spec ProviderSpec) (Provider, error) {
 	}
 	if err := provider.Validate(); err != nil {
 		return Provider{}, err
+	}
+	if configured := provider.Configured(); configured != spec.Configured {
+		return Provider{}, fmt.Errorf(
+			"provider %s wire configured state %v contradicts derived readiness %v",
+			provider.id,
+			spec.Configured,
+			configured,
+		)
 	}
 	return provider, nil
 }
@@ -236,18 +243,20 @@ func (p Provider) Validate() error {
 			return fmt.Errorf("provider %s: %w", p.id, err)
 		}
 	}
-	if p.configured && p.credentialRequirement == APIKeyRequired && p.credential == (Credential{}) {
-		return fmt.Errorf("provider %s is configured without its required API key", p.id)
-	}
-	if p.configured && p.requiresBaseURL && p.baseURL == "" {
-		return fmt.Errorf("provider %s is configured without its required base URL", p.id)
-	}
 	return nil
 }
 
 func (p Provider) ID() string { return p.id }
 
-func (p Provider) Configured() bool { return p.configured }
+// Configured derives readiness from the same closed credential and endpoint
+// policies that validated the provider. The wire's configured flag is checked
+// at construction and never becomes a second mutable truth inside the entity.
+func (p Provider) Configured() bool {
+	credentialReady := p.credentialRequirement == APIKeyOptional ||
+		p.credentialRequirement == APIKeyRequired && p.credential != (Credential{})
+	endpointReady := !p.requiresBaseURL || p.baseURL != ""
+	return credentialReady && endpointReady
+}
 
 func (p Provider) RequiresAPIKey() bool { return p.credentialRequirement == APIKeyRequired }
 

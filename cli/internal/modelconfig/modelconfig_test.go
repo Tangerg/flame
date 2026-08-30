@@ -54,4 +54,31 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 	}); err == nil {
 		t.Fatal("provider was configured without its required endpoint")
 	}
+
+	credential, err := NewCredential("sk****ed", KeyStored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewProvider(ProviderSpec{
+		ID: "openai", Credential: &credential, Configured: false, CredentialRequirement: APIKeyRequired,
+	}); err == nil {
+		t.Fatal("ready provider was accepted as not configured")
+	}
+	if _, err := NewProvider(ProviderSpec{
+		ID: "ollama", Configured: false, CredentialRequirement: APIKeyOptional,
+	}); err == nil {
+		t.Fatal("keyless provider with a built-in endpoint was accepted as not configured")
+	}
+
+	endpoint := "https://gateway.example/v1"
+	partial, err := NewProvider(ProviderSpec{
+		ID: "openai-compatible", BaseURL: &endpoint, Configured: false,
+		CredentialRequirement: APIKeyRequired, RequiresBaseURL: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if partial.Configured() {
+		t.Fatal("provider without its required credential became configured")
+	}
 }
