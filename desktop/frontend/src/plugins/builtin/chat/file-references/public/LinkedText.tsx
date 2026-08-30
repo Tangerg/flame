@@ -8,7 +8,11 @@ export function LinkedText({ text }: { text: string }) {
   return (
     <>
       {segments.map((seg, i) =>
-        typeof seg === "string" ? seg : <FileRefLink key={i} path={seg.path} line={seg.line} />,
+        typeof seg === "string" ? (
+          seg
+        ) : (
+          <FileRefLink key={i} path={seg.path} line={seg.line} column={seg.column} />
+        ),
       )}
     </>
   );

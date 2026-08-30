@@ -4,6 +4,11 @@
 export interface FileRef {
   path: string;
   line: number; // 0 = no specific line
+  /** 0 = none. Carried so the rendered reference reads as the tool wrote it —
+   *  the viewer navigates by line, but `tsc`, `grep` and `eslint` all emit
+   *  `path:line:col`, and a link that silently drops the column is showing the
+   *  reader text that was never in the output. */
+  column: number;
 }
 
 export type RefSegment = string | FileRef;
@@ -78,7 +83,7 @@ const FILE_EXT = new Set([
 ]);
 
 // The lookbehind is what keeps a match from starting mid-token, inside an email or path.
-const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::\d+)?/g;
+const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
 function isFileRef(path: string): boolean {
   if (path.includes("/") && /[A-Za-z0-9]/.test(path)) return true;
@@ -97,7 +102,7 @@ export function parseFileRefs(text: string): RefSegment[] {
     if (!isFileRef(path)) continue;
     const start = m.index;
     if (start > last) out.push(text.slice(last, start));
-    out.push({ path, line: m[2] ? Number(m[2]) : 0 });
+    out.push({ path, line: m[2] ? Number(m[2]) : 0, column: m[3] ? Number(m[3]) : 0 });
     last = start + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
