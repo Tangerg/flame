@@ -22,6 +22,7 @@ type Group struct {
 	closed   bool
 	finished bool
 	tasks    map[*registeredTask]struct{}
+	idle     chan struct{}
 	allDone  chan struct{}
 }
 
@@ -94,6 +95,9 @@ func (g *Group) attach(parent context.Context) (ctx context.Context, release fun
 	if g.tasks == nil {
 		g.tasks = map[*registeredTask]struct{}{}
 	}
+	if len(g.tasks) == 0 {
+		g.idle = make(chan struct{})
+	}
 	registered := &registeredTask{cancel: cancel}
 	g.tasks[registered] = struct{}{}
 	g.mu.Unlock()
@@ -109,8 +113,30 @@ func (g *Group) finish(registered *registeredTask) {
 	registered.cancel()
 	g.mu.Lock()
 	delete(g.tasks, registered)
+	if len(g.tasks) == 0 && g.idle != nil {
+		close(g.idle)
+		g.idle = nil
+	}
 	g.finishCloseLocked()
 	g.mu.Unlock()
+}
+
+// Drain waits for work already accepted by the group to finish naturally
+// without closing the group or canceling task contexts. A lifecycle owner uses
+// this only after it has stopped the producers that can call Start or Attach;
+// Close remains the unconditional cancellation boundary.
+func (g *Group) Drain(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("taskgroup: drain context is required")
+	}
+	g.mu.Lock()
+	if len(g.tasks) == 0 {
+		g.mu.Unlock()
+		return nil
+	}
+	idle := g.idle
+	g.mu.Unlock()
+	return completion.Wait(ctx, idle)
 }
 
 // Cancel rejects new tasks and cancels every active task. It does not wait for

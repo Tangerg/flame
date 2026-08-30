@@ -38,7 +38,11 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 			mcpCoordinator: shutdownFunc{stop: recordStop("mcp"), wait: recordWait("mcp")},
 			runCoordinator: shutdownFunc{stop: recordStop("active-runs"), wait: recordWait("active-runs")},
 			executor:       shutdownFunc{stop: recordStop("active-execution-tree"), wait: recordWait("active-execution-tree")},
-			runEffectTasks: shutdownFunc{stop: recordStop("effects"), wait: recordWait("effects")},
+			runEffectTasks: shutdownFunc{
+				drain: func(context.Context) error { return record("drain effects", nil)() },
+				stop:  recordStop("effects"),
+				wait:  recordWait("effects"),
+			},
 			toolResources: terminalClosers([]func() error{
 				closerFunc(record("tool-1", nil)),
 				closerFunc(record("tool-2", nil)),
@@ -75,10 +79,11 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 		"stop goals",
 		"stop mcp",
 		"stop active-runs",
-		"stop effects",
 		"wait goals",
 		"wait mcp",
 		"wait active-runs",
+		"drain effects",
+		"stop effects",
 		"wait effects",
 		"stop active-execution-tree",
 		"wait active-execution-tree",
@@ -249,8 +254,9 @@ func testShutdownWait(t *testing.T, timeout time.Duration) shutdownWaitPolicy {
 func (c closerFunc) Close() error { return c() }
 
 type shutdownFunc struct {
-	stop func()
-	wait func(context.Context) error
+	stop  func()
+	wait  func(context.Context) error
+	drain func(context.Context) error
 }
 
 func (s shutdownFunc) BeginShutdown() {
@@ -264,6 +270,13 @@ func (s shutdownFunc) AwaitShutdown(ctx context.Context) error {
 		return nil
 	}
 	return s.wait(ctx)
+}
+
+func (s shutdownFunc) Drain(ctx context.Context) error {
+	if s.drain == nil {
+		return nil
+	}
+	return s.drain(ctx)
 }
 
 func (s shutdownFunc) Cancel() { s.BeginShutdown() }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
@@ -48,13 +49,17 @@ type shutdownComponent interface {
 }
 
 type taskOwner interface {
+	Drain(ctx context.Context) error
 	Cancel()
 	Wait(ctx context.Context) error
 }
 
+const runEffectDrainTimeout = 5 * time.Second
+
 // Close shuts the assembled application tier down in reverse dependency order
-// (§10.3). The first caller starts one Host-owned generation that broadcasts
-// cancellation, joins components and then enters terminal resource teardown.
+// (§10.3). The first caller starts one Host-owned generation that stops
+// producers, drains then cancels accepted maintenance, joins components, and
+// finally enters terminal resource teardown.
 // Each caller has a bounded wait, but its deadline cannot abandon or duplicate
 // that generation. A completed component error permits a later Close to start
 // one new generation; terminal resource diagnostics close the graph. Idempotent
@@ -148,9 +153,6 @@ func runHostShutdown(
 				component.BeginShutdown()
 			}
 		}
-		if lifetime.runEffectTasks != nil {
-			lifetime.runEffectTasks.Cancel()
-		}
 	}
 
 	var errs []error
@@ -160,6 +162,14 @@ func runHostShutdown(
 		}
 	}
 	if lifetime.runEffectTasks != nil {
+		// Run producers are stopped and joined before this point, so no new
+		// terminal maintenance can be admitted. Let already accepted best-effort
+		// work (notably Session title generation) settle naturally for a bounded
+		// window; a stuck provider is then canceled through the normal owner.
+		drainCtx, cancelDrain := context.WithTimeout(ownerCtx, runEffectDrainTimeout)
+		_ = lifetime.runEffectTasks.Drain(drainCtx)
+		cancelDrain()
+		lifetime.runEffectTasks.Cancel()
 		errs = append(errs, lifetime.runEffectTasks.Wait(ownerCtx))
 	}
 	if componentErr := errors.Join(errs...); componentErr != nil {

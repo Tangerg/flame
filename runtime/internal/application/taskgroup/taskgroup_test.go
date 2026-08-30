@@ -83,6 +83,47 @@ func TestGroupDetachesRequestCancellationAndKeepsValues(t *testing.T) {
 	}
 }
 
+func TestGroupDrainLetsAcceptedWorkFinishWithoutClosing(t *testing.T) {
+	var tasks Group
+	started := make(chan struct{})
+	release := make(chan struct{})
+	canceled := make(chan struct{}, 1)
+	if !tasks.Start(t.Context(), func(ctx context.Context) {
+		close(started)
+		select {
+		case <-release:
+		case <-ctx.Done():
+			canceled <- struct{}{}
+		}
+	}) {
+		t.Fatal("Start rejected before Drain")
+	}
+	<-started
+
+	drained := make(chan error, 1)
+	go func() { drained <- tasks.Drain(t.Context()) }()
+	select {
+	case err := <-drained:
+		t.Fatalf("Drain returned before accepted work finished: %v", err)
+	default:
+	}
+	close(release)
+	if err := <-drained; err != nil {
+		t.Fatalf("Drain error = %v", err)
+	}
+	select {
+	case <-canceled:
+		t.Fatal("Drain canceled accepted work")
+	default:
+	}
+	if !tasks.Start(t.Context(), func(context.Context) {}) {
+		t.Fatal("Drain closed the group")
+	}
+	if err := tasks.Close(t.Context()); err != nil {
+		t.Fatalf("Close after Drain = %v", err)
+	}
+}
+
 func TestGroupAttachIsCanceledByCloseAndReleaseIsIdempotent(t *testing.T) {
 	var tasks Group
 	ctx, release, ok := tasks.Attach(context.Background())
