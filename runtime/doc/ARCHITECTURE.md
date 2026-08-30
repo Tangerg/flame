@@ -130,7 +130,7 @@ Application checkpoint 包含：
 
 ### 5.3 `conversation`
 
-`conversation` 拥有模型上下文历史、count watermark、truncate、seed 和 fork 语义。它不是 Run aggregate 的内部 slice，也不从 Transcript 或 Agent snapshot 反向生成。
+`conversation` 拥有模型上下文历史、count watermark、truncate、seed 和 fork 语义。SQLite row sequence 与解码后的 message sequence 必须保持同一坐标：任一持久行无法恢复为合法 message 时完整读取 fail closed，并报告该 row identity，不能跳过坏行后让 Run mark、rollback、fork 或 compaction 在缩短的序列上继续。它不是 Run aggregate 的内部 slice，也不从 Transcript 或 Agent snapshot 反向生成。
 
 ### 5.4 `transcript`
 
