@@ -286,6 +286,15 @@ func (t ToolCall) Equal(other ToolCall) bool {
 	return t.ExitCode == nil || *t.ExitCode == *other.ExitCode
 }
 
+// sameInvocation compares the provider-visible call while deliberately
+// excluding Item-owned lifecycle and result fields. Approval interrupts repeat
+// the invocation, not the surrounding ToolCall Item's safety or timestamps.
+func (t ToolCall) sameInvocation(other ToolCall) bool {
+	return t.Kind == other.Kind && t.Name == other.Name && t.Summary == other.Summary &&
+		t.Command == other.Command && t.Path == other.Path && t.Query == other.Query &&
+		t.URL == other.URL && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
+}
+
 func (t ToolCall) Validate() error {
 	var problems []error
 	switch t.Kind {

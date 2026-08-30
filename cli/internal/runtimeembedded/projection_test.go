@@ -600,10 +600,11 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	t.Fatal("tree stream yielded no event")
 }
 
-func TestProjectSnapshotKeepsPendingApprovalIdenticalToToolItem(t *testing.T) {
+func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *testing.T) {
 	tool := &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{
 		"command": "go test ./...", "description": "Run tests",
 	}}
+	startedAt := time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
 	snapshot, err := projectSnapshot(coldRead{
 		session: protocol.Session{
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
@@ -620,7 +621,7 @@ func TestProjectSnapshotKeepsPendingApprovalIdenticalToToolItem(t *testing.T) {
 		}},
 		items: []protocol.Item{{
 			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusRunning,
-			Type: protocol.ItemTypeToolCall, Tool: tool,
+			Type: protocol.ItemTypeToolCall, Tool: tool, SafetyClass: protocol.SafetyClassExec, StartedAt: startedAt,
 		}},
 		plan: &protocol.Plan{SessionID: "ses_1"},
 		interrupts: []protocol.PendingInterruptSet{{
@@ -638,7 +639,11 @@ func TestProjectSnapshotKeepsPendingApprovalIdenticalToToolItem(t *testing.T) {
 		t.Fatalf("snapshot: %v", err)
 	}
 	approval, ok := snapshot.Interactions[0].(agent.Approval)
-	if !ok || snapshot.Transcript[0].Tool == nil || !reflect.DeepEqual(*snapshot.Transcript[0].Tool, *approval.Tool) {
+	itemTool := snapshot.Transcript[0].Tool
+	if !ok || itemTool == nil || approval.Tool == nil ||
+		itemTool.Safety != agent.ToolSafetyExec || !itemTool.StartedAt.Equal(startedAt) ||
+		approval.Tool.Safety != "" || !approval.Tool.StartedAt.IsZero() ||
+		!bytes.Equal(itemTool.ArgumentsJSON, approval.Tool.ArgumentsJSON) {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
 }

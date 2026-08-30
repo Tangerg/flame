@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestConversationFailureRemainsVisibleWhenDerivedIdentityCollides(t *testing.T) {
@@ -37,8 +38,11 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 		Question{RunID: "run_1", ItemID: "item_question", Title: "choose", Fields: []QuestionField{{Prompt: "Which?", Kind: QuestionSingle, Options: []QuestionOption{{Label: "A"}, {Label: "B"}}}}},
 	}
 	approval := interrupts[0].(Approval)
+	startedApprovalTool := approval.Tool.Clone()
+	startedApprovalTool.Safety = ToolSafetyExec
+	startedApprovalTool.StartedAt = time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
 	apply(t, conversation, RunEvent{EventID: "approval-start", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{
-		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool,
+		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &startedApprovalTool,
 	}}})
 	question := interrupts[1].(Question)
 	apply(t, conversation, RunEvent{EventID: "question-done", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{
@@ -70,7 +74,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if conversation.Phase() != ConversationRunning || conversation.SegmentID() != "seg_2" || len(conversation.Interactions()) != 0 {
 		t.Fatalf("resumed projection = phase %v, segment %q", conversation.Phase(), conversation.SegmentID())
 	}
-	completedTool := approval.Tool.Clone()
+	completedTool := startedApprovalTool.Clone()
 	completedTool.Status = ToolOK
 	apply(t, conversation, RunEvent{EventID: "approval-done", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: Block{
 		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedTool,
@@ -128,6 +132,30 @@ func TestConversationRejectsRegressingRunUsage(t *testing.T) {
 	}
 	if _, err := conversation.ApplyRunEvent(RunEvent{EventID: "wait", RunID: "run_1", SegmentID: "seg_1", Event: interrupted}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("regressing usage error = %v", err)
+	}
+}
+
+func TestConversationRejectsApprovalForDifferentToolInvocation(t *testing.T) {
+	conversation := NewConversation()
+	run := runningRun("seg_1")
+	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
+
+	approval := runningApproval("approval_1", "shell")
+	approval.Tool.Command = "echo approved"
+	approval.Tool.ArgumentsJSON = []byte(`{"command":"echo approved"}`)
+	startedTool := approval.Tool.Clone()
+	startedTool.Command = "echo different"
+	startedTool.ArgumentsJSON = []byte(`{"command":"echo different"}`)
+	apply(t, conversation, RunEvent{EventID: "approval", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: Block{
+		ID: approval.ItemID, RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &startedTool,
+	}}})
+
+	_, err := conversation.ApplyRunEvent(RunEvent{
+		EventID: "wait", RunID: run.ID, SegmentID: run.ActiveSegmentID,
+		Event: RunInterrupted{Interactions: []Interaction{approval}, Usage: run.Usage},
+	})
+	if !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("different approval invocation error = %v", err)
 	}
 }
 

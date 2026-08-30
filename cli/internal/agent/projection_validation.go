@@ -518,7 +518,7 @@ func validateInteractionItem(interaction Interaction, block Block) error {
 		if block.Kind != BlockTool || block.Status != BlockStatusRunning || block.Tool == nil {
 			return fmt.Errorf("approval item %s is not a running tool", itemID)
 		}
-		if !block.Tool.Equal(*item.Tool) {
+		if !block.Tool.sameInvocation(*item.Tool) {
 			return fmt.Errorf("approval item %s differs from its tool block", itemID)
 		}
 	case Question:
