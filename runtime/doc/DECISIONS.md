@@ -579,8 +579,8 @@
 
 - 状态：已接受并实施，P163 完成；只改变 Runtime internal Hook Domain/filesystem adapter 与测试文档，公共 Protocol shape、Artifact、SQLite、Desktop source、Agent Framework 与 CLI 合同不变。
 - 背景：`hooks.json` 同时进入 `hooks.list` 非分页管理面与每次 fresh Run 的 trusted policy binding，但原版 loader 直接 `os.ReadFile`，单文件 bytes、hook 数量和完整 global + project cascade 都没有上限；Domain 也允许任意长 matcher、command/inject 与 timeout。失败优先反例 `df00e958f` 证明超过 256 KiB 的文件、单文件 129 条、完整级联 257 条、非法 UTF-8，以及超过 256-byte matcher、8-KiB action、5-minute timeout 均会被接受。HTTP request cap、客户端页面和命令执行 timeout 都不拥有本地策略 material。
-- 决策：采纳 app2 的 256 KiB/128-per-file/256-per-cascade、256-byte matcher、8-KiB action 与 5-minute timeout 阈值，但由原版 Hook Domain 唯一发布常量与稳定 `ErrConfigurationTooLarge`/`ErrInvalidHook`。filesystem loader 改为 open + stat fast rejection + cancellation-aware `limit+1`，同时覆盖外部超大文件、读取期间增长与 caller cancellation；完整 bytes 必须是有效 UTF-8，JSON decode 后在 Hook materialization 前验证单文件数量，追加前验证完整级联数量。
-- 后果：管理面与 Run execution policy 只观察同一份有限且完整的级联；任何越界整体失败，不截断、不跳过、不发布 partial active policy。exact boundary 配置继续可用，既有 global-before-project 顺序、project trust、event matching、first-deny/first-rewrite 和 watcher invalidation 保持不变；不复制 app2 hookflow facade、第二 resolver、协议兼容面或配置旋钮。Hook command invocation/output 的进程级资源包络属于后续独立所有权，不在本批用配置 cap 冒充。
+- 决策：采纳 app2 的 256 KiB/128-per-file/256-per-cascade、256-byte matcher、8-KiB action 与 5-minute timeout 阈值，但由原版 Hook Domain 唯一发布常量与稳定 `ErrConfigurationTooLarge`/`ErrInvalidHook`。filesystem loader 改为 open + stat fast rejection + cancellation-aware `limit+1`，同时覆盖外部超大文件、读取期间增长与 caller cancellation；完整 bytes 必须是有效 UTF-8 和单一闭合词汇的 JSON document，document/hook 任一 unknown field 都在 Hook materialization 前失败。decode 后验证单文件数量，追加前验证完整级联数量。
+- 后果：管理面与 Run execution policy 只观察同一份有限且完整的级联；任何 unknown/越界输入整体失败，不截断、不跳过、不把拼错的 matcher 静默扩大为全工具策略，也不发布 partial active policy。exact boundary 配置继续可用，既有 global-before-project 顺序、project trust、event matching、first-deny/first-rewrite 和 watcher invalidation 保持不变；不复制 app2 hookflow facade、第二 resolver、协议兼容面或配置旋钮。Hook command invocation/output 的进程级资源包络属于后续独立所有权，不在本批用配置 cap 冒充。
 
 ## ADR-RT-083：Lifecycle Hook command 拥有有界输出与完整进程树
 
