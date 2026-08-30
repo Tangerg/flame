@@ -81,7 +81,7 @@ export function useCurrentRootMaterial(): CurrentRootMaterial {
 }
 
 export function useIsCurrentRootRunning(): boolean {
-  return useCurrentRootMaterial().running;
+  return agentSessionView().useCurrentRootRunning();
 }
 
 export function useActiveSessionToolCalls(): Record<string, ToolCall> {

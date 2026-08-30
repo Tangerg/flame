@@ -64,6 +64,10 @@ export function useCurrentRootRun() {
   return useActiveAgentView(selectCurrentRootRun);
 }
 
+export function useCurrentRootRunning(): boolean {
+  return useActiveAgentView((view) => selectCurrentRootRun(view)?.status === "running");
+}
+
 export function useAgentAction(kind: "stop"): StopCurrentRootRunAction | null;
 export function useAgentAction(kind: "send"): SendAgentInputAction | null;
 export function useAgentAction(

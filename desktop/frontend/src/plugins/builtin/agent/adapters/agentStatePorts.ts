@@ -15,6 +15,7 @@ import {
   getCurrentSessionView,
   useAgentAction,
   useCurrentRootRun,
+  useCurrentRootRunning,
   useAgentProblem,
   useAgentPlan,
   useRootNarrativeMessages,
@@ -141,6 +142,7 @@ export function installAgentStatePorts(): () => void {
 
   const disposeViewState = configureAgentSessionViewPort({
     useCurrentRootRun,
+    useCurrentRootRunning,
     useToolCalls: useAgentToolCalls,
     useSessionTimeline: useAgentSessionTimeline,
     useRootNarrativeMessages,

@@ -90,6 +90,10 @@ export interface AgentSessionViewPort {
   /** One exact root Run snapshot. Consumers derive attention, metrics and
    * outcome from this identity instead of independently sampled fragments. */
   useCurrentRootRun(): AgentRunView | null;
+  /** Whether that Run is streaming, as a BOOLEAN rather than a fact read off the
+   *  snapshot: the Run object is replaced on every progress frame, so a consumer
+   *  that only gates on attention would otherwise re-render per token. */
+  useCurrentRootRunning(): boolean;
   useToolCalls(): Record<string, ToolCall>;
   useSessionTimeline(): TimelineEntry[];
   useRootNarrativeMessages(): Message[];

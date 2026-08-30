@@ -20,6 +20,7 @@ import {
   useAgentProblem,
   useAgentSharedMaterial,
   useCurrentRootRun,
+  useCurrentRootRunning,
   useTranscriptRows,
 } from "./agentViewSelectors";
 
@@ -165,6 +166,88 @@ describe("agent view selectors react to session switch", () => {
 
     expect(renders).toBe(1);
     expect(result.current).toBe(finished);
+  });
+
+  it("holds an attention subscriber still while the same Run reports progress", () => {
+    const run = {
+      id: "run-1",
+      sessionId: "a",
+      parentRunId: null,
+      rootRunId: "run-1",
+      spawnedByItemId: null,
+      status: "running" as const,
+      activeSegmentId: "segment-1",
+      outcome: null,
+      metrics: {
+        steps: 1,
+        activeDurationMillis: 10,
+        usage: { inputTokens: 3, outputTokens: 2, cacheReadTokens: 0 },
+      },
+      progress: { contextTokens: 100 },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      finishedAt: null,
+    };
+    useAgentStore.setState({
+      sessions: {
+        a: {
+          ...seed(null, {}),
+          view: { ...EMPTY_AGENT_SESSION_VIEW, runsById: { [run.id]: run } },
+        },
+      },
+    });
+    navigator().go({ session: "a" });
+
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return useCurrentRootRunning();
+    });
+    expect(result.current).toBe(true);
+
+    for (const contextTokens of [200, 300, 400]) {
+      act(() =>
+        useAgentStore.setState((state) => {
+          const current = state.sessions.a!;
+          return {
+            sessions: {
+              ...state.sessions,
+              a: {
+                ...current,
+                view: {
+                  ...current.view,
+                  runsById: { [run.id]: { ...run, progress: { contextTokens } } },
+                },
+                viewRevision: current.viewRevision + 1n,
+              },
+            },
+          };
+        }),
+      );
+    }
+
+    expect(renders).toBe(1);
+
+    act(() =>
+      useAgentStore.setState((state) => {
+        const current = state.sessions.a!;
+        return {
+          sessions: {
+            ...state.sessions,
+            a: {
+              ...current,
+              view: {
+                ...current.view,
+                runsById: { [run.id]: { ...run, status: "finished" as const } },
+              },
+              viewRevision: current.viewRevision + 1n,
+            },
+          },
+        };
+      }),
+    );
+
+    expect(result.current).toBe(false);
+    expect(renders).toBe(2);
   });
 
   it("keeps the transcript collection snapshot stable when every row is unchanged", () => {
