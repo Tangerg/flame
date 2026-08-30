@@ -253,7 +253,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		header:             newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
 		activity:           newActivityView(appearance.theme, appearance.glyphs),
 		queueView:          newQueueView(appearance.theme, appearance.glyphs),
-		status:             newStatusView(appearance.theme, appearance.glyphs, cfg.options),
+		status:             newStatusView(appearance.theme, appearance.glyphs),
 		queue:              cfg.queue,
 		workbench:          cfg.workbench,
 		editor:             cfg.editor,

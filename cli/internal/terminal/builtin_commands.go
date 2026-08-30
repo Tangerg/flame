@@ -341,7 +341,7 @@ func (a *app) Clear() {
 	a.conversation.ClearPresentation()
 	a.transcript.Reset()
 	a.activity.Reset()
-	a.status.Reset(a.options)
+	a.status.Reset()
 	a.status.note("cleared")
 	a.header.SetUsage(a.conversation.Usage())
 }

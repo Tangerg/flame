@@ -9,7 +9,7 @@ import (
 
 func TestWorkbenchProblemsArePrioritizedAndClearedIndependently(t *testing.T) {
 	application := &app{
-		status: newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t)),
+		status: newStatusView(kit.Dark(), kit.Unicode()),
 	}
 	application.status.active("working")
 	application.reportWorkbenchIssue(workbenchDraft, errors.New("draft could not be saved"))

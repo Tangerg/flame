@@ -290,16 +290,15 @@ type statusView struct {
 	status             kit.Status
 	busy               bool
 	runningDescendants int
-	options            agent.RunOptions
 }
 
-func newStatusView(theme kit.Theme, glyphs kit.Glyphs, options agent.RunOptions) *statusView {
-	return &statusView{theme: theme, glyphs: glyphs, doing: "ready", options: options}
+func newStatusView(theme kit.Theme, glyphs kit.Glyphs) *statusView {
+	return &statusView{theme: theme, glyphs: glyphs, doing: "ready"}
 }
 
-func (s *statusView) Reset(options agent.RunOptions) {
+func (s *statusView) Reset() {
 	theme, glyphs, problem := s.theme, s.glyphs, s.problem
-	*s = statusView{theme: theme, glyphs: glyphs, doing: "ready", problem: problem, options: options}
+	*s = statusView{theme: theme, glyphs: glyphs, doing: "ready", problem: problem}
 }
 
 func (s *statusView) Measure(int) int { return 1 }
@@ -327,9 +326,6 @@ func (s *statusView) Draw(view grid.View) {
 		return
 	}
 	right := usageLabel(s.usage)
-	if right == "" {
-		right = optionsLabel(s.options)
-	}
 	style := s.theme.Muted
 	switch s.outcome.Status {
 	case agent.OutcomeCompleted:
@@ -348,8 +344,6 @@ func (s *statusView) Draw(view grid.View) {
 	kit.Label{Text: left, Style: style, Ellipsis: s.glyphs.Ellipsis}.Draw(view.Sub(grid.Rect(0, 0, width-rightWidth-1, 1)))
 	view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 }
-
-func (s *statusView) setOptions(options agent.RunOptions) { s.options = options }
 
 func (s *statusView) setProblem(problem string) { s.problem = strings.TrimSpace(problem) }
 

@@ -566,7 +566,7 @@ func (s sessionInstallation) apply(a *app) {
 	a.restoreComposer(s.draft)
 	a.draftState.Reset(a.session.ID, s.draft)
 	a.activity.Reset()
-	a.status.Reset(a.options)
+	a.status.Reset()
 	a.workbenchHealth.enterSession()
 	a.status.setProblem(a.workbenchHealth.problem())
 	a.header.SetUsage(s.projection.conversation.Usage())
