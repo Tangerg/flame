@@ -119,14 +119,21 @@ export function buildReviewFileTree(files: readonly WorkspaceFileDiff[]): Review
       }
       parent = child;
     }
-    parent.files.push({
-      kind: "file",
+    // Upsert, never blind push: two entries naming one path put two nodes under one
+    // key, and React answers a duplicate key with a warning loop that costs frames
+    // (CLAUDE.md §5). The later entry wins, which is what a re-read of the same diff
+    // means.
+    const existing = parent.files.findIndex((candidate) => candidate.path === file.path);
+    const node = {
+      kind: "file" as const,
       name,
       path: file.path,
       added: file.added ?? 0,
       removed: file.removed ?? 0,
       binary: file.binary === true,
-    });
+    };
+    if (existing < 0) parent.files.push(node);
+    else parent.files[existing] = node;
   }
   return finalize(root);
 }

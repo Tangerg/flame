@@ -13,7 +13,12 @@ export function basename(path: string): string {
  * the signal for "no second line" — an empty one reserves the height and says nothing.
  */
 export function splitFilePath(path: string): { directory: string; name: string } {
-  const cut = path.replace(/\/+$/, "").lastIndexOf("/");
-  if (cut < 0) return { directory: "", name: path };
-  return { directory: path.slice(0, cut), name: path.slice(cut + 1) };
+  // Cut and slice the SAME string. Measuring the cut on the trailing-slash-stripped
+  // path and then slicing the original returned the separator with the name, so a
+  // cwd ending in "/" read as "project/" in a two-line row while `basename` — which
+  // strips first — called the same path "project" in a chip beside it.
+  const trimmed = path.replace(/\/+$/, "");
+  const cut = trimmed.lastIndexOf("/");
+  if (cut < 0) return { directory: "", name: trimmed || path };
+  return { directory: trimmed.slice(0, cut), name: trimmed.slice(cut + 1) };
 }

@@ -153,3 +153,19 @@ describe("filterReviewFiles", () => {
     expect(filterReviewFiles(files, "readme").map((f) => f.path)).toEqual(["README.md"]);
   });
 });
+
+// Two entries naming one path put two nodes under one key, and React answers a
+// duplicate key with a warning loop that costs frames (CLAUDE.md §5).
+describe("a diff that names one path twice", () => {
+  it("shows the file once, carrying the later entry's counts", () => {
+    const tree = buildReviewFileTree([
+      { path: "src/a.ts", status: "modified", added: 1, removed: 0, rows: [] },
+      { path: "src/a.ts", status: "modified", added: 9, removed: 4, rows: [] },
+    ]);
+    const directory = tree[0];
+    expect(directory?.kind).toBe("directory");
+    if (directory?.kind !== "directory") throw new Error("expected a directory");
+    expect(directory.children).toHaveLength(1);
+    expect(directory.children[0]).toMatchObject({ path: "src/a.ts", added: 9, removed: 4 });
+  });
+});
