@@ -1,7 +1,3 @@
-// UI language picker — 8+ locales rendered as a dropdown (too many for a
-// segmented control). The binary preference rows (message / streaming style)
-// live with their only consumer, the Personalization pane.
-
 import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
 import { useLocale, useT } from "@/lib/i18n";
 import { LOCALE, useExtensionPoint } from "@/plugins/sdk";
@@ -13,15 +9,10 @@ export function LanguageSection() {
   const locale = useLocale();
   const locales = useExtensionPoint(LOCALE);
   const active = locales.find((l) => l.id === locale) ?? locales[0];
-  // While locale plugins are still loading (shouldn't happen post
-  // PluginProvider, but defensive), the picker would render with no
-  // options — bail until at least one is registered.
   if (!active) return null;
 
   return (
     <SettingRow label={t("settings.language.label")} sub={t("settings.language.sub")}>
-      {/* Dropdown rather than segmented because the locale set
-          (8 entries today, more via plugins) doesn't fit a single row. */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           render={

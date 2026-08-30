@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 
-// The only shape in this system that draws a line inside content. `intent` tunes the icon
-// chip's ink ONLY — the label stays `fg-faint`, since a boundary that competes with the
-// reading is a heading.
 export function Divider({
   icon,
   intent = "neutral",

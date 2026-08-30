@@ -35,7 +35,6 @@ function MessageBlockInner({
   ctx: BlockCtx;
   sessionId: string;
   isLast: boolean;
-  /** Flips only at run boundaries, so it never churns this memo per token. */
   isRunning: boolean;
   answerFollows?: boolean;
   terminalFooter?: ReactNode;
@@ -66,7 +65,6 @@ function MessageBlockInner({
           isLast,
         });
 
-  // Placed after all hooks so rules-of-hooks holds.
   if (msg.role === "system") {
     return (
       <MessageContext.Provider value={messageContext}>
@@ -85,8 +83,6 @@ function MessageBlockInner({
 
   const roleLabel = t(isUser ? "role.user" : "role.assistant");
 
-  // A message whose only material is the pending Question is presented by the composer;
-  // leaving an empty wrapper here would preserve the duplicate's rhythm.
   if (content.length === 0) return null;
 
   const messageContent = (
@@ -95,8 +91,6 @@ function MessageBlockInner({
       className={cn(
         MESSAGE_CONTENT_CLASS,
         "min-w-0 text-pretty leading-prose text-prose text-fg",
-        // A neutral wash, not the accent: a prompt owns a distinct material but is not a
-        // selected row or a semantic status.
         isUser && "max-w-[77%] rounded-bubble bg-user-message px-3 py-2",
       )}
     >
@@ -117,11 +111,6 @@ function MessageBlockInner({
           ) : (
             <MessageContextMenu msg={msg}>{messageContent}</MessageContextMenu>
           )}
-          {/* Pulled outward by the button's own optical inset so the first glyph
-              lands on the text's edge rather than its box doing so — and outward is a
-              different side per role now that a user turn hugs the trailing edge. With
-              the inset always on the left, the bar under a right-aligned bubble grew
-              leftward and its last glyph sat ~5px inside the text it belongs to. */}
           {actionsVisibility !== "absent" && (
             <div
               className={cn(
@@ -142,22 +131,9 @@ function MessageBlockInner({
   );
 }
 
-// Both props are shaped so the default shallow comparison actually bails out: `row` comes
-// from the transcript projection, which reuses rows whose message and facts are unchanged,
-// and `ctx` holds no session data at all. Both halves are load-bearing — a turn receives
-// context narrowed to its own tool calls, so unrelated deltas cannot invalidate it.
 export const MessageBlock = memo(MessageBlockInner);
 
-/**
- * Hover reveal stays in CSS so a hovering pointer never triggers a render. The bar stays IN
- * FLOW, reserving the row it may reveal: `absolute top-full` looks like it saves the gap and
- * does not, because every message's `content-visibility` containment slices anything drawn
- * past its edge.
- */
 const ACTIONS_VISIBILITY: Record<Exclude<MessageActionsVisibility, "absent">, string> = {
-  // `invisible`, not `pointer-events-none opacity-0`: transparency stops the pointer but
-  // not the keyboard, leaving focusable buttons nobody can see or reveal. `visibility`
-  // also keeps the reserved row, which `display: none` would not.
   hidden: "invisible opacity-0",
   hover: "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
   pinned: "opacity-100",

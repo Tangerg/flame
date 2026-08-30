@@ -1,6 +1,3 @@
-// ONE component behind both the tool-output linkifier and the markdown-prose one: divergent
-// styling would read as two different kinds of link.
-
 import { openWorkspaceFile } from "@/plugins/builtin/workspace/public/navigation";
 import { TextButton } from "@/ui";
 

@@ -15,9 +15,6 @@ import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownTable } from "./MarkdownTable";
 import { SvgArtifact } from "./SvgArtifact";
 
-// `pre` unwraps because the `code` override emits its own block container. `a` forces
-// target=_blank: a click inside the Wails WebView would otherwise navigate the chrome-less
-// window away from the app.
 function visibleText(children: ReactNode): string {
   return Children.toArray(children)
     .map((child) => {
@@ -32,8 +29,6 @@ function visibleText(children: ReactNode): string {
 const WHITESPACE_ONLY = /^\s*$/;
 const HAN_TEXT = /\p{Script=Han}/u;
 
-/** Return the paragraph's media children only when it contains no prose. The
- *  whitespace/`br` filtering mirrors Markdown's insignificant separators. */
 type MarkdownImageElementProps = ComponentProps<typeof MarkdownImage> & {
   node?: { tagName?: string };
 };
@@ -78,10 +73,6 @@ function codexTaskListChildren(children: ReactNode): ReactNode {
     return children;
   }
 
-  // GFM emits a disabled checkbox followed by the task prose, but no label
-  // relationship between them. Reuse the author's visible task text as the
-  // accessible name: checked/unchecked remains native checkbox state and the
-  // label works for CJK or any other language without app-owned translation.
   const label = visibleText(paragraphChildren).trim();
   return [
     cloneElement(checkbox, { "aria-label": label }),
@@ -169,9 +160,6 @@ const sharedMarkdownComponents: Components = {
     return <blockquote dir="auto">{children}</blockquote>;
   },
   pre({ children }) {
-    // A fence with no info string arrives as a plain `<code>`, which the code renderer
-    // cannot tell from inline code by className — but this parent can, since only block code
-    // is wrapped in `<pre>`. That keeps every fence on the same code-block surface.
     const child = Children.toArray(children)[0];
     if (
       Children.count(children) === 1 &&
@@ -192,8 +180,6 @@ const sharedMarkdownComponents: Components = {
     const cls = String(className ?? "");
     const match = /language-([\w+-]+)/.exec(cls);
     if (!match) {
-      // Don't spread the rest props — react-markdown's passNode puts the hast
-      // `node` in there, which would leak onto the DOM as node="[object Object]".
       return (
         <code className={cls} dir="ltr">
           {children}
@@ -247,14 +233,10 @@ const sharedMarkdownComponents: Components = {
     return <MarkdownImage src={src} alt={alt} title={title} allowWide={allowWide} />;
   },
   a({ href, title, children, ...rest }) {
-    // `data-file-ref` marks a rehypeFileRefs anchor, not a real link: it opens the file
-    // viewer instead of navigating. `data-file-line` is "0" or absent when no line parsed.
     const r = rest as { "data-file-ref"?: string; "data-file-line"?: string };
     if (r["data-file-ref"]) {
       return <FileRefLink path={r["data-file-ref"]} line={Number(r["data-file-line"]) || 0} />;
     }
-    // Forward only real anchor attrs (href/title); the rest carries the hast
-    // `node`, which must not reach the DOM.
     return (
       <ExternalLink href={href} title={title}>
         {children}
@@ -263,9 +245,6 @@ const sharedMarkdownComponents: Components = {
   },
 };
 
-/** React-markdown exposes source offsets on each table HAST node but does not
- *  pass the source string to a component. Bind the block's source once so each
- *  table can recover its exact Markdown slice without re-serialising the DOM. */
 export function createMarkdownComponents(markdownSource: string): Components {
   return {
     ...sharedMarkdownComponents,

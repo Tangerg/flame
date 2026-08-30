@@ -14,7 +14,6 @@ interface Props {
   lang: string;
   code: string;
   file?: string;
-  /** A rendered interpretation of the source. `code` remains the copy payload. */
   preview?: ReactNode;
   previewLabel?: string;
 }
@@ -26,8 +25,6 @@ interface HighlightedCode {
   html: string;
 }
 
-// `code` is debounced so the Shiki tokenizer (3-10ms per pass) does not run on every
-// stream-reveal delta; a raw <pre> shows while it settles.
 export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Props) {
   const t = useT();
   const shikiTheme = useShikiTheme();
@@ -36,8 +33,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
   const [debouncedCode] = useDebouncedValue(code, { wait: 120 });
   const isSettling = code !== debouncedCode;
 
-  // Seeded synchronously so a re-mount (scroll away/back, theme toggle, memo
-  // invalidation on a long history) skips both the async resolution and the tokenizer.
   const cachedHtml = getCachedHighlight(lang, shikiTheme, debouncedCode);
   const [highlighted, setHighlighted] = useState<HighlightedCode | null>(() =>
     cachedHtml === undefined
@@ -71,9 +66,7 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           measureShikiHighlight(performance.now() - start, resolvedLang);
           setCachedHighlight(lang, shikiTheme, debouncedCode, out);
           setHighlighted({ lang, theme: shikiTheme, code: debouncedCode, html: out });
-        } catch {
-          // Raw code remains the stable fallback for unsupported grammars.
-        }
+        } catch {}
       })
       .catch(() => undefined);
     return () => {
@@ -84,8 +77,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
   const showHighlighted = !isSettling && html !== null;
 
   return (
-    // `shiki-block` is a CSS hook: markdown.css styles the `<pre class="shiki">` markup
-    // Shiki emits as a string.
     <div
       dir="ltr"
       data-variant={isPreview ? "preview" : "code"}
@@ -98,11 +89,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           : "rounded-lg bg-sunken",
       )}
     >
-      {/* Header — one material with the source body, like Codex. The quiet caption
-          separates chrome from code without adding a second surface. Language then
-          path stay left-aligned: they are one caption ("this TypeScript, from
-          there"), and centring the path put the two halves of that sentence at
-          opposite ends of a wide block. */}
       <div
         data-markdown-copy="exclude"
         className="flex items-center gap-2 bg-transparent px-2 py-1 font-sans text-ui-md"
@@ -149,8 +135,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           className="shiki-preview-body grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
           role="region"
           aria-label={previewLabel}
-          // A scroll region needs a keyboard entry point; the linter cannot infer
-          // scrollability from the utility classes above.
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
         >

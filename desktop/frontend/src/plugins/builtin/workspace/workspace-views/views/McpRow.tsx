@@ -14,11 +14,6 @@ import {
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useMCPServerToolConfigs } from "@/plugins/builtin/workspace/application/toolCatalog";
 
-// MCP server row — appears in the Tools workspace view. Status pill mirrors
-// the wire lifecycle (AUX_API §5.1). The button adds only an admission latch
-// until the owner repairs that projection; connecting → terminal remains the
-// Runtime event stream's authoritative state (§5.2).
-// i18n key → pill classes. Labels are resolved at render via t().
 const STATUS_CLASSES: Record<MCPServerSettings["status"], { key: string; classes: string }> = {
   disabled: { key: "tools.status.off", classes: "bg-surface-2 text-fg-faint" },
   connecting: {
@@ -56,10 +51,6 @@ function McpToolList({ server }: { server: string }) {
   );
 }
 
-// A needsAuth server needs a bearer token, which is part of its persisted
-// connection config — not a
-// separate one-shot handoff. So this row just routes the user to the MCP
-// settings pane, deep-linked, rather than holding its own token field.
 function McpAuthGuide({ server }: { server: string }) {
   const t = useT();
   const openConfig = () => {
@@ -112,8 +103,6 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
         >
           <Icon name={server.icon as IconName} size="md" />
         </div>
-        {/* The name/desc block is the expand toggle (a nested button inside a
-            row-button would be invalid HTML — IconButton sits beside it). */}
         <Pressable
           type="button"
           aria-expanded={open}

@@ -99,7 +99,6 @@ function AttachButton() {
   );
 }
 
-// Turns warning-toned when full access is on.
 function ApprovalModePill() {
   const t = useT();
   const { data: mode, isError } = useApprovalMode();

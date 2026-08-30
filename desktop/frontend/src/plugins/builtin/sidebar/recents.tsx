@@ -1,9 +1,3 @@
-// Recent work — the sessions no project claims.
-//
-// Sessions outside registered folders belong in one flat newest-first list. The
-// section disappears when there is nothing homeless; an empty state would caption a
-// concept the user never has to learn.
-
 import { SectionLabel } from "@/ui";
 import { SessionList } from "./ui/SessionList";
 import { useT } from "@/lib/i18n";

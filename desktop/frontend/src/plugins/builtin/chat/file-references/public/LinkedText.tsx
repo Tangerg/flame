@@ -1,6 +1,3 @@
-// For tool and command output, where file refs are dense. A ref-free string renders as bare
-// text with no wrapper spans.
-
 import { useMemo } from "react";
 import { parseFileRefs } from "@/plugins/builtin/agent/public/fileRefs";
 import { FileRefLink } from "./FileRefLink";

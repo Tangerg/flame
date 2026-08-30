@@ -7,7 +7,6 @@ const styles = cva(
   "rounded-[var(--surface-card-radius)] bg-[var(--app-card-surface)] shadow-[var(--shadow-surface-card)]",
   {
     variants: {
-      // `none` is for a card hosting rows that already pad themselves.
       inset: { none: "", sm: "p-3", md: "p-4" },
     },
     defaultVariants: { inset: "md" },

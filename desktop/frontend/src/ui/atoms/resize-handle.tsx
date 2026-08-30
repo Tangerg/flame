@@ -8,32 +8,18 @@ const COARSE_STEP_PX = 24;
 
 const RESIZE_KEYS = ["ArrowLeft", "ArrowRight", "Home", "End"];
 
-/**
- * Base UI has no split-pane primitive, so the whole gesture lives here: window-level
- * listeners (a drag must survive the cursor leaving a 10px target), release on
- * `pointercancel` as well as `pointerup`, keyboard stepping, and a live ARIA range. The
- * width goes straight onto the container as a custom property and the caller hears once, on
- * release — React state per pointer-move re-renders the pane at pointer frequency.
- */
 export interface ResizeHandleProps extends Omit<
   SeparatorPrimitiveProps,
   "orientation" | "role" | "tabIndex" | "onPointerDown" | "onKeyDown" | "onKeyUp" | "onBlur"
 > {
   edge: "start" | "end";
-  /**
-   * The PERSISTED width, not what could be read back from the container. A window resize
-   * clamps the layout without touching the preference, so announcing the preference keeps
-   * the ordering of two ResizeObserver callbacks from becoming observable.
-   */
   value: number;
   container: (handle: HTMLElement) => HTMLElement | null;
   property: string;
-  /** Live width a gesture starts from — a pane can render narrower than `property` asked. */
   read: (container: HTMLElement) => number;
   minWidth: number;
   maxWidth: (containerWidth: number) => number;
   onCommit: (width: number) => void;
-  /** Set while resizing so a pane that animates its own width does not animate each step. */
   resizingAttribute?: string;
 }
 
@@ -50,15 +36,9 @@ export function ResizeHandle({
   ...props
 }: ResizeHandleProps) {
   const handleRef = useRef<HTMLDivElement>(null);
-  // Held so a gesture ending without a pointer event (unmount mid-drag, release while the
-  // window was hidden) cannot leave `pointermove` attached to the window.
   const listenersRef = useRef<{ move: (event: PointerEvent) => void; up: () => void } | null>(null);
-  // Remembered rather than looked up again: by the time an unmount clears the attribute
-  // the handle is detached and can no longer find its own container.
   const markedRef = useRef<HTMLElement | null>(null);
 
-  // Read through a ref: the pointer handlers are installed once per drag and must not
-  // capture the render that started it.
   const paneRef = useRef({ container, property, read, minWidth, maxWidth, onCommit });
   useEffect(() => {
     paneRef.current = { container, property, read, minWidth, maxWidth, onCommit };
@@ -121,15 +101,12 @@ export function ResizeHandle({
         const pane = paneRef.current;
         const delta = edge === "end" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
         if (delta !== 0) moved = true;
-        // Re-read the container each move: a window resized mid-drag moves the ceiling.
         width = clampWidth(startWidth + delta, pane.minWidth, pane.maxWidth(element.clientWidth));
         element.style.setProperty(pane.property, `${width}px`);
         handle.setAttribute("aria-valuenow", String(width));
       };
       const up = () => {
         detach();
-        // A press that never moved is not a resize — committing one rewrote the
-        // preference on every click of the handle.
         if (moved) paneRef.current.onCommit(width);
       };
 
@@ -161,8 +138,6 @@ export function ResizeHandle({
             ? max
             : clampWidth(pane.read(element) + (grows ? step : -step), pane.minWidth, max);
 
-      // Arrow keys repeat while held, so the animation suppression has to last until
-      // release rather than for one step.
       mark(element);
       element.style.setProperty(pane.property, `${next}px`);
       handle.setAttribute("aria-valuemax", String(max));
@@ -172,8 +147,6 @@ export function ResizeHandle({
     [edge, mark],
   );
 
-  // Blur as well as key-up: focus can leave the handle while a key is down, and the key-up
-  // then lands elsewhere, leaving the pane permanently unable to animate.
   const releaseKeyboard = useCallback(() => {
     if (listenersRef.current) return;
     detach();

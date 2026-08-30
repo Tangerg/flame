@@ -34,7 +34,6 @@ function InspectorSection({ title, body }: { title: string; body: ToolInspectorB
       <pre
         className={cn(
           "max-h-60 overflow-y-auto rounded-sm bg-sunken px-3 py-2.5 font-mono text-ui-sm leading-body text-fg-soft",
-          // JSON keeps its indentation; raw text wraps so long stdout lines stay readable.
           body.isJson ? "whitespace-pre" : "whitespace-pre-wrap break-all",
         )}
       >

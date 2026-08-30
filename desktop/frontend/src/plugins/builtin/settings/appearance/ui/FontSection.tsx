@@ -1,6 +1,3 @@
-// Font customization — UI + code typefaces and the base of the UI type ladder.
-// Empty string reverts a typeface to the native system stack; numeric `null`
-// reverts the size to the ladder's default base.
 import type { SegmentedOption } from "@/ui";
 import { Checkbox, DropdownMenu, Icon, Segmented, SelectTrigger } from "@/ui";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@/lib/typography";
@@ -38,8 +35,6 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
             <SelectTrigger
               label={triggerLabel}
               disabled={!customEnabled}
-              // Previewed in the family it names, which is why the trigger carries an
-              // inline font-family: the value IS the sample.
               style={customEnabled ? { fontFamily: `"${value}"` } : undefined}
               className={cn("min-w-[220px] max-w-[280px]", mono && customEnabled && "font-mono")}
             />
@@ -71,8 +66,6 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
   );
 }
 
-// The base of the derived UI type ladder (lib/typography.ts), not a root
-// font-size: picking 14 moves every chrome text step, never the geometry.
 const SIZE_VALUES = [
   UI_FONT_SIZE_MIN_PX,
   12,
@@ -82,7 +75,6 @@ const SIZE_VALUES = [
   16,
   UI_FONT_SIZE_MAX_PX,
 ] as const satisfies readonly number[];
-// "default" sentinel = fall back to UI_FONT_SIZE_DEFAULT_PX (null in store).
 const SIZE_RESET = "default";
 
 function FontSizeField({

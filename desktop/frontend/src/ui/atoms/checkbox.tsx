@@ -11,8 +11,6 @@ interface CheckboxProps {
   className?: string;
 }
 
-// The box wraps its own label: no id to invent, no `htmlFor` to keep in sync, and no
-// `aria-label` that can fall out of step with the visible text.
 export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
   return (
     <label

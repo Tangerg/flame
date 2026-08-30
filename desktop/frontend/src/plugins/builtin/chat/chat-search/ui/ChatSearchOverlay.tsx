@@ -14,9 +14,6 @@ import { findMessageRanges } from "../adapters/messageRanges";
 export function ChatSearchOverlay() {
   const activeSessionId = useActiveSessionId();
 
-  // A Range belongs to the DOM tree that created it. Remounting at the session
-  // boundary makes that lifetime structural: no search state can survive into
-  // a different transcript, even when both sessions render similar content.
   return <SessionChatSearchOverlay key={activeSessionId || "no-session"} />;
 }
 

@@ -11,10 +11,6 @@ import {
   useWorkspaceFileViewer,
 } from "@/plugins/builtin/workspace/public/navigation";
 
-// The workspace file-tree browser (B8/G12). Lazy tree of the active session's
-// cwd. The explorer remains navigation: selecting a file opens the dedicated
-// preview tab instead of replacing the tree with a mobile-style drill-down.
-
 function ExplorerView() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
@@ -33,8 +29,6 @@ function ExplorerView() {
         items={roots}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
-        // A runtime without workspace.files.list errors the query —
-        // show a calm "unavailable here" state, not the generic load error.
         error={
           isUnsupportedMethod(error)
             ? {

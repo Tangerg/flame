@@ -8,45 +8,25 @@ import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import { Pressable, RichTooltip } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
 
-/** How far the pointer's reach carries, in marks — short enough that the run still shows
- *  the conversation's own shape underneath the swell. */
 const REACH = 3;
 
-/** px added by the pointer alone. */
 const MAGNIFY = 16;
 
-/** Floor length, so a one-line exchange is a mark rather than a speck. */
 const FLOOR = 8;
 
-/** px a mark's share of the transcript can buy. */
 const SHARE = 10;
 
-// Also the tooltip's anchor width: stretched to the gutter, the preview card detaches from
-// the rail and opens hundreds of pixels away, over the text, pointing at nothing.
 const TRACK = FLOOR + SHARE + MAGNIFY;
 
-/**
- * One mark per EXCHANGE — a question and everything answering it. The mark stays lit for
- * the whole exchange; marking assistant turns separately doubles the rail's length while
- * halving what each mark tells you.
- *
- * Mark length is the measured share of the transcript, not a fixed dot: equal dots say only
- * "there were eight turns", while a scaled rule says which two of them are the session.
- */
 export function TurnRail() {
   const t = useT();
   const messages = useActiveConversationMessages();
   const { visibleTurnId, turns: extents } = useTranscriptMap();
   const [reached, setReached] = useState<number | null>(null);
-  // The SAME fold the measurement uses, so a mark exists for every exchange the reading
-  // line can name. Derived from messages rather than measured extents so the rail draws on
-  // first paint, before any layout has happened.
   const turns = foldExchanges(messages);
   if (turns.length < 2) return null;
 
   const shareOf = (id: string) => extents.find((extent) => extent.id === id)?.share ?? 0;
-  // Swells the marks AROUND the pointer, not just the one under it: at this pitch a single
-  // mark changing length is a flicker easy to miss.
   const swell = (index: number) =>
     reached === null ? 0 : Math.max(0, 1 - Math.abs(index - reached) / REACH);
 
@@ -58,7 +38,6 @@ export function TurnRail() {
     >
       {turns.map((turn, index) => {
         const active = turn.id === visibleTurnId;
-        // The pointer outranks the reading position while reaching into the rail.
         const lead = reached === null ? active : reached === index;
         return (
           <RichTooltip
@@ -79,18 +58,9 @@ export function TurnRail() {
                 className="flex h-[9px] shrink-0 items-center"
                 style={{ width: `${TRACK}px` } as CSSProperties}
               >
-                {/* One thickness for every mark, the lead one's. A hairline that
-                    doubles when it becomes current made the rail's resting state
-                    read as a scratch and the change as a thickening rather than a
-                    move — the length is the measurement here, and it is the only
-                    thing that should be saying anything. */}
                 <span
                   className={cn(
                     "h-[2px] rounded-pill transition-[background-color,width] duration-[var(--dur-fast)]",
-                    // The one hand-picked alpha left in the tree, deliberately: a resting
-                    // mark is 2px of ink between the faint step and a hairline and the ramp
-                    // has no rung there. `check-design-tokens` covers alpha on fills built
-                    // from full ink, which this is not.
                     lead ? "bg-fg" : "bg-fg-faint/55",
                   )}
                   style={

@@ -14,13 +14,9 @@ interface Props {
   src?: string;
   alt?: string;
   title?: string;
-  /** Media-only paragraphs can borrow the full reading measure. */
   allowWide?: boolean;
 }
 
-/** Restricted Desktop media renderer. Model-authored remote URLs never become
- *  image sources (and therefore cannot act as tracking pixels); explicitly
- *  inlined image data remains a first-class, zoomable artifact. */
 export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: Props) {
   const t = useT();
   const [failedSource, setFailedSource] = useState<string | null>(null);

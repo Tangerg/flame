@@ -1,6 +1,3 @@
-// NO per-row reload: installation is one boot transaction, and reinstalling a single plugin
-// would leave the graph in a state the Host never agreed to.
-
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { useState } from "react";
 import { Icon, IconButton, PillButton, TextButton } from "@/ui";

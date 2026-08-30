@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Icon } from "@/ui/icons";
 
-// Deliberately not the agent's `PlanItem["status"]`: three callers render this row and
-// each maps its own vocabulary in, so the atom cannot be typed against one caller's domain.
 export type StepState = "done" | "active" | "pending";
 
 const MARK = "grid h-4 w-4 shrink-0 place-items-center";

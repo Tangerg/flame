@@ -1,7 +1,3 @@
-// Traces tab — the span list. Each row is a click target that expands a detail
-// panel (status.message + ids / timing / attributes), so an error reads as more
-// than a red tag.
-
 import type { ReactNode } from "react";
 import type { SpanRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
@@ -14,11 +10,7 @@ import { Cell, Empty, Row, VirtualList } from "./primitives";
 export function TracesPanel() {
   const t = useT();
   const spans = useTelemetryStore((s) => s.spans);
-  // Newest first. spans changes only once per flush (~500ms) so the reverse
-  // copy is cheap and memoized on the (stable-between-flushes) array ref.
   const ordered = useMemo(() => spans.slice().reverse(), [spans]);
-  // Expanded span ids — keyed by stable spanId so it survives the next flush
-  // (incoming spans don't disturb which rows the user opened).
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -62,9 +54,6 @@ function StatusTag({ status }: { status: SpanRow["status"] }) {
   return <span className={STATUS_TONE[status]}>{status}</span>;
 }
 
-// One trace row: a click target that toggles a detail panel below it. The
-// detail is where the "why" lives — status.message (the failure text) plus the
-// span's ids / timing / attributes — so an error reads as more than a red tag.
 function SpanRowItem({
   span,
   open,
@@ -102,10 +91,6 @@ function SpanRowItem({
           {span.traceId.slice(0, 12)}
         </span>
       </Pressable>
-      {/* Wired to its panel, but deliberately NOT animated through `Collapsible`
-          like the transcript's disclosures: these rows live in a VirtualList, and a
-          220ms height transition is 220ms of the virtualiser re-measuring a row
-          that is still moving. */}
       {open && (
         <div id={panelId}>
           <SpanDetail span={span} />
@@ -115,9 +100,6 @@ function SpanRowItem({
   );
 }
 
-// The keys stay English and UNTRANSLATED: they are OTel's own vocabulary and this block is
-// a data dump a developer matches against the spec, not prose. The panel's actual prose —
-// its empty states — goes through the catalogs.
 function SpanDetail({ span }: { span: SpanRow }) {
   const meta: [string, string][] = [
     ["trace", span.traceId],

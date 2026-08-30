@@ -1,6 +1,3 @@
-// The cron expression stays VERBATIM: it is what the user would edit, and a prose
-// translation of it is a second reading that can disagree with the first.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { Badge, Icon } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -41,8 +38,6 @@ function ScheduleRows({ tool }: ToolPreviewProps) {
             </code>
             {!schedule.enabled && <Badge tone="warning">{t("schedules.off")}</Badge>}
           </div>
-          {/* When it fires next is the only fact a reader needs to decide whether
-              this schedule is the one that just surprised them. */}
           {schedule.nextRunAt && (
             <div className="mt-0.5 font-mono text-ui-xs tabular-nums text-fg-faint">
               {t("schedules.next", { time: schedule.nextRunAt })}

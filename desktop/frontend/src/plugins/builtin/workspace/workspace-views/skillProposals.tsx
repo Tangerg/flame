@@ -1,10 +1,3 @@
-// Built-in workspace view: "Skill Proposals" — the offline HITL review queue for
-// skill proposals (skills.proposals.list). The agent proposes a reusable workflow,
-// either because you asked for one or because it distilled one from your sessions;
-// it cannot load its own proposal. A human approves it into the active library or
-// rejects it. Distinct from "Skill Library" (the active/archived curator surface):
-// this is the approval gate feeding it.
-
 import { useCallback, useRef, useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, TextButton } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -105,8 +98,6 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
               {proposal.revision.slice(0, 8)}
             </span>
             <Badge>{t(`skillProposals.scope.${proposal.scope}`)}</Badge>
-            {/* Approving this one overwrites a Skill that is already loadable, which
-                is the single fact most likely to change a reviewer's answer. */}
             {proposal.revises && <Badge tone="warning">{t("skillProposals.revises")}</Badge>}
           </div>
           {proposal.description && (
@@ -140,7 +131,6 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
           </PillButton>
         </div>
       </div>
-      {/* The instructions ARE what is being approved, so the reviewer sees them first. */}
       {proposal.instructions && (
         <>
           <TextButton

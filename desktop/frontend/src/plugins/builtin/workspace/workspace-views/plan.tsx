@@ -5,10 +5,6 @@ import { PlanList } from "./views/PlanList";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { defineWorkspaceView } from "./defineWorkspaceView";
 
-// The agent's working plan. Reads live from the explicit Session Plan — the
-// backend pushes it via plan.updated, which the fold
-// already lands in view.shared. Session-scoped and root-run-written, so it
-// outlives the turn that set it.
 function PlanTab() {
   const t = useT();
   const view = usePlanView();
@@ -30,8 +26,6 @@ function PlanTab() {
   );
 }
 
-// Progress through the plan, on the tab. Silent while there is no plan: a tab
-// that permanently reads "0/0" trains the eye to stop looking at it.
 function PlanTabBadge() {
   const view = usePlanView();
   if (view.total === 0) return null;

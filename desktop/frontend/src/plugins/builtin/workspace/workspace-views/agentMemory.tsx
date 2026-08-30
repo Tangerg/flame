@@ -1,7 +1,3 @@
-// The HITL review surface over the agent's SELF-maintained memory: mined facts wait as
-// `pending` until approved, and only `active` items are recalled into future turns.
-// Distinct from Knowledge, which edits the user-authored FLAME.md cascade.
-
 import { useCallback, useRef, useState } from "react";
 import { DataView, EmptyState, Icon, IconButton, PillButton, SectionLabel, TextArea } from "@/ui";
 
@@ -25,8 +21,6 @@ import {
 
 type Scope = AgentMemoryQuery["scope"];
 
-// The latch is synchronous because `busy` state lags a render, so a double-click before
-// the disabled state applies would otherwise fire two writes.
 function useRowAction(): { busy: boolean; run: (op: () => Promise<void>) => void } {
   const t = useT();
   const pending = useRef(false);
@@ -273,7 +267,6 @@ function AgentMemoryTab() {
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const available = useRuntimeCapability("agentMemory");
   const projectResolving = scope === "project" && workspace.status === "resolving";
-  // The project scope needs a cwd to resolve; the user scope is cwd-independent.
   const enabled = available && (scope === "user" || (workspace.status === "ready" && Boolean(cwd)));
   const { data, isLoading, isError } = useAgentMemory(enabled, scope, cwd);
   const items = data ?? [];
@@ -301,9 +294,6 @@ function AgentMemoryTab() {
       scrollClassName="py-1"
     >
       <ScopeToggle scope={scope} onChange={setScope} />
-      {/* The project scope can't resolve (or add) without a session cwd — hide the
-          add affordance so it can't post an unresolvable write, and show a distinct
-          "select a session" empty state rather than a misleading "no memory yet". */}
       {enabled && <AddMemory scope={scope} cwd={cwd} />}
       <DataView
         items={items}

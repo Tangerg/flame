@@ -4,16 +4,9 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-// Every variant carries a border, transparent where there is nothing to draw: without it
-// a bordered variant is 2px larger than a borderless one at the same size and the two never
-// share a baseline in a toolbar. Horizontal padding is 1px short of the nominal step to
-// compensate.
-// The `:not([class*='opacity-'])` guard lets a semantic glyph keep its own opacity.
 export const buttonStyles = cva(
   [
     "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap",
-    // `leading-tight`, not `leading-none`: `truncate` clips vertically too, and at a line
-    // box the height of the font size the descenders fall outside it.
     "border-[length:var(--control-edge-width)] border-transparent font-sans font-medium leading-tight outline-none",
     "transition-[background-color,border-color,color,scale] duration-[var(--dur-fast)] ease-out",
     "disabled:cursor-not-allowed disabled:opacity-64 disabled:active:scale-100",
@@ -29,7 +22,6 @@ export const buttonStyles = cva(
         danger: "bg-transparent text-negative hover:bg-negative-wash",
         tonal: "font-semibold",
       },
-      /** Only read by `variant: "tonal"`. */
       tone: {
         negative: "",
         warning: "",

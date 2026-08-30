@@ -1,6 +1,3 @@
-// Derived entirely from tool calls the fold already holds; the durations are the RUNTIME's
-// own measurements, so nothing here is timed in the client.
-
 import type { IconName } from "@/ui";
 import type { ToolStat, ToolStatsSummary } from "../application/toolStats";
 import { toolStats, toolTimeShare } from "../application/toolStats";
@@ -46,10 +43,6 @@ function ToolStatsTab() {
 
 function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummary }) {
   const t = useT();
-  // Through the extension point, not through chat/tools' resolver: this view is a
-  // foreign context, and importing that resolver made the two contexts mutually
-  // dependent (check-builtin-contexts caught the cycle). The built-in icons are
-  // contributed into this same registry at startup, so the answer is identical.
   const icon = (lookupExtensionByKey(TOOL_ICON, row.name) as IconName | undefined) ?? "lightning";
 
   return (
@@ -57,9 +50,6 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
       <div className="flex min-w-0 items-baseline gap-2">
         <Icon name={icon} size="sm" className="shrink-0 self-center text-fg-muted" />
         <span className="min-w-0 flex-1 truncate text-ui-md text-fg">{row.name}</span>
-        {/* The two ways a call does not deliver, kept apart: a denial is a
-            person saying no, and showing it as a failure would make an approval
-            policy read as a broken tool. */}
         {row.failed > 0 && (
           <Badge tone="negative">{t("toolStats.failed", { n: row.failed })}</Badge>
         )}
@@ -74,9 +64,6 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
           label={t("toolStats.share", { name: row.name })}
           className="h-1 flex-1"
         />
-        {/* How this tool's calls trended, not just what they summed to: three reads at
-            40ms and one at 8s sum to the same as four at 2s, and only one of those is worth
-            looking into. Two calls is the minimum that has a direction. */}
         {row.durations.length > 1 && (
           <Sparkline
             data={row.durations}

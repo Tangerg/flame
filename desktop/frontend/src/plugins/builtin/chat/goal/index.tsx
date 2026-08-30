@@ -54,9 +54,6 @@ export default definePlugin({
       order: 4,
       component: GoalModeIndicator,
     });
-    // The standing row answers both setting and reading a goal, carrying only the objective,
-    // lifecycle and currently available action. `report_goal_outcome` is NOT claimed: the
-    // banner shows the stop CODE, not whatever the agent wrote about the outcome.
     for (const key of ["create_goal", "get_goal"]) {
       ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
     }

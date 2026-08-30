@@ -1,6 +1,3 @@
-// Inline "agent is working" marks that sit next to text; block/placeholder loading is
-// skeleton.tsx. Keyframes live in styles/globals.css.
-
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
@@ -12,7 +9,6 @@ export type LoaderSize = "sm" | "md" | "lg";
 export interface LoaderProps {
   variant?: LoaderVariant;
   size?: LoaderSize;
-  /** Rendered by the `text-shimmer` variant only. */
   text?: string;
   className?: string;
 }
@@ -23,16 +19,12 @@ const CONTAINER: Record<LoaderSize, string> = {
   lg: "h-6",
 };
 
-// Ladder steps, not Tailwind's named sizes: those are fixed rem values and do not move
-// with the user's UI size preference.
 const TEXT: Record<LoaderSize, string> = {
   sm: "text-ui-xs",
   md: "text-ui-sm",
   lg: "text-ui-md",
 };
 
-// `<output>` carries an implicit role=status + aria-live=polite, so the visual marks stay
-// presentational and need no `role` of their own.
 function Loading() {
   const t = useT();
   return <output className="sr-only">{t("common.loading")}</output>;

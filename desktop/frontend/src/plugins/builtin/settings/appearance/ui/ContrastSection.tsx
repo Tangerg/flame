@@ -1,8 +1,3 @@
-// Global contrast slider — drives `--depth-step`, the color-mix amount
-// every surface ladder (`--color-surface-2/3/4`) derives from, so it
-// affects all themes, not just Custom. 0 = flat, 100 = maximum surface
-// separation.
-
 import { Slider } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useContrastPreference } from "../application/appearancePreferences";

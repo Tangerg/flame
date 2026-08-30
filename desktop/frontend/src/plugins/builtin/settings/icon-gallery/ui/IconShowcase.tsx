@@ -1,8 +1,3 @@
-// IconShowcase — compact, curated subset of @lobehub/icons rendered in
-// the Settings pane. Sibling to IconGallery (the full browser); this one
-// just shows the brands most users care about, grouped by purpose, so the
-// pane fits the rail-style settings layout.
-
 import { comboGlyph } from "@/lib/combo";
 import { Trans } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
@@ -12,9 +7,6 @@ interface Section {
   ids: string[];
 }
 
-// Hand-curated list. Keep each row to ~6–10 brands so the grid stays tidy
-// at the settings pane width. Order within a section is intentional
-// (recognition order, not alphabetical).
 const SECTIONS: Section[] = [
   {
     title: "Frontier labs",

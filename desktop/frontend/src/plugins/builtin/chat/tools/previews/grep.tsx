@@ -1,6 +1,3 @@
-// Prefers the call's OWN result: its output mode honours glob/type/context filters a
-// re-query cannot reproduce. The query comes off `tool.fn` per the §4.4.2 projection.
-
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
@@ -13,14 +10,6 @@ import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 const MAX_GREP_MATCHES = 4;
 
-/**
- * Matches grouped by the file they are in, with a count per file.
- *
- * A flat list answers "what matched"; grouping answers "where", which is the question
- * a search is asked. It also stops the path repeating on every row — the same long
- * prefix five times over, each truncated in the middle, was most of what the preview
- * showed.
- */
 function groupByFile(rows: readonly { loc: string; text: string }[]) {
   const groups: { file: string; matches: { line: string; text: string }[] }[] = [];
   for (const row of rows) {
@@ -37,9 +26,6 @@ function groupByFile(rows: readonly { loc: string; text: string }[]) {
 function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
   const t = useT();
   const { shown, overflow } = useGrepToolPreview(tool, MAX_GREP_MATCHES);
-  // §7.5 no-silent-caps: surface our own preview cap. The runtime's search
-  // presentation drops grep's `truncated`, so a server-side cap is no longer a
-  // state a tool result can report.
   return (
     <div className={TEXT_PREVIEW_CLASS}>
       <div className="flex flex-col gap-1.5">
@@ -63,7 +49,6 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
                 <span className="text-right font-mono text-ui-2xs tabular-nums text-fg-faint select-none">
                   {match.line}
                 </span>
-                {/* Preserve the whole matching line; the match may be beyond the prefix. */}
                 <span className="min-w-0 whitespace-pre-wrap wrap-anywhere font-mono text-ui-sm text-fg-muted">
                   {match.text}
                 </span>

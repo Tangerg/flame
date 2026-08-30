@@ -1,8 +1,3 @@
-// One shape per placement. At full width the view owns the window's top-left corner, so the
-// bar carries the drawer toggle, identity and exit. In the dock, the dock's own bar already
-// names the view, so this one appears only when the view adds something — two stacked bars
-// saying the same word in a 400px column was the old shape.
-
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
@@ -17,11 +12,6 @@ export interface ViewHeaderProps {
   dockIdentity?: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;
-  /**
-   * Render the title in the UI font (13/700) instead of mono. Used by
-   * views whose "title" is a label ("Notifications", "Connected MCP
-   * servers") rather than a filename or process name.
-   */
   titleStrong?: boolean;
 }
 
@@ -42,8 +32,6 @@ export function ViewHeader({
   );
 }
 
-/** Material identity, subtext and per-view actions only — the dock tab already
- * carries the generic view name. */
 function DockViewBar({
   identity,
   sub,
@@ -75,24 +63,15 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
   const t = useT();
 
   return (
-    // Every chrome bar in the app is this component: one height
-    // (`--surface-header-height`), one inset, one bottom hairline, one drag
-    // region. A view can be opened beside the chat, so its header sits directly
-    // next to that one and any divergence reads as two different kinds of bar.
     <AgentSurfaceHeader className="gap-2" windowCorner>
       <Icon name={icon} size="md" className="shrink-0 text-fg-muted" />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span
           className={cn(
             "min-w-0 truncate text-ui-md font-medium text-fg",
-            // A label title ("Notifications") reads in the UI face; a filename /
-            // process title stays mono so paths and identifiers align.
             titleStrong ? "font-sans" : "font-mono",
           )}
         >
-          {/* A string title is an i18n key (built-in views) or a literal
-              (filenames, third-party) — t() resolves the former, passes the
-              latter through. Non-string titles (ReactNode) render as-is. */}
           {typeof title === "string" ? t(title) : title}
         </span>
         {sub !== undefined && (
@@ -114,8 +93,6 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
             onClick={placement.onOpenInDock}
           />
         )}
-        {/* The way out. Without it, a maximised view left Escape (which an
-            input steals) and ⌘W as the only exits. */}
         {placement && (
           <IconButton icon="x" size="sm" title={t("common.close")} onClick={placement.onClose} />
         )}

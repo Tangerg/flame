@@ -1,7 +1,3 @@
-// Approval is a core capability and NOT feature-gated, so an older runtime that lacks the
-// `approval.*` methods rejects `getMode` instead of advertising its absence — the pane
-// degrades to an inert "unavailable" state on that rejection.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../public";

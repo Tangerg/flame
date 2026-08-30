@@ -20,13 +20,10 @@ export function renderBlock(
   key: number,
   facts: TurnFacts,
   ctx: BlockCtx,
-  // Read only by blocks that decide their OWN open state — see messageBlockRenderUnits.
   superseded = false,
 ) {
   switch (block.kind) {
     case "text":
-      // A <div>, not a <p>: react-markdown emits its own <p> nodes, and `<p>` inside `<p>`
-      // is invalid HTML that browsers silently split.
       return (
         <div key={key}>
           {ctx.textReveal === "instant" ? (
@@ -79,9 +76,6 @@ export function renderBlock(
       );
 
     case "approval":
-      // Identity key, NOT the block index: HITL cards hold per-interrupt local state, and
-      // index keying reuses the instance when a different approval lands at the same
-      // position — leaking one interrupt's draft into the next.
       return (
         <ApprovalCard
           key={block.itemId ?? key}
@@ -98,7 +92,6 @@ export function renderBlock(
       );
 
     case "question":
-      // Identity key — same reasoning as the approval card above.
       return (
         <QuestionCard
           key={block.itemId ?? key}
@@ -116,12 +109,6 @@ export function renderBlock(
   }
 }
 
-/**
- * The wrapper carries the vertical rhythm, and this is the ONLY place that can: a seam is a
- * relationship between two units (see renderUnitRhythm). It also holds the anchor and the
- * React key, so `renderUnitAnchor`'s identity rule applies to every block kind at once
- * rather than to whichever ones remembered to ask for it.
- */
 export function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
   if (unit.kind === "wave")
     return <NarrativeWave units={unit.units} facts={facts} ctx={ctx} renderUnit={renderUnit} />;
@@ -139,8 +126,6 @@ export function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: Block
   return renderBlock(unit.block, unit.index, facts, ctx, unit.superseded);
 }
 
-// Read here rather than inside the projection, so the projection stays a pure function of
-// its arguments.
 const standingTool = (name: string) =>
   lookupExtensionByKey(TOOL_STANDING_SURFACE, name) !== undefined;
 

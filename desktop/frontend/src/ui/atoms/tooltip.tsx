@@ -59,7 +59,6 @@ export function RichTooltip({
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
       <TooltipPrimitive.Portal>
-        {/* Layer on the positioner, never the popup — see FLOATING_LAYER. */}
         <TooltipPrimitive.Positioner className={FLOATING_LAYER} side={side} sideOffset={sideOffset}>
           <TooltipPrimitive.Popup role="tooltip" className={cn(FLOATING_TIP, className)}>
             {children}

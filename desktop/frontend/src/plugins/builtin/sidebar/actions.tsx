@@ -1,7 +1,3 @@
-// Rows here are entry points for STARTING work, not ways of finding it — ⌘K is on every
-// surface and needs no signpost where sessions are already listed. Search earns its row by
-// scaling past the visible fold while keeping the index compact.
-
 import { comboGlyph } from "@/lib/combo";
 import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/public/panes";
 import { openSessionSearch } from "@/plugins/builtin/command/session-search/public/actions";
@@ -36,9 +32,6 @@ export function SidebarActions() {
         {t("sessionSearch.placeholder")}
       </AgentRow>
       <div className="flex flex-col">
-        {/* No combo in the trailing slot. One of three rows wore its shortcut, so the
-          strip read as "this row has a property the others lack" rather than as a
-          hint — and a keyboard user is not looking at the sidebar. */}
         <AgentRow icon="edit" disabled={!actions.canCreateSession} onClick={actions.createSession}>
           {t("sidebar.action.newSession")}
         </AgentRow>

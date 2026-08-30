@@ -1,8 +1,3 @@
-// Custom-theme color editor — the background + foreground the "Custom" theme
-// derives its full palette from (accent is edited in AccentSection). Only shown
-// when the Custom theme is active; edits apply live (custom-theme plugin
-// re-derives + re-registers, uiStore re-applies).
-
 import { useT } from "@/lib/i18n";
 import { useCustomThemePreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../public";
@@ -26,7 +21,6 @@ function ColorRow({
           className="h-4.5 w-4.5 rounded-full border-[0.5px] border-field bg-clip-padding"
           style={{ background: value }}
         />
-        {/* Hidden native picker — clicking the row opens the OS color wheel. */}
         <ColorPickerInput
           aria-label={label}
           value={value}

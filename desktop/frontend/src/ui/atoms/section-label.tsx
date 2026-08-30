@@ -13,8 +13,6 @@ export function SectionLabel({
   return (
     <div
       className={cn(
-        // `leading-tight`, not `leading-none`: the label truncates and `truncate` clips
-        // both axes, so at a line box the height of the font size descenders get shaved.
         "flex min-w-0 items-center gap-2 px-2 pb-2 pt-2 font-sans text-ui-xs font-medium leading-tight text-fg-faint",
         className,
       )}

@@ -5,13 +5,8 @@ import { useT } from "@/lib/i18n";
 import type { WorkIndexActions, WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
 import { cn } from "@/lib/classNames";
 
-// Rows shown before the fold. Keeps one busy project — or a long tail of
-// scratch sessions — from burying whatever is under it, while leaving every
-// session reachable: the index is the only place some of them appear.
 const VISIBLE_CAP = 5;
 
-/** Both places sessions appear need the identical cap, fold copy and row wiring, and they
- *  drifted apart the moment there were two of them. */
 export function SessionList({
   sessions,
   actions,

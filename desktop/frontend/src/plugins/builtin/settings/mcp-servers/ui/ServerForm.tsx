@@ -64,7 +64,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
 
   const onSave = async () => {
     setSaving(true);
-    reset(); // invalidate any in-flight test so its result can't overwrite this save
+    reset();
     try {
       const input = buildInput();
       if (server) await update(server.name, input);

@@ -1,7 +1,3 @@
-// Holds NEITHER of the two high-frequency states around it — the composer's draft lives in
-// ComposerSurface and the scroll follow state in streamFollow — because a component that
-// renders the message list must not re-render on every keystroke or scroll event.
-
 import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
@@ -33,12 +29,6 @@ interface Props {
   onSend: (input: UserInput) => boolean;
 }
 
-// Absolute against the CENTRE LINE so the rail can appear, disappear or change width
-// without moving the text. The container query is a literal sum because Tailwind reads
-// source text and a variant built from a variable emits nothing; it demands a gutter on
-// BOTH sides, or the map crowds an off-centre column. Pointer-transparent except for what
-// the rail draws — the scroller underneath spans the whole pane, and a pad of nothing that
-// swallows the wheel stops scrolling wherever the cursor was left.
 const RAIL =
   "absolute top-0 bottom-[var(--composer-overlay,0px)] z-1 hidden w-[var(--reading-rail-width)] flex-col @min-[1152px]:flex pointer-events-none [&>*]:pointer-events-auto right-[calc(50%+var(--reading-column-max)/2)]";
 
@@ -51,13 +41,8 @@ export function ChatStream({ onSend }: Props) {
   const selectTool = useSelectWorkspaceTool();
   const toggleExpandedTool = useToggleWorkspaceTool();
 
-  // Read ONCE here and threaded through ctx, so MarkdownMessage stays prop-driven and the
-  // hot streaming path carries no per-block store subscription.
   const textReveal = useUiStore((state) => state.streamReveal);
 
-  // A MEMBERSHIP signature, not the map: output deltas replace the Tool map on the hot
-  // path, and this must only re-run when the id set itself changes — including when
-  // compaction removes an id without changing the latest surviving one.
   const toolIdSignature = useMemo(() => Object.keys(toolCalls).join("\u001f"), [toolCalls]);
   const toolIds = useMemo(
     () => (toolIdSignature ? toolIdSignature.split("\u001f") : []),
@@ -67,9 +52,6 @@ export function ChatStream({ onSend }: Props) {
     reconcileWorkspaceToolSelection(toolIds);
   }, [toolIds]);
 
-  // Every member is session-INDEPENDENT by construction, which is what lets each turn's
-  // memo bail: this object survives a whole run untouched, so a streaming token changes
-  // nothing except the row it belongs to. Session facts reach a turn through its row.
   const ctx = useMemo(
     () => ({
       onSelectTool: selectTool,
@@ -92,10 +74,6 @@ export function ChatStream({ onSend }: Props) {
   const composerOverlayRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<MessageStreamController>(null);
 
-  // Measured in the PARENT's layout phase, when both refs are attached but before the
-  // stick-to-bottom viewport computes its first target. Publishing from the child defers
-  // the initial value to ResizeObserver and opens every long conversation one composer
-  // height above its tail. Later growth is a direct style write, off the typing path.
   useLayoutEffect(() => {
     if (!started) return;
     const pane = paneRef.current;
@@ -103,8 +81,6 @@ export function ChatStream({ onSend }: Props) {
     if (!pane || !overlay) return;
 
     const publishHeight = (height = overlay.getBoundingClientRect().height) => {
-      // Sub-pixel: `offsetHeight` rounds to an integer and can round DOWN, leaving the
-      // transcript's final baseline one physical pixel inside the glass composer.
       pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${height}px`);
     };
 
@@ -122,8 +98,6 @@ export function ChatStream({ onSend }: Props) {
 
   const banners = (
     <div className={cn(READING_COLUMN, READING_GUTTER, "shrink-0")}>
-      {/* Keyed on the session so the relocate input never carries a
-          half-typed path across a session switch. */}
       <CwdMissingBanner key={sessionId} />
       <RunErrorBanner />
       <Slot
@@ -134,17 +108,11 @@ export function ChatStream({ onSend }: Props) {
     </div>
   );
 
-  // The slot stays because one contribution earns it: an install with no provider key
-  // cannot send anything, so the way to fix that has to be reachable here. It renders
-  // nothing otherwise.
   if (!started) {
     return (
       <>
         {banners}
         <div className="panel-scroll flex flex-1 flex-col items-center justify-center gap-5 pb-[6vh]">
-          {/* Centred over the input rather than flush with the column's text edge:
-              the input insets its own placeholder, so a left-aligned title started
-              14px before the words underneath it and read as a near-miss. */}
           <div className={cn(READING_COLUMN, READING_GUTTER)}>
             <h1 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
               <EmptyChatHeading />
@@ -164,19 +132,12 @@ export function ChatStream({ onSend }: Props) {
   }
 
   return (
-    // A container query and not a viewport one: what decides whether a rail fits
-    // is the width of THIS pane, which the drawer and the dock both change
-    // without the window changing at all.
     <div ref={paneRef} className="@container relative flex min-h-0 flex-1 flex-col">
       {banners}
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className={RAIL}>
           <Slot name="chat.rail.start" />
         </div>
-        {/* The SCROLLER is the pane, not the column — the column is centred
-            inside it. Scrolling a 680px box puts its scrollbar 680px in, right
-            down the edge of the text; the pane's own edge is where every other
-            application puts it and the only place it isn't in the way. */}
         <div className="relative flex min-h-0 flex-1 flex-col">
           <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
             <MessageStream

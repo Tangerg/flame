@@ -1,8 +1,3 @@
-// WorkspaceViewBody — resolves a workspace view id to its body
-// component via the plugin registry and renders it inside a
-// PluginBoundary. Used when the user has promoted a workspace view
-// (Settings, Diff, Files, …) into the chat-area tab strip.
-
 import { Suspense } from "react";
 import { EmptyState, SkeletonList } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -18,9 +13,6 @@ export function WorkspaceViewBody({ viewId }: Props) {
   const workspaceViews = useWorkspaceViews();
   const Body = workspaceViews.find((v) => v.id === viewId)?.component;
   if (!Body) {
-    // The header tab strip mirrors the store 1:1, so a view whose plugin
-    // unloaded while its tab was active still shows a tab. Render a fallback
-    // instead of a blank pane (a returned null here reads as a dead tab).
     return (
       <EmptyState
         icon="alert"

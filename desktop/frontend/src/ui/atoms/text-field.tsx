@@ -11,16 +11,12 @@ import {
   type TextAreaPrimitiveProps,
 } from "@/ui/primitives";
 
-// `variant` answers one question: who draws the edge? `bare` means the container already
-// did, so metrics stay off there — a second height here would fight the container's.
 const EDGE = {
   boxed:
     "rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas focus:border-field-strong",
   bare: "border-0 bg-transparent",
 } as const;
 
-// Invalid reaches the eye through whichever edge the variant owns: recolour the border
-// where there is one, add a ring where there is not.
 const INVALID = {
   boxed: "border-negative focus:border-negative",
   bare: "outline outline-1 outline-negative",
@@ -55,8 +51,6 @@ const inputStyles = cva(BASE, {
   defaultVariants: { variant: "boxed", size: "md", font: "mono", invalid: false },
 });
 
-// A textarea's size step is inset alone — `rows` and the resize handle own the height.
-// `prose` carries no inset because the composer's own density tokens place the editor.
 const textAreaStyles = cva(`${BASE} resize-y leading-body`, {
   variants: {
     ...SHARED_VARIANTS,
@@ -65,8 +59,6 @@ const textAreaStyles = cva(`${BASE} resize-y leading-body`, {
       md: "px-3 py-2",
       prose: "text-prose leading-prose",
     },
-    // Native `field-sizing`, not a measure-and-write effect: the latter forces a reflow
-    // per keystroke and its pixel cap stops tracking the type ladder when text size changes.
     autosize: { true: "field-sizing-content resize-none", false: "" },
   },
   compoundVariants: [...INVALID_COMPOUNDS],
@@ -95,9 +87,6 @@ export function TextField({ variant, size, font, invalid, className, ...props }:
   );
 }
 
-// The documented Base-UI-first exemption (CLAUDE.md §4), not an oversight: Base UI ships
-// no textarea part and types every handler against `HTMLInputElement`, so routing one
-// through it costs a cast and buys nothing — a textarea's focus/keyboard/aria are native.
 export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &
   VariantProps<typeof textAreaStyles> & { className?: string };
 
@@ -118,8 +107,6 @@ export function TextArea({
   );
 }
 
-// One component rather than "wrap TextField in a div": the focus edge belongs to the whole
-// composite, and hand-assembled versions each reached for a different edge.
 const SEARCH_BOX = {
   sm: "h-[var(--field-height-sm)] gap-1.5 px-2",
   md: "h-[var(--field-height-md)] gap-1.5 px-2.5",

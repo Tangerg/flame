@@ -15,9 +15,6 @@ import {
   useSetComposerText,
 } from "@/plugins/builtin/chat/composer/public/draft";
 
-// Its own component so the draft text lives in the smallest component that needs it. One
-// level up — beside the transcript — every keystroke re-rendered the message list and every
-// streamed token re-rendered the composer, though neither has anything to say to the other.
 export function ComposerSurface({ onSend }: { onSend: (input: UserInput) => boolean }) {
   const value = useComposerText();
   const setValue = useSetComposerText();
@@ -28,8 +25,6 @@ export function ComposerSurface({ onSend }: { onSend: (input: UserInput) => bool
   const pastes = useComposerPastes();
   const removePaste = useRemoveComposerPaste();
   const addPaste = useAddComposerPaste();
-  // Gate image staging on the next run's model accepting images — keeps the
-  // paste/drop path consistent with the (disabled) toolbar attach button.
   const acceptsImages = useSelectedModel()?.acceptsInput("image") ?? false;
 
   return (

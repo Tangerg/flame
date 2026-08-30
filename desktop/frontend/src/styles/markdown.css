@@ -1,14 +1,6 @@
-/* Markdown body — selectors target HTML rehype emits (no JSX nodes
-   to hang Tailwind utilities on). Borders use color-mix on text
-   instead of the hard --color-border so they sit gently against the
-   message background. */
 .md {
   display: block;
   overflow-wrap: anywhere;
-  /* A tab is four columns. The default is eight, which is nobody's editor setting and
-     turns one indent level in pasted Go or Makefile output into half the measure. Set
-     on the root so it reaches the highlighted block, its `<code>`, and the raw `<pre>`
-     the fallback renders while Shiki is still settling. */
   tab-size: 4;
 }
 .md > :first-child {
@@ -18,12 +10,6 @@
   margin-bottom: 0;
 }
 
-/* Every size in here is RELATIVE to whatever renders the markdown, and nothing
-   below names a step. `.md` has two callers that want different sizes — a message
-   body at the `prose` step, a reasoning block deliberately one step down and
-   muted — and a hardcoded step would flatten the quieter one into the louder.
-   That is also how both desktop references do it: one `--markdown-font-size` set
-   per context, headings as a percentage of it. */
 .md p {
   margin: 0 0 0.6875rem;
   font-size: inherit;
@@ -54,8 +40,6 @@
   margin-top: 4px;
 }
 
-/* Codex keeps one heading rhythm across all six levels; hierarchy comes from
-   its 24/20/17/17/15/15px ladder, not ad-hoc margins or muted lower levels. */
 .md h1,
 .md h2,
 .md h3,
@@ -88,8 +72,6 @@
   margin-top: 20px;
 }
 
-/* Lists — craft minimal mode: tighter indent, space-y on parent,
-   faint markers so they don't compete with prose. */
 .md ul,
 .md ol {
   margin: 0;
@@ -139,9 +121,6 @@
   margin-bottom: 0;
 }
 
-/* GFM task-list checkboxes — kill the default OS chrome and draw our
-   own. Loose tasks become a two-column reading row so every paragraph
-   after the lead stays in the task body column. */
 .md ul.contains-task-list,
 .md ol.contains-task-list:not(:has(> li:not(.task-list-item))) {
   list-style: none;
@@ -190,8 +169,6 @@
   grid-column: 2;
 }
 
-/* Blockquote — Codex keeps quoted prose at normal ink and lets one inset rule
-   carry the hierarchy. The logical edge follows RTL without a second selector. */
 .md blockquote {
   position: relative;
   margin: 0 0 8px;
@@ -234,9 +211,6 @@
   margin-top: 0;
 }
 
-/* Tables are wide, copyable content artifacts. The outer container borrows the
-   turn gutter so its action can sit beside the reading measure without shrinking
-   any column; the scroller keeps the table itself aligned with prose. */
 .md-table-container {
   --md-table-gutter: var(--density-column-gutter);
   position: relative;
@@ -291,8 +265,6 @@
     opacity: 1;
   }
 }
-/* Codex treats a table as structured prose: quiet row rules, no enclosing card
-   fill, and enough trailing header space that the copy action never obscures it. */
 .md table {
   border-collapse: separate;
   border-spacing: 0;
@@ -341,8 +313,6 @@
   min-width: max-content;
 }
 
-/* Inline code clones its quiet neutral well across wrapped lines, so long symbols
-   remain one readable artifact instead of losing padding at each line edge. */
 .md code {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -365,9 +335,6 @@
   font-style: italic;
 }
 
-/* Shiki code block — rules below target the `<pre class="shiki">` +
-   `<code>` Shiki emits as a string. Outer card chrome is Tailwind on
-   ShikiCodeBlock.tsx. */
 .shiki-block .shiki,
 .shiki-block .shiki-fallback {
   margin: 0;
@@ -378,12 +345,6 @@
   font-size: var(--fs-code);
   background: transparent !important;
 }
-/* `font-size: inherit` pins block code to the parent .shiki size — otherwise the
-   `.md code` inline-chip size would apply again inside the block.
-   `!important` on the fill for the same reason the `<pre>` above needs it: the
-   inline-code chip was reaching the `<code>` inside a highlighted block and
-   painting a second, lighter grey behind every line — a slab of stripes instead
-   of one recessed surface. Specificity alone does not settle it here. */
 .shiki-block .shiki code {
   background: transparent !important;
   border: 0;
@@ -412,11 +373,6 @@
   background-clip: content-box;
 }
 
-/* ===== GitHub Alerts ($remark-github-blockquote-alert) =====
-   Their default alert.css uses prefers-color-scheme + GitHub brand
-   hexes. Override the CSS vars they read so alerts pick up OUR
-   semantic tokens (info/warning/negative/success/accent) and track
-   theme switches via our .theme-{scheme} class instead of the OS. */
 .md .markdown-alert {
   --color-border-default: var(--color-border);
   --color-accent-fg: var(--color-info);

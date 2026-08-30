@@ -1,5 +1,3 @@
-// Fields mirror the wire `WebSearchResult` (API.md §4.5); `domain` is derived from the url
-// at projection time, and `url` keys the card.
 import { ExternalLink } from "@/ui";
 export interface SearchResult {
   url: string;
@@ -12,9 +10,6 @@ export function SearchResults({ results }: { results: SearchResult[] }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
       {results.map((r) => (
-        // A LINK, not a div: the one thing a person wants from a search result is the page.
-        // `url` keys it because an index swaps DOM nodes by position on re-order and
-        // clobbers hover/focus.
         <ExternalLink
           key={r.url}
           href={r.url}

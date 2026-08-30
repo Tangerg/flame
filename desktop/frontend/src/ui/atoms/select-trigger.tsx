@@ -3,8 +3,6 @@ import { cn } from "@/lib/classNames";
 import { Icon } from "@/ui/icons";
 import { Pressable, type PressableProps } from "./pressable";
 
-// Width stays at the call site: how much room a locale name needs and how much a font
-// family needs are different questions.
 export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
   label: ReactNode;
   leading?: ReactNode;

@@ -4,14 +4,7 @@ import { disposeContainer, initializeDesktopHost } from "./main/container";
 import { DesktopRenderer } from "./main/renderer";
 import { applyWindowChrome, watchWindowChrome } from "./main/windowChrome";
 import { disposeOnHmr } from "./lib/hmr";
-// Fonts: the native OS stack (SF Pro / PingFang on macOS) — see globals.css
-// --font-sans. No bundled webfont; the system face is the premium, native
-// default, loads instantly, and renders mixed CJK best.
 import "./styles/globals.css";
-
-// Deliberately NOT wrapped in StrictMode: its dev double-invoke surfaces benign "Maximum
-// update depth" warnings from the persist-rehydrate and plugin-loader sequencing. The
-// bundle ships without StrictMode anyway, so this matches what users see.
 
 const renderer = new DesktopRenderer({
   initializeDesktopHost,

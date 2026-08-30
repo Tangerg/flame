@@ -12,7 +12,6 @@ export function AgentClientPage() {
   const drawer = useSidebarDrawer();
   const { width, setWidth } = useSidebarWidth();
   const activeViewId = useActiveWorkspaceViewId();
-  // Settings takes the whole window: no work index to sit beside.
   const singleMode = activeViewId === "settings";
 
   return (

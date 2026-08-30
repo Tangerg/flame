@@ -6,10 +6,8 @@ import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHig
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { cn } from "@/lib/classNames";
 
-/** Unified (one column, +/− interleaved) vs split (old left, new right). */
 export type DiffLayout = "unified" | "split";
 
-// Line numbers plus an ordinal, so the key never collides on identical row content.
 function keyFor(row: WorkspaceDiffRow, i: number): string {
   if (row.type === "hunk") return `h:${i}:${row.text}`;
   if (row.type === "added") return `+:${row.rightLine}`;
@@ -34,10 +32,6 @@ const ROW_STYLE: Record<
   context: { tone: "", meta: "text-fg-faint", sign: " " },
 };
 
-// An underline, not a fill: a fill must stay translucent for the syntax foreground to show
-// through, and on dark the ground Shiki's darkest member needs (luminance 0.035) is three
-// times darker than the weakest legible word fill. An underline changes nothing about the
-// ground, so the mark can be as strong as it likes.
 const wordMark = (ink: string) =>
   `text-decoration-line:underline;text-decoration-color:${ink};text-decoration-thickness:2px;text-underline-offset:2px;text-decoration-skip-ink:none`;
 const WD_DEL_STYLE = wordMark("var(--color-diff-deleted-meta)");
@@ -45,9 +39,6 @@ const WD_ADD_STYLE = wordMark("var(--color-diff-added-meta)");
 
 type WordDecoration = { start: number; end: number; properties: { style: string } };
 
-// Highlight one line for inline injection into a grid row. `decorations` wrap the
-// changed sub-range; Shiki splits the syntax token spans at the range bounds, so the
-// mark lands on exactly those characters and leaves their colours alone.
 function highlightInline(
   h: Highlighter,
   code: string,
@@ -58,9 +49,6 @@ function highlightInline(
   return stripCodeWrapper(h.codeToHtml(code || " ", { lang, theme, decorations }), code);
 }
 
-// Map each replaced line to its changed sub-range (word-level diff). Walks the
-// flat rows pairing a run of deletes with the following run of adds
-// row-for-row (the common edit shape); unpaired overflow lines get no mark.
 function computeWordRanges(rows: WorkspaceDiffRow[]): Map<WorkspaceDiffRow, [number, number]> {
   const ranges = new Map<WorkspaceDiffRow, [number, number]>();
   let dels: Extract<WorkspaceDiffRow, { type: "deleted" }>[] = [];
@@ -78,16 +66,12 @@ function computeWordRanges(rows: WorkspaceDiffRow[]): Map<WorkspaceDiffRow, [num
   for (const row of rows) {
     if (row.type === "deleted") dels.push(row);
     else if (row.type === "added") adds.push(row);
-    else flush(); // hunk / context ends the run
+    else flush();
   }
   flush();
   return ranges;
 }
 
-// `pre-wrap` keeps indentation and still wraps — the only mechanism that loses nothing when
-// a file tree sits beside the diff and the code column has no horizontal scroller.
-// `wrap-anywhere` rather than `break-words` because it also pins min-content width to one
-// character, so a minified line or base64 blob cannot blow the grid column back out.
 const CODE_CELL = "min-w-0 whitespace-pre-wrap wrap-anywhere";
 
 function CodeCell({ code, html }: { code: string; html: string | undefined }) {
@@ -105,8 +89,6 @@ export function DiffView({
 }: {
   rows: WorkspaceDiffRow[];
   layout?: DiffLayout;
-  /** The diffed file's path — highlights each file in its OWN language
-   *  (langFromPath) instead of assuming TypeScript. Omitted → "text". */
   path?: string;
 }) {
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
@@ -167,20 +149,12 @@ function HunkRow({ text }: { text: string }) {
   );
 }
 
-// One side of a split row: a context/deleted cell on the left, a
-// context/added cell on the right, or absent (the other side changed and this
-// side has no counterpart).
 type Half = Extract<WorkspaceDiffRow, { type: "context" | "deleted" | "added" }> | null;
 interface SplitRow {
   left: Half;
   right: Half;
 }
 
-// Fold the flat unified rows into aligned left/right pairs: a context line
-// occupies both sides; a run of deletes pairs row-for-row with the following
-// run of adds (the common edit shape), and the longer run leaves blank cells
-// opposite its overflow. Hunk separators flush the pending runs and are
-// rendered full-width by the caller.
 function toSplitRows(rows: WorkspaceDiffRow[]): ({ hunk: string } | SplitRow)[] {
   const out: ({ hunk: string } | SplitRow)[] = [];
   let dels: Extract<WorkspaceDiffRow, { type: "deleted" }>[] = [];
@@ -240,8 +214,6 @@ function DiffSide({
   side: "left" | "right";
   highlighted: Map<WorkspaceDiffRow, string> | null;
 }) {
-  // Absent counterpart — a faint "no line here" fill so the eye reads the row
-  // as one-sided rather than as an edit to a blank line.
   if (!row) return <div className="bg-sunken" />;
   const style = ROW_STYLE[row.type];
   const lnum =

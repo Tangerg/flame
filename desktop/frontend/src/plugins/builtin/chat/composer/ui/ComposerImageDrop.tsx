@@ -19,9 +19,6 @@ function EnabledComposerImageDrop({ onDropImages }: Pick<Props, "onDropImages">)
   return dragging ? <ImageDropOverlay /> : null;
 }
 
-// Nested dragenter/dragleave events fire as the pointer crosses child elements,
-// so depth is the overlay's flicker guard. preventDefault stays scoped to image
-// drags, leaving unrelated native drop targets alone.
 function useWindowImageDrag(onDropImages: (files: File[]) => void): boolean {
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);

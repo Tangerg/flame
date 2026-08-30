@@ -8,7 +8,6 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
-  /** Required: rendered as the dialog's description and announced with the title. */
   body: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
@@ -16,8 +15,6 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
 }
 
-// Controlled and trigger-less: what needs confirming is usually a menu item that has
-// already closed by the time this opens, so the caller owns `open`.
 export function ConfirmDialog({
   open,
   onOpenChange,

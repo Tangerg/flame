@@ -12,9 +12,6 @@ export default definePlugin({
       order: 0,
       component: ActivePlan,
     });
-    // Only `set_plan` is claimed: `enter_plan_mode` is the FACT of switching into planning,
-    // which no surface shows, and `exit_plan_mode` interrupts to ask for approval — a
-    // question belongs where the person is reading.
     ctx.contribute(TOOL_STANDING_SURFACE, PLAN_SURFACE, { key: "set_plan" });
   },
 });

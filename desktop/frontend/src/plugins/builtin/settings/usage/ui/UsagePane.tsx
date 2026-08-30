@@ -1,8 +1,3 @@
-// The "Usage" settings pane — a cross-session spend dashboard (usage.summary).
-// Totals plus per-provider / per-model / per-day breakdowns, summed server-side
-// from the durable run history. Read-only; the range selector limits the
-// window. Mirrors opencode's `/stats` surface.
-
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { EmptyState, ProviderIcon, Segmented, Surface } from "@/ui";

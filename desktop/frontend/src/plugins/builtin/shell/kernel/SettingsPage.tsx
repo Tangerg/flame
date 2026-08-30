@@ -12,9 +12,6 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
 
-// Settings rail groups, in display order. A pane's `group` field places it
-// here; anything with an unknown / missing group falls into the trailing
-// bucket so nothing is ever dropped.
 const GROUPS: { id: string; labelKey: string }[] = [
   { id: "general", labelKey: "settings.group.general" },
   { id: "models", labelKey: "settings.group.models" },
@@ -81,11 +78,6 @@ export function SettingsPage() {
   );
 }
 
-/**
- * Page framing belongs to the settings host, not to each plugin pane. A
- * contribution supplies its identity and body; the host gives every pane the
- * same title rhythm and keeps the heading visible if the plugin body fails.
- */
 function SettingsPaneFrame({
   title,
   description,
@@ -122,10 +114,6 @@ function SettingsRailHeader({
   const t = useT();
   return (
     <div className="flex flex-col">
-      {/* Settings takes the whole window, so this is the ONLY chrome bar on the
-          page: it clears the macOS traffic lights and it is what the user drags
-          the window by. A hand-rolled spacer did the first job and not the
-          second, which left the window immovable while settings was open. */}
       <AgentSurfaceHeader divider={false} windowCorner aria-hidden />
       <div className="px-4 pb-4">
         <Button

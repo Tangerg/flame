@@ -18,19 +18,13 @@ interface Props {
   onSend: (input: UserInput) => boolean;
   value: string;
   onChange: (v: string) => void;
-  /** Wipe the textarea + staged images (one call per successful submit). */
   onClear: () => void;
   images: ComposerImage[];
   onRemoveImage: (id: string) => void;
-  /** Stage dropped / pasted image files (filtered to image/* by the caller). */
   onAddImages: (files: File[]) => void;
-  /** Large pasted-text attachments + their handlers — a big paste collapses
-   *  into a removable chip instead of flooding the textarea (T2.3). */
   pastes: PastedText[];
   onRemovePaste: (id: string) => void;
   onAddPaste: (text: string) => void;
-  /** Whether the next run's model accepts images — gates paste/drop staging so
-   *  it matches the toolbar attach button (which disables for text-only models). */
   acceptsImages: boolean;
 }
 
@@ -100,12 +94,6 @@ export function Composer({
           font="sans"
           ref={inputRef}
           aria-label={t("composer.input.label")}
-          /* The @-mention picker is ours to wire (see fileMentions.ts for why it
-             isn't Base UI's). No `role="combobox"`: this textarea is not one — the
-             query is a single `@token`, not the value. It stays a text field that
-             happens to host a picker, and the picker's selected row is announced
-             from here because focus never leaves (the caret has to keep blinking
-             where the user is typing). */
           aria-controls={mentions.active ? MENTION_LISTBOX_ID : undefined}
           aria-activedescendant={mentions.active ? mentionOptionId(mentions.index) : undefined}
           placeholder={placeholder}
@@ -122,17 +110,9 @@ export function Composer({
           onPointerUp={clearCompositionCommit}
           rows={1}
           autosize
-          /* Both bounds are in `lh` — THIS element's own line-height — so the
-             resting height and the ceiling track the type ladder instead of a
-             pixel guess that goes wrong the moment the user changes their text
-             size. One expression owns autosize and the visible ceiling. */
           className="max-h-[6lh] min-h-[1.5lh] p-0 placeholder:tracking-normal"
         />
       </div>
-      {/* Bottom toolbar — ALL controls live below the input so the text area
-          above stays pure: attach + model on the left, send on the right. Its
-          inset is tighter than the editor's and flush to the card's edges,
-          which is what keeps the controls reading as chrome, not content. */}
       <div
         data-slot="composer-footer"
         className="agent-composer-footer flex flex-nowrap items-center gap-1.5 pr-[var(--density-composer-footer-end)] pb-[var(--density-composer-footer)] pl-[var(--density-composer-footer)]"

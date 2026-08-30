@@ -1,10 +1,3 @@
-// A controlled editor over two lists the parent owns and persists. Auto-approve is forced
-// off while a tool is disabled: a hidden tool can never be called.
-//
-// Both lists key on the BARE tool name — the server scopes them, and the runtime qualifies
-// to "<server>_<tool>" when it enforces. They are SPARSE by design: only non-default
-// entries are stored.
-
 import { DataView, Switch } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPTools } from "../application/mcpServerQueries";
@@ -28,7 +21,7 @@ export function ToolControls({ server, disabledTools, autoApproveTools, onChange
     const a = new Set(autoApprove);
     if (isDisabled) {
       d.add(name);
-      a.delete(name); // a hidden tool can't auto-approve — keep the lists coherent
+      a.delete(name);
     } else {
       d.delete(name);
     }

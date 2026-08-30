@@ -1,9 +1,3 @@
-// Built-in plugins that fill the three primary kernel slots —
-// `app.sidebar`, `app.main`, and the Settings workspace view. Each one
-// stays a separate plugin so users can swap any single slot (e.g.
-// replace `kernel-chat` with their own session UI) without touching the
-// rest.
-
 import { ChatPanel } from "./panel";
 import { SettingsPage } from "./SettingsPage";
 import { SidebarPanel } from "@/plugins/builtin/sidebar/public/SidebarPanel";
@@ -15,13 +9,7 @@ import { useDefaultChatSession } from "@/plugins/builtin/agent/public/defaultSes
 import { ComposerProjectTray } from "./panel/ProjectSelector";
 
 function KernelChat() {
-  // Drop persisted refs to sessions the backend no longer has BEFORE binding
-  // the agent lifecycle, so a stale active id resolves to the welcome screen
-  // instead of a dead session.
   useReconcilePersistedAgentSessions();
-  // Mount the active session's agent lifecycle (subscribe + register the
-  // send/stop actions); composer → agent routing goes through the
-  // message-actions input bridge.
   useDefaultChatSession();
   const send = useSendComposerInput();
   return <ChatPanel onSend={send} />;
@@ -57,7 +45,6 @@ export const kernelSettings = definePlugin({
       id: "settings",
       title: "settings.title",
       icon: "settings",
-      // Last in the palette and never in the dock: settings is a whole-window surface.
       order: 200,
       component: SettingsPage,
     });

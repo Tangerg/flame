@@ -17,7 +17,6 @@ const banner = cva("flex flex-row items-center gap-3 rounded-lg px-3 py-2", {
   defaultVariants: { variant: "info" },
 });
 
-// The icon set has no info-/error-circle; these are the nearest available glyphs.
 const DEFAULT_ICON: Record<NonNullable<VariantProps<typeof banner>["variant"]>, IconName> = {
   info: "question",
   warning: "alert",
@@ -49,8 +48,6 @@ export function SystemMessage({
     <div role={role} className={cn(banner({ variant }), className)} {...props}>
       <div className="flex min-w-0 flex-1 flex-row items-start gap-2.5 leading-normal">
         {!hideIcon && (
-          // `h-[1lh]` pins the box to one line so the glyph aligns to the FIRST line of
-          // text rather than the block's centre when copy wraps.
           <span className="flex h-[1lh] shrink-0 items-center justify-center">
             <Icon name={iconName} size="md" />
           </span>

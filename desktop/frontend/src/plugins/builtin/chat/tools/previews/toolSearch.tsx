@@ -1,6 +1,3 @@
-// Grouping by SOURCE is the useful part: "it loaded three Sentry tools" is a different fact
-// from "it loaded three tools".
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { Badge } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";

@@ -3,13 +3,6 @@ import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePr
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { toolIconFor, toolRoutingKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 
-// In the ui ring, not application: an icon name is UI vocabulary and `toolIconFor` reads the
-// icon registry.
-
-/**
- * ONE mark, because the row has one gutter slot for it. What the wave DID rides in the label
- * as words, a slot that can hold a tally without pushing anything sideways.
- */
 export function waveGlyph(
   units: readonly MessageRenderUnit[],
   toolCalls: Record<string, ToolCall>,

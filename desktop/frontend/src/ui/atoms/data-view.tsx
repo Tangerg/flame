@@ -14,8 +14,6 @@ interface EmptyConfig {
 interface Props<T> {
   items: T[] | undefined;
   isLoading: boolean;
-  /** Without this a rejected query falls through to the empty branch and masks a hard
-   *  error as "nothing here yet". */
   isError?: boolean;
   skeletonCount?: number;
   skeletonVariant?: SkeletonListVariant;

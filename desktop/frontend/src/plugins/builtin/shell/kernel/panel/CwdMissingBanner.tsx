@@ -1,8 +1,3 @@
-// The cwdMissing degrade state (API.md §4.1): the runtime drops the agent to plain chat
-// until the folder returns or the session is relocated. Relocate is gated on
-// `features.relocate`; without it the banner is informational only. Warning-toned rather
-// than negative — the session still works, just degraded.
-
 import { useRef, useState } from "react";
 import { SystemMessage, TextField } from "@/ui";
 import { useActiveSession, useRelocateSession } from "@/plugins/builtin/agent/public/session";
@@ -18,8 +13,6 @@ export function CwdMissingBanner() {
   const [editing, setEditing] = useState(false);
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
-  // Synchronous re-entrancy latch — `busy` state lags a render, so Enter + an
-  // immediate Apply click in one tick would otherwise both fire relocate.
   const submitting = useRef(false);
 
   if (session?.workspace.availability !== "missing") return null;
@@ -56,7 +49,7 @@ export function CwdMissingBanner() {
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.nativeEvent.isComposing) return; // let the IME commit its candidate
+                    if (e.nativeEvent.isComposing) return;
                     if (e.key === "Enter") void submit();
                     if (e.key === "Escape") setEditing(false);
                   }}
@@ -64,8 +57,6 @@ export function CwdMissingBanner() {
                   aria-label={t("cwdMissing.placeholder")}
                   disabled={busy}
                   spellCheck={false}
-                  // The input appears from an explicit "Relocate" click, so
-                  // focusing it is the expected continuation, not a steal.
                   // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   className="w-72 max-w-full"

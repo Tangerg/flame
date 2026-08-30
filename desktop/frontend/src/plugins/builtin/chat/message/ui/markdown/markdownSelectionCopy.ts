@@ -71,8 +71,6 @@ function sanitizeFragment(fragment: DocumentFragment): DocumentFragment {
   return fragment;
 }
 
-/** Serialize the user's live selection using the same semantic markers that
- *  artifact action buttons use. Visual labels and controls never become code. */
 export function markdownSelectionPayload(
   root: HTMLElement,
   selection: Selection | null = root.ownerDocument.getSelection(),

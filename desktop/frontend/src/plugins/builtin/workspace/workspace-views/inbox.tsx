@@ -1,8 +1,3 @@
-// Rows keep the runtime's own order (longest wait first) and a row is a DESTINATION:
-// clicking it opens the session. Deliberately NOT a place to approve from — a decision
-// needs the transcript around it, and approving from a queue makes
-// approving-without-reading the fast path.
-
 import type { PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
@@ -76,8 +71,6 @@ function PendingRow({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-ui-md text-fg">{sessionTitle}</span>
-          {/* How long it has been blocked, which is the only ordering that
-              matters in a queue of things waiting on you. */}
           <span className="shrink-0 text-ui-sm text-fg-muted">
             {formatRelative(item.waitingSince)}
           </span>
@@ -94,9 +87,6 @@ function PendingRow({
   );
 }
 
-/** The count on the tab. Absent at zero: a queue badge showing "0" is a queue
- *  badge asking to be ignored, and this tab's whole job is to be looked at only
- *  when it has something. */
 function InboxBadge() {
   const { data } = usePendingWork();
   const count = data?.length ?? 0;

@@ -14,9 +14,6 @@ import {
   runSummaryViewModel,
 } from "@/plugins/builtin/workspace/application/runSummaryViewModel";
 
-// Two rows here want a tone's ink without its fill — a word tinted in place, not
-// a chip. The Badge owns fill+ink pairs, so the ink-only reading stays local to
-// this view rather than becoming a second class-string export from the library.
 const TONE_INK: Record<Tone, string> = {
   neutral: "text-fg-muted",
   accent: "text-accent",
@@ -165,7 +162,6 @@ export const runSummaryView = defineWorkspaceView({
   id: "run-summary",
   title: "workspace.view.title.runSummary",
   icon: "check",
-  // Sits next to Timeline (35) — both are about "what happened".
   order: 130,
   splittable: true,
   component: RunSummaryTab,

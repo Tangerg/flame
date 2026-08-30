@@ -1,8 +1,3 @@
-// Mount only on SETTLED blocks — on the streaming tail a half-typed path flashes as a
-// link — and BEFORE rehypeFadeIn, which splits text into per-word spans this can no longer
-// scan. Skips <pre>/<code>/<a>/<sup> so code samples, real links and citation badges are
-// not re-linkified.
-
 import type { Element, Root, Text } from "hast";
 import { visit } from "unist-util-visit";
 import { parseFileRefs } from "@/plugins/builtin/agent/public/fileRefs";
@@ -41,7 +36,6 @@ export function rehypeFileRefs() {
       jobs.push({ parent: parent as Element | Root, index, replacement: parts });
     });
 
-    // Apply in reverse so indices stay valid as we splice.
     for (let i = jobs.length - 1; i >= 0; i--) {
       const { parent, index, replacement } = jobs[i]!;
       parent.children.splice(index, 1, ...replacement);

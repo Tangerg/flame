@@ -11,7 +11,6 @@ type ActivityTone = "neutral" | "warning" | "negative";
 
 type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; leading: ReactNode };
 
-// One width for every row's mark: varying it moves labels out of alignment between rows.
 const GUTTER = { cardSlot: "w-5" } as const;
 
 type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "children"> &
@@ -49,11 +48,6 @@ const TRAY_CLASS: Record<ActivityTone, string> = {
   negative: "bg-negative-badge",
 };
 
-/**
- * Shared disclosure grammar for tool calls, reasoning, delegated Runs and plan progress:
- * `shell` declares how much plane the row claims, `tone` declares what state it is in.
- * Owns geometry and disclosure accessibility only — domain state stays with callers.
- */
 export function AgentActivityDisclosure({
   icon,
   leading,
@@ -75,7 +69,6 @@ export function AgentActivityDisclosure({
 }: AgentActivityDisclosureProps) {
   const triggerId = useId();
   const panelId = useId();
-  // A caller-supplied `leading` owns its whole box; framing it would nest a mark in a mark.
   const framed = shell !== "line" && icon !== undefined;
 
   return (
@@ -85,10 +78,6 @@ export function AgentActivityDisclosure({
       data-tone={tone}
       data-shell={shell}
       className={cn(
-        // No outer margin: spacing against the previous row depends on what that row
-        // was, which only the sequence walker knows (see renderUnitRhythm).
-        // `clip`, not `hidden` — `hidden` makes this a scroll container, which becomes
-        // the scrollport `stickyHeader` below positions against and never scrolls.
         "min-w-0 overflow-clip",
         shell === "line"
           ? "rounded-[var(--shape-sm)]"
@@ -100,8 +89,6 @@ export function AgentActivityDisclosure({
       <div
         className={cn(
           "group/activity-header flex min-w-0 items-center",
-          // The fill follows the SHELL: a stuck header must hide the rows travelling
-          // under it, and only the shell knows what ground it sits on.
           stickyHeader && ["sticky top-0 z-1", shell === "line" ? "bg-canvas" : "bg-card"],
         )}
       >
@@ -132,8 +119,6 @@ export function AgentActivityDisclosure({
           >
             {leading ?? (icon ? <Icon name={icon} size="xs" /> : null)}
           </span>
-          {/* `shrink`, not `shrink-0`: `truncate` needs a box allowed to shrink, or a
-              long label runs past the card's corner and is cut with no ellipsis. */}
           <span
             data-slot="agent-activity-label"
             className="flex min-w-0 shrink items-center overflow-hidden text-ellipsis whitespace-nowrap text-ui-sm text-fg-muted group-hover/activity-header:text-fg"
@@ -161,8 +146,6 @@ export function AgentActivityDisclosure({
             <Icon name="chevron-down" size="xs" />
           </span>
         </Pressable>
-        {/* `Children.count`, not a null check: an empty child list is ordinary input and
-            is not "no rail" — rendered anyway it leaves a 2px stub on every settled row. */}
         {Children.count(actions) > 0 && (
           <div className="flex shrink-0 items-center gap-0.5 pl-0.5 pr-2">{actions}</div>
         )}
@@ -180,12 +163,7 @@ export function AgentActivityDisclosure({
           id={panelId}
           role="region"
           aria-labelledby={triggerId}
-          className={cn(
-            // No body inset on a line shell: the material child owns its own, and a
-            // second gutter here makes every result look nested twice.
-            shell === "line" ? "pt-1.5 pb-1.5 pr-0" : "px-3 pb-2.5",
-            contentClassName,
-          )}
+          className={cn(shell === "line" ? "pt-1.5 pb-1.5 pr-0" : "px-3 pb-2.5", contentClassName)}
         >
           {children}
         </div>

@@ -8,10 +8,6 @@ interface Props {
   onPick: (cmd: string) => void;
 }
 
-/**
- * Clicking a row fills the composer with the command plus a trailing space; Enter still
- * submits the full typed text, so there is deliberately no implicit "pick first on Enter".
- */
 export function SlashSuggestions({ value, onPick }: Props) {
   const t = useT();
   const commands = useSlashCommands();

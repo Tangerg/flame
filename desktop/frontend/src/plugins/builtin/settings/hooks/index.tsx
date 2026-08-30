@@ -1,7 +1,3 @@
-// Built-in plugin: "Hooks" settings pane. Registration only — the UI lives in
-// ui/HooksPane, the hook-trust gateway install in adapters/, the RPC use cases
-// in application/.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../public";

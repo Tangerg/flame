@@ -1,18 +1,10 @@
-// Each contribution is wrapped in its OWN PluginBoundary, so one bad render cannot take
-// down the kernel.
-//
-// TRANSPARENT by default (a Fragment): most kernel slots sit inside a CSS grid whose layout
-// depends on the immediate children being the panels themselves.
-
 import { Fragment, memo } from "react";
 import { useLayoutSlot } from "@/plugins/sdk";
 import { PluginBoundary } from "./PluginBoundary";
 
 interface Props {
   name: string;
-  /** When true, wrap the slot contents in `<div data-slot={name} className={className}/>`. */
   wrapper?: boolean;
-  /** className on the wrapping `<div>` — implies `wrapper=true`. */
   className?: string;
 }
 

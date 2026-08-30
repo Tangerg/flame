@@ -1,7 +1,5 @@
 import { toolCategory } from "@/plugins/builtin/agent/public/viewState";
 
-// Derived at RENDER, not at fold time: the fold runs once, so a headline baked there keeps
-// the wording it was born with after the user switches languages.
 export function approvalHeadline(
   t: (key: string, params?: Record<string, string | number>) => string,
   toolName: string | undefined,

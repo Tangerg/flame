@@ -1,6 +1,3 @@
-// A plain click writes MARKDOWN, preserving headings, lists and fences as rendered; plain
-// text is the submenu alternate, for pasting flat into an editor.
-
 import { DropdownMenu, Tooltip } from "@/ui";
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";

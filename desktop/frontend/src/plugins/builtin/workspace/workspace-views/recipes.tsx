@@ -1,8 +1,3 @@
-// Built-in workspace view: "Recipes" — the prompt recipes discovered for the
-// active session's cwd (recipes.list). Read-only catalog of the
-// /<name> slash commands the recipes-slash plugin registers; mirrors the
-// Skills view shape (recipes are skills' user-facing sibling).
-
 import { DataView } from "@/ui";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useT } from "@/lib/i18n";

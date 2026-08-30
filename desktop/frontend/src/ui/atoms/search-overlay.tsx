@@ -19,11 +19,8 @@ interface SearchOverlayProps {
   onOpenChange: (open: boolean) => void;
   label: string;
   placeholder: string;
-  /** Called on every render with the current query — the overlay owns the query so that
-   *  closing resets it, the highlight and the scroll position together. */
   options: (query: string) => readonly SearchOption[];
   empty: ReactNode;
-  /** Restores the control that opened a controlled dialog with no Base UI trigger in tree. */
   finalFocus?: () => HTMLElement | null;
 }
 
@@ -32,12 +29,6 @@ function wrap(index: number, count: number, step: number) {
   return (index + step + count) % count;
 }
 
-/**
- * Owns the rows as well as the field: the field announces the active row through
- * `aria-activedescendant` so it needs that row's id, focus never leaves the field so rows
- * must not be tab stops, and the active row has to be scrolled into view. A caller
- * rendering its own rows silently owes all three.
- */
 export function SearchOverlay({
   open,
   onOpenChange,
@@ -58,8 +49,6 @@ export function SearchOverlay({
           className={cn(
             "fixed inset-x-0 top-24 z-[var(--layer-modal)] mx-auto flex w-[min(520px,calc(100vw-32px))]",
             "flex-col overflow-hidden rounded-[var(--floating-panel-radius)] outline-none",
-            // Opaque, not the ring's frosted fill: that is for small anchored popovers,
-            // and at 520px over a transcript it becomes a window onto the prose beneath.
             "bg-canvas shadow-[var(--shadow-modal)]",
             FLOATING_MOTION,
           )}
@@ -94,9 +83,6 @@ function SearchOverlayContent({
   const listboxId = `${baseId}-list`;
 
   const rows = options(query);
-  // Clamped on read, not stored clamped: one more character can shorten the list under an
-  // index held in state, and a stale index renders as no highlight and an Enter that
-  // opens nothing.
   const active = rows.length === 0 ? 0 : Math.min(Math.max(highlight, 0), rows.length - 1);
   const activeId = rows.length === 0 ? undefined : `${baseId}-${active}`;
 
@@ -120,7 +106,6 @@ function SearchOverlayContent({
           aria-activedescendant={activeId}
           value={query}
           onKeyDown={(event) => {
-            // Arrow/Enter belong to the IME while composing; the list takes over on commit.
             if (event.nativeEvent.isComposing) return;
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();

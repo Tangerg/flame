@@ -9,11 +9,6 @@ interface Props {
   children: ReactNode;
 }
 
-/**
- * Children wait on the kernel because everything in the startup path — routes,
- * layout slots, themes — is a built-in contribution. One blank tick beats a
- * flash of "no routes match".
- */
 export function PluginProvider({ children }: Props) {
   const [ready, setReady] = useState(false);
 
@@ -26,8 +21,6 @@ export function PluginProvider({ children }: Props) {
     const disposeOwnedResources = () => {
       if (!host || disposal) return disposal;
       const ownedHost = host;
-      // stopKernel retracts this exact generation synchronously before joining
-      // its asynchronous resources.
       disposal = stopKernel(ownedHost).catch((error: unknown) => {
         console.error("[plugin] kernel teardown failed:", error);
       });

@@ -19,9 +19,6 @@ import {
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { GoalGlyph } from "./GoalGlyph";
 
-/** A Goal is a standing instruction in the composer's attached top tray. Budgets
- * and accounting remain Runtime facts but do not become persistent front-end
- * chrome. */
 export function GoalStatusSurface() {
   const material = useGoalMaterial();
   const goal = material.value?.goal;

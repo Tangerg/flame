@@ -1,7 +1,3 @@
-// Built-in workspace view: "Knowledge" — the FLAME.md knowledge files the runtime
-// loads into the agent's context. One entry per scope expands into an inline
-// whole-file editor.
-
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -43,8 +39,6 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
   const [storedEditor, setEditor] = useState(() => KnowledgeDraft.open(listedDocument));
   const editor = storedEditor.reconcile(listedDocument);
   const [saving, setSaving] = useState(false);
-  // Synchronous latch — `saving` state lags a render, so a double-click before
-  // the disabled state applies would otherwise fire two knowledge.update writes.
   const savingRef = useRef(false);
   const dirty = editor.dirty;
 
@@ -70,16 +64,11 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
       .catch(async (error: unknown) => {
         if (workspaceKnowledgeWasRetired(error)) return;
         if (isWorkspaceKnowledgeRevisionConflict(error)) {
-          // Refresh the expected revision, but retain the user's draft. A
-          // deliberate second save can then replace the newly observed value;
-          // an accidental stale save never can.
           try {
             const latest = await loadWorkspaceKnowledge({ scope: row.scope, cwd });
             setEditor((current) => current.rebase(latest));
           } catch (readError) {
             if (workspaceKnowledgeWasRetired(readError)) return;
-            // The original conflict remains the actionable failure. A later
-            // save will retry the authoritative read.
           }
         }
         notifyError(t("knowledge.saveError"), {
@@ -112,9 +101,6 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
           {t(row.scopeLabelKey)}
         </span>
       </Pressable>
-      {/* The atom, not `{open && …}`: the transcript's disclosures animate and wire
-          `aria-controls`, and a dock row that snaps open instead is the same control
-          behaving two ways in one app. */}
       <Collapsible open={open}>
         <div id={panelId} className="flex flex-col gap-2 px-4 pb-3 pl-10">
           <TextArea
@@ -190,9 +176,6 @@ function KnowledgeTab() {
         {(rows) => (
           <div className="flex flex-col">
             {rows.map((m) => (
-              // The editor draft is workspace-bound. Reusing a scope row after
-              // session navigation could otherwise save the old workspace's
-              // draft through the new workspace binding.
               <KnowledgeRow key={`${cwd ?? ""}:${m.id}`} row={m} cwd={cwd} />
             ))}
           </div>

@@ -1,5 +1,3 @@
-// Each tool owns a component so it can evolve without touching a sibling's contract.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
@@ -10,9 +8,6 @@ import { shellToolPreviews } from "@/plugins/builtin/chat/tools/application/tool
 function TerminalResult({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div>
-      {/* `tool.result` is the authoritative merged output — reconciled from the
-          completed Item, with the toolOutput delta stream standing in while the
-          command runs (projections.ts + API.md §4.4.1). */}
       <ToolOutputPanel
         output={tool.result}
         status={tool.status}
@@ -35,8 +30,6 @@ function StopShellPreview(props: ToolPreviewProps) {
   return <TerminalResult {...props} />;
 }
 
-// Previews are keyed by the tool ROUTING KEY = the wire tool `name` (§4.4 /
-// §4.4.2 display conventions).
 export const shellPreview = definePlugin({
   name: "flame.builtin.shell",
   setup(ctx) {

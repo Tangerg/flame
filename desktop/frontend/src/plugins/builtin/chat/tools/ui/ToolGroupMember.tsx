@@ -13,9 +13,6 @@ interface Props {
   onToggleExpand: () => void;
 }
 
-// A FLAT row: members carry no disclosure chrome, only the identity mark that keeps a read,
-// a search and a language query from collapsing into indistinguishable text. Clicking still
-// opens the call's preview; it just is not advertised by an arrow on every row.
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);

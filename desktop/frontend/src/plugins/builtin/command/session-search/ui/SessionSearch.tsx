@@ -6,12 +6,6 @@ import { matchSessions } from "../application/sessionMatches";
 import { useSessionSearchStore } from "../application/sessionSearchState";
 import { sessionSearchReturnFocus } from "../adapters/sessionSearchLauncher";
 
-/**
- * ⌘K: go to a session by name.
- *
- * The same focused search opens from the keyboard or Work Index. Keeping one
- * overlay means both paths share ranking, focus management, and selection.
- */
 export function SessionSearch() {
   const t = useT();
   const open = useSessionSearchStore((state) => state.open);
@@ -44,8 +38,6 @@ export function SessionSearch() {
             <>
               <Icon name="chat" size="sm" className="shrink-0 text-fg-muted" />
               <span className="min-w-0 flex-1 truncate">{session.title}</span>
-              {/* When, not what: every row is a session, so the only thing telling
-                  two similar titles apart is which one is newer. */}
               <span className="shrink-0 text-ui-sm text-fg-faint">
                 {formatRelative(session.time)}
               </span>

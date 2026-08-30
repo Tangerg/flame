@@ -23,8 +23,6 @@ import { useCommitThrottle, useStreamReveal } from "./streamReveal";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
 import "remark-github-blockquote-alert/alert.css";
 
-// ~30fps: imperceptible for a text reveal, but caps a run of tiny tokens at one markdown
-// re-parse per window instead of one per animation frame.
 const PARSE_COMMIT_MS = 33;
 
 export type MarkdownReveal = "instant" | "smooth" | "typewriter";
@@ -48,8 +46,6 @@ interface MarkdownBlockProps {
   reveal: MarkdownReveal;
 }
 
-// Module-level so react-markdown does not treat each render as a new plugin set. Order
-// matters in the rehype chain.
 const remarkPlugins = [
   remarkGfm,
   remarkBreaks,
@@ -59,23 +55,14 @@ const remarkPlugins = [
   remarkLiteralUnknownHtml,
 ];
 
-// Can execute or break the sandbox if the model emits them as raw HTML; this blocklist
-// takes precedence over rehype-raw.
 const DENIED_HTML_TAGS = new Set(["script", "iframe", "object", "embed", "form"]);
 const allowElement = (el: { tagName: string }) => !DENIED_HTML_TAGS.has(el.tagName);
 
-// react-markdown drops data URLs by default. MarkdownImage blocks every REMOTE image, but
-// inlined data is already self-contained and must survive the parser to reach it.
 const markdownUrlTransform: NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["urlTransform"]
 > = (value, _key, node) =>
   node.tagName === "img" && isInlineMarkdownImage(value) ? value : defaultUrlTransform(value);
 
-/**
- * Uses `streamdown`'s `parseMarkdownIntoBlocks` — it balances unclosed fences, math and HTML
- * mid-stream — but NOT its `<Streamdown>` renderer, which ships a design system that
- * bypasses `.md` CSS. Each block is memoised, so only the tail re-parses per reveal tick.
- */
 export function MarkdownMessage(props: Props) {
   const { text, reveal } = props;
   const streaming = reveal === "instant" ? false : !!props.streaming;
@@ -86,20 +73,12 @@ export function MarkdownMessage(props: Props) {
 
   const committed = useCommitThrottle(display, streaming ? PARSE_COMMIT_MS : 0);
 
-  // Low-priority re-parse: scrolling and typing keep the previous parse on-screen instead
-  // of blocking a frame. Instant text skips the defer to stay crisp on first paint — there
-  // is no stream to keep responsive.
   const deferred = useDeferredValue(committed);
   const source = instant ? committed : deferred;
   useVisibleTextMaterial(source === text);
 
-  // Normalize model-emitted math delimiters + guard currency BEFORE remark-math
-  // parses. Must run on the whole body ahead of block-splitting so a display
-  // math span (`$$...$$`) isn't torn across two blocks.
   const normalized = useMemo(() => normalizeMarkdownMath(source), [source]);
 
-  // Auto-closes unterminated emphasis and fences on the FULL text before splitting, since
-  // block boundaries read more reliably on well-formed markdown.
   const repaired = useMemo(() => {
     if (instant) return normalized;
     return remend(normalized);
@@ -122,9 +101,6 @@ export function MarkdownMessage(props: Props) {
   return (
     <div ref={rootRef} className="md" dir="auto">
       {blocks.map((block, i) => (
-        // Index keys are correct here: blocks are append-only while streaming, so position
-        // IS identity. Keying by content changes the key on every tail edit and remounts
-        // the fiber each tick, losing its state and paying the mount cost per token.
         <MarkdownBlock
           key={i}
           text={block}
@@ -136,21 +112,12 @@ export function MarkdownMessage(props: Props) {
   );
 }
 
-// Memoised on content plus flags. `streaming` is true only for the TAIL block, gating the
-// typewriter caret; smooth mode conveys the same thing through its per-word fade.
 const MarkdownBlock = memo(function MarkdownBlock({ text, streaming, reveal }: MarkdownBlockProps) {
-  // The probe is just `$`, so a USD price preloads the ~30KB stylesheet earlier than needed
-  // — harmless, and remarkMath still ignores ambiguous single-`$` cases at render.
   const hasMath = text.includes("$");
   useEffect(() => {
     if (hasMath) ensureKatexCss();
   }, [hasMath]);
 
-  // ORDER MATTERS: rehypeRaw first so later plugins see the expanded tree, and
-  // rehypeFileRefs before rehypeFadeIn so it sees whole text nodes rather than per-word
-  // spans. Typewriter mode drops rehypeFadeIn — the char reveal IS the animation.
-  //
-  // rehypeFileRefs runs only on a SETTLED block: a half-arrived path would flash as a link.
   const rehypePlugins = useMemo(() => {
     if (reveal === "instant") {
       return [rehypeRaw, rehypeFileRefs, rehypeKatex];

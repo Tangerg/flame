@@ -1,7 +1,3 @@
-// Each brand's Mono component is imported by DEEP PATH (`es/<Brand>/components/Mono`), not
-// the package barrel: the barrel pulls in the `.Avatar` variant, which depends on
-// `@lobehub/ui` (not installed) and breaks the build.
-
 import type { ComponentType } from "react";
 import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
 import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Mono";
@@ -18,7 +14,6 @@ import { Icon } from "@/ui/icons";
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
-// Keyed by LOWERCASED provider id/type; aliases map vendor synonyms onto one brand mark.
 const BRAND: Record<string, BrandIcon> = {
   deepseek: DeepSeek,
   openai: OpenAI,
@@ -38,7 +33,6 @@ const BRAND: Record<string, BrandIcon> = {
 
 export function ProviderIcon({ provider, size = "md" }: { provider: string; size?: IconSize }) {
   const Brand = BRAND[provider.toLowerCase()];
-  // A filled logo, not a stroked glyph: takes the ladder's box but none of its stroke.
   if (Brand) {
     return (
       <span

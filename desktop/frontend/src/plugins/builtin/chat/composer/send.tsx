@@ -13,9 +13,6 @@ import { useCanSendToAgent } from "@/plugins/builtin/agent/public/input";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-// ONE control whose glyph changes across steer / send / stop, so the place you click never
-// moves. A disc, and deliberately the only one in the window: the controls beside it are
-// ghosts, so being a different shape is how this says "primary" without shouting in colour.
 const ACTION =
   "size-[var(--control-height-md)] shrink-0 rounded-full bg-cta text-cta-text hover:bg-cta-hover hover:text-cta-text active:translate-y-[0.5px]";
 const ACTION_OFF =

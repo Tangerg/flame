@@ -1,7 +1,3 @@
-// A pure CONSUMER of the in-memory stores: the OTel providers are installed always-on by
-// the bootstrap plugin, never lazily here, because trace-context propagation must work
-// whether or not anyone opened Diagnostics.
-
 import { definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { DiagnosticsView } from "./DiagnosticsView";

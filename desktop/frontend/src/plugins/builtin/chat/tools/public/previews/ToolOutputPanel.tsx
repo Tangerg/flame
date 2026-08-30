@@ -29,8 +29,6 @@ function spanClass(span: AnsiSpan): string | undefined {
   return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
-// Only PLAIN text goes through `LinkedText`: ANSI tones split a line into spans, and a
-// `path:line` reference broken across two of them is not a reference. Colour wins there.
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
   return (
@@ -47,7 +45,6 @@ function OutputLine({ text }: { text: string }) {
 interface ToolOutputPanelProps {
   output: string | undefined;
   status: ToolCall["status"];
-  /** The runtime capped the output — the reader has to know the tail is missing. */
   truncated?: boolean;
   idleLabel?: string;
 }
@@ -85,18 +82,12 @@ export function ToolOutputPanel({
 
   return (
     <div className="overflow-hidden rounded-sm bg-sunken">
-      {/* No exit code here: the row's own meta column already carries it (see
-          toolPresentation), and one fact said twice in one card is what the plan
-          banner and the plan tool row were doing to each other. */}
       {truncated && (
         <div className="px-3 pt-2.5">
           <Badge>{t("tools.overflow.truncated")}</Badge>
         </div>
       )}
       <div className="group/output relative">
-        {/* No ligatures. This is program output, not source: the mono face turns
-            `===` and `!=` into single glyphs, which is right in a code block and wrong
-            here — a test runner's `=== RUN` came out as a triple bar. */}
         <div className="overflow-x-auto px-3 py-2.5 font-mono text-code leading-relaxed text-fg-soft [font-variant-ligatures:none]">
           {shown.map((line, index) => (
             <div key={index} className="whitespace-pre-wrap wrap-anywhere">
@@ -104,7 +95,6 @@ export function ToolOutputPanel({
             </div>
           ))}
         </div>
-        {/* Revealed on hover or focus, at the corner it does not cover text in. */}
         <IconButton
           icon={copied ? "check" : "copy"}
           size="xs"
@@ -118,9 +108,6 @@ export function ToolOutputPanel({
       </div>
       {hidden > 0 && (
         <div className="relative">
-          {/* The fade is what says "there is more" before the label does — and it is
-              drawn over the last line rather than after it, so the cut reads as the
-              text continuing under it instead of stopping. */}
           {!expanded && (
             <div className="pointer-events-none absolute -top-6 inset-x-0 h-6 bg-[linear-gradient(to_top,var(--color-sunken),transparent)]" />
           )}

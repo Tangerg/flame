@@ -11,21 +11,13 @@ import { approvalHeadline } from "./approvalHeadline";
 import { HitlSettledRow } from "./HitlCard";
 
 interface Props {
-  /** Block lifecycle. `"requires-action"` shows the request surface;
-   *  `"complete"` collapses to a settled checkpoint driven by `decision`. */
   status: BlockStatus;
   toolName?: string;
   cmd: string;
   reason: string;
-  /** The Run to resume + the toolCall Item awaiting approval — the HITL
-   *  resume target (API.md §6). Without either identity this is a decorative
-   *  preview: it renders the material but exposes no live action. */
   runId?: string;
   itemId?: string;
-  /** Set once the decision is submitted (optimistic) / the run resolves. */
   decision?: ApprovalDecision;
-  /** Tool arguments about to be executed. When present, the user may edit them
-   *  before approving (approve-with-modified-args, §4.3). */
   args?: Record<string, unknown>;
   rememberable?: boolean;
 }
@@ -39,9 +31,6 @@ const REMEMBER_ACTIONS: readonly {
   { scope: "global", labelKey: "approval.action.allowGlobal" },
 ];
 
-// Submission coordination stays in useApprovalCardActions: allow-once and the keyboard
-// action omit remember scope, a scope appears only on an explicitly scoped allow, and deny
-// never inherits one.
 export function ApprovalCard({
   status,
   toolName,

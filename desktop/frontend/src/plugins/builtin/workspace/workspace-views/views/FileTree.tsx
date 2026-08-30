@@ -6,11 +6,6 @@ import {
   useWorkspaceListFiles,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 
-// Lazy file-tree (B8). Each directory fetches its own children only once
-// expanded (useListFiles is disabled while collapsed), so opening the root
-// never recursively pulls the whole tree. One node = one row; dirs toggle,
-// files call onSelectFile.
-
 interface NodeProps {
   entry: WorkspaceFileEntry;
   cwd?: string;

@@ -1,6 +1,3 @@
-// A glob pattern is not a `workspace.files.search` query and its response carries the paths
-// inline, so it gets its own preview rather than riding grep's.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";

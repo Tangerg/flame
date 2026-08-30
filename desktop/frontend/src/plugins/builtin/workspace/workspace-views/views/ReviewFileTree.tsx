@@ -1,7 +1,3 @@
-// Selecting a row does NOT swap the panel's content — it scrolls the diff to that file's
-// card. Replacing the list with the diff throws away the one thing a reviewer needs: where
-// they are in the change.
-
 import { useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { DiffStat, FilePath, Icon, IconButton, Pressable, ScrollArea, TextField } from "@/ui";
@@ -15,13 +11,10 @@ import {
   filterReviewFiles,
 } from "@/plugins/builtin/workspace/application/reviewFileTree";
 
-/** Row indent per level. The base inset keeps a depth-0 row off the pane edge. */
 function indentStyle(depth: number) {
   return { paddingLeft: `${0.5 + depth * 0.75}rem` };
 }
 
-/** While filtering, collapse state is ignored — a match inside a closed
- *  directory would otherwise leave the pane looking empty. */
 const NOTHING_COLLAPSED: ReadonlySet<string> = new Set();
 
 function TreeRows({
@@ -45,8 +38,6 @@ function TreeRows({
     if (node.kind === "file") {
       return (
         <TreeRow
-          // Namespaced by kind: a change that replaces a file with a directory
-          // of the same name yields sibling nodes sharing one path.
           key={`file:${node.path}`}
           depth={depth}
           selected={node.path === selectedPath}
@@ -77,10 +68,6 @@ function TreeRows({
               className={cn("shrink-0 transition-transform", !open && "-rotate-90")}
             />
           }
-          // A directory node's name is a whole COLLAPSED CHAIN, not one segment,
-          // so it overflows the way a path does and has to lose characters the
-          // way a path does — from the left. Tail-truncated, every deep row in
-          // the tree ended in the same shared prefix and named nothing.
           label={<FilePath path={node.name} className="text-fg-muted" />}
           title={node.name}
           expanded={open}
@@ -123,7 +110,6 @@ function TreeRow({
   selected: boolean;
   leading: ReactNode;
   label: ReactNode;
-  /** The full text, for the row's tooltip — `label` may already be truncating it. */
   title: string;
   expanded?: boolean;
   trailing?: ReactNode;
@@ -132,9 +118,6 @@ function TreeRow({
   return (
     <Pressable
       type="button"
-      // The row fills instead of ringing when the keyboard reaches it, which is
-      // what the selected row already looks like — arrow-key travel and clicking
-      // read as the same gesture.
       data-chrome-focus=""
       aria-expanded={expanded}
       aria-current={selected ? "true" : undefined}
@@ -167,8 +150,6 @@ export function ReviewFileTree({
 }) {
   const t = useT();
   const [query, setQuery] = useState("");
-  // The diff's file set is known upfront and usually small, so every directory
-  // starts open and we track what the user has CLOSED.
   const [collapsedPaths, setCollapsedPaths] = useState<ReadonlySet<string>>(() => new Set());
 
   const filtered = filterReviewFiles(files, query);
@@ -182,8 +163,6 @@ export function ReviewFileTree({
       return next;
     });
   };
-  // Escape clears the filter before the view's own Escape handling gets it —
-  // otherwise the first press closes the panel and takes the query with it.
   const onFilterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && query.length > 0) {
       event.stopPropagation();

@@ -35,8 +35,6 @@ function ProjectGroupNode({
     <div className="flex flex-col">
       <ProjectRow
         project={group.project}
-        // The accent bar marks the group only while it's collapsed — when
-        // open, the nested session row carries the active state itself.
         active={group.project.id === activeCwd && !open}
         open={open}
         count={group.sessions.length}
@@ -50,8 +48,6 @@ function ProjectGroupNode({
           actions={actions}
           activeSessionId={activeSessionId}
           indented
-          // The group is already ordered by recency, and the indent has taken
-          // the width a timestamp would need out of the title.
           showTime={false}
         />
       )}

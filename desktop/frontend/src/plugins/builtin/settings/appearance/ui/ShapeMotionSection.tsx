@@ -1,14 +1,9 @@
-// Each control writes a preference that lights up CSS vars on `:root`. Chrome-bar heights
-// deliberately do NOT scale with density (lib/density.ts), and `motionScale === 0` also
-// sets `data-motion="off"` so Tailwind's literal-ms `duration-*` utilities collapse.
-
 import { UI_DENSITY_MODES, type UiDensity } from "@/lib/density";
 import { Segmented, type SegmentedOption } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useShapeMotionPreferences } from "../application/appearancePreferences";
 import { SettingRow } from "../../public";
 
-// `label` holds an i18n key resolved at render, because module scope cannot call the hook.
 const DENSITY_OPTIONS: SegmentedOption<UiDensity>[] = UI_DENSITY_MODES.map((mode) => ({
   value: mode,
   label: `settings.density.${mode}`,

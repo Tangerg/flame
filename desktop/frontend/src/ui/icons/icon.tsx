@@ -94,9 +94,6 @@ import {
   Webhook,
 } from "lucide-react";
 
-// Plugins consume this vocabulary rather than lucide component names directly, so the
-// bundle only ships glyphs named here and a glyph can be re-pointed in one place.
-
 export type IconName =
   | "search"
   | "plus"
@@ -286,11 +283,6 @@ const ICON_MAP = {
   "wrap-text": WrapText,
 } satisfies Record<IconName, LucideIcon>;
 
-/**
- * The vocabulary as data, for tables that name a glyph in a plain string. `Icon` itself is
- * typed; a registry contribution is `Record<string, string>`, so its glyph names are
- * checked by the test that reads this rather than by the compiler.
- */
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
 interface Props {
@@ -300,9 +292,6 @@ interface Props {
   className?: string;
 }
 
-// Geometry rides CSS custom properties rather than props so a change to the user's base
-// size reaches every glyph without a re-render, and so stroke width cannot drift away from
-// the size that derives it.
 export function Icon({ name, size = "sm", style, className }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;

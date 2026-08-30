@@ -7,12 +7,6 @@ import {
   useProviders,
 } from "@/plugins/builtin/settings/providers/public/queries";
 
-/**
- * Renders NOTHING in the normal case: an install with no key anywhere cannot send a message,
- * so the fix has to be on the screen you land on. Lives on the SHELL side and asks the
- * providers context through its public surface — the reverse direction closes a cycle
- * `check-builtin-contexts` rejects.
- */
 export function ProviderSetupPrompt() {
   const t = useT();
   const { data: providers } = useProviders();

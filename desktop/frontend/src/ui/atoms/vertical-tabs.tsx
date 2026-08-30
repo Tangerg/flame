@@ -21,7 +21,6 @@ interface VerticalTabsProps {
   groups: VerticalTabGroup[];
   value?: string;
   onValueChange: (value: string | undefined) => void;
-  /** Outside the scroller, so it stays put and can be full-bleed. */
   railHeader?: ReactNode;
 }
 
@@ -36,8 +35,6 @@ export function VerticalTabs({
   return (
     <TabsPrimitive.Root
       orientation="vertical"
-      // `null`, not `undefined`: `undefined` makes Base UI switch from controlled to
-      // uncontrolled when a filter hides every pane, then back when it clears.
       value={value ?? null}
       onValueChange={(next) => onValueChange(next ? String(next) : undefined)}
       className="grid h-full w-full grid-cols-[256px_1fr] overflow-hidden bg-canvas"

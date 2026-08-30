@@ -11,13 +11,9 @@ interface Props {
   onSelectTool: (id: string) => void;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
-  /** The turn has moved on to answering; see messageBlockRenderUnits. */
   superseded?: boolean;
 }
 
-// Auto-expands while any child is running or errored, then settles closed — unless the user
-// has pinned it. Takes the `line` shell because its children are lines too, and a card
-// around a stack of lines puts the weight back.
 export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, superseded }: Props) {
   const [pinned, setPinned] = useState<ToolGroupPinnedState>(null);
   const t = useT();
@@ -37,8 +33,6 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
       onToggle={() => setPinned(model.nextPinned)}
       stickyHeader
     >
-      {/* The expanded group remains one work narrative. Each member keeps its own
-          mark and line rhythm; divider rules would turn it back into a table. */}
       <div className="flex flex-col gap-1">
         {tools.map((tool) => (
           <ToolGroupMember

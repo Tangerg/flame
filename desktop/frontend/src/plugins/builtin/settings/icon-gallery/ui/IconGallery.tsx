@@ -1,9 +1,3 @@
-// IconGallery — browses every brand in @lobehub/icons.
-//
-// The `.Avatar` / `.Text` variants are off-limits because they pull in
-// IconAvatar / IconText from `features/`, which require `@lobehub/ui`
-// and `antd` — neither of which we ship.
-
 import { useMemo, useState } from "react";
 import { ScrollArea, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";

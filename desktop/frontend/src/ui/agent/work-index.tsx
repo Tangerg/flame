@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
 
-// Density tokens stay in this layer so sidebar plugins compose product content without
-// knowing how a visual family spaces its navigation.
 export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
   return (
     <ScrollArea
@@ -15,7 +13,6 @@ export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
   );
 }
 
-// Isolates one plugin contribution so section spacing cannot leak into its children.
 export function AgentWorkIndexSection({ children }: { children: ReactNode }) {
   return <div className="min-w-0">{children}</div>;
 }

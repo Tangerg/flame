@@ -23,8 +23,6 @@ export interface CatalogPickerGroup {
   items: CatalogPickerItem[];
 }
 
-// Base UI owns filtering, arrow navigation, focus return and selection; callers only
-// supply translated labels and handle the chosen item.
 export function CatalogPicker({
   groups,
   label,

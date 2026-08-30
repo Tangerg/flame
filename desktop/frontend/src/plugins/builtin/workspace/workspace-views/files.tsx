@@ -1,7 +1,3 @@
-// Built-in plugin: "Files" workspace view — the working-tree summary from
-// workspace.changes.list (AUX_API §2.2). Selecting a row updates the
-// shared file-focus intent and opens the Diff tab.
-
 import { DataView } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { FilesChanged } from "./views/FilesChanged";
@@ -25,8 +21,6 @@ function FilesView() {
   const gitEnabled = useWorkspaceCapability("git");
   const workspace = useActiveSessionWorkspace();
   const fileFocus = useWorkspaceFileFocus();
-  // Scoped to the ACTIVE session's cwd. No session deliberately uses the
-  // default workspace; an unresolved selected session disables the read.
   const {
     data: files,
     isLoading,
@@ -49,7 +43,6 @@ function FilesView() {
       <DataView
         items={gitEnabled ? items : []}
         isLoading={isLoading || workspace.status === "resolving"}
-        // AUX_API §3: a non-repo cwd is an expected state, not a failure.
         isError={isError && !notARepo}
         skeletonCount={6}
         empty={

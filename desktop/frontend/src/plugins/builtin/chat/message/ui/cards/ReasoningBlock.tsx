@@ -9,23 +9,15 @@ import { cn } from "@/lib/classNames";
 interface Props {
   text: string;
   status: BlockStatus;
-  /** Folds the block away WITHOUT waiting for its own terminal status: some models keep a
-   *  reasoning block open while prose streams. */
   superseded?: boolean;
 }
 
-// Reasoning is an ASIDE, not an activity — it produced nothing and acted on nothing — so it
-// takes the `line` shell rather than a tool call's card.
 export function ReasoningBlock({ text, status, superseded = false }: Props) {
   const t = useT();
   const streaming = status === "running";
-  // `null` delegates to the automatic policy; a boolean is the user's explicit override.
-  // One state machine, not two booleans that can disagree.
   const [openOverride, setOpenOverride] = useState<boolean | null>(null);
   const isOpen = openOverride ?? (streaming && !superseded);
 
-  // Flips relative to what the user SEES, not the automatic policy, so every click matches
-  // the arrow it was aimed at.
   const toggle = () => {
     setOpenOverride(!isOpen);
   };
@@ -34,9 +26,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  // Three BOOLEANS, not three pixel counts: storing positions puts a state write on every
-  // scroll tick of a box that auto-follows a stream. Reduced at the measure site and
-  // compared before storing, a scroll that crosses no threshold re-renders nothing.
   const [edges, setEdges] = useState({ scrolled: false, atBottom: true, overflowing: false });
   const measure = useCallback(() => {
     const el = scrollRef.current;
@@ -60,8 +49,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     const scrollEl = scrollRef.current;
     const contentEl = contentRef.current;
     if (!scrollEl || !contentEl) return;
-    // Pins ONLY when already at the bottom: a reader who scrolled up must not be yanked
-    // back. Re-arms by itself on the next growth after they scroll down again.
     const pin = () => {
       const distanceFromBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
       if (distanceFromBottom < 4) {
@@ -90,14 +77,10 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}
-      // `border-field`, not `border-divider`: a divider separates peers in a list and at
-      // 7% ink does not read as a margin rule.
       contentClassName="ml-5 border-l border-field pt-0.5 pl-6"
     >
       <div
         ref={scrollRef}
-        // Overflow regions need a keyboard entry point; the linter cannot infer
-        // conditional scrollability from the utility classes below.
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={streaming && isOpen ? 0 : undefined}
         onScroll={measure}
@@ -106,7 +89,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
           streaming && isOpen && "max-h-48 overflow-y-auto",
         )}
       >
-        {/* Top fade — visible when scrolled down. */}
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 top-0 z-1 h-6",
@@ -126,7 +108,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
             </div>
           )}
         </div>
-        {/* Bottom fade — visible while streaming and not at bottom. */}
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-0 z-1 h-6",

@@ -1,6 +1,3 @@
-// Basename on the strong line, directory under it: one line of full path puts the
-// identifying part at the far end of a truncating column, so files under one deep
-// directory read as a repeated prefix.
 import type {
   FileChangeRowViewModel,
   FileChangesViewModel,
@@ -51,9 +48,6 @@ const FileRow = memo(function FileRow({
       detail={directory || undefined}
       trailing={
         <span className="flex items-center gap-2 text-ui-xs">
-          {/* The change letter stays a letter. It is the only mark on the row that
-              says WHAT happened rather than how much, and it says it in one glyph
-              the row has no width to spell out. */}
           <span className={cn("text-ui-2xs font-semibold", row.tag.className)}>
             {row.tag.letter}
           </span>

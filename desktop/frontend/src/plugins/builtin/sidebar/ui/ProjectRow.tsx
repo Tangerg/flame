@@ -3,9 +3,6 @@ import { Icon, IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { WorkProject } from "@/plugins/builtin/navigation/public/workIndex";
 
-// Project group header — the folder node of the work-index tree, with sessions
-// nested under it. The session count holds the trailing slot at rest and yields
-// it to the "new session" action on hover, so the two never stack.
 export function ProjectRow({
   project,
   active,

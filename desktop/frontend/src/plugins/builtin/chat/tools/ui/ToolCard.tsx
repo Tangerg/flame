@@ -1,6 +1,3 @@
-// Which shell and tone the row wears are the MODEL's answers, not this component's. Every
-// invocation stays on the same transparent work-narrative plane; the disclosed terminal,
-// diff or structured result is the material surface.
 import type { IconName } from "@/ui";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { DiffStat, IconButton, StatusDot } from "@/ui";
@@ -58,23 +55,15 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       shell={model.shell}
       label={<ToolText value={model.intent.label} className="w-full" />}
       detail={
-        model.detail ? (
-          // A path, a pattern, a command — data, so it takes the technical face.
-          <ToolText value={model.detail} className="w-full font-mono" />
-        ) : undefined
+        model.detail ? <ToolText value={model.detail} className="w-full font-mono" /> : undefined
       }
       trailing={
         <>
-          {/* Before the counts, because it is the count a reader of an edit came
-              for — and the same `+n −m` the diff header and run summary show. */}
           {model.diffStat && (
             <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
           )}
           <ToolMeta items={model.metaItems} running={model.running} />
           {model.running && <StatusDot tone="running" />}
-          {/* Refusal remains explicit, but as one quiet status word in the same
-              narrative line — not a yellow capsule that promotes the whole call
-              into a second approval surface. */}
           {model.denied && (
             <span data-slot="tool-status" className="font-sans text-ui-xs text-fg-muted">
               {t("tool.state.denied")}
@@ -113,11 +102,6 @@ function ToolMeta({ items, running }: { items: ToolMetaItem[]; running: boolean 
   if (shown.length === 0) return null;
 
   return (
-    // Against the TRANSCRIPT's width, not the window's. `sm:` asked the viewport
-    // whether this row has room, which it cannot know: the dock and the drawer take
-    // their width from the same card this row sits in, so a wide window can hold a
-    // narrow transcript and a cramped row would keep its chips. The pane declares
-    // itself a container (ChatStream); this asks that.
     <span className="hidden shrink-0 items-center gap-1.5 @sm:flex">
       {shown.map((item) => (
         <span
@@ -135,7 +119,5 @@ function ToolMeta({ items, running }: { items: ToolMetaItem[]; running: boolean 
 }
 
 function toolMetaToneClass(tone: ToolMetaItem["tone"]): string {
-  // An exit code is already an exact verdict. Codex keeps it in secondary ink;
-  // painting it red would make the metadata louder than the command it explains.
   return tone === "success" ? "text-success" : "text-fg-muted";
 }

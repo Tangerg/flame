@@ -4,11 +4,6 @@ import { Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 
-/**
- * Ordinary completion is already expressed by the final assistant message. Only
- * an exceptional non-failure terminal reason gets a quiet narrative row; errors
- * remain in the actionable recovery surface.
- */
 export function RootRunOutcome({ material }: { material: CurrentRootMaterial }) {
   const t = useT();
   const { outcome } = material;

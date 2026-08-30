@@ -11,9 +11,6 @@ import { SystemMessage } from "@/ui";
 import { JumpToBottomButton } from "./JumpToBottomButton";
 import { READING_COLUMN, READING_GUTTER } from "./readingColumn";
 
-/** Connection feedback belongs beside the controls whose rights it explains.
- * Cold-start checking stays silent; only a proven loss or terminal failed attempt
- * produces material. The connection owner supplies that distinction directly. */
 export function RuntimeConnectionNotice() {
   const t = useT();
   const service = useRuntimeServiceStatus();
@@ -54,10 +51,6 @@ export function RuntimeConnectionNotice() {
   );
 }
 
-/** Composer-owned standing material shared by the floating and empty layouts.
- * An attached tray shares one pixel with the composer below; its owner restores
- * that pixel above the stack so transcript clearance still measures the complete
- * painted surface without moving any visible child. */
 export function ComposerOverlayTop() {
   return (
     <Slot
@@ -68,17 +61,10 @@ export function ComposerOverlayTop() {
   );
 }
 
-/**
- * Paints NOTHING of its own: the panel it holds is glass, and a backing behind glass is an
- * opaque bar with a translucent sticker on it — the scroller's own dissolve keeps text off
- * the panel. Exactly the COLUMN wide, never the pane: a full-width overlay reads as chrome
- * however it is positioned, and takes the scrollbar's bottom inch with it.
- */
 export function FloatingComposer({
   overlayRef,
   children,
 }: {
-  /** Shared with ChatStream, the layout owner that reserves this overlay's height. */
   overlayRef: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {

@@ -4,9 +4,7 @@ import { Component } from "react";
 import { pickPluginErrorFallback, reportPluginError } from "../sdk";
 
 interface Props {
-  /** Plugin name — used for the fallback label and the console log. */
   plugin: string;
-  /** Optional label shown to the user. Defaults to the plugin name. */
   label?: string;
   children: ReactNode;
 }
@@ -15,11 +13,6 @@ interface State {
   error: Error | null;
 }
 
-/**
- * Wraps EVERY plugin-contributed component: a misbehaving region renders a fallback while
- * the rest of the app keeps running, and the failure reaches both the console and the
- * error store.
- */
 export class PluginBoundary extends Component<Props, State> {
   override state: State = { error: null };
 
@@ -38,8 +31,6 @@ export class PluginBoundary extends Component<Props, State> {
     const fallback = pickPluginErrorFallback();
     if (fallback) {
       const Body = fallback.component;
-      // Rendered OUTSIDE another PluginBoundary: a fallback that throws is the host's bug,
-      // and should surface rather than be swallowed.
       return <Body plugin={this.props.plugin} label={this.props.label} error={this.state.error} />;
     }
 

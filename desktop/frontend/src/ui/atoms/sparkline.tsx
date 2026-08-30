@@ -2,22 +2,17 @@ import { useId } from "react";
 import { cn } from "@/lib/classNames";
 
 interface SparklineProps {
-  /** Fewer than two points renders nothing. */
   data: readonly number[];
   label: string;
   className?: string;
 }
 
-// `currentColor`, no palette: the line takes whatever ink its row is set in, so a tone
-// cannot end up with two answers to "what colour is this state".
 export function Sparkline({ data, label, className }: SparklineProps) {
   const gradientId = useId();
   if (data.length < 2) return null;
 
   const min = Math.min(...data);
   const max = Math.max(...data);
-  // A flat series has no range to divide by, and drawn on the bottom edge it would read
-  // as zero rather than unchanged — so it runs down the middle.
   const range = max - min || 1;
   const flat = max === min;
 
@@ -47,8 +42,6 @@ export function Sparkline({ data, label, className }: SparklineProps) {
         fill="none"
         stroke="currentColor"
         strokeWidth="6"
-        // Non-scaling stroke, because the viewBox is stretched to the element's box:
-        // without it the line is thick horizontally and hairline vertically.
         vectorEffect="non-scaling-stroke"
         strokeLinecap="round"
         strokeLinejoin="round"

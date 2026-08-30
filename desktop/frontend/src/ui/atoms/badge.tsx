@@ -6,10 +6,6 @@ import { cn } from "@/lib/classNames";
 
 const styles = cva("inline-flex shrink-0 items-center gap-1 rounded-pill font-medium", {
   variants: {
-    // The FILL carries the hue; the word stays `fg-soft` ink. Tone-on-its-own-tone does
-    // not survive measurement — a tone ink on an 18% tint of itself runs 2.67–4.48:1
-    // against the 4.5:1 AA floor, and both sides move together so tuning cannot fix it.
-    // `fg-soft` clears 5.9–7.6:1 on every fill in both schemes and is accent-independent.
     tone: {
       neutral: "bg-surface-2 text-fg-muted",
       accent: "bg-accent-badge text-fg-soft",

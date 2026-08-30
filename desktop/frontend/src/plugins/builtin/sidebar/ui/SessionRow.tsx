@@ -10,10 +10,6 @@ interface Props {
   session: WorkSession;
   active: boolean;
   indented?: boolean;
-  /**
-   * Trailing timestamp. On by default and off inside a project, where the group
-   * is already ordered by it and the indent has taken the width it would need.
-   */
   showTime?: boolean;
   onSelect: (id: string) => void;
   onRename?: (id: string, expectedRevision: number, title: string) => void;
@@ -22,10 +18,6 @@ interface Props {
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
 }
 
-// One line, and the trailing slot answers ONE question at a time: a session that needs you
-// says so, otherwise it shows when it last moved. Stacking both spends a third of the
-// column restating the order the list is already sorted in. Accent stays reserved for live
-// state; selection is the soft fill.
 export function SessionRow({
   session,
   active,
@@ -37,14 +29,8 @@ export function SessionRow({
   onDelete,
   onToggleFavorite,
 }: Props) {
-  // Inline rename: the context menu flips this on; the title swaps for an
-  // input until Enter (commit) or Escape/blur-without-change (cancel).
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  // `useT()` subscribes to i18next language changes, so the relative
-  // time + status labels refresh on locale toggle automatically.
-  // formatRelative reads `i18next.t` and `i18next.language` directly
-  // — no extra subscription needed.
   const t = useT();
   const attentionLabel =
     session.attention === "running"
@@ -53,8 +39,6 @@ export function SessionRow({
         ? t("session.status.waiting")
         : undefined;
   const when = formatRelative(session.time);
-  // The state leads because it is what makes a row worth opening; the time
-  // follows because it is what orders a list of rows in the same state.
   const accessibleStatus = attentionLabel ? `${attentionLabel} · ${when}` : when;
   const title = session.title.trim() || t("session.untitled");
 
@@ -98,14 +82,11 @@ export function SessionRow({
             font="sans"
             defaultValue={title}
             aria-label={t("session.row.titleLabel")}
-            // Rename only ever starts from an explicit user action (the
-            // context-menu item), so stealing focus here is the expectation,
-            // not a surprise — the a11y concern the rule guards against.
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return; // let the IME commit its candidate
+              if (e.nativeEvent.isComposing) return;
               e.stopPropagation();
               if (e.key === "Escape") setRenaming(false);
               if (e.key === "Enter") {
@@ -167,7 +148,6 @@ export function SessionRow({
           )}
         </ContextMenu.Content>
       </ContextMenu.Root>
-      {/* Deleting a Session is final — the Runtime has no restore — so it asks first. */}
       {onDelete && (
         <ConfirmDialog
           open={confirmingDelete}

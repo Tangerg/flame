@@ -1,8 +1,3 @@
-// Drag handle between the chat stream and the context dock. The gesture lives in the
-// `ResizeHandle` atom (DESIGN §4 exemption: Base UI has no split-pane primitive, and
-// this is interactive chrome rather than a decorative divider — idle shows nothing but a
-// col-resize cursor). What is declared here is only what is true of this seam.
-
 import { clampDockWidth, DOCK_MIN_WIDTH_PX, maxDockWidth } from "@/lib/shellGeometry";
 import { useT } from "@/lib/i18n";
 import { ResizeHandle } from "@/ui";
@@ -29,11 +24,6 @@ export function DockResizer() {
   );
 }
 
-/**
- * The RENDERED width is what a drag must start from: the row's grid lays the column out, so
- * it can end up narrower than the property asked for. The property is the fallback for the
- * one case with nothing rendered to read — before the dock has been laid out at all.
- */
 function readDockWidth(row: HTMLElement): number {
   const dock = row.querySelector<HTMLElement>(".agent-context-dock");
   const renderedWidth = dock?.getBoundingClientRect().width ?? 0;

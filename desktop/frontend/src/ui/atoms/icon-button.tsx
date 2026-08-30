@@ -7,25 +7,18 @@ import { Tooltip } from "./tooltip";
 
 interface IconButtonProps extends Omit<ButtonProps, "children" | "variant" | "size"> {
   icon: IconName;
-  /** Both glyphs stay mounted so the transition cross-fades instead of popping. */
   hoverIcon?: IconName;
   size?: "xs" | "sm" | "md" | "lg";
   iconSize?: IconSize;
   active?: boolean;
-  /** For buttons INSIDE content, where the glyph must not compete with what the user came
-   *  to read. Chrome buttons leave it off — there they are the primary affordance. */
   quiet?: boolean;
-  /** Doubles as the accessible name unless `aria-label` overrides it. */
   title?: string;
-  /** Omitted when zero or empty: a badge showing "0" is noise wearing an alert's colour. */
   badge?: string | number;
 }
 
 const BOX = { xs: "icon-xs", sm: "icon-sm", md: "icon-md", lg: "icon-lg" } as const;
 const ICON_SIZE: Record<keyof typeof BOX, IconSize> = { xs: "xs", sm: "sm", md: "md", lg: "md" };
 
-// The app Tooltip carries the help rather than the native `title`: 250ms instead of the
-// OS's ~1s, and it appears on keyboard focus, which the native one never does.
 export function IconButton({
   icon,
   hoverIcon,

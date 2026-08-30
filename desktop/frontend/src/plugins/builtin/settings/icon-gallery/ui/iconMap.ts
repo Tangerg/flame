@@ -1,10 +1,3 @@
-// Shared loader for @lobehub/icons brand glyphs.
-//
-// We deliberately bypass the package barrel (`@lobehub/icons`) because it
-// re-exports `features/*` modules that depend on `@lobehub/ui` + `antd`,
-// neither of which we ship. Instead we glob just the per-brand `Mono.js`
-// files (only react + jsx-runtime).
-
 import type { ComponentType } from "react";
 import { toc as rawToc } from "@lobehub/icons/es/toc";
 

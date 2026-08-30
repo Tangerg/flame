@@ -1,6 +1,3 @@
-// The runtime exposes ONE `lsp` tool and dispatches on its `operation` argument, so
-// diagnostics is an operation rather than a tool of its own.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -11,8 +8,6 @@ import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResult
 import { lspToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
-// One line per hit: `path:line:col`, or `kind Name (in Container) — path:line:col` for a
-// symbol, split on the em-dash so the location reads as metadata beside it.
 function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
@@ -68,8 +63,6 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   );
 }
 
-// `severity path:line:col: message [source]` per line — tint the severity word
-// so a wall of diagnostics scans by color.
 const SEVERITY_TONE: Record<string, string> = {
   error: "text-negative",
   warning: "text-warning",

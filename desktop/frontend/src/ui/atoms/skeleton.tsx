@@ -1,7 +1,3 @@
-// The shimmer is a translated overlay, not a scrolling background: `background-position`
-// repaints the whole element every frame, and a list runs eight of these at once beside a
-// streaming transcript. A transform stays on the compositor.
-
 import type { CSSProperties } from "react";
 
 function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?: number }) {

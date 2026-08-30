@@ -3,10 +3,6 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import type { WorkspaceCommandActivity } from "@/plugins/builtin/workspace/application/toolActivity";
 
-// Consolidated command log (G5): the agent's command executions for the active
-// session. Output streams in via item.delta{toolOutput} → item.completed and is
-// landed in the run fold's toolCalls — a running command tails live, a finished
-// one keeps its full output + exit code.
 export const CommandLog = memo(function CommandLog({
   commands,
   selectedCommandId,

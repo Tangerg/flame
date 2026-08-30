@@ -1,4 +1,3 @@
-// Dismissing clears the error from the VIEW state only; it persists in the timeline.
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon, IconButton } from "@/ui";
@@ -24,20 +23,12 @@ import {
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import type { AgentProblem } from "@/plugins/builtin/agent/public/viewState";
 
-// Best-effort: find the most recent user-message plaintext so Retry can
-// replay it. Returns "" if no usable text exists — Retry hides in that
-// case (there's nothing to resend).
 function findLastUserText(): string {
   const { messages } = getActiveConversationSnapshot();
   const last = messages.findLast((m) => m.role === "user" && flattenText(m.blocks).trim() !== "");
   return last ? flattenText(last.blocks).trim() : "";
 }
 
-// Resending the same text cannot clear these — the credential, the request
-// shape, or the provider's verdict on it is what has to change.
-//
-// Behavior branches on the required symbolic type. An optional boolean cannot
-// distinguish an explicit refusal from an omitted value.
 const UNRETRYABLE: readonly string[] = ["invalid_api_key", "invalid_params", "provider_rejected"];
 
 interface RetryCountdown {
@@ -46,12 +37,6 @@ interface RetryCountdown {
   remaining: number;
 }
 
-// Where the words come from when the runtime had none: `message` carries only the
-// per-occurrence detail it actually reported, so a classified-but-unelaborated failure
-// falls through to this locale's copy for the symbol.
-//
-// Rendered OUTSIDE MessageStream, so a render error inside the transcript cannot take the
-// error notice down with it.
 export function RunErrorBanner() {
   const t = useT();
   const error = useActiveSessionProblem();
@@ -60,10 +45,6 @@ export function RunErrorBanner() {
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const canSend = hasSendAction && runtimeAvailable;
 
-  // Provider-requested backoff countdown (rate-limit / overload). Ticks down
-  // from error.retryAfterSeconds; re-armed whenever the error changes. While
-  // counting, Retry is shown but inert — don't hammer a provider that just
-  // asked us to wait.
   const retryAfter = error?.retryAfterSeconds ?? 0;
   const [countdown, setCountdown] = useState<RetryCountdown>({
     problem: null,

@@ -15,8 +15,6 @@ export interface AgentDockTab {
   closeLabel?: string;
 }
 
-// Carries no state: whether the flank is showing is a fact about the row it shares with
-// the conversation, so the row declares it once and this stays pure structure.
 export function AgentContextDock({ children }: { children: ReactNode }) {
   return <aside className="agent-context-dock agent-pane-split">{children}</aside>;
 }
@@ -41,8 +39,6 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
-// Goes through the tab primitive for roving focus and arrow-key navigation: buttons styled
-// to resemble tabs without those semantics make the dock keyboard-hostile.
 export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaLabel: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
@@ -94,8 +90,6 @@ export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaL
                 "group flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
                 "text-fg-muted transition-[background-color,color] duration-[var(--dur-color)] ease-out",
                 "hover:bg-hover hover:text-fg focus-within:text-fg",
-                // Fills with the PANEL's ground, not a selection wash: a tab is the top of
-                // the thing it opens, and a wash makes the strip read as a row of chips.
                 "data-[active]:bg-[var(--dock-tab-active-surface)] data-[active]:text-fg",
               )}
             >

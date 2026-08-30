@@ -45,8 +45,6 @@ function RoleSectionShell({
   );
 }
 
-// Global utility model: turn-boundary maintenance can run on a cheaper model;
-// empty means "use the main turn model".
 export function UtilityModelSection() {
   const t = useT();
   const { role, modelOptions, selected, isSet, isAvailable, isError } = useUtilityModelConfig();
@@ -130,7 +128,6 @@ export function UtilityModelSection() {
   );
 }
 
-// Optional embedding model for agent-memory ranking; empty keeps keyword search.
 export function EmbeddingModelSection() {
   const t = useT();
   const { role, capableProviders, isSet, isAvailable } = useEmbeddingModelConfig();

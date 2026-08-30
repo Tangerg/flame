@@ -1,7 +1,3 @@
-// Both tools answer in PROSE the model reads, so both previews are a parse of it. Separate
-// renderers because a conversation hit has metadata worth aligning into a column and a
-// recalled memory has none.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
@@ -34,8 +30,6 @@ function MemoryRecallPreview({ tool }: ToolPreviewProps) {
           key={i}
           className="flex gap-2.5 rounded-2xs px-1 py-0.5 transition-colors hover:bg-hover"
         >
-          {/* The ordinal is the runtime's own ranking — best match first — so it is
-              worth keeping rather than re-numbering or dropping. */}
           <span className="shrink-0 tabular-nums text-fg-faint">{i + 1}</span>
           <span className="min-w-0 whitespace-pre-wrap break-words text-fg-soft">{memory}</span>
         </div>
@@ -65,8 +59,6 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
           key={i}
           className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] gap-3 rounded-2xs px-1 py-0.5 transition-colors hover:bg-hover"
         >
-          {/* Who and when, in one column so a scan down the left edge reads as a
-              timeline instead of as prefixes on each line. */}
           <span className="truncate text-fg-faint">
             {hit.speaker} · {hit.day}
           </span>
@@ -78,9 +70,6 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
   );
 }
 
-/** A byte window recovered from an offloaded result. Unlike memory and
- * conversation search this is verbatim tool output, so it keeps program-output
- * whitespace and the shared copy/show-all controls. */
 function StoredToolResultPreview({ tool }: ToolPreviewProps) {
   return (
     <ToolOutputPanel

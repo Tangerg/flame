@@ -22,7 +22,6 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
 
   const enabled = p.configured;
-  // Env keys are read-only at the source, but a typed key still overrides them.
   const fromEnv = p.credential?.fromEnvironment ?? false;
   const hasStoredKey = p.credential?.stored ?? false;
   const dirty = draft.dirty(p);
@@ -30,7 +29,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
 
   const onSave = async () => {
     setSaving(true);
-    reset(); // invalidate any in-flight test so its result can't overwrite the new key state
+    reset();
     try {
       const saved = await update(draft.toUpdate(p));
       setDraft(ProviderCredentialsDraft.initial(saved));

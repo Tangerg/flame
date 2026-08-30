@@ -20,9 +20,6 @@ function ThemeToggle() {
       data-chrome-focus=""
       title={t(isLight ? "theme.switchToDark" : "theme.switchToLight")}
     >
-      {/* §7 contextual icon swap — cross-fade the sun/moon instead of a hard
-          cut (scale/opacity/blur, spring bounce:0); initial={false} so it
-          doesn't animate on first paint, only on toggle. */}
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span
           key={isLight ? "moon" : "sun"}

@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { clampSidebarWidth, maxSidebarWidth, SIDEBAR_MIN_WIDTH_PX } from "@/lib/shellGeometry";
 import { ResizeHandle } from "@/ui/atoms/resize-handle";
 
-// An in-flow spacer reserving the width plus a fixed-position panel that slides. Both read
-// `--sidebar-width`, so a resize is one custom-property write and a collapse one attribute.
 export function AgentSidebar({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
@@ -15,8 +13,6 @@ export function AgentSidebar({ label, children }: { label: string; children: Rea
   );
 }
 
-// Draws no resting line — the reading plane owns that boundary; this only strengthens the
-// same coordinate on hover, focus and drag.
 export function AgentSeamRail({
   label,
   width,

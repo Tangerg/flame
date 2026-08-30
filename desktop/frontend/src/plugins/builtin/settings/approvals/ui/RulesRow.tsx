@@ -20,8 +20,6 @@ const SCOPE_CHIP: Record<ApprovalRuleSummary["scope"], string> = {
 
 export function RulesRow() {
   const t = useT();
-  // Rules are addressed by Session id, which is authoritative before the
-  // Session list projection (and its workspace) finishes loading.
   const sessionId = useActiveSessionId();
   const { data, isLoading, isError, error } = useApprovalRuleConfigs(sessionId);
   const forget = async (id: string) => {

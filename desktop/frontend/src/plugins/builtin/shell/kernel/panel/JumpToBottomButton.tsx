@@ -3,13 +3,8 @@ import { IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
-// Anchored to the composer's own top edge — where the transcript visibly ends, and the only
-// anchor that stays right as the composer grows. Stays MOUNTED when hidden, fading via
-// opacity rather than unmounting, so it reveals softly instead of popping in.
 export function JumpToBottomButton() {
   const t = useT();
-  // Reads the follow snapshot itself: a scroll that crosses the tail re-renders
-  // this button and nothing else.
   const visible = !useStreamAtBottom();
   const label = t("chat.jumpToBottom");
   return (

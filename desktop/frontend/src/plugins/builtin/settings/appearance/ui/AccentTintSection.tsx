@@ -1,7 +1,3 @@
-// A preference rather than a constant because it is a taste axis — Material ships the same
-// thing as a scheme variant rather than picking one chroma and defending it. `standard` is
-// what every surface here was measured against, so the default changes nothing.
-
 import type { SegmentedOption } from "@/ui";
 import { Segmented } from "@/ui";
 import type { AccentTint } from "@/lib/appearance";

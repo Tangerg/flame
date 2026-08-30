@@ -1,9 +1,3 @@
-// Built-in workspace view: "Skill Library" — the global self-authored skill
-// library (skills.library.list). Unlike the read-only "Skills" discovery view,
-// this is the curator surface: it lists active AND archived skills and lets the
-// user archive/restore one (never deleting). Skills reach it only after the
-// agent proposes one and the user approves the promotion (propose_skill).
-
 import { useCallback, useRef, useState } from "react";
 import { DataView, PillButton, SectionLabel } from "@/ui";
 import { useT } from "@/lib/i18n";

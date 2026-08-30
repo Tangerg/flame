@@ -1,9 +1,3 @@
-// TRUST is the security seam: a cloned repo's hooks run shell commands, so project hooks
-// stay inert until explicitly trusted here. Global hooks are always active.
-//
-// READ-ONLY over the definitions themselves — those live in files the user edits directly;
-// this pane only audits them and grants or revokes project trust.
-
 import { DataView, EmptyState, Icon, Surface, Switch } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";

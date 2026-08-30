@@ -1,9 +1,3 @@
-// Built-in workspace view: "Search" — user-facing workspace.files.search over the
-// active session's cwd. Until now grep only powered tool-card previews; this
-// gives the user a direct regex search entry. Debounced live query; results
-// grouped by file; server truncation surfaced honestly (§7.5 no-silent-caps:
-// total > matches.length means "narrow the query", never "that's all").
-
 import { useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { DataView, Pressable, SearchField } from "@/ui";
@@ -23,8 +17,6 @@ function SearchTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const [input, setInput] = useState("");
-  // Debounce keystrokes so each distinct query hits the backend once — every
-  // params object is its own react-query cache entry.
   const [query] = useDebouncedValue(input.trim(), { wait: 300 });
   const { data, isLoading, isError } = useWorkspaceGrep(
     query && workspace.status === "ready"

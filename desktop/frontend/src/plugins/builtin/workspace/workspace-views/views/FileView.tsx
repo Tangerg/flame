@@ -4,11 +4,6 @@ import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHig
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { cn } from "@/lib/classNames";
 
-// Bounded file-window viewer (workspace.files.read). The window is highlighted
-// in one Shiki pass and split into per-line HTML, while startLine preserves the
-// source file's gutter identity.
-
-// Depends on Shiki placing a newline between line spans.
 function highlightLines(h: Highlighter, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));
   return stripCodeWrapper(h.codeToHtml(code, { lang, theme }), "").split("\n");
@@ -49,7 +44,6 @@ export function FileView({
             key={i}
             ref={isTarget ? targetRef : undefined}
             className={cn(
-              // Wraps rather than clips, for the reason spelled out in DiffView.
               "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-2 px-3",
               isTarget && "bg-accent-wash",
             )}

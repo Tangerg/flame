@@ -1,5 +1,3 @@
-// Reads its query off `tool.fn`, into which the §4.4.2 projection bakes the path.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { definePlugin } from "@/plugins/sdk";
@@ -11,8 +9,6 @@ import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 const MAX_FILE_LINES = 40;
 
 function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
-  // cwd = the active session's workspace — the tool ran there, so the
-  // preview must read the same tree (the serve dir may be elsewhere).
   const { data: lines } = useFileToolPreview(tool, MAX_FILE_LINES);
   return (
     <div className={TEXT_PREVIEW_CLASS}>
@@ -25,7 +21,6 @@ function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
             <span className="text-right text-ui-sm text-fg-faint tabular-nums select-none">
               {l.lineNumber}
             </span>
-            {/* Wraps rather than clips, for the reason spelled out in DiffView. */}
             <span className="min-w-0 whitespace-pre-wrap wrap-anywhere text-fg-soft">
               {l.text || " "}
             </span>

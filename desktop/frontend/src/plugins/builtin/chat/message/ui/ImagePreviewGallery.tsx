@@ -88,9 +88,6 @@ function collectGallery(trigger: HTMLButtonElement, fallback: GalleryItem): Gall
   return items.length > 0 ? { items, index } : { items: [fallback], index: 0 };
 }
 
-/** A presentation-local Codex image gallery. Each trigger owns its dialog while the
- * gallery is discovered from the nearest exact message body at open time, so streamed
- * content is current and nested delegated messages never leak into their parent. */
 export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
   const t = useT();
   const [zoomed, setZoomed] = useState(false);

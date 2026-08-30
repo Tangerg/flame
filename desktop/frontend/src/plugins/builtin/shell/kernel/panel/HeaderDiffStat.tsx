@@ -8,11 +8,6 @@ import {
   useWorkspaceFileChanges,
 } from "@/plugins/builtin/workspace/public/queries";
 
-/**
- * Renders NOTHING rather than zeros when there is no churn, when the git capability is off,
- * or while the query is in flight: a readout that is always present but usually says
- * "+0 −0" trains the eye to skip it.
- */
 export function HeaderDiffStat({ className }: { className?: string }) {
   const t = useT();
   const gitEnabled = useWorkspaceCapability("git");

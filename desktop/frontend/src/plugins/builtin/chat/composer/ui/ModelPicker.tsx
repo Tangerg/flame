@@ -108,8 +108,6 @@ function ModelPickerPlaceholder() {
   );
 }
 
-// The trigger wears the selected model's provider mark. Provider health is not
-// part of this app's state, so the control carries no status indicator.
 export function ModelPicker() {
   const t = useT();
   const { data: models = [], isLoading, isError } = useModels();
@@ -140,9 +138,6 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
-  // An active Session id can be available one query tick before its summary.
-  // Keep the placeholder for that tick instead of showing a catalog model
-  // which would disagree with the Session's durable model.
   if (!selected) return <ModelPickerPlaceholder />;
 
   return (

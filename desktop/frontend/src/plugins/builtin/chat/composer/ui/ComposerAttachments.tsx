@@ -25,13 +25,6 @@ export function ComposerAttachments({
   return (
     <>
       <DraftContext value={value} onChange={onChange} />
-      {/* These arrive and leave because the USER put them there and took them away,
-          which is the one thing presence animation is for.
-          Presence only — no `layout`. `value` is a prop, so this whole subtree
-          re-renders on every keystroke, and `layout` measures its element on every
-          render: a chip in the composer would have cost a getBoundingClientRect and a
-          projection pass per character typed. MessageStream records the same lesson
-          one file over, for the same library, and I added it here anyway. */}
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 pb-1 pt-1">
           <AnimatePresence initial={false}>
@@ -58,10 +51,6 @@ export function ComposerAttachments({
   );
 }
 
-/**
- * Derived from the draft on every render rather than tracked: the TEXT is what gets sent, so
- * a second list could disagree with the message.
- */
 function DraftContext({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const mentions = draftMentions(value);
   if (mentions.length === 0) return null;
@@ -84,8 +73,6 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
   );
 }
 
-/** The chip shows the filename; the whole path is the tooltip. A column of chips each
- *  reading `desktop/frontend/src/…` says nothing the others do not. */
 function basename(path: string): string {
   const cut = path.lastIndexOf("/");
   return cut >= 0 ? path.slice(cut + 1) : path;

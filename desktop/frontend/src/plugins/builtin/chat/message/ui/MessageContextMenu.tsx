@@ -1,7 +1,3 @@
-// Subscribes to NOTHING: every store read happens inside the onSelect handlers via
-// getState(). This mounts once per message, so a subscription here means N selectors
-// re-evaluating on every token delta (CLAUDE.md §5).
-
 import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import type { ReactElement, ReactNode } from "react";
 import { ContextMenu, Icon } from "@/ui";
@@ -26,8 +22,6 @@ interface Props {
 export function MessageContextMenu({ msg, children }: Props) {
   const t = useT();
   const copy = messageCopyPayloads(msg);
-  // Imperative read, not a subscription (see header comment) — capabilities
-  // are discovery-time stable and messages can't exist before runtime startup.
   const canRestoreFiles = runtimeCapability("checkpoints");
   const menu = messageContextMenuModel({ msg, copy, canRestoreFiles });
 
@@ -65,15 +59,11 @@ export function MessageContextMenu({ msg, children }: Props) {
                 {t("msgActions.editInComposer")}
               </ContextMenu.IconItem>
             )}
-            {/* Destructive variant: rewinds history to before this turn
-                  (sessions.rollback), then prefills the composer. */}
             {menu.user.editRerun && (
               <ContextMenu.IconItem icon="loop" onSelect={() => editAndRerunMessage(msg)}>
                 {t("msgActions.editRerun")}
               </ContextMenu.IconItem>
             )}
-            {/* Same rewind, but also restores the working tree to the
-                  pre-turn shadow-git checkpoint (restoreType:"both"). */}
             {menu.user.editRerunRestore && (
               <ContextMenu.IconItem
                 icon="history"
@@ -82,9 +72,6 @@ export function MessageContextMenu({ msg, children }: Props) {
                 {t("msgActions.editRerunRestore")}
               </ContextMenu.IconItem>
             )}
-            {/* Pure restore (no resend, unlike Edit & rerun): rewind to the
-                  state BEFORE this turn and stop. Conversation-only always; the
-                  file/both variants need the pre-turn shadow-git snapshot. */}
             {menu.user.restore && (
               <ContextMenu.SubmenuRoot>
                 <ContextMenu.SubmenuTrigger className="grid-cols-[14px_minmax(0,1fr)_12px]">
@@ -124,8 +111,6 @@ export function MessageContextMenu({ msg, children }: Props) {
                 </ContextMenu.Content>
               </ContextMenu.SubmenuRoot>
             )}
-            {/* Non-destructive sibling of Edit & rerun: branch a new
-                  session that keeps history through this exchange. */}
             {menu.user.fork && (
               <ContextMenu.IconItem icon="branch" onSelect={() => forkFromMessage(msg)}>
                 {t("msgActions.fork")}

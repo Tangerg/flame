@@ -1,8 +1,3 @@
-// Shared list primitives for the Diagnostics panels — the virtualized list and
-// its row/cell/empty chrome. Traces + Logs both render through VirtualList;
-// Metrics draws its own table but shares Empty. Kept in one place so the two
-// list tabs can't drift on row rhythm or the measure-element wiring.
-
 import type { ReactNode } from "react";
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -39,12 +34,6 @@ export function Cell({ className, children }: { className: string; children?: Re
   return <div className={`min-w-0 ${className}`}>{children}</div>;
 }
 
-// Virtualized list — only on-screen rows mount, so a 500-row span buffer
-// renders a dozen DOM nodes. `rowHeight` is just the pre-measure estimate;
-// each row's real height is measured via `measureElement` so a row that
-// expands (the span detail panel) grows in place and pushes the rest down,
-// no fixed-height assumption. `position: absolute` per row is the standard
-// react-virtual pattern (allowed by the no-absolute rule for this).
 export function VirtualList({
   count,
   rowHeight,

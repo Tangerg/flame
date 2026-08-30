@@ -9,12 +9,6 @@ import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useSelectedWorkspaceToolId } from "@/plugins/builtin/workspace/public/navigation";
 
-// The agent's command log (G5). Each command's output streams via
-// item.delta{toolOutput} → item.completed — 613 confirmed that's already on
-// the wire (no new API), and the run fold lands it in view.toolCalls. This view
-// just consolidates the command-category tools into one terminal-like surface.
-// (A user-interactive PTY is deliberately out of the runtime's scope, so this is
-// a read-only log of what the agent ran, not an input terminal.)
 export function TerminalWorkspaceSurface() {
   const t = useT();
   const toolCalls = useActiveSessionToolCalls();
@@ -25,10 +19,6 @@ export function TerminalWorkspaceSurface() {
   );
   const selectedCommandId = view.selectedCommandId(selectedToolId);
 
-  // Terminal semantics: open at the bottom (latest command) and tail live
-  // output — but only while the user is pinned to the bottom, so scrolling up
-  // to read an earlier command isn't fought. Lightweight stick-to-bottom off
-  // the view's shared scroll container (no extra lib for a read-only log).
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
   useEffect(() => {

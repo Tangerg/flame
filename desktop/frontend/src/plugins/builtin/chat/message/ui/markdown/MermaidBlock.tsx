@@ -7,8 +7,6 @@ import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
 
-// `beautiful-mermaid` is ~200KB, so it loads only when an agent emits a mermaid fence. The
-// promise is cached so every subsequent block reuses one load.
 type MermaidRenderer = typeof import("beautiful-mermaid").renderMermaidSVG;
 let rendererPromise: Promise<MermaidRenderer> | null = null;
 function loadRenderer(): Promise<MermaidRenderer> {
@@ -31,8 +29,6 @@ interface SettledMermaidRender {
   result: MermaidRenderResult;
 }
 
-// Resolves token vars to literal hex: beautiful-mermaid bakes values into stroke/fill on
-// the SVG, where browsers do not honour raw `var(--x)` text.
 function readThemeColors(_tokenRevision: object) {
   const root = document.documentElement;
   const cs = getComputedStyle(root);
@@ -47,14 +43,10 @@ function readThemeColors(_tokenRevision: object) {
   };
 }
 
-// Debounced 300ms: an in-progress diagram is malformed until the closing fence lands, every
-// parse throws, each throw costs 30-100ms, and stream-reveal feeds chars at ~30 Hz.
 export function MermaidBlock({ code }: Props) {
   const t = useT();
   const fencedCode = useMemo(() => `\`\`\`mermaid\n${code}\n\`\`\``, [code]);
   const { copied, copy } = useCopyFeedback(fencedCode);
-  // The computed tokens must be re-read whenever the painter rewrites them; this revision
-  // is that signal and covers every input, including contrast-derived surface depth.
   const tokenRevision = useTokenRevision();
   const [debouncedCode] = useDebouncedValue(code, { wait: 300 });
   const isSettling = code !== debouncedCode;
@@ -77,13 +69,10 @@ export function MermaidBlock({ code }: Props) {
     void Promise.resolve().then(() => {
       let result: MermaidRenderResult;
       try {
-        // Passed as an invalidation token for the mutable computed styles, not a value.
         const c = readThemeColors(tokenRevision);
         const start = performance.now();
         const svg = renderer(debouncedCode, {
           transparent: true,
-          // `bg` is still required by the type even with transparent:true;
-          // beautiful-mermaid uses it for color-mix fallbacks of unset roles.
           bg: c.surface,
           fg: c.fg,
           line: c.line,
@@ -180,6 +169,5 @@ export function MermaidBlock({ code }: Props) {
     );
   }
 
-  // A settled parse error is source material, not an endless loader.
   return <ShikiCodeBlock lang="mermaid" code={code} />;
 }

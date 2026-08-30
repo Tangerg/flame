@@ -12,9 +12,6 @@ interface Props {
   onHover: (i: number) => void;
 }
 
-// Hovering a row also SELECTS it, so click and key land on the same target. A listbox wired
-// by hand: focus stays in the textarea — the caret has to keep blinking where the user is
-// typing — so the selected row is announced through aria-activedescendant instead.
 export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
   const t = useT();
   return (
@@ -37,7 +34,6 @@ export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
             selected={i === index}
             onMouseEnter={() => onHover(i)}
             onMouseDown={(e) => {
-              // mousedown (not click) so the pick fires before the textarea blurs.
               e.preventDefault();
               onPick(path);
             }}

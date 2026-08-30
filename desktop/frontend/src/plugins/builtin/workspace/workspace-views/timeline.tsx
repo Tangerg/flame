@@ -1,6 +1,3 @@
-// Groups events under durable Run lineage, then keeps each source Run's own events
-// chronological — the inline tool cards in the stream carry no lineage at all.
-
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/builtin/agent/public/viewState";
 import { Badge, EmptyState, Icon, IconButton } from "@/ui";
@@ -221,7 +218,6 @@ export const timelineView = defineWorkspaceView({
   id: "timeline",
   title: "workspace.view.title.timeline",
   icon: "history",
-  // Between Plan (30) and Tools (40): "what happened" sits closer to Plan.
   order: 140,
   splittable: true,
   component: TimelineTab,

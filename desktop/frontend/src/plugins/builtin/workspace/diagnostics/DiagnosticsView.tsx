@@ -1,7 +1,3 @@
-// Telemetry volume is high, so rows are virtualized and each panel subscribes to ONLY its
-// own signal's slice — a metrics flush or a tab switch must not re-render the trace or log
-// list.
-
 import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";

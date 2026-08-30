@@ -50,9 +50,6 @@ export function useComposerInputController({
 }: Args) {
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  // The controller owns this element, so it is the one that publishes it as the
-  // context's focus target — see application/focus.ts for why that is a
-  // capability and not a DOM query.
   useEffect(() => {
     setComposerFocusTarget(inputRef.current);
     return () => setComposerFocusTarget(null);
@@ -60,15 +57,7 @@ export function useComposerInputController({
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const [caret, setCaret] = useState(0);
-  // While a syllable is still being composed the textarea fires intermediate events, and
-  // broadcasting the caret then drives the @-mention lookup off half-composed text. The
-  // controlled value stays in sync throughout — React would otherwise snap the textarea back
-  // mid-composition — but the caret broadcast waits for `compositionend`.
   const composingRef = useRef(false);
-  // Some Chinese IMEs commit raw Latin text with compositionend and then emit
-  // an unmarked Enter from the same physical action. Keep that exact lifecycle
-  // fact until the next key decision; keyup/focus/pointer boundaries retire it
-  // deterministically when composition ended by another interaction.
   const compositionCommitPendingRef = useRef(false);
   const applyMention = useCallback(
     (text: string, next: number) => {
@@ -103,8 +92,6 @@ export function useComposerInputController({
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
     const target = event.target;
-    // Some browsers drop compositionend; recover a stuck flag when a plain
-    // input arrives with no active native composition.
     const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
     if (composingRef.current && !nativeComposing) {
       composingRef.current = false;
@@ -128,8 +115,6 @@ export function useComposerInputController({
   const handleCompositionEnd = (event: CompositionEvent<HTMLTextAreaElement>): void => {
     composingRef.current = false;
     compositionCommitPendingRef.current = true;
-    // Sync the final value — ordering against the last input event varies by browser — and
-    // broadcast the caret once, so the lookup runs against real text.
     const target = event.currentTarget;
     onChange(target.value);
     setCaret(target.selectionStart ?? target.value.length);
@@ -163,9 +148,6 @@ export function useComposerInputController({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Consume the pending commit at the first key decision. Active/native/229
-    // composition keys remain browser-owned; the otherwise-unmarked commit
-    // Enter is also prevented so it neither sends nor inserts a stray newline.
     const compositionIntent = composerCompositionKeyIntent(
       event.nativeEvent,
       composingRef.current,

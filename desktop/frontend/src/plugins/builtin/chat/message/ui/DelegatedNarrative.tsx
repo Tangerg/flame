@@ -20,9 +20,6 @@ interface Props {
   narrative: DelegatedRunNarrative;
   ordinal: number;
   siblingCount: number;
-  /** The spawning turn's facts. A delegated turn renders with them: the projection
-   *  reaches through delegation when it slices a row, so a subagent's own tool calls
-   *  and any run IT spawned are already in here. */
   facts: TurnFacts;
   ctx: BlockCtx;
   renderMessageBlocks: (row: Pick<TranscriptRow, "message" | "facts">, ctx: BlockCtx) => ReactNode;

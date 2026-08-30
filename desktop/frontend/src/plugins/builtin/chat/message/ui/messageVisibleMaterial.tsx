@@ -17,14 +17,6 @@ interface VisibleProjection {
   settled: boolean;
 }
 
-/**
- * Owns the presentation generation of one exact transcript message.
- *
- * Runtime completion and DOM completion are different facts while the smooth Markdown
- * reveal drains its backlog, so terminal message actions live at their intersection: not
- * while either the durable block or any mounted visible-text projection can still grow. A
- * settled projection belongs to one accepted generation and cannot be lent to a later one.
- */
 export class MessageVisibleMaterialOwner {
   readonly identity: string;
   readonly #projections = new Map<VisibleMaterialToken, VisibleProjection>();
@@ -107,10 +99,6 @@ export function MessageVisibleMaterialProvider({
   );
 }
 
-/** Re-render message chrome only when a visible projection crosses the
- * presenting/settled boundary. Active transcript rows share a stable generation,
- * so token-by-token text growth stays local; exact row identity matters once
- * durable material would otherwise admit terminal controls. */
 export function useVisibleActionMaterialization(
   owner: MessageVisibleMaterialOwner,
   source: MessageActionMaterialization,

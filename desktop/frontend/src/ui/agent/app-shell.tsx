@@ -5,12 +5,10 @@ import { AgentSeamRail, AgentSidebar, SIDEBAR_WIDTH_PROPERTY } from "./sidebar";
 import { AgentDrawerToggle } from "./surface-header";
 
 interface AgentAppShellProps {
-  /** Omit to run without a drawer (settings takes over the window). */
   sidebar?: ReactNode;
   sidebarLabel: string;
   sidebarResizeLabel: string;
   sidebarOpen: boolean;
-  /** The PERSISTED width; the rail commits new values through `onResize`. */
   sidebarWidth: number;
   onResize: (width: number) => void;
   onSidebarToggle: () => void;
@@ -20,8 +18,6 @@ interface AgentAppShellProps {
   overlay?: ReactNode;
 }
 
-// The drawer's width lives as a custom property on this element so the rail can drag it
-// without a React render, and so the spacer and the panel read one number.
 export function AgentAppShell({
   sidebar,
   sidebarLabel,
@@ -38,14 +34,10 @@ export function AgentAppShell({
   const shellRef = useRef<HTMLDivElement>(null);
   const hasSidebar = sidebar !== undefined;
 
-  // Re-clamps the persisted preference against the window WITHOUT overwriting it, so a
-  // temporarily narrow window does not lose the user's chosen width.
   useLayoutEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
     const syncWidth = () => {
-      // The observer fires on any layout change, and a drag IS one — under load it can
-      // land between two pointer-moves and snap the drawer back to the uncommitted value.
       if (shell.hasAttribute("data-resizing")) return;
       shell.style.setProperty(
         SIDEBAR_WIDTH_PROPERTY,

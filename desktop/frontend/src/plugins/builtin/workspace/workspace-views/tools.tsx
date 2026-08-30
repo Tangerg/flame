@@ -1,8 +1,3 @@
-// Built-in workspace view: "Tools". Two catalogs with different semantics and
-// lifecycles share one tab: direct runtime diagnostics (tools.list/invoke —
-// static per runtime build) and agent-connected MCP servers (mcp.* — live
-// 5-state lifecycle, expandable rows).
-
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
 import type { IconName } from "@/ui";
@@ -45,9 +40,6 @@ import {
 
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
-    // The count goes in the atom's own trailing slot. A family is worth scanning
-    // past or stopping at, and how many calls it holds is the fact that decides
-    // which — the same reason a tool group's row carries its count.
     <SectionLabel
       className="px-4 pb-1"
       trailing={count === undefined ? undefined : <span className="font-mono">{count}</span>}
@@ -67,8 +59,6 @@ function BuiltinToolsSection() {
       : `resolving:${workspace.sessionId}`;
   const { data, isLoading } = useBuiltinToolConfigs();
   const view = builtinToolCatalogViewModel(data ?? []);
-  // No skeleton/error chrome here — the MCP DataView below owns the tab's
-  // loading story; this section just appears once the catalog resolves.
   if (isLoading || view.isEmpty) return null;
   return (
     <div className="pb-1.5">
@@ -321,7 +311,6 @@ function ToolsTab() {
       >
         {(rows) => rows.map((s) => <McpRow key={s.id} server={s} />)}
       </DataView>
-      {/* Outside DataView so every state, including empty, can connect a server. */}
       <TextButton size="sm" onClick={openMcpSettings} className="px-4 pt-3.5 pb-4.5 leading-body">
         <Icon name="settings" size="xs" />
         {t("tools.footer")}

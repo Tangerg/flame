@@ -3,7 +3,6 @@ import { ProgressPrimitive } from "@/ui/primitives";
 
 interface ProgressBarProps {
   value: number;
-  /** Required: a `progressbar` with no name is announced as a bare number. */
   label: string;
   className?: string;
   indicatorClassName?: string;

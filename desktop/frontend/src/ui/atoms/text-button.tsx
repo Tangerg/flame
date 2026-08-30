@@ -4,8 +4,6 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-// Distinct from `Button` rather than a variant of it: Button's base class is metrics
-// (height, inset, a fill that answers the pointer), all of which this would have to undo.
 const styles = cva(
   "inline-flex items-center gap-1.5 bg-transparent p-0 text-left transition-colors " +
     "disabled:cursor-not-allowed disabled:opacity-50",

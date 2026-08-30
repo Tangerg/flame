@@ -49,9 +49,6 @@ interface Props {
 
 const RECOMMENDED_SUFFIX = " (Recommended)";
 
-/** Codex-style native question request. The durable Question block remains the
- * only fact owner; while pending, ChatStream places this surface on the composer
- * rung and suppresses the block's duplicate transcript presentation. */
 export function QuestionCard({ status, runId, itemId, questions, answered, answers }: Props) {
   const t = useT();
   const questionCardId = useId();

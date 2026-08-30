@@ -1,6 +1,3 @@
-// Reads this ToolCall's OWN persisted PatchResult. The Runtime publishes no line-level diff
-// here, so this must never substitute the current worktree or invent diff stats.
-
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";

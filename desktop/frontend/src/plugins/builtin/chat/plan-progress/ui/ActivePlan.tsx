@@ -25,8 +25,6 @@ export function ActivePlan() {
   );
 }
 
-/** Codex keeps Plan progress as a fixed-size reading aid above the composer. The
- * complete checklist is secondary material and appears only on hover/focus. */
 function PlanPill({
   steps,
   progress,

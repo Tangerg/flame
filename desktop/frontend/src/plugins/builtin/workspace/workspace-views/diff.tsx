@@ -1,7 +1,3 @@
-// The panel shows the WHOLE change, never just the focused file: the active file is a focus
-// target — what the navigator highlights and the panel scrolls to — and the diff stays the
-// whole comparison, so each file keeps its place in it.
-
 import { useEffect, useId, useRef, useState } from "react";
 import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented } from "@/ui";
 import { AgentViewNavigatorToggle, AgentViewSplit, AgentWorkspaceView } from "@/ui/agent";
@@ -26,7 +22,6 @@ import {
   useWorkspaceFileChanges,
 } from "@/plugins/builtin/workspace/public/queries";
 
-/** Attribute the navigator scrolls to. One spelling, read back by query. */
 const FILE_ANCHOR = "data-diff-file";
 
 function FileCard({
@@ -48,8 +43,6 @@ function FileCard({
       {...{ [FILE_ANCHOR]: file.path }}
       className="mb-2 overflow-hidden rounded-md border-[0.5px] border-field first:mt-2 last:mb-0"
     >
-      {/* The card's own header IS the collapse control: a reviewer skipping a
-          file reaches for its name, not for a separate affordance. */}
       <Pressable
         type="button"
         data-chrome-focus=""
@@ -61,16 +54,9 @@ function FileCard({
           "text-left font-mono text-ui-sm text-fg-muted transition-colors hover:text-fg",
         )}
       >
-        {/* Left-truncating, because the answer to "which file is this" is at the
-            END of a path and every card in the list shares the beginning. A
-            rename shows both, and the one it came FROM is the one that yields
-            width first — the destination is where the change is. */}
         <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
           {header.previousPath && (
             <>
-              {/* Shrinks far faster than the destination beside it, for the same
-                  reason the directory shrinks faster than the filename: where the
-                  file came FROM is context, where it is now is the answer. */}
               <FilePath path={header.previousPath} className="shrink-[100] text-fg-faint" />
               <Icon name="arrow-right" size="xs" className="shrink-0 opacity-60" />
             </>
@@ -84,10 +70,6 @@ function FileCard({
           className={cn("shrink-0 opacity-50 transition-transform", collapsed && "-rotate-90")}
         />
       </Pressable>
-      {/* Not wrapped in `Collapsible` like the transcript's disclosures, on purpose:
-          that atom keeps its children mounted after the first open so the close can
-          animate, and a diff body is thousands of rows — a reviewer who opens twenty
-          files would be holding all twenty. Here the body really does unmount. */}
       {!collapsed && (
         <div id={panelId}>
           {file.binary ? (
@@ -127,8 +109,6 @@ export function DiffWorkspaceSurface() {
   };
 
   const consumedFocusRevision = useRef<bigint | null>(null);
-  // Diff data can be replaced by a mode switch or Runtime resync without the
-  // user asking to move. Only a new focus revision is a navigation intent.
   useEffect(() => {
     if (!files || consumedFocusRevision.current === fileFocus.revision) return;
     if (!fileFocus.path || scrollToFile(fileFocus.path)) {
@@ -198,7 +178,6 @@ export function DiffWorkspaceSurface() {
           <DataView
             items={gitEnabled ? files : []}
             isLoading={isLoading}
-            // A non-repo cwd is an expected state with its own copy, not a failure.
             isError={isError && !notARepo}
             skeletonCount={10}
             empty={
@@ -243,7 +222,6 @@ export function DiffWorkspaceSurface() {
   );
 }
 
-// Silent on a clean tree and while the query is in flight, like the header stat.
 function DiffTabBadge() {
   const gitEnabled = useWorkspaceCapability("git");
   const workspace = useActiveSessionWorkspace();

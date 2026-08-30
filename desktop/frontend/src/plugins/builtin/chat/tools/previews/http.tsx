@@ -1,10 +1,3 @@
-// http_request / web_fetch previews — two different questions about one exchange.
-//
-// An http_request is asked about its RESPONSE: the status is the answer, and the
-// body is evidence for it. A web_fetch is asked about the PAGE: nobody wants its
-// status, they want the prose. So they get separate renderers even though both
-// crossed the network.
-
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
 import { Badge } from "@/ui";
@@ -21,8 +14,6 @@ import {
 import { httpToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { CODE_PREVIEW_CLASS, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
-/** 2xx succeeded, 4xx is the caller's fault, 5xx the server's — the three the
- *  reader acts on differently. 3xx reads neutral: a redirect is not an outcome. */
 function statusTone(status: number): Tone | undefined {
   if (status >= 500) return "negative";
   if (status >= 400) return "warning";
@@ -63,9 +54,6 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
         <div className="min-w-4 flex-1" />
         {response.truncated && <Badge>{t("tools.overflow.truncated")}</Badge>}
       </div>
-      {/* The body through the shared panel: a response is program output like any
-          other, and it was the one place a caller could neither see how much was
-          withheld nor take it out. */}
       <ToolOutputPanel
         output={response.body}
         status={tool.status}
@@ -91,8 +79,6 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
   }
   return (
     <div className="pt-1">
-      {/* Which dialect came back decides how the text should be read — markdown
-          source and raw html look nothing alike in a mono well. */}
       <div className="mb-1.5">
         <Badge className="font-mono">{page.format}</Badge>
       </div>

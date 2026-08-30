@@ -19,8 +19,6 @@ interface ChoiceListProps {
   children: ReactNode;
 }
 
-// Arrows, Home/End, focus movement, checked state and form semantics belong to Base UI.
-// The numbered shortcut is the only keyboard behaviour this atom owns.
 export function ChoiceList({
   multiple,
   value,

@@ -26,8 +26,6 @@ export function Segmented<T extends string | number>({
   mono = false,
   className,
 }: SegmentedProps<T>) {
-  // Per instance: two segmented controls on one row would otherwise share a layout
-  // identity and hand the chip back and forth between them.
   const chipId = useId();
   return (
     <TabsPrimitive.Root
@@ -36,10 +34,6 @@ export function Segmented<T extends string | number>({
         const opt = options.find((o) => String(o.value) === v);
         if (opt) onChange(opt.value);
       }}
-      /* A recessed well, so the selected segment reads as a chip physically
-         lifted out of it rather than a lighter rectangle painted on top. The
-         chip's own rim + top-edge highlight (--shadow-raised-chip) is what sells
-         the lift; the well's inner shadow is what it lifts out of. */
       className={cn(
         "inline-flex w-fit items-center gap-0.5 rounded-[var(--segmented-radius)] p-0.5",
         "border-[length:var(--control-edge-width)] border-field bg-sunken shadow-[var(--shadow-well)]",
@@ -60,9 +54,6 @@ export function Segmented<T extends string | number>({
               "focus-visible:outline-none",
             )}
           >
-            {/* The chip TRAVELS. A per-segment fill could only appear and disappear;
-                a lifted chip that teleports is the giveaway that a control was
-                painted rather than built. macOS slides its own. */}
             {String(opt.value) === String(value) && (
               <motion.span
                 aria-hidden

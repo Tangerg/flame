@@ -4,18 +4,9 @@ import { IconButton } from "@/ui";
 
 interface AgentSurfaceHeaderProps extends ComponentPropsWithoutRef<"div"> {
   divider?: boolean;
-  /**
-   * Set on the FIRST bar of whatever fills the content card: it yields the stable
-   * window-control strip while the drawer is collapsed. CSS decides when the corner is
-   * actually exposed.
-   */
   windowCorner?: boolean;
 }
 
-// Also the frameless window's drag handle. Height, inset and drag region live in
-// globals.css because the collapsed-drawer state has to clear the window controls;
-// interactive children opt out there too, so a new button cannot silently become
-// undraggable window chrome.
 export function AgentSurfaceHeader({
   divider = true,
   windowCorner,
@@ -34,8 +25,6 @@ export function AgentSurfaceHeader({
   );
 }
 
-// One persistent control owns both states at the plane's trailing corner: it must not
-// change bar, move under the cursor, or shift adjacent tools while the flank travels.
 export function AgentDockToggle({
   open,
   onToggle,
@@ -64,8 +53,6 @@ export function AgentDockToggle({
   );
 }
 
-// AgentAppShell keeps this single instance at a stable coordinate rather than handing
-// ownership between the sidebar and page bars.
 export function AgentDrawerToggle({
   collapsed,
   onToggle,

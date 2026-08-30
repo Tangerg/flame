@@ -1,8 +1,3 @@
-// Settings pane: a single discoverability page for every keyboard
-// shortcut a plugin has registered. The list is built reactively off the
-// `flame.shortcut` extension point, so plugins that load later automatically
-// show up; nothing here knows about specific commands.
-
 import { useMemo, useState } from "react";
 import { Kbd, SearchField } from "@/ui";
 import { SHORTCUT, useExtensionPoint } from "@/plugins/sdk";
@@ -14,12 +9,10 @@ export function ShortcutsPane() {
   const shortcuts = useExtensionPoint(SHORTCUT);
   const [query, setQuery] = useState("");
 
-  // A shortcut's description is a catalog key; resolve it once here so sorting,
-  // filtering and rendering all work on the words the user actually sees.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = shortcuts
-      .filter((s) => s.description) // anonymous shortcuts are dev-only noise
+      .filter((s) => s.description)
       .map((s) => ({ ...s, label: t(s.description ?? "") }))
       .sort((a, b) => a.label.localeCompare(b.label));
     if (!q) return rows;

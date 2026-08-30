@@ -78,12 +78,6 @@ function ProjectMenuContent({
   );
 }
 
-/** Project destination attached behind the welcome composer.
- *
- * It exists only while no Session is selected. Choosing a row or a native
- * folder creates the real hidden draft Session in that exact cwd; there is no
- * parallel "selected project" state for the shell to reconcile later.
- */
 export function ComposerProjectTray() {
   const t = useT();
   const workIndex = useWorkIndex();
@@ -151,9 +145,6 @@ function ProjectNameTrigger({
   );
 }
 
-/** Codex-style empty-thread question. The active project name is the project
- * picker itself, not a decorative label; changing it creates a new exact-cwd
- * draft and leaves the current empty Session to normal draft cleanup. */
 export function EmptyChatHeading() {
   const t = useT();
   const workIndex = useWorkIndex();

@@ -9,10 +9,6 @@ interface Props {
   children?: ReactNode;
 }
 
-/** A Markdown table is one copyable artifact, not merely an overflowing table.
- *  The visible DOM supplies rich HTML while the model's exact source remains the
- *  plain-text clipboard representation, matching Codex and preserving Markdown
- *  alignment markers when pasted into an editor. */
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
   const [previewOpen, setPreviewOpen] = useState(false);
