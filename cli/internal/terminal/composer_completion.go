@@ -154,7 +154,9 @@ func (a *app) exactCommandCompletion() bool {
 func (a *app) drawCompletion(frame headless.Frame) {
 	width, height := frame.Size()
 	rows := a.completion.Measure(width)
-	if width <= 2 || height <= 2 || rows <= 0 {
+	promptHeight := a.prompt.Measure(width)
+	availableHeight := height - promptHeight
+	if width <= 2 || availableHeight <= 2 || rows <= 0 {
 		return
 	}
 	title := "commands"
@@ -171,11 +173,11 @@ func (a *app) drawCompletion(frame headless.Frame) {
 		FooterAlign: layout.End,
 	}
 	popupWidth := min(max(a.completion.Width()+4, 32), width-2)
-	popupHeight := min(rows+2, height)
+	popupHeight := min(rows+2, availableHeight)
 	// The popup is anchored to the complete prompt chrome, not just the editor
 	// body. The panel border, model footer and help row occupy real terminal
-	// cells; ignoring them lets the popup and composer paint the same rows.
-	y := max(height-a.prompt.Measure(width)-popupHeight, 0)
+	// cells; only the viewport above that chrome is available to the popup.
+	y := availableHeight - popupHeight
 	area := grid.Rect(1, y, popupWidth, popupHeight)
 	inner := box.InnerRect(area.Size())
 	box.Draw(frame.View.Sub(area))

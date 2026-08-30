@@ -291,11 +291,15 @@ func TestInteractiveBinaryKeepsSlashCompletionAboveComposer(t *testing.T) {
 		}
 	}
 	assertSeparated(size)
-	narrow := ptytest.Size{Cols: 36, Rows: 18}
-	if err := session.Resize(narrow); err != nil {
-		t.Fatal(err)
+	for _, resized := range []ptytest.Size{
+		{Cols: 36, Rows: 18},
+		{Cols: 36, Rows: 10},
+	} {
+		if err := session.Resize(resized); err != nil {
+			t.Fatal(err)
+		}
+		assertSeparated(resized)
 	}
-	assertSeparated(narrow)
 	quitInteractiveSession(t, session)
 }
 
