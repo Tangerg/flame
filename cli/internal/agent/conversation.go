@@ -48,6 +48,13 @@ type Conversation struct {
 	textStreams map[string]StreamedText
 	reconciling bool
 	coldTail    bool
+	// restoredPlanRevision is the durable Plan watermark installed by the last
+	// cold snapshot. Plan persistence and stream publication are separate facts:
+	// an attached read can already contain a revision whose PlanChanged event is
+	// published after unrelated preview or progress events. Keeping the watermark
+	// on the Plan itself prevents those events from prematurely ending overlap
+	// reconciliation while preserving strict ordering for later revisions.
+	restoredPlanRevision uint64
 }
 
 func NewConversation() *Conversation {
@@ -190,6 +197,20 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 
 func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	event := envelope.Event
+	if item, ok := event.(PlanChanged); ok {
+		if c.plan != nil && item.Plan.Revision() == c.plan.Revision() {
+			if !c.plan.Equal(item.Plan) {
+				return false, fmt.Errorf("%w: plan revision %d changed content", ErrEventConflict, item.Plan.Revision())
+			}
+			// The Runtime deliberately repeats the segment's final Plan immediately
+			// before segment.finished. Revision + content are the business identity;
+			// the fence has a distinct transport EventID but folds to the same value.
+			return true, nil
+		}
+		if item.Plan.Revision() <= c.restoredPlanRevision {
+			return true, nil
+		}
+	}
 	if delta, ok := event.(BlockDelta); ok {
 		key := blockIdentity(envelope.RunID, delta.BlockID)
 		if _, exists := c.index[key]; !exists && c.coldTail {
@@ -225,14 +246,6 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 		}
 		if !c.blocks[at].Equal(item.Block) {
 			return false, fmt.Errorf("%w: completed block %s differs from the cold snapshot", ErrEventConflict, item.Block.ID)
-		}
-		return true, nil
-	case PlanChanged:
-		if c.plan == nil || item.Plan.Revision() > c.plan.Revision() {
-			return false, nil
-		}
-		if item.Plan.Revision() == c.plan.Revision() && !c.plan.Equal(item.Plan) {
-			return false, fmt.Errorf("%w: plan revision %d differs from the cold snapshot", ErrEventConflict, item.Plan.Revision())
 		}
 		return true, nil
 	default:

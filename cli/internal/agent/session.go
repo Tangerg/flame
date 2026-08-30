@@ -471,6 +471,9 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	next := NewConversation()
 	next.blocks = cloneBlocks(snapshot.Transcript)
 	next.plan = clonePlan(snapshot.Plan)
+	if next.plan != nil {
+		next.restoredPlanRevision = next.plan.Revision()
+	}
 	next.rebuildBlockIndex()
 	for _, run := range snapshot.Runs {
 		next.rememberRun(run)

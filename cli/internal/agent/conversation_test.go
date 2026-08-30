@@ -344,13 +344,10 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	if err := conversation.RestoreAttachedSnapshot(snapshot, stream); err != nil {
 		t.Fatal(err)
 	}
-
 	ignored := []RunEvent{
 		{EventID: "overlap-start", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockAssistant}}},
 		{EventID: "overlap-delta", RunID: "run_1", SegmentID: "seg_1", Event: BlockDelta{BlockID: "same", Text: "duplicate preview"}},
 		{EventID: "overlap-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: snapshot.Transcript[1]}},
-		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []PlanItem{{Title: "older", Status: PlanPending}})},
-		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, plan)},
 	}
 	for _, event := range ignored {
 		accepted, err := conversation.ApplyRunEvent(event)
@@ -361,16 +358,31 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 			t.Fatalf("overlap %s was folded twice", event.EventID)
 		}
 	}
-	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []PlanItem{{Title: "different", Status: PlanActive}})}
-	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
-		t.Fatalf("same-revision plan conflict = %v", err)
-	}
 	startConflict := RunEvent{
 		EventID: "overlap-start-conflict", RunID: "run_1", SegmentID: "seg_1",
 		Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockReasoning}},
 	}
 	if _, err := conversation.ApplyRunEvent(startConflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("replayed start conflict = %v", err)
+	}
+	// A non-overlapping event may be published before an already-committed Plan
+	// event. It must not erase the Plan's independent cold-read watermark.
+	apply(t, conversation, RunEvent{
+		EventID: "new-progress", RunID: "run_1", SegmentID: "seg_1",
+		Event: RunProgress{Usage: &Usage{}},
+	})
+	for _, event := range []RunEvent{
+		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []PlanItem{{Title: "older", Status: PlanPending}})},
+		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, plan)},
+	} {
+		accepted, err := conversation.ApplyRunEvent(event)
+		if err != nil || accepted.Applied {
+			t.Fatalf("apply Plan overlap %s = %+v, %v", event.EventID, accepted, err)
+		}
+	}
+	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []PlanItem{{Title: "different", Status: PlanActive}})}
+	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
+		t.Fatalf("same-revision plan conflict = %v", err)
 	}
 
 	accepted, err := conversation.ApplyRunEvent(RunEvent{EventID: "new-delta", RunID: "run_1", SegmentID: "seg_1", Event: BlockDelta{BlockID: "live", Text: "preview"}})
@@ -388,6 +400,15 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	apply(t, conversation, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "done", Status: PlanDone}})})
 	if conversation.Plan() == nil || conversation.Plan().Revision() != 3 || conversation.Checkpoint() != "new-plan" {
 		t.Fatalf("reconciled state = plan %+v, checkpoint %q", conversation.Plan(), conversation.Checkpoint())
+	}
+	fence := RunEvent{EventID: "plan-fence", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "done", Status: PlanDone}})}
+	accepted, err = conversation.ApplyRunEvent(fence)
+	if err != nil || accepted.Applied {
+		t.Fatalf("final Plan fence = %+v, %v", accepted, err)
+	}
+	conflictingFence := RunEvent{EventID: "plan-fence-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "different", Status: PlanDone}})}
+	if _, err := conversation.ApplyRunEvent(conflictingFence); !errors.Is(err, ErrEventConflict) {
+		t.Fatalf("conflicting final Plan fence = %v", err)
 	}
 }
 
