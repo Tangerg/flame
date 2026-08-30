@@ -114,14 +114,14 @@
 | --- | --- | --- | --- | --- |
 | Q0 | 建立根与模块规则，收敛文档 owner，删除 CLI 点时台账 | 已完成 | 链接检查；Runtime 文档/SQLite 事实门禁；CLI 架构门禁 | `f9cab5a` |
 | Q1 | 升级 Scope 与全部 direct dependency | 已完成 | workspace + standalone test/vet/build/tidy | `290ea4a`、`09f0ae8` |
-| Q2 | 建立真实 DeepSeek E2E 场景基线 | 进行中 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume 已通过；long-running recovery 尚未建立 live 证据 | `e93eab5`、本批提交 |
+| Q2 | 建立真实 DeepSeek E2E 场景基线 | 已完成 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume、进程强杀 long-running Tool 后的 lost recovery 与同 Session 再运行均已通过 | `e93eab5`、`61ce5d7`、本批提交 |
 | Q3 | 收敛 CLI 过度分包与贫血模型 | 进行中 | composition manifest 已收敛；provider 环境凭据覆盖与 exact key 已验证；继续按 consumer proof 审计 | `7875a20`、`8170949`、`4224eff` |
 | Q4 | 收敛 Runtime owner、抽象与 corner cases | 进行中 | endpoint provider 环境凭据、URL 校验与单消费者假边界已根治；继续审计 recovery/lifecycle | `c0cd320`、`18413c7`、`2a3c7de` |
-| Q5 | 对齐 Grok Build 的 TUI 体验 | 进行中 | 开始收敛 Goal/Plan/Run/composer 信息层级；render + PTY + live Runtime flow | 本批提交 |
+| Q5 | 对齐 Grok Build 的 TUI 体验 | 进行中 | 开始收敛 Goal/Plan/Run/composer 信息层级；render + PTY + live Runtime flow | `f77bb98`、`0c45695` |
 
 ## 当前下一步
 
-继续 Q2/Q4：从 restart、HITL 与 long-running lifecycle 的真实边界寻找可复现缺陷，优先修复 durable truth 与恢复语义；没有反例时不制造测试或抽象。随后以真实 TUI flow 进入 Q5，而不是按文件大小机械拆分 CLI。
+继续 Q3/Q4：按真实 consumer 与失败反例审计 CLI/Runtime owner、重复 truth 和 provider/application 边界；没有反例时不制造改动。Q5 只处理真实 TUI flow 暴露的信息层级或交互问题，不按文件大小、参考实现或像素差异机械重写。
 
 ## Goal 完成条件
 

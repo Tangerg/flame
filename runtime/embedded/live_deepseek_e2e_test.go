@@ -2,9 +2,11 @@ package embedded_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,7 +22,14 @@ const (
 	liveGoalMarker                 = "LIVE_GOAL_PLAN_OK"
 	liveSteerMarker                = "LIVE_STEER_APPLIED"
 	liveHITLMarker                 = "LIVE_HITL_RESUMED"
+	liveCrashRecoveryMarker        = "LIVE_CRASH_RECOVERY_OK"
 	liveOriginMarker               = "LIVE_CONTEXT_ORIGIN_7D3A91"
+	liveCrashHelperEnvironment     = "FLAME_LIVE_CRASH_HELPER"
+	liveCrashDataEnvironment       = "FLAME_LIVE_CRASH_DATA_DIR"
+	liveCrashHomeEnvironment       = "FLAME_LIVE_CRASH_HOME"
+	liveCrashWorkspaceEnvironment  = "FLAME_LIVE_CRASH_WORKSPACE"
+	liveCrashStateEnvironment      = "FLAME_LIVE_CRASH_STATE"
+	liveCrashToolMarkerEnvironment = "FLAME_LIVE_CRASH_TOOL_MARKER"
 )
 
 func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
@@ -216,6 +225,156 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 	assertDeepSeekRun(t, run)
 }
 
+// TestLiveDeepSeekRecoversKilledLongRunningTool crosses the process boundary
+// that an in-process Close cannot model: the helper is killed after its shell
+// command has actually started, leaving a durable running Run and Tool
+// invocation behind. A fresh Runtime must recover that tree as lost and make
+// the Session immediately usable again.
+func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
+	if os.Getenv(liveDeepSeekEnvironment) != "1" {
+		t.Skipf("set %s=1 to run paid live DeepSeek E2E", liveDeepSeekEnvironment)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 4*time.Minute)
+	t.Cleanup(cancel)
+
+	configDirectory := resolveLiveConfigDirectory(t)
+	workspace, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataDirectory := filepath.Join(t.TempDir(), "runtime")
+	userHome := t.TempDir()
+	coordinationDirectory := t.TempDir()
+	statePath := filepath.Join(coordinationDirectory, "run.json")
+	toolMarkerPath := filepath.Join(coordinationDirectory, "tool-started")
+
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.CommandContext(ctx, executable, "-test.run=^TestLiveDeepSeekCrashHelper$", "-test.v")
+	command.Env = append(os.Environ(),
+		liveCrashHelperEnvironment+"=1",
+		liveCrashDataEnvironment+"="+dataDirectory,
+		liveCrashHomeEnvironment+"="+userHome,
+		liveCrashWorkspaceEnvironment+"="+workspace,
+		liveCrashStateEnvironment+"="+statePath,
+		liveCrashToolMarkerEnvironment+"="+toolMarkerPath,
+		liveConfigDirectoryEnvironment+"="+configDirectory,
+	)
+	command.Stdout = os.Stderr
+	command.Stderr = os.Stderr
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	helperDone := make(chan error, 1)
+	go func() { helperDone <- command.Wait() }()
+	t.Cleanup(func() { _ = command.Process.Kill() })
+
+	stateContent := waitForLiveCrashFile(t, ctx, statePath, helperDone)
+	var state liveCrashState
+	if err := json.Unmarshal(stateContent, &state); err != nil || state.SessionID == "" || state.RunID == "" {
+		t.Fatalf("decode live crash state %q: %v", stateContent, err)
+	}
+	waitForLiveCrashFile(t, ctx, toolMarkerPath, helperDone)
+	if err := command.Process.Kill(); err != nil {
+		t.Fatalf("kill live crash helper: %v", err)
+	}
+	waitErr := <-helperDone
+	if waitErr == nil {
+		t.Fatal("live crash helper exited normally; process kill was not observed")
+	}
+
+	runtime, err := embedded.Open(ctx, embedded.Config{
+		DataDirectory:        dataDirectory,
+		DefaultWorkspacePath: workspace,
+		UserHomePath:         userHome,
+		ConfigDirectories:    []string{configDirectory},
+	})
+	if err != nil {
+		t.Fatalf("open Runtime after killed helper: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := runtime.Close(); closeErr != nil && !errors.Is(closeErr, embedded.ErrClosed) {
+			t.Errorf("close recovered Runtime: %v", closeErr)
+		}
+	})
+	fixture := liveDeepSeekFixture{ctx: ctx, runtime: runtime, workspace: workspace}
+
+	recovered, err := runtime.GetRun(ctx, protocol.GetRunRequest{RunID: state.RunID}, embedded.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Status != protocol.RunStatusFinished || recovered.Outcome == nil || recovered.Outcome.Type != protocol.OutcomeLost {
+		t.Fatalf("recovered Run = %+v, want finished(lost)", recovered)
+	}
+	assertDeepSeekRun(t, recovered)
+	assertRecoveredShellIncomplete(t, runtime, ctx, state.RunID)
+
+	followUp := fixture.runTurn(t, state.SessionID,
+		"The previous process stopped while a shell tool was running. Reply with exactly "+liveCrashRecoveryMarker+" and nothing else. Do not use a tool.")
+	if got := strings.TrimSpace(followUp.finalText); got != liveCrashRecoveryMarker {
+		t.Fatalf("post-recovery answer = %q, want %q", got, liveCrashRecoveryMarker)
+	}
+	assertDeepSeekRun(t, followUp.run)
+}
+
+// TestLiveDeepSeekCrashHelper is started only by the parent recovery test. It
+// intentionally never performs cleanup: the parent terminates this process
+// once the exact shell command has created its marker.
+func TestLiveDeepSeekCrashHelper(t *testing.T) {
+	if os.Getenv(liveCrashHelperEnvironment) != "1" {
+		t.Skip("live crash helper is subprocess-only")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
+	configDirectory := resolveLiveConfigDirectory(t)
+	runtime, err := embedded.Open(ctx, embedded.Config{
+		DataDirectory:        requiredLiveCrashPath(t, liveCrashDataEnvironment),
+		DefaultWorkspacePath: requiredLiveCrashPath(t, liveCrashWorkspaceEnvironment),
+		UserHomePath:         requiredLiveCrashPath(t, liveCrashHomeEnvironment),
+		ConfigDirectories:    []string{configDirectory},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.SetApprovalMode(ctx, protocol.SetApprovalModeRequest{
+		Mode: protocol.ApprovalModeYolo,
+	}, embedded.CommandOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	fixture := liveDeepSeekFixture{
+		ctx:       ctx,
+		runtime:   runtime,
+		workspace: requiredLiveCrashPath(t, liveCrashWorkspaceEnvironment),
+	}
+	session := fixture.createSession(t, "Live DeepSeek crash recovery helper")
+	toolMarkerPath := requiredLiveCrashPath(t, liveCrashToolMarkerEnvironment)
+	maxSteps := 6
+	started, events, err := runtime.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input: []protocol.ContentBlock{{
+			Type: protocol.ContentBlockText,
+			Text: "Call shell exactly once with this exact command: `touch " + toolMarkerPath + " && sleep 8`. " +
+				"After it finishes, reply exactly UNREACHABLE_HELPER_RESPONSE. Do not use another tool.",
+		}},
+		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
+	}, embedded.RunCommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLiveCrashState(t, requiredLiveCrashPath(t, liveCrashStateEnvironment), liveCrashState{
+		SessionID: session.ID,
+		RunID:     started.RunID,
+	})
+	for _, eventErr := range events {
+		if eventErr != nil {
+			t.Fatal(eventErr)
+		}
+	}
+	t.Fatal("live crash helper Run settled before the parent killed it")
+}
+
 func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 5*time.Minute)
 	session := fixture.createSession(t, "Live DeepSeek Long Context Compaction E2E")
@@ -288,14 +447,7 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFi
 	if os.Getenv(liveDeepSeekEnvironment) != "1" {
 		t.Skipf("set %s=1 to run paid live DeepSeek E2E", liveDeepSeekEnvironment)
 	}
-	configDirectory := os.Getenv(liveConfigDirectoryEnvironment)
-	if configDirectory == "" {
-		configDirectory = filepath.Join("..", "config")
-	}
-	configDirectory, err := filepath.Abs(configDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	configDirectory := resolveLiveConfigDirectory(t)
 	workspace, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
@@ -325,6 +477,93 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFi
 		t.Errorf("close live Runtime: %v", closeErr)
 	})
 	return fixture
+}
+
+type liveCrashState struct {
+	SessionID string `json:"sessionId"`
+	RunID     string `json:"runId"`
+}
+
+func resolveLiveConfigDirectory(t *testing.T) string {
+	t.Helper()
+	directory := os.Getenv(liveConfigDirectoryEnvironment)
+	if directory == "" {
+		directory = filepath.Join("..", "config")
+	}
+	resolved, err := filepath.Abs(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
+}
+
+func requiredLiveCrashPath(t *testing.T, name string) string {
+	t.Helper()
+	value := os.Getenv(name)
+	if value == "" || !filepath.IsAbs(value) {
+		t.Fatalf("%s must be a non-empty absolute path", name)
+	}
+	return filepath.Clean(value)
+}
+
+func writeLiveCrashState(t *testing.T, path string, state liveCrashState) {
+	t.Helper()
+	content, err := json.Marshal(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	temporary := path + ".tmp"
+	if err := os.WriteFile(temporary, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func waitForLiveCrashFile(
+	t *testing.T,
+	ctx context.Context,
+	path string,
+	helperDone <-chan error,
+) []byte {
+	t.Helper()
+	for {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			return content
+		} else if !errors.Is(err, os.ErrNotExist) {
+			t.Fatal(err)
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("waiting for live crash file %s: %v", filepath.Base(path), ctx.Err())
+		case err := <-helperDone:
+			t.Fatalf("live crash helper exited before publishing %s: %v", filepath.Base(path), err)
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+}
+
+func assertRecoveredShellIncomplete(t *testing.T, runtime *embedded.Runtime, ctx context.Context, runID string) {
+	t.Helper()
+	limit := 100
+	items, err := runtime.ListItems(ctx, protocol.ListItemsRequest{
+		Scope:     protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID},
+		PageQuery: protocol.PageQuery{Limit: &limit},
+	}, embedded.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items.Data {
+		if item.Type == protocol.ItemTypeToolCall && item.Tool != nil && item.Tool.Name == "shell" {
+			if item.Status != protocol.ItemStatusIncomplete {
+				t.Fatalf("recovered shell Item = %+v, want incomplete", item)
+			}
+			return
+		}
+	}
+	t.Fatalf("recovered Run %s has no shell Item", runID)
 }
 
 func (f *liveDeepSeekFixture) config() embedded.Config {
@@ -385,6 +624,7 @@ func (f liveDeepSeekFixture) createSession(t *testing.T, title string) *protocol
 type liveTurn struct {
 	finalText      string
 	compactionSeen bool
+	run            *protocol.RunRef
 }
 
 func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liveTurn {
@@ -408,8 +648,8 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 			compactionSeen = true
 		}
 	}
-	f.getCompletedRun(t, started.RunID)
-	return liveTurn{finalText: f.finalAnswer(t, started.RunID), compactionSeen: compactionSeen}
+	run := f.getCompletedRun(t, started.RunID)
+	return liveTurn{finalText: f.finalAnswer(t, started.RunID), compactionSeen: compactionSeen, run: run}
 }
 
 func (f liveDeepSeekFixture) getCompletedRun(t *testing.T, runID string) *protocol.RunRef {
