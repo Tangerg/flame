@@ -23,7 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/buildidentity"
-	"github.com/Tangerg/flame/runtime/internal/deploymentidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -105,8 +104,8 @@ type InteractionExecutor struct {
 	config                 InteractionExecutorConfig
 	policy                 interactionExecutionPolicy
 	buildID                buildidentity.ID
-	implementationIdentity deploymentidentity.Implementation
-	configurationIdentity  deploymentidentity.Configuration
+	implementationIdentity deploymentIdentity
+	configurationIdentity  deploymentIdentity
 
 	mu       sync.Mutex
 	sessions map[string]*interactionSession
@@ -149,7 +148,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 			return nil, fmt.Errorf("agentexec: Interaction %s is typed nil", capability.name)
 		}
 	}
-	implementationIdentity, err := deploymentidentity.ParseImplementation(config.ImplementationIdentity)
+	implementationIdentity, err := parseDeploymentIdentity("deployment implementation identity", config.ImplementationIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
@@ -157,7 +156,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction %w", err)
 	}
-	configurationIdentity, err := deploymentidentity.ParseConfiguration(config.ConfigurationIdentity)
+	configurationIdentity, err := parseDeploymentIdentity("deployment configuration identity", config.ConfigurationIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
