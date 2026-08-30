@@ -639,7 +639,7 @@ func TestNudgePublishesFileChange(t *testing.T) {
 	}
 }
 
-func TestFinishRunsTerminalMaintenanceOnlyForTerminalRuns(t *testing.T) {
+func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 	renamed := make(chan string, 1)
 	snapshotted := make(chan string, 1)
 	stores := &fakeStores{
@@ -664,14 +664,25 @@ func TestFinishRunsTerminalMaintenanceOnlyForTerminalRuns(t *testing.T) {
 		t.Fatalf("title = %q", got)
 	}
 
-	if err := effects.Finish(t.Context(), runs.Finish{SessionID: "ses_1", RunID: "run_2", CWD: "/run-cwd", Parked: true, OpeningUserText: "ignored"}); err != nil {
+	parkedRenamed := make(chan string, 1)
+	parked := testFinalizer(&fakeStores{
+		session: &fakeSession{
+			sess:    sessionfixture.MustRestore(session.Snapshot{ID: "ses_2", Workspace: sessionfixture.MustWorkspace("/repo")}),
+			renamed: parkedRenamed,
+		},
+		title: "Waiting conversation",
+	}, FinalizerConfig{Checkpoints: fakeCheckpoints{snapshotted: snapshotted}})
+	if err := parked.Finish(t.Context(), runs.Finish{
+		SessionID: "ses_2", RunID: "run_2", CWD: "/run-cwd", Parked: true, OpeningUserText: "ask me",
+	}); err != nil {
 		t.Fatal(err)
+	}
+	if got := waitString(t, parkedRenamed); got != "Waiting conversation" {
+		t.Fatalf("parked title = %q", got)
 	}
 	select {
 	case got := <-snapshotted:
 		t.Fatalf("parked run must not snapshot, got %q", got)
-	case got := <-renamed:
-		t.Fatalf("parked run must not title, got %q", got)
 	case <-time.After(20 * time.Millisecond):
 	}
 }

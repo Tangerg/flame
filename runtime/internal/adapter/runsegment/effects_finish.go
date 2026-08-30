@@ -92,13 +92,11 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 // title generation off the live path. The checkpoint is a sequencing fence: the
 // run admission remains held by the caller until it completes, so a following
 // run cannot write into the preceding run's snapshot. Title generation does not
-// define the boundary and may continue asynchronously. A parked run is
-// resumable, not a boundary, so it does neither.
+// define the file boundary and may continue asynchronously. A parked Run skips
+// the checkpoint, but it can still title its Session from the immutable opening
+// user text so a waiting conversation remains discoverable after process exit.
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
-	if fin.Parked {
-		return nil
-	}
-	needsSnapshot := f.checkpoints != nil && fin.CWD != ""
+	needsSnapshot := !fin.Parked && f.checkpoints != nil && fin.CWD != ""
 	needsTitle := f.sessionTitles != nil && strings.TrimSpace(fin.OpeningUserText) != ""
 	if !needsSnapshot && !needsTitle {
 		return nil
