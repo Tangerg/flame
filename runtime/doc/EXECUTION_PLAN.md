@@ -113,7 +113,7 @@
 | 批次 | 目的 | 状态 | 验收 | 提交 |
 | --- | --- | --- | --- | --- |
 | Q0 | 建立根与模块规则，收敛文档 owner，删除 CLI 点时台账 | 已完成 | 链接检查；Runtime 文档/SQLite 事实门禁；CLI 架构门禁 | `f9cab5a` |
-| Q1 | 升级 Scope 与全部 direct dependency | 已完成 | Scope v0.12.0；workspace + standalone test/vet/build/tidy；真实 DeepSeek Goal+Plan | `290ea4a`、`09f0ae8`、本批 Runtime 提交 |
+| Q1 | 升级 Scope 与全部 direct dependency | 已完成 | Scope v0.12.0；workspace + standalone test/vet/build/tidy；真实 DeepSeek Goal+Plan | `290ea4a`、`09f0ae8`、`a8a02b8`、本批 CLI 提交 |
 | Q2 | 建立真实 DeepSeek E2E 场景基线 | 已完成 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume、进程强杀 long-running Tool 后的 lost recovery 与同 Session 再运行均已通过 | `e93eab5`、`61ce5d7`、`ceb2e3f` |
 | Q3 | 收敛 CLI 过度分包与贫血模型 | 进行中 | composition manifest 已收敛；provider 环境凭据覆盖、exact key 与源码 worktree 的真实配置发现已验证；继续按 consumer proof 审计 | `7875a20`、`8170949`、`4224eff`、`d538ff4` |
 | Q4 | 收敛 Runtime owner、抽象与 corner cases | 进行中 | endpoint provider 环境凭据、URL 校验与单消费者假边界已根治；继续审计 recovery/lifecycle | `c0cd320`、`18413c7`、`2a3c7de` |
