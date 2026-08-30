@@ -274,4 +274,45 @@ describe("agent view selectors react to session switch", () => {
     expect(result.current).toBe(first);
     expect(result.current[0]?.message).toBe(message);
   });
+
+  // The projection instance holds a per-session row cache and is rebuilt through `useMemo`
+  // keyed on the session. If that key were ever dropped, the cache would answer the new
+  // session with the previous one's rows — the transcript of a conversation you are not in.
+  it("shows the switched-to session's transcript, not the cached one it came from", () => {
+    const inA: Message = {
+      id: "message-a",
+      runId: null,
+      role: "user",
+      blocks: [{ kind: "text", text: "from A", status: "complete" }],
+    };
+    const inB: Message = {
+      id: "message-b",
+      runId: null,
+      role: "user",
+      blocks: [{ kind: "text", text: "from B", status: "complete" }],
+    };
+    useAgentStore.setState({
+      sessions: {
+        a: { ...seed(null, {}), view: { ...EMPTY_AGENT_SESSION_VIEW, messages: [inA] } },
+        b: { ...seed(null, {}), view: { ...EMPTY_AGENT_SESSION_VIEW, messages: [inB] } },
+      },
+    });
+
+    navigator().go({ session: "a" });
+    const { result } = renderHook(() => useTranscriptRows());
+    expect(result.current.map((row) => row.message.id)).toEqual(["message-a"]);
+
+    act(() => navigator().go({ session: "b" }));
+    expect(result.current.map((row) => row.message.id)).toEqual(["message-b"]);
+
+    act(() => navigator().go({ session: "a" }));
+    expect(result.current.map((row) => row.message.id)).toEqual(["message-a"]);
+  });
+
+  it("answers an empty transcript for a session the store has never seen", () => {
+    useAgentStore.setState({ sessions: {} });
+    navigator().go({ session: "absent" });
+    const { result } = renderHook(() => useTranscriptRows());
+    expect(result.current).toEqual([]);
+  });
 });
