@@ -108,23 +108,15 @@ func (p ProviderProfile) DefaultEmbeddingModel() (string, bool) {
 	return p.value.embedding.models.defaultValue()
 }
 
-// EnvKeys reads the environment once and returns the API keys present for the
-// providers a key alone makes usable — keyed by provider id, value the key. It
-// backs the provider registry's stored>env credential fallback (a developer
-// with ANTHROPIC_API_KEY / OPENAI_API_KEY / … in their shell gets those
-// providers enabled out of the box).
-//
-// Providers that require a caller-supplied base URL (Azure and the compatible
-// endpoint providers) are excluded: an env key alone can't reach their
-// endpoint, so surfacing them as "enabled from env" would be a lie. The
-// environment is process-static, so callers read this once at startup.
+// EnvKeys reads the environment once and returns every provider API key that is
+// present, keyed by provider id. Credential presence and provider readiness are
+// deliberately separate: Azure and compatible providers still need a base URL,
+// but retaining their key's environment provenance lets a later endpoint update
+// make them usable without ever copying the secret into durable storage.
 func EnvKeys() map[string]string {
 	out := make(map[string]string)
 	for _, provider := range providers.supported() {
 		profile, _ := providers.lookup(provider)
-		if !profile.endpoint.environmentCredentialIsUsable() {
-			continue
-		}
 		if key := os.Getenv(profile.credential.environment); key != "" {
 			out[string(provider)] = key
 		}

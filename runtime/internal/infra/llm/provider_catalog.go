@@ -112,10 +112,6 @@ func (p endpointPolicy) defaultValue() (string, bool) {
 	return p.defaultURL, true
 }
 
-func (p endpointPolicy) environmentCredentialIsUsable() bool {
-	return p.kind != endpointMustBeConfigured
-}
-
 func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, error) {
 	if configured.configured() {
 		return configured, nil

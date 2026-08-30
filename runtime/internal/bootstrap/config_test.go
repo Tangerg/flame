@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/providerregistry"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
@@ -129,8 +128,9 @@ func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T
 }
 
 func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoint(t *testing.T) {
+	t.Setenv("OPENAI_COMPATIBLE_API_KEY", "sk-env")
 	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	registry, err := providerregistry.WithEnvironmentKeys(inner, map[string]string{"openai-compatible": "sk-env"})
+	registry, err := ProviderRegistry(inner)
 	if err != nil {
 		t.Fatal(err)
 	}
