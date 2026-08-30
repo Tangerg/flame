@@ -82,3 +82,25 @@ func TestMessageStore_CountMatchesReadLength(t *testing.T) {
 		t.Fatalf("Count = %d, len(Read) = %d, want both 3", n, len(got))
 	}
 }
+
+func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewMessageStore(db)
+	if err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(),
+		`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`,
+		"conv", `{"role":"user","parts":"not-an-array"}`,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if messages, err := store.Read(t.Context(), "conv"); err == nil {
+		t.Fatalf("read silently returned %d messages after skipping a malformed durable row", len(messages))
+	}
+}

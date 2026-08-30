@@ -27,15 +27,15 @@ func NewMessageStore(db *sql.DB) *MessageStore {
 }
 
 // Read returns every message for conversationID in write order. Unknown
-// conversation → empty slice (matches in-memory history store). Malformed rows
-// are skipped rather than failing the read, so one bad write can't poison
-// the whole conversation.
+// conversation → empty slice (matches in-memory history store). A malformed
+// row fails the complete read: message count is a durable Run/compaction
+// coordinate, so omitting one row would shift every later watermark.
 func (m *MessageStore) Read(ctx context.Context, conversationID string) ([]chat.Message, error) {
 	if err := history.ConversationID(conversationID).Validate(); err != nil {
 		return nil, err
 	}
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
-		`SELECT message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
+		`SELECT seq, message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read messages: %w", err)
 	}
@@ -43,13 +43,14 @@ func (m *MessageStore) Read(ctx context.Context, conversationID string) ([]chat.
 
 	out := make([]chat.Message, 0)
 	for rows.Next() {
+		var seq int64
 		var blob string
-		if err := rows.Scan(&blob); err != nil {
+		if err := rows.Scan(&seq, &blob); err != nil {
 			return nil, fmt.Errorf("sqlite: scan message: %w", err)
 		}
 		var msg chat.Message
 		if err := json.Unmarshal([]byte(blob), &msg); err != nil {
-			continue
+			return nil, fmt.Errorf("sqlite: decode message row %d: %w", seq, err)
 		}
 		out = append(out, msg)
 	}
@@ -126,9 +127,9 @@ func (m *MessageStore) Replace(ctx context.Context, conversationID string, messa
 // Count returns conversationID's message count via a COUNT(*) query — the
 // conversation use case, so a rollback/fork watermark read
 // fork{fromRunId}) doesn't load and unmarshal the whole history just to take
-// its length. Unknown conversation → 0. COUNT(*) tallies stored rows; Read
-// skips any that fail to unmarshal, but Write only persists marshalable
-// messages, so in practice the two agree.
+// its length. Unknown conversation → 0. COUNT(*) tallies the same complete row
+// sequence Read accepts; a corrupt row makes Read fail instead of changing the
+// coordinate system.
 func (m *MessageStore) Count(ctx context.Context, conversationID string) (int, error) {
 	if err := history.ConversationID(conversationID).Validate(); err != nil {
 		return 0, err
