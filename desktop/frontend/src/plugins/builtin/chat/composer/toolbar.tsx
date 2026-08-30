@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
-import { Button, DropdownMenu, HiddenFileInput, Icon, IconButton } from "@/ui";
+import { DropdownMenu, HiddenFileInput, Icon, IconButton } from "@/ui";
+import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useSelectedModel, useSelectedModelSelection } from "./public/selectedModel";
 import {
@@ -33,16 +34,13 @@ function ReasoningEffortPicker() {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         render={
-          <Button
-            variant="ghost"
+          <AgentComposerChip
             aria-label={t("composer.switchReasoningEffort")}
             title={t("composer.switchReasoningEffort")}
-            className="gap-1.5 whitespace-nowrap px-2 text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg"
-          >
-            <Icon name="sparkle" size="sm" className="text-fg-faint" />
-            <span className="capitalize">{selectedEffort}</span>
-            <Icon name="chevron-down" size="sm" className="shrink-0 text-fg-faint" />
-          </Button>
+            className="capitalize"
+            leading={<Icon name="sparkle" size="sm" className="shrink-0 text-fg-faint" />}
+            label={selectedEffort}
+          />
         }
       />
       <DropdownMenu.Content align="start" sideOffset={6} className="min-w-[176px]">
@@ -117,23 +115,18 @@ function ApprovalModePill() {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         render={
-          <Button
+          <AgentComposerChip
             type="button"
-            variant="ghost"
-            size="md"
-            press={false}
             aria-label={t("approvals.mode.aria")}
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--button-radius)] border-0 px-2 font-sans text-ui-sm font-medium transition-colors data-[popup-open]:bg-selected",
-              full
-                ? "text-warning hover:bg-warning-wash"
-                : "text-fg-soft hover:bg-hover hover:text-fg",
+              "font-medium",
+              full ? "text-warning hover:bg-warning-wash" : "hover:bg-hover hover:text-fg",
             )}
-          >
-            <Icon name={full ? "alert" : "shield"} size="sm" className="shrink-0 opacity-100" />
-            <span className="max-w-[132px] truncate">{t(current.labelKey)}</span>
-            <Icon name="chevron-down" size="sm" className="shrink-0 text-fg-faint opacity-100" />
-          </Button>
+            leading={
+              <Icon name={full ? "alert" : "shield"} size="sm" className="shrink-0 opacity-100" />
+            }
+            label={t(current.labelKey)}
+          />
         }
       />
       <DropdownMenu.Content align="start" sideOffset={6} className="min-w-[248px]">

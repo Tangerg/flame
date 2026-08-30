@@ -7,6 +7,7 @@ import {
   useModels,
 } from "@/plugins/builtin/settings/providers/public/queries";
 import { Button, CatalogPicker, type CatalogPickerGroup, Icon, ProviderIcon } from "@/ui";
+import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 
@@ -158,15 +159,12 @@ export function ModelPicker() {
         });
       }}
       trigger={
-        <Button
-          variant="ghost"
+        <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          className="gap-1.5 whitespace-nowrap px-2 text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg"
-        >
-          <ProviderIcon provider={selected.provider} size="sm" />
-          <span className="max-w-[168px] truncate">{selected.label}</span>
-          <Icon name="chevron-down" size="sm" className="shrink-0 text-fg-faint" />
-        </Button>
+          shrink="gives"
+          leading={<ProviderIcon provider={selected.provider} size="sm" />}
+          label={selected.label}
+        />
       }
       contentClassName="w-[380px]"
       side="top"

@@ -1,5 +1,6 @@
 export { AgentAppShell } from "./app-shell";
 export { AgentActivityDisclosure } from "./activity-disclosure";
+export { AgentComposerChip } from "./composer-chip";
 export { AgentComposerSurface } from "./composer-surface";
 export { AgentComposerTopTraySurface } from "./composer-top-tray-surface";
 export { AgentContentCard } from "./content-card";
