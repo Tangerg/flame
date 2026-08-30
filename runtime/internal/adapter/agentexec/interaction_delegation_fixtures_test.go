@@ -232,6 +232,7 @@ type delegateProjection struct {
 	mu           sync.Mutex
 	openings     []runs.OpeningCommit
 	barriers     []runs.TreeBarrierCommit
+	conversation []chat.Message
 	reservations map[string]runs.ChildRunStartReservation
 	outcomes     map[string]runs.ChildRunStartOutcome
 	runs         map[string]run.Run
@@ -428,6 +429,9 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 }
 
 func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
+	for _, message := range commit.ConversationMessages {
+		d.conversation = append(d.conversation, message.Clone())
+	}
 	for _, item := range commit.Items {
 		d.items[item.ID()] = item
 	}

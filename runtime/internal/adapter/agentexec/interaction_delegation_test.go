@@ -177,6 +177,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	reservation := projection.reservations
 	outcomes := projection.outcomes
 	openings := slices.Clone(projection.openings)
+	conversation := slices.Clone(projection.conversation)
 	projection.mu.Unlock()
 	if len(reservation) != 1 || len(outcomes) != 1 || len(openings) != 2 {
 		t.Fatalf(
@@ -188,6 +189,19 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		openings[1].Admit.ParentRunID != "run_root" ||
 		openings[1].Admit.SpawnedByItemID == "" {
 		t.Fatalf("managed child opening = %#v", openings[1])
+	}
+	var delegatedResult *chat.ToolResult
+	for _, message := range conversation {
+		for _, part := range message.Parts {
+			if part.Kind == chat.PartToolResult && part.ToolResult != nil &&
+				part.ToolResult.Name == "delegate_task" {
+				delegatedResult = part.ToolResult
+			}
+		}
+	}
+	if delegatedResult == nil || len(delegatedResult.Output.Content) != 0 ||
+		string(delegatedResult.Output.Details) != `{"reply":"subtask: result"}` {
+		t.Fatalf("durable Delegate model result = %#v, want exact structured child output", delegatedResult)
 	}
 	coordinator.BeginShutdown()
 	if err := coordinator.AwaitShutdown(t.Context()); err != nil {

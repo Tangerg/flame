@@ -107,8 +107,16 @@ func (i *interactionSession) failDelegateAdmission(
 	managed *managedDelegateCall,
 	cause error,
 ) error {
+	frameworkCause := fmt.Errorf("%w: %w", agent.ErrProcessAdmissionRejected, cause)
 	if finishErr := i.finishDelegateTool(
-		ctx, managed, "error: delegated worker could not start", cause,
+		ctx,
+		managed,
+		delegateStartFailureModelResult(
+			managed.call,
+			"engine.child.admission.rejected",
+			frameworkCause.Error(),
+		),
+		cause,
 	); finishErr != nil {
 		return errors.Join(cause, finishErr)
 	}
@@ -165,15 +173,31 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 	}
 	if err := receipt.Await(ctx); err != nil {
 		if outcome.Status() == agent.ProcessStartOutcomeStatusStarted {
-			return i.failDelegateAdmission(ctx, managed, err)
+			if finishErr := i.finishDelegateTool(
+				ctx,
+				managed,
+				delegateStartFailureModelResult(
+					managed.call,
+					"engine.child.start_outcome.unacknowledged",
+					err.Error(),
+				),
+				err,
+			); finishErr != nil {
+				return errors.Join(err, finishErr)
+			}
 		}
 		return err
 	}
 	if outcome.Status() == agent.ProcessStartOutcomeStatusAborted {
 		failure, _ := outcome.Failure()
 		return i.finishDelegateTool(
-			ctx, managed,
-			"error: delegated worker could not start: "+failure.Code(),
+			ctx,
+			managed,
+			delegateStartFailureModelResult(
+				managed.call,
+				failure.Code(),
+				failure.Message(),
+			),
 			errors.New(failure.Message()),
 		)
 	}

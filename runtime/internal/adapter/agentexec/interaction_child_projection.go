@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -111,7 +112,7 @@ func (i *interactionSession) projectDelegateResult(
 		MemberID: result.ProcessID().String(), ParentID: managed.identity.parentID.String(),
 		SpawnCallID: managed.call.ID,
 	}
-	var parentResult string
+	var modelResult corechat.ToolResult
 	var childFailure error
 	if result.Status() == agent.StatusCompleted {
 		erased, present := result.Output()
@@ -131,16 +132,22 @@ func (i *interactionSession) projectDelegateResult(
 			}
 			managed.assistantProjected = true
 		}
-		parentResult = string(erased.JSON())
+		output, err := corechat.NewJSONToolOutput(erased.JSON())
+		if err != nil {
+			return fmt.Errorf("agentexec: encode delegated child result: %w", err)
+		}
+		modelResult = corechat.ToolResult{
+			ID: managed.call.ID, Name: managed.call.Name, Output: output,
+		}
 	} else {
 		termination := result.Termination()
-		detail := "delegated child ended with " + result.Status().String() +
+		diagnostic := "child ended with " + result.Status().String() +
 			" (" + termination.Cause().String() + ")"
 		if termination.Reason() != "" {
-			detail += ": " + termination.Reason()
+			diagnostic += ": " + termination.Reason()
 		}
-		childFailure = errors.New(detail)
-		parentResult = "error: delegated worker " + detail
+		childFailure = errors.New("delegated " + diagnostic)
+		modelResult = delegateFailureModelResult(managed.call, diagnostic)
 	}
 	if !managed.segmentProjected {
 		if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{
@@ -151,7 +158,7 @@ func (i *interactionSession) projectDelegateResult(
 		managed.segmentProjected = true
 		i.committedReplies.forget(result.ProcessID())
 	}
-	if err := i.finishDelegateTool(ctx, managed, parentResult, childFailure); err != nil {
+	if err := i.finishDelegateTool(ctx, managed, modelResult, childFailure); err != nil {
 		return err
 	}
 	return nil
@@ -169,7 +176,7 @@ func messageRequestsTools(message corechat.Message) bool {
 func (i *interactionSession) finishDelegateTool(
 	ctx context.Context,
 	managed *managedDelegateCall,
-	output string,
+	modelResult corechat.ToolResult,
 	cause error,
 ) error {
 	if managed.parentToolFinished {
@@ -178,12 +185,22 @@ func (i *interactionSession) finishDelegateTool(
 	if !managed.toolStarted {
 		return errors.New("agentexec: cannot finish a Delegate Tool before its start")
 	}
+	if err := modelResult.Validate(); err != nil ||
+		modelResult.ID != managed.call.ID || modelResult.Name != managed.call.Name {
+		return errors.New("agentexec: Delegate Tool result differs from its model call")
+	}
+	output, textual := modelResult.Output.Text()
+	if !textual {
+		return errors.New("agentexec: Delegate Tool result is not textual")
+	}
 	result := tool.StringResult(output)
 	if parsed, err := tool.ParseResult([]byte(output)); err == nil {
 		result = parsed
 	}
+	exactModelResult := modelResult.Clone()
 	fact := runs.ToolCallFinished{
-		CallID: managed.callID.String(), Arguments: managed.arguments.Canonical(), Result: &result,
+		CallID: managed.callID.String(), Arguments: managed.arguments.Canonical(),
+		ModelResult: &exactModelResult, Result: &result,
 	}
 	if cause != nil {
 		fact.Failure = &tool.Failure{
@@ -196,4 +213,51 @@ func (i *interactionSession) finishDelegateTool(
 	}
 	managed.parentToolFinished = true
 	return nil
+}
+
+// delegateFailureModelResult mirrors Interaction's documented Delegate result
+// contract at the Runtime projection boundary. Runtime must persist the exact
+// model-visible value, not reconstruct it later from the client transcript.
+func delegateFailureModelResult(call corechat.ToolCall, diagnostic string) corechat.ToolResult {
+	diagnostic = strings.TrimSpace(diagnostic)
+	if diagnostic == "" {
+		diagnostic = "Interaction operation failed"
+	}
+	const maximumDiagnosticBytes = 2048
+	if len(diagnostic) > maximumDiagnosticBytes {
+		diagnostic = diagnostic[:maximumDiagnosticBytes]
+		for !utf8.ValidString(diagnostic) {
+			diagnostic = diagnostic[:len(diagnostic)-1]
+		}
+		diagnostic = strings.TrimSpace(diagnostic)
+		if diagnostic == "" {
+			diagnostic = "Interaction operation failed"
+		}
+	}
+	return corechat.ToolResult{
+		ID: call.ID, Name: call.Name,
+		Output:  corechat.NewTextToolOutput("error: delegated worker " + diagnostic),
+		IsError: true,
+	}
+}
+
+func delegateStartFailureModelResult(
+	call corechat.ToolCall,
+	code string,
+	message string,
+) corechat.ToolResult {
+	// Agent Failure bounds its message before Interaction builds the Delegate
+	// diagnostic. Retaining that ordering keeps the durable value byte-identical.
+	const maximumAgentFailureBytes = 4096
+	message = strings.TrimSpace(message)
+	if message == "" {
+		message = "unknown error"
+	}
+	if len(message) > maximumAgentFailureBytes {
+		message = message[:maximumAgentFailureBytes]
+	}
+	return delegateFailureModelResult(
+		call,
+		"child start failed: "+code+": "+message,
+	)
 }

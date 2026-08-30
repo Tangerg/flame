@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -25,9 +26,12 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 
 	runStore := sqlite.NewRunStore(db)
 	transcriptStore := sqlite.NewTranscriptStore(db)
+	capabilities := run.Capabilities{
+		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+	}
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
-		CreatedAt: time.Unix(1, 0),
+		Capabilities: capabilities, CreatedAt: time.Unix(1, 0),
 	}
 	if admitErr := runStore.Admit(t.Context(), root); admitErr != nil {
 		t.Fatalf("admit root: %v", admitErr)
@@ -58,7 +62,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		CreatedAt: time.Unix(3, 0),
+		Capabilities: capabilities, CreatedAt: time.Unix(3, 0),
 	}
 	if commitOpeningErr := effects.CommitOpening(t.Context(), runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_child_opening"), Admit: &child,
@@ -78,6 +82,9 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		persistedChild.Lineage().ParentRunID != root.RunID ||
 		persistedChild.Lineage().RootRunID != root.RunID {
 		t.Fatalf("persisted child = %+v, want complete lineage", persistedChild)
+	}
+	if !persistedChild.Capabilities().Equal(capabilities) {
+		t.Fatalf("persisted child capabilities = %+v, want inherited %+v", persistedChild.Capabilities(), capabilities)
 	}
 	items, err := transcriptStore.List(t.Context(), root.SessionID)
 	if err != nil {
