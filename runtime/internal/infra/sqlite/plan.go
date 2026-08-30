@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
@@ -73,7 +75,15 @@ func decodePlanSteps(stepsJSON string) ([]plan.Step, error) {
 		return nil, nil
 	}
 	var rows []planStepRow
-	if err := json.Unmarshal([]byte(stepsJSON), &rows); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(stepsJSON))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&rows); err != nil {
+		return nil, fmt.Errorf("sqlite: decode Plan: %w", err)
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = errors.New("multiple JSON values")
+		}
 		return nil, fmt.Errorf("sqlite: decode Plan: %w", err)
 	}
 	steps := make([]plan.Step, len(rows))

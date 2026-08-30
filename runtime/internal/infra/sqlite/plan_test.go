@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,6 +113,30 @@ func TestPlanStore_RoundTrip(t *testing.T) {
 	}
 	if got, err := store.List(ctx, "other"); err != nil || len(got) != 0 {
 		t.Fatalf("after DeleteSession = %v, %v, want none", got, err)
+	}
+}
+
+func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewPlanStore(db)
+	savePlan(t, t.Context(), store, "ses_plan_codec", []plan.Step{{
+		Description: "preserve exact plan meaning", Status: plan.StatusPending,
+	}})
+	if _, err := db.ExecContext(t.Context(),
+		`UPDATE session_plans SET steps = ? WHERE session_id = ?`,
+		`[{"description":"preserve exact plan meaning","status":"pending","futureOwner":"lost"}]`,
+		"ses_plan_codec",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.State(t.Context(), "ses_plan_codec")
+	if err == nil || !strings.Contains(err.Error(), `unknown field "futureOwner"`) {
+		t.Fatalf("State error = %v, want unknown stored Plan field", err)
 	}
 }
 
