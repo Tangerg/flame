@@ -19,10 +19,13 @@ import {
 } from "@/plugins/builtin/agent/public/session";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import {
+  closeAllWorkspaceDockViews,
+  closeOtherWorkspaceDockViews,
   closeWorkspaceDockView,
   closeWorkspaceView,
   collapseWorkspaceDock,
   openWorkspaceViewInDock,
+  reorderWorkspaceDockView,
   selectWorkspaceDockView,
   showWorkspaceDock,
   useActiveWorkspaceViewId,
@@ -105,7 +108,11 @@ function DockHeader({
   const t = useT();
   return (
     <AgentSurfaceHeader className="gap-1" divider={false}>
-      <AgentDockTabs tabs={tabs} ariaLabel={t("dock.tabs.label")} />
+      <AgentDockTabs
+        tabs={tabs}
+        ariaLabel={t("dock.tabs.label")}
+        onReorder={reorderWorkspaceDockView}
+      />
       <AddDockViewPicker groups={groups} openViewIds={openViewIds} />
     </AgentSurfaceHeader>
   );
@@ -169,6 +176,10 @@ export function ChatPanel({ onSend }: Props) {
       onSelect: () => selectWorkspaceDockView(id),
       onClose: () => closeWorkspaceDockView(id),
       closeLabel: `${t("common.close")} ${title}`,
+      onCloseOthers: () => closeOtherWorkspaceDockViews(id),
+      closeOthersLabel: t("dock.tabs.closeOthers"),
+      onCloseAll: closeAllWorkspaceDockViews,
+      closeAllLabel: t("dock.tabs.closeAll"),
     };
   });
   const openViewIds = new Set(ownedDockViewIds);

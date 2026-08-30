@@ -71,6 +71,8 @@ export const ko: Record<string, string> = {
   "dock.action.show": "오른쪽 작업 영역 열기",
   "dock.action.unavailable": "창을 넓혀 오른쪽 작업 영역 열기",
   "dock.tabs.label": "오른쪽 작업 영역 패널",
+  "dock.tabs.closeAll": "모든 패널 닫기",
+  "dock.tabs.closeOthers": "다른 패널 닫기",
   "workspace.view.openBeside": "컨텍스트 독에서 열기",
   "workspace.view.unavailable.title": "뷰를 사용할 수 없음",
   "workspace.view.unavailable.body":

@@ -76,6 +76,8 @@ export const zh: Record<string, string> = {
   "dock.action.show": "打开右侧工作区",
   "dock.action.unavailable": "增大窗口后打开右侧工作区",
   "dock.tabs.label": "右侧工作区面板",
+  "dock.tabs.closeAll": "关闭全部面板",
+  "dock.tabs.closeOthers": "关闭其他面板",
   "workspace.view.openBeside": "在上下文面板中打开",
   "workspace.view.unavailable.title": "视图不可用",
   "workspace.view.unavailable.body": '未注册 "{{id}}" 视图。请关闭此标签页或重新启用其插件。',

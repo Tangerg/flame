@@ -23,10 +23,13 @@ vi.mock("@/plugins/builtin/agent/public/run", () => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
+  closeAllWorkspaceDockViews: vi.fn(),
+  closeOtherWorkspaceDockViews: vi.fn(),
   closeWorkspaceDockView: vi.fn(),
   closeWorkspaceView: vi.fn(),
   collapseWorkspaceDock: vi.fn(),
   openWorkspaceViewInDock: vi.fn(),
+  reorderWorkspaceDockView: vi.fn(),
   selectWorkspaceDockView: vi.fn(),
   showWorkspaceDock: vi.fn(),
   useActiveWorkspaceViewId: () => model.activeMainView,

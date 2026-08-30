@@ -72,6 +72,8 @@ export const fr: Record<string, string> = {
   "dock.action.show": "Ouvrir l’espace de droite",
   "dock.action.unavailable": "Agrandissez la fenêtre pour ouvrir l’espace de droite",
   "dock.tabs.label": "Panneaux de l’espace de droite",
+  "dock.tabs.closeAll": "Fermer tous les panneaux",
+  "dock.tabs.closeOthers": "Fermer les autres panneaux",
   "workspace.view.openBeside": "Ouvrir dans le dock de contexte",
   "workspace.view.unavailable.title": "Vue indisponible",
   "workspace.view.unavailable.body":

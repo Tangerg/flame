@@ -71,6 +71,11 @@ interface ContextDockActions {
   adoptDockLocation: (id: string) => void;
   /** Drop `id`; answers which tab should take its place, or null for none. */
   closeDockTab: (id: string) => string | null;
+  /** Keep `id` and drop every sibling. */
+  closeOtherDockTabs: (id: string) => void;
+  closeAllDockTabs: () => void;
+  /** Move `id` to `toIndex`, clamped into the open set. */
+  reorderDockTab: (id: string, toIndex: number) => void;
   /** The destination a re-open should return to, given a fallback. */
   dockTabToShow: (defaultViewId: string) => string;
   rememberDockView: (id: string) => void;
@@ -168,6 +173,22 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
         // The tab that slid into its place, else the one before it.
         return remaining[index] ?? remaining[index - 1] ?? null;
       },
+      closeOtherDockTabs: (id) =>
+        set((state) => ({
+          dockViewIds: state.dockViewIds.includes(id) ? [id] : state.dockViewIds,
+        })),
+      closeAllDockTabs: () => set({ dockViewIds: [], lastViewId: null }),
+      reorderDockTab: (id, toIndex) =>
+        set((state) => {
+          const from = state.dockViewIds.indexOf(id);
+          if (from < 0) return {};
+          const to = Math.max(0, Math.min(state.dockViewIds.length - 1, toIndex));
+          if (from === to) return {};
+          const dockViewIds = [...state.dockViewIds];
+          dockViewIds.splice(from, 1);
+          dockViewIds.splice(to, 0, id);
+          return { dockViewIds };
+        }),
       dockTabToShow: (defaultViewId) => {
         const { dockViewIds, lastViewId } = get();
         if (dockViewIds.length === 0) return defaultViewId;

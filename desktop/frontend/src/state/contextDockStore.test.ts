@@ -50,6 +50,53 @@ describe("the open tab set", () => {
     expect(dock().closeDockTab("diff")).toBeNull();
     expect(dock().closeDockTab("nope")).toBeNull();
   });
+
+  it("keeps only the named tab when the others close", () => {
+    dock().openDockTab("explorer");
+    dock().openDockTab("diff");
+    dock().openDockTab("terminal");
+
+    dock().closeOtherDockTabs("diff");
+    expect(dock().dockViewIds).toEqual(["diff"]);
+  });
+
+  it("leaves the set alone when closing the others around a tab it never had", () => {
+    dock().openDockTab("explorer");
+    dock().closeOtherDockTabs("nope");
+    expect(dock().dockViewIds).toEqual(["explorer"]);
+  });
+
+  it("forgets the remembered destination when every tab closes", () => {
+    dock().openDockTab("explorer");
+    dock().rememberDockView("explorer");
+
+    dock().closeAllDockTabs();
+    expect(dock().dockViewIds).toEqual([]);
+    expect(dock().lastViewId).toBeNull();
+  });
+
+  it("moves a tab to the requested position", () => {
+    dock().openDockTab("explorer");
+    dock().openDockTab("diff");
+    dock().openDockTab("terminal");
+
+    dock().reorderDockTab("explorer", 2);
+    expect(dock().dockViewIds).toEqual(["diff", "terminal", "explorer"]);
+  });
+
+  it("clamps a reorder into the open set and ignores an unknown tab", () => {
+    dock().openDockTab("explorer");
+    dock().openDockTab("diff");
+
+    dock().reorderDockTab("diff", 99);
+    expect(dock().dockViewIds).toEqual(["explorer", "diff"]);
+
+    dock().reorderDockTab("explorer", 99);
+    expect(dock().dockViewIds).toEqual(["diff", "explorer"]);
+
+    dock().reorderDockTab("nope", 0);
+    expect(dock().dockViewIds).toEqual(["diff", "explorer"]);
+  });
 });
 
 describe("what a re-open returns to", () => {

@@ -79,6 +79,17 @@ export function installWorkspaceNavigationPort(): () => void {
       if (next === null) navigator().go({ dock: null });
       else showDockView(next, false);
     },
+    closeOtherDockViews: (id) => {
+      const state = useContextDockStore.getState();
+      if (!state.dockViewIds.includes(id)) return;
+      state.closeOtherDockTabs(id);
+      showDockView(id, false);
+    },
+    closeAllDockViews: () => {
+      useContextDockStore.getState().closeAllDockTabs();
+      navigator().go({ dock: null });
+    },
+    reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
     collapseDock: () => navigator().go({ dock: null }),
     showDock: (defaultViewId) => {
       const target = useContextDockStore.getState().dockTabToShow(defaultViewId);

@@ -74,6 +74,8 @@ export const zhTW: Record<string, string> = {
   "dock.action.show": "開啟右側工作區",
   "dock.action.unavailable": "放大視窗後開啟右側工作區",
   "dock.tabs.label": "右側工作區面板",
+  "dock.tabs.closeAll": "關閉全部面板",
+  "dock.tabs.closeOthers": "關閉其他面板",
   "workspace.view.openBeside": "在內容面板中開啟",
   "workspace.view.unavailable.title": "檢視不可用",
   "workspace.view.unavailable.body": '未註冊 "{{id}}" 檢視。請關閉此分頁或重新啟用其外掛。',

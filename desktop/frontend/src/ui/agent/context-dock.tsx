@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Icon, type IconName } from "@/ui/icons";
+import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@/ui/atoms/icon-button";
 import { TabsPrimitive } from "@/ui/primitives";
 
@@ -13,6 +14,16 @@ export interface AgentDockTab {
   onSelect?: () => void;
   onClose?: () => void;
   closeLabel?: string;
+  onCloseOthers?: () => void;
+  closeOthersLabel?: string;
+  onCloseAll?: () => void;
+  closeAllLabel?: string;
+}
+
+export interface AgentDockTabsProps {
+  tabs: AgentDockTab[];
+  ariaLabel: string;
+  onReorder?: (id: string, toIndex: number) => void;
 }
 
 export function AgentContextDock({ children }: { children: ReactNode }) {
@@ -39,8 +50,9 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
-export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaLabel: string }) {
+export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -81,16 +93,51 @@ export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaL
       className="agent-dock-tabs"
     >
       <TabsPrimitive.List aria-label={ariaLabel} className="contents" activateOnFocus>
-        {tabs.map((tab) => {
-          return (
+        {tabs.map((tab, index) => {
+          const restoreFocus = () => {
+            requestAnimationFrame(() => {
+              rootRef.current
+                ?.querySelector<HTMLElement>('[role="tab"][data-active]')
+                ?.focus({ preventScroll: true });
+            });
+          };
+          const close = () => {
+            tab.onClose?.();
+            restoreFocus();
+          };
+          const row = (
             <div
-              key={tab.id}
               data-active={tab.active ? "" : undefined}
+              data-dragging={draggingId === tab.id ? "" : undefined}
+              draggable={onReorder !== undefined && tabs.length > 1}
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", tab.id);
+                setDraggingId(tab.id);
+              }}
+              onDragEnd={() => setDraggingId(null)}
+              onDragOver={(event) => {
+                if (draggingId === null || draggingId === tab.id) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const moved = event.dataTransfer.getData("text/plain") || draggingId;
+                setDraggingId(null);
+                if (moved && moved !== tab.id) onReorder?.(moved, index);
+              }}
+              onAuxClick={(event) => {
+                if (event.button !== 1 || !tab.onClose) return;
+                event.preventDefault();
+                close();
+              }}
               className={cn(
                 "group flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
-                "text-fg-muted transition-[background-color,color] duration-[var(--dur-color)] ease-out",
+                "text-fg-muted transition-[background-color,color,opacity] duration-[var(--dur-color)] ease-out",
                 "hover:bg-hover hover:text-fg focus-within:text-fg",
                 "data-[active]:bg-[var(--dock-tab-active-surface)] data-[active]:text-fg",
+                "data-[dragging]:opacity-50",
               )}
             >
               <TabsPrimitive.Tab
@@ -115,18 +162,40 @@ export function AgentDockTabs({ tabs, ariaLabel }: { tabs: AgentDockTab[]; ariaL
                   size="xs"
                   quiet
                   title={tab.closeLabel}
-                  onClick={() => {
-                    tab.onClose?.();
-                    requestAnimationFrame(() => {
-                      rootRef.current
-                        ?.querySelector<HTMLElement>('[role="tab"][data-active]')
-                        ?.focus({ preventScroll: true });
-                    });
-                  }}
+                  onClick={close}
                   className="mr-0.5 invisible opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
                 />
               )}
             </div>
+          );
+          if (!tab.onClose && !tab.onCloseOthers && !tab.onCloseAll) {
+            return <div key={tab.id}>{row}</div>;
+          }
+          return (
+            <ContextMenu.Root key={tab.id}>
+              <ContextMenu.Trigger render={row} />
+              <ContextMenu.Content className="min-w-[168px]">
+                {tab.onClose && (
+                  <ContextMenu.IconItem icon="x" onSelect={close}>
+                    {tab.closeLabel}
+                  </ContextMenu.IconItem>
+                )}
+                {tab.onCloseOthers && (
+                  <ContextMenu.IconItem
+                    icon="minimize"
+                    disabled={tabs.length < 2}
+                    onSelect={tab.onCloseOthers}
+                  >
+                    {tab.closeOthersLabel}
+                  </ContextMenu.IconItem>
+                )}
+                {tab.onCloseAll && (
+                  <ContextMenu.IconItem icon="trash" onSelect={tab.onCloseAll}>
+                    {tab.closeAllLabel}
+                  </ContextMenu.IconItem>
+                )}
+              </ContextMenu.Content>
+            </ContextMenu.Root>
           );
         })}
       </TabsPrimitive.List>

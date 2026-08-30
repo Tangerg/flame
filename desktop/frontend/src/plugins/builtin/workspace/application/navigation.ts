@@ -80,6 +80,18 @@ export function closeWorkspaceDockView(id: string): void {
   workspaceNavigation().closeDockView(id);
 }
 
+export function closeOtherWorkspaceDockViews(id: string): void {
+  workspaceNavigation().closeOtherDockViews(id);
+}
+
+export function closeAllWorkspaceDockViews(): void {
+  workspaceNavigation().closeAllDockViews();
+}
+
+export function reorderWorkspaceDockView(id: string, toIndex: number): void {
+  workspaceNavigation().reorderDockView(id, toIndex);
+}
+
 export function closeActiveWorkspaceDockView(): boolean {
   const activeViewId = workspaceNavigation().dock().activeViewId;
   if (!activeViewId) return false;

@@ -41,6 +41,9 @@ export interface WorkspaceNavigationPort {
   openViewInDock(id: string): void;
   selectDockView(id: string): void;
   closeDockView(id: string): void;
+  closeOtherDockViews(id: string): void;
+  closeAllDockViews(): void;
+  reorderDockView(id: string, toIndex: number): void;
   collapseDock(): void;
   showDock(defaultViewId: string): void;
   closeView(id: string): void;

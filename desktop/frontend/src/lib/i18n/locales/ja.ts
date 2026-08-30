@@ -71,6 +71,8 @@ export const ja: Record<string, string> = {
   "dock.action.show": "右ワークスペースを開く",
   "dock.action.unavailable": "ウインドウを広げて右ワークスペースを開く",
   "dock.tabs.label": "右ワークスペースのパネル",
+  "dock.tabs.closeAll": "すべてのパネルを閉じる",
+  "dock.tabs.closeOthers": "他のパネルを閉じる",
   "workspace.view.openBeside": "コンテキストドックで開く",
   "workspace.view.unavailable.title": "ビューを利用できません",
   "workspace.view.unavailable.body":

@@ -34,6 +34,57 @@ describe("AgentDockTabs", () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
   });
 
+  it("closes a tab on middle click without selecting it", () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    const view = render(
+      <AgentDockTabs
+        tabs={[{ id: "diff", title: "diff", active: true, onSelect, onClose, closeLabel: "Close" }]}
+        ariaLabel="Workspace tabs"
+      />,
+    );
+
+    fireEvent(
+      view.getByText("diff"),
+      new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }),
+    );
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("reports the drop position when a tab is dragged onto a sibling", () => {
+    const onReorder = vi.fn();
+    const view = render(
+      <AgentDockTabs tabs={tabs("explorer")} ariaLabel="Workspace tabs" onReorder={onReorder} />,
+    );
+    const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
+    const data = new Map<string, string>();
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "",
+      setData: (format: string, value: string) => data.set(format, value),
+      getData: (format: string) => data.get(format) ?? "",
+    };
+
+    fireEvent.dragStart(rows[0]!, { dataTransfer });
+    fireEvent.drop(rows[3]!, { dataTransfer });
+
+    expect(onReorder).toHaveBeenCalledWith("explorer", 3);
+  });
+
+  it("leaves a single-tab strip undraggable", () => {
+    const view = render(
+      <AgentDockTabs
+        tabs={[{ id: "diff", title: "diff", active: true }]}
+        ariaLabel="Workspace tabs"
+        onReorder={vi.fn()}
+      />,
+    );
+
+    expect(view.container.querySelector("[draggable=true]")).toBeNull();
+  });
+
   it("exposes which overflow edges still contain hidden tabs", () => {
     const view = render(<AgentDockTabs tabs={tabs("explorer")} ariaLabel="Workspace tabs" />);
     const strip = view.container.querySelector<HTMLElement>(".agent-dock-tabs")!;
