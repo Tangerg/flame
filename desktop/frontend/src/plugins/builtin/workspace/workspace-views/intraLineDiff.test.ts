@@ -28,3 +28,36 @@ describe("intraLineDiff", () => {
     expect(intraLineDiff("const a = 1;", "const a = 2;")).toEqual({ del: [10, 11], add: [10, 11] });
   });
 });
+
+// A boundary is a Shiki decoration offset, and half a character is not a position
+// it can decorate. Two emoji on the same plane share a leading surrogate, so the
+// code-unit scan lands inside one unless the range is widened off it.
+describe("intraLineDiff on characters outside the BMP", () => {
+  const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+  it.each([
+    ["const a = '🙂';", "const a = '🙃';"],
+    ["x = 😀😀", "x = 😀🎉"],
+    ["🙂 tail", "🙃 tail"],
+    ["lead 🙂", "lead 🙃"],
+    ["a🙂b🙂c", "a🙂b🙃c"],
+  ])("never marks half a character in %s", (a, b) => {
+    const { del, add } = intraLineDiff(a, b);
+    expect(a1(del, a)).not.toMatch(lone);
+    expect(a1(add, b)).not.toMatch(lone);
+  });
+
+  it("still covers everything that changed", () => {
+    const { del, add } = intraLineDiff("const a = '🙂';", "const a = '🙃';");
+    expect(a1(del, "const a = '🙂';")).toContain("🙂");
+    expect(a1(add, "const a = '🙃';")).toContain("🙃");
+  });
+
+  it("leaves an unchanged astral line alone", () => {
+    expect(intraLineDiff("🙂🙃", "🙂🙃")).toEqual({ del: null, add: null });
+  });
+});
+
+function a1(range: [number, number] | null, text: string): string {
+  return range ? text.slice(range[0], range[1]) : "";
+}

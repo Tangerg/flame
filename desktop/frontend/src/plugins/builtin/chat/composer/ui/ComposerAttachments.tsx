@@ -100,9 +100,21 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
   );
 }
 
+const PREVIEW_LIMIT = 160;
+
+// Cutting by code UNIT lands inside any character outside the BMP, and half of one
+// renders as a replacement glyph right before the ellipsis. Backing off the lone
+// leading surrogate costs one character of preview.
+function previewOf(text: string): string {
+  if (text.length <= PREVIEW_LIMIT) return text;
+  const last = text.charCodeAt(PREVIEW_LIMIT - 1);
+  const cut = last >= 0xd800 && last <= 0xdbff ? PREVIEW_LIMIT - 1 : PREVIEW_LIMIT;
+  return `${text.slice(0, cut)}…`;
+}
+
 function PasteChip({ paste, onRemove }: { paste: PastedText; onRemove: () => void }) {
   const t = useT();
-  const preview = paste.text.slice(0, 160) + (paste.text.length > 160 ? "…" : "");
+  const preview = previewOf(paste.text);
   const label =
     paste.lines > 1
       ? t("composer.paste.lines", { count: paste.lines })
