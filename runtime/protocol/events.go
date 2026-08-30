@@ -102,9 +102,12 @@ type RunProgress struct {
 
 // Plan is the Session's persisted latest Plan. A root Run publishes it through
 // plan.updated, and plan.get returns the same shape, so live and cold recovery cannot
-// describe the checklist differently (§5.2 / §5.3). State is absent when no Plan
-// replacement has ever been written; a committed empty State means the Plan was
-// explicitly cleared. This keeps absence distinct without a magic revision zero.
+// describe the checklist differently (§5.2 / §5.3). A segment that changed the Plan
+// republishes its final revision immediately before segment.finished; consumers fold
+// identical revision + content idempotently even though the fence has a fresh eventId.
+// State is absent when no Plan replacement has ever been written; a committed empty
+// State means the Plan was explicitly cleared. This keeps absence distinct without a
+// magic revision zero.
 type Plan struct {
 	SessionID string     `json:"sessionId"`
 	State     *PlanState `json:"state,omitempty"`
