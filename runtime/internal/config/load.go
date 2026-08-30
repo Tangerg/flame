@@ -55,6 +55,9 @@ func Load(configDirectories []string) (Settings, error) {
 		}
 		// No config file — defaults + env only.
 	}
+	if err := validateConfigShape(v); err != nil {
+		return Settings{}, err
+	}
 
 	provider := v.GetString("provider")
 	if provider == "" {
@@ -116,4 +119,33 @@ func Load(configDirectories []string) (Settings, error) {
 			CORSOrigins:    v.GetStringSlice("server.corsOrigins"),
 		},
 	}, nil
+}
+
+// configShape is the closed YAML vocabulary accepted at the process boundary.
+// Settings is intentionally not reused here: it is the resolved application
+// value, while sandbox and LSP retain their source nesting only in YAML.
+type configShape struct {
+	Provider          string                    `mapstructure:"provider"`
+	Model             string                    `mapstructure:"model"`
+	APIKey            string                    `mapstructure:"apiKey"`
+	BaseURL           string                    `mapstructure:"baseURL"`
+	UtilityModel      string                    `mapstructure:"utilityModel"`
+	ToolResultOffload ToolResultOffloadSettings `mapstructure:"toolResultOffload"`
+	Sandbox           struct {
+		Shell         bool     `mapstructure:"shell"`
+		ReadOnlyPaths []string `mapstructure:"readOnlyPaths"`
+	} `mapstructure:"sandbox"`
+	Server Server `mapstructure:"server"`
+	Online Online `mapstructure:"online"`
+	LSP    struct {
+		Servers []LSPServer `mapstructure:"servers"`
+	} `mapstructure:"lsp"`
+}
+
+func validateConfigShape(v *viper.Viper) error {
+	var shape configShape
+	if err := v.UnmarshalExact(&shape); err != nil {
+		return fmt.Errorf("config: decode configuration: %w", err)
+	}
+	return nil
 }

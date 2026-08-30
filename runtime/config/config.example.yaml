@@ -5,6 +5,8 @@
 #
 # config.yaml is gitignored (it holds your key). Precedence, later wins:
 #   built-in defaults  <  this file  <  env vars (FLAME_* / {PROVIDER}_API_KEY)
+# YAML keys are strict: an unknown or misspelled field fails startup instead of
+# silently falling back to a default.
 
 # LLM provider identity. The Runtime catalog is the only supported-set owner;
 # use /providers in the interactive CLI (backed by providers.list) to inspect

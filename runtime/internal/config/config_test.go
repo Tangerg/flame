@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -55,5 +56,22 @@ func TestLoadToolResultOffloadUsesExplicitEnablement(t *testing.T) {
 	}
 	if _, err := Load([]string{directory}); err == nil {
 		t.Fatal("numeric zero was accepted as an implicit offload switch")
+	}
+}
+
+func TestLoadRejectsUnknownConfigurationFields(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(directory, "config.yaml"),
+		[]byte("provider: anthropic\nsandbox:\n  shel: true\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_PROVIDER", "")
+
+	_, err := Load([]string{directory})
+	if err == nil || !strings.Contains(err.Error(), "sandbox") || !strings.Contains(err.Error(), "shel") {
+		t.Fatalf("Load unknown field error = %v", err)
 	}
 }
