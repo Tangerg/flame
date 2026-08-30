@@ -820,3 +820,10 @@
 - 背景：当前 SQLite epoch 已严格恢复 Goal budget、Run capabilities、Interrupt、Transcript 与 checkpoint，但 `session_plans.steps` 仍用宽松 `json.Unmarshal`。反例先由正常 Store 提交 Plan，再让同一当前 epoch 行多出一个 step 字段；旧 reader 静默丢弃该字段并把删减后的 Plan 注入每次主模型调用。`plan_boundaries` 复制相同 JSON，若另建规则又会让 current 与 rollback/fork history 对同一值产生不同解释。
 - 决策：唯一 `decodePlanSteps` 在 Domain `ValidateSteps` 前先执行 closed-field、single-document JSON 校验；`State` 与 `Boundary` 继续共用该 reader。未知字段、尾随值、非法 status/description 与多 in-progress 状态都在返回 Plan 前 fail closed。保留现有具体 `planStepRow` 和 Plan aggregate，不引入通用 repository、serializer 或 codec registry。
 - 后果：损坏或来自其他 shape 的 Plan 不能以“部分可读”继续影响 Goal、model context、rollback 或 fork；当前值和历史边界仍只有一个语义 owner。没有 schema bump、兼容 reader、自动修复、第二 Plan DTO 或额外 package。
+
+## ADR-RT-115：Typed params 的缺席不能被显式 null 冒充
+
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal JSON-RPC Dispatch、测试与文档，公共 Protocol shape/version、生成合同、Artifact、SQLite、Desktop、Agent Framework 与 CLI 不变。
+- 背景：Provider patch 已在 Domain 中严格区分 preserve、set 与 clear，wire 也用字段缺席、`{"type":"set","value":...}`、`{"type":"clear"}` 分别表达三态；但 Go 标准 JSON decoder 会把缺失 pointer 与显式 `null` 都解成 nil。失败优先反例证明 `providers.update` 的 `apiKey:null`、`baseUrl:null` 以及 clear branch 的 `value:null` 会穿过 strict unknown-field/union validation，分别被静默解释为 preserve 或“value 不存在”，与生成 schema 和协议注释矛盾。同类折叠也存在于其他 typed patch 字段。
+- 决策：唯一 JSON-RPC params decoder 在现有 strict typed decode 和 single-document 检查后，沿 `contractshape` 已拥有的 Go JSON field mapping 检查实际出现的 typed 成员；struct、slice、typed map 与 scalar 上的显式 `null` 一律拒绝，pointer 只表达字段缺席。`json.RawMessage` 与 interface-backed open JSON 不递归收紧，因此 Tool arguments 等 `map[string]any` value 仍可合法携带 null。Provider handler、Application 与 Domain 保持原有三态模型，不新增 nullable wrapper、presence DTO 或各方法手写 raw-map parser。
+- 后果：HTTP binding 与生成 JSON Schema 对 nullable 的判断一致，provider/session/schedule 等 patch 不再把无效第四种输入降级成合法 omission；embedded binding 继续直接传递 typed value并走同一 Operation/Wire validation。没有协议版本变化、兼容 null 语义、schema runtime 引擎、通用 JSON facade 或第二 decoder。

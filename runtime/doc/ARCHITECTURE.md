@@ -340,6 +340,8 @@ Infra：
 
 Operation idempotency replay 保存的是已执行命令的权威结果，不是可降级缓存。每条 stored outcome 是单一、versioned、闭合字段的 JSON document，并且必须恰好携带 value 或 problem 之一；value 再按该 operation 的 exact typed response 闭合解码并执行公共 wire validation。未知 envelope/response 字段、尾随值、双结果或缺失结果都 fail closed，不能静默丢字段后假装成功重放。
 
+JSON-RPC `params` 的可选 typed 字段以缺席表达 omission，不以显式 `null` 表达第二种含义；生成 schema 也不把这些字段声明为 nullable。Dispatch 在 strict typed decode 与 single-document 检查后，按同一 Go JSON shape 拒绝已声明 struct、slice、map 或 scalar 字段上的 `null`，避免标准库把 patch pointer 的“缺失”和“显式 null”都折叠成 nil。只有 `json.RawMessage` 与 `map[string]any` value 等合同明确开放的 JSON extension 可以继续携带 `null`；handler/Application 不各自猜测 presence。
+
 Delivery 只依赖公共 Protocol、Application 和必要的 Domain projection values；不得导入 Agent Framework、Infra、具体 persistence、agentexec 或持有 Run lifecycle state。
 
 ### 6.6 Bootstrap、Config、Embedded 与 Cmd
