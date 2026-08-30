@@ -797,3 +797,10 @@
 - 决策：删除总集 `Executor`，建立 Reader/Writer/Editor/PatchApplier/Globber/Grepper 六个单操作端口；`LocalExecutor` 的根变为构造时冻结的私有 authority，所有请求路径只能相对缩小，底层 read/write/edit/patch/glob 全部通过 Go `os.Root` 执行，lexical escape、absolute-outside 与 escaping symlink 均 fail closed。Glob/Grep 的请求字段从可替换 `Root` 改为子树 `Path`，结果统一保持 workspace-relative；Glob 只保留有界 lexicographic result set，Grep 禁用 config/symlink following并只接收已验证 relative operand。默认构造器绑定构造时 CWD，不再存在“空根=无限 authority”。
 - 决策：把 Runtime 私有 bounded scanner 提升为 `tools/textread` 单一机制 owner；`fs.ReadInput` 显式携带 input/line/output 三层预算，Local backend 做流式完整验证，Runtime decorator 只声明 8 MiB/1 MiB/1 MiB 产品策略并翻译 typed failure，不再自行打开 host path。所有 model mutation 无论 isolation mode 都先受 workspace boundary；shell/git 保持跨 workspace 操作的显式能力。编辑/补丁的完整 source 同样有 8 MiB admission，path lock 以 waiter/holder 引用计数在 idle 时回收。
 - 后果：文件权限边界从多个 caller 的前置判断收回一个可测试 owner；direct-call normalization 只负责 Application error/protocol identity，不能放大底层 authority。绝对 in-root 路径仍可归一为同一 relative identity，根外绝对路径、parent traversal、搜索 root override 与 symlink escape 在所有六操作一致拒绝。没有 sandbox flag 分支、兼容总接口、公开 mutable root、unconfined default、重复 scanner、magic path map 或 TUI 变化。
+
+## ADR-RT-112：Host shutdown 先收束 producer，再有界 drain 已接纳维护
+
+- 状态：已接受并实施，当前质量 Goal Q4 完成；只修改 Runtime internal task/lifecycle owner，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI 合同不变。
+- 背景：Run title maintenance 已从请求取消中分离，但 Host shutdown 过去与 Goal/MCP/Run component 同时取消 maintenance task group。真实 DeepSeek one-shot 完成并成功输出后会立即关闭 embedded Runtime，已接纳的标题任务因此必然被取消；冷读新 Session 的 title 仍为空。让 CLI 轮询 title、把标题改为同步 Run 结果或无限等待 provider，都会制造第二 lifecycle owner或放大退出延迟。
+- 决策：Host 先停止并加入可能产生 terminal maintenance 的 component；producer 全部收束后，Application `taskgroup` 对当前已接纳任务提供不关闭、不取消的 `Drain`，Host 最多等待五秒，再无条件 `Cancel`/`Wait`。`Drain` 只在 owner 已证明没有新 producer 后使用；普通 `Close` 仍是立即拒绝新任务并取消现有任务的强制边界。caller-local shutdown deadline、唯一 owner generation 与 terminal resource Sequence 不变。
+- 后果：真实 DeepSeek one-shot 在 Run terminal output 之后能于进程退出前持久化标题，冷读同一 Session 不再是 untitled；维护任务仍不延迟 Run terminal 事件，卡住或慢于五秒的 provider 仍被取消。没有 CLI polling、sleep、标题 fallback 双写、后台 daemon、配置旋钮或新公共 API。
