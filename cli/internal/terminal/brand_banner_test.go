@@ -19,7 +19,7 @@ func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
 	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, defaultRunOptions(t))
 
 	wide := drawStatic(t, banner, 96, 14)
-	for _, want := range []string{"███████╗", "Flame CLI  v1.2.3", "deepseek/deepseek-v4-flash", "/workspace/scope"} {
+	for _, want := range []string{"█████ █      ███", "Flame CLI  v1.2.3", "deepseek/deepseek-v4-flash", "/workspace/scope"} {
 		if !strings.Contains(wide, want) {
 			t.Errorf("wide brand banner does not contain %q:\n%s", want, wide)
 		}
@@ -44,8 +44,13 @@ func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
 func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 	for name, mark := range map[string][]string{"unicode": unicodeBrandMark, "ASCII": asciiBrandMark} {
 		t.Run(name, func(t *testing.T) {
+			markWidth := text.Width(mark[0])
 			for row, line := range mark {
-				if width := text.Width(line); width > brandMarkMinWidth {
+				width := text.Width(line)
+				if width != markWidth {
+					t.Fatalf("mark row %d width = %d, want aligned width %d", row, width, markWidth)
+				}
+				if width > brandMarkMinWidth {
 					t.Fatalf("mark row %d width = %d, exceeds breakpoint %d", row, width, brandMarkMinWidth)
 				}
 			}
@@ -56,7 +61,7 @@ func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
 	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
 	got := drawStatic(t, banner, 72, 12)
-	if !strings.Contains(got, "\\ V /") || strings.Contains(got, "██") {
+	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
 		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
 	}
 }
