@@ -19,7 +19,17 @@ The interactive command opens the Oolong TUI. `run` supports human-readable text
 
 ## Configuration
 
-The CLI uses the same Runtime configuration and data model as other Flame clients:
+CLI preferences and embedded Runtime configuration have separate owners.
+
+CLI preferences select the provider/model pair for new runs and configure run limits, approvals, UI, plugins, and key bindings:
+
+- `./.flame.yaml` is the project-local CLI preferences file
+- without it, Flame reads `flame/config.yaml` below the OS user config directory
+- `--config` selects an explicit CLI preferences file
+- `FLAME_*` variables and CLI flags override file values
+- `flame config path` and `flame config show` report the selected file and merged result
+
+[`config/config.example.yaml`](config/config.example.yaml) is a valid strict-schema example. Provider credentials, custom endpoints, utility/embedding roles, server settings, sandboxing, MCP, and LSP remain Runtime-owned:
 
 - `$FLAME_HOME/runtime/config.yaml` is the user configuration
 - `runtime/config/config.yaml` is the worktree development fallback

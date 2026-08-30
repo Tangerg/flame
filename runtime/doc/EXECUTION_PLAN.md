@@ -112,7 +112,7 @@
 
 | 批次 | 目的 | 状态 | 验收 | 提交 |
 | --- | --- | --- | --- | --- |
-| Q0 | 建立根与模块规则，收敛文档 owner，删除 CLI 点时台账 | 已完成 | 链接检查；Runtime 文档/SQLite 事实门禁；CLI 架构门禁；CLI 随附配置示例由自身严格 loader 验证，Runtime 示例不再复制 provider catalog | `f9cab5a`、本批提交 |
+| Q0 | 建立根与模块规则，收敛文档 owner，删除 CLI 点时台账 | 已完成 | 链接检查；Runtime 文档/SQLite 事实门禁；CLI 架构门禁；CLI 随附配置示例由自身严格 loader 验证，Runtime 示例不再复制 provider catalog；CLI 入口文档明确分离 consumer preferences 与 Runtime 执行配置 | `f9cab5a`、`94e45e7`、本批提交 |
 | Q1 | 升级 Scope 与全部 direct dependency | 已完成 | Scope v0.12.0；workspace + standalone test/vet/build/tidy；真实 DeepSeek Goal+Plan | `290ea4a`、`09f0ae8`、`a8a02b8`、`bff76b6` |
 | Q2 | 建立真实 DeepSeek E2E 场景基线 | 已完成 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume、进程强杀 long-running Tool 后的 lost recovery 与同 Session 再运行均已通过；真实 CLI JSON 冷启动与同 Session 续接也已经 DeepSeek 验证 | `e93eab5`、`61ce5d7`、`ceb2e3f` |
 | Q3 | 收敛 CLI 过度分包与贫血模型 | 进行中 | composition manifest 已收敛；provider 环境凭据覆盖、exact key 与源码 worktree 的真实配置发现已验证；Provider rich model 由 credential/endpoint policy 派生 readiness，wire flag 只用于拒绝双向矛盾而不再成为第二 truth；继续按 consumer proof 审计 | `7875a20`、`8170949`、`4224eff`、`d538ff4`、`24b51b1` |
