@@ -34,3 +34,16 @@ func TestFormChangeBuildsValidatedProviderChanges(t *testing.T) {
 		t.Fatal("empty provider replacement was accepted")
 	}
 }
+
+func TestProviderUpdatePreservesExactAPIKeyMaterial(t *testing.T) {
+	const secret = " exact provider key "
+	update, err := providerUpdate(
+		"deepseek", formChangeKeep, "", formChangeSet, secret,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if update.APIKey == nil || update.APIKey.Value != secret {
+		t.Fatalf("API key = %+v, want exact input", update.APIKey)
+	}
+}

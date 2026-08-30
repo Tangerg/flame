@@ -494,7 +494,7 @@ func providerUpdate(providerID string, baseMode formChange, baseURL string, keyM
 	if err != nil {
 		return modelconfig.UpdateProvider{}, err
 	}
-	keyChange, err := valueChange(keyMode, strings.TrimSpace(apiKey))
+	keyChange, err := valueChange(keyMode, apiKey)
 	if err != nil {
 		return modelconfig.UpdateProvider{}, err
 	}
