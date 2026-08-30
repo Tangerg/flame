@@ -39,9 +39,13 @@ token 触发上下文压缩 · OTel trace/metric/log → slog。
 
 ```bash
 cd runtime                                         # 从仓库根进入 runtime 模块
-go build ./... && go vet ./... && go test ./...        # 全绿
-ANTHROPIC_API_KEY=xxx ./flame                           # 默认 127.0.0.1:17171（匹配前端默认 base），SQLite at $FLAME_HOME/flame.db
+go build ./... && go vet ./... && go test ./...    # 默认套件离线且不产生模型费用
+FLAME_LIVE_DEEPSEEK=1 go test ./embedded \
+  -run '^TestLiveDeepSeek' -count=1 -v             # 使用 config/config.yaml 跑 Goal/Plan、Steer、长上下文压缩
+ANTHROPIC_API_KEY=xxx ./flame                       # 默认 127.0.0.1:17171（匹配前端默认 base），SQLite at $FLAME_HOME/flame.db
 ```
+
+Live E2E 默认跳过；要使用其他凭据目录，额外设置绝对路径 `FLAME_LIVE_CONFIG_DIR`。测试只通过生产配置加载凭据，不读取或打印 API key。
 
 ## 嵌入 Go 程序
 
