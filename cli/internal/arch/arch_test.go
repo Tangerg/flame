@@ -1313,7 +1313,7 @@ var allowed = map[string][]string{
 	"runidentity":      nil,
 	"commandreplay":    nil,
 	"runtimeprofile":   {"commandreplay"},
-	"agent":            {"exactint", "failure", "modelidentity", "runidentity", "sessionidentity", "workspace"},
+	"agent":            {"exactint", "failure", "goal", "modelidentity", "runidentity", "sessionidentity", "workspace"},
 	"agentmemory":      nil,
 	"authoringcontext": nil,
 	"diagnostictool":   nil,

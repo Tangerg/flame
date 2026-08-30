@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/oolong/core/text"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -26,6 +27,8 @@ type sessionHeader struct {
 	glyphs       kit.Glyphs
 	session      agent.Session
 	usage        agent.Usage
+	goal         goal.Goal
+	goalPresent  bool
 	changes      int
 	changesKnown bool
 }
@@ -37,6 +40,14 @@ func newSessionHeader(theme kit.Theme, glyphs kit.Glyphs, session agent.Session)
 func (s *sessionHeader) SetSession(session agent.Session) { s.session = session }
 
 func (s *sessionHeader) SetUsage(usage agent.Usage) { s.usage = usage.Clone() }
+
+func (s *sessionHeader) SetGoal(current *goal.Goal) {
+	if current == nil {
+		s.goal, s.goalPresent = goal.Goal{}, false
+		return
+	}
+	s.goal, s.goalPresent = *current, true
+}
 
 func (s *sessionHeader) SetWorkspaceChanges(count int) {
 	s.changes, s.changesKnown = max(count, 0), true
@@ -66,18 +77,65 @@ func (s *sessionHeader) Draw(view grid.View) {
 	if rightWidth > 0 {
 		available -= rightWidth + 2
 	}
+	if available > 0 {
+		workspace := displayWorkspace(s.session.Workspace)
+		title := displayTitle(s.session)
+		separator := "  " + s.glyphs.Bullet + "  "
+		workspace = text.Truncate(workspace, available, s.glyphs.Ellipsis)
+		x := view.Text(0, 0, workspace, s.theme.Context)
+		remaining := available - x
+		if remaining > text.Width(separator) {
+			view.Text(x, 0, separator+text.Truncate(title, remaining-text.Width(separator), s.glyphs.Ellipsis), s.theme.Muted)
+		}
+	}
+	if height > 1 {
+		s.drawGoal(view.Sub(grid.Rect(0, 1, width, 1)))
+	}
+}
+
+func (s *sessionHeader) drawGoal(view grid.View) {
+	if !s.goalPresent {
+		return
+	}
+	width, _ := view.Size()
+	state := string(s.goal.Status())
+	prefix := "[Goal: " + state + "]"
+	style := s.theme.Accent
+	switch s.goal.Status() {
+	case goal.Paused:
+		style = s.theme.Warning
+	case goal.Blocked:
+		style = s.theme.Danger
+	}
+	right := goalUsageLabel(s.goal.Used())
+	rightWidth := text.Width(right)
+	available := width
+	if rightWidth > 0 && rightWidth < width {
+		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
+		available -= rightWidth + 2
+	}
 	if available <= 0 {
 		return
 	}
-	workspace := displayWorkspace(s.session.Workspace)
-	title := displayTitle(s.session)
-	separator := "  " + s.glyphs.Bullet + "  "
-	workspace = text.Truncate(workspace, available, s.glyphs.Ellipsis)
-	x := view.Text(0, 0, workspace, s.theme.Context)
+	x := view.Text(0, 0, text.Truncate(prefix, available, s.glyphs.Ellipsis), style)
 	remaining := available - x
-	if remaining > text.Width(separator) {
-		view.Text(x, 0, separator+text.Truncate(title, remaining-text.Width(separator), s.glyphs.Ellipsis), s.theme.Muted)
+	if remaining > 2 {
+		view.Text(x, 0, "  "+text.Truncate(s.goal.Objective(), remaining-2, s.glyphs.Ellipsis), s.theme.Muted)
 	}
+}
+
+func goalUsageLabel(used goal.Usage) string {
+	parts := make([]string, 0, 3)
+	if used.Runs() > 0 {
+		parts = append(parts, countedNoun(used.Runs(), "run"))
+	}
+	if used.Steps() > 0 {
+		parts = append(parts, countedNoun(used.Steps(), "step"))
+	}
+	if used.CostUSD() > 0 {
+		parts = append(parts, "$"+strconv.FormatFloat(used.CostUSD(), 'f', 4, 64))
+	}
+	return strings.Join(parts, "  ")
 }
 
 func headerRightLabel(usage agent.Usage, changes int, known bool) string {

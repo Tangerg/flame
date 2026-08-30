@@ -647,6 +647,7 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	a.wireTranscript(projection.transcript)
 	a.shell.SetTranscript(projection.transcript)
 	a.header.SetUsage(projection.conversation.Usage())
+	a.header.SetGoal(snapshot.Goal)
 	a.activity.Set(projection.conversation.PlanItems())
 	a.status.setRunningDescendants(projection.conversation.RunningDescendants())
 	a.prompt.SetBusy(projection.conversation.Busy())
@@ -685,6 +686,7 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 	a.activity.Set(a.conversation.PlanItems())
 	a.header.SetUsage(a.conversation.Usage())
+	a.header.SetGoal(snapshot.Goal)
 	a.status.setRunningDescendants(a.conversation.RunningDescendants())
 	a.prompt.SetBusy(a.conversation.Busy())
 	switch a.conversation.Phase() {

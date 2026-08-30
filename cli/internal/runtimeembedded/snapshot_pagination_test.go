@@ -118,6 +118,31 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 	}
 }
 
+func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
+	goal := activeProtocolGoal()
+	stub := &snapshotBindingStub{
+		sessions: []*protocol.Session{snapshotSession(1)},
+		snapshot: &protocol.SessionSnapshot{Goal: goal},
+	}
+	runtime := &Runtime{
+		snapshot: stub, profile: snapshotProfile(runtimeprofile.FeatureGoals), meta: requestMeta("test"),
+	}
+
+	snapshot, err := runtime.GetSession(t.Context(), "ses_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Goal == nil || snapshot.Goal.SessionID() != "ses_1" ||
+		snapshot.Goal.Objective() != goal.Objective {
+		t.Fatalf("projected Goal = %+v, want %q", snapshot.Goal, goal.Objective)
+	}
+
+	runtime.profile = snapshotProfile()
+	if _, err := runtime.readMaterialSnapshot(t.Context(), "ses_1"); err == nil {
+		t.Fatal("accepted a Goal from a Runtime profile without Goal support")
+	}
+}
+
 func TestSessionColdReadBindsMaterialToOneMetadataProjection(t *testing.T) {
 	stub := &snapshotBindingStub{
 		sessions: []*protocol.Session{snapshotSession(1), snapshotSession(2), snapshotSession(2)},

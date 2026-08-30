@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/exactint"
+	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/modelidentity"
 	"github.com/Tangerg/flame/cli/internal/runidentity"
 	"github.com/Tangerg/flame/cli/internal/sessionidentity"
@@ -175,13 +176,14 @@ func (s SessionPage) Validate() error {
 }
 
 // SessionSnapshot is the cold-read projection the CLI restores. Transcript,
-// Runs, and Plan are durable values, never reconstructed from a historical
+// Runs, Plan, and Goal are durable values, never reconstructed from a historical
 // event stream. Runs contains roots and descendants in creation order.
 type SessionSnapshot struct {
 	Session      Session
 	Transcript   []Block
 	Runs         []Run
 	Plan         *Plan
+	Goal         *goal.Goal
 	Interactions []Interaction
 }
 
@@ -242,6 +244,17 @@ func (s SessionSnapshot) Validate() error {
 	if s.Plan != nil {
 		if err := s.Plan.Validate(); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
+		}
+	}
+	if s.Goal != nil {
+		if err := s.Goal.Validate(); err != nil {
+			return fmt.Errorf("session snapshot: %w", err)
+		}
+		if s.Goal.SessionID() != s.Session.ID {
+			return fmt.Errorf(
+				"session snapshot: goal belongs to session %q, want %q",
+				s.Goal.SessionID(), s.Session.ID,
+			)
 		}
 	}
 	return s.validateLifecycle(transcript, runs)

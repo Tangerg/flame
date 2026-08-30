@@ -117,7 +117,7 @@
 | Q2 | 建立真实 DeepSeek E2E 场景基线 | 进行中 | Goal/Plan、steer、13-turn long-context compaction、question/HITL restart-resume 已通过；long-running recovery 尚未建立 live 证据 | `e93eab5`、本批提交 |
 | Q3 | 收敛 CLI 过度分包与贫血模型 | 进行中 | composition manifest 已收敛；provider 环境凭据覆盖与 exact key 已验证；继续按 consumer proof 审计 | `7875a20`、`8170949`、`4224eff` |
 | Q4 | 收敛 Runtime owner、抽象与 corner cases | 进行中 | endpoint provider 环境凭据、URL 校验与单消费者假边界已根治；继续审计 recovery/lifecycle | `c0cd320`、`18413c7`、`2a3c7de` |
-| Q5 | 对齐 Grok Build 的 TUI 体验 | 待开始 | render + PTY + live Runtime flow | 待提交 |
+| Q5 | 对齐 Grok Build 的 TUI 体验 | 进行中 | 开始收敛 Goal/Plan/Run/composer 信息层级；render + PTY + live Runtime flow | 本批提交 |
 
 ## 当前下一步
 

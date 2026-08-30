@@ -2008,10 +2008,13 @@ func TestRuntimeInvalidationScope(t *testing.T) {
 		{name: "foreign session", event: changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), SessionIDs: []string{"other"}}},
 		{name: "current session", event: changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), SessionIDs: []string{"session"}}, want: true},
 		{name: "plan", event: changefeed.Event{Type: changefeed.EventType(changefeed.PlanChanged)}, want: true},
+		{name: "current goal", event: changefeed.Event{Type: changefeed.EventType(changefeed.GoalsChanged), SessionIDs: []string{"session"}}, want: true},
+		{name: "foreign goal", event: changefeed.Event{Type: changefeed.EventType(changefeed.GoalsChanged), SessionIDs: []string{"other"}}},
 		{name: "foreign run", event: changefeed.Event{Type: changefeed.EventType(changefeed.RunsChanged), RunIDs: []string{"other"}}},
 		{name: "current run", event: changefeed.Event{Type: changefeed.EventType(changefeed.InterruptsChanged), RunIDs: []string{"run"}}, want: true},
 		{name: "files", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged)}},
 		{name: "session resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.SessionsChanged}}, want: true},
+		{name: "goal resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.GoalsChanged}}, want: true},
 		{name: "schedule resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.SchedulesChanged}}},
 	}
 	for _, test := range tests {

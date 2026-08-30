@@ -201,7 +201,8 @@ func invalidatesSessionCatalog(event changefeed.Event) bool {
 func resyncAffectsSession(topics []changefeed.Topic) bool {
 	return slices.ContainsFunc(topics, func(topic changefeed.Topic) bool {
 		return topic == changefeed.SessionsChanged || topic == changefeed.RunsChanged ||
-			topic == changefeed.PlanChanged || topic == changefeed.InterruptsChanged
+			topic == changefeed.PlanChanged || topic == changefeed.GoalsChanged ||
+			topic == changefeed.InterruptsChanged
 	})
 }
 
@@ -212,7 +213,7 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 	switch changefeed.Topic(event.Type) {
 	case changefeed.SessionsChanged:
 		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
-	case changefeed.PlanChanged:
+	case changefeed.PlanChanged, changefeed.GoalsChanged:
 		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
 	case changefeed.RunsChanged, changefeed.InterruptsChanged:
 		if len(event.SessionIDs) != 0 {

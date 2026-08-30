@@ -58,6 +58,25 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 	}
 }
 
+func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
+		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: workspace.Available},
+	})
+	current := testGoal(t, "ship the release safely")
+	header.SetGoal(&current)
+
+	got := drawStatic(t, header, 72, header.Measure(72))
+	for _, want := range []string{"[Goal: active]", "ship the release safely"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("goal header does not contain %q:\n%s", want, got)
+		}
+	}
+	header.SetGoal(nil)
+	if got := drawStatic(t, header, 72, header.Measure(72)); strings.Contains(got, "Goal:") {
+		t.Fatalf("cleared goal remained in header:\n%s", got)
+	}
+}
+
 func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode(), defaultRunOptions(t))
 	step, contextTokens := 7, int64(12_345)

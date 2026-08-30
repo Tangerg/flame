@@ -647,6 +647,7 @@ func (a *app) ClearGoal() error {
 				return
 			}
 			if a.sessionContext.current(presentation) {
+				a.header.SetGoal(nil)
 				a.setRuntimeReader(runtimeReaderGoal)
 				a.workspaceReader = workspaceReaderNone
 				a.openReaderDocument(goalDocument(goal.Goal{}, false))
@@ -700,6 +701,7 @@ func (a *app) changeGoal(label string, change func(context.Context) (goal.Goal, 
 			return
 		}
 		if a.sessionContext.current(presentation) {
+			a.header.SetGoal(&current)
 			a.setRuntimeReader(runtimeReaderGoal)
 			a.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(goalDocument(current, true))

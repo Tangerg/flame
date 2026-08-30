@@ -26,6 +26,7 @@ type coldRead struct {
 	runs       []protocol.RunRef
 	items      []protocol.Item
 	plan       *protocol.Plan
+	goal       *protocol.Goal
 	interrupts []protocol.PendingInterruptSet
 }
 
@@ -87,8 +88,12 @@ func (r *Runtime) readMaterialSnapshot(ctx context.Context, sessionID string) (c
 	if !planEnabled && snapshot.Plan != nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot returned plan while the plan feature is disabled")
 	}
+	if !r.profile.Supports(runtimeprofile.FeatureGoals) && snapshot.Goal != nil {
+		return coldRead{}, runtimeContractViolation("get session snapshot returned goal while the goals feature is disabled")
+	}
 	return coldRead{
-		runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan, interrupts: snapshot.Interrupts,
+		runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan, goal: snapshot.Goal,
+		interrupts: snapshot.Interrupts,
 	}, nil
 }
 
@@ -122,6 +127,13 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
+	}
+	if read.goal != nil {
+		projected, projectGoalErr := projectGoal(*read.goal)
+		if projectGoalErr != nil {
+			return agent.SessionSnapshot{}, projectGoalErr
+		}
+		snapshot.Goal = &projected
 	}
 	if active, ok := snapshot.ActiveRun(); ok && active.Status == agent.RunStatusWaiting {
 		sets := make([]protocol.PendingInterruptSet, 0, 1)
