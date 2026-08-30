@@ -29,6 +29,23 @@ func TestConfigurationUsesDeepSeekProductDefaults(t *testing.T) {
 	}
 }
 
+func TestShippedExampleIsValidCLIConfiguration(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_MODEL", "")
+	path := filepath.Join("..", "..", "config", "config.example.yaml")
+	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show")
+	if err != nil {
+		t.Fatalf("load shipped CLI example: %v", err)
+	}
+	var got settings.Config
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("example config output: %v\n%s", err, out)
+	}
+	if got.Provider != settings.DefaultProvider || got.Model != settings.DefaultModel {
+		t.Fatalf("example model = %q/%q, want %q/%q", got.Provider, got.Model, settings.DefaultProvider, settings.DefaultModel)
+	}
+}
+
 func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.yaml")
 	if err := os.WriteFile(path, []byte("provider: file-provider\nmodel: file-model\nrun:\n  max-total-tokens: 12000\n  max-steps: 8\n"), 0o600); err != nil {

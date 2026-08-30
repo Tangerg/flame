@@ -1,96 +1,48 @@
-# Flame runtime configuration (viper).
+# Flame CLI preferences.
 #
-# Copy this file to config.yaml and fill in your API key:
-#   cp config/config.example.yaml config/config.yaml
+# For one project:
+#   cp config/config.example.yaml .flame.yaml
 #
-# config.yaml is gitignored (it holds your key). Precedence, later wins:
-#   built-in defaults  <  this file  <  env vars (FLAME_* / {PROVIDER}_API_KEY)
+# Without ./.flame.yaml, Flame reads config.yaml from the OS user config
+# directory under flame/. FLAME_* environment variables and CLI flags override
+# file values. `flame config path` shows the selected file and `flame config
+# show` prints the merged, validated result.
+#
+# This file configures the CLI consumer only. Provider credentials, custom
+# endpoints, utility/embedding roles, Runtime server, sandbox, MCP, and LSP are
+# Runtime-owned settings; inspect or change them from the interactive CLI with
+# /providers, /provider-config, and the related Runtime commands.
 
-# LLM provider: anthropic | openai | moonshot | deepseek
-provider: anthropic
+# Provider and model are one exact selection and must be changed together.
+provider: deepseek
+model: deepseek-v4-flash
 
-# Model id. Empty = provider default
-# (anthropic → claude-opus-5, openai → gpt-5.6-sol).
-model: ""
+# Omit a limit for unlimited. Every configured value must be strictly positive.
+# run:
+#   max-total-tokens: 200000
+#   max-steps: 100
+#   max-budget-usd: 2.50
 
-# Optional cheaper model for turn-boundary maintenance (compaction summaries,
-# fact extraction, title generation) on the SAME provider as `model`. Empty
-# runs that work on `model`. Use it to code with a strong model while the
-# background summarize/extract/title calls run on an inexpensive one.
-utilityModel: ""
+# Default scope offered after approving a tool. The choices are:
+# none | session | project | global
+approval:
+  remember: none
 
-# Provider API key. Overridden by ANTHROPIC_API_KEY / OPENAI_API_KEY /
-# MOONSHOT_API_KEY / DEEPSEEK_API_KEY env if set.
-apiKey: ""
+ui:
+  mouse: true
+  notifications: true
+  tool-details: false
+  transcript-retain: 24       # 4..500 finished transcript blocks
+  reconnect-attempts: 4       # 0..20 dropped-stream reconnect attempts
 
-# Optional API endpoint override. Empty = the adapter's built-in default.
-# Point this at a proxy, gateway, regional endpoint, or a self-hosted
-# OpenAI-compatible server. Overridden by FLAME_BASEURL env.
-baseURL: ""
+# Omit this block to use ~/.flame/plugins. Paths must be non-empty and unique.
+# plugins:
+#   directories:
+#     - /absolute/path/to/plugins
 
-# Tool-result eviction: a single tool output larger than this many bytes is
-# offloaded out of the conversation (stored in SQLite) and replaced inline by a
-# head+tail placeholder the model reads back on demand via the read_tool_result
-# tool — so one giant file read or command dump stops re-inflating every later
-# request. Enabled by default at 50000 bytes. Disable with the explicit enabled
-# flag; threshold must remain positive. Both fields have FLAME_* overrides.
-# toolResultOffload:
-#   enabled: true
-#   threshold: 50000
-
-# Opt-in OS sandbox for the shell tool family. When enabled, each shell command
-# runs in an in-place jail rooted at its working directory: only the workspace
-# is writable, all networking is denied, the real $HOME is hidden, and the
-# environment is scrubbed of inherited credentials. Off by default (a plain
-# /bin/sh -c). Only macOS (Seatbelt) has a backend today — on any other host
-# enabling it refuses startup (fail-closed) rather than running shells
-# unconfined. readOnlyPaths re-opens toolchain roots under $HOME the build needs
-# (e.g. a language toolchain or dependency cache). Overridable by
-# FLAME_SANDBOX_SHELL.
-# sandbox:
-#   shell: false
-#   readOnlyPaths:
-#     - "~/go"
-#     - "~/.cache"
-
-# Runtime HTTP transport settings. Each is overridable by the matching
-# FLAME_SERVER_* env var.
-server:
-  listen: 127.0.0.1:17171   # loopback endpoint for local protocol clients
-  noLocalToken: false       # true = disable the local-process gate (dev / same-origin)
-  localTokenPath: ""        # default: $HOME/.flame/local-token; path owns the durable token
-  # Empty uses the exact Wails + repository Vite origins built into the Runtime.
-  # Add origins only for a different browser client; "*" is development-only.
-  corsOrigins: []
-
-# Optional provider-backed tool credentials (leave blank to disable).
-online:
-  jinaApiKey: ""
-  tavilyApiKey: ""
-  httpAllowedHosts: []
-
-# Optional language-server table for the code-intelligence tools
-# (lsp_definition / lsp_references / lsp_hover / lsp_document_symbols /
-# lsp_diagnostics / lsp_workspace_symbols, plus auto type-check after edits).
-# Omit this block to use the built-in defaults (gopls + typescript). When
-# present it REPLACES the defaults — list every language you want. A server
-# whose `command` isn't installed simply stays unavailable; nothing breaks.
-# lsp:
-#   servers:
-#     - name: gopls
-#       command: gopls
-#       languageId: go
-#       extensions: [".go"]
-#       rootMarkers: ["go.mod", "go.work"]
-#     - name: typescript
-#       command: typescript-language-server
-#       args: ["--stdio"]
-#       languageId: typescript
-#       extensions: [".ts", ".tsx", ".mts", ".cts"]
-#       rootMarkers: ["tsconfig.json", "package.json"]
-#     - name: pyright
-#       command: pyright-langserver
-#       args: ["--stdio"]
-#       languageId: python
-#       extensions: [".py", ".pyi"]
-#       rootMarkers: ["pyproject.toml", "setup.py", "requirements.txt"]
+# Override only the actions you want to change; defaults fill the rest.
+# Run /shortcuts in the interactive CLI to inspect the complete current map.
+# keys:
+#   command-palette: [ctrl+p]
+#   sessions: [ctrl+r]
+#   external-editor: [ctrl+e]
