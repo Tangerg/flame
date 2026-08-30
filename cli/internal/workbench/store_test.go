@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -697,6 +698,42 @@ func TestStoreRejectsUnknownOnDiskFormat(t *testing.T) {
 	}
 	if _, err := OpenDirectory(directory, Config{}); err == nil {
 		t.Fatal("unknown format was accepted")
+	}
+}
+
+func TestStoreRejectsTrailingAndOversizedStateSnapshots(t *testing.T) {
+	valid := []byte(`{"version":1,"value":[]}`)
+	tests := []struct {
+		name string
+		body []byte
+	}{
+		{name: "trailing value", body: append(slices.Clone(valid), []byte(` {}`)...)},
+		{name: "oversized valid prefix", body: append(slices.Clone(valid), []byte(strings.Repeat(" ", maximumStateBytes-len(valid)+1))...)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, "history.json"), test.body, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("invalid workbench snapshot was accepted")
+			}
+		})
+	}
+}
+
+func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveDraft("session", agent.Message{Text: strings.Repeat("x", maximumStateBytes)}); err == nil {
+		t.Fatal("oversized workbench snapshot was written")
+	}
+	if draft, found, err := store.Draft("session"); err != nil || found {
+		t.Fatalf("failed oversized save mutated memory: draft=%+v found=%t err=%v", draft, found, err)
 	}
 }
 

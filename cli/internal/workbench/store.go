@@ -28,6 +28,7 @@ const (
 	defaultHistoryCapacity   = 1000
 	defaultStashCapacity     = 100
 	defaultWorkspaceCapacity = 50
+	maximumStateBytes        = 16 << 20
 	stashTransferName        = "stash-transfer.json"
 	sessionDeletionsName     = "session-deletions.json"
 )
@@ -511,10 +512,16 @@ func (s *Store) load(name string, value any) error {
 		return err
 	}
 	defer func() { _ = file.Close() }()
+	body, err := io.ReadAll(io.LimitReader(file, maximumStateBytes+1))
+	if err != nil {
+		return fmt.Errorf("read workbench state %q: %w", name, err)
+	}
+	if len(body) > maximumStateBytes {
+		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
+	}
 	var raw envelope[json.RawMessage]
-	decoder := json.NewDecoder(io.LimitReader(file, 16<<20))
-	if err := decoder.Decode(&raw); err != nil {
-		return err
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return fmt.Errorf("decode workbench state %q: %w", name, err)
 	}
 	if raw.Version != formatVersion {
 		return fmt.Errorf("unsupported workbench format %d", raw.Version)
@@ -701,6 +708,14 @@ func (s *Store) save(name string, value any) error {
 	if !s.persistence.Durable() {
 		return nil
 	}
+	encoded, err := json.MarshalIndent(envelope[any]{Version: formatVersion, Value: value}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode state snapshot: %w", err)
+	}
+	encoded = append(encoded, '\n')
+	if len(encoded) > maximumStateBytes {
+		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
+	}
 	path := s.path(name)
 	directory := filepath.Dir(path)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -721,11 +736,9 @@ func (s *Store) save(name string, value any) error {
 		_ = temporary.Close()
 		return err
 	}
-	encoder := json.NewEncoder(temporary)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(envelope[any]{Version: formatVersion, Value: value}); err != nil {
+	if _, err := temporary.Write(encoded); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("encode state snapshot: %w", err)
+		return fmt.Errorf("write state snapshot: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
 		_ = temporary.Close()
