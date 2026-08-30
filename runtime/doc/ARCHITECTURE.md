@@ -338,6 +338,8 @@ Infra：
 
 `server`、`operation` 与 `dispatch` 有不同变化原因，不合并。HTTP 和 embedded 都从 operation 进入，任何 binding 都不能直接绕过 validation、capability、idempotency、problem projection 或 replay 规则。
 
+Operation idempotency replay 保存的是已执行命令的权威结果，不是可降级缓存。每条 stored outcome 是单一、versioned、闭合字段的 JSON document，并且必须恰好携带 value 或 problem 之一；value 再按该 operation 的 exact typed response 闭合解码并执行公共 wire validation。未知 envelope/response 字段、尾随值、双结果或缺失结果都 fail closed，不能静默丢字段后假装成功重放。
+
 Delivery 只依赖公共 Protocol、Application 和必要的 Domain projection values；不得导入 Agent Framework、Infra、具体 persistence、agentexec 或持有 Run lifecycle state。
 
 ### 6.6 Bootstrap、Config、Embedded 与 Cmd
