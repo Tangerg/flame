@@ -24,8 +24,17 @@ import (
 // constClient adapts a fixed client to the per-call [utilitymodel.Resolver] the
 // maintenance services take — these tests don't exercise the runtime's
 // utility-role swap, just a stable stub model.
-func constClient(c *chatclient.Client) utilitymodel.Resolver {
-	return func(context.Context) *chatclient.Client { return c }
+func constClient(c chatclient.Client) utilitymodel.Resolver {
+	return func(context.Context) *chatclient.Client { return &c }
+}
+
+func textToolOutput(t *testing.T, output chat.ToolOutput) string {
+	t.Helper()
+	text, ok := output.Text()
+	if !ok {
+		t.Fatal("Tool output contains non-text content")
+	}
+	return text
 }
 
 func intPointer(value int) *int { return &value }
@@ -317,7 +326,7 @@ func TestCompactor_CutBoundary(t *testing.T) {
 	asst := func(text string) chat.Message { return chat.NewAssistantMessage(chat.NewTextPart(text)) }
 	user := func(text string) chat.Message { return chat.NewUserMessage(chat.NewTextPart(text)) }
 	tool := func(id, result string) chat.Message {
-		return chat.NewToolMessage(chat.ToolResult{ID: id, Name: "shell", Result: result})
+		return chat.NewToolMessage(chat.ToolResult{ID: id, Name: "shell", Output: chat.NewTextToolOutput(result)})
 	}
 
 	msgs := []chat.Message{
@@ -361,7 +370,7 @@ func TestCompactor_CutBoundaryKeepsFinalTurnWithoutLaterUser(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a1")),
 		chat.NewUserMessage(chat.NewTextPart("q2")),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c2", Name: "shell", Arguments: `{}`})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "shell", Result: "ok"}),
+		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "shell", Output: chat.NewTextToolOutput("ok")}),
 		chat.NewAssistantMessage(chat.NewTextPart("done")),
 	}
 	for _, message := range msgs {
@@ -406,7 +415,7 @@ func TestCompactor_PreservesToolPairsAcrossCutoffs(t *testing.T) {
 	result := func(ids ...string) chat.Message {
 		results := make([]chat.ToolResult, len(ids))
 		for i, id := range ids {
-			results[i] = chat.ToolResult{ID: id, Name: "shell", Result: "ok"}
+			results[i] = chat.ToolResult{ID: id, Name: "shell", Output: chat.NewTextToolOutput("ok")}
 		}
 		return chat.NewToolMessage(results...)
 	}
@@ -516,7 +525,7 @@ func TestCompactor_TokenTriggerShortHistory(t *testing.T) {
 	const sessID = "sess-short"
 
 	big := strings.Repeat("x", 50_000)
-	huge := chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Result: big})
+	huge := chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Output: chat.NewTextToolOutput(big)})
 	// 3 messages < keepRecent (6, the production default).
 	_ = store.Write(context.Background(), sessID,
 		chat.NewUserMessage(chat.NewTextPart("read the file")),
@@ -541,7 +550,7 @@ func TestCompactor_TokenTriggerShortHistory(t *testing.T) {
 	if len(after) != 3 {
 		t.Fatalf("post-trim messages = %d, want 3", len(after))
 	}
-	trimmed := after[2].Parts[0].ToolResult.Result
+	trimmed := textToolOutput(t, after[2].Parts[0].ToolResult.Output)
 	if len(trimmed) >= len(big) || !strings.Contains(trimmed, "trimmed on compaction") {
 		t.Fatalf("short-history Tool result was not trimmed: len=%d", len(trimmed))
 	}
@@ -657,7 +666,7 @@ func TestCompactor_LadderTrimsUnderBudgetSkippingLLM(t *testing.T) {
 	_ = store.Write(t.Context(), sessID,
 		chat.NewUserMessage(chat.NewTextPart("q1")),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "read", Arguments: `{}`})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Result: big}), // old + large
+		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Output: chat.NewTextToolOutput(big)}), // old + large
 		chat.NewAssistantMessage(chat.NewTextPart("a1")),
 		chat.NewUserMessage(chat.NewTextPart("q2")),
 		chat.NewAssistantMessage(chat.NewTextPart("done")), // recent
@@ -687,7 +696,7 @@ func TestCompactor_LadderTrimsUnderBudgetSkippingLLM(t *testing.T) {
 	if after[0].Role != chat.RoleUser {
 		t.Fatalf("after[0] role = %q, want user (no summary prepended)", after[0].Role)
 	}
-	trimmedResult := after[2].Parts[0].ToolResult.Result
+	trimmedResult := textToolOutput(t, after[2].Parts[0].ToolResult.Output)
 	if len(trimmedResult) >= len(big) || !strings.Contains(trimmedResult, "trimmed on compaction") {
 		t.Fatalf("the old tool result was not previewed: len %d, body %.60q", len(trimmedResult), trimmedResult)
 	}
@@ -706,7 +715,7 @@ func TestCompactorLadderWidensWhenRecentTurnAloneExceedsBudget(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a1")),
 		chat.NewUserMessage(chat.NewTextPart("q2")),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c2", Name: "read", Arguments: `{}`})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Result: big}),
+		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Output: chat.NewTextToolOutput(big)}),
 		chat.NewAssistantMessage(chat.NewTextPart("done")),
 	)
 	model := newTextStubModel("SUMMARY")
@@ -726,7 +735,7 @@ func TestCompactorLadderWidensWhenRecentTurnAloneExceedsBudget(t *testing.T) {
 		t.Fatalf("all-history deterministic trim made %d LLM call(s), want zero", model.calls)
 	}
 	after, _ := store.Read(t.Context(), sessID)
-	trimmed := after[4].Parts[0].ToolResult.Result
+	trimmed := textToolOutput(t, after[4].Parts[0].ToolResult.Output)
 	if len(trimmed) >= len(big) || !strings.Contains(trimmed, "trimmed on compaction") {
 		t.Fatalf("oversized recent Tool result was not trimmed: len=%d", len(trimmed))
 	}
@@ -752,7 +761,7 @@ func TestCompactor_LadderStillOverGoesToLLM(t *testing.T) {
 	_ = store.Write(t.Context(), sessID,
 		chat.NewUserMessage(chat.NewTextPart("q1")),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "read", Arguments: `{}`})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Result: big}),
+		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "read", Output: chat.NewTextToolOutput(big)}),
 		chat.NewAssistantMessage(chat.NewTextPart("a1")),
 		chat.NewUserMessage(chat.NewTextPart("q2")),
 		chat.NewAssistantMessage(chat.NewTextPart("done")),
@@ -787,8 +796,8 @@ func TestTrimForBudget_PreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 	bigResult := strings.Repeat("b", 5_000)
 	msgs := []chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "write", Arguments: bigArgs})), // [0] old
-		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Result: bigResult}),                           // [1] old
-		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Result: bigResult}),                            // [2] recent
+		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Output: chat.NewTextToolOutput(bigResult)}),   // [1] old
+		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Output: chat.NewTextToolOutput(bigResult)}),    // [2] recent
 		chat.NewAssistantMessage(chat.NewTextPart("x")),                                                            // [3] recent
 	}
 	c := mustNewCompactor(t, nil, nil, nil, CompactionPolicyValues{KeepRecent: intPointer(2)}) // boundary = 4-2 = 2
@@ -805,14 +814,14 @@ func TestTrimForBudget_PreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 	if !json.Valid([]byte(gotArgs)) {
 		t.Fatalf("trimmed args must stay valid JSON, got %q", gotArgs)
 	}
-	if got := trimmed[1].Parts[0].ToolResult.Result; len(got) >= len(bigResult) || !strings.Contains(got, "trimmed on compaction") {
+	if got := textToolOutput(t, trimmed[1].Parts[0].ToolResult.Output); len(got) >= len(bigResult) || !strings.Contains(got, "trimmed on compaction") {
 		t.Fatalf("old result not previewed: len %d", len(got))
 	}
-	if got := trimmed[2].Parts[0].ToolResult.Result; got != bigResult {
+	if got := textToolOutput(t, trimmed[2].Parts[0].ToolResult.Output); got != bigResult {
 		t.Fatal("recent result must be left full")
 	}
 	// The source slice's parts must be untouched (copy-on-write).
-	if msgs[0].Parts[0].ToolCall.Arguments != bigArgs || msgs[1].Parts[0].ToolResult.Result != bigResult {
+	if msgs[0].Parts[0].ToolCall.Arguments != bigArgs || textToolOutput(t, msgs[1].Parts[0].ToolResult.Output) != bigResult {
 		t.Fatal("trimForBudget mutated its input's shared parts")
 	}
 }

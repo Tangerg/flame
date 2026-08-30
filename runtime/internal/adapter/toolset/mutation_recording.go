@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -25,12 +26,12 @@ func WithMutationRecorder(ctx context.Context, record func([]string)) context.Co
 // an execution error never records; a successful mutation reports the paths
 // declared by the tool while the invocation context is still alive.
 func withMutationRecording(inner toolcontract.Tool) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
-		out, err := inner.Call(ctx, arguments)
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		out, err := inner.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
-		paths, pathErr := mutationPaths(inner, arguments)
+		paths, pathErr := mutationPaths(inner, invocation)
 		if pathErr != nil || len(paths) == 0 {
 			return out, nil
 		}

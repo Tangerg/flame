@@ -26,7 +26,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 		!isInteractionWaitingBoundary(root.Status()) {
 		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
 	}
-	snapshots := make(map[agent.ProcessID]agent.Snapshot, len(checkpoint.tree.ProcessSnapshots()))
+	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
 		snapshots[snapshot.ProcessID()] = snapshot
 	}
@@ -63,7 +63,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 
 func restoredWaitingMembers(
 	continuation runs.WaitingContinuation,
-	snapshots map[agent.ProcessID]agent.Snapshot,
+	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
 	rootID agent.ProcessID,
 ) (map[agent.ProcessID]runs.WaitingMember, error) {
 	members := make(map[agent.ProcessID]runs.WaitingMember, len(continuation.Members))
@@ -110,7 +110,7 @@ func restoredWaitingMembers(
 }
 
 func (i *interactionSession) restoreDelegateCalls(
-	snapshots map[agent.ProcessID]agent.Snapshot,
+	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
 	members map[agent.ProcessID]runs.WaitingMember,
 ) (map[delegateCallIdentity]*managedDelegateCall, map[agent.ProcessID]*managedDelegateCall, error) {
 	i.state.mu.Lock()
@@ -156,10 +156,10 @@ func (i *interactionSession) restoreDelegateCalls(
 
 func restoreManagedDelegateCall(
 	deployments *interactionDeploymentSet,
-	snapshots map[agent.ProcessID]agent.Snapshot,
+	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
 	members map[agent.ProcessID]runs.WaitingMember,
 	parentID agent.ProcessID,
-	parentSnapshot agent.Snapshot,
+	parentSnapshot agent.ProcessSnapshot,
 	child interaction.ActiveDelegateChild,
 ) (*managedDelegateCall, bool, error) {
 	childSnapshot, exists := snapshots[child.ProcessID()]

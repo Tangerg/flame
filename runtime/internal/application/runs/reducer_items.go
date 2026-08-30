@@ -534,7 +534,7 @@ func conversationToolResult(ref *openTool, finished ToolCallFinished) corechat.T
 		result = fmt.Sprintf("error: tool %q failed: %s", ref.name, finished.Failure.Detail)
 	}
 	return corechat.ToolResult{
-		ID: ref.sourceCallID, Name: ref.name, Result: result, IsError: isError,
+		ID: ref.sourceCallID, Name: ref.name, Output: corechat.NewTextToolOutput(result), IsError: isError,
 	}
 }
 

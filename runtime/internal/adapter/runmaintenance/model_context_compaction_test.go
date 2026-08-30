@@ -764,8 +764,8 @@ func TestDurableModelContextCompactionIgnoresProjectionMetadataDrift(t *testing.
 func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-grouping"
-	first := chat.ToolResult{ID: "call_1", Name: "shell", Result: "one"}
-	second := chat.ToolResult{ID: "call_2", Name: "shell", Result: "two"}
+	first := chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("one")}
+	second := chat.ToolResult{ID: "call_2", Name: "shell", Output: chat.NewTextToolOutput("two")}
 	durable := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("run both")),
 		chat.NewAssistantMessage(
@@ -792,16 +792,64 @@ func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *te
 	}
 }
 
+func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(t *testing.T) {
+	store := newCompactionTestStore()
+	const sessionID = "session:tool-json-order"
+	durable := chat.NewToolMessage(chat.ToolResult{
+		ID: "call_1", Name: "get_goal",
+		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"active","usage":{"runs":1,"steps":2}}}`)},
+	})
+	if err := store.Write(t.Context(), sessionID, durable); err != nil {
+		t.Fatal(err)
+	}
+	candidate := []chat.Message{chat.NewToolMessage(chat.ToolResult{
+		ID: "call_1", Name: "get_goal",
+		Output: chat.ToolOutput{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
+	})}
+	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	request := durableContextRequest(t, sessionID, candidate, 0, nil)
+
+	result, err := compactor.CompactModelContext(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Changed() || !reflect.DeepEqual(result.Messages(), candidate) {
+		t.Fatalf("equivalent structured result = changed:%t messages:%#v", result.Changed(), result.Messages())
+	}
+}
+
 func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-payload-drift"
-	stored := chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Result: "stored"})
+	stored := chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("stored")})
 	if err := store.Write(t.Context(), sessionID, stored); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []chat.Message{
-		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Result: "candidate"}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("candidate")}),
 	}
+	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	request := durableContextRequest(t, sessionID, candidate, 0, nil)
+
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
+		t.Fatalf("error = %v, want ErrModelContextDiverged", err)
+	}
+}
+
+func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testing.T) {
+	store := newCompactionTestStore()
+	const sessionID = "session:tool-json-drift"
+	stored := chat.NewToolMessage(chat.ToolResult{
+		ID: "call_1", Name: "get_goal",
+		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"active"}}`)},
+	})
+	if err := store.Write(t.Context(), sessionID, stored); err != nil {
+		t.Fatal(err)
+	}
+	candidate := []chat.Message{chat.NewToolMessage(chat.ToolResult{
+		ID: "call_1", Name: "get_goal",
+		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"paused"}}`)},
+	})}
 	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 

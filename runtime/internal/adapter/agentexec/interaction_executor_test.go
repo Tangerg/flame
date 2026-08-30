@@ -138,7 +138,7 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (*chatclient.Client, error) {
 			resolved = append(resolved, selection)
-			return client, nil
+			return &client, nil
 		}),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -157,8 +157,8 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		t.Fatal("Interaction executor retained duplicate raw identity configuration")
 	}
 	got, err := executor.resolveClient(t.Context(), testDefaultSelection())
-	if err != nil || got != client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
-		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got, err, resolved, client, testDefaultSelection())
+	if err != nil || got != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
+		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got, err, resolved, &client, testDefaultSelection())
 	}
 	if _, err := executor.resolveClient(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
 		t.Fatalf("second exact-default resolution = (%v, %#v), want a fresh resolver call", err, resolved)
@@ -177,9 +177,9 @@ func (i interactionChatResolverFunc) ResolveChat(
 	return i(ctx, selection)
 }
 
-func staticInteractionChatResolver(client *chatclient.Client) InteractionChatResolver {
+func staticInteractionChatResolver(client chatclient.Client) InteractionChatResolver {
 	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (*chatclient.Client, error) {
-		return client, nil
+		return &client, nil
 	})
 }
 

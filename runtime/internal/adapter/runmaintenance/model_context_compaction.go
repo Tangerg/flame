@@ -2,6 +2,7 @@ package runmaintenance
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"reflect"
@@ -257,7 +258,7 @@ func semanticMessagePrefix(candidate, durable []chat.Message) (int, bool, string
 		for partIndex := range left.Parts {
 			leftPart := left.Parts[partIndex]
 			rightPart := right.Parts[partIndex]
-			if !reflect.DeepEqual(leftPart, rightPart) {
+			if !semanticPartEqual(leftPart, rightPart) {
 				return 0, false, fmt.Sprintf(
 					"message[%d].part[%d] kind=%s/%s text_equal=%t signature_equal=%t media_equal=%t tool_call_equal=%t tool_result_equal=%t",
 					index,
@@ -268,7 +269,7 @@ func semanticMessagePrefix(candidate, durable []chat.Message) (int, bool, string
 					slices.Equal(leftPart.Signature, rightPart.Signature),
 					reflect.DeepEqual(leftPart.Media, rightPart.Media),
 					reflect.DeepEqual(leftPart.ToolCall, rightPart.ToolCall),
-					reflect.DeepEqual(leftPart.ToolResult, rightPart.ToolResult),
+					semanticToolResultEqual(leftPart.ToolResult, rightPart.ToolResult),
 				), nil
 			}
 		}
@@ -277,6 +278,47 @@ func semanticMessagePrefix(candidate, durable []chat.Message) (int, bool, string
 		return 0, true, "none", nil
 	}
 	return candidateMessages[len(durableMessages)-1].sourceEnd, true, "none", nil
+}
+
+func semanticPartEqual(left, right chat.Part) bool {
+	if left.Kind != chat.PartToolResult || right.Kind != chat.PartToolResult {
+		return reflect.DeepEqual(left, right)
+	}
+	if !semanticToolResultEqual(left.ToolResult, right.ToolResult) {
+		return false
+	}
+	left.ToolResult = nil
+	right.ToolResult = nil
+	return reflect.DeepEqual(left, right)
+}
+
+func semanticToolResultEqual(left, right *chat.ToolResult) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	if left.ID != right.ID || left.Name != right.Name || left.IsError != right.IsError ||
+		!reflect.DeepEqual(left.Output.Content, right.Output.Content) {
+		return false
+	}
+	return semanticJSONEqual(left.Output.Details, right.Output.Details)
+}
+
+func semanticJSONEqual(left, right jsontext.Value) bool {
+	if slices.Equal(left, right) {
+		return true
+	}
+	if len(left) == 0 || len(right) == 0 {
+		return false
+	}
+	left = left.Clone()
+	right = right.Clone()
+	if err := left.Format(jsontext.ReorderRawObjects(true)); err != nil {
+		return false
+	}
+	if err := right.Format(jsontext.ReorderRawObjects(true)); err != nil {
+		return false
+	}
+	return slices.Equal(left, right)
 }
 
 func normalizedSemanticMessages(messages []chat.Message, owner string) ([]semanticMessage, error) {

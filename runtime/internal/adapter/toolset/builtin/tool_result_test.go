@@ -51,7 +51,7 @@ func TestNewUsesCanonicalName(t *testing.T) {
 func TestRead_ReturnsStoredBody(t *testing.T) {
 	store := &fakeStore{body: "ABCDEFGHIJ", found: true}
 	tool, _ := NewToolResultReader(store)
-	out, err := tool.Call(sessionCtx("sess-1"), `{"result_id":"BLOB234"}`)
+	out, err := callTextTool(sessionCtx("sess-1"), tool, `{"result_id":"BLOB234"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRead_ReturnsStoredBody(t *testing.T) {
 func TestRead_PagesWithOffsetAndLimit(t *testing.T) {
 	store := &fakeStore{body: "ABCDEFGHIJ", found: true}
 	tool, _ := NewToolResultReader(store)
-	out, err := tool.Call(sessionCtx("s"), `{"result_id":"ABCDE234","offset_bytes":2,"limit_bytes":3}`)
+	out, err := callTextTool(sessionCtx("s"), tool, `{"result_id":"ABCDE234","offset_bytes":2,"limit_bytes":3}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestRead_PagesWithOffsetAndLimit(t *testing.T) {
 
 func TestRead_UnknownIDIsRecoverable(t *testing.T) {
 	tool, _ := NewToolResultReader(&fakeStore{found: false})
-	out, err := tool.Call(sessionCtx("s"), `{"result_id":"NOPE234"}`)
+	out, err := callTextTool(sessionCtx("s"), tool, `{"result_id":"NOPE234"}`)
 	if err != nil {
 		t.Fatalf("an unknown id must not error: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestRead_UnknownIDIsRecoverable(t *testing.T) {
 
 func TestRead_EmptyResultIDRejected(t *testing.T) {
 	tool, _ := NewToolResultReader(&fakeStore{})
-	if _, err := tool.Call(sessionCtx("s"), `{"result_id":""}`); err == nil {
+	if _, err := callTextTool(sessionCtx("s"), tool, `{"result_id":""}`); err == nil {
 		t.Fatal("expected an error for an empty result_id")
 	}
 }
@@ -100,14 +100,14 @@ func TestRead_EmptyResultIDRejected(t *testing.T) {
 func TestRead_InvalidIDRejectedBeforeStore(t *testing.T) {
 	store := new(fakeStore)
 	tool, _ := NewToolResultReader(store)
-	if _, err := tool.Call(sessionCtx("s"), `{"result_id":"not-valid"}`); err == nil || store.lastID != "" {
+	if _, err := callTextTool(sessionCtx("s"), tool, `{"result_id":"not-valid"}`); err == nil || store.lastID != "" {
 		t.Fatalf("invalid result_id error = %v, store id = %q", err, store.lastID)
 	}
 }
 
 func TestRead_NoSession(t *testing.T) {
 	tool, _ := NewToolResultReader(&fakeStore{})
-	out, err := tool.Call(context.Background(), `{"result_id":"ABCDE234"}`)
+	out, err := callTextTool(context.Background(), tool, `{"result_id":"ABCDE234"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestRead_RejectsRemovedAndOversizedPagingArguments(t *testing.T) {
 		`{"result_id":"ABCDE234","limit_bytes":0}`,
 		`{"result_id":"ABCDE234","limit_bytes":20001}`,
 	} {
-		if _, err := tool.Call(sessionCtx("s"), arguments); err == nil {
+		if _, err := callTextTool(sessionCtx("s"), tool, arguments); err == nil {
 			t.Fatalf("read_tool_result accepted invalid arguments: %s", arguments)
 		}
 	}

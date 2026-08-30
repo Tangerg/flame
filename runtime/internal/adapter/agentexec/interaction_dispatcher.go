@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"iter"
@@ -276,6 +277,7 @@ func (o *observedInteractionModel) complete(
 
 type observedInteractionTool struct {
 	inner         toolcontract.Tool
+	binding       toolcontract.Binding
 	session       *interactionSession
 	interpreter   InteractionToolInterpreter
 	presenter     InteractionToolPresenter
@@ -292,37 +294,44 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
-func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string) (string, error) {
+func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (corechat.ToolOutput, error) {
+	rawArguments := string(bound.Arguments())
 	invocation, ok := interaction.ToolInvocationFromContext(ctx)
 	if !ok {
-		return "", errors.New("agentexec: Tool call has no Interaction attribution")
+		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no Interaction attribution")
 	}
 	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
 	if err != nil {
-		return "", err
+		return corechat.ToolOutput{}, err
 	}
 	call := invocation.ToolCall()
 	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
-		return "", errors.New("agentexec: Tool invocation differs from its bound executable")
+		return corechat.ToolOutput{}, errors.New("agentexec: Tool invocation differs from its bound executable")
 	}
 	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
-		return "", fmt.Errorf("agentexec: Tool invocation: %w", err)
+		return corechat.ToolOutput{}, fmt.Errorf("agentexec: Tool invocation: %w", err)
 	}
 	arguments, err := tool.ParseArguments(rawArguments)
 	if err != nil {
-		return "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
+		return corechat.ToolOutput{}, fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
 	}
 	callIdentity, err := toolInvocationID(invocation)
 	if err != nil {
-		return "", err
+		return corechat.ToolOutput{}, err
 	}
 	callID := callIdentity.String()
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
 	arguments, denied, denialReason, err := o.prepare(ctx, callID, call.Name, arguments)
 	if err != nil {
-		return "", err
+		return corechat.ToolOutput{}, err
 	}
 	rawArguments = arguments.Canonical()
+	innerInvocation, err := o.binding.Prepare(corechat.ToolCall{
+		ID: call.ID, Name: call.Name, Arguments: rawArguments,
+	})
+	if err != nil {
+		return corechat.ToolOutput{}, fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
+	}
 	member := o.session.executorMember(invocation.Relation())
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: invocation.ModelCallSequence(),
@@ -333,16 +342,17 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 	if err := o.session.commitFact(ctx, member, start); err != nil {
 		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit Tool call start: %w", err))
 		attempt.recordProjectionFailure(failure)
-		return "", failure
+		return corechat.ToolOutput{}, failure
 	}
 	o.session.accounting.recordToolCall()
 	if denied {
 		if denialReason == "" {
 			denialReason = "tool call denied by policy"
 		}
-		modelResult, _ := invocation.ModelResult(denialReason, nil)
+		denialOutput := corechat.NewTextToolOutput(denialReason)
+		modelResult, _ := invocation.ModelResult(denialOutput, nil)
 		end := o.finishedFact(
-			callID, arguments, denialReason, &modelResult, nil, nil, errors.New(denialReason),
+			callID, arguments, denialOutput, &modelResult, nil, nil, errors.New(denialReason),
 		)
 		end.Failure = &tool.Failure{
 			Kind: tool.FailureDenied,
@@ -350,24 +360,24 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 		if err := o.session.commitFact(ctx, member, end); err != nil {
 			failure := interaction.HostFailure(fmt.Errorf("agentexec: commit denied Tool result: %w", err))
 			attempt.recordProjectionFailure(failure)
-			return "", failure
+			return corechat.ToolOutput{}, failure
 		}
-		o.session.toolOutcomes.record(call.Name, arguments, denialReason)
-		return denialReason, nil
+		o.session.toolOutcomes.record(call.Name, arguments, denialOutput, errors.New(denialReason))
+		return denialOutput, nil
 	}
 	ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 		return interaction.AdvertiseTools(ctx, names...)
 	})
 	if err := attempt.beginExternalCall(); err != nil {
-		return "", err
+		return corechat.ToolOutput{}, err
 	}
 	var mutatedPaths []string
 	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
 		mutatedPaths = append(mutatedPaths, paths...)
 	})
-	output, callErr := o.inner.Call(ctx, rawArguments)
+	output, callErr := o.binding.Call(ctx, innerInvocation)
 	if attemptErr := attempt.indeterminateFailure(); attemptErr != nil {
-		return "", attemptErr
+		return corechat.ToolOutput{}, attemptErr
 	}
 	if errors.Is(context.Cause(ctx), errInteractionRunCanceled) &&
 		(errors.Is(callErr, context.Canceled) || errors.Is(callErr, context.DeadlineExceeded)) {
@@ -384,7 +394,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 		// call. The started fact remains open so the Run barrier can carry it as
 		// a drained Tool; the restored invocation will commit the sole final fact
 		// after consuming the semantic response Signal.
-		return "", callErr
+		return corechat.ToolOutput{}, callErr
 	}
 	modelOutput, offload := o.offload(ctx, call.Name, output, callErr)
 	modelResult, modelResultPresent := invocation.ModelResult(modelOutput, callErr)
@@ -410,13 +420,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 	commitErr := o.session.commitFact(projectionCtx, member, end)
 	if commitErr != nil {
 		attempt.recordProjectionFailure(commitErr)
-		return "", fmt.Errorf("agentexec: commit Tool result: %w", commitErr)
+		return corechat.ToolOutput{}, fmt.Errorf("agentexec: commit Tool result: %w", commitErr)
 	}
-	outcomeForLoop := modelOutput
-	if callErr != nil {
-		outcomeForLoop = "error:" + callErr.Error()
-	}
-	o.session.toolOutcomes.record(call.Name, arguments, outcomeForLoop)
+	o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
 	if o.interpreter != nil {
 		projected, projectionErr := o.interpreter.ProjectOutcome(
 			projectionCtx, o.start.SessionID, call.Name, callErr == nil,
@@ -436,7 +442,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, rawArguments string)
 		hookCtx, hookCancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 		if hookErr := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
 			SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
-			ToolName: call.Name, Arguments: arguments, Result: modelOutput, CallError: callErr,
+			ToolName: call.Name, Arguments: arguments, Result: hookToolOutput(modelOutput), CallError: callErr,
 		}); hookErr != nil {
 			trace.SpanFromContext(hookCtx).RecordError(
 				fmt.Errorf("agentexec: run post-Tool hook: %w", hookErr),
@@ -663,7 +669,7 @@ func (o *observedInteractionTool) activity(name string, arguments tool.Arguments
 func (o *observedInteractionTool) finishedFact(
 	callID string,
 	arguments tool.Arguments,
-	output string,
+	output corechat.ToolOutput,
 	modelResult *corechat.ToolResult,
 	offload *toolresult.Ref,
 	mutatedPaths []string,
@@ -676,11 +682,7 @@ func (o *observedInteractionTool) finishedFact(
 		exactModelResult = &value
 	}
 	outputText := ""
-	if output != "" {
-		parsed, err := tool.ParseResult([]byte(output))
-		if err != nil {
-			parsed = tool.StringResult(output)
-		}
+	if parsed, present := runtimeToolResult(output); present {
 		if o.presenter != nil {
 			parsed, outputText = o.presenter.Present(o.Definition().Name, arguments, parsed)
 		}
@@ -708,20 +710,65 @@ func (o *observedInteractionTool) finishedFact(
 func (o *observedInteractionTool) offload(
 	ctx context.Context,
 	toolName string,
-	output string,
+	output corechat.ToolOutput,
 	callErr error,
-) (string, *toolresult.Ref) {
+) (corechat.ToolOutput, *toolresult.Ref) {
 	if callErr != nil {
 		return output, nil
 	}
-	return evictToolResult(
+	text, textual := output.Text()
+	if !textual {
+		return output, nil
+	}
+	preview, reference := evictToolResult(
 		ctx,
 		o.offloader,
 		o.offloadPolicy,
 		o.start.SessionID,
 		toolName,
-		output,
+		text,
 	)
+	if reference == nil {
+		return output, nil
+	}
+	return corechat.NewTextToolOutput(preview), reference
+}
+
+func runtimeToolResult(output corechat.ToolOutput) (tool.Result, bool) {
+	if len(output.Content) == 0 && len(output.Details) == 0 {
+		return tool.Result{}, false
+	}
+	if len(output.Details) > 0 {
+		if parsed, err := tool.ParseResult(output.Details); err == nil {
+			return parsed, true
+		}
+	}
+	if text, textual := output.Text(); textual {
+		if parsed, err := tool.ParseResult([]byte(text)); err == nil {
+			return parsed, true
+		}
+		return tool.StringResult(text), true
+	}
+	encoded, err := json.Marshal(output)
+	if err != nil {
+		return tool.StringResult("[invalid non-text tool output]"), true
+	}
+	parsed, err := tool.ParseResult(encoded)
+	if err != nil {
+		return tool.StringResult("[non-text tool output]"), true
+	}
+	return parsed, true
+}
+
+func hookToolOutput(output corechat.ToolOutput) string {
+	if text, textual := output.Text(); textual {
+		return text
+	}
+	encoded, err := json.Marshal(output)
+	if err != nil {
+		return "[invalid non-text tool output]"
+	}
+	return string(encoded)
 }
 
 func normalizeMutationPaths(paths []string) []string {
@@ -790,21 +837,30 @@ func wrapInteractionTools(
 	config InteractionExecutorConfig,
 	offloadPolicy toolResultOffloadPolicy,
 	start runs.RootExecutionStart,
-) (visible []toolcontract.Tool, deferred []toolcontract.Tool) {
-	wrap := func(values []toolcontract.Tool) []toolcontract.Tool {
+) (visible []toolcontract.Tool, deferred []toolcontract.Tool, err error) {
+	wrap := func(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		wrapped := make([]toolcontract.Tool, len(values))
 		for index, executable := range values {
+			binding, bindErr := toolcontract.Bind(executable)
+			if bindErr != nil {
+				return nil, fmt.Errorf("agentexec: bind Interaction Tool %q: %w", executable.Definition().Name, bindErr)
+			}
 			wrapped[index] = &observedInteractionTool{
-				inner: executable, session: session, interpreter: config.ToolInterpreter,
+				inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
 		}
-		return wrapped
+		return wrapped, nil
 	}
-	return wrap(manifest.Visible), wrap(manifest.Deferred)
+	visible, err = wrap(manifest.Visible)
+	if err != nil {
+		return nil, nil, err
+	}
+	deferred, err = wrap(manifest.Deferred)
+	return visible, deferred, err
 }
 
 func newObservedInteractionClient(
@@ -816,7 +872,11 @@ func newObservedInteractionClient(
 	if inner.SupportsInputTokenCounting() {
 		model = &observedInteractionCountingModel{observedInteractionModel: observed}
 	}
-	return chatclient.New(model, chatclient.Config{Streamer: observed})
+	client, err := chatclient.New(model, chatclient.Config{Streamer: observed})
+	if err != nil {
+		return nil, err
+	}
+	return &client, nil
 }
 
 func validateToolManifest(manifest toolset.Manifest) error {

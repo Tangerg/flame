@@ -17,11 +17,11 @@ type mcpToolStub struct {
 }
 
 func (m mcpToolStub) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: m.name}
+	return chat.ToolDefinition{Name: m.name, InputSchema: []byte(`{"type":"object"}`)}
 }
 
-func (mcpToolStub) Call(context.Context, string) (string, error) {
-	return "", nil
+func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
+	return chat.ToolOutput{}, nil
 }
 
 func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.remote }

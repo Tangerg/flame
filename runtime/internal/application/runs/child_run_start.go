@@ -22,7 +22,7 @@ type ChildRunStartReservation struct {
 	SegmentID       string
 	SpawnedByItemID string
 	RootRunID       string
-	StartedAt       time.Time
+	ReservedAt      time.Time
 }
 
 // Validate proves that the reservation binds one child executor identity to
@@ -47,8 +47,8 @@ func (c ChildRunStartReservation) Validate() error {
 		c.Binding.RunID == c.RootRunID {
 		return errors.New("runs: child Run start reservation has contradictory Run identity")
 	}
-	if c.StartedAt.IsZero() {
-		return errors.New("runs: child Run start reservation has no executor start time")
+	if c.ReservedAt.IsZero() {
+		return errors.New("runs: child Run start reservation has no reservation time")
 	}
 	return nil
 }
@@ -89,12 +89,11 @@ type ChildRunStartCommitter interface {
 
 // ChildRunReservationRequest asks the Run pump to durably reserve one child
 // Run identity before the corresponding executor child initializes. The event
-// envelope carries the opaque child/parent/call causality; StartedAt is the
-// exact stable value supplied by the executor admission contract.
+// envelope carries the opaque child/parent/call causality. The Application
+// assigns the reservation time; an executor start time does not exist yet.
 type ChildRunReservationRequest struct {
 	executorPayloadBase
-	StartedAt time.Time
-	exchange  *executorRequest[ChildRunBinding]
+	exchange *executorRequest[ChildRunBinding]
 }
 
 // ChildRunReservationReceipt is the executor's read-only side of one
@@ -104,20 +103,15 @@ type ChildRunReservationReceipt struct {
 }
 
 // NewChildRunReservationRequest creates one single-use reservation handshake.
-func NewChildRunReservationRequest(
-	startedAt time.Time,
-) (ChildRunReservationRequest, ChildRunReservationReceipt) {
+func NewChildRunReservationRequest() (ChildRunReservationRequest, ChildRunReservationReceipt) {
 	exchange := newExecutorRequest[ChildRunBinding]()
-	return ChildRunReservationRequest{StartedAt: startedAt, exchange: exchange},
+	return ChildRunReservationRequest{exchange: exchange},
 		ChildRunReservationReceipt{exchange: exchange}
 }
 
 func (c ChildRunReservationRequest) validate() error {
 	if c.exchange == nil {
 		return errors.New("runs: child Run reservation request has no receipt")
-	}
-	if c.StartedAt.IsZero() {
-		return errors.New("runs: child Run reservation request has no executor start time")
 	}
 	return nil
 }
@@ -175,9 +169,10 @@ func (c ChildRunStartOutcome) String() string {
 // child Run atomically; aborted leaves no public Run.
 type ChildRunStartOutcomeRequest struct {
 	executorPayloadBase
-	Binding  ChildRunBinding
-	Outcome  ChildRunStartOutcome
-	exchange *executorRequest[struct{}]
+	Binding   ChildRunBinding
+	Outcome   ChildRunStartOutcome
+	StartedAt time.Time
+	exchange  *executorRequest[struct{}]
 }
 
 // ChildRunStartOutcomeReceipt is the executor's read-only side of the
@@ -190,9 +185,12 @@ type ChildRunStartOutcomeReceipt struct {
 func NewChildRunStartOutcomeRequest(
 	binding ChildRunBinding,
 	outcome ChildRunStartOutcome,
+	startedAt time.Time,
 ) (ChildRunStartOutcomeRequest, ChildRunStartOutcomeReceipt) {
 	exchange := newExecutorRequest[struct{}]()
-	return ChildRunStartOutcomeRequest{Binding: binding, Outcome: outcome, exchange: exchange},
+	return ChildRunStartOutcomeRequest{
+			Binding: binding, Outcome: outcome, StartedAt: startedAt, exchange: exchange,
+		},
 		ChildRunStartOutcomeReceipt{exchange: exchange}
 }
 
@@ -205,6 +203,13 @@ func (c ChildRunStartOutcomeRequest) validate() error {
 	}
 	if !c.Outcome.Valid() {
 		return errors.New("runs: child Run start outcome is invalid")
+	}
+	if c.Outcome == ChildRunStarted {
+		if c.StartedAt.IsZero() || c.StartedAt.Location() != time.UTC {
+			return errors.New("runs: started child Run requires an authoritative UTC start time")
+		}
+	} else if !c.StartedAt.IsZero() {
+		return errors.New("runs: aborted child Run cannot have a start time")
 	}
 	return nil
 }

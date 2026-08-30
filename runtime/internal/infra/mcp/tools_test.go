@@ -11,11 +11,12 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type concurrencyKeyer interface {
-	ConcurrencyKey(arguments string) (key string, concurrent bool)
+	ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool)
 }
 
 func TestInputSchemaRejectsMissingAndInvalidValues(t *testing.T) {
@@ -75,7 +76,17 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 		if !ok {
 			t.Fatalf("tool %q does not expose concurrency policy", tool.Definition().Name)
 		}
-		key, concurrent := keyer.ConcurrencyKey(`{"id":"one"}`)
+		binding, err := toolcontract.Bind(tool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		invocation, err := binding.Prepare(chat.ToolCall{
+			ID: "test_call", Name: binding.Definition().Name, Arguments: `{"id":"one"}`,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		key, concurrent := keyer.ConcurrencyKey(invocation)
 		if key != "" {
 			t.Fatalf("tool %q concurrency key = %q, want empty", tool.Definition().Name, key)
 		}

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
@@ -33,17 +34,17 @@ var protectedDirs = []string{".git"}
 // Shell/git capabilities remain the explicit route for operations outside the
 // workspace.
 func withPathGuard(inner toolcontract.Tool, cwd string) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
-		paths, err := mutationPaths(inner, arguments)
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return "", fmt.Errorf("inspect mutation paths: %w", err)
+			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths: %w", err)
 		}
 		for _, path := range paths {
 			if refusal, ok := guardMutationPath(cwd, path); !ok {
-				return refusal, nil
+				return chat.NewTextToolOutput(refusal), nil
 			}
 		}
-		return inner.Call(ctx, arguments)
+		return inner.Call(ctx, invocation)
 	})
 }
 

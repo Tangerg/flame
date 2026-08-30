@@ -62,11 +62,16 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
 	finishes := payloadsOf[runs.ToolCallFinished](events)
+	modelResultText := ""
+	modelResultTextual := false
+	if len(finishes) == 1 && finishes[0].ModelResult != nil {
+		modelResultText, modelResultTextual = finishes[0].ModelResult.Output.Text()
+	}
 	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != "provider_call" ||
 		starts[0].Activity != "Echoing value" || starts[0].SafetyClass != domaintool.SafetyClassSafe ||
 		finishes[0].Result == nil || finishes[0].ModelResult == nil ||
 		finishes[0].ModelResult.ID != "provider_call" || finishes[0].ModelResult.Name != "echo" ||
-		finishes[0].ModelResult.Result != "hello" || finishes[0].Failure != nil {
+		!modelResultTextual || modelResultText != "hello" || finishes[0].Failure != nil {
 		t.Fatalf("Tool lifecycle = starts %#v; finishes %#v", starts, finishes)
 	}
 	if hooks.before != 1 || hooks.after != 1 {
@@ -1223,7 +1228,9 @@ func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaint
 
 type concurrentInteractionTool struct{ toolcontract.Tool }
 
-func (concurrentInteractionTool) ConcurrencyKey(string) (string, bool) { return "", true }
+func (concurrentInteractionTool) ConcurrencyKey(toolcontract.Invocation) (string, bool) {
+	return "", true
+}
 
 type allowInteractionTools struct{}
 

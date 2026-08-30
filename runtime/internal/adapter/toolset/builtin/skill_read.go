@@ -41,11 +41,14 @@ func BuildReaders(cwd, userDir string, recorder SkillUsageRecorder) ([]toolcontr
 			return recordingSource{ResourceSource: user, recorder: recorder}
 		}
 	}
-	source := promptsource.MergeSkillSource(promptsource.ProjectSkillDir(cwd), userDir, decorateUser)
+	source, err := promptsource.MergeSkillSource(promptsource.ProjectSkillDir(cwd), userDir, decorateUser)
+	if err != nil {
+		return nil, fmt.Errorf("skill: build source: %w", err)
+	}
 	if source == nil {
 		return nil, nil
 	}
-	tools, err := skillstool.NewTools(source)
+	tools, err := skillstool.NewTools(source, skillstool.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("skill: build tools: %w", err)
 	}

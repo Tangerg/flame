@@ -30,7 +30,7 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text, err := Complete(t.Context(), client, Prompt{
+	text, err := Complete(t.Context(), &client, Prompt{
 		SystemPrompt: "system instructions", UserPrompt: "input",
 		MaxInputBytes: 1024, MaxOutputTokens: 123,
 	})
@@ -72,7 +72,7 @@ func TestCompleteRejectsInvalidResourceEnvelopeBeforeCallingModel(t *testing.T) 
 		{MaxInputBytes: 1},
 		{SystemPrompt: "system", UserPrompt: "input", MaxInputBytes: 5, MaxOutputTokens: 1},
 	} {
-		if _, err := Complete(t.Context(), client, prompt); err == nil {
+		if _, err := Complete(t.Context(), &client, prompt); err == nil {
 			t.Fatalf("Complete(%+v) succeeded, want invalid resource envelope", prompt)
 		}
 	}

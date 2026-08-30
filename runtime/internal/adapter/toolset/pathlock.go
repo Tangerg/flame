@@ -102,7 +102,7 @@ type pathLocked struct {
 // concurrentTool is the framework-neutral structural capability understood by
 // any execution strategy that supports keyed Tool overlap.
 type concurrentTool interface {
-	ConcurrencyKey(arguments string) (key string, concurrent bool)
+	ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool)
 }
 
 func (p *pathLocked) Definition() chat.ToolDefinition { return p.inner.Definition() }
@@ -113,22 +113,22 @@ func (p *pathLocked) Definition() chat.ToolDefinition { return p.inner.Definitio
 // makes it win over the inner tool's.
 func (p *pathLocked) Unwrap() toolcontract.Tool { return p.inner }
 
-func (p *pathLocked) Call(ctx context.Context, arguments string) (string, error) {
-	paths, err := resolvedMutationPaths(p.inner, arguments, p.cwd)
+func (p *pathLocked) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	paths, err := resolvedMutationPaths(p.inner, invocation, p.cwd)
 	if err != nil {
-		return "", err
+		return chat.ToolOutput{}, err
 	}
 	for _, path := range paths {
 		release, err := p.locker.acquire(ctx, path)
 		if err != nil {
-			return "", err
+			return chat.ToolOutput{}, err
 		}
 		defer release()
 	}
-	return p.inner.Call(ctx, arguments)
+	return p.inner.Call(ctx, invocation)
 }
 
-func (p *pathLocked) ConcurrencyKey(arguments string) (key string, concurrent bool) {
+func (p *pathLocked) ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool) {
 	// Read the declaration through the wrapping chain: the tool underneath is
 	// itself decorated, and a one-level look would silently make every guarded
 	// file tool exclusive.
@@ -136,11 +136,11 @@ func (p *pathLocked) ConcurrencyKey(arguments string) (key string, concurrent bo
 	if err != nil || !ok {
 		return "", false
 	}
-	key, concurrent = capability.ConcurrencyKey(arguments)
+	key, concurrent = capability.ConcurrencyKey(invocation)
 	if !concurrent {
 		return "", false
 	}
-	paths, err := resolvedMutationPaths(p.inner, arguments, p.cwd)
+	paths, err := resolvedMutationPaths(p.inner, invocation, p.cwd)
 	if err != nil {
 		return "", false
 	}

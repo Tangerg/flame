@@ -88,7 +88,7 @@ type childStartFixtureResult struct {
 
 func newChildStartFixture(startedAt time.Time) (childStartFixture, childStartReceipt) {
 	result := make(chan childStartFixtureResult, 1)
-	return childStartFixture{StartedAt: startedAt, result: result}, childStartReceipt{result: result}
+	return childStartFixture{StartedAt: startedAt.Round(0).UTC(), result: result}, childStartReceipt{result: result}
 }
 
 func (c childStartFixture) complete(binding ChildRunBinding, err error) {
@@ -110,14 +110,14 @@ func yieldChildStart(
 	member ExecutorMember,
 	fixture childStartFixture,
 ) bool {
-	reservation, reservationReceipt := NewChildRunReservationRequest(fixture.StartedAt)
+	reservation, reservationReceipt := NewChildRunReservationRequest()
 	if !yield(ExecutorEvent{Member: member, Payload: reservation}) {
 		fixture.complete(ChildRunBinding{}, ctx.Err())
 		return false
 	}
 	binding, err := reservationReceipt.Await(ctx)
 	if err == nil {
-		outcome, outcomeReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted)
+		outcome, outcomeReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, fixture.StartedAt)
 		if !yield(ExecutorEvent{Member: member, Payload: outcome}) {
 			fixture.complete(ChildRunBinding{}, ctx.Err())
 			return false
@@ -152,6 +152,7 @@ type acknowledgedNativeChildExecutor struct {
 	childMember        ExecutorMember
 	reservation        ChildRunReservationRequest
 	reservationReceipt ChildRunReservationReceipt
+	startedAt          time.Time
 }
 
 func (a *acknowledgedNativeChildExecutor) Observe(
@@ -174,13 +175,13 @@ func (a *acknowledgedNativeChildExecutor) Observe(
 		if err != nil {
 			return
 		}
-		outcome, receipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted)
+		outcome, receipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, a.startedAt)
 		if !yield(ExecutorEvent{Member: a.childMember, Payload: outcome}) || receipt.Await(ctx) != nil {
 			return
 		}
 		// A fresh request carrying the same conclusive result proves pump-level
 		// idempotence rather than merely re-reading one receipt.
-		replay, replayReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted)
+		replay, replayReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, a.startedAt)
 		if !yield(ExecutorEvent{Member: a.childMember, Payload: replay}) || replayReceipt.Await(ctx) != nil {
 			return
 		}
@@ -1470,14 +1471,14 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 
 func TestCoordinatorPublishesNativeChildOnlyAfterConclusiveStart(t *testing.T) {
 	startedAt := time.Date(2026, 7, 13, 1, 2, 4, 0, time.UTC)
-	reservation, receipt := NewChildRunReservationRequest(startedAt)
+	reservation, receipt := NewChildRunReservationRequest()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID: "member_child", ParentID: rootMember.MemberID, SpawnCallID: "provider_delegate",
 	}
 	executor := &acknowledgedNativeChildExecutor{
 		rootMember: rootMember, childMember: childMember,
-		reservation: reservation, reservationReceipt: receipt,
+		reservation: reservation, reservationReceipt: receipt, startedAt: startedAt,
 	}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)

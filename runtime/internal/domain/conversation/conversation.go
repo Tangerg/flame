@@ -222,7 +222,7 @@ func (results completedToolResults) resolve(
 	}
 	return chat.ToolResult{
 		ID: call.ID, Name: call.Name,
-		Result: fallback, IsError: true,
+		Output: chat.NewTextToolOutput(fallback), IsError: true,
 	}, nil
 }
 

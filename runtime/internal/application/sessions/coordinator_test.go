@@ -247,8 +247,9 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		t.Fatalf("terminal Messages = %+v, want one Tool result", applied.Messages)
 	}
 	result := *applied.Messages[0].Parts[0].ToolResult
+	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_1" || result.Name != "ask_user" || !result.IsError ||
-		result.Result != "tool call canceled before completion: user dismissed the question" {
+		!textual || resultText != "tool call canceled before completion: user dismissed the question" {
 		t.Fatalf("terminal Tool result = %+v", result)
 	}
 }

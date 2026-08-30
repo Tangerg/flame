@@ -22,12 +22,12 @@ func (p *patchPathStub) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{Name: "apply_patch", InputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
-func (p *patchPathStub) Call(context.Context, string) (string, error) {
+func (p *patchPathStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
 	*p.called = true
-	return "patched", nil
+	return chat.NewTextToolOutput("patched"), nil
 }
 
-func (p *patchPathStub) MutationPaths(string) ([]string, error) {
+func (p *patchPathStub) MutationPaths(toolcontract.Invocation) ([]string, error) {
 	return []string{"ok.txt", ".git/config"}, nil
 }
 
@@ -49,7 +49,7 @@ func TestPathGuardApplyPatchChecksAllTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := tool.Call(t.Context(), string(arguments))
+	out, err := callTextTool(t.Context(), tool, string(arguments))
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
@@ -70,7 +70,7 @@ type failingMutationReporter struct {
 	err error
 }
 
-func (f failingMutationReporter) MutationPaths(string) ([]string, error) {
+func (f failingMutationReporter) MutationPaths(toolcontract.Invocation) ([]string, error) {
 	return nil, f.err
 }
 
@@ -85,8 +85,10 @@ func TestWithPathGuardFailsClosedWhenMutationDiscoveryFails(t *testing.T) {
 		},
 	)
 
-	_, err := withPathGuard(failingMutationReporter{Tool: inner, err: cause}, t.TempDir()).
-		Call(t.Context(), `{"path":"safe.txt"}`)
+	_, err := callTextTool(
+		t.Context(), withPathGuard(failingMutationReporter{Tool: inner, err: cause}, t.TempDir()),
+		`{"path":"safe.txt"}`)
+
 	if !errors.Is(err, cause) {
 		t.Fatalf("Call error = %v, want mutation-discovery cause", err)
 	}
@@ -126,7 +128,7 @@ func TestWithPathGuard(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			called = false
-			out, err := guarded.Call(context.Background(), `{"path":"`+tc.path+`"}`)
+			out, err := callTextTool(context.Background(), guarded, `{"path":"`+tc.path+`"}`)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -206,7 +208,7 @@ func TestWithPathGuardRejectsSymlinkAliasesIntoGit(t *testing.T) {
 	guarded := withPathGuard(inner, dir)
 	for _, path := range []string{"git-alias/config", "dangling-alias"} {
 		called = false
-		out, err := guarded.Call(context.Background(), `{"path":"`+path+`"}`)
+		out, err := callTextTool(context.Background(), guarded, `{"path":"`+path+`"}`)
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
@@ -233,7 +235,7 @@ func TestWithPathGuardRejectsSymlinkCycle(t *testing.T) {
 			return "wrote", nil
 		},
 	)
-	out, err := withPathGuard(inner, dir).Call(context.Background(), `{"path":"a/config"}`)
+	out, err := callTextTool(context.Background(), withPathGuard(inner, dir), `{"path":"a/config"}`)
 	if err != nil {
 		t.Fatal(err)
 	}

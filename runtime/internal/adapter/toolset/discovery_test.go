@@ -23,11 +23,11 @@ func (m mcpTool) Definition() chat.ToolDefinition {
 	}
 }
 
-func (m mcpTool) Call(context.Context, string) (string, error) {
+func (m mcpTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
 	if m.result == "" {
-		return "ok", nil
+		return chat.NewTextToolOutput("ok"), nil
 	}
-	return m.result, nil
+	return chat.NewTextToolOutput(m.result), nil
 }
 
 func (m mcpTool) MCPToolIdentity() (string, string) { return m.server, m.remote }
@@ -45,7 +45,7 @@ func call(t *testing.T, tool *toolset.Discovery, query string) string {
 	t.Helper()
 	args, _ := json.Marshal(map[string]any{"query": query})
 	ctx := toolset.WithToolAdvertiser(context.Background(), func(...string) error { return nil })
-	out, err := tool.Call(ctx, string(args))
+	out, err := callTextTool(ctx, tool, string(args))
 	if err != nil {
 		t.Fatalf("Call(%q): %v", query, err)
 	}
@@ -127,7 +127,7 @@ func TestRoundRobinSpreadsAcrossServers(t *testing.T) {
 	tool := newSearch(t, many)
 	args, _ := json.Marshal(map[string]any{"query": "issue", "limit": 2})
 	ctx := toolset.WithToolAdvertiser(context.Background(), func(...string) error { return nil })
-	out, err := tool.Call(ctx, string(args))
+	out, err := callTextTool(ctx, tool, string(args))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestDescriptionListsCatalogButNotSchemas(t *testing.T) {
 
 func TestEmptyQueryErrors(t *testing.T) {
 	tool := newSearch(t, catalog())
-	_, err := tool.Call(context.Background(), `{"query":"  "}`)
+	_, err := callTextTool(context.Background(), tool, `{"query":"  "}`)
 	if err == nil {
 		t.Fatal("blank query should error so the model retries")
 	}
@@ -178,7 +178,7 @@ func TestArgumentsAreStrictAndBounded(t *testing.T) {
 		`{"query":"issue","limit":21}`,
 		`{}`,
 	} {
-		if _, err := tool.Call(context.Background(), arguments); err == nil {
+		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
 			t.Errorf("Call(%s) succeeded, want contract validation error", arguments)
 		}
 	}
@@ -191,7 +191,7 @@ func TestAdvertisementUsesExactFrozenToolNames(t *testing.T) {
 		advertised = append(advertised, names...)
 		return nil
 	})
-	if _, err := search.Call(ctx, `{"query":"select:github_open_pr,linear_list_issues"}`); err != nil {
+	if _, err := callTextTool(ctx, search, `{"query":"select:github_open_pr,linear_list_issues"}`); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(advertised, ",") != "github_open_pr,linear_list_issues" {
@@ -201,7 +201,7 @@ func TestAdvertisementUsesExactFrozenToolNames(t *testing.T) {
 
 func TestAdvertisementFailsClosedWithoutExecutionBinding(t *testing.T) {
 	search := newSearch(t, catalog())
-	if _, err := search.Call(context.Background(), `{"query":"create issue"}`); err == nil {
+	if _, err := callTextTool(context.Background(), search, `{"query":"create issue"}`); err == nil {
 		t.Fatal("search_tools claimed a loaded Tool without an execution advertiser")
 	}
 }

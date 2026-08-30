@@ -125,12 +125,12 @@ func childRunStartReservationRecord(
 	}
 	return sqlite.ChildRunStartReservationRecord{
 		MemberID: reservation.Member.MemberID, SessionID: reservation.SessionID,
-		Payload: payload, CreatedAt: reservation.StartedAt.UTC(),
+		Payload: payload, CreatedAt: reservation.ReservedAt.UTC(),
 	}, nil
 }
 
 // childRunStartReservationPayload is runsegment's canonical durable comparison
-// payload. MemberID, SessionID, and StartedAt already have dedicated record
+// payload. MemberID, SessionID, and ReservedAt already have dedicated record
 // columns; the remaining reservation facts stay adapter-owned instead of making
 // an Application struct's Go layout an implicit storage wire.
 type childRunStartReservationPayload struct {
@@ -163,8 +163,7 @@ func validateStartedChildOpening(
 		opening.Admit.ParentRunID != reservation.Binding.ParentRunID ||
 		opening.Admit.RootRunID != reservation.RootRunID ||
 		opening.Admit.SpawnedByItemID != reservation.SpawnedByItemID ||
-		opening.Admit.SegmentID != reservation.SegmentID ||
-		!opening.Admit.CreatedAt.Equal(reservation.StartedAt) {
+		opening.Admit.SegmentID != reservation.SegmentID {
 		return errors.New("runsegment: started child opening differs from its reservation")
 	}
 	return nil

@@ -47,7 +47,7 @@ func TestMutationDiagnosticsAppendsProblems(t *testing.T) {
 	var out string
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
-		o, err := wrapped.Call(context.Background(), args)
+		o, err := callTextTool(context.Background(), wrapped, args)
 		if err != nil {
 			t.Fatalf("wrapped mutation: %v", err)
 		}

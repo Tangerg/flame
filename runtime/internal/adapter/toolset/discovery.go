@@ -163,8 +163,8 @@ func (d *Discovery) buildDescription() string {
 	return b.String()
 }
 
-func (d *Discovery) Call(ctx context.Context, arguments string) (string, error) {
-	return d.inner.Call(ctx, arguments)
+func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return d.inner.Call(ctx, invocation)
 }
 
 func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, error) {

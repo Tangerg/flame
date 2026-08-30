@@ -3,12 +3,14 @@ package builtin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type recordingSubmitter struct {
@@ -41,7 +43,7 @@ func TestProposalSchemaRejectsInvalidDomainValuesBeforeSubmission(t *testing.T) 
 	}
 	for name, arguments := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := candidate.Call(ctx, arguments); err == nil || !strings.Contains(err.Error(), "decode function arguments") {
+			if _, err := callTextTool(ctx, candidate, arguments); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
 				t.Fatalf("error = %v, want schema rejection", err)
 			}
 		})
@@ -92,12 +94,13 @@ func TestCallStampsHostScopeAndReturnsPendingReference(t *testing.T) {
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "ses_1", CWD: "/sandbox", WorkspaceCWD: "/repo", Isolated: true,
 	})
-	out, err := candidate.Call(ctx, `{
+	out, err := callTextTool(ctx, candidate, `{
 		"name":"review-go-api",
 		"description":"Review a Go API before implementation. Use when a design changes exported behavior.",
 		"instructions":"Read the design, inspect consumers, and report compatibility risks.",
 		"scope":"project"
 	}`)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,12 +125,12 @@ func TestCallRequiresSessionAndValidScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	validArguments := `{"name":"review-go-api","description":"Review a Go API before implementation.","instructions":"Review it.","scope":"project"}`
-	if _, err := candidate.Call(context.Background(), validArguments); err == nil || !strings.Contains(err.Error(), "no active session") {
+	if _, err := callTextTool(context.Background(), candidate, validArguments); err == nil || !strings.Contains(err.Error(), "no active session") {
 		t.Fatalf("no-session error = %v", err)
 	}
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "ses_1", CWD: "/repo"})
 	invalidArguments := `{"name":"review-go-api","description":"Review a Go API before implementation.","instructions":"Review it.","scope":"team"}`
-	if _, err := candidate.Call(ctx, invalidArguments); err == nil || !strings.Contains(err.Error(), "scope") {
+	if _, err := callTextTool(ctx, candidate, invalidArguments); err == nil || !strings.Contains(err.Error(), "scope") {
 		t.Fatalf("invalid-scope error = %v", err)
 	}
 }

@@ -24,8 +24,12 @@ type runtimeSkillSource struct {
 	resources sdk.ResourceSource
 }
 
-func newRuntimeSkillSource(root string) sdk.ResourceSource {
-	return &runtimeSkillSource{root: root, resources: sdk.NewDirectoryRepository(root)}
+func newRuntimeSkillSource(root string) (*runtimeSkillSource, error) {
+	repository, err := sdk.NewDirectoryRepository(root, sdk.RepositoryConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("runtime skill source: open %q: %w", root, err)
+	}
+	return &runtimeSkillSource{root: root, resources: repository}, nil
 }
 
 func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {

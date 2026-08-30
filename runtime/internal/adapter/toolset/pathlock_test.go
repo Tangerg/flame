@@ -22,11 +22,17 @@ func TestPathLockUsesOneCanonicalMutationIdentity(t *testing.T) {
 	}
 
 	executor := fs.NewLocalExecutor(cwd)
-	readPaths, err := resolvedMutationPaths(fs.NewReadTool(executor), readArguments(realPath), cwd)
+	read := fs.NewReadTool(executor)
+	readPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mutationPaths, err := resolvedMutationPaths(fs.NewApplyPatchTool(executor), patchArguments(t, "real.txt", "content", "next"), cwd)
+	mutation := withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor))
+	mutationPaths, err := resolvedMutationPaths(
+		mutation,
+		mustTestInvocation(t, mutation, patchArguments(t, "real.txt", "content", "next")),
+		cwd,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,11 +53,17 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 	}
 
 	executor := fs.NewLocalExecutor(cwd)
-	realPaths, err := resolvedMutationPaths(fs.NewReadTool(executor), readArguments(realPath), cwd)
+	read := fs.NewReadTool(executor)
+	realPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	aliasPaths, err := resolvedMutationPaths(fs.NewApplyPatchTool(executor), patchArguments(t, "alias.txt", "content", "next"), cwd)
+	mutation := withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor))
+	aliasPaths, err := resolvedMutationPaths(
+		mutation,
+		mustTestInvocation(t, mutation, patchArguments(t, "alias.txt", "content", "next")),
+		cwd,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +79,8 @@ func TestPathLockKeepsMultiFilePatchExclusive(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatal("path-locked apply_patch does not expose concurrency policy")
 	}
-	key, concurrent := policy.ConcurrencyKey(`{"patch":"--- a/one.txt\n+++ b/one.txt\n--- a/two.txt\n+++ b/two.txt\n"}`)
+	invocation := mustTestInvocation(t, tool, `{"patch":"--- a/one.txt\n+++ b/one.txt\n--- a/two.txt\n+++ b/two.txt\n"}`)
+	key, concurrent := policy.ConcurrencyKey(invocation)
 	if key != "" || concurrent {
 		t.Fatalf("apply_patch concurrency = %q, %v; want exclusive", key, concurrent)
 	}
@@ -98,7 +111,11 @@ func TestAssembledFileToolStillReportsWhatItMutates(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatal("the assembled mutation tool no longer reports its file mutations")
 	}
-	paths, err := reporter.MutationPaths(patchArguments(t, "real.txt", "content", "next"))
+	paths, err := reporter.MutationPaths(mustTestInvocation(
+		t,
+		assembled,
+		patchArguments(t, "real.txt", "content", "next"),
+	))
 	if err != nil {
 		t.Fatalf("MutationPaths: %v", err)
 	}

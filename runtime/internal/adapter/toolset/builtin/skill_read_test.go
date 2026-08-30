@@ -96,7 +96,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 		byName[candidate.Definition().Name] = candidate
 	}
 
-	list, err := byName["list_skills"].Call(context.Background(), `{}`)
+	list, err := callTextTool(context.Background(), byName["list_skills"], `{}`)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 		}
 	}
 
-	loaded, err := byName["load_skill"].Call(context.Background(), `{"name":"shared"}`)
+	loaded, err := callTextTool(context.Background(), byName["load_skill"], `{"name":"shared"}`)
 	if err != nil {
 		t.Fatalf("load shared: %v", err)
 	}

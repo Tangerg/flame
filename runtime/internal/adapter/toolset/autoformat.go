@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -26,12 +27,12 @@ const (
 var errAutoFormatFileTooLarge = errors.New("auto-format: file exceeds the 8 MiB limit")
 
 func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
-		paths, err := resolvedMutationPaths(inner, arguments, cwd)
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		paths, err := resolvedMutationPaths(inner, invocation, cwd)
 		if err != nil {
-			return "", fmt.Errorf("inspect mutation paths before formatting: %w", err)
+			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before formatting: %w", err)
 		}
-		out, err := inner.Call(ctx, arguments)
+		out, err := inner.Call(ctx, invocation)
 		if err != nil || len(paths) == 0 {
 			return out, err
 		}
@@ -44,7 +45,7 @@ func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 		if len(failed) == 0 {
 			return out, nil
 		}
-		return out + "\n\nAuto-format skipped or failed:\n- " + strings.Join(failed, "\n- "), nil
+		return appendToolOutputText(out, "\n\nAuto-format skipped or failed:\n- "+strings.Join(failed, "\n- ")), nil
 	})
 }
 

@@ -29,7 +29,7 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 	}
 	byName := scheduleByName(tools)
 
-	body, err := byName["create_schedule"].Call(t.Context(), `{"title":"daily","instructions":"summarize","cron":"0 9 * * *"}`)
+	body, err := callTextTool(t.Context(), byName["create_schedule"], `{"title":"daily","instructions":"summarize","cron":"0 9 * * *"}`)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 		t.Fatalf("created schedule = %+v", created.Schedule)
 	}
 
-	listBody, err := byName["list_schedules"].Call(t.Context(), `{}`)
+	listBody, err := callTextTool(t.Context(), byName["list_schedules"], `{}`)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 		t.Fatalf("list = %+v, want 1 schedule", listed.Schedules)
 	}
 
-	if _, err := byName["delete_schedule"].Call(t.Context(), `{"schedule_id":"`+created.Schedule.ScheduleID+`"}`); err != nil {
+	if _, err := callTextTool(t.Context(), byName["delete_schedule"], `{"schedule_id":"`+created.Schedule.ScheduleID+`"}`); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	if _, err := reg.Get(t.Context(), created.Schedule.ScheduleID); !errors.Is(err, scheduledomain.ErrNotFound) {
@@ -87,7 +87,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	list := scheduleByName(tools)["list_schedules"]
-	firstBody, err := list.Call(t.Context(), `{}`)
+	firstBody, err := callTextTool(t.Context(), list, `{}`)
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 	if len(first.Schedules) != 100 || first.NextCursor == "" {
 		t.Fatalf("first page = %d rows, cursor %q; want 100 and continuation", len(first.Schedules), first.NextCursor)
 	}
-	secondBody, err := list.Call(t.Context(), `{"cursor":`+strconv.Quote(first.NextCursor)+`}`)
+	secondBody, err := callTextTool(t.Context(), list, `{"cursor":`+strconv.Quote(first.NextCursor)+`}`)
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -118,13 +118,13 @@ func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	byName := scheduleByName(tools)
-	if _, err := byName["create_schedule"].Call(t.Context(), `{"cron":"0 9 * * *"}`); err == nil {
+	if _, err := callTextTool(t.Context(), byName["create_schedule"], `{"cron":"0 9 * * *"}`); err == nil {
 		t.Fatal("create without instructions succeeded")
 	}
-	if _, err := byName["list_schedules"].Call(t.Context(), `{"op":"list"}`); err == nil {
+	if _, err := callTextTool(t.Context(), byName["list_schedules"], `{"op":"list"}`); err == nil {
 		t.Fatal("list accepted an obsolete op field")
 	}
-	if _, err := byName["delete_schedule"].Call(t.Context(), `{"id":"sch_old"}`); err == nil {
+	if _, err := callTextTool(t.Context(), byName["delete_schedule"], `{"id":"sch_old"}`); err == nil {
 		t.Fatal("delete accepted obsolete id field")
 	}
 }
@@ -136,7 +136,7 @@ func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	missing := filepath.Join(t.TempDir(), "missing")
-	_, err = scheduleByName(tools)["create_schedule"].Call(t.Context(), `{"instructions":"summarize","cron":"0 9 * * *","workspace_path":"`+missing+`"}`)
+	_, err = callTextTool(t.Context(), scheduleByName(tools)["create_schedule"], `{"instructions":"summarize","cron":"0 9 * * *","workspace_path":"`+missing+`"}`)
 	if !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("create cwd err = %v, want ErrCWDUnavailable", err)
 	}

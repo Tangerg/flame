@@ -56,7 +56,7 @@ func TestSetPlanRequiresSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tool.Call(context.Background(), `{"steps":[{"description":"inspect","status":"pending"}]}`); err == nil || !strings.Contains(err.Error(), "no active session") {
+	if _, err := callTextTool(context.Background(), tool, `{"steps":[{"description":"inspect","status":"pending"}]}`); err == nil || !strings.Contains(err.Error(), "no active session") {
 		t.Fatalf("Call error = %v, want no active session", err)
 	}
 }
@@ -71,7 +71,7 @@ func TestSetPlanRejectsBadArguments(t *testing.T) {
 		`{}`,
 		`{"steps":[{"description":"inspect","status":"done"}]}`,
 	} {
-		if _, err := tool.Call(context.Background(), arguments); err == nil {
+		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
 			t.Errorf("Call(%s) succeeded", arguments)
 		}
 	}
@@ -85,7 +85,7 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 	}
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
 
-	result, err := tool.Call(ctx, `{"steps":[{"description":"inspect","status":"in_progress"}]}`)
+	result, err := callTextTool(ctx, tool, `{"steps":[{"description":"inspect","status":"in_progress"}]}`)
 	if err != nil {
 		t.Fatalf("set Plan: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 		t.Fatalf("result = %q, stored = %+v", result, store.steps)
 	}
 
-	result, err = tool.Call(ctx, `{"steps":[]}`)
+	result, err = callTextTool(ctx, tool, `{"steps":[]}`)
 	if err != nil {
 		t.Fatalf("clear Plan: %v", err)
 	}

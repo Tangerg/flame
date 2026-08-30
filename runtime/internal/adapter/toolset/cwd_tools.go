@@ -46,6 +46,7 @@ func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, loc
 }
 
 func guardedMutation(tool toolcontract.Tool, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker, cwd string) toolcontract.Tool {
+	tool = withApplyPatchMutationPaths(tool)
 	return withPathGuard(
 		withPathLock(
 			withMutationGuard(

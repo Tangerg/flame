@@ -93,9 +93,11 @@ func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 	messages := make([]chat.Message, 0, 128)
 	for index := range 128 {
 		messages = append(messages, chat.NewToolMessage(chat.ToolResult{
-			ID:     "call",
-			Name:   "shell",
-			Result: largeResult + string(rune('a'+index%26)),
+			ID:   "call",
+			Name: "shell",
+			Output: chat.NewTextToolOutput(
+				largeResult + string(rune('a'+index%26)),
+			),
 		}))
 	}
 

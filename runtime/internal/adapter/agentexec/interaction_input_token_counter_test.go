@@ -23,7 +23,7 @@ func TestObservedInteractionClientPreservesInputTokenCountingWithoutRecordingAMo
 	if err != nil {
 		t.Fatal(err)
 	}
-	observed, err := newObservedInteractionClient(inner, nil)
+	observed, err := newObservedInteractionClient(&inner, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestObservedInteractionClientDoesNotInventInputTokenCounting(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	observed, err := newObservedInteractionClient(inner, nil)
+	observed, err := newObservedInteractionClient(&inner, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

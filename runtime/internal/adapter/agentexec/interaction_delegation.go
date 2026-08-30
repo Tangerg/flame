@@ -165,7 +165,7 @@ func newDelegatedInteractionDefinition(
 	}
 	descriptor, err := agent.NewDescriptor(agent.DescriptorConfig{
 		Name: name, Description: delegateDescription,
-		Version: interactionDefinitionVersion, InputSchema: inputSchema, OutputSchema: outputSchema,
+		InputSchema: inputSchema, OutputSchema: outputSchema,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: delegated Interaction descriptor: %w", err)

@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -54,10 +55,16 @@ func (i *interactionToolOutcomes) reset() {
 func (i *interactionToolOutcomes) record(
 	toolName string,
 	arguments tool.Arguments,
-	result string,
+	result corechat.ToolOutput,
+	callErr error,
 ) {
 	key := newInteractionToolCallKey(toolName, arguments)
-	digest := sha256.Sum256([]byte(result))
+	encoded, _ := json.Marshal(result)
+	if callErr != nil {
+		encoded = append(encoded, 0)
+		encoded = append(encoded, callErr.Error()...)
+	}
+	digest := sha256.Sum256(encoded)
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if key == i.key && digest == i.digest {

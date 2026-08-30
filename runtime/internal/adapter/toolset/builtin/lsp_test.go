@@ -60,7 +60,7 @@ func TestLSPPositionPreservesPresence(t *testing.T) {
 func TestLSPToolUnsupportedFile(t *testing.T) {
 	ci := newTestAnalyzer(t)
 
-	out, err := lspTool(t, ci).Call(context.Background(), `{"operation":"hover","path":"notes.txt","line":1,"character":1}`)
+	out, err := callTextTool(context.Background(), lspTool(t, ci), `{"operation":"hover","path":"notes.txt","line":1,"character":1}`)
 	if err != nil {
 		t.Fatalf("unsupported file should not error: %v", err)
 	}
@@ -77,23 +77,23 @@ func TestLSPToolValidation(t *testing.T) {
 	ci := newTestAnalyzer(t)
 	lsp := lspTool(t, ci)
 
-	if _, err := lsp.Call(context.Background(), `{"operation":"bogus"}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"bogus"}`); err == nil {
 		t.Error("unknown operation must error")
 	}
-	if _, err := lsp.Call(context.Background(), `{"operation":"definition"}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition"}`); err == nil {
 		t.Error("definition without path must error")
 	}
-	if _, err := lsp.Call(context.Background(), `{"operation":"definition","path":"notes.txt"}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt"}`); err == nil {
 		t.Error("position operation without line and character must error")
 	}
-	if _, err := lsp.Call(context.Background(), `{"operation":"definition","path":"notes.txt","line":1}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt","line":1}`); err == nil {
 		t.Error("position operation with an incomplete coordinate must error")
 	}
-	if _, err := lsp.Call(context.Background(), `{"operation":"workspace_symbols"}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"workspace_symbols"}`); err == nil {
 		t.Error("workspace_symbols without query must error")
 	}
 	for _, op := range []string{"implementation", "incoming_calls", "outgoing_calls"} {
-		out, err := lsp.Call(context.Background(), `{"operation":"`+op+`","path":"notes.txt","line":1,"character":1}`)
+		out, err := callTextTool(context.Background(), lsp, `{"operation":"`+op+`","path":"notes.txt","line":1,"character":1}`)
 		if err != nil {
 			t.Errorf("%s should not error on unsupported file: %v", op, err)
 		}
@@ -101,10 +101,10 @@ func TestLSPToolValidation(t *testing.T) {
 			t.Errorf("%s output = %q, want a no-server message", op, out)
 		}
 	}
-	if out, err := lsp.Call(context.Background(), `{"operation":"diagnostics","path":"notes.txt"}`); err != nil || !strings.Contains(out, "No language server") {
+	if out, err := callTextTool(context.Background(), lsp, `{"operation":"diagnostics","path":"notes.txt"}`); err != nil || !strings.Contains(out, "No language server") {
 		t.Errorf("diagnostics = (%q, %v), want a no-server message", out, err)
 	}
-	if _, err := lsp.Call(context.Background(), `{"operation":"diagnostics","file_path":"notes.txt"}`); err == nil {
+	if _, err := callTextTool(context.Background(), lsp, `{"operation":"diagnostics","file_path":"notes.txt"}`); err == nil {
 		t.Error("obsolete file_path field must be rejected")
 	}
 	for _, arguments := range []string{
@@ -116,7 +116,7 @@ func TestLSPToolValidation(t *testing.T) {
 		`{"operation":"workspace_symbols","query":"Thing","path":"notes.txt"}`,
 		`{"operation":"workspace_symbols","query":"Thing","line":0,"character":0}`,
 	} {
-		if _, err := lsp.Call(context.Background(), arguments); err == nil {
+		if _, err := callTextTool(context.Background(), lsp, arguments); err == nil {
 			t.Errorf("lsp accepted fields ignored by the selected operation: %s", arguments)
 		}
 	}

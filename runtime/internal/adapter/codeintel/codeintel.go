@@ -243,9 +243,8 @@ func (a *Analyzer) Diagnostics(ctx context.Context, root, file string) (string, 
 }
 
 // DiagnoseMutation runs apply (a file mutation on file, relative to root)
-// between a before/after diagnostics snapshot and appends any problems the
-// mutation introduced to apply's output — the highest-value LSP integration:
-// the model sees the breakage it just caused without a separate lookup.
+// between a before/after diagnostics snapshot and returns any problems the
+// mutation introduced. The caller owns how those diagnostics are presented.
 //
 // Only new problems surface: a baseline taken before the mutation is subtracted
 // from the post-mutation set, keyed position-independently so a pre-existing
@@ -253,10 +252,9 @@ func (a *Analyzer) Diagnostics(ctx context.Context, root, file string) (string, 
 // cache) is never blamed on the mutation. The bias is deliberately toward
 // under-reporting.
 //
-// Best-effort throughout: an empty / unsupported path, an apply error, or
-// any language-server trouble passes apply's result through untouched — an
-// mutation never fails because of code intelligence. Nil receiver → apply only.
-func (a *Analyzer) DiagnoseMutation(ctx context.Context, root, file string, apply func() (string, error)) (string, error) {
+// Best-effort throughout: an empty / unsupported path or language-server
+// trouble produces no diagnostics. An apply error remains authoritative.
+func (a *Analyzer) DiagnoseMutation(ctx context.Context, root, file string, apply func() error) (string, error) {
 	check := a != nil && file != "" && a.Supported(file)
 
 	// Baseline BEFORE the edit (best effort: a brand-new file has none).
@@ -265,20 +263,16 @@ func (a *Analyzer) DiagnoseMutation(ctx context.Context, root, file string, appl
 		baseline, _ = a.servers.Diagnostics(ctx, root, file)
 	}
 
-	out, err := apply()
+	err := apply()
 	if err != nil || !check {
-		return out, err // mutation failed (nothing to diagnose) or unsupported
+		return "", err
 	}
 
 	after, derr := a.servers.Diagnostics(ctx, root, file)
 	if derr != nil {
-		return out, nil // never fail a mutation on language-server trouble
+		return "", nil
 	}
-	section := diagnosticsSection(file, newProblems(baseline, after))
-	if section == "" {
-		return out, nil
-	}
-	return out + "\n\n" + section, nil
+	return diagnosticsSection(file, newProblems(baseline, after)), nil
 }
 
 // foldNoServer maps the "no language server for this file type" sentinel to

@@ -16,10 +16,10 @@ func TestAskUser_Validation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tool.Call(context.Background(), `not json`); err == nil {
+	if _, err := callTextTool(context.Background(), tool, `not json`); err == nil {
 		t.Error("invalid JSON must error")
 	}
-	if _, err := tool.Call(context.Background(), `{"questions":[]}`); err == nil {
+	if _, err := callTextTool(context.Background(), tool, `{"questions":[]}`); err == nil {
 		t.Error("empty questions must error")
 	}
 	for _, arguments := range []string{
@@ -29,7 +29,7 @@ func TestAskUser_Validation(t *testing.T) {
 		`{"questions":[{"question":"Choose","options":[{"label":""},{"label":"two"}]}]}`,
 		`{"questions":[{"question":"Choose","multi_select":true}]}`,
 	} {
-		if _, err := tool.Call(context.Background(), arguments); err == nil {
+		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
 			t.Errorf("arguments outside the ask_user contract must error: %s", arguments)
 		}
 	}
@@ -44,12 +44,13 @@ func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := tool.Call(context.Background(), `{
+	result, err := callTextTool(context.Background(), tool, `{
 		"questions":[{
 			"question":"Pick a database",
 			"options":[{"label":"Postgres"},{"label":"SQLite"}]
 		}]
 	}`)
+
 	if err != nil {
 		t.Fatalf("Call: %v", err)
 	}

@@ -89,9 +89,9 @@ func TestOllamaCompatibleEmbeddingUsesV1Protocol(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	opts, err := embedding.NewOptions("nomic-embed-text")
-	if err != nil {
-		t.Fatalf("NewOptions: %v", err)
+	opts := embedding.Options{Model: "nomic-embed-text"}
+	if err := opts.Validate(); err != nil {
+		t.Fatalf("Options.Validate: %v", err)
 	}
 	model, err := buildOllamaEmbeddingModel(
 		mustClientSpec(t, ProviderOllama, "nomic-embed-text", "configured-key", server.URL+"/v1/"),

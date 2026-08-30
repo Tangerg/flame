@@ -83,7 +83,7 @@ func TestDefinitionHasNoSecondPlanInput(t *testing.T) {
 	if strings.Contains(schema, `"plan"`) || strings.Contains(schema, `"options"`) {
 		t.Fatalf("schema exposes a second Plan value: %s", schema)
 	}
-	if _, err := tool.Call(t.Context(), `{"plan":"shadow copy"}`); err == nil {
+	if _, err := callTextTool(t.Context(), tool, `{"plan":"shadow copy"}`); err == nil {
 		t.Fatal("obsolete Plan input was accepted")
 	}
 }
@@ -94,10 +94,10 @@ func TestExitRequiresSessionAndPlanMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tool.Call(t.Context(), `{}`); err == nil || !strings.Contains(err.Error(), "no active session") {
+	if _, err := callTextTool(t.Context(), tool, `{}`); err == nil || !strings.Contains(err.Error(), "no active session") {
 		t.Fatalf("missing-session error = %v", err)
 	}
-	if _, err := tool.Call(planContext(t, "session-1"), `{}`); err == nil || !strings.Contains(err.Error(), "not in Plan mode") {
+	if _, err := callTextTool(planContext(t, "session-1"), tool, `{}`); err == nil || !strings.Contains(err.Error(), "not in Plan mode") {
 		t.Fatalf("non-Plan error = %v", err)
 	}
 }
@@ -111,7 +111,7 @@ func TestExitRejectsEmptyCanonicalPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tool.Call(planContext(t, "session-1"), `{}`); err == nil || !strings.Contains(err.Error(), "current Plan is empty") {
+	if _, err := callTextTool(planContext(t, "session-1"), tool, `{}`); err == nil || !strings.Contains(err.Error(), "current Plan is empty") {
 		t.Fatalf("empty Plan error = %v", err)
 	}
 }
@@ -132,7 +132,7 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := tool.Call(planContext(t, sessionID), `{}`)
+	result, err := callTextTool(planContext(t, sessionID), tool, `{}`)
 	if err != nil || !strings.Contains(result, "remains in Plan mode") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}
@@ -160,7 +160,7 @@ func TestApprovalRestoresModeCapturedOnEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := tool.Call(planContext(t, sessionID), `{}`)
+	result, err := callTextTool(planContext(t, sessionID), tool, `{}`)
 	if err != nil || !strings.Contains(result, "balanced was restored") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}

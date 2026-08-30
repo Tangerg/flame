@@ -57,7 +57,7 @@ func renderTranscriptMessage(msg chat.Message, budget int) string {
 		results := make([]string, 0, len(msg.Parts))
 		for _, part := range msg.Parts {
 			if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-				results = append(results, part.ToolResult.Result)
+				results = append(results, renderToolOutput(part.ToolResult.Output))
 			}
 		}
 		return renderTranscriptParts("[tool] ", results, " ", budget)
@@ -108,7 +108,7 @@ func transcriptBytes(msgs []chat.Message) int {
 			size = saturatedAdd(size, len("[tool] "))
 			for _, part := range msg.Parts {
 				if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-					size = saturatedAdd(size, len(part.ToolResult.Result), 1)
+					size = saturatedAdd(size, encodedToolOutputBytes(part.ToolResult.Output), 1)
 				}
 			}
 		default:

@@ -30,7 +30,10 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "oversized", strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes))
 
-	source := MergeSkillSource("", root, nil)
+	source, err := MergeSkillSource("", root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if source == nil {
 		t.Fatal("configured source is nil")
 	}
@@ -78,8 +81,11 @@ func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source := MergeSkillSource("", root, nil)
-	if _, err := sdk.ReadResource(t.Context(), source, "with-resource", "references/large.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) {
+	source, err := MergeSkillSource("", root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := sdk.ReadResource(t.Context(), source, "with-resource", "references/large.txt", domainskills.MaxSkillResourceBytes); !errors.Is(err, domainskills.ErrResourceTooLarge) {
 		t.Fatalf("ReadResource error = %v, want ErrResourceTooLarge", err)
 	}
 }
@@ -96,7 +102,10 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source := MergeSkillSource("", root, nil)
+	source, err := MergeSkillSource("", root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	file, err := source.OpenResource(t.Context(), "growing-resource", "references/growing.txt")
 	if err != nil {
 		t.Fatalf("OpenResource at exact limit: %v", err)

@@ -588,34 +588,32 @@ func validateRouteItem(route *executorRoute, sessionID string, item transcript.I
 	return nil
 }
 
-type preparedChildOpening struct {
-	member      ExecutorMember
-	route       *executorRoute
-	batch       reductionBatch
-	opening     OpeningCommit
-	reservation ChildRunStartReservation
+type preparedChildStart struct {
+	member       ExecutorMember
+	parent       *executorRoute
+	spawningItem transcript.Item
+	route        *executorRoute
+	batch        reductionBatch
+	opening      OpeningCommit
+	reservation  ChildRunStartReservation
 }
 
-func (p *preparedChildOpening) releaseBinding(owner *runTreeOwner) {
+func (p *preparedChildStart) releaseBinding(owner *runTreeOwner) {
 	if p == nil || p.route == nil || owner == nil {
 		return
 	}
 	owner.unbindExecutorMember(p.route.runID, p.member.MemberID)
 }
 
-// prepareChildOpening freezes the complete application projection for one
-// prospective child. It performs no durable write and does not make the route
-// observable; its caller owns either commit or releaseBinding.
-func (c *Coordinator) prepareChildOpening(
+// prepareChildStart allocates and binds one prospective child identity without
+// constructing a Run. The actual lifecycle starts only after Scope reports a
+// conclusive started outcome with its authoritative start time.
+func (c *Coordinator) prepareChildStart(
 	spec segmentSpec,
 	owner *runTreeOwner,
 	routes *executorRoutes,
 	member ExecutorMember,
-	startedAt time.Time,
-) (*preparedChildOpening, error) {
-	if startedAt.IsZero() {
-		return nil, errors.New("runs: child opening has no executor start time")
-	}
+) (*preparedChildStart, error) {
 	parent, err := routes.parent(member)
 	if err != nil {
 		return nil, err
@@ -656,7 +654,6 @@ func (c *Coordinator) prepareChildOpening(
 	if validateErr := lineage.Validate(childRunID); validateErr != nil {
 		return nil, fmt.Errorf("runs: open child member %q lineage: %w", member.MemberID, validateErr)
 	}
-	startedAt = startedAt.UTC()
 	child := &executorRoute{
 		runID:          childRunID,
 		segmentID:      childSegmentID,
@@ -665,6 +662,52 @@ func (c *Coordinator) prepareChildOpening(
 		modelSelection: parent.modelSelection,
 		limits:         parent.limits,
 		capabilities:   parent.capabilities,
+	}
+	if bindExecutorMemberErr := owner.bindExecutorMember(child.runID, member.MemberID); bindExecutorMemberErr != nil {
+		return nil, bindExecutorMemberErr
+	}
+	release := true
+	defer func() {
+		if release {
+			owner.unbindExecutorMember(child.runID, member.MemberID)
+		}
+	}()
+	reservation := ChildRunStartReservation{
+		SessionID: spec.SessionID, ExecutorID: spec.ExecutorID, Member: member,
+		Binding: ChildRunBinding{
+			MemberID: member.MemberID, RunID: child.runID, ParentRunID: child.lineage.ParentRunID,
+		},
+		SegmentID: child.segmentID, SpawnedByItemID: spawningItem.ID(),
+		RootRunID: child.rootRunID, ReservedAt: c.publications.nowUTC().UTC(),
+	}
+	if err := reservation.Validate(); err != nil {
+		return nil, err
+	}
+	release = false
+	return &preparedChildStart{
+		member: member, parent: parent, spawningItem: spawningItem,
+		route: child, reservation: reservation,
+	}, nil
+}
+
+// finalizeChildOpening creates the Run projection from the exact lifecycle
+// time reported by the successful Process start. It still performs no durable
+// write and leaves the route invisible until the opening transaction commits.
+func (c *Coordinator) finalizeChildOpening(
+	spec segmentSpec,
+	owner *runTreeOwner,
+	prepared *preparedChildStart,
+	startedAt time.Time,
+) error {
+	if prepared == nil || prepared.route == nil || prepared.parent == nil {
+		return errors.New("runs: finalize an incomplete child start")
+	}
+	if startedAt.IsZero() || startedAt.Location() != time.UTC {
+		return errors.New("runs: child opening requires an authoritative UTC start time")
+	}
+	child := prepared.route
+	if child.reducer != nil {
+		return fmt.Errorf("runs: child member %q opening was already finalized", prepared.member.MemberID)
 	}
 	child.reducer = newReducer(reducerConfig{
 		RunID:          child.runID,
@@ -680,21 +723,12 @@ func (c *Coordinator) prepareChildOpening(
 		Now:            c.publications.nowUTC,
 		CancelReason:   cancellationReason(owner.CancelReasonFor, child.runID),
 	})
-	if bindExecutorMemberErr := owner.bindExecutorMember(child.runID, member.MemberID); bindExecutorMemberErr != nil {
-		return nil, bindExecutorMemberErr
-	}
-	release := true
-	defer func() {
-		if release {
-			owner.unbindExecutorMember(child.runID, member.MemberID)
-		}
-	}()
 	projected, err := child.reducer.open()
 	if err != nil {
-		return nil, fmt.Errorf("runs: reduce child member %q opening: %w", member.MemberID, err)
+		return fmt.Errorf("runs: reduce child member %q opening: %w", prepared.member.MemberID, err)
 	}
 	if len(projected.events) == 0 || projected.parkCommit != nil {
-		return nil, fmt.Errorf("runs: child member %q produced an invalid opening batch", member.MemberID)
+		return fmt.Errorf("runs: child member %q produced an invalid opening batch", prepared.member.MemberID)
 	}
 	opening := OpeningCommit{
 		CommitID: newRunCommitID(),
@@ -711,44 +745,35 @@ func (c *Coordinator) prepareChildOpening(
 			CreatedAt:       startedAt,
 		},
 		Events: []EventCommit{{
-			RunID:     parent.runID,
+			RunID:     prepared.parent.runID,
 			SessionID: spec.SessionID,
-			SegmentID: parent.segmentID,
-			Items:     []transcript.Item{spawningItem},
+			SegmentID: prepared.parent.segmentID,
+			Items:     []transcript.Item{prepared.spawningItem},
 		}},
 	}
 	for _, reduced := range projected.events {
 		if reduced.Event.Terminal() || reduced.Nudge != nil {
-			return nil, fmt.Errorf("runs: child member %q produced an invalid opening event", member.MemberID)
+			return fmt.Errorf("runs: child member %q produced an invalid opening event", prepared.member.MemberID)
 		}
 		if reduced.Commit != nil {
 			opening.Events = append(opening.Events, *reduced.Commit)
 		}
 	}
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {
-		return nil, err
+		return err
 	}
-	reservation := ChildRunStartReservation{
-		SessionID: spec.SessionID, ExecutorID: spec.ExecutorID, Member: member,
-		Binding: ChildRunBinding{
-			MemberID: member.MemberID, RunID: child.runID, ParentRunID: child.lineage.ParentRunID,
-		},
-		SegmentID: child.segmentID, SpawnedByItemID: spawningItem.ID(),
-		RootRunID: child.rootRunID, StartedAt: startedAt,
+	if err := opening.Validate(); err != nil {
+		return fmt.Errorf("runs: child member %q opening: %w", prepared.member.MemberID, err)
 	}
-	if err := reservation.Validate(); err != nil {
-		return nil, err
-	}
-	release = false
-	return &preparedChildOpening{
-		member: member, route: child, batch: projected, opening: opening, reservation: reservation,
-	}, nil
+	prepared.batch = projected
+	prepared.opening = opening
+	return nil
 }
 
 func (c *Coordinator) activatePreparedChild(
 	spec segmentSpec,
 	routes *executorRoutes,
-	prepared *preparedChildOpening,
+	prepared *preparedChildStart,
 ) {
 	prepared.route.segmentStartedAt = c.publications.nowUTC()
 	routes.installChild(prepared.member, prepared.route)

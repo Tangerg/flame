@@ -167,7 +167,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 		t.Fatalf("bind source result: %v", bindErr)
 	}
 	if seedHistoryErr := sourceRuntime.SeedHistory(ctx, ses.ID(), []chat.Message{
-		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: "vendor_tool", Result: preview}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: "vendor_tool", Output: chat.NewTextToolOutput(preview)}),
 	}); seedHistoryErr != nil {
 		t.Fatalf("seed source history: %v", seedHistoryErr)
 	}

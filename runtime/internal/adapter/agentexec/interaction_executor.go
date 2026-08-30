@@ -41,7 +41,6 @@ import (
 const (
 	interactionDefinitionName        = "flame.runtime.interaction"
 	interactionDefinitionDescription = "Run one model-directed Flame interaction over a frozen working context."
-	interactionDefinitionVersion     = "1.0.0"
 	defaultInteractionModelCalls     = 64
 	interactionEventBuffer           = 64
 	interactionReleaseReason         = "runtime released execution resources"

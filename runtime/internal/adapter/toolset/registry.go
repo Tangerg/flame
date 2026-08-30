@@ -10,6 +10,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 )
 
@@ -66,13 +69,21 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name, arguments stri
 		if candidate.Definition().Name != name {
 			continue
 		}
-		output, callErr := candidate.Call(ctx, arguments)
+		binding, bindErr := toolcontract.Bind(candidate)
+		if bindErr != nil {
+			return tool.Result{}, fmt.Errorf("toolset: bind direct tool %q: %w", name, bindErr)
+		}
+		invocation, prepareErr := binding.Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments})
+		if prepareErr != nil {
+			return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
+		}
+		output, callErr := binding.Call(ctx, invocation)
 		if callErr != nil {
 			span.RecordError(callErr)
 			span.SetStatus(codes.Error, callErr.Error())
 			return tool.Result{}, callErr
 		}
-		return directResult(output), nil
+		return directResult(output)
 	}
 	err = fmt.Errorf("toolset: direct tool %q is not registered", name)
 	span.RecordError(err)

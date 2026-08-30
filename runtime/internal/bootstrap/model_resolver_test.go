@@ -12,8 +12,8 @@ type staticTestChatResolver struct {
 	client *chatclient.Client
 }
 
-func testChatResolver(client *chatclient.Client) ChatResolver {
-	return staticTestChatResolver{client: client}
+func testChatResolver(client chatclient.Client) ChatResolver {
+	return staticTestChatResolver{client: &client}
 }
 
 func (r staticTestChatResolver) ResolveChat(

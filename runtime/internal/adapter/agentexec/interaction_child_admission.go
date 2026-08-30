@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -75,7 +76,7 @@ func (i *interactionSession) admitProcess(
 		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
 		SpawnCallID: managed.call.ID,
 	}
-	request, receipt := runs.NewChildRunReservationRequest(admission.StartedAt())
+	request, receipt := runs.NewChildRunReservationRequest()
 	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{Member: member, Payload: request}); err != nil {
 		return i.failDelegateAdmission(ctx, managed, err)
 	}
@@ -95,7 +96,10 @@ func (i *interactionSession) admitProcess(
 
 func sameManagedAdmission(left, right agent.ProcessAdmission) bool {
 	return left.Valid() && right.Valid() && left.Relation() == right.Relation() &&
-		left.DeploymentRef() == right.DeploymentRef() && left.StartedAt().Equal(right.StartedAt())
+		left.DeploymentRef() == right.DeploymentRef() &&
+		left.Descriptor().Digest() == right.Descriptor().Digest() &&
+		left.Budget() == right.Budget() &&
+		slices.Equal(left.Capabilities().Values(), right.Capabilities().Values())
 }
 
 func (i *interactionSession) failDelegateAdmission(
@@ -140,10 +144,18 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 		return errors.New("agentexec: child start outcome differs from its reservation")
 	}
 	applicationOutcome := runs.ChildRunStartAborted
+	startedAt, hasStartedAt := outcome.StartedAt()
 	if outcome.Status() == agent.ProcessStartOutcomeStatusStarted {
+		if !hasStartedAt {
+			return errors.New("agentexec: started child outcome has no lifecycle start time")
+		}
 		applicationOutcome = runs.ChildRunStarted
+	} else if hasStartedAt {
+		return errors.New("agentexec: aborted child outcome has a lifecycle start time")
 	}
-	request, receipt := runs.NewChildRunStartOutcomeRequest(managed.binding, applicationOutcome)
+	request, receipt := runs.NewChildRunStartOutcomeRequest(
+		managed.binding, applicationOutcome, startedAt,
+	)
 	member := runs.ExecutorMember{
 		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
 		SpawnCallID: managed.call.ID,

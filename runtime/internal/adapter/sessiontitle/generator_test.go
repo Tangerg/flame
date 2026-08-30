@@ -55,7 +55,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewGenerator(func(context.Context) *chatclient.Client { return client })
+	generator := NewGenerator(func(context.Context) *chatclient.Client { return &client })
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider outage  \ninclude the request log")
 	if !errors.Is(err, providerErr) {

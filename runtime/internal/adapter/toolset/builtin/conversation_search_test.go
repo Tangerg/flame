@@ -41,7 +41,7 @@ func TestRunFormatsHits(t *testing.T) {
 	if got := tl.Definition().Name; got != "search_conversations" {
 		t.Fatalf("name = %q, want search_conversations", got)
 	}
-	text, err := tl.Call(t.Context(), `{"query":"  deploy widget  ","limit":20}`)
+	text, err := callTextTool(t.Context(), tl, `{"query":"  deploy widget  ","limit":20}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,10 +64,10 @@ func TestRunRejectsOutOfRangeLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tl.Call(t.Context(), `{"query":"deploy","limit":21}`); err == nil {
+	if _, err := callTextTool(t.Context(), tl, `{"query":"deploy","limit":21}`); err == nil {
 		t.Fatal("expected an error for limit above 20")
 	}
-	if _, err := tl.Call(t.Context(), `{"query":"deploy","limit":0}`); err == nil {
+	if _, err := callTextTool(t.Context(), tl, `{"query":"deploy","limit":0}`); err == nil {
 		t.Fatal("expected an error for numeric default sentinel")
 	}
 }
@@ -77,7 +77,7 @@ func TestRunEmptyQueryErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tl.Call(t.Context(), `{"query":"   "}`); err == nil {
+	if _, err := callTextTool(t.Context(), tl, `{"query":"   "}`); err == nil {
 		t.Fatal("expected an error for a blank query")
 	}
 }
@@ -88,7 +88,7 @@ func TestRunNoHits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := tl.Call(t.Context(), `{"query":"nothing"}`)
+	out, err := callTextTool(t.Context(), tl, `{"query":"nothing"}`)
 	if err != nil {
 		t.Fatal(err)
 	}

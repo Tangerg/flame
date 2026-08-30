@@ -48,7 +48,7 @@ func TestRuntimeSearchDoesNotDependOnHostSearchBinaries(t *testing.T) {
 	// must not decide whether the model can search a workspace.
 	t.Setenv("PATH", t.TempDir())
 
-	globBody, err := namedDirectTool(t, root, "glob").Call(t.Context(), `{"pattern":"**/*.go"}`)
+	globBody, err := callTextTool(t.Context(), namedDirectTool(t, root, "glob"), `{"pattern":"**/*.go"}`)
 	if err != nil {
 		t.Fatalf("glob without host find: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestRuntimeSearchDoesNotDependOnHostSearchBinaries(t *testing.T) {
 		t.Fatalf("glob response = %+v, want one ignore-aware result", glob)
 	}
 
-	grepBody, err := namedDirectTool(t, root, "grep").Call(t.Context(), `{"pattern":"package"}`)
+	grepBody, err := callTextTool(t.Context(), namedDirectTool(t, root, "grep"), `{"pattern":"package"}`)
 	if err != nil {
 		t.Fatalf("grep without host rg/grep: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestRuntimeGrepReportsExactTotalBeyondRetainedPrefix(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "many.txt"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := namedDirectTool(t, root, "grep").Call(t.Context(), `{"pattern":"needle","max_results":2}`)
+	body, err := callTextTool(t.Context(), namedDirectTool(t, root, "grep"), `{"pattern":"needle","max_results":2}`)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRuntimeGlobReportsExactTotalBeyondRetainedPrefix(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	body, err := namedDirectTool(t, root, "glob").Call(t.Context(), `{"pattern":"*.go","max_results":2}`)
+	body, err := callTextTool(t.Context(), namedDirectTool(t, root, "glob"), `{"pattern":"*.go","max_results":2}`)
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestRuntimeGrepExcludesUnpageableTextFileAsAWhole(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "pathological.txt"), []byte(strings.Repeat("needle", (1<<20)/6+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := namedDirectTool(t, root, "grep").Call(t.Context(), `{"pattern":"needle","max_results":1}`)
+	body, err := callTextTool(t.Context(), namedDirectTool(t, root, "grep"), `{"pattern":"needle","max_results":1}`)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestRuntimeGrepBoundsEncodedToolResult(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "escaped.txt"), []byte(strings.Repeat(line, 1000)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := namedDirectTool(t, root, "grep").Call(t.Context(), `{"pattern":"needle","max_results":1000}`)
+	body, err := callTextTool(t.Context(), namedDirectTool(t, root, "grep"), `{"pattern":"needle","max_results":1000}`)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestRuntimeSearchRejectsNumericDefaultSentinels(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	for _, name := range []string{"grep", "glob"} {
-		if _, err := namedDirectTool(t, root, name).Call(t.Context(), `{"pattern":"x","max_results":0}`); err == nil {
+		if _, err := callTextTool(t.Context(), namedDirectTool(t, root, name), `{"pattern":"x","max_results":0}`); err == nil {
 			t.Errorf("%s accepted max_results=0 instead of requiring omission", name)
 		}
 	}
@@ -207,7 +207,7 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 			if name == "grep" {
 				arguments = `{"pattern":"secret","path":"../"}`
 			}
-			_, err := namedDirectTool(t, root, name).Call(t.Context(), arguments)
+			_, err := callTextTool(t.Context(), namedDirectTool(t, root, name), arguments)
 			if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 				t.Fatalf("%s error = %v, want ErrPathOutsideRoot", name, err)
 			}
@@ -217,7 +217,7 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 			if name == "grep" {
 				arguments = `{"pattern":"secret","path":"outside"}`
 			}
-			_, err := namedDirectTool(t, root, name).Call(t.Context(), arguments)
+			_, err := callTextTool(t.Context(), namedDirectTool(t, root, name), arguments)
 			if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 				t.Fatalf("%s error = %v, want ErrPathOutsideRoot", name, err)
 			}
@@ -225,7 +225,7 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 		t.Run(name+" canceled", func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
-			_, err := namedDirectTool(t, root, name).Call(ctx, `{"pattern":"*"}`)
+			_, err := callTextTool(ctx, namedDirectTool(t, root, name), `{"pattern":"*"}`)
 			if !errors.Is(err, context.Canceled) {
 				t.Fatalf("%s error = %v, want context.Canceled", name, err)
 			}

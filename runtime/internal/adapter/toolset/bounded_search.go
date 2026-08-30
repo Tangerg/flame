@@ -70,7 +70,9 @@ type runtimePathSearchResponse struct {
 
 type concurrentSearchTool struct{ toolcontract.Tool }
 
-func (concurrentSearchTool) ConcurrencyKey(string) (key string, concurrent bool) { return "", true }
+func (concurrentSearchTool) ConcurrencyKey(toolcontract.Invocation) (key string, concurrent bool) {
+	return "", true
+}
 
 type runtimeSearchTools struct {
 	glob toolcontract.Tool

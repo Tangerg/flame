@@ -87,9 +87,13 @@ func trimPart(p chat.Part) (chat.Part, bool) {
 		clone := p.Clone()
 		clone.ToolCall.Arguments = fmt.Sprintf(`{"_trimmed":"%d bytes elided on compaction"}`, len(p.ToolCall.Arguments))
 		return clone, true
-	case p.Kind == chat.PartToolResult && p.ToolResult != nil && len(p.ToolResult.Result) > ladderResultCap:
+	case p.Kind == chat.PartToolResult && p.ToolResult != nil:
+		output, trimmed := trimToolOutput(p.ToolResult.Output, ladderResultCap)
+		if !trimmed {
+			return p, false
+		}
 		clone := p.Clone()
-		clone.ToolResult.Result = clipResult(p.ToolResult.Result)
+		clone.ToolResult.Output = output
 		return clone, true
 	default:
 		return p, false

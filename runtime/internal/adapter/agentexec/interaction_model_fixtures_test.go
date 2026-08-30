@@ -104,7 +104,8 @@ func toolResult(messages []chat.Message, name string) string {
 		}
 		for _, part := range message.Parts {
 			if part.Kind == chat.PartToolResult && part.ToolResult != nil && part.ToolResult.Name == name {
-				return part.ToolResult.Result
+				text, _ := part.ToolResult.Output.Text()
+				return text
 			}
 		}
 	}

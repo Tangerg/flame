@@ -3,35 +3,36 @@ module github.com/Tangerg/flame/runtime
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260828224447-a2e937181e11
-	github.com/Tangerg/scope/a2a v0.0.1
-	github.com/Tangerg/scope/agent v0.2.0
-	github.com/Tangerg/scope/core v0.0.3
-	github.com/Tangerg/scope/mcp v0.0.1
-	github.com/Tangerg/scope/models/alibaba v0.0.2
-	github.com/Tangerg/scope/models/anthropic v0.0.3
-	github.com/Tangerg/scope/models/azureopenai v0.0.2
-	github.com/Tangerg/scope/models/catalog v0.0.2
-	github.com/Tangerg/scope/models/deepseek v0.0.2
-	github.com/Tangerg/scope/models/fireworks v0.0.2
-	github.com/Tangerg/scope/models/google v0.0.3
-	github.com/Tangerg/scope/models/groq v0.0.2
-	github.com/Tangerg/scope/models/huggingface v0.0.2
-	github.com/Tangerg/scope/models/minimax v0.0.2
-	github.com/Tangerg/scope/models/mistral v0.0.2
-	github.com/Tangerg/scope/models/moonshot v0.0.2
-	github.com/Tangerg/scope/models/openai v0.0.3
-	github.com/Tangerg/scope/models/openrouter v0.0.2
-	github.com/Tangerg/scope/models/perplexity v0.0.2
-	github.com/Tangerg/scope/models/protocol/openai v0.0.3
-	github.com/Tangerg/scope/models/together v0.0.2
-	github.com/Tangerg/scope/models/xai v0.0.2
-	github.com/Tangerg/scope/models/xiaomi v0.0.2
-	github.com/Tangerg/scope/models/zhipu v0.0.2
-	github.com/Tangerg/scope/otel v0.0.1
-	github.com/Tangerg/scope/skills v0.0.1
-	github.com/Tangerg/scope/tools v0.0.2-0.20260828195634-f382905a017c
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260830185102-f9cab5a73a84
+	github.com/Tangerg/scope/a2a v0.11.0
+	github.com/Tangerg/scope/agent v0.11.0
+	github.com/Tangerg/scope/core v0.11.0
+	github.com/Tangerg/scope/mcp v0.11.0
+	github.com/Tangerg/scope/models/alibaba v0.11.0
+	github.com/Tangerg/scope/models/anthropic v0.11.0
+	github.com/Tangerg/scope/models/azureopenai v0.11.0
+	github.com/Tangerg/scope/models/catalog v0.11.0
+	github.com/Tangerg/scope/models/deepseek v0.11.0
+	github.com/Tangerg/scope/models/fireworks v0.11.0
+	github.com/Tangerg/scope/models/google v0.11.0
+	github.com/Tangerg/scope/models/groq v0.11.0
+	github.com/Tangerg/scope/models/huggingface v0.11.0
+	github.com/Tangerg/scope/models/minimax v0.11.0
+	github.com/Tangerg/scope/models/mistral v0.11.0
+	github.com/Tangerg/scope/models/moonshot v0.11.0
+	github.com/Tangerg/scope/models/openai v0.11.0
+	github.com/Tangerg/scope/models/openrouter v0.11.0
+	github.com/Tangerg/scope/models/perplexity v0.11.0
+	github.com/Tangerg/scope/models/protocol/openai v0.11.0
+	github.com/Tangerg/scope/models/together v0.11.0
+	github.com/Tangerg/scope/models/xai v0.11.0
+	github.com/Tangerg/scope/models/xiaomi v0.11.0
+	github.com/Tangerg/scope/models/zhipu v0.11.0
+	github.com/Tangerg/scope/otel v0.11.0
+	github.com/Tangerg/scope/skills v0.11.0
+	github.com/Tangerg/scope/tools v0.11.0
 	github.com/Tangerg/sse v0.0.6
+	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
@@ -62,15 +63,13 @@ require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.1 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.0.3 // indirect
+	github.com/Tangerg/scope/models/protocol/anthropic v0.11.0 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
-	github.com/anthropics/anthropic-sdk-go v1.67.0 // indirect
+	github.com/anthropics/anthropic-sdk-go v1.68.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.44.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.40 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

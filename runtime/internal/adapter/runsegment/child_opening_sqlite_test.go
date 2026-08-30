@@ -171,7 +171,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 			MemberID: "member_child", RunID: child.RunID, ParentRunID: root.RunID,
 		},
 		SegmentID: child.SegmentID, SpawnedByItemID: spawningItem.ID(),
-		RootRunID: root.RunID, StartedAt: startedAt,
+		RootRunID: root.RunID, ReservedAt: startedAt.Add(-time.Second),
 	}
 	loseReceipt := false
 	commitCtx, cancelCommit := context.WithCancel(ctx)

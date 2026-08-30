@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
@@ -27,20 +28,21 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) tool
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		arguments := string(invocation.Arguments())
 		request, decodeErr := decodeToolArguments[fs.ReadRequest](arguments)
 		if decodeErr != nil || request.Path == "" {
-			return inner.Call(ctx, arguments)
+			return inner.Call(ctx, invocation)
 		}
 		abs, pathErr := pathidentity.Canonical(cwd, request.Path)
 		if pathErr != nil {
-			return "", fmt.Errorf("track read path: %w", pathErr)
+			return chat.ToolOutput{}, fmt.Errorf("track read path: %w", pathErr)
 		}
 		before, existedBefore, err := observeFingerprintExistingFile(ctx, abs, maxRuntimeReadFileBytes)
 		if err != nil {
-			return "", fmt.Errorf("track read %s: %w", request.Path, err)
+			return chat.ToolOutput{}, fmt.Errorf("track read %s: %w", request.Path, err)
 		}
-		out, err := inner.Call(ctx, arguments)
+		out, err := inner.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
@@ -64,28 +66,28 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) too
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
-		paths, err := mutationPaths(inner, arguments)
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return "", fmt.Errorf("inspect mutation paths before applying patch: %w", err)
+			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
 		}
 		for _, path := range paths {
 			abs, canonicalErr := pathidentity.Canonical(cwd, path)
 			if canonicalErr != nil {
-				return "", fmt.Errorf("resolve mutation path: %w", canonicalErr)
+				return chat.ToolOutput{}, fmt.Errorf("resolve mutation path: %w", canonicalErr)
 			}
 			fingerprint, exists, canonicalErr := fingerprintExistingFile(ctx, abs, 0)
 			if canonicalErr != nil {
-				return "", fmt.Errorf("fingerprint mutation path %s: %w", path, canonicalErr)
+				return chat.ToolOutput{}, fmt.Errorf("fingerprint mutation path %s: %w", path, canonicalErr)
 			}
 			if !exists {
 				continue
 			}
 			if verdict := tr.check(executionctx.SessionID(ctx), abs, fingerprint); !verdict.allowed() {
-				return mutationGuardMessage(verdict, path), nil
+				return chat.NewTextToolOutput(mutationGuardMessage(verdict, path)), nil
 			}
 		}
-		out, err := inner.Call(ctx, arguments)
+		out, err := inner.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
@@ -241,17 +243,24 @@ func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, ro
 	if ci == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, arguments string) (string, error) {
-		paths, err := mutationPaths(inner, arguments)
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return "", fmt.Errorf("inspect mutation paths before diagnostics: %w", err)
+			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before diagnostics: %w", err)
 		}
 		path := ""
 		if len(paths) == 1 {
 			path = paths[0]
 		}
-		return ci.DiagnoseMutation(ctx, root, path, func() (string, error) {
-			return inner.Call(ctx, arguments)
+		var output chat.ToolOutput
+		section, err := ci.DiagnoseMutation(ctx, root, path, func() error {
+			var callErr error
+			output, callErr = inner.Call(ctx, invocation)
+			return callErr
 		})
+		if err != nil || section == "" {
+			return output, err
+		}
+		return appendToolOutputText(output, "\n\n"+section), nil
 	})
 }

@@ -2421,7 +2421,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			},
 			ConversationMessages: []chat.Message{chat.NewToolMessage(chat.ToolResult{
 				ID: "provider_child", Name: "delegate_task",
-				Result: "error: tool \"delegate_task\" failed: stop delegated branch", IsError: true,
+				Output: chat.NewTextToolOutput("error: tool \"delegate_task\" failed: stop delegated branch"), IsError: true,
 			})},
 			Resume: resume,
 		},

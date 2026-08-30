@@ -348,5 +348,5 @@ func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("llm: chat client: %w", err)
 	}
-	return client, nil
+	return &client, nil
 }

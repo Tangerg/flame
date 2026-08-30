@@ -3,6 +3,7 @@ package runs
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -308,7 +309,11 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 		t.Fatalf("Tool result conversation projection = %#v", toolMessages)
 	}
 	result := toolMessages[0].Parts[0].ToolResult
-	if result == nil || result.ID != call.ID || result.Name != call.Name || result.Result != "contents" || result.IsError {
+	if result == nil {
+		t.Fatal("Tool result is missing")
+	}
+	resultText, textual := result.Output.Text()
+	if result.ID != call.ID || result.Name != call.Name || !textual || resultText != "contents" || result.IsError {
 		t.Fatalf("Tool result = %#v, want provider identity and successful output", result)
 	}
 }
@@ -365,8 +370,12 @@ func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *test
 		t.Fatalf("terminal conversation closure = %#v, want one Tool result", terminalMessages)
 	}
 	result := terminalMessages[0].Parts[0].ToolResult
-	if result == nil || result.ID != second.ID || result.Name != second.Name || !result.IsError ||
-		!strings.Contains(result.Result, "canceled") {
+	if result == nil {
+		t.Fatal("terminal Tool result is missing")
+	}
+	resultText, textual := result.Output.Text()
+	if result.ID != second.ID || result.Name != second.Name || !result.IsError ||
+		!textual || !strings.Contains(resultText, "canceled") {
 		t.Fatalf("terminal Tool result = %#v, want canceled %q", result, second.ID)
 	}
 
@@ -416,8 +425,12 @@ func TestReducerTerminalPreservesCompletedOutOfOrderToolResult(t *testing.T) {
 	}
 	first := terminal[0].Parts[0].ToolResult
 	second := terminal[0].Parts[1].ToolResult
-	if first == nil || first.ID != calls[0].ID || !first.IsError ||
-		second == nil || second.ID != calls[1].ID || second.IsError || second.Result != "known second" {
+	if first == nil || second == nil {
+		t.Fatalf("terminal results = %#v, want canceled first then known second", terminal[0].Parts)
+	}
+	secondText, textual := second.Output.Text()
+	if first.ID != calls[0].ID || !first.IsError ||
+		second.ID != calls[1].ID || second.IsError || !textual || secondText != "known second" {
 		t.Fatalf("terminal results = %#v, want canceled first then known second", terminal[0].Parts)
 	}
 }
@@ -782,7 +795,7 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 	})
 	exact := corechat.ToolResult{
 		ID: call.ID, Name: call.Name,
-		Result: `{"stdout":"hello","stderr":"","exit_code":0}`,
+		Output: corechat.NewTextToolOutput(`{"stdout":"hello","stderr":"","exit_code":0}`),
 	}
 	reduced := mustReduce(t, reducer, ToolCallFinished{
 		CallID:      "runtime_shell",
@@ -793,7 +806,7 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 	})
 	messages := committedConversationMessages(reduced)
 	if len(messages) != 1 || len(messages[0].Parts) != 1 ||
-		messages[0].Parts[0].ToolResult == nil || *messages[0].Parts[0].ToolResult != exact {
+		messages[0].Parts[0].ToolResult == nil || !reflect.DeepEqual(*messages[0].Parts[0].ToolResult, exact) {
 		t.Fatalf("model conversation result = %#v, want %#v", messages, exact)
 	}
 	completed := completedItem(t, reduced)

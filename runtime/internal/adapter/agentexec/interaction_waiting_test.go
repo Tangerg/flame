@@ -766,7 +766,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	}
 }
 
-func TestInteractionExecutorDoesNotCheckpointOrReplayUnknownEffect(t *testing.T) {
+func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.T) {
 	workspace := t.TempDir()
 	var calls int
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -818,10 +818,11 @@ func TestInteractionExecutorDoesNotCheckpointOrReplayUnknownEffect(t *testing.T)
 	if process == nil {
 		t.Fatal("unknown Interaction has no Process")
 	}
-	captureCtx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	captureCtx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	if _, err := session.engine.CaptureTree(captureCtx, process.ID()); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("CaptureTree with unknown Effect error = %v, want deadline", err)
+	snapshot, err := session.engine.CaptureTree(captureCtx, process.ID())
+	if err != nil || !snapshot.Valid() {
+		t.Fatalf("CaptureTree with unknown Effect = (%v, %v), want a durable snapshot", snapshot.Valid(), err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)

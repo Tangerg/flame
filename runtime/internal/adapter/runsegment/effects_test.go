@@ -273,7 +273,7 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 		SegmentID:       "segment_child",
 		SpawnedByItemID: "item_delegate",
 		RootRunID:       "run_root",
-		StartedAt:       startedAt,
+		ReservedAt:      startedAt.Add(-time.Second),
 	}
 	draft := run.Draft{
 		RunID: "run_child", SessionID: "ses_1", SegmentID: "segment_child",
@@ -317,7 +317,7 @@ func TestChildRunStartReservationUsesAdapterOwnedCanonicalPayload(t *testing.T) 
 		SegmentID:       "segment_child",
 		SpawnedByItemID: "item_delegate",
 		RootRunID:       "run_root",
-		StartedAt:       startedAt,
+		ReservedAt:      startedAt,
 	})
 	if err != nil {
 		t.Fatalf("childRunStartReservationRecord: %v", err)

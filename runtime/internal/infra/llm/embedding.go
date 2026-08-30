@@ -52,8 +52,8 @@ func BuildEmbeddingModel(spec ClientSpec) (embedding.Model, error) {
 	}
 	spec = spec.withEndpoint(endpoint)
 	profile := provider.embedding
-	opts, err := embedding.NewOptions(spec.model.String())
-	if err != nil {
+	opts := embedding.Options{Model: spec.model.String()}
+	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("llm: embedding options for %q: %w", spec.model.String(), err)
 	}
 	model, err := profile.build(spec, opts)

@@ -44,7 +44,7 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 			chat.NewToolCallPart(chat.ToolCall{ID: "call_reused", Name: "first"}),
 			chat.NewToolCallPart(chat.ToolCall{ID: "call_parallel", Name: "parallel"}),
 		),
-		chat.NewToolMessage(chat.ToolResult{ID: "call_reused", Name: "first", Result: "done"}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_reused", Name: "first", Output: chat.NewTextToolOutput("done")}),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "call_reused", Name: "second"})),
 	})
 	if err != nil {
@@ -58,8 +58,8 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 		t.Fatalf("counts/appended = %d/%d/%d, want 3/4/1", history.Count(), closed.Count(), len(appended))
 	}
 	want := chat.NewToolMessage(
-		chat.ToolResult{ID: "call_parallel", Name: "parallel", Result: "execution was lost", IsError: true},
-		chat.ToolResult{ID: "call_reused", Name: "second", Result: "execution was lost", IsError: true},
+		chat.ToolResult{ID: "call_parallel", Name: "parallel", Output: chat.NewTextToolOutput("execution was lost"), IsError: true},
+		chat.ToolResult{ID: "call_reused", Name: "second", Output: chat.NewTextToolOutput("execution was lost"), IsError: true},
 	)
 	if !reflect.DeepEqual(appended[0], want) || !reflect.DeepEqual(closed.Messages()[3], want) {
 		t.Fatalf("closure = %#v, want %#v", appended, want)
@@ -73,7 +73,7 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 func TestCloseOpenToolCallsIsNoOpWhenConversationIsClosed(t *testing.T) {
 	history, err := New([]chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "call", Name: "read"})),
-		chat.NewToolMessage(chat.ToolResult{ID: "call", Name: "read", Result: "done"}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call", Name: "read", Output: chat.NewTextToolOutput("done")}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestCloseOpenToolCallsWithResultsPreservesProviderOrder(t *testing.T) {
 	}
 	closed, appended, err := history.CloseOpenToolCallsWithResults(
 		"canceled",
-		[]chat.ToolResult{{ID: "second", Name: "glob", Result: "known"}},
+		[]chat.ToolResult{{ID: "second", Name: "glob", Output: chat.NewTextToolOutput("known")}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -104,8 +104,13 @@ func TestCloseOpenToolCallsWithResultsPreservesProviderOrder(t *testing.T) {
 	}
 	first := appended[0].Parts[0].ToolResult
 	second := appended[0].Parts[1].ToolResult
-	if first == nil || first.ID != "first" || !first.IsError || first.Result != "canceled" ||
-		second == nil || second.ID != "second" || second.IsError || second.Result != "known" {
+	if first == nil || second == nil {
+		t.Fatalf("ordered terminal results = %#v", appended[0].Parts)
+	}
+	firstText, firstTextual := first.Output.Text()
+	secondText, secondTextual := second.Output.Text()
+	if first.ID != "first" || !first.IsError || !firstTextual || firstText != "canceled" ||
+		second.ID != "second" || second.IsError || !secondTextual || secondText != "known" {
 		t.Fatalf("ordered terminal results = %#v", appended[0].Parts)
 	}
 }

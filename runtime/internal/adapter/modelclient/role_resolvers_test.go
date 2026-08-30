@@ -87,5 +87,5 @@ func newTestChatClient(t testing.TB) *chatclient.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return client
+	return &client
 }

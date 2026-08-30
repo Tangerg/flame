@@ -805,8 +805,12 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 		t.Fatalf("conversation transition = %+v", transition)
 	}
 	result := transition.Messages[0].Parts[0].ToolResult
-	if result == nil || result.ID != "provider_call_open" || result.Name != "ask_user" ||
-		result.Result != recoveryLostToolResult || !result.IsError ||
+	if result == nil {
+		t.Fatal("recovery closure has no Tool result")
+	}
+	resultText, textual := result.Output.Text()
+	if result.ID != "provider_call_open" || result.Name != "ask_user" ||
+		!textual || resultText != recoveryLostToolResult || !result.IsError ||
 		store.commit.LostRuns[0].MessageMark() != 3 {
 		t.Fatalf("closure/lost Run = %#v / %+v", result, store.commit.LostRuns[0])
 	}

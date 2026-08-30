@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -58,8 +59,9 @@ type segmentPump struct {
 }
 
 type managedChildStart struct {
-	prepared *preparedChildOpening
-	outcome  ChildRunStartOutcome
+	prepared  *preparedChildStart
+	outcome   ChildRunStartOutcome
+	startedAt time.Time
 }
 
 type toolCommitKey struct {
@@ -150,8 +152,7 @@ func (s *segmentPump) handleChildRunReservation(
 		return true
 	}
 	if existing := s.childStarts[event.Member.MemberID]; existing != nil {
-		if existing.prepared.member != event.Member ||
-			!existing.prepared.reservation.StartedAt.Equal(request.StartedAt.UTC()) {
+		if existing.prepared.member != event.Member {
 			err := fmt.Errorf("runs: child member %q repeated a different start reservation", event.Member.MemberID)
 			_ = request.complete(ChildRunBinding{}, err)
 			return true
@@ -159,8 +160,8 @@ func (s *segmentPump) handleChildRunReservation(
 		_ = request.complete(existing.prepared.reservation.Binding, nil)
 		return true
 	}
-	prepared, err := s.coordinator.prepareChildOpening(
-		s.spec, s.owner, s.routes, event.Member, request.StartedAt,
+	prepared, err := s.coordinator.prepareChildStart(
+		s.spec, s.owner, s.routes, event.Member,
 	)
 	if err == nil {
 		err = s.coordinator.childStarts.ReserveChildRunStart(s.ownerCtx, prepared.reservation)
@@ -211,7 +212,7 @@ func (s *segmentPump) handleChildRunStartOutcome(
 		return true
 	}
 	if managed.outcome.Valid() {
-		if managed.outcome != request.Outcome {
+		if managed.outcome != request.Outcome || !managed.startedAt.Equal(request.StartedAt) {
 			err := fmt.Errorf("runs: child member %q repeated a contradictory start outcome", event.Member.MemberID)
 			_ = request.complete(err)
 			return true
@@ -224,11 +225,15 @@ func (s *segmentPump) handleChildRunStartOutcome(
 	keep := true
 	switch request.Outcome {
 	case ChildRunStarted:
-		err = s.coordinator.childStarts.CommitStartedChildRun(
-			s.ownerCtx, prepared.reservation, prepared.opening,
-		)
+		err = s.coordinator.finalizeChildOpening(s.spec, s.owner, prepared, request.StartedAt)
+		if err == nil {
+			err = s.coordinator.childStarts.CommitStartedChildRun(
+				s.ownerCtx, prepared.reservation, prepared.opening,
+			)
+		}
 		if err == nil {
 			managed.outcome = request.Outcome
+			managed.startedAt = request.StartedAt
 			s.coordinator.activatePreparedChild(s.spec, s.routes, prepared)
 			publication, publishErr := s.publisher.publish(s.ownerCtx, prepared.route, prepared.batch)
 			if publishErr != nil || publication.finished || publication.parked {
@@ -251,11 +256,15 @@ func (s *segmentPump) handleChildRunStartOutcome(
 			)
 			err = errors.Join(err, cleanupErr)
 			prepared.releaseBinding(s.owner)
+			prepared.route.reducer = nil
+			prepared.batch = reductionBatch{}
+			prepared.opening = OpeningCommit{}
 		}
 	case ChildRunStartAborted:
 		err = s.coordinator.childStarts.AbortChildRunStart(s.ownerCtx, prepared.reservation)
 		if err == nil {
 			managed.outcome = request.Outcome
+			managed.startedAt = time.Time{}
 			prepared.releaseBinding(s.owner)
 		}
 	default:
@@ -268,7 +277,7 @@ func (s *segmentPump) handleChildRunStartOutcome(
 	return keep
 }
 
-func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildOpening) {
+func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	if prepared == nil {
 		return
 	}

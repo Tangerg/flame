@@ -40,7 +40,7 @@ func TestDefinitionUsesEmptyInput(t *testing.T) {
 	if schema := string(tool.Definition().InputSchema); strings.Contains(schema, `"mode"`) || strings.Contains(schema, `"plan"`) {
 		t.Fatalf("schema contains invented inputs: %s", schema)
 	}
-	if _, err := tool.Call(t.Context(), `{"mode":"plan"}`); err == nil {
+	if _, err := callTextTool(t.Context(), tool, `{"mode":"plan"}`); err == nil {
 		t.Fatal("obsolete mode input was accepted")
 	}
 }
@@ -50,7 +50,7 @@ func TestEnterRequiresSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tool.Call(t.Context(), `{}`); err == nil || !strings.Contains(err.Error(), "no active session") {
+	if _, err := callTextTool(t.Context(), tool, `{}`); err == nil || !strings.Contains(err.Error(), "no active session") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -62,7 +62,7 @@ func TestEnterUsesCurrentSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
-	result, err := tool.Call(ctx, `{}`)
+	result, err := callTextTool(ctx, tool, `{}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestAlreadyEnteredIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
-	result, err := tool.Call(ctx, `{}`)
+	result, err := callTextTool(ctx, tool, `{}`)
 	if err != nil || !strings.Contains(result, "already in Plan mode") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}

@@ -59,7 +59,10 @@ func TestSubmitProposalThenApproveProposal(t *testing.T) {
 	}
 
 	// The approved skill is discoverable + valid per the read-only spec loader.
-	source := skillspec.NewDirectoryRepository(root)
+	source, err := skillspec.NewDirectoryRepository(root, skillspec.RepositoryConfig{})
+	if err != nil {
+		t.Fatalf("NewDirectoryRepository: %v", err)
+	}
 	summaries, err := source.List(t.Context())
 	if err != nil {
 		t.Fatalf("List: %v", err)

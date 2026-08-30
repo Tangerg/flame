@@ -64,7 +64,9 @@ func (c catalogTool) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{Name: string(c), InputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
-func (catalogTool) Call(context.Context, string) (string, error) { return "", nil }
+func (catalogTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
+	return chat.ToolOutput{}, nil
+}
 
 func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 	c := &Connections{lifetime: t.Context(), client: newClient()}

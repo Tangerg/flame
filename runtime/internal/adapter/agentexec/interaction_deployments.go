@@ -147,19 +147,22 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	}
 	definition, err := interaction.NewDefinition(interaction.DefinitionConfig{
 		Name: definitionName, Description: definitionDescription,
-		Version: interactionDefinitionVersion, MaxModelCalls: i.maxModelCalls,
-		Delegates: delegates,
+		MaxModelCalls: i.maxModelCalls,
+		Delegates:     delegates,
 	})
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction definition at depth %d: %w", depth, err)
 	}
-	visible, deferred := wrapInteractionTools(
+	visible, deferred, err := wrapInteractionTools(
 		manifest,
 		i.session,
 		i.executor.config,
 		i.executor.policy.toolResultOffload,
 		i.start,
 	)
+	if err != nil {
+		return agent.Deployment{}, fmt.Errorf("agentexec: wrap Interaction tools at depth %d: %w", depth, err)
+	}
 	var contextReducer interaction.ModelContextReducer
 	if i.executor.config.ModelContextCompactor != nil {
 		var counter ModelContextInputTokenCounter

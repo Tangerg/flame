@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -130,9 +131,23 @@ func directPath(root, path string) (string, error) {
 // directResult preserves a tool's structured JSON output when present and
 // otherwise exposes its raw textual result as a JSON string, matching the
 // protocol's best-effort JSON contract.
-func directResult(output string) tool.Result {
-	if result, err := tool.ParseResult([]byte(output)); err == nil {
-		return result
+func directResult(output chat.ToolOutput) (tool.Result, error) {
+	if err := output.Validate(); err != nil {
+		return tool.Result{}, fmt.Errorf("toolset: invalid direct tool output: %w", err)
 	}
-	return tool.StringResult(output)
+	if len(output.Details) > 0 {
+		result, err := tool.ParseResult(output.Details)
+		if err != nil {
+			return tool.Result{}, fmt.Errorf("toolset: decode direct tool details: %w", err)
+		}
+		return result, nil
+	}
+	text, textual := output.Text()
+	if !textual {
+		return tool.Result{}, errors.New("toolset: direct tool returned unsupported media output")
+	}
+	if result, err := tool.ParseResult([]byte(text)); err == nil {
+		return result, nil
+	}
+	return tool.StringResult(text), nil
 }

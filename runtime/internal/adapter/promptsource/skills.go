@@ -37,22 +37,30 @@ func ProjectSkillDir(cwd string) string {
 //
 // Building a source just wraps an os.DirFS, so this is cheap enough to call per
 // tool resolution (the engine rebuilds the skill tool per Run cwd).
-func MergeSkillSource(projectDir, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
+func MergeSkillSource(projectDir, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
 	var sources []sdk.ResourceSource
 	if dirExists(projectDir) {
-		sources = append(sources, newRuntimeSkillSource(projectDir))
+		project, err := newRuntimeSkillSource(projectDir)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, project)
 	}
 	if dirExists(userDir) {
-		user := newRuntimeSkillSource(userDir)
+		userSource, err := newRuntimeSkillSource(userDir)
+		if err != nil {
+			return nil, err
+		}
+		var user sdk.ResourceSource = userSource
 		if decorateUser != nil {
 			user = decorateUser(user)
 		}
 		sources = append(sources, user)
 	}
 	if len(sources) == 0 {
-		return nil
+		return nil, nil
 	}
-	return sdk.Merge(sources...)
+	return sdk.Merge(sources...), nil
 }
 
 // ListSkills enumerates the skills visible from projectDir layered over
@@ -66,7 +74,11 @@ func ListSkills(ctx context.Context, projectDir, userDir string) ([]workspaceapp
 		if !dirExists(dir) {
 			return nil
 		}
-		summaries, err := newRuntimeSkillSource(dir).List(ctx)
+		source, err := newRuntimeSkillSource(dir)
+		if err != nil {
+			return err
+		}
+		summaries, err := source.List(ctx)
 		if err != nil {
 			return err
 		}

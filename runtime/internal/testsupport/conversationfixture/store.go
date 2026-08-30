@@ -5,45 +5,113 @@ package conversationfixture
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
-	"github.com/Tangerg/scope/core/history/inmemory"
 )
 
-// Store adapts the reusable in-memory history store to Runtime's session-ID
-// conversation ports. The adapter is intentionally test-only: production uses
-// the Runtime-owned SQLite MessageStore directly.
+// Store is Runtime's test-only in-memory implementation of its session-ID
+// conversation ports. Production uses the SQLite MessageStore directly.
 type Store struct {
-	backend *inmemory.Store
+	mu       sync.RWMutex
+	messages map[history.ConversationID][]chat.Message
 }
 
 // New returns an empty app-port-compatible conversation store.
 func New() *Store {
-	return &Store{backend: inmemory.New()}
+	return &Store{messages: make(map[history.ConversationID][]chat.Message)}
 }
 
 // Read returns the messages stored for sessionID.
 func (s *Store) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
-	return s.backend.Read(ctx, history.ConversationID(sessionID))
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return cloneMessages(s.messages[id])
 }
 
 // Write appends messages to sessionID.
 func (s *Store) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	return s.backend.Write(ctx, history.ConversationID(sessionID), messages...)
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	snapshot, err := cloneMessages(messages)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages[id] = append(s.messages[id], snapshot...)
+	return nil
 }
 
 // Clear removes sessionID's messages.
 func (s *Store) Clear(ctx context.Context, sessionID string) error {
-	return s.backend.Clear(ctx, history.ConversationID(sessionID))
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.messages, id)
+	return nil
 }
 
 // Replace atomically sets sessionID's messages.
 func (s *Store) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	return s.backend.Replace(ctx, history.ConversationID(sessionID), messages...)
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	snapshot, err := cloneMessages(messages)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(snapshot) == 0 {
+		delete(s.messages, id)
+	} else {
+		s.messages[id] = snapshot
+	}
+	return nil
 }
 
 // Count returns sessionID's message count.
 func (s *Store) Count(ctx context.Context, sessionID string) (int, error) {
-	return s.backend.Count(ctx, history.ConversationID(sessionID))
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return 0, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.messages[id]), nil
+}
+
+func conversationID(ctx context.Context, sessionID string) (history.ConversationID, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	id := history.ConversationID(sessionID)
+	if err := id.Validate(); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func cloneMessages(messages []chat.Message) ([]chat.Message, error) {
+	cloned := make([]chat.Message, len(messages))
+	for index := range messages {
+		if err := messages[index].Validate(); err != nil {
+			return nil, fmt.Errorf("conversation fixture: messages[%d]: %w", index, err)
+		}
+		cloned[index] = messages[index].Clone()
+	}
+	return cloned, nil
 }

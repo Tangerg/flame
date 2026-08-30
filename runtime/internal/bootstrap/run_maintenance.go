@@ -61,10 +61,17 @@ func buildRunMaintenance(
 	var skillMiner *runmaintenance.SkillProposalMiner
 	var skillArchiver *runmaintenance.IdleSkillArchiver
 	if skillMaintenance.Available() {
+		skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
+			cfg.SkillsUserDir,
+			skillspec.RepositoryConfig{},
+		)
+		if repositoryErr != nil {
+			return nil, nil, fmt.Errorf("runtime: open user skill repository: %w", repositoryErr)
+		}
 		skillMiner, err = runmaintenance.NewSkillProposalMiner(
 			conversationServices.store,
 			skills,
-			skillspec.NewDirectoryRepository(cfg.SkillsUserDir),
+			skillRepository,
 			resolveUtility,
 			runmaintenance.SkillMiningPolicyValues{},
 		)

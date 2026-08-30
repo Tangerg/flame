@@ -103,7 +103,30 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("Goal did not settle and clear before %s: %+v", goalSettlementTimeout, current)
+			mainCalls, summaryCalls, summaryAtMainCalls, checks := model.Snapshot()
+			runsPage, listErr := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: sessionID})
+			var runOutcome *protocol.RunOutcome
+			var runError *protocol.ProblemData
+			if listErr == nil && len(runsPage.Data) > 0 {
+				runOutcome = runsPage.Data[0].Outcome
+				if runOutcome != nil {
+					runError = runOutcome.Error
+				}
+			}
+			t.Fatalf(
+				"Goal did not settle and clear before %s: status=%s reason=%+v used=%+v main=%d summary=%d boundary=%v checks=%+v runOutcome=%+v runError=%+v listErr=%v",
+				goalSettlementTimeout,
+				current.Status,
+				current.Reason,
+				current.Used,
+				mainCalls,
+				summaryCalls,
+				summaryAtMainCalls,
+				checks,
+				runOutcome,
+				runError,
+				listErr,
+			)
 		}
 		time.Sleep(goalSettlementPollInterval)
 	}

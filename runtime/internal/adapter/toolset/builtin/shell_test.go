@@ -68,7 +68,7 @@ func TestShell_CompletesInline(t *testing.T) {
 	cleanupShells(t, shells)
 	shell := shellTool(t, shells, "shell")
 
-	out, err := shell.Call(context.Background(), `{"command":"printf hello","description":"Print hello"}`)
+	out, err := callTextTool(context.Background(), shell, `{"command":"printf hello","description":"Print hello"}`)
 	if err != nil {
 		t.Fatalf("shell err = %v", err)
 	}
@@ -95,14 +95,14 @@ func TestShellContractRejectsRemovedArguments(t *testing.T) {
 		`{"command":"true","description":"Run true","timeout":1000}`,
 		`{"command":"true","description":"Run true","run_in_background":true,"auto_background_after_seconds":1}`,
 	} {
-		if _, err := shell.Call(t.Context(), arguments); err == nil {
+		if _, err := callTextTool(t.Context(), shell, arguments); err == nil {
 			t.Fatalf("shell accepted removed arguments: %s", arguments)
 		}
 	}
-	if _, err := output.Call(t.Context(), `{"shell_id":"bg_1","block":true}`); err == nil {
+	if _, err := callTextTool(t.Context(), output, `{"shell_id":"bg_1","block":true}`); err == nil {
 		t.Fatal("read_shell_output accepted removed block argument")
 	}
-	if _, err := output.Call(t.Context(), `{"shell_id":"bg_1","timeout_millis":1000}`); err == nil {
+	if _, err := callTextTool(t.Context(), output, `{"shell_id":"bg_1","timeout_millis":1000}`); err == nil {
 		t.Fatal("read_shell_output accepted timeout_millis without wait=true")
 	}
 }
@@ -117,11 +117,11 @@ func TestShellContractRejectsNumericAbsenceSentinels(t *testing.T) {
 		`{"command":"true","description":"Run true","timeout_millis":0}`,
 		`{"command":"true","description":"Run true","auto_background_after_seconds":0}`,
 	} {
-		if _, err := shell.Call(t.Context(), arguments); err == nil {
+		if _, err := callTextTool(t.Context(), shell, arguments); err == nil {
 			t.Fatalf("shell accepted zero-valued optional duration: %s", arguments)
 		}
 	}
-	if _, err := output.Call(t.Context(), `{"shell_id":"bg_1","wait":true,"timeout_millis":0}`); err == nil {
+	if _, err := callTextTool(t.Context(), output, `{"shell_id":"bg_1","wait":true,"timeout_millis":0}`); err == nil {
 		t.Fatal("read_shell_output accepted zero-valued optional timeout")
 	}
 }
@@ -163,7 +163,7 @@ func TestShellRequiresConciseDescription(t *testing.T) {
 		`{"command":"true","description":"Run tests "}`,
 		`{"command":"true","description":"` + strings.Repeat("x", 121) + `"}`,
 	} {
-		if _, err := shell.Call(t.Context(), arguments); err == nil {
+		if _, err := callTextTool(t.Context(), shell, arguments); err == nil {
 			t.Fatalf("shell accepted invalid description: %s", arguments)
 		}
 	}
@@ -198,7 +198,7 @@ func TestShell_RunInBackground(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
-	out, err := shell.Call(context.Background(), `{"command":"printf hi","description":"Print hi","run_in_background":true}`)
+	out, err := callTextTool(context.Background(), shell, `{"command":"printf hi","description":"Print hi","run_in_background":true}`)
 	if err != nil {
 		t.Fatalf("shell(bg) = %q err=%v", out, err)
 	}
@@ -212,7 +212,7 @@ func TestShell_RunInBackground(t *testing.T) {
 		t.Fatalf("background shell %q should still be registered", id)
 	}
 	<-sh.Done()
-	read, err := output.Call(context.Background(), `{"shell_id":"`+id+`"}`)
+	read, err := callTextTool(context.Background(), output, `{"shell_id":"`+id+`"}`)
 	if err != nil || !strings.Contains(read, "hi") {
 		t.Fatalf("read_shell_output = %q err=%v, want the command's output", read, err)
 	}
@@ -227,13 +227,13 @@ func TestReadShellOutput_Wait(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
-	out, err := shell.Call(context.Background(), `{"command":"sleep 0.3; printf done","description":"Wait then print done","run_in_background":true}`)
+	out, err := callTextTool(context.Background(), shell, `{"command":"sleep 0.3; printf done","description":"Wait then print done","run_in_background":true}`)
 	if err != nil {
 		t.Fatalf("shell(bg) = %q err=%v", out, err)
 	}
 	id := backgroundShellID(t, out)
 	// Without blocking it's still running; with block it waits to completion.
-	read, err := output.Call(context.Background(), `{"shell_id":"`+id+`","wait":true}`)
+	read, err := callTextTool(context.Background(), output, `{"shell_id":"`+id+`","wait":true}`)
 	if err != nil {
 		t.Fatalf("read_shell_output(wait) err=%v", err)
 	}
@@ -250,12 +250,12 @@ func TestReadShellOutput_WaitTimeout(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
-	out, err := shell.Call(context.Background(), `{"command":"sleep 30","description":"Keep a background shell running","run_in_background":true}`)
+	out, err := callTextTool(context.Background(), shell, `{"command":"sleep 30","description":"Keep a background shell running","run_in_background":true}`)
 	if err != nil {
 		t.Fatalf("shell(bg) err=%v", err)
 	}
 	id := backgroundShellID(t, out)
-	read, err := output.Call(context.Background(), `{"shell_id":"`+id+`","wait":true,"timeout_millis":1000}`)
+	read, err := callTextTool(context.Background(), output, `{"shell_id":"`+id+`","wait":true,"timeout_millis":1000}`)
 	if err != nil {
 		t.Fatalf("read_shell_output(wait,timeout_millis) err=%v, want graceful still-running", err)
 	}
@@ -272,7 +272,7 @@ func TestShell_AutoBackground(t *testing.T) {
 	cleanupShells(t, shells)
 	shell := shellTool(t, shells, "shell")
 
-	out, err := shell.Call(context.Background(), `{"command":"sleep 30","description":"Wait in the background","auto_background_after_seconds":1}`)
+	out, err := callTextTool(context.Background(), shell, `{"command":"sleep 30","description":"Wait in the background","auto_background_after_seconds":1}`)
 	if err != nil {
 		t.Fatalf("shell(auto-bg) = %q err=%v", out, err)
 	}
@@ -332,7 +332,7 @@ func TestReadShellOutput_UnknownShell(t *testing.T) {
 	cleanupShells(t, shells)
 	output := shellTool(t, shells, "read_shell_output")
 
-	miss, err := output.Call(context.Background(), `{"shell_id":"bg_999"}`)
+	miss, err := callTextTool(context.Background(), output, `{"shell_id":"bg_999"}`)
 	if err != nil || !strings.Contains(miss, "No background shell") {
 		t.Fatalf("read_shell_output(unknown) = %q err=%v", miss, err)
 	}

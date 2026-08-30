@@ -198,7 +198,7 @@ func (w waitingCancellationBuilder) parentConversationMessages(
 func childCancellationToolMessage(committed CommittedTool, failure tool.Failure) corechat.Message {
 	return corechat.NewToolMessage(corechat.ToolResult{
 		ID: committed.SourceCallID, Name: committed.Name,
-		Result:  fmt.Sprintf("error: tool %q failed: %s", committed.Name, failure.Detail),
+		Output:  corechat.NewTextToolOutput(fmt.Sprintf("error: tool %q failed: %s", committed.Name, failure.Detail)),
 		IsError: true,
 	})
 }
