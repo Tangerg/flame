@@ -750,6 +750,52 @@ func TestStoreRejectsUnknownStateFields(t *testing.T) {
 	}
 }
 
+func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
+	tests := []struct {
+		name string
+		file string
+		body string
+	}{
+		{
+			name: "duplicate stash identity",
+			file: "stashes.json",
+			body: `{"version":1,"value":[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":"first"}},` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:01Z","Message":{"Text":"second"}}]}`,
+		},
+		{
+			name: "empty stash prompt",
+			file: "stashes.json",
+			body: `{"version":1,"value":[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":""}}]}`,
+		},
+		{
+			name: "relative workspace",
+			file: "workspaces.json",
+			body: `{"version":1,"value":[` +
+				`{"path":"relative/project","lastOpened":"2026-08-31T00:00:00Z"}]}`,
+		},
+		{
+			name: "duplicate workspace",
+			file: "workspaces.json",
+			body: `{"version":1,"value":[` +
+				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:00Z"},` +
+				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:01Z"}]}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, test.file), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("invalid durable catalog value was accepted")
+			}
+		})
+	}
+}
+
 func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})

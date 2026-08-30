@@ -52,6 +52,20 @@ type Stash struct {
 	Message   agent.Message `json:"message"`
 }
 
+func (s Stash) Validate() error {
+	identity, err := hex.DecodeString(s.ID)
+	if err != nil || len(identity) != 8 || hex.EncodeToString(identity) != s.ID {
+		return errors.New("stash identity is not canonical")
+	}
+	if s.CreatedAt.IsZero() {
+		return errors.New("stash creation time is empty")
+	}
+	if err := s.Message.Validate(); err != nil {
+		return fmt.Errorf("stash prompt: %w", err)
+	}
+	return nil
+}
+
 // stashTransfer is the durable intent for the only workbench mutation that
 // spans the global stash catalog and one session aggregate. Recovery uses the
 // draft value as an ownership precondition: it completes an interrupted move
@@ -66,13 +80,14 @@ func (s stashTransfer) validate() error {
 	if _, err := sessionidentity.Parse(s.SessionID); err != nil {
 		return fmt.Errorf("stash transfer: %w", err)
 	}
-	if messageEmpty(s.Draft) || messageEmpty(s.Stash.Message) {
-		return errors.New("stash transfer prompt is empty")
+	if err := s.Draft.Validate(); err != nil {
+		return fmt.Errorf("stash transfer source: %w", err)
 	}
-	identity, err := hex.DecodeString(s.Stash.ID)
-	if err != nil || len(identity) != 8 || s.Stash.CreatedAt.IsZero() ||
-		!s.Stash.Message.Equal(s.Draft) {
-		return errors.New("stash transfer identity or prompt is inconsistent")
+	if err := s.Stash.Validate(); err != nil {
+		return fmt.Errorf("stash transfer destination: %w", err)
+	}
+	if !s.Stash.Message.Equal(s.Draft) {
+		return errors.New("stash transfer prompts are inconsistent")
 	}
 	return nil
 }
@@ -85,6 +100,17 @@ func stashEqual(left, right Stash) bool {
 type Workspace struct {
 	Path       string    `json:"path"`
 	LastOpened time.Time `json:"lastOpened"`
+}
+
+func (w Workspace) Validate() error {
+	canonical := filepath.Clean(strings.TrimSpace(w.Path))
+	if canonical == "." || !filepath.IsAbs(canonical) || canonical != w.Path {
+		return errors.New("workspace path must be canonical and absolute")
+	}
+	if w.LastOpened.IsZero() {
+		return errors.New("workspace last-opened time is empty")
+	}
+	return nil
 }
 
 // historyEntry binds a runtime-accepted prompt to its mutation identity. Plain
@@ -200,7 +226,13 @@ func (s *Store) loadState() error {
 	if err := s.loadOptional("stashes.json", &s.stashes); err != nil {
 		return fmt.Errorf("load prompt stashes: %w", err)
 	}
+	if err := validateStashes(s.stashes); err != nil {
+		return fmt.Errorf("load prompt stashes: %w", err)
+	}
 	if err := s.loadOptional("workspaces.json", &s.workspaces); err != nil {
+		return fmt.Errorf("load recent workspaces: %w", err)
+	}
+	if err := validateWorkspaces(s.workspaces); err != nil {
 		return fmt.Errorf("load recent workspaces: %w", err)
 	}
 	if err := s.loadSessionDeletions(); err != nil {
@@ -318,6 +350,9 @@ func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
 		return Stash{}, fmt.Errorf("create stash id: %w", err)
 	}
 	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
+	if err := stash.Validate(); err != nil {
+		return Stash{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	next := append(slices.Clone(s.stashes), stash)
@@ -346,6 +381,9 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 		return Stash{}, fmt.Errorf("create stash id: %w", err)
 	}
 	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
+	if err := stash.Validate(); err != nil {
+		return Stash{}, err
+	}
 	transfer := stashTransfer{SessionID: sessionID, Draft: message, Stash: stash}
 
 	s.mu.Lock()
@@ -482,8 +520,12 @@ func (s *Store) RememberWorkspace(path string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	workspace := Workspace{Path: path, LastOpened: s.now().UTC()}
+	if err := workspace.Validate(); err != nil {
+		return err
+	}
 	next := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == path })
-	next = slices.Insert(next, 0, Workspace{Path: path, LastOpened: s.now().UTC()})
+	next = slices.Insert(next, 0, workspace)
 	next = next[:min(len(next), s.workspaceCapacity)]
 	if err := s.save("workspaces.json", next); err != nil {
 		return err
@@ -804,6 +846,34 @@ func validateHistory(history []historyEntry) error {
 			return fmt.Errorf("entry %d repeats command %s", index+1, entry.CommandID)
 		}
 		seen[entry.CommandID] = struct{}{}
+	}
+	return nil
+}
+
+func validateStashes(stashes []Stash) error {
+	seen := make(map[string]struct{}, len(stashes))
+	for index, stash := range stashes {
+		if err := stash.Validate(); err != nil {
+			return fmt.Errorf("stash %d: %w", index+1, err)
+		}
+		if _, duplicate := seen[stash.ID]; duplicate {
+			return fmt.Errorf("stash %d repeats identity %s", index+1, stash.ID)
+		}
+		seen[stash.ID] = struct{}{}
+	}
+	return nil
+}
+
+func validateWorkspaces(workspaces []Workspace) error {
+	seen := make(map[string]struct{}, len(workspaces))
+	for index, workspace := range workspaces {
+		if err := workspace.Validate(); err != nil {
+			return fmt.Errorf("workspace %d: %w", index+1, err)
+		}
+		if _, duplicate := seen[workspace.Path]; duplicate {
+			return fmt.Errorf("workspace %d repeats path %q", index+1, workspace.Path)
+		}
+		seen[workspace.Path] = struct{}{}
 	}
 	return nil
 }
