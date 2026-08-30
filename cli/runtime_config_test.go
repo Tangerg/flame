@@ -31,17 +31,17 @@ func TestRuntimeConfigDirectoriesRejectRelativeExplicitSource(t *testing.T) {
 func TestRuntimeConfigDirectoriesFindWorktreeDevelopmentConfig(t *testing.T) {
 	t.Setenv(runtimeConfigDirectoryEnvironment, "")
 	root := t.TempDir()
-	configDirectory := filepath.Join(root, "app", "runtime", "config")
-	cliDirectory := filepath.Join(root, "app", "cli")
+	configDirectory := filepath.Join(root, "runtime", "config")
+	cliDirectory := filepath.Join(root, "cli")
 	for _, directory := range []string{configDirectory, cliDirectory} {
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for path, content := range map[string]string{
-		filepath.Join(root, "go.work"):                  "go 1.27.0\n",
-		filepath.Join(root, "app", "runtime", "go.mod"): "module example/runtime\n",
-		filepath.Join(configDirectory, "config.yaml"):   "provider: deepseek\n",
+		filepath.Join(root, "go.work"):                "go 1.27.0\n",
+		filepath.Join(root, "runtime", "go.mod"):      "module example/runtime\n",
+		filepath.Join(configDirectory, "config.yaml"): "provider: deepseek\n",
 	} {
 		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)

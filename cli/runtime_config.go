@@ -52,8 +52,8 @@ func developmentRuntimeConfigDirectory(start string) (string, bool) {
 	}
 	for {
 		goWorkspace := filepath.Join(directory, "go.work")
-		runtimeModule := filepath.Join(directory, "app", "runtime", "go.mod")
-		configFile := filepath.Join(directory, "app", "runtime", "config", "config.yaml")
+		runtimeModule := filepath.Join(directory, "runtime", "go.mod")
+		configFile := filepath.Join(directory, "runtime", "config", "config.yaml")
 		if regularFile(goWorkspace) && regularFile(runtimeModule) && regularFile(configFile) {
 			return filepath.Dir(configFile), true
 		}
