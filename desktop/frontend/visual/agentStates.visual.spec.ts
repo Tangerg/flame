@@ -773,7 +773,7 @@ test("context compaction uses the Codex activity row without divider chrome", as
 
   const compaction = page.getByRole("button", { name: "Context automatically compacted" });
   await compaction.scrollIntoViewIfNeeded();
-  await expect(compaction.locator(".lucide-minimize-2")).toBeVisible();
+  await expect(compaction.locator('[data-icon-name="minimize"]')).toBeVisible();
   await expect(compaction.locator("xpath=..").locator(".h-px")).toHaveCount(0);
   await expect(compaction).toHaveAttribute("aria-expanded", "false");
   await expect(compaction.locator("xpath=..")).toHaveScreenshot("context-compaction-light.png");

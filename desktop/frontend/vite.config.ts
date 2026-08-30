@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
+import { reiconOutlineOnly } from "./vite.reicon.ts";
 
 // The dev-server port is declared once, as VITE_PORT in the Taskfile, and handed to both
 // halves of the dev loop: to Vite as `--port`, to the webview as `wails3 dev -port`. It
@@ -15,7 +16,7 @@ const webviewPort = process.env.WAILS_VITE_PORT;
 const host = "127.0.0.1";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), reiconOutlineOnly()],
   // Wails serves the webview through its OWN dev server on a different port, so the page
   // origin is NOT Vite's. Without `hmr.clientPort` the Vite HMR client in the WebView
   // opens its WebSocket against the page origin instead of Vite — the handshake fails
@@ -91,7 +92,7 @@ export default defineConfig({
           if (id.includes("node_modules/@tanstack")) return "tanstack";
           // Icons
           if (id.includes("node_modules/@lobehub/icons")) return "icons";
-          if (id.includes("node_modules/lucide-react")) return "icons";
+          if (id.includes("node_modules/reicon-react")) return "icons";
           // Markdown pipeline — eager: every rendered message goes through it.
           if (
             id.includes("node_modules/react-markdown/") ||
