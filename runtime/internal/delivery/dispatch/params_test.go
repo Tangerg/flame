@@ -68,6 +68,34 @@ func TestDecodeParamsAcceptsEmptyAndKnownFields(t *testing.T) {
 	}
 }
 
+func TestDecodeProviderUpdateRejectsExplicitNullChanges(t *testing.T) {
+	t.Parallel()
+
+	for _, params := range []string{
+		`{"provider":"deepseek","apiKey":null}`,
+		`{"provider":"deepseek","baseUrl":null}`,
+		`{"provider":"deepseek","apiKey":{"type":"clear","value":null}}`,
+	} {
+		msg := &transport.Request{Params: json.RawMessage(params)}
+		if _, bad := decodeForTest[protocol.UpdateProviderRequest](msg); bad == nil {
+			t.Fatalf("decode accepted an explicit null provider change: %s", params)
+		}
+	}
+}
+
+func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
+	t.Parallel()
+
+	msg := &transport.Request{Params: json.RawMessage(`{"name":"diagnostic","arguments":{"optional":null}}`)}
+	request, bad := decodeForTest[protocol.InvokeToolRequest](msg)
+	if bad != nil {
+		t.Fatalf("decode rejected null inside open tool arguments: %+v", bad)
+	}
+	if value, present := request.Arguments["optional"]; !present || value != nil {
+		t.Fatalf("decoded optional argument = %#v (present %v), want explicit null", value, present)
+	}
+}
+
 // TestDecodeReportsFieldLevelConstraintViolations pins the two facts a request
 // constraint has to deliver: the failure is invalid_params, and it names the
 // offending params keys in ProblemData.errors (API.md §8.3) rather than only in
