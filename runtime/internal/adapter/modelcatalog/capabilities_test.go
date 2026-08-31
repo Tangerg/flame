@@ -52,6 +52,9 @@ func TestProbeUsesAnthropicProtocolForCompatibleProvider(t *testing.T) {
 		if request.Method != http.MethodGet || request.URL.Path != "/v1/models" {
 			t.Errorf("request = %s %s, want GET /v1/models", request.Method, request.URL.Path)
 		}
+		if got := request.URL.Query().Get("limit"); got != "1000" {
+			t.Errorf("limit = %q, want 1000", got)
+		}
 		if got := request.Header.Get("x-api-key"); got != "test-key" {
 			t.Errorf("x-api-key = %q, want configured key", got)
 		}
@@ -69,6 +72,19 @@ func TestProbeUsesAnthropicProtocolForCompatibleProvider(t *testing.T) {
 	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
 	if err != nil {
 		t.Fatalf("Probe: %v", err)
+	}
+}
+
+func TestProbeRejectsPartialAnthropicModelCatalog(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"data":[{"id":"first-page-model"}],"has_more":true,"last_id":"first-page-model"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
+	if err == nil {
+		t.Fatal("Probe accepted a partial Anthropic model catalog")
 	}
 }
 

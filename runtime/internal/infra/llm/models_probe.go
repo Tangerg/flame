@@ -21,6 +21,7 @@ const (
 	maximumModelProbeResponseBytes = 1 << 20
 	maximumRemoteModelCount        = 4096
 	anthropicProtocolVersion       = "2023-06-01"
+	anthropicMaximumModelPageSize  = 1000
 )
 
 // remoteModelList is the OpenAI GET /v1/models response shape, which Ollama /
@@ -28,7 +29,8 @@ const (
 // ids matter here; capability/pricing are enriched from the static catalog by
 // the caller when the id is known.
 type remoteModelList struct {
-	Data []remoteModel `json:"data"`
+	Data    []remoteModel `json:"data"`
+	HasMore bool          `json:"has_more"`
 }
 
 type remoteModel struct {
@@ -118,6 +120,13 @@ func listRemoteModels(ctx context.Context, baseURL, apiKey string, protocol mode
 	if err != nil {
 		return nil, fmt.Errorf("llm: model probe %s: %w", endpoint, err)
 	}
+	if protocol == modelListProtocolAnthropic && document.list.HasMore {
+		return nil, fmt.Errorf(
+			"llm: model probe %s: catalog exceeds the maximum %d-model page",
+			endpoint,
+			anthropicMaximumModelPageSize,
+		)
+	}
 	ids, err := document.identities()
 	if err != nil {
 		return nil, fmt.Errorf("llm: model probe %s: %w", endpoint, err)
@@ -131,7 +140,7 @@ func (p modelListProtocol) modelListEndpoint(baseURL string) (string, error) {
 	case modelListProtocolOpenAI:
 		return baseURL + "/models", nil
 	case modelListProtocolAnthropic:
-		return baseURL + "/v1/models", nil
+		return fmt.Sprintf("%s/v1/models?limit=%d", baseURL, anthropicMaximumModelPageSize), nil
 	default:
 		return "", fmt.Errorf("llm: unsupported model listing protocol %d", p)
 	}
