@@ -863,3 +863,23 @@ test("a text-bearing control meets the minimum target size", async ({ page }) =>
     await summary.evaluate((el) => Math.round(el.getBoundingClientRect().height)),
   ).toBeGreaterThanOrEqual(24);
 });
+
+// The SMALLEST UI size is where a control whose box is only its text line falls under the
+// minimum — it keeps shrinking with the type, and half a pixel short still fails.
+for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme === "light")) {
+  test(`WCAG audit ${route.fixture} ${route.state} at the smallest UI size`, async ({ page }) => {
+    await openFixture(page, { ...route, fontSize: 11 });
+    const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
+    expect(
+      results.violations,
+      results.violations
+        .map(
+          (violation) =>
+            `${violation.id}: ${violation.help}\n${violation.nodes
+              .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
+              .join("\n")}`,
+        )
+        .join("\n\n"),
+    ).toEqual([]);
+  });
+}
