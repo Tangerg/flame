@@ -1,3 +1,5 @@
+import type { VisualStyleMotion } from "@/lib/appearance";
+
 type VisualStyleTokenName =
   | "style-shape-2xs"
   | "style-shape-xs"
@@ -218,4 +220,28 @@ export const WORKBENCH_MOTION = {
 
 export function visualStyleTokens(overrides: Partial<VisualStyleTokens>): VisualStyleTokens {
   return { ...WORKBENCH_TOKENS, ...overrides };
+}
+
+/**
+ * A style's motion as the custom properties the chrome reads. Beside the other token
+ * projections rather than inside the painter: naming a property is this module's job, and
+ * applying one is the painter's. It also puts the projection where `globals.css`'s mirror
+ * of it can be compared against it.
+ */
+export function visualStyleMotionTokens(motion: VisualStyleMotion): Record<string, string> {
+  const bezier = (value: readonly [number, number, number, number]) =>
+    `cubic-bezier(${value.join(", ")})`;
+  return {
+    "dur-instant-base": `${motion.instantMs}ms`,
+    "dur-fast-base": `${motion.fastMs}ms`,
+    "dur-med-base": `${motion.mediumMs}ms`,
+    "dur-disclosure-base": `${motion.disclosureMs}ms`,
+    "dur-slow-base": `${motion.slowMs}ms`,
+    "dur-drawer-base": `${motion.drawerMs}ms`,
+    "ease-out": bezier(motion.easeOut),
+    "ease-in-out": bezier(motion.easeInOut),
+    "ease-emphasized": bezier(motion.easeEmphasized),
+    "ease-drawer": `linear(${motion.drawerProgress.join(", ")})`,
+    "press-scale": String(motion.pressScale),
+  };
 }

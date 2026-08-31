@@ -1,12 +1,6 @@
 import { colord } from "colord";
 import type { StoreApi } from "zustand";
-import type {
-  AccentTint,
-  ColorThemeId,
-  Scheme,
-  VisualStyleId,
-  VisualStyleMotion,
-} from "@/lib/appearance";
+import type { AccentTint, ColorThemeId, Scheme, VisualStyleId } from "@/lib/appearance";
 import {
   publishMotionScale,
   publishScheme,
@@ -22,6 +16,7 @@ import { subscribeContributions } from "@/plugins/sdk";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import type { UiState } from "@/state/uiPreferences";
 import { accentTintedNeutral } from "../kit/accentTint";
+import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
 import { subscribeSystemScheme } from "./systemAppearance";
 
@@ -130,24 +125,6 @@ function applyVisualStyle(id: VisualStyleId): void {
   root.dataset.visualStyle = spec?.id ?? "flame";
   root.dataset.regionLayout = spec?.traits.regions ?? "tonal-columns";
   root.dataset.controlTreatment = spec?.traits.controls ?? "quiet";
-}
-
-function visualStyleMotionTokens(motion: VisualStyleMotion): Record<string, string> {
-  const bezier = (value: readonly [number, number, number, number]) =>
-    `cubic-bezier(${value.join(", ")})`;
-  return {
-    "dur-instant-base": `${motion.instantMs}ms`,
-    "dur-fast-base": `${motion.fastMs}ms`,
-    "dur-med-base": `${motion.mediumMs}ms`,
-    "dur-disclosure-base": `${motion.disclosureMs}ms`,
-    "dur-slow-base": `${motion.slowMs}ms`,
-    "dur-drawer-base": `${motion.drawerMs}ms`,
-    "ease-out": bezier(motion.easeOut),
-    "ease-in-out": bezier(motion.easeInOut),
-    "ease-emphasized": bezier(motion.easeEmphasized),
-    "ease-drawer": `linear(${motion.drawerProgress.join(", ")})`,
-    "press-scale": String(motion.pressScale),
-  };
 }
 
 function applyFonts(

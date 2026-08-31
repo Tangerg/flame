@@ -392,7 +392,7 @@
   --style-shape-lg: 10px;
   --style-shape-xl: 12px;
   --style-shape-composer: 20px;
-  --style-shape-bubble: 8px;
+  --style-shape-bubble: 16px;
   --radius-scale: 1;
   --shape-2xs: calc(var(--style-shape-2xs) * var(--radius-scale));
   --shape-xs: calc(var(--style-shape-xs) * var(--radius-scale));
@@ -405,22 +405,22 @@
   --shape-pill: 9999px;
 
   --button-radius: var(--shape-sm);
-  --field-radius: var(--shape-sm);
-  --segmented-radius: var(--shape-sm);
-  --segment-radius: var(--shape-xs);
+  --field-radius: var(--shape-md);
+  --segmented-radius: var(--shape-md);
+  --segment-radius: var(--shape-sm);
   --surface-card-radius: var(--shape-md);
   --row-radius: var(--shape-lg);
   --floating-panel-radius: var(--shape-xl);
   --floating-tip-radius: var(--shape-sm);
   --dock-tab-radius: var(--shape-lg);
-  --control-height-xs: 24px;
-  --control-height-sm: 28px;
-  --control-height-md: 32px;
-  --control-height-lg: 38px;
+  --control-height-xs: 22px;
+  --control-height-sm: 26px;
+  --control-height-md: 30px;
+  --control-height-lg: 34px;
   --field-height-sm: 26px;
-  --field-height-md: 32px;
-  --field-height-lg: 36px;
-  --menu-row-height: 28px;
+  --field-height-md: 28px;
+  --field-height-lg: 32px;
+  --menu-row-height: 30px;
   --dock-tab-height: 28px;
   --composer-control-height: 28px;
   --composer-control-icon: 16px;
@@ -451,7 +451,7 @@
   --dur-slow-base: 360ms;
   --dur-drawer-base: 500ms;
   --animation-duration: calc(var(--dur-fast-base) * var(--motion-scale));
-  --ease-out: cubic-bezier(0.3, 0, 0, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
 
