@@ -3,15 +3,15 @@ package bootstrap
 import (
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
+	"github.com/Tangerg/flame/runtime/internal/application/runs"
 )
 
 type conversationEnvironment struct {
-	store    conversations.Store
-	messages *conversations.Messages
+	store    runs.ConversationStore
+	messages *runs.ConversationHistory
 }
 
-func buildConversationEnvironment(store conversations.Store, compactions conversations.CompactionStore) (conversationEnvironment, error) {
+func buildConversationEnvironment(store runs.ConversationStore, compactions runs.ConversationCompactionStore) (conversationEnvironment, error) {
 	if store == nil {
 		return conversationEnvironment{}, errors.New("runtime: ConversationStore is required")
 	}
@@ -20,6 +20,6 @@ func buildConversationEnvironment(store conversations.Store, compactions convers
 	}
 	return conversationEnvironment{
 		store:    store,
-		messages: conversations.NewMessages(store, compactions),
+		messages: runs.NewConversationHistory(store, compactions),
 	}, nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
 	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
@@ -114,7 +113,7 @@ type sessionStores struct {
 	interrupts  *persistence.InterruptStore
 	runs        *sqlite.RunStore
 	checkpoints *persistence.ExecutorCheckpointStore
-	history     *conversations.Messages
+	history     *runsapp.ConversationHistory
 	plan        *sqlite.PlanStore
 	approvals   *sqlite.ApprovalRuleStore
 	toolResults *sqlite.ToolResultStore
@@ -141,7 +140,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		interrupts:  ints,
 		runs:        runs,
 		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
-		history:     conversations.NewMessages(sqlite.NewMessageStore(db), nil),
+		history:     runsapp.NewConversationHistory(sqlite.NewMessageStore(db), nil),
 		plan:        plan,
 		approvals:   approvals,
 		toolResults: sqlite.NewToolResultStore(db),

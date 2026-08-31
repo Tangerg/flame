@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P292 进行中。
+> 状态：当前能力快照；P293 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -593,6 +593,8 @@ P290把CLI的`modelidentity`、`sessionidentity`与`runidentity`三个跨层准�
 P291完成本轮Runtime/CLI package graph的caller、dynamic entrypoint、external boundary与lifecycle审计。相对本Goal开始前，Runtime Go package目录从122收敛到112，CLI从47收敛到40；退役的Delivery子层、embedded binding、CLI backend/mock/workflow/identity微包与Runtime identity/title微包在生产源码、测试和文档owner外均无残留，也不存在零字节Go文件。剩余单消费者package分别拥有filesystem publication、plugin process、provider credential overlay、isolation、telemetry、recovery transaction、checkpoint、file observation、LSP或其他独立外部资源/失败生命周期；单文件shared mechanism则都有多个真实peer consumer。它们不因目录计数继续合并，后续结构变化必须重新给出consumer、owner与失败反例。
 
 P292纠正P291只逐包举证、没有审视整体bounded-context形状的过早结论。CLI 的 Goal、feedback 与 usage 都是同一 Agent Session/Run context 的消费投影和端口，现已收回 `internal/agent` 并改用 `Goal*`、`Feedback*`、`Usage*` 语义全名；旧三个package、import、架构例外和遗留空目录均不存在。Runtime/CLI 的剩余平铺package继续按共同变化、唯一owner、外部边界和真实生命周期审计，不能再以“存在一个接口或不变量”单独证明目录合理。
+
+P293把 durable Conversation history 与 compaction 编排从单项 operation package 收回 `application/runs`。`ConversationHistory` 负责 read/seed/append/truncate，`ConversationCompactionPlan` 负责一次性表达 history replacement 与所有 Run watermark rebase；Domain `conversation` 仍决定纯 sequence/compaction 规则，persistence 仍原子执行完整 write-set。旧 `application/conversations` 路径及 import 已物理删除，不建立 compatibility package，也不把 Conversation 与 Run aggregate 合并。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

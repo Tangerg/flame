@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
@@ -33,7 +33,7 @@ func NewConversationCompactions(history conversationHistory, runs conversationRu
 	return &ConversationCompactions{history: history, runs: runs, tx: tx}
 }
 
-var _ conversations.CompactionStore = (*ConversationCompactions)(nil)
+var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
 
 func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string) ([]run.Run, error) {
 	if c == nil || c.runs == nil {
@@ -42,7 +42,7 @@ func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string
 	return c.runs.ListRuns(ctx, sessionID)
 }
 
-func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan conversations.CompactionPlan) error {
+func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
 	if c == nil || c.history == nil || c.runs == nil || c.tx == nil {
 		return errors.New("persistence: conversation compaction dependencies are unavailable")
 	}
@@ -54,7 +54,7 @@ func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan conv
 
 func (c *ConversationCompactions) applyCompaction(
 	ctx context.Context,
-	plan conversations.CompactionPlan,
+	plan runsapp.ConversationCompactionPlan,
 ) error {
 	count, err := c.history.Count(ctx, plan.SessionID)
 	if err != nil {
@@ -89,7 +89,7 @@ func (c *ConversationCompactions) applyCompaction(
 
 func validateCompactionRuns(
 	sessionID string,
-	planned []conversations.CompactionRun,
+	planned []runsapp.ConversationCompactionRun,
 	current []run.Run,
 ) error {
 	if len(current) != len(planned) {

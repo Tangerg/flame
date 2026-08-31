@@ -245,6 +245,8 @@ Domain entity 只保护自身不变量。需要同时改变多个 aggregate 时�
 | `application/runs` | Run、Session、Conversation、Transcript、Interrupt、Accounting | 作为明确用例协调者，不把跨聚合规则塞进任一 Store |
 | Goal/Schedule/Tool application use cases | Runs capability | 在各自消费者处定义窄接口，由 composition 绑定 runs concrete type，避免 application package 横向胖依赖 |
 
+`application/runs` 按职责文件共同拥有 Run lifecycle 与 durable Conversation history 的应用编排。Conversation sequence、compaction 和 watermark rebase 仍由各自 Domain value 决策；Application 只协调跨 Conversation/Run 的完整 write-set。不得再按 `conversations` 这一单项 operation 建平级 Application package。
+
 跨上下文共享只允许引用权威 owner 的稳定 identity/value。不得为了避免 import 而复制 enum/ID，也不得为了复用一个小 helper 建立“shared domain”包。
 
 ## 6. Clean Architecture 依赖图

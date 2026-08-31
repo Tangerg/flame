@@ -1,4 +1,4 @@
-package conversations
+package runs
 
 import (
 	"context"
@@ -17,20 +17,20 @@ import (
 
 type recordingCompactions struct {
 	runs []run.Run
-	plan CompactionPlan
+	plan ConversationCompactionPlan
 }
 
 func (r *recordingCompactions) ListRuns(context.Context, string) ([]run.Run, error) {
 	return append([]run.Run(nil), r.runs...), nil
 }
 
-func (r *recordingCompactions) ApplyCompaction(_ context.Context, plan CompactionPlan) error {
+func (r *recordingCompactions) ApplyCompaction(_ context.Context, plan ConversationCompactionPlan) error {
 	r.plan = plan
 	return nil
 }
 
 func TestMessagesCoordinatesDurableHistory(t *testing.T) {
-	messages := NewMessages(conversationfixture.New(), nil)
+	messages := NewConversationHistory(conversationfixture.New(), nil)
 	seed := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("one")),
 		chat.NewAssistantMessage(chat.NewTextPart("two")),
@@ -55,7 +55,7 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsMissingSession(t *testing.T) {
-	messages := NewMessages(conversationfixture.New(), nil)
+	messages := NewConversationHistory(conversationfixture.New(), nil)
 	for _, sessionID := range []string{
 		"",
 		" ses_1",
@@ -63,10 +63,10 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 		"ses_\u200bhidden",
 		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
-		if _, err := messages.Read(t.Context(), sessionID); !errors.Is(err, errSessionIDRequired) {
+		if _, err := messages.Read(t.Context(), sessionID); !errors.Is(err, errConversationSessionIDRequired) {
 			t.Errorf("Read(%q) error = %v", sessionID, err)
 		}
-		if err := messages.Append(t.Context(), sessionID, chat.NewUserMessage(chat.NewTextPart("one"))); !errors.Is(err, errSessionIDRequired) {
+		if err := messages.Append(t.Context(), sessionID, chat.NewUserMessage(chat.NewTextPart("one"))); !errors.Is(err, errConversationSessionIDRequired) {
 			t.Errorf("Append(%q) error = %v", sessionID, err)
 		}
 	}
@@ -80,7 +80,7 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 		runfixture.MustRestore(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: 8}),
 		runfixture.MustRestore(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
 	}}
-	messages := NewMessages(conversationfixture.New(), compactions)
+	messages := NewConversationHistory(conversationfixture.New(), compactions)
 	replacement := []chat.Message{
 		chat.NewSystemMessage("summary"),
 		chat.NewUserMessage(chat.NewTextPart("recent question")),

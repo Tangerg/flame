@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -18,7 +18,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.RunStore, *conversations.Messages) {
+func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.RunStore, *runsapp.ConversationHistory) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -34,7 +34,7 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	)
-	service := conversations.NewMessages(messages, compactions)
+	service := runsapp.NewConversationHistory(messages, compactions)
 	ses := sessionfixture.MustRestore(session.Snapshot{ID: "ses_long", Title: "long", Workspace: sessionfixture.MustWorkspace("/work")})
 	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)

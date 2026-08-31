@@ -918,3 +918,10 @@
 - 背景：CLI 的 Goal、feedback 与 usage 都是同一 Agent Session/Run context 的消费投影，只有 Runtime adapter 与 Terminal 两个共同消费者，却分别占用一个平级 package，并各自暴露含糊的 `Status`、`Service`、`Summary`。这种结构把 Runtime operation catalog 误当 bounded context，使调用点依赖 import alias 才能表达语义，也让每增加一个管理能力就倾向新增一个 package。
 - 决策：`cli/internal/agent` 共同拥有 Session、Run、Goal、feedback 与 usage 的 CLI rich projection 和 consumer-owned ports；以职责文件组织，不建立总 service object。合并后的公共内部词汇使用 `GoalStatus`、`GoalBudget`、`FeedbackSignal`、`UsageSummary` 等语义全名，Terminal 与 Runtime adapter 直接消费同一 package。独立 workspace、filesystem、plugin process、Runtime translation 与 durable Workbench 边界继续保留。
 - 后果：物理删除 `cli/internal/goal`、`feedback` 与 `usage`，同步迁移测试和架构守卫，不保留 alias、forwarder 或 compatibility package。合并没有让 CLI Domain import Runtime Protocol，也没有把 Runtime adapter 或 Terminal lifecycle 塞入 `agent`；后续 capability package 必须证明它不属于现有 Agent、Session、Run、Workspace 或 Workbench context。
+
+## ADR-RT-129：Conversation 应用编排属于 Run context，不是平级 operation package
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Runtime Application 第一批完成；允许 Runtime internal Go API breaking change，公共 Go surface、Protocol、Artifact、SQLite、Desktop 与 CLI 不变。
+- 背景：`application/conversations` 只拥有 durable history 的 read/seed/append/truncate/compaction 编排，生产调用者仅是 Bootstrap 和持久化适配器。Runtime context map 已规定 `application/runs` 协调 Run、Session、Conversation、Transcript、Interrupt 与 Accounting；conversation compaction 还必须在同一个 write-set 中重写 terminal Run 的 message watermark。旧物理边界因此按单项 operation 切开了同一应用生命周期，并使 Bootstrap、persistence 和测试额外依赖一个没有独立入口或生命周期的小包。
+- 决策：`application/runs` 以 `ConversationHistory`、`ConversationStore`、`ConversationCompactionPlan` 和 `ConversationCompactionStore` 等语义全名共同拥有 durable Conversation 用例；Domain `conversation` 继续独占 sequence、truncate、seed 与 compaction 纯规则，persistence 继续执行 Application 决定的原子 write-set。职责按 `conversation_history.go` 文件隔离，不建立总 service 或把 Store 逻辑搬进 Application。
+- 后果：物理删除 `application/conversations` 及全部旧 import，Bootstrap 和 persistence 直接绑定 `runs` 的 consumer ports，不保留 alias、forwarder 或 compatibility package。Conversation 与 Transcript 仍是不同事实，Run 与 Conversation 仍是不同 aggregate；本次只修正共同变化的 Application owner，不改变 Protocol、持久化 shape 或运行行为。

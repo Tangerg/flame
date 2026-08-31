@@ -10,11 +10,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
+	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
@@ -52,7 +52,7 @@ type Config struct {
 	ChatResolver ChatResolver
 
 	// ConversationStore is the authoritative model-context store.
-	ConversationStore conversations.Store
+	ConversationStore runs.ConversationStore
 
 	// Pricing computes model usage cost for Runtime projections.
 	Pricing accounting.Pricing

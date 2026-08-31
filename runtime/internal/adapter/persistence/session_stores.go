@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/conversations"
 	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
@@ -27,7 +27,7 @@ type SessionStores struct {
 	interrupts          *InterruptStore
 	runs                *sqlitestore.RunStore
 	executorCheckpoints *ExecutorCheckpointStore
-	history             *conversations.Messages
+	history             *runsapp.ConversationHistory
 	plan                planProjection
 	approvals           approvalRuleCleaner
 	toolResults         *sqlitestore.ToolResultStore
@@ -43,7 +43,7 @@ type SessionStoresConfig struct {
 	Interrupts          *InterruptStore
 	Runs                *sqlitestore.RunStore
 	ExecutorCheckpoints *ExecutorCheckpointStore
-	History             *conversations.Messages
+	History             *runsapp.ConversationHistory
 	Plan                planProjection
 	Approvals           approvalRuleCleaner
 	ToolResults         *sqlitestore.ToolResultStore
