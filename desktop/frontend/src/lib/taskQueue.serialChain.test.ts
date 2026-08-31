@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SerialTaskChain } from "./taskQueue";
 
-// Eight mutation owners each carried a private copy of this chain, and none wrote down what
-// made it correct. Three things did, and each is a live defect if dropped: a rejecting tail
-// fails work that has not run, an unconditional delete breaks the ordering the chain exists
-// for, and never deleting grows a map for the lifetime of the process.
+// Three things make the chain correct, and each is a live defect if dropped: a rejecting tail
+// fails work that has not run, an unconditional delete breaks the ordering, and never deleting
+// grows a map for the life of the process.
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

@@ -36,9 +36,8 @@ export const MAPPED_TYPES: readonly string[] = [
   "provider_rejected",
   "provider_error",
   "agent_stuck",
-  // How a run most often ends short of completing: the person declined the action, or a
-  // tool or delegated run stopped. Ordinary outcomes, not protocol faults — without copy
-  // the banner calls the most self-explanatory cause there is "an unknown error".
+  // How a run most often ends short of completing. Ordinary outcomes, not protocol faults:
+  // without copy the banner calls the person's own Deny "an unknown error".
   "denied_by_user",
   "tool_failed",
   "tool_canceled",
@@ -95,11 +94,7 @@ export function isUnsupportedMethod(err: unknown): boolean {
   );
 }
 
-/**
- * A collection the connected Runtime does not implement is EMPTY, not broken. Anything else
- * is still a failure and is rethrown. Two adapters carried a private copy of this; it is a
- * reading of a protocol symbol, so it belongs with the rest of them.
- */
+/** A collection the connected Runtime does not implement is EMPTY, not broken. */
 export function emptyListIfUngated(error: unknown): never[] {
   if (isErrorType(error, "capability_not_negotiated")) return [];
   throw error;

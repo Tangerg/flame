@@ -30,13 +30,10 @@ export interface RuntimeStreamPorts {
 export const RUNTIME_STREAM_PORTS = service<RuntimeStreamPorts>("flame.runtime.streamPorts");
 
 /**
- * Call `onAdvance` only when the generation REALLY changed.
+ * Calls `onAdvance` only when the generation actually changed.
  *
- * `subscribeConnection` fires on connection activity, not only on replacement, so a
- * consumer that acts on every notification retires its in-flight mutations against a
- * generation that never moved. Eight setup blocks each hand-wrote this comparison; the
- * port owns it now, and the caller is left with the decision that is actually theirs —
- * what a replaced (or absent) generation means for them.
+ * `subscribeConnection` fires on connection activity, not only on replacement, so acting on
+ * every notification retires in-flight mutations against a generation that never moved.
  */
 export function followRuntimeGeneration(
   ports: RuntimeStreamPorts,

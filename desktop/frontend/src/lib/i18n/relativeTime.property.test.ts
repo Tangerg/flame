@@ -9,10 +9,8 @@ import {
   formatRelative,
 } from "./relativeTime";
 
-// These render a timestamp that arrived over the wire, so the input is whatever the Runtime
-// or a stored draft held — including the empty string and a date nothing can be made of.
-// Each is documented to answer "" (or null) rather than throw, because a row that throws
-// takes the whole list down, and a timestamp is never worth that.
+// Input is whatever the Runtime or a stored draft held. Each answers "" (or null) rather than
+// throwing, because a row that throws takes the whole list with it.
 
 const STRINGS = [
   "",
@@ -83,9 +81,7 @@ describe("timestamp formatting, over what the wire can carry", () => {
   });
 
   it("keys a day by LOCAL midnight, never UTC", () => {
-    // 23:30 local and 00:30 local the next day are one UTC day apart or not depending on the
-    // zone; what must hold is that two instants in the SAME local day share a key and two in
-    // different local days never do.
+    // Two instants in the same LOCAL day share a key; two in different local days never do.
     forEachSeed(400, (a) => {
       const base = new Date(2026, a.int(12), 1 + a.int(27), a.int(24), a.int(60));
       const sameDay = new Date(base);
@@ -105,8 +101,7 @@ describe("timestamp formatting, over what the wire can carry", () => {
   });
 
   it("reads a timestamp in the future as the present, not as a negative age", () => {
-    // Clock skew between the Runtime host and this one is ordinary. What must not happen is
-    // a row reading "in -3 days".
+    // Clock skew between hosts is ordinary; a row reading "in -3 days" is not.
     for (const ahead of [1_000, 60_000, 86_400_000, 30 * 86_400_000]) {
       const label = formatRelative(new Date(Date.now() + ahead));
       expect(label.length).toBeGreaterThan(0);
@@ -128,9 +123,8 @@ describe("timestamp formatting, over what the wire can carry", () => {
     expect(new Set([seconds, minutes, hours, days, absolute]).size).toBe(5);
   });
 
-  // The module caches its DateTimeFormats because building one per row is the cost it exists
-  // to avoid. The RelativeTimeFormat used to be rebuilt on EVERY call, which is the same cost
-  // on the same path — every session row, inbox item and notification, on every render.
+  // Building a formatter per row is the cost this module exists to avoid, on a path that runs
+  // for every session row, inbox item and notification, on every render.
   it("builds at most one Intl formatter per locale, however many rows ask", () => {
     const RelativeTimeFormat = Intl.RelativeTimeFormat;
     const DateTimeFormat = Intl.DateTimeFormat;
@@ -158,8 +152,7 @@ describe("timestamp formatting, over what the wire can carry", () => {
         formatRelative(new Date(now - row * 60_000));
         formatClock(new Date(now - row * 60_000));
       }
-      // One locale is live, so a warm cache builds nothing at all; a cold one builds a
-      // bounded handful of shapes. What must never happen is growth with the row count.
+      // A cold cache builds a bounded handful of shapes. It must never grow with the rows.
       expect(built).toBeLessThanOrEqual(
         Intl.DateTimeFormat.supportedLocalesOf([bcp47()]).length + 4,
       );

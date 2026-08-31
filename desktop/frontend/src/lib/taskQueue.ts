@@ -56,9 +56,8 @@ export class RetirableTaskCohort {
 }
 
 /**
- * Serialises work per identity: a call waits for whatever is already in flight for the SAME
- * identity, while different identities proceed independently. Four mutation owners each
- * carried a private copy of this, and none of them wrote down why it is shaped this way.
+ * Serialises work per identity: a call waits for whatever is already in flight for the same
+ * identity, while different identities proceed independently.
  */
 export class SerialTaskChain {
   readonly #tails = new Map<string, Promise<void>>();
@@ -73,9 +72,8 @@ export class SerialTaskChain {
       () => undefined,
     );
     this.#tails.set(identity, settlement);
-    // Forget the tail only while it is still ours. Anything queued behind this call has
-    // already replaced it, and deleting that would let a third call start before the second
-    // finished — which is the serialisation this exists to provide.
+    // Only while it is still ours: anything queued behind this call has already replaced it,
+    // and dropping that would let a third call start before the second finished.
     void settlement.then(() => {
       if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
     });

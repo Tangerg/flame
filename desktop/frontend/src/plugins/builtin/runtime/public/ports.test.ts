@@ -5,10 +5,9 @@ import {
   type RuntimeStreamPorts,
 } from "./ports";
 
-// Eight plugin setups each hand-wrote this comparison before it lived here. The guard is the
-// whole point: `subscribeConnection` fires on connection activity, not only on replacement,
-// so a follower that acts on every notification retires its in-flight mutations against a
-// generation that never moved — a mutation the person just started, dropped for nothing.
+// The comparison is the whole point: `subscribeConnection` fires on connection activity, not
+// only on replacement, so a follower acting on every notification retires in-flight mutations
+// against a generation that never moved — work the person just started, dropped for nothing.
 
 function fakePorts(): RuntimeStreamPorts & { emit(): void; set(next: string | null): void } {
   let generation: RuntimeConnectionGeneration | null = null;

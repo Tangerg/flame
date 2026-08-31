@@ -13,17 +13,10 @@ interface Props extends Omit<ButtonProps, "children" | "variant" | "size"> {
 /**
  * A composer footer chip: leading glyph, label, disclosure chevron.
  *
- * `Button` is `shrink-0`, which is right for a button and wrong for these — they sit in one
- * no-wrap row inside a clipped, rounded composer, so a row wider than the composer pushed the
- * last chip through the edge, sliced. It could be seen and not clicked. They shrink here and
- * the LABEL is what gives way, because the glyph and the chevron are what say the control is
- * a control. One rule for all of them, instead of the three different hand-picked maximum
- * widths that were here before and still let the row overflow.
- *
- * They do NOT give way equally. Shrinking every chip the same amount spends the shortfall on
- * whichever labels happen to be longest and truncates all of them to initials. The model name
- * is the one to spend: it is the longest, and its picker shows the full name anyway. The
- * other two are single short words that stop meaning anything the moment they are cut.
+ * Shrinks, unlike `Button`: these share one no-wrap row inside a clipped, rounded composer,
+ * where a row wider than the composer leaves the last chip sliced by the edge — visible and
+ * unclickable. The label gives way, never the glyph or chevron. Not equally, either: shrinking
+ * each the same truncates every label to initials, so `gives` spends the model name first.
  */
 export function AgentComposerChip({
   leading,

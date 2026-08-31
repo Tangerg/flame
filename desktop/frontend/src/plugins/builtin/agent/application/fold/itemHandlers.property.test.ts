@@ -7,12 +7,10 @@ import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { foldTestEvent, runFinished } from "./reducer.fixtures";
 
-// The live path is not the durable one. `applyStreamHandlers` CATCHES what a handler throws
-// and reports it, so a fuzz that only asserts "did not throw" here is vacuous — the failure
-// mode is a silently dropped frame, a block that never appears. So the throw is observed at
-// the seam that swallows it, and the ordering is the adversary: `item.started` is documented
-// to arrive after deltas, after `item.completed`, after an interrupt materialised the same
-// Item, or after a durable snapshot already advanced it.
+// `applyStreamHandlers` CATCHES what a handler throws, so asserting "did not throw" proves
+// nothing here — the failure is a silently dropped frame, observed at the seam that swallows
+// it. Ordering is the adversary: `item.started` may arrive after deltas, after
+// `item.completed`, or after a snapshot already advanced the same Item.
 
 const RUN_ID = "run_1";
 const SEGMENT_ID = "seg_1";
@@ -76,9 +74,8 @@ function foldAll(events: readonly AgentStreamEvent[]): AgentSessionView {
 
 let swallowed: string[] = [];
 
-// The stream handlers are a PLUGIN contribution. Without loading it `lookupStreamHandlers`
-// answers empty, every frame is a no-op, and every property below holds over a view that
-// was never written to — which is exactly what the non-vacuity guard caught.
+// TRAP: stream handlers are a plugin contribution. Without loading it every frame is a no-op
+// and the properties below hold over a view nothing ever wrote to.
 beforeEach(async () => {
   const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
   await loadPluginsForTest(spec);
@@ -173,8 +170,8 @@ describe("the live item fold, over the orderings a replay can produce", () => {
       const settled = foldAll([started, completed]);
       const regressed = foldAll([started, completed, started]);
       expect(swallowed.slice(0, 2)).toEqual([]);
-      // The documented reason `item.started` refuses to upsert an advanced projection: it
-      // would erase content and pull a complete card back to running.
+      // Upserting an advanced projection would erase content and pull a complete card back to
+      // running.
       expect(regressed.toolCalls).toEqual(settled.toolCalls);
       expect(regressed.messages.map((message) => message.blocks.length)).toEqual(
         settled.messages.map((message) => message.blocks.length),

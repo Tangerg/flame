@@ -5,14 +5,11 @@ import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { reduceDurableItem } from "../fold/reducer";
 import { buildTranscriptRows, EMPTY_TRANSCRIPT_ROW_CACHE } from "./transcriptRows";
 
-// The cache is what makes a streamed token cost one row rebuild instead of the
-// whole transcript, and a cache bug does not throw — it shows stale content. So the
-// property is the one the module's own doc claims: feeding the previous cache back
-// gives the same answer as never having had one.
-
-// `runId: null` is the unassigned optimistic turn the root narrative shows; naming a
-// Run the view does not hold gets the message excluded, which is correct and would
-// have made every property below hold over an empty transcript.
+// A cache bug here does not throw, it shows stale content. The property is the module's own
+// claim: feeding the previous cache back answers what never having one would.
+//
+// TRAP: `runId` must name no Run the view holds, or the selector excludes every message and
+// the properties below hold over an empty transcript.
 function messageItem(a: Arbitrary, id: string): AgentItem {
   return {
     id,
@@ -68,8 +65,7 @@ describe("the transcript row cache", () => {
     });
   });
 
-  // The ROW is what the cache holds; the array's own identity is stabilised a layer
-  // up, by the projection that compares element-wise before publishing.
+  // The cache holds ROWS; the array's identity is stabilised a layer up.
   it("hands back the very same row when nothing under it moved", () => {
     forEachSeed(300, (a) => {
       const items = Array.from({ length: 2 + a.int(4) }, (_, i) => messageItem(a, `item_${i}`));
@@ -91,9 +87,8 @@ describe("the transcript row cache", () => {
     });
   });
 
-  // A stale row is the failure this cache can actually have, and it does not throw:
-  // it shows the previous tool output. So the row carrying a changed tool must not
-  // come back as the object that was built before the change.
+  // Staleness is the failure this can actually have, so the row carrying a changed tool must
+  // not come back as the object built before the change.
   it("rebuilds the row whose tool moved, and only that row", () => {
     forEachSeed(300, (a) => {
       // Evolved, not rebuilt: folding the same items into a fresh view makes every

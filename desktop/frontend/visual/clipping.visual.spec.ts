@@ -1,12 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// The design rules ask of every surface: does it get squeezed when the window is narrow?
-// Nothing asserted it. The invariant a person actually feels is narrower than "no overflow" —
-// wide blocks and the message action bar overhang the reading column ON PURPOSE, and that is
-// fine because nothing clips them. What is never fine is a control the window cuts in half:
-// it is unreadable, and the half outside cannot be clicked.
-//
-// The viewport is the configured minimum, so this is the tightest the shell is ever asked to be.
+// Narrower than "no overflow": wide blocks and the message action bar overhang the reading
+// column on purpose, and nothing clips them. What is never fine is a control cut in half — the
+// part outside cannot be clicked. The viewport is the configured minimum.
 
 const FIXTURES = [
   "fixture=agent&theme=light&state=long-content",
@@ -41,11 +37,9 @@ async function clippedControls(page: Page, selector: string): Promise<Clipped[]>
         const clips = parentStyle.overflowX !== "visible" || parentStyle.overflowY !== "visible";
         if (!clips) continue;
         const edge = parent.getBoundingClientRect();
-        // Whether the person can REACH the rest, which is the overflow VALUE and not the
-        // scroll dimensions: a `hidden` box reports scrollWidth > clientWidth exactly when it
-        // is cutting something off, so measuring that would excuse every defect this looks
-        // for. `auto`/`scroll` is allowed — a dock tab strip scrolls sideways and its last tab
-        // is half-visible by design.
+        // Reachability is the overflow VALUE, not the scroll dimensions: a `hidden` box reports
+        // scrollWidth > clientWidth exactly when it is cutting something off, so measuring that
+        // would excuse every defect this looks for.
         const reachable = (value: string) => value === "auto" || value === "scroll";
         const scrollable = reachable(parentStyle.overflowX) || reachable(parentStyle.overflowY);
         const cutLeft = edge.left - box.left;

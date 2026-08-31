@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ICON_NAMES, knownIconName } from "./icon";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 
-// Icon names arrive as plain strings: plugin contributions, workspace view and settings pane
-// specs, and MCP server data the Runtime forwards. Seven call sites used to cast one straight
-// to `IconName`, which type-checks and then draws NOTHING for a name we do not have — no
-// error, no fallback, a gap where a glyph belongs.
+// Icon names arrive as plain strings — plugin contributions, view and pane specs, MCP server
+// data. Asserting one into `IconName` type-checks and then draws nothing for a name we do not
+// have: no error, no fallback, a gap where a glyph belongs.
 
 describe("narrowing a contributed icon name", () => {
   it("keeps a name the set actually draws", () => {

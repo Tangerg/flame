@@ -3,11 +3,9 @@ import { validateWire } from "@flame/runtime-contract/validate";
 import { en } from "./i18n/locales/en";
 import { MAPPED_TYPES, describeErrorType, describeProblem, isUnsupportedMethod } from "./rpcErrors";
 
-// This table claims to be one-to-one with the protocol, and nothing checked it. It carried
-// three symbols — `file_too_large`, `is_a_directory`, `no_language_server` — that the wire
-// has never defined, so three locales' worth of copy could never be shown; and it was
-// missing the four symbols a run most often ends on, so the banner called "you declined
-// this" an unknown error. Both directions are guarded here.
+// The table claims to be one-to-one with the protocol. Both directions matter: a symbol the
+// wire never defines carries copy nothing can reach, and a missing one leaves the banner
+// calling a known outcome an unknown error.
 
 // A bare `{ type }` is an INCOMPLETE variant for the symbols that carry required fields, so
 // emptiness is the wrong test. The validator rejects an unknown symbol at `ProblemData.type`

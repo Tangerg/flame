@@ -284,13 +284,10 @@ const ICON_MAP = {
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
 /**
- * Narrow a contributed string to a glyph this set actually draws.
+ * Narrows a contributed string to a glyph this set actually draws.
  *
- * Icon names reach us as plain strings — from plugin contributions, from a workspace view or
- * settings pane spec, and from MCP server data the Runtime forwards. Casting one straight to
- * `IconName` type-checks and then draws NOTHING for a name we do not have: no error, no
- * fallback, just a gap where a glyph belongs. The cast is honest here because `has` earned it,
- * and every caller is left to say what it wants shown instead.
+ * Asserting one into `IconName` type-checks and then draws nothing for a name we do not have:
+ * no error, no fallback. Callers say what they want shown instead.
  */
 export function knownIconName(value: string | null | undefined): IconName | undefined {
   return value != null && ICON_NAMES.has(value as IconName) ? (value as IconName) : undefined;
@@ -310,11 +307,9 @@ const SIZE_STYLE = Object.fromEntries(
   ]),
 ) as Readonly<Record<IconSize, CSSProperties>>;
 
-// Memoised, and the default style is hoisted, because reicon paints every glyph through
-// `dangerouslySetInnerHTML`: a re-render with a changed prop tears out the <path> nodes and
-// builds new ones. When that lands between mousedown and mouseup — IconButton re-renders on
-// pointerenter — the browser sees its mousedown target detached and fires NO click, so the
-// button silently does nothing. Stable props keep the DOM nodes alive through a press.
+// Memoised with a hoisted style because reicon paints through `dangerouslySetInnerHTML`: any
+// re-render replaces the <path> nodes, and one landing mid-press detaches the mousedown target
+// so the browser fires no click at all. Stable props keep the nodes alive through a press.
 export const Icon = memo(function Icon({ name, size = "sm", style, className }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;

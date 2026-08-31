@@ -557,6 +557,11 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   await expect(svgPreview).toBeVisible();
   const svgArtifact = page.locator(".shiki-block").filter({ has: svgPreview });
   const svgCopy = svgArtifact.getByRole("button", { name: "Copy code" });
+  // Settle the artwork BEFORE hovering: the image loading resizes the artifact, and a hover
+  // aimed at where it used to be leaves the pointer outside it, so the control never reveals.
+  await expect
+    .poll(() => svgPreview.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBe(240);
   // `toBeVisible` may scroll the artifact underneath the pointer left by the
   // earlier wrap click. Move it away so this measures the true resting state.
   await page.mouse.move(0, 0);
@@ -564,9 +569,6 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   await svgArtifact.hover();
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("1");
   await expect(svgArtifact.locator(".shiki-preview-body")).toHaveAttribute("tabindex", "0");
-  await expect
-    .poll(() => svgPreview.evaluate((image: HTMLImageElement) => image.naturalWidth))
-    .toBe(240);
 });
 
 test("code blocks use the Codex caption and source geometry", async ({ page }) => {
@@ -574,6 +576,10 @@ test("code blocks use the Codex caption and source geometry", async ({ page }) =
   await page.locator("html[data-visual-ready]").waitFor();
 
   const block = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
+  // Highlighting is async, so `.shiki` and the caption arrive after the ready flag. Reading
+  // before they do returns null and fails on a frame rather than on the geometry.
+  await block.locator(".shiki").waitFor();
+  await block.locator('[data-markdown-copy="exclude"]').waitFor();
   const geometry = await block.evaluate((root) => {
     const header = root.querySelector<HTMLElement>('[data-markdown-copy="exclude"]');
     const language = Array.from(header?.querySelectorAll("span") ?? []).find(

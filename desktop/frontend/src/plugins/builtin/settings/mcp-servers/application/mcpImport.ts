@@ -65,11 +65,9 @@ export interface McpImportResult {
 }
 
 /**
- * The protocol admits `^[a-z0-9][a-z0-9._-]{0,31}$` and nothing else, while the
- * clients people paste from name servers "Git" or "Brave Search". Passing the key
- * through unchanged imported cleanly and then failed at the configure request,
- * where the pane has no way to explain itself — so the name is made into one here,
- * at the boundary that can still tell the person what happened.
+ * The protocol admits `^[a-z0-9][a-z0-9._-]{0,31}$`, while the clients people paste from name
+ * servers "Git" or "Brave Search". Shaped here, at the boundary that can still say what
+ * happened; passed through, it imports cleanly and fails later at the configure request.
  */
 export function wireServerName(name: string): string | null {
   const shaped = name

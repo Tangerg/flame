@@ -1,28 +1,14 @@
-// Reducer convergence invariant — the architectural guarantee that streaming,
-// history replay, and mixed delivery all render the SAME turn.
+// Convergence: streaming, history replay, and any interleaving of the two render the SAME
+// turn. There are not three rendering paths — there is one fold, fed different SUBSETS of one
+// event stream. Replay is the item.completed-only subset, since items.list emits no run or
+// delta frames.
 //
-// There are NOT three rendering code paths. There is ONE fold (`reduce`), fed
-// different SUBSETS of the same event stream:
-//   - streaming      = the full lifecycle (run.* / item.started / item.delta / item.completed)
-//   - history replay = the item.completed-only subset (items.list emits no run/started/delta)
-//   - mixed          = any interleaving (some items fully streamed, some snapshot-only —
-//                      e.g. hydrated history followed by a live continuation)
-// This test pins that convergence so no future change can reintroduce a
-// streaming-only quirk (the segment.started turn-reset this guards against was one).
-//
-// SCOPE — the symmetric payload, whose information lives identically on the
-// completed snapshot and the delta stream, so any subset converges:
-//   - text / reasoning CONTENT streams via item.delta, and the completed
-//     snapshot equals the concatenated deltas;
-//   - a call-and-result tool (the generic `tool` below) carries its args as the
-//     fully-parsed object on the Item AND, redundantly, as one whole
-//     toolArguments delta (the live-preview channel). Args are AUTHORITATIVE
-//     from the structured object at the terminal state, so the redundant delta
-//     can't make streaming diverge from replay — see writeToolCall.
-// Command output exercises the same invariant separately: toolOutput is only a
-// live preview, while the completed command result owns `{output, exitCode}`.
-// History hydration and reconnect therefore recover the exact output without
-// relying on a non-replayable delta.
+// It holds only for payload carried identically on the completed snapshot and the delta
+// stream. Text and reasoning qualify: the snapshot equals the concatenated deltas. A tool's
+// arguments arrive twice — parsed on the Item and again as a whole toolArguments delta for
+// live preview — and the structured object at the terminal state is authoritative, so the
+// redundant delta cannot make streaming diverge. Command output is the same shape: the delta
+// is preview only, `{output, exitCode}` on the completed result is what replay recovers.
 
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
