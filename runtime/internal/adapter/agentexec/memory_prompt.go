@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
 const memoryPromptCharsPerToken = 4

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
 // ErrKnowledgeUnavailable reports that this runtime has no knowledge store.

@@ -11,7 +11,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
 func shellIntPointer(value int) *int { return &value }

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
-	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 // Host owns the assembled application tier and its process-level close order

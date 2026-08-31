@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/hooks"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 // TerminalResource is a process-owned adapter whose Close call is one-shot:

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 type mcpServerListStub struct {

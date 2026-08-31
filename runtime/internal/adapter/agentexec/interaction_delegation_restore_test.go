@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *testing.T) {

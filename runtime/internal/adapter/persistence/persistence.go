@@ -14,8 +14,8 @@ import (
 	"time"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/knowledgefile"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/knowledgefile"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
 )
 

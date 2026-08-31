@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

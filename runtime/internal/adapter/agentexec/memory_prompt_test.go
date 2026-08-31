@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
 func TestPinnedMemoryPromptOrdersPinnedThenRecent(t *testing.T) {

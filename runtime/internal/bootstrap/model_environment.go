@@ -4,8 +4,8 @@ import (
 	"context"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chatclient"
 )

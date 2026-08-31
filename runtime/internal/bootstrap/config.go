@@ -8,10 +8,10 @@ import (
 	"os"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/infra/llm"
+	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 // LoadConfig loads the app config and resolves provider defaults plus env-key

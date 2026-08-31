@@ -10,11 +10,11 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/hooks"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/hooks"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // resolveRootManifest builds one exact root visibility snapshot.

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 

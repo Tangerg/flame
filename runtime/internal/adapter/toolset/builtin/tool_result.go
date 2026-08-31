@@ -18,8 +18,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 // defaultReadWindow bounds a read that names no limit, so a naive

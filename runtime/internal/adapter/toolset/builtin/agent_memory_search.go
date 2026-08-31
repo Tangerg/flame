@@ -13,8 +13,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/internal/toolarg"
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
 const (

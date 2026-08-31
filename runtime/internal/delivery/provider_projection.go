@@ -3,8 +3,8 @@ package delivery
 import (
 	"fmt"
 
-	modelapp "github.com/Tangerg/flame/runtime/internal/application/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

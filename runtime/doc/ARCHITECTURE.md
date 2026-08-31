@@ -138,7 +138,7 @@ Application checkpoint 包含：
 
 ### 5.5 `interrupt`
 
-`interrupt` 拥有外部请求、答案、scope 与 Kind/Resolution 等纯语义。可观察的 question/approval Item 仍由 `transcript` 投影；把一个 root Run tree 的产品事实、executor binding 和 continuation 组合成可恢复 pending hand-off 的职责属于 `application/runs`，不能为了把它塞进 Domain 而让 `interrupt` 依赖 Application 或 executor 类型。Agent Framework pending input 只在防腐层被翻译为这些产品值。
+`interrupt` 拥有外部请求、答案、scope 与 Kind/Resolution 等纯语义。可观察的 question/approval Item 仍由 `transcript` 投影；把一个 root Run tree 的产品事实、executor binding 和 continuation 组合成可恢复 pending hand-off 的职责属于 `application/agent/runs`，不能为了把它塞进 Domain 而让 `interrupt` 依赖 Application 或 executor 类型。Agent Framework pending input 只在防腐层被翻译为这些产品值。
 
 ### 5.6 `accounting`
 
@@ -171,7 +171,7 @@ MCP stdio transport 还是外部进程边界，SDK `ClientSession` 只拥有协�
 
 Knowledge 的 `FLAME.md` 是同时进入 `knowledge.list/get` 管理面与 fresh Run prompt 的完整 human-authored document，不是通用文件读取结果。Knowledge Domain 唯一规定每份文档最多 1 MiB；Application 在调用 persistence port 前拒绝超限更新，filesystem store 直连写入复验同一规则，读取则在 revision、string 与 prompt material 形成前执行 stat fast rejection 和 cancellation-aware `limit+1` 检测。home/projectRoot/cwd cascade 中任一现存文档越界都使完整读取失败，不截断、不跳过、不发布部分级联；合法文档仍服从原有 content CAS、directory lease、atomic rename 与 crash recovery。Crash recovery 对可能是任意项目根的目录只做固定批次、可取消的流式枚举，逐项清理 Runtime 自有 stage 文件，不把整个用户目录物化为内存集合。
 
-AGENTS.md 与 Recipe 也是 complete authored prompt resources，但没有必要为它们新建空壳 Domain；`application/workspace` 直接拥有准入合同。每份文档最多 1 MiB 且必须是有效 UTF-8；AGENTS.md root-to-leaf cascade 最多 64 份/4 MiB raw material，Recipe 每个 project/global scope 最多 128 份、完整级联最多 256 份/8 MiB。`adapter/promptsource` 在 string/YAML 与 public/model projection 前执行 stat、cancellation-aware `limit+1` 和读取后复验，Recipe directory 只扫描有限 entry sentinel；missing/empty source 不存在，任一现存 invalid/oversized source 则使完整管理或执行读取失败，不回退低优先级副本。模型侧 AGENTS.md 继续使用 32 KiB、more-specific-tail 的 whole-document projection，但任一单份文档连同 provenance 放不进预算时明确拒绝 fresh Run，不再把指令静默整份删除。
+AGENTS.md 与 Recipe 也是 complete authored prompt resources，但没有必要为它们新建空壳 Domain；`application/workspace` 直接拥有准入合同。每份文档最多 1 MiB 且必须是有效 UTF-8；AGENTS.md root-to-leaf cascade 最多 64 份/4 MiB raw material，Recipe 每个 project/global scope 最多 128 份、完整级联最多 256 份/8 MiB。`adapter/workspace/promptsource` 在 string/YAML 与 public/model projection 前执行 stat、cancellation-aware `limit+1` 和读取后复验，Recipe directory 只扫描有限 entry sentinel；missing/empty source 不存在，任一现存 invalid/oversized source 则使完整管理或执行读取失败，不回退低优先级副本。模型侧 AGENTS.md 继续使用 32 KiB、more-specific-tail 的 whole-document projection，但任一单份文档连同 provenance 放不进预算时明确拒绝 fresh Run，不再把指令静默整份删除。
 
 Workspace VCS 是外部进程支持的有限 read model，不是把 Git stdout 原样送进 Desktop 的旁路。`application/workspace` 唯一规定一次完整 changes catalog 最多 10,000 项，structured diff 最多 5,000 个完整文件、默认/最高 5,000 行与 64 MiB retained material，raw diff 最多 64 MiB；`limit=0` 表示默认行预算，不再表示无限。Infra 的所有 Git 读取统一经 64 MiB stdout、64 KiB bounded-drain stderr 的 process envelope，禁用 pager、external diff 和 textconv；tracked/untracked aggregate 在 64 MiB 前失败，structured parser 在进入下一个文件前检查 file/row budget，任何截断只返回完整文件。Application 对 direct port 返回值再次按文件、行和字符串 material 复验，raw/changes 越界则明确失败。Untracked line stat 以 streaming read 处理 regular file，symlink 只按 Git link-target 的一行计数且不跟随 referent；Git file catalog 在保留超过 20,000 个 path 前失败。后台 Git fingerprint 同样使用有界输出并拥有 10 秒 observation lifetime。Binary patch 与 Git C-quoted path 必须恢复真实 workspace path，不能因资源治理损失 VCS 语义。
 
@@ -203,7 +203,7 @@ Skill Proposal review queue 同样是完整、本地且非分页的读模型，�
 
 Skill 的 progressive-disclosure 与管理面必须消费同一份有限来源事实。每个 project/user source 最多 256 个 valid-named Skill candidate，top-level 枚举最多读取 272 个 raw entries；完整 `SKILL.md` 与 model-facing bundled resource 分别最多 1 MiB，必须在 parse/string/Tool result 前以 stat + cancellation-aware bounded reader 准入。用户托管库的 active + archived 总量、批准事务、完整 `skills.library.list`、idle sweep 与 `.usage.json` 共同服从 256 项容量；usage sidecar 最多 64 KiB/256 records。任一越界整体失败，不把截断集合宣称为 complete list，也不让 Desktop discovery 与 Run 内 `list_skills/load_skill/read_skill_resource` 观察不同语料。
 
-Runtime 的 title、compaction、Agent Memory consolidation 与 Skill mining 都是 request-detached auxiliary model use case，不进入交互 Run 的 Conversation、usage 或 middleware。`adapter/utilitymodel` 是这些调用的唯一请求包络：每次调用必须显式声明 aggregate input bytes 与 output tokens，越界在 provider I/O 前失败。Run-maintenance transcript 只有一个 512KiB request / 384KiB transcript / 24KiB-per-message policy，按消息公平保留 head/tail；compaction trigger 另行测量原始 transcript footprint，不能因模型输入有界而低估压缩时机。Memory curation 只对能完整装入预算的 ledger sequence 前缀推进 watermark，未进入 prompt 的事实继续待处理。
+Runtime 的 title、compaction、Agent Memory consolidation 与 Skill mining 都是 request-detached auxiliary model use case，不进入交互 Run 的 Conversation、usage 或 middleware。`adapter/model/utilitymodel` 是这些调用的唯一请求包络：每次调用必须显式声明 aggregate input bytes 与 output tokens，越界在 provider I/O 前失败。Run-maintenance transcript 只有一个 512KiB request / 384KiB transcript / 24KiB-per-message policy，按消息公平保留 head/tail；compaction trigger 另行测量原始 transcript footprint，不能因模型输入有界而低估压缩时机。Memory curation 只对能完整装入预算的 ledger sequence 前缀推进 watermark，未进入 prompt 的事实继续待处理。
 
 ### 5.8 Aggregate roots
 
@@ -242,15 +242,15 @@ Domain entity 只保护自身不变量。需要同时改变多个 aggregate 时�
 | `goal` | `run` identity/outcome | 记录跨 Run 进度；启动下一 Run 只通过 Application port |
 | `schedule` | `modelref` 和 Application Run starter | 定义触发，不直接依赖 runs concrete coordinator |
 | `conversation` | stable chat value contract | 管理产品消息历史，不依赖 Transcript/Run implementation |
-| `application/runs` | Run、Session、Conversation、Transcript、Interrupt、Accounting | 作为明确用例协调者，不把跨聚合规则塞进任一 Store |
-| `application/sessions` | Session、Plan、Run/Transcript read models、Accounting、Feedback | 拥有 Session lifecycle write-set 与 Session context projections；按职责文件和语义全名组织，不建立 operation package |
+| `application/agent/runs` | Run、Session、Conversation、Transcript、Interrupt、Accounting | 作为明确用例协调者，不把跨聚合规则塞进任一 Store |
+| `application/agent/sessions` | Session、Plan、Run/Transcript read models、Accounting、Feedback | 拥有 Session lifecycle write-set 与 Session context projections；按职责文件和语义全名组织，不建立 operation package |
 | `application/workspace` | Workspace scope、authored resources、filesystem/VCS、direct diagnostics | 先统一解析 workspace root，再驱动对应消费方端口；direct diagnostic tools 不建立平级 Application package |
 | `application/ownership` | Session/working-tree admission、recovery election | 统一拥有 process-local gate、cross-process Lease 词汇与 ordered recovery use case；外部锁布局由 adapter 实现 |
 | Goal/Schedule/Tool application use cases | Runs capability | 在各自消费者处定义窄接口，由 composition 绑定 runs concrete type，避免 application package 横向胖依赖 |
 
-`application/runs` 按职责文件共同拥有 Run lifecycle 与 durable Conversation history 的应用编排。Conversation sequence、compaction 和 watermark rebase 仍由各自 Domain value 决策；Application 只协调跨 Conversation/Run 的完整 write-set。不得再按 `conversations` 这一单项 operation 建平级 Application package。
+`application/agent/runs` 按职责文件共同拥有 Run lifecycle 与 durable Conversation history 的应用编排。Conversation sequence、compaction 和 watermark rebase 仍由各自 Domain value 决策；Application 只协调跨 Conversation/Run 的完整 write-set。不得再按 `conversations` 这一单项 operation 建平级 Application package。
 
-`application/sessions` 按职责文件共同拥有 Session lifecycle、Plan transition、durable execution query、usage report 与 feedback recording。各 Domain aggregate/value 继续独占不变量；Session package 只拥有用例排序、消费方端口和 read model folding。不得按 `plans`、`queries`、`usage` 或 `feedback` 的 operation 名称重新拆平级 Application package。
+`application/agent/sessions` 按职责文件共同拥有 Session lifecycle、Plan transition、durable execution query、usage report 与 feedback recording。各 Domain aggregate/value 继续独占不变量；Session package 只拥有用例排序、消费方端口和 read model folding。不得按 `plans`、`queries`、`usage` 或 `feedback` 的 operation 名称重新拆平级 Application package。
 
 `application/workspace` 拥有所有以 admitted workspace root 为前置条件的公共用例。Direct diagnostic Tool catalog 仍与 Agent ToolSet 分离，但它的 list/invoke 编排和 root admission 同属 Workspace Application context；不得因 Protocol operation 名为 `tools.*` 再建无独立生命周期的 `application/tools`。
 
@@ -277,7 +277,45 @@ adapter/* ----------------------------------> external SDKs
 
 图表示源码依赖，不表示运行时调用方向。
 
-### 6.1 Domain
+### 6.1 物理 package 层级
+
+依赖环是第一层，经过 consumer、invariant、lifecycle 与 import DAG 证明的上下文是第二层，真实 Go package 是叶子。上下文目录只提供导航，不声明 Go package、不导出 facade，也不改变环间依赖方向：
+
+```text
+internal/
+  domain/
+    automation/{goal, goalref, schedule}
+    integration/{hooks, mcpserver, provider}
+    run/{accounting, approval, conversation, interrupt, tool, toolresult, transcript}
+    session/{feedback, plan}
+    workspace/{agentmemory, knowledge, skills}
+    modelref  resourceid
+  application/
+    agent/{approvals, runs, sessions}
+    automation/{goals, schedules}
+    integration/{hooks, mcp, models, secrets}
+    workspace/{agentmemory}
+    invalidation  opaquetoken  ownership  pagination  taskgroup
+  adapter/
+    agentexec/{interactioninput}
+    integration/{hooks, mcpconnection}
+    model/{utilitymodel}
+    run/{maintenance, recovery, segment}
+    toolset/{builtin, codeintel, planpresentation}
+    workspace/{isolation, promptsource}
+    executionctx  persistence  runtimeownership  scheduleidentity
+  infra/
+    filesystem/{fileobservation, knowledgefile, pathidentity, skillauthoring}
+    git/{checkpoint, process}
+    integration/{a2a, llm, lsp, mcp}
+    process/{exec, sandbox, teardown}
+    storage/{sqlite}
+    advisorylock  telemetry
+```
+
+`run`、`session`、`workspace`、`agentexec`、`model`、`toolset` 与 `git` 可以同时是 context root package 和子能力的命名空间，因为父 package 本身拥有 aggregate 或 translation vocabulary；纯命名空间没有 Go 文件。`modelref`、`resourceid`、`invalidation`、`opaquetoken`、`ownership`、`pagination`、`taskgroup`、`executionctx` 等跨上下文 owner 保持环内直达，不能为目录对称性硬归给某个消费者。除 Go `internal` 这类语言机制外，生产 package 不超过 `ring/context/package` 三层。
+
+### 6.2 Domain
 
 Domain 只包含 entity、value object、aggregate 行为、纯领域策略和 sentinel errors。
 
@@ -293,7 +331,7 @@ Domain 只包含 entity、value object、aggregate 行为、纯领域策略和 s
 - Agent Framework、SQLite、JSON-RPC、HTTP、OTel SDK、文件系统和外部 Provider SDK；
 - 用 `context.Context` 包装的 Store/Client/Repository；这类消费端口默认属于 Application。
 
-### 6.2 Application
+### 6.3 Application
 
 Application 以用例为 package，协调 Domain、消费方端口、事务顺序、并发所有权和产品事件。
 
@@ -306,25 +344,25 @@ Application：
 - 不解释 wire DTO 或 executor snapshot；
 - 不用一个 `Coordinator`/`Service` 横跨多个无关用例。
 
-### 6.3 Adapter
+### 6.4 Adapter
 
 Adapter 实现 Application 消费端口并翻译外部能力。若 Domain 存在纯策略合同，只能由无 I/O 的纯实现满足；外部 I/O 不能借 Adapter 名义反向成为 Domain port。Adapter 可以依赖 Domain、Application、Infra 和对应 SDK，但不能依赖 Delivery 或 Bootstrap。
 
 典型 adapter：
 
 - `agentexec`：Agent Framework 防腐层；
-- `persistence` / `runsegment` / `runrecovery`：把应用 write-set 映射到 SQLite 技术事务；
+- `persistence` / `segment` / `recovery`：把应用 write-set 映射到 SQLite 技术事务；
 - `model`：把 Provider/model selection 统一映射到 catalog facts、probe、chat 与 embedding client；
 - `toolset`：组装通用 Tool 能力；
-- `workspace`、`runmaintenance`、`runtimeownership`、`hooks`：各自准确的应用适配。
+- `workspace`、`maintenance`、`runtimeownership`、`hooks`：各自准确的应用适配。
 
 `maintenance` 不直接构造无界 provider request，也不为不同 worker 暴露 uncapped render mode；语义化选择哪些 material 进入预算属于各 worker，最终输入/输出配额验证与 `chat.Options.MaxTokens` 投影只属于 `utilitymodel`。
 
 Adapter 不能只是同名 Infra 类型的透传包装。没有翻译、组合或策略意义的中间层必须合并。
 
-### 6.4 Infra
+### 6.5 Infra
 
-Infra 提供可被多个 Adapter 复用的底层技术机制，例如 SQLite primitive、Git、进程执行、sandbox、LSP、MCP/A2A client 和 checkpoint filesystem mechanism。Checkpoint 拥有 Run-boundary shadow repository 语义，但不拥有第二 Git process runner：所有命令复用 `gitprocess.Run` 的 64 MiB stdout、64 KiB bounded-drain stderr、caller cancellation 与 WaitDelay。一次完整 snapshot selection 最多 20,000 paths / 512 MiB admitted current material；source alternates/index 在复制前也有独立包络，越界整体失败，不提交 partial tag。
+Infra 提供可被多个 Adapter 复用的底层技术机制，例如 SQLite primitive、Git、进程执行、sandbox、LSP、MCP/A2A client 和 checkpoint filesystem mechanism。Checkpoint 拥有 Run-boundary shadow repository 语义，但不拥有第二 Git process runner：所有命令复用 `process.Run` 的 64 MiB stdout、64 KiB bounded-drain stderr、caller cancellation 与 WaitDelay。一次完整 snapshot selection 最多 20,000 paths / 512 MiB admitted current material；source alternates/index 在复制前也有独立包络，越界整体失败，不提交 partial tag。
 
 Infra：
 
@@ -336,13 +374,13 @@ Infra：
 
 `adapter` 与 `infra` 不整体合并。每个包按以上规则裁决；纯转发包装删除，真实的技术 mechanism 保留。
 
-`adapter/workspace` 以职责文件共同拥有 admitted workspace 的 canonical path/confinement、filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`Resolver` 把 `infra/pathidentity` 的通用机制投影为 Workspace Application 的路径事实和错误；`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`。Application 仍通过自己的窄端口消费，不能再按 path 或 Skill proposal operation 建平级 adapter package。
+`adapter/workspace` 以职责文件共同拥有 admitted workspace 的 canonical path/confinement、filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`Resolver` 把 `infra/filesystem/pathidentity` 的通用机制投影为 Workspace Application 的路径事实和错误；`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`。Application 仍通过自己的窄端口消费，不能再按 path 或 Skill proposal operation 建平级 adapter package。
 
 `adapter/model` 以职责文件共同拥有 Provider/Model 外部翻译：stored-over-environment credential overlay、catalog facts/probe/listing、selection admission、pricing 与 chat/embedding client construction。环境凭据只形成 immutable process overlay，永不进入 inner durable registry；不得按 registry/catalog/client 阶段重新拆平级 adapter package。
 
-小型 adapter 只在拥有真实边界时保留：`planpresentation` 是 Agent prompt 与 Plan Tool 共用的纯模型投影，`utilitymodel` 是多个 maintenance/Run consumers 共用的有界辅助模型调用机制，`mcpconnection`、`isolation`、`runrecovery` 与 `scheduleidentity` 分别拥有 live external lifecycle、sandbox、atomic recovery translation 或外部 entropy。单一 Bootstrap 构造点本身既不是合并证据，也不能替代这些边界；若其 owner 或消费者消失，package 必须随之删除。
+小型 adapter 只在拥有真实边界时保留：`planpresentation` 是 Agent prompt 与 Plan Tool 共用的纯模型投影，`utilitymodel` 是多个 maintenance/Run consumers 共用的有界辅助模型调用机制，`mcpconnection`、`isolation`、`recovery` 与 `scheduleidentity` 分别拥有 live external lifecycle、sandbox、atomic recovery translation 或外部 entropy。单一 Bootstrap 构造点本身既不是合并证据，也不能替代这些边界；若其 owner 或消费者消失，package 必须随之删除。
 
-### 6.5 Protocol 与 Delivery
+### 6.6 Protocol 与 Delivery
 
 公共 `protocol` 只包含 binding-neutral Runtime 合同：DTO、枚举、请求/响应、事件、客户端可见 problem、版本与严格验证。它不包含服务端 method-group interface、context key、Router、numeric JSON-RPC code、HTTP status、reflection registry 或生成器实现细节。
 
@@ -361,13 +399,13 @@ JSON-RPC `params` 的可选 typed 字段以缺席表达 omission，不以显式 
 
 Delivery 只依赖公共 Protocol、Application 和必要的 Domain projection values；不得导入 Agent Framework、Infra、具体 persistence、agentexec 或持有 Run lifecycle state。
 
-### 6.6 Bootstrap、Config、Embedded 与 Cmd
+### 6.7 Bootstrap、Config、Embedded 与 Cmd
 
 私有 Runtime instance builder 是唯一组合根：创建 concrete dependency、组装 consumer port、在短期 setup lease 内打开并初始化共享数据目录、执行有所有权判断的恢复、启动有 owner 的后台任务并按逆序关闭资源。`bootstrap.OpenInstance` 创建每个 instance 唯一的 Runtime context root，并把它显式注入 Assembly、Delivery Endpoint、Interaction executor、Toolset、LSP、MCP/OAuth 与 workers；该 instance 同时拥有 cancel 和完整 join。HTTP executable 和公共 `runtime.Open` 都只能调用它，不得各自复制装配图；多个进程可各自持有一个完整 Runtime instance 并共享同一私有数据目录。
 
 Bootstrap 不提供业务 API，不成为 service locator，也不存在可向下游传播的完整 Stack。Assembly 只通过 package-private policy、workspace、execution 三个 composition capsule 组装 Session/Run 图：每个 capsule 构造成功即完整合法，execution acquisition 在任何错误返回前先把 closer/executor 转交唯一 `hostLifetime`。Host 的资源关闭图不从 `error` 猜状态，也不存在通用 retryable step：A2A、LSP、Shell、SQLite、isolation 与 MCP ClientSession 等 one-shot Close 一旦返回即为 terminal，错误只作为诊断。第一个 Host Close caller 启动由 `hostLifetime` 持有的唯一 shutdown generation：先停止并加入 Goal/MCP/Run producer，再给已经接纳的 Run 边界维护最多五秒自然收束，随后取消并加入剩余任务与 executor，最后进入 terminal resource Sequence。这样 one-shot 退出不会立即吞掉 terminal 或 parked Run 已接纳的 Session title，同时卡住的辅助 provider 仍有界；`Drain` 不能替代 producer stop，也不关闭可复用 task group。Workspace checkpoint 仍只属于 terminal Run，parked Run 只可从 immutable opening user text 生成 first-writer title，不能伪造可回滚文件边界。每个 caller 只有独立的有界 wait，timeout 不能终止、取代或并行复制该 generation；因此 post-transfer startup recovery 失败即使不返回 Host，迟到结束的 component 仍会触发下层依赖释放。component 明确返回 unsettled error 时，后续 Close 可开新 generation；terminal Sequence 仍只运行一次，不存在 timer retry loop 或第二清理图。host resources 先于 tool resources 取得，两组 creation-ordered steps 一次性交给唯一 `teardown.Sequence`；Sequence 以 `context.WithoutCancel` 逆序跑完图，terminal diagnostic 不重放动作。需要多 generation 推进的 subsystem 必须在自己的 owner 内表达状态，不能伪装成通用 resource closer。Instance 在 Host 之上拥有唯一 delivery-to-Host shutdown generation：退役 Delivery Endpoint admission 与 Runtime lifetime 后，加入 Endpoint、scheduler/database/recovery workers 再加入同一 Host attempt；Instance caller deadline 也只限制等待。Instance 不复制 context owner，而是从 Host 已注入 lifetime 派生 generation values。Host 的私有 application capsule 只持有 Delivery 自己的 consumer config、startup recovery 与 worker lifecycle 行为；Instance 不能取得 concrete coordinator。Bootstrap 构造 `Handler` 后立即将它封装在 `Endpoint` 内，Instance 只保存和退役 Endpoint，后续 observer 启动失败也必须完整回滚。公共 `runtime.Runtime` 只持有私有 instance 与 Delivery Endpoint，提供完整 `Open/Close` 和类型化方法，不泄露内部资源。Config 只解析外部设置和完成静态验证，不执行业务选择。Cmd 只负责进程参数、BuildID、信号、HTTP listener 与 Runtime 生命周期。
 
-### 6.7 共享原语
+### 6.8 共享原语
 
 目标结构不保留可无限收纳的 `component`、`common`、`core` 或 `utils` 杂物层。
 
@@ -521,7 +559,7 @@ Runtime Toolset 负责产品工具清单、schema、执行 capability、安全�
 
 边界规则：
 
-- 内建 Tool 的 model-facing name 由既有 `domain/tool` vocabulary 唯一拥有；description、参数名和 schema 由具体 Tool definition 唯一拥有，不为常量建立 Adapter 微包；
+- 内建 Tool 的 model-facing name 由既有 `domain/run/tool` vocabulary 唯一拥有；description、参数名和 schema 由具体 Tool definition 唯一拥有，不为常量建立 Adapter 微包；
 - schema 与执行使用同一 strict typed decode 路径；
 - Runtime policy 不进入通用 `tool.Tool`；
 - Tool 不取得 Engine、Process 或完整 Runtime Stack；

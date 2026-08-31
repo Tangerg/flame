@@ -12,8 +12,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/scope/tools/fs"
 )
 

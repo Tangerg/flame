@@ -5,16 +5,16 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/mcpconnection"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/application/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
-	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 // toolEnvironment groups the tool resolver with the separately-owned MCP

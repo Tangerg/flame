@@ -13,10 +13,10 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"

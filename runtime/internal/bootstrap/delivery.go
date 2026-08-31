@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/protocol"

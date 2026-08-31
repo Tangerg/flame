@@ -10,12 +10,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )

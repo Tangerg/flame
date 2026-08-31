@@ -5,8 +5,8 @@ package scheduleidentity
 import (
 	"github.com/google/uuid"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 

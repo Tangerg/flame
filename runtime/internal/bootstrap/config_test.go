@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
 func TestResolveProviderConfigAllowsCredentialConfigurationAfterStartup(t *testing.T) {

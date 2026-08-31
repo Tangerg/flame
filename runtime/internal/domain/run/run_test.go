@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 

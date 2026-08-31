@@ -54,9 +54,11 @@ Move cross-aggregate ordering into an Application use case. Keep provider calls,
 
 Replace primitive bags with closed values when invalid combinations currently reach multiple callers. Prefer one constructor or parser and behavior methods over public fields plus `Validate` calls that every caller must remember.
 
-## Flatten package structure deliberately
+## Shape package structure deliberately
 
 Prefer multiple cohesive files inside one package. Merge a package into its only real owner when it has no independent vocabulary, invariant, lifecycle, external boundary, or reusable mechanism.
+
+When a ring has become a flat catalog of independently justified packages, group them under one proven bounded-context or capability-family namespace. The parent directory contains no Go facade, the leaf packages keep their responsibilities, and shared mechanisms remain direct rather than being assigned to an arbitrary consumer. Reject single-child namespaces and nesting deeper than `ring/context/package` unless a language-enforced mechanism such as Go `internal` requires it.
 
 Do not merge solely because a package has one consumer. A strict codec, confined filesystem capability, protocol adapter, or rich value can have one consumer and still protect a meaningful boundary.
 

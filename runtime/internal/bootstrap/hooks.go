@@ -6,7 +6,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/hooks"
+	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 )
 
 // HookTrust reports whether a project root may run user lifecycle hooks.

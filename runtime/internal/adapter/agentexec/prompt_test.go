@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
 // TestComposeSystemPrompt_BaseOnly verifies a nil memory store

@@ -5,7 +5,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/a2a"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/a2a"
 )
 
 type a2aConnections struct {

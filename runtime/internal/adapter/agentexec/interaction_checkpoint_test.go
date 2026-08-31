@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 )
 

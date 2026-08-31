@@ -64,10 +64,10 @@ func TestProductionDirectoryReadsAreFinite(t *testing.T) {
 // same stdout/stderr/lifetime boundary as every other Runtime Git observation.
 // Checkpoint owns snapshot semantics, not a second exec.Cmd buffer lifecycle.
 func TestCheckpointGitUsesBoundedProcessOwner(t *testing.T) {
-	file := filepath.Join(moduleRoot(t), "internal", "infra", "checkpoint", "git.go")
+	file := filepath.Join(moduleRoot(t), "internal", "infra", "git", "checkpoint", "git.go")
 	forbidExternalImports(t, file, []string{"bytes"})
 	forbidSelectorCalls(t, file, map[string]string{
-		"CommandContext": "checkpoint Git commands must use gitprocess.Run's bounded process lifecycle",
+		"CommandContext": "checkpoint Git commands must use process.Run's bounded process lifecycle",
 	})
 }
 

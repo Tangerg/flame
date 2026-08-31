@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	modelapp "github.com/Tangerg/flame/runtime/internal/application/models"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListModels projects the application-owned model-discovery result onto the
 // protocol page. Discovery policy, remote fallback, and catalog enrichment all
-// remain in application/models.
+// remain in application/integration/models.
 func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
 	if err != nil {

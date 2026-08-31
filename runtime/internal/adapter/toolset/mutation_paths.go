@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 type fileMutationReporter interface {

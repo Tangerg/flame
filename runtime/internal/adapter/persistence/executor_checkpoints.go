@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 )
 
 // ExecutorCheckpointStore translates the Application-owned checkpoint

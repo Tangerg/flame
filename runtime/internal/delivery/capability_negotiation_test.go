@@ -3,9 +3,9 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"slices"
 	"testing"

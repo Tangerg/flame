@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

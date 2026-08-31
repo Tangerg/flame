@@ -10,11 +10,11 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // The per-Run application-context seam (cwd, session, isolation, goal incarnation)

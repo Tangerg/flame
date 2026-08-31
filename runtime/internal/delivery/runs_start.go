@@ -9,11 +9,11 @@ import (
 
 	corechat "github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

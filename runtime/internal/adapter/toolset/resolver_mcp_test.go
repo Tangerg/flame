@@ -6,7 +6,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/scope/core/chat"
 )
 

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )

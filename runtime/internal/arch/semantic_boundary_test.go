@@ -18,7 +18,7 @@ import (
 // or pathspec controls even when the caller supplies -C.
 func TestGitProcessEnvironmentHasOneOwner(t *testing.T) {
 	root := moduleRoot(t)
-	owner := filepath.Join(root, "internal", "infra", "gitprocess")
+	owner := filepath.Join(root, "internal", "infra", "git", "process")
 	err := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -64,7 +64,7 @@ func TestGitProcessEnvironmentHasOneOwner(t *testing.T) {
 				return true
 			}
 			if len(call.Args) > argument && gitLiteral(call.Args[argument]) {
-				t.Errorf("%s launches Git outside internal/infra/gitprocess", path)
+				t.Errorf("%s launches Git outside internal/infra/git/process", path)
 			}
 			return true
 		})
@@ -83,7 +83,7 @@ func gitLiteral(expression ast.Expr) bool {
 func TestMediaContentEncodingStaysAtOuterBoundaries(t *testing.T) {
 	root := moduleRoot(t)
 	applicationTokenFraming := filepath.Join(root, "internal", "application", "opaquetoken")
-	modelPath := filepath.Join(root, "internal", "domain", "transcript", "model.go")
+	modelPath := filepath.Join(root, "internal", "domain", "run", "transcript", "model.go")
 	model, err := parser.ParseFile(token.NewFileSet(), modelPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse transcript model: %v", err)
@@ -128,7 +128,7 @@ func TestDomainValuesDoNotOwnJSONPersistenceCodecs(t *testing.T) {
 	root := moduleRoot(t)
 	domain := filepath.Join(root, "internal", "domain")
 	allowed := map[string]map[string]struct{}{
-		filepath.Join("tool", "value.go"): {
+		filepath.Join("run", "tool", "value.go"): {
 			"Arguments.MarshalJSON": {}, "Arguments.UnmarshalJSON": {},
 			"Result.MarshalJSON": {}, "Result.UnmarshalJSON": {},
 		},
@@ -168,7 +168,7 @@ func TestDomainValuesDoNotOwnJSONPersistenceCodecs(t *testing.T) {
 
 func TestSQLiteOwnsTranscriptAndInterruptPayloadShapes(t *testing.T) {
 	root := moduleRoot(t)
-	transcriptStore := filepath.Join(root, "internal", "infra", "sqlite", "transcript.go")
+	transcriptStore := filepath.Join(root, "internal", "infra", "storage", "sqlite", "transcript.go")
 	transcriptSource, err := os.ReadFile(transcriptStore)
 	if err != nil {
 		t.Fatalf("read transcript store: %v", err)
@@ -177,7 +177,7 @@ func TestSQLiteOwnsTranscriptAndInterruptPayloadShapes(t *testing.T) {
 		t.Error("transcript store serializes the domain aggregate instead of using its explicit adapter codec")
 	}
 
-	interruptStore := filepath.Join(root, "internal", "infra", "sqlite", "interrupt.go")
+	interruptStore := filepath.Join(root, "internal", "infra", "storage", "sqlite", "interrupt.go")
 	interruptSource, err := os.ReadFile(interruptStore)
 	if err != nil {
 		t.Fatalf("read interrupt store: %v", err)
@@ -208,8 +208,8 @@ func TestRunCapabilitiesStaySemanticInsideTheProtocolBoundary(t *testing.T) {
 	for _, relative := range []string{
 		filepath.Join("internal", "domain"),
 		filepath.Join("internal", "application"),
-		filepath.Join("internal", "adapter", "runsegment"),
-		filepath.Join("internal", "infra", "sqlite"),
+		filepath.Join("internal", "adapter", "run", "segment"),
+		filepath.Join("internal", "infra", "storage", "sqlite"),
 	} {
 		walkDirErr := filepath.WalkDir(filepath.Join(root, relative), func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -241,7 +241,7 @@ func TestRunCapabilitiesStaySemanticInsideTheProtocolBoundary(t *testing.T) {
 	if !strings.Contains(string(protocolSource), "type RunProtocolProfile struct") {
 		t.Error("Delivery no longer owns the versioned RunProtocolProfile wire shape")
 	}
-	codecSource, err := os.ReadFile(filepath.Join(root, "internal", "infra", "sqlite", "run_codec.go"))
+	codecSource, err := os.ReadFile(filepath.Join(root, "internal", "infra", "storage", "sqlite", "run_codec.go"))
 	if err != nil {
 		t.Fatalf("read Run capability codec: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestExecutorAndGoalPersistentShapesStayCanonical(t *testing.T) {
 
 func assertExecutorIdentityShapes(t *testing.T, root string) {
 	t.Helper()
-	executorRefPath := filepath.Join(root, "internal", "application", "runs", "executor_ref.go")
+	executorRefPath := filepath.Join(root, "internal", "application", "agent", "runs", "executor_ref.go")
 	executorRefFile, err := parser.ParseFile(token.NewFileSet(), executorRefPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse executor reference: %v", err)
@@ -267,7 +267,7 @@ func assertExecutorIdentityShapes(t *testing.T, root string) {
 		t.Fatalf("ExecutorRef fields = %v, want durable executor identity", fields)
 	}
 
-	scopePath := filepath.Join(root, "internal", "application", "runs", "executor_checkpoint.go")
+	scopePath := filepath.Join(root, "internal", "application", "agent", "runs", "executor_checkpoint.go")
 	scopeFile, err := parser.ParseFile(token.NewFileSet(), scopePath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse execution scope: %v", err)
@@ -280,7 +280,7 @@ func assertExecutorIdentityShapes(t *testing.T, root string) {
 
 func assertRetiredDurableVocabularyAbsent(t *testing.T, root string) {
 	t.Helper()
-	sqliteDir := filepath.Join(root, "internal", "infra", "sqlite")
+	sqliteDir := filepath.Join(root, "internal", "infra", "storage", "sqlite")
 	err := filepath.WalkDir(sqliteDir, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -306,7 +306,7 @@ func assertRetiredDurableVocabularyAbsent(t *testing.T, root string) {
 
 func TestReplayRetentionDoesNotDependOnAnOuterEncoding(t *testing.T) {
 	root := moduleRoot(t)
-	runs := filepath.Join(root, "internal", "application", "runs")
+	runs := filepath.Join(root, "internal", "application", "agent", "runs")
 	for _, name := range []string{"journal.go", "journal_retention.go"} {
 		path := filepath.Join(runs, name)
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)

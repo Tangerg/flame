@@ -9,7 +9,7 @@ import (
 	"time"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

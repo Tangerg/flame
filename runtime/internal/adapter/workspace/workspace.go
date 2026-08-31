@@ -11,8 +11,8 @@ package workspace
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/checkpoint"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/checkpoint"
 )
 
 var (

@@ -8,11 +8,11 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -64,7 +64,7 @@ func (*blockingRunRuntime) BeginRoot(context.Context, runs.ExecutorRef) error { 
 // these tests are about the live stream — but the Run record cannot be: addressing
 // a live segment resolves through the durable projection, so a run that exists only
 // in the process registry is a run nothing can subscribe to.
-func (b *blockingRunRuntime) RunSegmentEffects() *runsegment.Effects {
+func (b *blockingRunRuntime) RunSegmentEffects() *segment.Effects {
 	return b.stubRuntime.RunSegmentEffects()
 }
 

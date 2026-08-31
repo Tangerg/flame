@@ -7,9 +7,9 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/approval"
-	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 // planStateReader supplies the canonical session Plan approved by exit_plan_mode.

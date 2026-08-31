@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestRunCapabilitiesHasOneDurableRepresentation(t *testing.T) {

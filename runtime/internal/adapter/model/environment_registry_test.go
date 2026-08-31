@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
 type fakeRegistry struct {

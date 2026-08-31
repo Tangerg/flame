@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // ErrInsufficientCapabilities reports that a caller cannot follow a Run because

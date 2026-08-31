@@ -3,10 +3,10 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
 // SeedConfiguredProvider writes config-file provider values only when the

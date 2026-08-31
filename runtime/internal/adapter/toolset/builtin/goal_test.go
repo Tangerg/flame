@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	goalstate "github.com/Tangerg/flame/runtime/internal/domain/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // in-memory goals.Store for the tool tests.

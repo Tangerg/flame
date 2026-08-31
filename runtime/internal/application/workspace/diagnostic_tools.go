@@ -3,7 +3,7 @@ package workspace
 import (
 	"context"
 
-	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // DiagnosticToolRegistry is the directly invocable diagnostic-tool catalog. It is deliberately

@@ -9,11 +9,11 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runmaintenance"
-	"github.com/Tangerg/flame/runtime/internal/application/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/infra/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
 func buildRunMaintenance(
@@ -34,11 +34,11 @@ func buildRunMaintenance(
 	if found {
 		fallbackLimits = limits
 	}
-	compactor, err := runmaintenance.NewCompactor(
+	compactor, err := maintenance.NewCompactor(
 		conversationServices.messages,
 		resolveUtility,
-		runmaintenance.NewLiveStateSnapshotter(shells),
-		runmaintenance.CompactionPolicyValues{FallbackTokenLimits: fallbackLimits},
+		maintenance.NewLiveStateSnapshotter(shells),
+		maintenance.CompactionPolicyValues{FallbackTokenLimits: fallbackLimits},
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: compaction policy: %w", err)
@@ -46,20 +46,20 @@ func buildRunMaintenance(
 	if cfg.Maintenance != nil {
 		return cfg.Maintenance, compactor, nil
 	}
-	var consolidator *runmaintenance.MemoryConsolidator
+	var consolidator *maintenance.MemoryConsolidator
 	if memoryCuration.Available() {
-		consolidator, err = runmaintenance.NewMemoryConsolidator(
+		consolidator, err = maintenance.NewMemoryConsolidator(
 			conversationServices.store,
 			memoryCuration,
 			resolveUtility,
-			runmaintenance.MemoryCurationPolicyValues{},
+			maintenance.MemoryCurationPolicyValues{},
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runtime: memory curation policy: %w", err)
 		}
 	}
-	var skillMiner *runmaintenance.SkillProposalMiner
-	var skillArchiver *runmaintenance.IdleSkillArchiver
+	var skillMiner *maintenance.SkillProposalMiner
+	var skillArchiver *maintenance.IdleSkillArchiver
 	if skillMaintenance.Available() {
 		skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
 			cfg.SkillsUserDir,
@@ -68,20 +68,20 @@ func buildRunMaintenance(
 		if repositoryErr != nil {
 			return nil, nil, fmt.Errorf("runtime: open user skill repository: %w", repositoryErr)
 		}
-		skillMiner, err = runmaintenance.NewSkillProposalMiner(
+		skillMiner, err = maintenance.NewSkillProposalMiner(
 			conversationServices.store,
 			skills,
 			skillRepository,
 			resolveUtility,
-			runmaintenance.SkillMiningPolicyValues{},
+			maintenance.SkillMiningPolicyValues{},
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runtime: skill mining policy: %w", err)
 		}
-		skillArchiver, err = runmaintenance.NewIdleSkillArchiver(skillMaintenance, runmaintenance.SkillArchivePolicyValues{})
+		skillArchiver, err = maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
 		if err != nil {
 			return nil, nil, fmt.Errorf("runtime: skill archive policy: %w", err)
 		}
 	}
-	return runmaintenance.NewPipeline(compactor, consolidator, skillMiner, skillArchiver), compactor, nil
+	return maintenance.NewPipeline(compactor, consolidator, skillMiner, skillArchiver), compactor, nil
 }

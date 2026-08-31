@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 func TestGitWatcherRejectsUnwatchableGitDirectory(t *testing.T) {

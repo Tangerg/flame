@@ -169,29 +169,29 @@ const (
 
 var pageFixtures = map[string]map[queryProperty]fixtureRef{
 	"items": {
-		fixedOrder:    {"internal/application/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
-		pageDirection: {"internal/application/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
-		cursorBinding: {"internal/application/sessions", "TestListItemPageRefusesAForeignCursor"},
+		fixedOrder:    {"internal/application/agent/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
+		pageDirection: {"internal/application/agent/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
+		cursorBinding: {"internal/application/agent/sessions", "TestListItemPageRefusesAForeignCursor"},
 	},
 	"runs": {
-		fixedOrder:    {"internal/application/sessions", "TestListRunPageWalksBackwardThroughHistory"},
-		pageDirection: {"internal/application/sessions", "TestListRunPageWalksBackwardThroughHistory"},
-		cursorBinding: {"internal/application/sessions", "TestListRunPageRefusesACursorFromAnotherQuery"},
+		fixedOrder:    {"internal/application/agent/sessions", "TestListRunPageWalksBackwardThroughHistory"},
+		pageDirection: {"internal/application/agent/sessions", "TestListRunPageWalksBackwardThroughHistory"},
+		cursorBinding: {"internal/application/agent/sessions", "TestListRunPageRefusesACursorFromAnotherQuery"},
 	},
 	"interrupts": {
-		fixedOrder:    {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
-		pageDirection: {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
-		cursorBinding: {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
+		fixedOrder:    {"internal/application/agent/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
+		pageDirection: {"internal/application/agent/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
+		cursorBinding: {"internal/application/agent/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
 	},
 	"sessions": {
-		fixedOrder:    {"internal/application/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
-		pageDirection: {"internal/application/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
-		cursorBinding: {"internal/application/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
+		fixedOrder:    {"internal/application/agent/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
+		pageDirection: {"internal/application/agent/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
+		cursorBinding: {"internal/application/agent/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},
 	},
 	"schedules": {
-		fixedOrder:    {"internal/application/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
-		pageDirection: {"internal/application/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
-		cursorBinding: {"internal/application/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
+		fixedOrder:    {"internal/application/automation/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
+		pageDirection: {"internal/application/automation/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
+		cursorBinding: {"internal/application/automation/schedules", "TestListPagePagesNewestFirstAndRefusesAForeignCursor"},
 	},
 	"workspace.files": {
 		fixedOrder:    {"internal/application/workspace", "TestFilePagesUseATotalOrderAndBindTheCompleteQuery"},

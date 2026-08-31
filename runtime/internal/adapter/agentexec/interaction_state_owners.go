@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )

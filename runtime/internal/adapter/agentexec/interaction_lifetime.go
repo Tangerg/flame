@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 // interactionLifetime owns every goroutine and channel whose lifetime is the

@@ -112,40 +112,40 @@ func TestEverySystemInvariantHasAnIntegrationFixture(t *testing.T) {
 // its value — a second table of exactly what this one replaces.
 var invariantFixtures = map[string]map[transactionBoundary]fixtureRef{
 	"session_has_at_most_one_open_run": {
-		boundaryRunAdmission:   {"internal/infra/sqlite", "TestRunAdmitEnforcesOneActivePerSession"},
-		boundarySegmentOpening: {"internal/adapter/runsegment", "TestCommitOpeningRefusesASecondOpenRun"},
+		boundaryRunAdmission:   {"internal/infra/storage/sqlite", "TestRunAdmitEnforcesOneActivePerSession"},
+		boundarySegmentOpening: {"internal/adapter/run/segment", "TestCommitOpeningRefusesASecondOpenRun"},
 	},
 	"terminal_run_explains_how_it_ended": {
-		boundarySegmentEvent: {"internal/adapter/runsegment", "TestCommitEventPersistsTheTerminalRunsResult"},
-		boundaryRunRecovery:  {"internal/adapter/runrecovery", "TestRecoveryRepairsWholeDurableLifecycle"},
+		boundarySegmentEvent: {"internal/adapter/run/segment", "TestCommitEventPersistsTheTerminalRunsResult"},
+		boundaryRunRecovery:  {"internal/adapter/run/recovery", "TestRecoveryRepairsWholeDurableLifecycle"},
 		boundarySessionImport: {
 			"internal/delivery", "TestSessionImportRejectsAFailedRunWithoutItsFailure",
 		},
 	},
 	"run_capabilities_are_immutable": {
-		boundaryRunAdmission: {"internal/infra/sqlite", "TestRunCapabilitiesAreImmutable"},
+		boundaryRunAdmission: {"internal/infra/storage/sqlite", "TestRunCapabilitiesAreImmutable"},
 	},
 	"parked_tree_has_exactly_one_open_interrupt_set": {
-		boundarySegmentEvent: {"internal/adapter/runsegment", "TestCommitTreeBarrierProducesDurableTriplet"},
+		boundarySegmentEvent: {"internal/adapter/run/segment", "TestCommitTreeBarrierProducesDurableTriplet"},
 		boundaryRunRecovery: {
-			"internal/adapter/runrecovery", "TestRecoveryRejectsPartialParkWithoutMutatingIt",
+			"internal/adapter/run/recovery", "TestRecoveryRejectsPartialParkWithoutMutatingIt",
 		},
 	},
 	"parked_continuation_matches_run_facts": {
 		boundarySegmentOpening: {
-			"internal/application/runs", "TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation",
+			"internal/application/agent/runs", "TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation",
 		},
 		boundarySegmentEvent: {
-			"internal/adapter/runsegment", "TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction",
+			"internal/adapter/run/segment", "TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction",
 		},
 		boundaryWaitingSubtreeCancellation: {
-			"internal/adapter/runsegment", "TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation",
+			"internal/adapter/run/segment", "TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation",
 		},
 		boundaryRunRecovery: {
-			"internal/application/runs", "TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint",
+			"internal/application/agent/runs", "TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint",
 		},
 		boundaryParkedTermination: {
-			"internal/application/sessions", "TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit",
+			"internal/application/agent/sessions", "TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit",
 		},
 	},
 	"dropped_run_leaves_nothing_behind": {
@@ -156,7 +156,7 @@ var invariantFixtures = map[string]map[transactionBoundary]fixtureRef{
 		boundarySessionImport: {"internal/delivery", "TestSessionExportImport_RoundTrip"},
 	},
 	"goal_never_outlives_its_session": {
-		boundaryGoalLifecycle:   {"internal/infra/sqlite", "TestGoalStoreRejectsMissingSession"},
+		boundaryGoalLifecycle:   {"internal/infra/storage/sqlite", "TestGoalStoreRejectsMissingSession"},
 		boundarySessionDelete:   {"internal/bootstrap", "TestApplyDeleteClearsSessionGoal"},
 		boundarySessionRollback: {"internal/bootstrap", "TestApplyRollbackDropsRunsAndFreesAdmission"},
 	},
@@ -232,19 +232,19 @@ func TestEveryPlanLifecycleClaimHasAFixture(t *testing.T) {
 // layer alone would leave the other free to leak.
 var planLifecycleFixtures = map[string][]fixtureRef{
 	"plan_revision_never_goes_backwards": {
-		{"internal/infra/sqlite", "TestPlanIsOwnedByItsSession"},
+		{"internal/infra/storage/sqlite", "TestPlanIsOwnedByItsSession"},
 		{"internal/delivery", "TestPlanQueryAnswersWithTheStreamsOwnSnapshot"},
 		{"internal/bootstrap", "TestApplyRollbackRepublishesBoundaryPlan"},
 	},
 	"session_plan_is_owned_by_its_session": {
-		{"internal/infra/sqlite", "TestPlanIsOwnedByItsSession"},
+		{"internal/infra/storage/sqlite", "TestPlanIsOwnedByItsSession"},
 		{"internal/delivery", "TestPlanChangeKeepsSessionScope"},
 	},
 	"segment_fences_its_final_plan": {
-		{"internal/application/runs", "TestSegmentFencesItsFinalPlanBeforeFinishing"},
+		{"internal/application/agent/runs", "TestSegmentFencesItsFinalPlanBeforeFinishing"},
 	},
 	"committed_plan_change_reaches_other_windows": {
 		{"internal/delivery", "TestPlanChangeKeepsSessionScope"},
-		{"internal/application/sessions", "TestCommittedPlanChangeReachesOtherWindows"},
+		{"internal/application/agent/sessions", "TestCommittedPlanChangeReachesOtherWindows"},
 	},
 }

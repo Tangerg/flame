@@ -13,11 +13,11 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	goalstate "github.com/Tangerg/flame/runtime/internal/domain/goal"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 const createDescription = `Create and start a persistent autonomous Goal for the current session.

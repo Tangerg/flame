@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/scope/tools/fs"
 )
 

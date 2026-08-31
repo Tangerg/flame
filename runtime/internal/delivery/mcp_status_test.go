@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

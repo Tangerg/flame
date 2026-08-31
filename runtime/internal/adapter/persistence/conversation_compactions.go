@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"

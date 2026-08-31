@@ -11,7 +11,7 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 	skillstool "github.com/Tangerg/scope/tools/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 )
 
 // SkillUsageRecorder records that a skill was loaded, feeding the idle-lifecycle

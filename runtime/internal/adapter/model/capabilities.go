@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	catalog "github.com/Tangerg/scope/models/catalog"
 
-	modelsapp "github.com/Tangerg/flame/runtime/internal/application/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/llm"
+	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 // Capabilities implements the three model-configuration ports consumed by

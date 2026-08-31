@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -261,7 +261,7 @@ func TestWireTurnStartErrMapsInvalidTurnOptions(t *testing.T) {
 
 // TestDecodeResumeResponses covers the wire DTO → application response-union
 // mapping. Durable item coverage and schema validation run later in
-// application/runs against the actual open interrupt.
+// application/agent/runs against the actual open interrupt.
 func TestDecodeResumeResponses(t *testing.T) {
 	approval := func(v protocol.InterruptResponseValue) []protocol.InterruptResponse {
 		v.Type = "approval"

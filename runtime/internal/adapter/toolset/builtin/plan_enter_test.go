@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 type modePolicy struct {

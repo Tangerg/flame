@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/hooks"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/hooks"
+	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

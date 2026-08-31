@@ -1,7 +1,7 @@
 package toolset
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )

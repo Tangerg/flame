@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 )
 
 func saveTestPlan(ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) error {

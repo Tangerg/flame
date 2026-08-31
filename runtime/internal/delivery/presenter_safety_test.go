@@ -3,7 +3,7 @@ package delivery
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

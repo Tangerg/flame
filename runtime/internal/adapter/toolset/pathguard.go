@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 // protectedDirs are directory names the agent must never modify, even when

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 )
 
 // SessionCheckpoints adapts workspace checkpoint operations to session

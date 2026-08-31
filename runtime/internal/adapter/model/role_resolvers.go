@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chatclient"
 
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
+	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 

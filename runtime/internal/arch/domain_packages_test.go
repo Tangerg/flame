@@ -3,6 +3,7 @@ package arch
 import (
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,18 +15,45 @@ import (
 // untested directory cannot silently become a field-container dumping ground.
 func TestDomainPackagesDeclareAndVerifyTheirBoundaries(t *testing.T) {
 	domainRoot := filepath.Join(moduleRoot(t), "internal", "domain")
-	entries, err := os.ReadDir(domainRoot)
-	if err != nil {
-		t.Fatalf("read Domain packages: %v", err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+	err := filepath.WalkDir(domainRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		t.Run(entry.Name(), func(t *testing.T) {
-			assertReviewedDomainPackage(t, filepath.Join(domainRoot, entry.Name()), entry.Name())
+		if !entry.IsDir() || path == domainRoot {
+			return nil
+		}
+		hasPackage, err := directoryHasDirectProductionGo(path)
+		if err != nil {
+			return err
+		}
+		if !hasPackage {
+			return nil
+		}
+		relative, err := filepath.Rel(domainRoot, path)
+		if err != nil {
+			return err
+		}
+		t.Run(filepath.ToSlash(relative), func(t *testing.T) {
+			assertReviewedDomainPackage(t, path, filepath.Base(path))
 		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk Domain packages: %v", err)
 	}
+}
+
+func directoryHasDirectProductionGo(dir string) (bool, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return false, err
+	}
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") && !strings.HasSuffix(file.Name(), "_test.go") {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func assertReviewedDomainPackage(t *testing.T, dir, packageName string) {
@@ -38,7 +66,6 @@ func assertReviewedDomainPackage(t *testing.T, dir, packageName string) {
 	hasPackageDoc := false
 	for _, file := range files {
 		if file.IsDir() {
-			t.Errorf("nested directory %s splits one Domain boundary", file.Name())
 			continue
 		}
 		if !strings.HasSuffix(file.Name(), ".go") {

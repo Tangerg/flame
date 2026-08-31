@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -73,7 +73,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 // decodeResumeResponses maps transport DTOs into the application-owned
 // response union without looking up durable state. Exact item coverage,
 // interrupt-kind matching, and question-schema validation belong to
-// application/runs, where the open interrupt is available.
+// application/agent/runs, where the open interrupt is available.
 func decodeResumeResponses(responses []protocol.InterruptResponse) ([]runs.ResumeResponse, error) {
 	out := make([]runs.ResumeResponse, 0, len(responses))
 	for _, wire := range responses {

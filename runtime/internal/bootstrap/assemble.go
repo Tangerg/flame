@@ -9,29 +9,29 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/isolation"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runrecovery"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 // Assembly owns configuration resources before construction begins.
@@ -265,7 +265,7 @@ func buildAssemblyCore(
 	// title maintenance returns through the Session Application capability.
 	runEffectTasks := &taskgroup.Group{}
 	lifetime.runEffectTasks = runEffectTasks
-	runSegmentConfig := runsegment.Config{
+	runSegmentConfig := segment.Config{
 		Interrupts:          cfg.InterruptStore,
 		ResumeClaims:        cfg.InterruptStore,
 		Sessions:            cfg.SessionStore,
@@ -279,7 +279,7 @@ func buildAssemblyCore(
 		RunProgress:         cfg.RunStore,
 		ExecutorCheckpoints: cfg.ExecutorCheckpoints,
 		ChildRunStarts:      cfg.ChildRunStartStore,
-		Tx:                  runsegment.Transactor(cfg.Transactor),
+		Tx:                  segment.Transactor(cfg.Transactor),
 	}
 	if cfg.ScheduleStore != nil {
 		runSegmentConfig.ScheduleFirings = cfg.ScheduleStore
@@ -290,22 +290,22 @@ func buildAssemblyCore(
 	if cfg.ToolResultStore != nil {
 		runSegmentConfig.ToolResults = cfg.ToolResultStore
 	}
-	runSegmentEffects, err := runsegment.New(runSegmentConfig)
+	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
 	}
-	runFinalizer, err := runsegment.NewFinalizer(runsegment.FinalizerConfig{
+	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
 		Checkpoints: workspaceServices.checkpoints,
-		Titles: &runsegment.TitleMaintenance{
+		Titles: &segment.TitleMaintenance{
 			Sessions:  sessionCoordinator,
-			Generator: runsegment.NewTitleGenerator(execution.models.utilityClient),
+			Generator: segment.NewTitleGenerator(execution.models.utilityClient),
 			Tasks:     runEffectTasks,
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run finalizer: %w", err)
 	}
-	workspaceNotifier := runsegment.NewWorkspaceNotifier(fileChanges.Publish)
+	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.Publish)
 	runDependencies := runs.Dependencies{
 		RootStarts:                         execution.executor,
 		Observations:                       execution.executor,
@@ -413,7 +413,7 @@ func buildAssemblyCore(
 		}
 	}
 
-	recoveryPersistence, err := runrecovery.New(runrecovery.Config{
+	recoveryPersistence, err := recovery.New(recovery.Config{
 		Sessions:            cfg.SessionStore,
 		Runs:                cfg.RunStore,
 		Interrupts:          cfg.InterruptStore,
@@ -424,7 +424,7 @@ func buildAssemblyCore(
 		ModelInvocations:    cfg.ModelInvocationStore,
 		ToolInvocations:     cfg.ToolInvocationStore,
 		ChildRunStarts:      cfg.ChildRunStartStore,
-		Tx:                  runrecovery.Transactor(cfg.Transactor),
+		Tx:                  recovery.Transactor(cfg.Transactor),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: boot recovery persistence: %w", err)

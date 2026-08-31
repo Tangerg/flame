@@ -622,6 +622,8 @@ P305把Runtime `adapter/providerregistry`收回`adapter/model`。stored-over-env
 
 P306完成Runtime/CLI package graph复核。Runtime `internal/...`当前91个Go package（Adapter 21、Application 16、Domain 22、Infra 17，余量为Delivery/Bootstrap/contract/shared mechanism/test support），CLI `internal/...`当前28个Go package且与28个一级目录一一对应；计数只记录结果，不作为验收。逐包consumer/invariant/lifecycle审计未发现仍存的forwarding、alias、one-operation compatibility或空路径；保留的小package均拥有稳定value/invariant、durable aggregate、workflow lifecycle、external translation或多peer mechanism。Runtime、CLI与`runtime/localruntime`空目录/空文件扫描为零。
 
+P307修正P306仍把“叶包独立成立”等同于“必须在环根部平铺”的结论。CLI 现在由 `domain/application/adapter/delivery` 四个物理环表达依赖方向；Runtime 的 Domain、Application、Adapter、Infra 在环内再按 Run、Session、Automation、Workspace、Integration、Toolset、Git、Process 与 Storage 等已证明 context 建立一层无Go文件namespace。Runtime/CLI的Go package数量没有因层级调整增加；`executionctx`等跨context机制保持环内直达，single-child namespace被撤回。旧import与空目录物理删除，拓扑门禁同时拒绝新的未审查平铺package、facade parent和超过`ring/context/package`的装饰性嵌套。
+
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
 MCP server registry identity现由独立`ServerName`拥有1–32位canonical lowercase ASCII spelling，并贯穿registry/live supersession/OAuth/tool policy/tool namespace；公开Go/Schema/TypeScript与fresh SQLite CHECK使用同一规则。SQLite当前epoch因此为94，Artifact仍为v27。

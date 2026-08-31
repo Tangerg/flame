@@ -120,7 +120,7 @@ func interfaceUsesContext(contract *ast.InterfaceType) bool {
 // TestSQLiteDoesNotDiscardRowsAffectedErrors protects compare-and-swap and
 // mutation outcomes from treating a driver failure as a successful zero count.
 func TestSQLiteDoesNotDiscardRowsAffectedErrors(t *testing.T) {
-	root := filepath.Join(moduleRoot(t), "internal", "infra", "sqlite")
+	root := filepath.Join(moduleRoot(t), "internal", "infra", "storage", "sqlite")
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -174,7 +174,7 @@ func assignmentCallsRowsAffected(assignment *ast.AssignStmt) bool {
 // policy.
 func TestExecutorCheckpointRemainsOpaqueOutsideExecutionAdapter(t *testing.T) {
 	root := moduleRoot(t)
-	checkpointPath := filepath.Join(root, "internal", "application", "runs", "executor_checkpoint.go")
+	checkpointPath := filepath.Join(root, "internal", "application", "agent", "runs", "executor_checkpoint.go")
 	checkpointFile, err := parser.ParseFile(token.NewFileSet(), checkpointPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse executor checkpoint: %v", err)
@@ -185,7 +185,7 @@ func TestExecutorCheckpointRemainsOpaqueOutsideExecutionAdapter(t *testing.T) {
 		t.Fatalf("ExecutorCheckpoint fields = %v, want opaque application envelope %v", checkpoint, want)
 	}
 
-	storagePath := filepath.Join(root, "internal", "infra", "sqlite", "executor_checkpoint.go")
+	storagePath := filepath.Join(root, "internal", "infra", "storage", "sqlite", "executor_checkpoint.go")
 	storageSource, err := os.ReadFile(storagePath)
 	if err != nil {
 		t.Fatalf("read executor checkpoint store: %v", err)
@@ -237,7 +237,7 @@ func TestModelTokenLimitsKeepPresenceInsideRichValues(t *testing.T) {
 		}
 	}
 
-	applicationPath := filepath.Join(root, "internal", "application", "models", "catalog.go")
+	applicationPath := filepath.Join(root, "internal", "application", "integration", "models", "catalog.go")
 	applicationFile, err := parser.ParseFile(token.NewFileSet(), applicationPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse application model catalog: %v", err)
@@ -280,13 +280,13 @@ func TestMCPHandshakeTimeoutKeepsDisabledStateOutOfDurationZero(t *testing.T) {
 		field     string
 		wantType  string
 	}{
-		{filepath.Join(root, "internal", "domain", "mcpserver", "server.go"), "Server", "HandshakeTimeout", "HandshakeTimeout"},
-		{filepath.Join(root, "internal", "application", "mcp", "views.go"), "ServerInput", "HandshakeTimeout", "mcpserver.HandshakeTimeout"},
-		{filepath.Join(root, "internal", "application", "mcp", "views.go"), "ServerPatch", "HandshakeTimeout", "*mcpserver.HandshakeTimeout"},
+		{filepath.Join(root, "internal", "domain", "integration", "mcpserver", "server.go"), "Server", "HandshakeTimeout", "HandshakeTimeout"},
+		{filepath.Join(root, "internal", "application", "integration", "mcp", "views.go"), "ServerInput", "HandshakeTimeout", "mcpserver.HandshakeTimeout"},
+		{filepath.Join(root, "internal", "application", "integration", "mcp", "views.go"), "ServerPatch", "HandshakeTimeout", "*mcpserver.HandshakeTimeout"},
 		{filepath.Join(root, "protocol", "mcp.go"), "MCPServer", "HandshakeTimeout", "MCPHandshakeTimeout"},
 		{filepath.Join(root, "protocol", "mcp.go"), "MCPServerCandidate", "HandshakeTimeout", "MCPHandshakeTimeout"},
 		{filepath.Join(root, "protocol", "mcp.go"), "UpdateMCPServerRequest", "HandshakeTimeout", "*MCPHandshakeTimeout"},
-		{filepath.Join(root, "internal", "infra", "mcp", "config.go"), "ServerConfig", "HandshakeTimeout", "*time.Duration"},
+		{filepath.Join(root, "internal", "infra", "integration", "mcp", "config.go"), "ServerConfig", "HandshakeTimeout", "*time.Duration"},
 	}
 	for _, check := range checks {
 		if got := namedStructFieldType(t, check.path, check.structure, check.field); got != check.wantType {
@@ -403,7 +403,7 @@ func TestSessionCatalogFilteringHasOneRichQueryAndDurableCanonicalizer(t *testin
 		}
 	}
 
-	storePath := filepath.Join(root, "internal", "application", "sessions", "coordinator.go")
+	storePath := filepath.Join(root, "internal", "application", "agent", "sessions", "coordinator.go")
 	contents, err := os.ReadFile(storePath)
 	if err != nil {
 		t.Fatal(err)
@@ -418,7 +418,7 @@ func TestSessionCatalogFilteringHasOneRichQueryAndDurableCanonicalizer(t *testin
 		}
 	}
 
-	readPath := filepath.Join(root, "internal", "infra", "sqlite", "session_read.go")
+	readPath := filepath.Join(root, "internal", "infra", "storage", "sqlite", "session_read.go")
 	contents, err = os.ReadFile(readPath)
 	if err != nil {
 		t.Fatal(err)
@@ -529,7 +529,7 @@ func TestUsageSummaryPeriodKeepsAllTimeOutOfNumericZero(t *testing.T) {
 	if got := namedStructFieldType(t, filepath.Join(root, "protocol", "usage.go"), "UsageSummaryRequest", "SinceDays"); got != "*int" {
 		t.Fatalf("protocol.UsageSummaryRequest.SinceDays type = %s, want *int", got)
 	}
-	periodPath := filepath.Join(root, "internal", "application", "sessions", "usage_period.go")
+	periodPath := filepath.Join(root, "internal", "application", "agent", "sessions", "usage_period.go")
 	periodFile, err := parser.ParseFile(token.NewFileSet(), periodPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse usage summary period: %v", err)
@@ -542,7 +542,7 @@ func TestUsageSummaryPeriodKeepsAllTimeOutOfNumericZero(t *testing.T) {
 			t.Errorf("sessions.UsageSummaryPeriod is missing %s behavior", method)
 		}
 	}
-	reporterPath := filepath.Join(root, "internal", "application", "sessions", "usage_reporter.go")
+	reporterPath := filepath.Join(root, "internal", "application", "agent", "sessions", "usage_reporter.go")
 	if got := methodParameterType(t, reporterPath, "UsageReporter", "Summary", 1); got != "UsageSummaryPeriod" {
 		t.Fatalf("sessions.UsageReporter.Summary period type = %s, want UsageSummaryPeriod", got)
 	}
@@ -572,7 +572,7 @@ func TestRunMaintenancePoliciesKeepDefaultsOutOfPrimitiveZero(t *testing.T) {
 		{"skill_archiving.go", "SkillArchivePolicyValues", "CheckInterval", "*time.Duration"},
 	}
 	for _, check := range checks {
-		path := filepath.Join(root, "internal", "adapter", "runmaintenance", check.path)
+		path := filepath.Join(root, "internal", "adapter", "run", "maintenance", check.path)
 		if got := namedStructFieldType(t, path, check.structure, check.field); got != check.wantType {
 			t.Errorf("%s.%s type = %s, want %s", check.structure, check.field, got, check.wantType)
 		}
@@ -589,7 +589,7 @@ func TestRunMaintenancePoliciesKeepDefaultsOutOfPrimitiveZero(t *testing.T) {
 		{"skill_archiving.go", "IdleSkillArchiver", "skillArchivePolicy"},
 	}
 	for _, owner := range owners {
-		path := filepath.Join(root, "internal", "adapter", "runmaintenance", owner.path)
+		path := filepath.Join(root, "internal", "adapter", "run", "maintenance", owner.path)
 		if got := namedStructFieldType(t, path, owner.structure, "policy"); got != owner.wantType {
 			t.Errorf("%s.policy type = %s, want %s", owner.structure, got, owner.wantType)
 		}
@@ -662,7 +662,7 @@ func assertCanonicalRunLimits(t *testing.T, root string) {
 
 func assertAccountingHasNoBudgetCarrier(t *testing.T, root string) {
 	t.Helper()
-	accountingRoot := filepath.Join(root, "internal", "domain", "accounting")
+	accountingRoot := filepath.Join(root, "internal", "domain", "run", "accounting")
 	err := filepath.WalkDir(accountingRoot, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -716,8 +716,8 @@ func assertApplicationLimitCarriers(t *testing.T, root string) {
 		path string
 		name string
 	}{
-		{path: filepath.Join("internal", "application", "runs", "commands.go"), name: "StartCommand"},
-		{path: filepath.Join("internal", "application", "runs", "ports.go"), name: "RootExecutionStart"},
+		{path: filepath.Join("internal", "application", "agent", "runs", "commands.go"), name: "StartCommand"},
+		{path: filepath.Join("internal", "application", "agent", "runs", "ports.go"), name: "RootExecutionStart"},
 	} {
 		path := filepath.Join(root, carrier.path)
 		file, parseErr := parser.ParseFile(token.NewFileSet(), path, nil, 0)
@@ -739,8 +739,8 @@ func assertApplicationLimitCarriers(t *testing.T, root string) {
 func assertStorageLimitVocabulary(t *testing.T, root string) {
 	t.Helper()
 	for _, relative := range []string{
-		filepath.Join("internal", "infra", "sqlite", "db.go"),
-		filepath.Join("internal", "infra", "sqlite", "runs.go"),
+		filepath.Join("internal", "infra", "storage", "sqlite", "db.go"),
+		filepath.Join("internal", "infra", "storage", "sqlite", "runs.go"),
 	} {
 		source, readErr := os.ReadFile(filepath.Join(root, relative))
 		if readErr != nil {
@@ -753,17 +753,17 @@ func assertStorageLimitVocabulary(t *testing.T, root string) {
 }
 
 // TestWaitingCheckpointPersistenceBelongsToApplicationTransactions locks the
-// ownership split: agentexec captures/restores opaque data, while runsegment
+// ownership split: agentexec captures/restores opaque data, while segment
 // atomically saves or removes it with the Pending and Run transitions that own
 // the continuation.
 func TestWaitingCheckpointPersistenceBelongsToApplicationTransactions(t *testing.T) {
 	root := moduleRoot(t)
 	assertAgentexecHasNoCheckpointWrites(t, root)
 
-	commitPath := filepath.Join(root, "internal", "adapter", "runsegment", "effects_commit.go")
+	commitPath := filepath.Join(root, "internal", "adapter", "run", "segment", "effects_commit.go")
 	commitFile, err := parser.ParseFile(token.NewFileSet(), commitPath, nil, 0)
 	if err != nil {
-		t.Fatalf("parse runsegment effects: %v", err)
+		t.Fatalf("parse segment effects: %v", err)
 	}
 	barrier := effectsMethodBody(commitFile, "CommitTreeBarrier")
 	transaction, ok := calledClosure(barrier, "runInTx")
@@ -781,7 +781,7 @@ func TestWaitingCheckpointPersistenceBelongsToApplicationTransactions(t *testing
 		t.Error("CommitEvent terminal transaction does not own executor checkpoint deletion")
 	}
 
-	waitingPath := filepath.Join(root, "internal", "adapter", "runsegment", "effects_waiting_cancellation.go")
+	waitingPath := filepath.Join(root, "internal", "adapter", "run", "segment", "effects_waiting_cancellation.go")
 	waitingFile, err := parser.ParseFile(token.NewFileSet(), waitingPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse waiting cancellation effects: %v", err)
@@ -803,7 +803,7 @@ func TestWaitingCheckpointPersistenceBelongsToApplicationTransactions(t *testing
 // reconciliation, and the driven adapter applies it.
 func TestOwnershipRecoveryPolicyBelongsToApplication(t *testing.T) {
 	root := moduleRoot(t)
-	sqlitePath := filepath.Join(root, "internal", "infra", "sqlite", "recovery_projection.go")
+	sqlitePath := filepath.Join(root, "internal", "infra", "storage", "sqlite", "recovery_projection.go")
 	sqliteFile, err := parser.ParseFile(token.NewFileSet(), sqlitePath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse SQLite recovery projection: %v", err)
@@ -818,7 +818,7 @@ func TestOwnershipRecoveryPolicyBelongsToApplication(t *testing.T) {
 		}
 	}
 
-	applicationPath := filepath.Join(root, "internal", "application", "runs", "recovery.go")
+	applicationPath := filepath.Join(root, "internal", "application", "agent", "runs", "recovery.go")
 	applicationSource, err := os.ReadFile(applicationPath)
 	if err != nil {
 		t.Fatalf("read application recovery: %v", err)
@@ -871,7 +871,7 @@ func TestExecutionContextIsNeutralBetweenPeerAdapters(t *testing.T) {
 // facade or Framework Process vocabulary in Application.
 func TestApplicationExecutionPortsUseApplicationVocabulary(t *testing.T) {
 	root := moduleRoot(t)
-	portsPath := filepath.Join(root, "internal", "application", "runs", "ports.go")
+	portsPath := filepath.Join(root, "internal", "application", "agent", "runs", "ports.go")
 	portsFile, err := parser.ParseFile(token.NewFileSet(), portsPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse Run ports: %v", err)
@@ -920,9 +920,9 @@ func TestApplicationExecutionPortsUseApplicationVocabulary(t *testing.T) {
 	}
 
 	for _, relative := range []string{
-		filepath.Join("internal", "infra", "sqlite", "db.go"),
-		filepath.Join("internal", "infra", "sqlite", "executor_checkpoint.go"),
-		filepath.Join("internal", "infra", "sqlite", "interrupt.go"),
+		filepath.Join("internal", "infra", "storage", "sqlite", "db.go"),
+		filepath.Join("internal", "infra", "storage", "sqlite", "executor_checkpoint.go"),
+		filepath.Join("internal", "infra", "storage", "sqlite", "interrupt.go"),
 	} {
 		source, readErr := os.ReadFile(filepath.Join(root, relative))
 		if readErr != nil {
@@ -977,7 +977,7 @@ func TestProtocolHidesExecutorVocabulary(t *testing.T) {
 // routing events through the adapter boundary.
 func TestPendingStoresOnlyOpaqueExecutorBindings(t *testing.T) {
 	root := moduleRoot(t)
-	interruptPath := filepath.Join(root, "internal", "application", "runs", "pending.go")
+	interruptPath := filepath.Join(root, "internal", "application", "agent", "runs", "pending.go")
 	interruptFile, err := parser.ParseFile(token.NewFileSet(), interruptPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse interrupt domain: %v", err)
@@ -990,7 +990,7 @@ func TestPendingStoresOnlyOpaqueExecutorBindings(t *testing.T) {
 		t.Fatalf("Continuation fields = %v, want application facts plus one opaque executor binding %v", fields, want)
 	}
 
-	storagePath := filepath.Join(root, "internal", "infra", "sqlite", "interrupt.go")
+	storagePath := filepath.Join(root, "internal", "infra", "storage", "sqlite", "interrupt.go")
 	storageSource, err := os.ReadFile(storagePath)
 	if err != nil {
 		t.Fatalf("read interrupt storage: %v", err)
@@ -1010,7 +1010,7 @@ func TestPendingStoresOnlyOpaqueExecutorBindings(t *testing.T) {
 // private routing values and cannot escape through hook JSON.
 func TestSubagentHooksUseApplicationRunIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	hookPath := filepath.Join(root, "internal", "domain", "hooks", "hook.go")
+	hookPath := filepath.Join(root, "internal", "domain", "integration", "hooks", "hook.go")
 	hookFile, err := parser.ParseFile(token.NewFileSet(), hookPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse hook domain: %v", err)
@@ -1023,7 +1023,7 @@ func TestSubagentHooksUseApplicationRunIdentity(t *testing.T) {
 		t.Fatalf("SubagentInput fields = %v, want application lifecycle material %v", fields, want)
 	}
 
-	shellPath := filepath.Join(root, "internal", "adapter", "hooks", "shell.go")
+	shellPath := filepath.Join(root, "internal", "adapter", "integration", "hooks", "shell.go")
 	shellSource, err := os.ReadFile(shellPath)
 	if err != nil {
 		t.Fatalf("read hook shell adapter: %v", err)
@@ -1042,7 +1042,7 @@ func TestSubagentHooksUseApplicationRunIdentity(t *testing.T) {
 
 // TestToolsetDoesNotDependOnAgentexec prevents peer adapters from recreating a
 // consumer port under the execution adapter and then importing it backwards.
-// Generic tool vocabulary and concrete identities belong to domain/tool, and
+// Generic tool vocabulary and concrete identities belong to domain/run/tool, and
 // the HITL capability belongs to the runs consumer contract.
 func TestToolsetDoesNotDependOnAgentexec(t *testing.T) {
 	root := moduleRoot(t)
@@ -1074,7 +1074,7 @@ func TestToolsetDoesNotDependOnAgentexec(t *testing.T) {
 }
 
 // TestAgentexecDoesNotDuplicateConcreteToolNames keeps shared model-facing
-// identities in domain/tool. Interaction may own its delegate contract
+// identities in domain/run/tool. Interaction may own its delegate contract
 // because delegation is an execution-strategy capability; it still consumes the
 // canonical name and cannot duplicate unrelated built-in identities.
 func TestAgentexecDoesNotDuplicateConcreteToolNames(t *testing.T) {
@@ -1105,7 +1105,7 @@ func TestAgentexecDoesNotDuplicateConcreteToolNames(t *testing.T) {
 }
 
 // TestRuntimeOwnedToolNamesComeFromVocabulary prevents constructors from opening a
-// second identity source beside domain/tool. Dynamically discovered MCP and
+// second identity source beside domain/run/tool. Dynamically discovered MCP and
 // A2A names remain values; only authored string literals in Name fields are
 // forbidden here.
 func TestRuntimeOwnedToolNamesComeFromVocabulary(t *testing.T) {
@@ -1140,7 +1140,7 @@ func TestRuntimeOwnedToolNamesComeFromVocabulary(t *testing.T) {
 				return true
 			}
 			relative, _ := filepath.Rel(root, path)
-			t.Errorf("%s authors Name %s; use domain/tool for a built-in identity", relative, literal.Value)
+			t.Errorf("%s authors Name %s; use domain/run/tool for a built-in identity", relative, literal.Value)
 			return true
 		})
 		return nil
@@ -1182,7 +1182,7 @@ func TestFilesystemMutationVocabularyIsModelIndependent(t *testing.T) {
 // one concrete state owner. Parallelism belongs upstream in executor processes;
 // Run projection order remains serial here.
 func TestSegmentPumpKeepsOneGoroutineOwner(t *testing.T) {
-	path := filepath.Join(moduleRoot(t), "internal", "application", "runs", "pump.go")
+	path := filepath.Join(moduleRoot(t), "internal", "application", "agent", "runs", "pump.go")
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
 		t.Fatalf("parse Run pump: %v", err)

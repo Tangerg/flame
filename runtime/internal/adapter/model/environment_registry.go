@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/application/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
 var ErrRegistryIdentityMismatch = errors.New("model: stored provider identity does not match lookup identity")

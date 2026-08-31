@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {

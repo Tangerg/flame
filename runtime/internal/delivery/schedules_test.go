@@ -7,9 +7,9 @@ import (
 	"time"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

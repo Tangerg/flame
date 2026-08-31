@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	coremetadata "github.com/Tangerg/scope/core/metadata"

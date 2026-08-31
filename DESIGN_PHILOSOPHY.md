@@ -52,6 +52,8 @@ Use these boundaries:
 
 Create a package when it owns a coherent vocabulary, invariant, lifecycle, translation boundary, or reusable mechanism. Keep related files together when a package split would only create more imports and forwarding APIs.
 
+Physical hierarchy follows the context map after ownership is proven. Large rings may use one non-package namespace level to group several related packages; the namespace is navigation, not another abstraction. Keep ring-wide mechanisms and context-root aggregates direct, and do not create single-child or facade namespaces for visual symmetry.
+
 Use domain names, not layer-role suffixes. `goal`, `session`, `workspace`, and `toolset` describe ownership. `service`, `manager`, `impl`, `common`, and `helpers` hide it.
 
 ## Discover abstractions from consumers

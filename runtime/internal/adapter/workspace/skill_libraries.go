@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
 // SkillLibraries routes proposal operations to the user library or the current

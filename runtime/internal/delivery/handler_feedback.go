@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

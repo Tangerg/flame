@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"

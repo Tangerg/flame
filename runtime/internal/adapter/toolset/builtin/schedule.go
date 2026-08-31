@@ -8,11 +8,11 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/schedule"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 type createScheduleArgs struct {

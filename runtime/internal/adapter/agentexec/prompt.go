@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/planpresentation"
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
-	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

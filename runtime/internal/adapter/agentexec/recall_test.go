@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
 type fakeAgentMemorySearcher struct {

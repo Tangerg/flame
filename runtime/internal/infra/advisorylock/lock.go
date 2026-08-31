@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 var (

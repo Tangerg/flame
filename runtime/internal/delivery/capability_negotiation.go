@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

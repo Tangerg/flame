@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 const testToolResultReaderName = "read_tool_result"

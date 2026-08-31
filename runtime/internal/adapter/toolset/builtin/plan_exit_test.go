@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 type modeStore struct {

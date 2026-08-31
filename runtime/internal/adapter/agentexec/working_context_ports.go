@@ -3,10 +3,10 @@ package agentexec
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

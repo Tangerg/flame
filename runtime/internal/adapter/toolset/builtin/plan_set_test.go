@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 type stubStore struct {

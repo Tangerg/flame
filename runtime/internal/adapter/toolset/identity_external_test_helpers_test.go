@@ -1,6 +1,6 @@
 package toolset_test
 
-import "github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+import "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 
 func testMCPServerName(raw string) mcpserver.ServerName {
 	name, err := mcpserver.ParseServerName(raw)

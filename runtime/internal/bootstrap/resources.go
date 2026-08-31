@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 func terminalResources(resources []TerminalResource) []*teardown.Step {

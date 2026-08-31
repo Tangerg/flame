@@ -7,9 +7,9 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/planpresentation"
-	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 const setDescription = `Set the current session's execution plan.

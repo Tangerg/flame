@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestScopeAccessorsShareOneImmutableTurnValue(t *testing.T) {

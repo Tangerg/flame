@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 )

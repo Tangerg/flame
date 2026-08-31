@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 type mcpServerSeeder interface {

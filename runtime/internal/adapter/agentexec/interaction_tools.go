@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // InteractionToolResolver builds the exact Tool manifest for one staged root.

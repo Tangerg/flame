@@ -6,7 +6,7 @@ import (
 	"mime"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

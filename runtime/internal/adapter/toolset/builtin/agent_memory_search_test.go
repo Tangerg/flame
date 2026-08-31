@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
 type agentMemorySearchStub struct{}

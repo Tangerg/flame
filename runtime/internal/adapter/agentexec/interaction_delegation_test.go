@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"

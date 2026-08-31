@@ -7,7 +7,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 )
 
 // lspTool returns the combined `lsp` tool from a fresh Build.

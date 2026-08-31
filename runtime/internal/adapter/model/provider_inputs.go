@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/llm"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 var (

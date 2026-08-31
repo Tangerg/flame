@@ -4,13 +4,13 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/domain/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
 // ComposeConfig translates process settings and already-opened adapters into

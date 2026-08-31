@@ -9,9 +9,9 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/fileobservation"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 )
 
 const (

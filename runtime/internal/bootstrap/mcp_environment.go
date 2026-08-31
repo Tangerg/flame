@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 // mcpServerList is the boot-time snapshot view of the MCP registry: building the

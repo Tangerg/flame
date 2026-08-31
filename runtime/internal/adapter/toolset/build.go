@@ -8,13 +8,13 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/infra/a2a"
-	"github.com/Tangerg/flame/runtime/internal/infra/exec"
-	"github.com/Tangerg/flame/runtime/internal/infra/sandbox"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/a2a"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that

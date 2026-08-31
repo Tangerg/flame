@@ -7,7 +7,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	corechat "github.com/Tangerg/scope/core/chat"
 )

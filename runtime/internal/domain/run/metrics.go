@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 // Metrics is the cumulative consumption of one Run across all of its Segments.

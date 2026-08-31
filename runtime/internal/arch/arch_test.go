@@ -15,11 +15,11 @@ import (
 	"strings"
 	"testing"
 
+	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	applicationruns "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -126,7 +126,7 @@ func TestPlanMutationHasOneOwner(t *testing.T) {
 		map[string]string{"Store": "Plan tools consume application use cases, not persistence"},
 	)
 	forbidSelectorCalls(t,
-		filepath.Join(root, "internal", "infra", "sqlite", "plan.go"),
+		filepath.Join(root, "internal", "infra", "storage", "sqlite", "plan.go"),
 		map[string]string{
 			"Now":     "the Plan use case supplies replacement time",
 			"Replace": "the Plan aggregate decides replacements before persistence",
@@ -147,7 +147,7 @@ func TestSessionMutationHasOneOwner(t *testing.T) {
 	}
 
 	root := moduleRoot(t)
-	mutationFile := filepath.Join(root, "internal", "infra", "sqlite", "session_mutation.go")
+	mutationFile := filepath.Join(root, "internal", "infra", "storage", "sqlite", "session_mutation.go")
 	forbidExternalImports(t, mutationFile, []string{"time", "github.com/google/uuid"})
 	forbidSelectorCalls(t, mutationFile, map[string]string{
 		"Apply":                    "Session edits belong to the aggregate before persistence",
@@ -265,15 +265,15 @@ func TestDependencyRule(t *testing.T) {
 func TestRemovedProducerPortsDoNotReturnToDomain(t *testing.T) {
 	root := moduleRoot(t)
 	for path, forbiddenNames := range map[string]map[string]struct{}{
-		filepath.Join(root, "internal", "domain", "agentmemory"): {"Store": {}},
-		filepath.Join(root, "internal", "domain", "approval"):    {"Policy": {}},
-		filepath.Join(root, "internal", "domain", "feedback"):    {"Store": {}},
-		filepath.Join(root, "internal", "domain", "goal"):        {"Store": {}},
-		filepath.Join(root, "internal", "domain", "knowledge"):   {"Store": {}},
-		filepath.Join(root, "internal", "domain", "mcpserver"):   {"Registry": {}},
-		filepath.Join(root, "internal", "domain", "schedule"):    {"Registry": {}},
-		filepath.Join(root, "internal", "domain", "plan"):        {"Store": {}},
-		filepath.Join(root, "internal", "domain", "tool"):        {"Catalog": {}, "Invoker": {}, "Registry": {}},
+		filepath.Join(root, "internal", "domain", "workspace", "agentmemory"): {"Store": {}},
+		filepath.Join(root, "internal", "domain", "run", "approval"):          {"Policy": {}},
+		filepath.Join(root, "internal", "domain", "session", "feedback"):      {"Store": {}},
+		filepath.Join(root, "internal", "domain", "automation", "goal"):       {"Store": {}},
+		filepath.Join(root, "internal", "domain", "workspace", "knowledge"):   {"Store": {}},
+		filepath.Join(root, "internal", "domain", "integration", "mcpserver"): {"Registry": {}},
+		filepath.Join(root, "internal", "domain", "automation", "schedule"):   {"Registry": {}},
+		filepath.Join(root, "internal", "domain", "session", "plan"):          {"Store": {}},
+		filepath.Join(root, "internal", "domain", "run", "tool"):              {"Catalog": {}, "Invoker": {}, "Registry": {}},
 	} {
 		entries, err := os.ReadDir(path)
 		if err != nil {
@@ -364,7 +364,7 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 func TestOpaqueExecutorCheckpointConsumersDoNotModelFrameworkTrees(t *testing.T) {
 	root := moduleRoot(t)
 	for _, dir := range []string{
-		filepath.Join(root, "internal", "adapter", "runsegment"),
+		filepath.Join(root, "internal", "adapter", "run", "segment"),
 		filepath.Join(root, "internal", "bootstrap"),
 	} {
 		walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
@@ -400,7 +400,7 @@ func TestOpaqueExecutorCheckpointConsumersDoNotModelFrameworkTrees(t *testing.T)
 // and its I/O belongs to the composition-side subprocess adapter.
 func TestDomainHooksStayPure(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "domain", "hooks"),
+	forbidExternalImports(t, filepath.Join(root, "internal", "domain", "integration", "hooks"),
 		[]string{"os", "os/exec", "path/filepath"})
 }
 
@@ -423,22 +423,22 @@ func TestDomainStaysFrameworkFree(t *testing.T) {
 func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 	root := moduleRoot(t)
 	checks := map[string]map[string]string{
-		filepath.Join(root, "internal", "domain", "agentmemory"): {
+		filepath.Join(root, "internal", "domain", "workspace", "agentmemory"): {
 			"Render":         "memory prompt rendering belongs to adapter/agentexec",
 			"EstimateTokens": "model token approximation belongs to adapter/agentexec",
-			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/runmaintenance",
+			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/maintenance",
 		},
-		filepath.Join(root, "internal", "domain", "plan"): {
-			"Render": "plan prompt/tool formatting belongs to adapter/planpresentation",
+		filepath.Join(root, "internal", "domain", "session", "plan"): {
+			"Render": "plan prompt/tool formatting belongs to adapter/toolset/planpresentation",
 		},
-		filepath.Join(root, "internal", "domain", "skills"): {
-			"ProjectDir": "skill source layout belongs to adapter/promptsource",
+		filepath.Join(root, "internal", "domain", "workspace", "skills"): {
+			"ProjectDir": "skill source layout belongs to adapter/workspace/promptsource",
 			"Info":       "discovered-skill client projection belongs to application/workspace",
 		},
-		filepath.Join(root, "internal", "domain", "approval"): {
+		filepath.Join(root, "internal", "domain", "run", "approval"): {
 			"RiskFor": "approval-risk wording belongs to adapter/agentexec",
 		},
-		filepath.Join(root, "internal", "domain", "tool"): {
+		filepath.Join(root, "internal", "domain", "run", "tool"): {
 			"BypassImmuneReason": "tool refusal wording belongs to adapter/agentexec",
 		},
 	}
@@ -625,7 +625,7 @@ func TestDeliveryStaysFrameworkFree(t *testing.T) {
 }
 
 // TestDeliveryDoesNotControlAgentExecutions keeps complete Run commands behind
-// the application/runs use-case surface. Delivery may decode and present wire
+// the application/agent/runs use-case surface. Delivery may decode and present wire
 // data, but it must not plan, rebuild, assert, or steer concrete Agent execution
 // handles.
 func TestDeliveryDoesNotControlAgentExecutions(t *testing.T) {
@@ -677,7 +677,7 @@ func TestDeliveryDoesNotBypassWorkspaceUseCases(t *testing.T) {
 	root := moduleRoot(t)
 	forbidExternalImports(t, filepath.Join(root, "internal", "delivery"), []string{
 		"github.com/Tangerg/flame/runtime/internal/adapter/workspace",
-		"github.com/Tangerg/flame/runtime/internal/adapter/promptsource",
+		"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource",
 		"github.com/fsnotify/fsnotify",
 	})
 }
@@ -775,7 +775,7 @@ func TestProductSessionsDoNotCarryAgentContinuation(t *testing.T) {
 }
 
 // TestDeliveryDoesNotOwnModelPolicy keeps the static catalog behind the
-// application/models coordinator. Delivery maps policy results to the protocol;
+// application/integration/models coordinator. Delivery maps policy results to the protocol;
 // it must not enumerate catalog data or duplicate provider capability rules.
 func TestDeliveryDoesNotOwnModelPolicy(t *testing.T) {
 	root := moduleRoot(t)
@@ -919,7 +919,7 @@ func TestBootstrapDoesNotOwnLiveRuntimeState(t *testing.T) {
 		"buildUtilityEnvironment":   "utility role resolution belongs to adapter/model",
 		"buildEmbeddingEnvironment": "embedding role resolution belongs to adapter/model",
 		"DefaultClient":             "default selections must resolve through the live provider registry",
-		"liveStateSnapshot":         "Run maintenance live-state projection belongs to adapter/runmaintenance",
+		"liveStateSnapshot":         "Run maintenance live-state projection belongs to adapter/maintenance",
 	})
 }
 
@@ -963,8 +963,8 @@ func TestModelAdapterHasOneProviderClientConstructionOwner(t *testing.T) {
 func TestApplicationCoordinatorsDoNotExposeAtomicState(t *testing.T) {
 	root := moduleRoot(t)
 	for _, path := range []string{
-		filepath.Join(root, "internal", "application", "models", "coordinator.go"),
-		filepath.Join(root, "internal", "application", "mcp", "coordinator.go"),
+		filepath.Join(root, "internal", "application", "integration", "models", "coordinator.go"),
+		filepath.Join(root, "internal", "application", "integration", "mcp", "coordinator.go"),
 	} {
 		forbidExternalImports(t, path, []string{"sync/atomic"})
 	}
@@ -1057,7 +1057,7 @@ func collectStructDeclarations(root string) (map[string]*ast.StructType, error) 
 // field would need the import; this also catches a held cancel-func group); (b)
 // a struct-field AST walk forbids a held checkpoint store or run registry,
 // whose packages the Server imports for other reasons (adapter/workspace's
-// GitAvailable probe; application/runs' Coordinator + Event).
+// GitAvailable probe; application/agent/runs' Coordinator + Event).
 func TestDeliveryHoldsNoRunLifecycleState(t *testing.T) {
 	root := moduleRoot(t)
 	dir := filepath.Join(root, "internal", "delivery", "handler.go")
@@ -1195,7 +1195,7 @@ func TestDomainValuesCarryNoJSONTags(t *testing.T) {
 // tool identity, and a subject already derived by the concrete tool owner.
 func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "domain", "tool"), map[string]string{
+	forbidTopLevelNames(t, filepath.Join(root, "internal", "domain", "run", "tool"), map[string]string{
 		"SafetyClassFor":      "the concrete tool catalog owns name-to-safety classification",
 		"ClassifiedToolNames": "the concrete tool catalog owns its completeness guard",
 		"NameReadToolResult":  "a model-facing tool name belongs to its adapter",
@@ -1205,7 +1205,7 @@ func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 		"shell": {}, "read": {}, "write": {}, "edit": {}, "apply_patch": {},
 		"web_fetch": {}, "read_tool_result": {}, "create_goal": {}, "propose_skill": {},
 	}
-	dir := filepath.Join(root, "internal", "domain", "approval")
+	dir := filepath.Join(root, "internal", "domain", "run", "approval")
 	walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -1246,9 +1246,9 @@ func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 func TestDeliveryDoesNotOwnArchiveRecoveryOrValidation(t *testing.T) {
 	root := moduleRoot(t)
 	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"NormalizeForRestore":       "archive normalization belongs to application/sessions",
-		"ValidateToolResults":       "archive structural validation belongs to application/sessions",
-		"CanonicalSnapshot":         "terminal archive derivation belongs to application/sessions",
+		"NormalizeForRestore":       "archive normalization belongs to application/agent/sessions",
+		"ValidateToolResults":       "archive structural validation belongs to application/agent/sessions",
+		"CanonicalSnapshot":         "terminal archive derivation belongs to application/agent/sessions",
 		"RecoverWorkspaceMutations": "startup recovery belongs to the composition root",
 	})
 }
@@ -1527,7 +1527,7 @@ func TestCoreRunStateUsesBehaviorOwners(t *testing.T) {
 		prefixes   map[string]string
 	}{
 		{
-			path:       filepath.Join(root, "internal", "application", "runs", "coordinator.go"),
+			path:       filepath.Join(root, "internal", "application", "agent", "runs", "coordinator.go"),
 			structName: "Coordinator",
 			forbidden: map[string]string{
 				"taskgroup.Group":         "Segment task admission and join belong to segmentLifecycle",
@@ -1542,14 +1542,14 @@ func TestCoreRunStateUsesBehaviorOwners(t *testing.T) {
 			},
 		},
 		{
-			path:       filepath.Join(root, "internal", "application", "runs", "execution_handoff.go"),
+			path:       filepath.Join(root, "internal", "application", "agent", "runs", "execution_handoff.go"),
 			structName: "claimedResumeAttempt",
 			forbidden: map[string]string{
 				"ExecutionReleaser": "staged execution cleanup belongs to stagedExecutionHandoff",
 			},
 		},
 		{
-			path:       filepath.Join(root, "internal", "application", "runs", "recovery.go"),
+			path:       filepath.Join(root, "internal", "application", "agent", "runs", "recovery.go"),
 			structName: "Recovery",
 			forbidden: map[string]string{
 				"[]func()":            "Session claim release belongs to recoverySessionClaims",
@@ -1590,7 +1590,7 @@ func TestCoreRunStateUsesBehaviorOwners(t *testing.T) {
 // becoming the vocabulary owner for a workspace subscription signal.
 func TestWorkspaceChangeNoticeBelongsToWorkspace(t *testing.T) {
 	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "application", "runs"), map[string]string{
+	forbidTopLevelNames(t, filepath.Join(root, "internal", "application", "agent", "runs"), map[string]string{
 		"FileChange":       "workspace change scope belongs to application/workspace",
 		"FileChangeNotice": "workspace change scope belongs to application/workspace",
 	})
@@ -1601,7 +1601,7 @@ func TestWorkspaceChangeNoticeBelongsToWorkspace(t *testing.T) {
 // the one materialization into the executor-facing turn request.
 func TestStartCommandHasOneInputRepresentation(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "application", "runs", "commands.go")
+	path := filepath.Join(root, "internal", "application", "agent", "runs", "commands.go")
 	for _, field := range []string{"Message", "Media", "OpeningUserText"} {
 		if got := namedStructFieldTypeOptional(t, path, "StartCommand", field); got != "" {
 			rel, _ := filepath.Rel(root, path)
@@ -1616,7 +1616,7 @@ func TestStartCommandHasOneInputRepresentation(t *testing.T) {
 // call a ToolCall start a creation time.
 func TestTranscriptItemUsesOneNeutralDomainTimestamp(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "domain", "transcript", "item.go")
+	path := filepath.Join(root, "internal", "domain", "run", "transcript", "item.go")
 	if got := namedStructFieldTypeOptional(t, path, "ItemIdentity", "OccurredAt"); got != "time.Time" {
 		t.Errorf("transcript.ItemIdentity.OccurredAt = %q, want time.Time", got)
 	}
@@ -1631,7 +1631,7 @@ func TestTranscriptItemUsesOneNeutralDomainTimestamp(t *testing.T) {
 // semantic constructor or ToolCall behavior.
 func TestTranscriptItemHasNoExternalMutationSurface(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "domain", "transcript", "item.go")
+	path := filepath.Join(root, "internal", "domain", "run", "transcript", "item.go")
 	if fields := namedStructExportedFields(t, path, "Item"); len(fields) != 0 {
 		t.Errorf("transcript.Item exports mutable fields %v; use semantic behavior and accessors", fields)
 	}
@@ -1644,12 +1644,12 @@ func TestTranscriptItemHasNoExternalMutationSurface(t *testing.T) {
 func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 	root := moduleRoot(t)
 	allowed := map[string]struct{}{
-		"internal/application/sessions/portable_snapshot.go":   {},
-		"internal/application/sessions/snapshot_validation.go": {},
-		"internal/delivery/artifact_decode.go":                 {},
-		"internal/infra/sqlite/transcript.go":                  {},
-		"internal/infra/sqlite/transcript_codec.go":            {},
-		"internal/testsupport/item.go":                         {},
+		"internal/application/agent/sessions/portable_snapshot.go":   {},
+		"internal/application/agent/sessions/snapshot_validation.go": {},
+		"internal/delivery/artifact_decode.go":                       {},
+		"internal/infra/storage/sqlite/transcript.go":                {},
+		"internal/infra/storage/sqlite/transcript_codec.go":          {},
+		"internal/testsupport/item.go":                               {},
 	}
 	walkErr := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -1672,7 +1672,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 		aliases := make(map[string]struct{})
 		for _, imported := range file.Imports {
 			importPath, err := strconv.Unquote(imported.Path.Value)
-			if err != nil || importPath != "github.com/Tangerg/flame/runtime/internal/domain/transcript" {
+			if err != nil || importPath != "github.com/Tangerg/flame/runtime/internal/domain/run/transcript" {
 				continue
 			}
 			alias := "transcript"
@@ -1760,8 +1760,8 @@ func forbidInterfaceMethods(t *testing.T, path string, banned map[string]map[str
 func TestCanonicalExecutionRecordsStayTyped(t *testing.T) {
 	root := moduleRoot(t)
 	dirs := []string{
-		filepath.Join(root, "internal", "domain", "transcript"),
-		filepath.Join(root, "internal", "domain", "interrupt"),
+		filepath.Join(root, "internal", "domain", "run", "transcript"),
+		filepath.Join(root, "internal", "domain", "run", "interrupt"),
 	}
 	for _, dir := range dirs {
 		walkErr := walkProductionGoFiles(dir, func(path string, file *ast.File) error {
@@ -1808,8 +1808,8 @@ func assertCanonicalExecutionRecordSource(t *testing.T, root, path string, file 
 func TestRuntimeInterruptValuesStayWireFree(t *testing.T) {
 	root := moduleRoot(t)
 	paths := []string{
-		filepath.Join(root, "internal", "application", "runs", "interrupt_contract.go"),
-		filepath.Join(root, "internal", "domain", "interrupt", "resolution.go"),
+		filepath.Join(root, "internal", "application", "agent", "runs", "interrupt_contract.go"),
+		filepath.Join(root, "internal", "domain", "run", "interrupt", "resolution.go"),
 	}
 	for _, path := range paths {
 		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
@@ -1842,8 +1842,8 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 		path       string
 		structName string
 	}{
-		{filepath.Join(root, "internal", "application", "runs", "commands.go"), "ApprovalResponse"},
-		{filepath.Join(root, "internal", "domain", "interrupt", "resolution.go"), "Resolution"},
+		{filepath.Join(root, "internal", "application", "agent", "runs", "commands.go"), "ApprovalResponse"},
+		{filepath.Join(root, "internal", "domain", "run", "interrupt", "resolution.go"), "Resolution"},
 	}
 	for _, check := range checks {
 		if got := namedStructFieldType(t, check.path, check.structName, "RememberScope"); got != "approval.Scope" {
@@ -1863,8 +1863,8 @@ func TestRunLifecycleStateStaysConcrete(t *testing.T) {
 		path string
 		name string
 	}{
-		{filepath.Join(root, "internal", "application", "runs", "registry.go"), "registry"},
-		{filepath.Join(root, "internal", "application", "runs", "journal.go"), "journal"},
+		{filepath.Join(root, "internal", "application", "agent", "runs", "registry.go"), "registry"},
+		{filepath.Join(root, "internal", "application", "agent", "runs", "journal.go"), "journal"},
 	}
 	for _, check := range checks {
 		f, err := parser.ParseFile(token.NewFileSet(), check.path, nil, 0)
@@ -2340,7 +2340,7 @@ const (
 	ringDomain      = "domain"
 )
 
-// layerOf classifies a module-relative package dir (e.g. "internal/infra/sqlite")
+// layerOf classifies a module-relative package dir (e.g. "internal/infra/storage/sqlite")
 // into its ring, or "" when the path is outside the rings under test.
 func layerOf(rel string) string {
 	switch {

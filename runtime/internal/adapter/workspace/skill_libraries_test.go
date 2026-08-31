@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
 func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {

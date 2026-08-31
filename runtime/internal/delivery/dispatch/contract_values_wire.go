@@ -3,11 +3,11 @@ package dispatch
 import (
 	"reflect"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

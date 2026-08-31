@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 )
 
 func TestRunInstructionsUseOutcomeReportingContract(t *testing.T) {

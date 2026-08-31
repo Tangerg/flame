@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 
-	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/domain/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 )
 
 // SessionStores is the SQLite-backed adapter for the session lifecycle's

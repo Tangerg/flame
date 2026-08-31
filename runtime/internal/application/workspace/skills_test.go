@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
 func TestListUsesCatalogPort(t *testing.T) {

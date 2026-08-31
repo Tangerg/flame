@@ -15,10 +15,10 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/schedule"
 )
 
 func TestSchedulesCreateListDelete(t *testing.T) {

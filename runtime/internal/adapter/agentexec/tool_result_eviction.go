@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 // toolResultOffloader is the narrow write capability the observer needs to

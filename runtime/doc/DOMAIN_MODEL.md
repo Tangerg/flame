@@ -165,7 +165,7 @@ Domain package 是否成立只看以下证据：
 - open Interrupt 集合、answer claim 或 Pending continuation envelope；
 - Store、transaction、clock、context 或 publish 行为。
 
-当前 Run carrier 中的 open `Interrupts` 不应继续成为 Run aggregate 的第二份可变事实。产品 Interrupt 语义由 `domain/interrupt` 拥有；一个 root tree 的 open set、answer claim、executor binding 与 continuation 仍由 `application/runs.Pending` 这个跨聚合 hand-off owner 组合。Run 只表达自己处于 Waiting，不复制 Pending 的完整内容。查询层需要展示 Interrupt 时显式 join，不通过 Run 字段维持影子集合。
+当前 Run carrier 中的 open `Interrupts` 不应继续成为 Run aggregate 的第二份可变事实。产品 Interrupt 语义由 `domain/run/interrupt` 拥有；一个 root tree 的 open set、answer claim、executor binding 与 continuation 仍由 `application/agent/runs.Pending` 这个跨聚合 hand-off owner 组合。Run 只表达自己处于 Waiting，不复制 Pending 的完整内容。查询层需要展示 Interrupt 时显式 join，不通过 Run 字段维持影子集合。
 
 ### 5.2 Run 行为
 
@@ -208,7 +208,7 @@ Pending continuation 与 executor policy 用判别式 record。所有 adapter �
 
 ### 5.4 Transcript 的准确职责
 
-`domain/transcript` 继续拥有用户可见、可审计的 Item 历史、稳定顺序、rollback/fork boundary 和 ToolCall 时间事实，但不再充当 Run aggregate 的可变 carrier。
+`domain/run/transcript` 继续拥有用户可见、可审计的 Item 历史、稳定顺序、rollback/fork boundary 和 ToolCall 时间事实，但不再充当 Run aggregate 的可变 carrier。
 
 Transcript 可以在快照或查询结果中包含 `run.Run` 值，但只能引用权威 Run aggregate 结果，不定义第二套 Run state/outcome 字段，不自行推进 Run lifecycle。
 
@@ -259,7 +259,7 @@ Question、message、reasoning、compaction 等一次形成即完成的事实，
 
 ### 7.1 Plan aggregate
 
-`domain/plan.Current` 表示一个 Session 的可选最新 Plan：零值是显式的 unwritten；一旦提交，则持有一个 `State`。`domain/plan.State` 只表示已提交的完整 Plan，拥有：
+`domain/session/plan.Current` 表示一个 Session 的可选最新 Plan：零值是显式的 unwritten；一旦提交，则持有一个 `State`。`domain/session/plan.State` 只表示已提交的完整 Plan，拥有：
 
 - 有序 Steps；
 - revision；
@@ -275,7 +275,7 @@ revision 是 optimistic concurrency 的领域事实，但 CAS 和事务仍属于
 
 ### 7.2 Application 用例
 
-`application/sessions` 内的 Plan coordinator 拥有：
+`application/agent/sessions` 内的 Plan coordinator 拥有：
 
 1. 接收显式 Session identity；
 2. 读取当前 Plan；
@@ -288,7 +288,7 @@ Tool Adapter 只负责模型参数 decode、从 Tool execution context 提取 Se
 
 ### 7.3 Goal aggregate 与预算值
 
-`domain/goal.Goal` 是 Session 唯一拥有的 autonomous objective aggregate。identity、objective incarnation、lifecycle、
+`domain/automation/goal.Goal` 是 Session 唯一拥有的 autonomous objective aggregate。identity、objective incarnation、lifecycle、
 停止原因、冻结模型选择、能力、累计 usage、budget、version 与时间都只能经领域构造和行为推进；Application 负责跨 Run
 事务、drive ownership 与 CAS，Store 只持久化领域已经决定的下一状态。
 
@@ -351,7 +351,7 @@ Domain 充血不意味着 Application 应当变薄到只剩转发。以下复杂
 - rollback/fork 与 live executor release；
 - publication、subscriber backpressure 和 lifecycle ownership。
 
-`application/runs` reducer 继续存在，但职责收敛为：
+`application/agent/runs` reducer 继续存在，但职责收敛为：
 
 1. 接收并验证 executor facts；
 2. 选择要调用的 Domain 行为；
@@ -404,7 +404,7 @@ Batch 1 是后续批次的前置，因为 Item recovery、Session parked termina
 ### Batch 3：Plan 纵切
 
 - 让 `plan.State` 拥有 replacement/revision/invariant；
-- 在 `application/sessions` 建立 Plan 用例和消费方 Store port；
+- 在 `application/agent/sessions` 建立 Plan 用例和消费方 Store port；
 - Tool Adapter 退回参数翻译与 presentation；
 - 删除 Adapter 直连 Store 的旧 owner；
 - 同步服务端 contract/projection，只在确有 shape 改变时提升版本。

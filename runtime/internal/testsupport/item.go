@@ -3,9 +3,9 @@ package testsupport
 import (
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // ItemInput mirrors the facts old fixtures commonly spell out while keeping the

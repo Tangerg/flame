@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

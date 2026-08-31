@@ -15,8 +15,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/gitprocess"
-	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
 // GitWatcher adapts platform filesystem notifications to the workspace
@@ -252,7 +252,7 @@ func gitObservation(lifetime context.Context, root string, args ...string) ([]by
 	ctx, cancel := context.WithTimeout(lifetime, gitObservationTimeout)
 	defer cancel()
 	full := append([]string{"--no-pager", "--no-optional-locks", "-C", root}, args...)
-	result, err := gitprocess.Run(ctx, nil, full...)
+	result, err := process.Run(ctx, nil, full...)
 	return result.Stdout, err == nil && result.ExitCode == 0
 }
 

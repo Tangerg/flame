@@ -16,10 +16,10 @@ import (
 
 	scopemcp "github.com/Tangerg/scope/mcp"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/mcpconnection"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // runAsMCPServerEnv is the env-var sentinel that flips this test

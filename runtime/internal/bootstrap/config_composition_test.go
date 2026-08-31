@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 )
 
 func TestComposeConfigInjectsDurableRuntimePolicy(t *testing.T) {

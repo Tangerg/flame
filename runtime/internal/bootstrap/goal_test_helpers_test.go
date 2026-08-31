@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
 
 type bootstrapGoalReader interface {

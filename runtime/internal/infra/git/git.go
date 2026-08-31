@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/gitprocess"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
 // ErrUnavailable means the git binary isn't on PATH. ErrNotRepo means the
@@ -78,7 +78,7 @@ func IsRepo(ctx context.Context, dir string) (bool, error) {
 	// diagnostic. Exit 128 alone is not enough: unsafe ownership, corrupt
 	// metadata, and an unreadable repository use the same status and must remain
 	// observable to the caller.
-	result, err := gitprocess.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
+	result, err := process.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
 	if err != nil {
 		return false, gitProcessError(args, err)
 	}
@@ -113,7 +113,7 @@ func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, a
 	// refreshes; the workspace watcher compares semantic Git state before it
 	// publishes and therefore does not expose those implementation writes.
 	full := append([]string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false"}, args...)
-	result, err := gitprocess.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
+	result, err := process.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
 	if err != nil {
 		return nil, gitProcessError(args, err)
 	}
@@ -130,7 +130,7 @@ func gitProcessError(args []string, err error) error {
 		return fmt.Errorf("git %s: %w", command, err)
 	case errors.Is(err, exec.ErrNotFound):
 		return ErrUnavailable
-	case errors.Is(err, gitprocess.ErrOutputTooLarge):
+	case errors.Is(err, process.ErrOutputTooLarge):
 		return fmt.Errorf("%w: git %s output exceeds 64 MiB", ErrResultTooLarge, command)
 	default:
 		return fmt.Errorf("git %s: %w", command, err)

@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/knowledgefile"
-	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/knowledgefile"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -309,7 +309,7 @@ func fileWatchGitCommand(t *testing.T, dir string, args ...string) {
 
 // TestRunEffectsNudgePublishesFileChange verifies the application nudge adapter
 // reaches the workspace event hub. Tool-item-to-nudge decisions belong to and
-// are tested in application/runs.
+// are tested in application/agent/runs.
 func TestRunEffectsNudgePublishesFileChange(t *testing.T) {
 	s := &Handler{workspaceHub: newWorkspaceHub()}
 	events, unsub := s.workspaceHub.subscribe()
@@ -319,7 +319,7 @@ func TestRunEffectsNudgePublishesFileChange(t *testing.T) {
 	// notifier, and the hub observes it (mapping to the wire files.changed).
 	fc := &testNotification[workspaceapp.FileChangeNotice]{}
 	s.observeFileChanges(fc.Observe)
-	effects := runsegment.NewWorkspaceNotifier(fc.Publish)
+	effects := segment.NewWorkspaceNotifier(fc.Publish)
 
 	effects.Nudge("/proj", []string{"src/a.go"})
 	select {

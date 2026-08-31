@@ -3,9 +3,9 @@ package workspace
 import (
 	"context"
 
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/hooks"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/domain/hooks"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 // HookInspector resolves lifecycle hooks and project trust for a working directory.

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"sync"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
-	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 // fakeMCPPorts implements the four narrow MCP projections consumed by the

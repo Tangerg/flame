@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/Tangerg/flame/runtime/internal/application/goals"
+import "github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 
 // RunInstructions renders the model-facing instruction for an autonomous Goal Run. Goal
 // lifecycle decisions stay in Application; this package owns the wording and

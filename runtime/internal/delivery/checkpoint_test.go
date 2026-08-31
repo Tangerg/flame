@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

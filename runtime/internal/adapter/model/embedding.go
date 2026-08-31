@@ -6,10 +6,10 @@ import (
 
 	"github.com/Tangerg/scope/core/embeddingclient"
 
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
+	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/llm"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 // EmbeddingResolver builds embedding clients from the current provider-registry

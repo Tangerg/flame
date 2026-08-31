@@ -7,8 +7,8 @@ import (
 
 	"github.com/Tangerg/scope/models/catalog"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/llm"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 func TestCatalogContainsProviderDefaults(t *testing.T) {

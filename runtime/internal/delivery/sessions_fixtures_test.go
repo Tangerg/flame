@@ -10,23 +10,23 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/domain/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -106,7 +106,7 @@ type testRuntime interface {
 	runs.RunningExecutionSteerer
 	runs.RunningSubtreeCanceler
 	runs.WaitingSubtreeCancellationPreparer
-	RunSegmentEffects() *runsegment.Effects
+	RunSegmentEffects() *segment.Effects
 }
 
 func serverPending(
@@ -352,11 +352,11 @@ func newTestHandler(rt testRuntime) *Handler {
 		conversation = p.conversationReader()
 	}
 	projectionWriter := rt.RunSegmentEffects()
-	finalizer, err := runsegment.NewFinalizer(runsegment.FinalizerConfig{})
+	finalizer, err := segment.NewFinalizer(segment.FinalizerConfig{})
 	if err != nil {
 		panic(err)
 	}
-	workspaceNotifier := runsegment.NewWorkspaceNotifier(nil)
+	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
 		Observations:                       rt,
@@ -1086,60 +1086,60 @@ func nonNilSessionTranscript(store *sqlite.TranscriptStore) sessions.TranscriptS
 	return store
 }
 
-func nonNilRunsegmentInterrupts(store *persistence.InterruptStore, fallback inertRuntimeStores) runsegment.InterruptStore {
+func nonNilRunsegmentInterrupts(store *persistence.InterruptStore, fallback inertRuntimeStores) segment.InterruptStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentResumeClaims(store *persistence.InterruptStore, fallback inertRuntimeStores) runsegment.ResumeClaimStore {
+func nonNilRunsegmentResumeClaims(store *persistence.InterruptStore, fallback inertRuntimeStores) segment.ResumeClaimStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentSessions(store *sqlite.SessionStore, fallback inertRuntimeStores) runsegment.SessionStore {
+func nonNilRunsegmentSessions(store *sqlite.SessionStore, fallback inertRuntimeStores) segment.SessionStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentTranscript(store *sqlite.TranscriptStore, fallback inertRuntimeStores) runsegment.TranscriptStore {
+func nonNilRunsegmentTranscript(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.TranscriptStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentItems(store *sqlite.TranscriptStore, fallback inertRuntimeStores) runsegment.ItemReplacer {
+func nonNilRunsegmentItems(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.ItemReplacer {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentApprovals(store *sqlite.TranscriptStore, fallback inertRuntimeStores) runsegment.ToolApprovalStore {
+func nonNilRunsegmentApprovals(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.ToolApprovalStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func runProgressFor(state runsegment.RunStore) runsegment.RunProgressWriter {
-	progress, ok := state.(runsegment.RunProgressWriter)
+func runProgressFor(state segment.RunStore) segment.RunProgressWriter {
+	progress, ok := state.(segment.RunProgressWriter)
 	if !ok {
 		panic("test Run store does not implement progress writes")
 	}
 	return progress
 }
 
-func (s stubRuntime) RunSegmentEffects() *runsegment.Effects {
+func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 	stores := inertRuntimeStores{}
 	state := s.runStore()
-	cfg := runsegment.Config{
+	cfg := segment.Config{
 		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
 		ResumeClaims:        nonNilRunsegmentResumeClaims(s.interrupts, stores),
 		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
@@ -1158,7 +1158,7 @@ func (s stubRuntime) RunSegmentEffects() *runsegment.Effects {
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
 	}
-	effects, err := runsegment.New(cfg)
+	effects, err := segment.New(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -1168,7 +1168,7 @@ func (s stubRuntime) RunSegmentEffects() *runsegment.Effects {
 // runStore is the real Run table when the fixture has one, so a committed
 // terminal actually lands where every Run read comes from. Fixtures that only
 // exercise streaming keep the no-op.
-func (s stubRuntime) runStore() runsegment.RunStore {
+func (s stubRuntime) runStore() segment.RunStore {
 	if s.runs != nil {
 		return s.runs
 	}

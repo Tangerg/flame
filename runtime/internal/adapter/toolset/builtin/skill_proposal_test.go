@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

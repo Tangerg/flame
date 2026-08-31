@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"

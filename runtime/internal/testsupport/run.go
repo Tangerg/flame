@@ -3,9 +3,9 @@ package testsupport
 import (
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 // RunMetricsInput names the values accepted by MustRunMetrics.
