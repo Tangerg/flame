@@ -150,7 +150,8 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	return ProviderTestSucceeded, nil
 }
 
-// ListModels applies the model-discovery policy. Providers with endpoint-owned
+// ListModels applies the model-discovery policy for one supported provider.
+// Providers with endpoint-owned
 // model sets prefer a successful non-empty remote list; every other outcome
 // falls back to the static catalog, so restart behavior never depends on an
 // in-memory probe result.
@@ -158,8 +159,11 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	meta, found := c.providerMetadata(providerID)
-	if found && meta.DiscoversModelsAtEndpoint() && c.lister != nil {
+	meta, err := c.supportedProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+	if meta.DiscoversModelsAtEndpoint() && c.lister != nil {
 		entry, err := c.modelDiscoveryProvider(ctx, providerID)
 		if err != nil {
 			return nil, err

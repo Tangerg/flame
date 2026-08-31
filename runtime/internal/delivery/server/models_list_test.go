@@ -166,3 +166,18 @@ func TestListModelsSkipsProbeForCatalogProvider(t *testing.T) {
 		t.Fatalf("models = %+v, want empty (static catalog)", got)
 	}
 }
+
+func TestListModelsMapsUnsupportedProviderToInvalidParams(t *testing.T) {
+	server := probeServer(
+		serverProviderMetadata("testprov", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()),
+		new(stubLister),
+	)
+
+	page, err := server.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "missing"})
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("ListModels error = %v, want invalid params", err)
+	}
+	if page != nil {
+		t.Fatalf("ListModels page = %+v, want nil", page)
+	}
+}

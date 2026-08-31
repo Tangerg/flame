@@ -325,6 +325,24 @@ func TestListModelsSkipsRemoteProbeForStaticProvider(t *testing.T) {
 	}
 }
 
+func TestListModelsRejectsUnsupportedProvider(t *testing.T) {
+	lister := &fakeLister{ids: []string{"must-not-appear"}}
+	c := New(Config{
+		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
+			t, "supported", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
+		)}},
+		Lister: lister,
+	})
+
+	models, err := c.ListModels(t.Context(), "missing")
+	if !errors.Is(err, ErrProviderUnsupported) {
+		t.Fatalf("ListModels error = %v, want unsupported provider", err)
+	}
+	if models != nil || lister.gotEntry.ID() != "" {
+		t.Fatalf("ListModels = %+v, lister=%+v; unsupported provider reached discovery", models, lister.gotEntry)
+	}
+}
+
 func TestUpdateProviderOwnsSupportAndBaseURLPolicy(t *testing.T) {
 	registry := &testProviderRegistry{}
 	c := New(Config{

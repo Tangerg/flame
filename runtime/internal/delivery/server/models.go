@@ -17,7 +17,7 @@ import (
 func (s *Server) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
 	if err != nil {
-		return nil, err
+		return nil, mapModelError(err)
 	}
 	out := make([]protocol.Model, 0, len(models))
 	for _, model := range models {
