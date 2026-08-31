@@ -1,14 +1,6 @@
 import type { CatalogPickerGroup } from "@/ui/atoms";
 import { AgentRow } from "./navigation-row";
 
-/**
- * What the dock shows when it is open with nothing in it: the destinations it could hold,
- * grouped as the catalogue lists them.
- *
- * The dock opening onto a directory rather than a preset view is the difference between
- * offering the choice and making it. Without this the dock had to name a destination to be
- * open at all, so the first press picked one.
- */
 export function AgentDockCatalog({
   groups,
   title,

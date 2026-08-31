@@ -283,12 +283,8 @@ const ICON_MAP = {
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
-/**
- * Narrows a contributed string to a glyph this set actually draws.
- *
- * Asserting one into `IconName` type-checks and then draws nothing for a name we do not have:
- * no error, no fallback. Callers say what they want shown instead.
- */
+/** Narrows a contributed string to a glyph this set draws. Casting instead type-checks and
+ *  then renders nothing — no error, no fallback. */
 export function knownIconName(value: string | null | undefined): IconName | undefined {
   return value != null && ICON_NAMES.has(value as IconName) ? (value as IconName) : undefined;
 }
@@ -307,9 +303,9 @@ const SIZE_STYLE = Object.fromEntries(
   ]),
 ) as Readonly<Record<IconSize, CSSProperties>>;
 
-// Memoised with a hoisted style because reicon paints through `dangerouslySetInnerHTML`: any
-// re-render replaces the <path> nodes, and one landing mid-press detaches the mousedown target
-// so the browser fires no click at all. Stable props keep the nodes alive through a press.
+// Memo + hoisted style are load-bearing: reicon paints via `dangerouslySetInnerHTML`, so any
+// re-render replaces the <path> nodes, and one mid-press detaches the mousedown target and
+// swallows the click.
 export const Icon = memo(function Icon({ name, size = "sm", style, className }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;

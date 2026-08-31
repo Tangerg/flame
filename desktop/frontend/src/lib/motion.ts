@@ -1,19 +1,10 @@
-// Motion presets — shared easing curves and durations so transitions across
-// the app feel like one design system, not a grab bag of values.
-//
-// The duration on every preset multiplies by the published motion scale at read
-// time, so the user's Settings → Motion preference (Off / Fast / Default / Slow)
-// ripples through every motion/react animation without each call site touching
-// it. Framer-motion reads `transition.duration` on each animate, so a per-access
-// getter is fine — no need for hook plumbing at every consumer.
+// Every preset's duration multiplies by the published motion scale AT READ TIME, so the
+// user's preference reaches every animation without a hook at each call site.
 
 import type { Transition } from "motion/react";
 import { motionScale, visualStyleMotion } from "./appearance";
 
-// Build a Transition whose `duration` field is a live getter — reads the
-// current scale on every access. Framer-motion samples it once per animation
-// start, so the cost is negligible and the user sees the new scale immediately
-// after toggling.
+// `duration` is a live getter; framer-motion samples it once per animation start.
 function scaled(duration: "fastMs" | "mediumMs" | "disclosureMs"): Transition {
   const t = {} as Transition;
   Object.defineProperty(t, "duration", {
@@ -31,18 +22,12 @@ export const disclosureTransition: Transition = scaled("disclosureMs");
 
 const contentEnterTransition: Transition = scaled("mediumMs");
 
-/**
- * A selection travelling between elements — the one kind of motion CSS cannot express, since
- * a transition animates a property WITHIN one element. `layoutId` does for free what would
- * otherwise be a hand-measured absolutely-positioned indicator.
- */
+/** A selection travelling BETWEEN elements — the one motion CSS cannot express, since a
+ *  transition animates a property within one element. */
 export const selectionTransition: Transition = scaled("fastMs");
 
-/**
- * PRESENCE only. Adding `layout` would slide the survivors into the gap instead of letting
- * them jump, at the price of a measurement on every render of whatever holds them — and the
- * composer re-renders on every keystroke.
- */
+/** PRESENCE only. Adding `layout` costs a measurement on every render of the holder — and
+ *  the composer re-renders on every keystroke. */
 export const chipPresence = {
   initial: { opacity: 0, scale: 0.92 },
   animate: { opacity: 1, scale: 1 },
@@ -50,7 +35,6 @@ export const chipPresence = {
   transition: selectionTransition,
 };
 
-// Soft enter from a few px below — for new chat messages.
 export const enterUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },

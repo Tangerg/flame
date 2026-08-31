@@ -1,8 +1,6 @@
-// NOT expressible as `oklch(from var(--color-accent) <L> <C> h)`: a grey accent has no hue,
-// CSS reads the powerless channel as 0, and 0 is RED — so picking pure black paints every
-// surface pink. A colour function cannot branch, so the derivation lives here. Neutral
-// chroma is PROPORTIONAL to the accent's own, which is what makes a grey accent yield grey
-// surfaces with no special case.
+// NOT expressible in CSS: a grey accent has no hue, CSS reads the powerless channel as 0,
+// and 0 is RED — so pure black would paint every surface pink. Neutral chroma is
+// PROPORTIONAL to the accent's own, so a grey accent yields grey surfaces with no branch.
 
 import type { AccentTint } from "@/lib/appearance";
 import { DEFAULT_ACCENT_TINT } from "@/lib/appearance";
@@ -57,12 +55,8 @@ function inSrgbGamut(colour: Oklch): boolean {
   );
 }
 
-/**
- * OKLCH → `#rrggbb`, giving up CHROMA rather than hue when a request leaves sRGB. Clamping
- * the channels instead — what a naive conversion and the browser both do — lands the colour
- * on whichever channel saturated first and drags the hue with it. Same binary search HCT
- * runs inside `Hct.from`.
- */
+/** OKLCH → hex, giving up CHROMA rather than hue when a request leaves sRGB. Clamping the
+ *  channels lands on whichever saturated first and drags the hue with it. */
 export function oklchToHex(colour: Oklch): string {
   let fitted = colour;
   if (!inSrgbGamut(fitted)) {
@@ -83,16 +77,11 @@ export function oklchToHex(colour: Oklch): string {
 
 const TINT_SCALE: Record<AccentTint, number> = { off: 0, soft: 0.5, standard: 1 };
 
-/** A neon accent may not run away with the family. sRGB tops out near C 0.32, which is
- *  1.6-1.7× a typical reference. */
+/** sRGB tops out near C 0.32, 1.6-1.7x a typical reference. */
 const MAX_CHROMA_FACTOR = 1.5;
 
-/**
- * The reference is the accent THE THEME ITSELF DECLARES, not a module constant: that is what
- * makes an untouched accent reproduce the theme's literals exactly, so the derivation is a
- * no-op until someone picks something else. One constant cannot do it — the two schemes ship
- * different accents, so whichever the constant matched, the other drifted.
- */
+/** The reference is the accent THE THEME DECLARES, not a module constant: that is what makes
+ *  an untouched accent reproduce the theme's literals exactly. */
 export function neutralChromaFactor(
   accentChroma: number,
   referenceChroma: number,
@@ -102,12 +91,7 @@ export function neutralChromaFactor(
   return Math.min(MAX_CHROMA_FACTOR, accentChroma / referenceChroma) * TINT_SCALE[tint];
 }
 
-/**
- * Returns HEX rather than an `oklch(…)` string so a token map takes it directly and a test
- * reads the value that will actually paint. One step at a time rather than a generic over
- * the family: an interface has no index signature, so a `Record<string, NeutralStep>`
- * constraint rejects the very type the theme spec publishes.
- */
+/** Returns HEX so a token map takes it directly and a test reads what will actually paint. */
 export function accentTintedNeutral(
   accentHex: string,
   referenceAccentHex: string,
@@ -116,7 +100,6 @@ export function accentTintedNeutral(
 ): string {
   const accent = hexToOklch(accentHex);
   const factor = neutralChromaFactor(accent.c, hexToOklch(referenceAccentHex).c, tint);
-  // Hue only matters when there is chroma to carry it; at zero it would be an arbitrary
-  // number in the output, and 0 reads as red to anyone inspecting it.
+  // Hue only matters with chroma to carry it; at zero it would read as red on inspection.
   return oklchToHex({ l: step.l, c: step.c * factor, h: factor === 0 ? 0 : accent.h });
 }

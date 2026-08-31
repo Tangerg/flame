@@ -1,16 +1,13 @@
-// The browser works the size out one frame TOO LATE: an `<img>` with no width/height
-// occupies nothing until it decodes, so a bottom-pinned transcript jumps by the image's
-// full height under the reader. Only the HEADER is decoded — the whole payload would be
-// megabytes of work nobody asked for. `null` is a real answer, not a failure: the caller
-// falls back to letting the browser decide.
+// An `<img>` with no width/height occupies nothing until it decodes, so a bottom-pinned
+// transcript jumps by its full height. Only the HEADER is decoded; `null` is a real answer.
 
 export interface PixelSize {
   width: number;
   height: number;
 }
 
-/** Enough base64 to cover the largest header this reads. JPEG needs the most, because
- *  its size lives past a run of variable-length segments. */
+/** Enough base64 for the largest header here. JPEG needs the most: its size sits past a
+ *  run of variable-length segments. */
 const HEADER_CHARS = 4096;
 
 function headerBytes(base64: string): Uint8Array | null {
@@ -51,8 +48,8 @@ function gifSize(b: Uint8Array): PixelSize | null {
 
 function jpegSize(b: Uint8Array): PixelSize | null {
   if (!starts(b, 0, [0xff, 0xd8])) return null;
-  // Walk the marker segments to the frame header. Sizes are NOT at a fixed offset: EXIF,
-  // colour profiles and thumbnails all sit in front of it at whatever length they please.
+  // Sizes are NOT at a fixed offset: EXIF, colour profiles and thumbnails sit in front at
+  // whatever length they please.
   let at = 2;
   while (at + 9 < b.length) {
     if (b[at] !== 0xff) return null;
@@ -74,7 +71,6 @@ function webpSize(b: Uint8Array): PixelSize | null {
   if (!starts(b, 0, [0x52, 0x49, 0x46, 0x46]) || !starts(b, 8, [0x57, 0x45, 0x42, 0x50])) {
     return null;
   }
-  // Three encodings, three places to look.
   if (starts(b, 12, [0x56, 0x50, 0x38, 0x20]) && b.length >= 30) {
     // Lossy: a VP8 key frame, dimensions in the low 14 bits of two little-endian words.
     return { width: le16(b, 26) & 0x3fff, height: le16(b, 28) & 0x3fff };
@@ -93,11 +89,8 @@ function webpSize(b: Uint8Array): PixelSize | null {
   return null;
 }
 
-/**
- * The pixel size of a base64-encoded image, or null if its header does not say. AVIF is
- * absent on purpose: its size sits inside a nested ISOBMFF box tree, which is a parser
- * rather than a header read, and no adapter produces one today.
- */
+/** Pixel size from the header, or null. AVIF is absent on purpose: its size sits in a nested
+ *  ISOBMFF box tree, which is a parser rather than a header read. */
 export function imageSizeFromBase64(base64: string): PixelSize | null {
   const bytes = headerBytes(base64);
   if (!bytes) return null;

@@ -18,9 +18,8 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const test = useTestProvider();
   const [draft, setDraft] = useState(() => ProviderCredentialsDraft.initial(p));
   const [saving, setSaving] = useState(false);
-  // `saving` lags a render, so it cannot be the re-entrancy guard: a second click
-  // landing before the button re-renders disabled would open a second write whose
-  // response then overwrites the first one's draft. Same latch the workspace rows use.
+  // `saving` lags a render, so it cannot be the re-entrancy guard: a second click before the
+  // button re-renders disabled opens a second write that overwrites the first one's draft.
   const savingLatch = useRef(false);
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);

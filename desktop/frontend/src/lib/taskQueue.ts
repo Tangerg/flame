@@ -1,9 +1,5 @@
-/**
- * Owns every asynchronous settlement admitted by one replaceable task
- * generation. Completed work unregisters immediately; retirement rejects only
- * genuinely pending work, even when the underlying dependency ignores
- * cancellation.
- */
+/** Owns every settlement admitted by one replaceable generation. Retirement rejects only
+ *  genuinely pending work, even when the dependency ignores cancellation. */
 export class RetirableTaskCohort {
   readonly #retiredError: Error;
   readonly #settlers = new Set<() => void>();
@@ -55,25 +51,20 @@ export class RetirableTaskCohort {
   }
 }
 
-/**
- * Serialises work per identity: a call waits for whatever is already in flight for the same
- * identity, while different identities proceed independently.
- */
+/** Serialises per identity; different identities proceed independently. */
 export class SerialTaskChain {
   readonly #tails = new Map<string, Promise<void>>();
 
   chain<T>(identity: string, start: (tail: Promise<void>) => Promise<T>): Promise<T> {
     const result = start(this.#tails.get(identity) ?? Promise.resolve());
-    // The tail must NEVER reject. It is what the next call for this identity waits on, so a
-    // rejected tail would fail work that has not even run yet — one failed save turning the
-    // next, unrelated one into a failure too.
+    // The tail must NEVER reject: the next call for this identity awaits it, so a rejection
+    // would fail work that has not run yet.
     const settlement = result.then(
       () => undefined,
       () => undefined,
     );
     this.#tails.set(identity, settlement);
-    // Only while it is still ours: anything queued behind this call has already replaced it,
-    // and dropping that would let a third call start before the second finished.
+    // Only while still ours: anything queued behind has already replaced it.
     void settlement.then(() => {
       if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
     });

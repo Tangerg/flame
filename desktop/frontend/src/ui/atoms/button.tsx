@@ -64,9 +64,8 @@ export const buttonStyles = cva(
   },
 );
 
-// `data-slot` and `data-variant` are the button's OWN, and globals.css selects on them. They
-// are set after the spread, so a caller's would be dropped without a word — omitting them
-// here makes that a type error instead of a hook that silently never lands.
+// `data-slot` / `data-variant` are set after the spread, so a caller's would be dropped
+// silently. Omitted from the props type to make that a compile error.
 export type ButtonProps = Omit<ButtonPrimitiveProps, "children" | "data-slot" | "data-variant"> &
   VariantProps<typeof buttonStyles> & {
     children?: ReactNode;

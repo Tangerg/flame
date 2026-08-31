@@ -10,8 +10,8 @@ import type { BlockStatus, ContentBlock, QuestionItem } from "@/plugins/sdk/type
 import type { ToolCall, ToolCallStatus } from "@/plugins/sdk/types/agentSessionView";
 import { toolCategory } from "../../domain/toolCategory";
 
-// A toolCall spans time and names its endpoints `startedAt`/`finishedAt`; every other Item
-// is instantaneous and carries `createdAt`. Readers that only need "when" shouldn't care.
+// A toolCall spans time (`startedAt`/`finishedAt`); every other Item is instantaneous
+// (`createdAt`).
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
 }
@@ -22,9 +22,8 @@ export function blockStatus(status: AgentItemStatus): BlockStatus {
   return "complete";
 }
 
-// `blocks` is absent on the `item.started` shell of a message item — content streams in
-// via item.delta and only lands whole on item.completed. Missing content must fold to an
-// empty text block the deltas then patch, not throw and skip streaming.
+// `blocks` is absent on the `item.started` shell: content arrives via item.delta. Missing
+// content must fold to an empty text block the deltas patch, not throw and skip streaming.
 export function contentText(blocks: AgentMessagePart[] | undefined): string {
   return (blocks ?? [])
     .filter((b): b is Extract<AgentMessagePart, { type: "text" }> => b.type === "text")
@@ -32,7 +31,6 @@ export function contentText(blocks: AgentMessagePart[] | undefined): string {
     .join("");
 }
 
-// A userMessage is atomic, so its text block is always `complete`.
 export function userContentBlocks(content: AgentMessagePart[]): ContentBlock[] {
   const blocks: ContentBlock[] = [];
   const text = contentText(content);
@@ -70,11 +68,9 @@ export function mapQuestionAnswers(q: AgentQuestion): string[][] | undefined {
   return q.answers?.map((values) => [...values]);
 }
 
-// API.md §4.4.2 display conventions, read off the neutral { name, arguments, result }
-// envelope and NOT wire-enforced — unknown names fall to the generic JSON-tree path. Every
-// reader must tolerate absent or malformed values: the `item.started` shell has no `result`,
-// and a throw here is swallowed by the reducer's try/catch, silently dropping the block or
-// stranding a HITL approval the user can no longer act on.
+// API.md §4.4.2 conventions, NOT wire-enforced. Every reader must tolerate absent or
+// malformed values: a throw here is swallowed by the reducer's try/catch, silently dropping
+// the block or stranding a HITL approval the user can no longer act on.
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
   return typeof v === "object" && v !== null && !Array.isArray(v)
@@ -101,7 +97,6 @@ function firstLine(v: unknown): string | undefined {
   return s ? s.split("\n", 1)[0] : undefined;
 }
 
-// Checked BEFORE the category switch in `labelSource`; each reads a different key argument.
 function nameLabel(tool: AgentToolInvocation): string | undefined {
   const a = tool.arguments;
   switch (tool.name) {
@@ -143,15 +138,14 @@ export function toolLabel(tool: AgentToolInvocation): string {
   return labelSource(tool).text;
 }
 
-// Read off the SAME switch that chose the text, not re-derived from the category: the
-// fallbacks matter (a multi-file edit labels itself with the tool's name), and a rule
-// saying "fileEdit means path" would call those paths and truncate them from the left.
+// Read off the SAME switch that chose the text, not re-derived from the category: a rule
+// saying "fileEdit means path" would call a tool-name fallback a path and truncate it left.
 export function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
   return labelSource(tool).path ? "path" : "text";
 }
 
-// Every label lands in a SINGLE-LINE row, and each branch below reads a model-produced
-// argument — a path, description, query or summary can carry a newline.
+// Every label lands in a SINGLE-LINE row, and every branch reads a model-produced argument
+// that can carry a newline.
 function oneLine(text: string): string {
   if (!text.includes("\n")) return text;
   const first = text.split("\n").find((line) => line.trim() !== "");
@@ -169,8 +163,7 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
   const a = tool.arguments ?? {};
   switch (toolCategory(tool.name)) {
     case "command":
-      // `description` is an action phrase and the command rides beside it as the row's
-      // mono detail; titling with the command line puts data in the slot meant for intent.
+      // Titling with the command line puts data in the slot meant for intent.
       return {
         text: asString(a.description) || asString(a.command) || tool.name || "command",
         path: false,
@@ -179,8 +172,8 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
       const path = asString(a.path);
       if (path) return { text: path, path: true };
       const single = asString(asRecord(editChanges(tool.result)[0])?.path);
-      // Falls back to the tool's own NAME so presentation can resolve it through
-      // TOOL_LABEL_KEYS; spelling "3 files" here would freeze one language into view state.
+      // Falls back to the tool's NAME: spelling "3 files" here freezes a language into
+      // view state.
       return single === undefined ? { text: tool.name, path: false } : { text: single, path: true };
     }
     case "search":
@@ -211,8 +204,7 @@ export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
   };
 }
 
-// Derived in the fold, not at render time: rendering would re-parse the same argument text
-// on every stream tick. The steps themselves stay in `args` for the preview to list.
+// Derived in the fold, not at render: rendering re-parses the same argument on every tick.
 function planFields(tool: AgentToolInvocation): Partial<ToolCall> {
   if (tool.name !== "set_plan") return {};
   const steps = planStepsFromArguments(tool.arguments);

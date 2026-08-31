@@ -7,11 +7,8 @@ export interface PublicationSlot<T extends object> {
   withdraw(candidate: T): boolean;
 }
 
-/**
- * The process-local identity primitive shared by replaceable application owners. It owns no
- * tasks, events, caches or business state — only the successor-first publication
- * linearization point and the exact stale-disposer check.
- */
+/** Successor-first publication plus the exact stale-disposer check. Owns no tasks, events,
+ *  caches or business state. */
 export function createPublicationSlot<T extends object>(): PublicationSlot<T> {
   let current: T | null = null;
 

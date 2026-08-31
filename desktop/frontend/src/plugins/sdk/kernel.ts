@@ -1,8 +1,5 @@
-// The SDK sits BELOW the glue ring that owns startup, so the Host is published DOWN here
-// rather than imported up; reads answer empty before boot and the Host is fail-closed, so
-// there is no half-booted state to paper over. What this adds over Core's raw
-// `contributions(token)` is the app's policy: single/multi resolution, the sort, and the
-// by-reference caching contract the selectors' secondary indexes hang off.
+// Adds this app's policy over Core's raw `contributions(token)`: single/multi resolution,
+// the sort, and the by-reference caching the selectors' secondary indexes depend on.
 
 import { useSyncExternalStore } from "react";
 import type { ContributionView, Host } from "dougong";
@@ -17,8 +14,6 @@ let names: ReadonlyArray<string> = EMPTY_NAMES;
 const listeners = new Set<() => void>();
 const pluginNamesByHost = new WeakMap<Host, Set<string>>();
 
-// Resolved on first read and held until the kernel is retracted: the view's subscription is
-// what invalidates the cached array.
 let views = new Map<string, ContributionView<Contribution<unknown>>>();
 let releases: Array<() => void> = [];
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
@@ -49,8 +44,8 @@ export function publishKernel(next: Host): void {
   announce();
 }
 
-/** Retract exactly the generation its owner is retiring. A late cleanup from an
- * older renderer must never unpublish the successor that replaced it. */
+/** Retract exactly the generation its owner is retiring: a late cleanup from an older
+ *  renderer must never unpublish the successor that replaced it. */
 export function retractKernel(owner: Host): boolean {
   if (host !== owner) return false;
   retractViews();
@@ -59,9 +54,7 @@ export function retractKernel(owner: Host): boolean {
   return true;
 }
 
-/** Exact owner of the currently published contribution generation. Internal
- * readers use this identity to distinguish a Host replacement from a change
- * inside the same Host without widening the public plugin SDK. */
+/** Identity that distinguishes a Host REPLACEMENT from a change inside the same Host. */
 export function publishedKernel(): Host | undefined {
   return host;
 }
@@ -87,9 +80,8 @@ function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> 
   return view;
 }
 
-// Sort hint precedence: the item's own `order` field wins, then the
-// contribute-time hint, then a stable default. The sort is stable, so equal
-// orders keep insertion order — which for a `single` point is what makes "last
+// Precedence: the item's own `order`, then the contribute-time hint, then a stable default.
+// The sort is stable, so equal orders keep insertion order — which is what makes "last
 // contributor of a key wins" mean the later plugin in the manifest.
 function sortKey(entry: Contribution<unknown>): number {
   const own = (entry.item as { order?: number } | null)?.order;
@@ -105,9 +97,8 @@ function resolve<T>(
     point.keying === "multi"
       ? all
       : // Insertion order is contribution order, so the last writer of a key is
-        // the winner. Rebuilding a Map by key keeps exactly one per key and
-        // preserves each key's FIRST insertion position, which keeps the list
-        // order stable while a shadowing plugin loads and unloads.
+        // the winner. A Map by key keeps one per key at its FIRST insertion position, so
+        // list order holds while a shadowing plugin loads and unloads.
         [
           ...all
             .reduce((byKey, e) => byKey.set(e.key, e), new Map<string, Contribution<T>>())
@@ -116,11 +107,8 @@ function resolve<T>(
   return kept.sort((a, b) => sortKey(a) - sortKey(b));
 }
 
-/**
- * Sorted, with `single` points resolved to one entry per domain key. Stable BY REFERENCE
- * until that point's contributions change — the contract the selectors' WeakMap-keyed
- * secondary indexes depend on.
- */
+/** Sorted, `single` points resolved to one entry per key. Stable BY REFERENCE until that
+ *  point's contributions change — the contract the selectors' indexes depend on. */
 export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Contribution<T>> {
   const cached = entries.get(point.id);
   if (cached) return cached as ReadonlyArray<Contribution<T>>;
@@ -135,10 +123,8 @@ function subscribe(onChange: () => void): () => void {
   return () => listeners.delete(onChange);
 }
 
-/**
- * Registers against the KERNEL rather than one point's view, so a plugin subscribing during
- * its own setup — before any view exists — does not end up holding a dead subscription.
- */
+/** Against the KERNEL, not one point's view: a plugin subscribing during its own setup would
+ *  otherwise hold a dead subscription. */
 export function subscribeContributions(listener: () => void): () => void {
   return subscribe(listener);
 }
@@ -151,8 +137,6 @@ export function useInstalledPlugins(): ReadonlyArray<string> {
   return useSyncExternalStore(subscribe, installedSnapshot, () => EMPTY_NAMES);
 }
 
-/** The resolved array is stable by reference between changes, so this re-renders
- *  exactly when the point's list is genuinely new. */
 export function useContributions<T>(point: ExtensionPoint<T>): ReadonlyArray<Contribution<T>> {
   return useSyncExternalStore(
     subscribe,

@@ -20,7 +20,6 @@ export interface ResizeHandleProps extends Omit<
   | "aria-valuenow"
 > {
   edge: "start" | "end";
-  /** Re-measures the reported range when the stored preference changes. */
   value: number;
   container: (handle: HTMLElement) => HTMLElement | null;
   property: string;

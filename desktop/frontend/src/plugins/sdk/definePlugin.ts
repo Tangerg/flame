@@ -1,9 +1,5 @@
-// Owns exactly ONE thing over Core's `definePlugin`: `contribute` takes a point HANDLE
-// rather than a raw key and applies that handle's policy — key derivation and
-// normalization — into the envelope the read side needs. Applying it per call site instead
-// is how the policy stops being a policy.
-//
-// No `version` field: a version is distribution metadata and lives on the platform Manifest.
+// Owns one thing over Core's `definePlugin`: `contribute` takes a point HANDLE and applies
+// that handle's key derivation and normalization into the envelope the read side needs.
 
 import {
   definePlugin as defineContractPlugin,
@@ -48,9 +44,7 @@ export interface PluginSpec<
   ) => Awaitable<keyof Provides extends never ? void : { [K in keyof Provides]: unknown }>;
 }
 
-// For `multi` contributions with no explicit `opts.id`. Uniqueness only has to hold within
-// one point's keyspace under one owner, so a global counter is simpler than per-point ones
-// and the ids never reach plugin code.
+// Uniqueness only has to hold within one point's keyspace under one owner.
 const mintedIds = new ExactSequence();
 
 function itemId(item: unknown): string | undefined {
@@ -85,9 +79,8 @@ function createContribute(ctx: ContractContext<Requirements>, name: string) {
   };
 }
 
-// `signal` is a getter on Core's frozen context and the requirement aliases are
-// dynamic, so this spreads for the aliases and re-declares `signal` as a getter
-// rather than freezing whatever it happened to read at wrap time.
+// `signal` is a GETTER on Core's frozen context, so it is re-declared as one rather than
+// frozen at whatever it read at wrap time.
 function bindContext<Requires extends Requirements>(
   ctx: ContractContext<Requires>,
   name: string,
@@ -115,6 +108,5 @@ export function definePlugin<Requires extends Requirements = {}, Provides extend
   });
 }
 
-/** The MINIMUM a registration helper needs: a helper handed the whole Host quietly grows a
- *  second and third thing it touches. */
+/** The minimum a registration helper needs. */
 export type Contributor = Pick<PluginContext, "contribute">;

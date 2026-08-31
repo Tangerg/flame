@@ -1,8 +1,5 @@
-// The ONE door into the plugin system: the kernel's own built-ins import from here too,
-// with no privileged back door. The named selectors are only the few reads that add real
-// logic on top of the generic substrate.
+// The one door into the plugin system; built-ins import from here too, with no back door.
 
-// App-wide config store.
 export { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
 
 export type { ConfigValue } from "./config";
@@ -28,10 +25,8 @@ export type {
   WorkspaceService,
 } from "./services";
 
-// Built-in kernel points (COLOR_THEME / COMMAND / LAYOUT_SLOT / …).
 export * from "./kernelPoints";
 
-// Plugin error aggregation.
 export {
   type PluginError,
   type PluginErrorSource,
@@ -39,17 +34,11 @@ export {
   usePluginErrorStore,
 } from "./errors";
 
-// Persistent notification feed + the app-side notify pair that writes to it.
 export { notifyError, notifyInfo, useNotificationStore } from "./notifications";
 export type { NotifyOptions, NotifySource } from "./notifications";
-// Cached read hooks over a contributed data provider.
 export { createDataQuery, createParameterizedDataQuery } from "./dataQuery";
 export type { ParameterizedQueryOptions } from "./dataQuery";
-// `normalizeCombo` and the toast-event contract stay internal: points normalize combos on
-// contribute, and toasts go through `host.notify`.
 
-// Read side. Plain reads use the generic substrate (use/lookupExtensionPoint,
-// use/lookupExtensionByKey); the rest are selectors with real logic.
 export {
   executeCommand,
   lookupStreamHandlers,
@@ -137,6 +126,4 @@ export type {
 } from "./types";
 export type { NotificationEntry, NotificationLevel } from "./types";
 
-// The context lives in the SDK so plugin authors import from one place; kernel UI takes the
-// Provider from `./messageContext` directly.
 export { useCurrentMessage, useCurrentMessageSessionId } from "./messageContext";

@@ -17,9 +17,8 @@ import {
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { createRunEventBatcher } from "./runEventBatcher";
 
-/** What a stream's opening ack tells the pump. headEventId exists only on a
- *  reattach: a start or resume stream begins at the beginning of its segment, so
- *  there is no earlier position to name. */
+/** headEventId exists only on a REATTACH: a start or resume stream begins at the beginning
+ *  of its segment, so there is no earlier position to name. */
 export interface RunStreamAck {
   runId: RunId;
   segmentId: SegmentId;
@@ -28,9 +27,8 @@ export interface RunStreamAck {
 
 export type RunStream = StreamingResult<RunStreamAck, RunEvent>;
 
-/** Where a reattach picks up. lastEventId is empty when this client has folded
- *  nothing and was given no head — then the reattach is tail-only and the
- *  durable session snapshot supplies the materialized projection. */
+/** lastEventId is empty when this client folded nothing and was given no head; the reattach
+ *  is then tail-only and the durable snapshot supplies the projection. */
 export interface RunStreamPosition {
   runId: RunId;
   segmentId: SegmentId;
@@ -43,13 +41,11 @@ interface AgentRunPumpOptions {
   isCancelled: () => boolean;
   readEpoch: () => bigint;
   applyEvents: (events: RunEvent[]) => boolean;
-  /** Read the root Run after its live segment settles. Stream terminal events are
-   *  intentionally compact; runs.get is the authoritative complete RunRef. */
+  /** Stream terminal events are compact; runs.get is the authoritative RunRef. */
   readRunSnapshot?: (runId: RunId, signal: AbortSignal) => Promise<RunRef>;
   applyRunSnapshot?: (run: RunRef) => void;
-  /** Reattach a run whose stream ended before the run did. null means the run is no
-   *  longer attachable at all — finished, waiting on a person, or moved to another
-   *  segment — after the durable projection has reconciled that transition. */
+  /** null means no longer attachable at all — finished, waiting on a person, or moved to
+   *  another segment — after the durable projection reconciled that transition. */
   reattach?: (position: RunStreamPosition, signal: AbortSignal) => Promise<RunStream | null>;
   /** The newest live stream became idle after its queued tail was folded. */
   onIdle?: () => void;
@@ -78,11 +74,9 @@ export function createAgentRunPump({
   let activeBatcher: ReturnType<typeof createRunEventBatcher> | null = null;
 
   return {
-    // A run outlives its stream. Ending without the segment's own terminal is an
-    // abnormal EOS — a dropped connection, not a finished run — and the run keeps
-    // executing on the server either way. Reattaching from the last folded event is
-    // what turns that into a gap of milliseconds instead of a transcript frozen until
-    // the next reload.
+    // A run OUTLIVES its stream: ending without the segment's terminal is an abnormal EOS,
+    // and the run keeps executing on the server. Reattaching from the last folded event
+    // turns that into a gap of milliseconds rather than a transcript frozen until reload.
     async pump(stream, signal) {
       const pumpLease = (currentPumpLease = {});
       const runId = stream.result.runId;
@@ -110,8 +104,6 @@ export function createAgentRunPump({
       try {
         while (events) {
           const drained = await consume(events, position.segmentId, signal, eventBatcher);
-          // A cursor can only cross this response boundary after its queued tail
-          // has either folded or been rejected by a newer projection epoch.
           eventBatcher.flush();
           if (drained.recovery === "cold") position = { ...position, recovery: "cold" };
           if (
@@ -131,9 +123,8 @@ export function createAgentRunPump({
           position = {
             runId,
             segmentId: next.result.segmentId,
-            // Only adopt the ack's head when this client holds no cursor of its own:
-            // the head of a replaying attach sits AHEAD of what was asked for, so
-            // taking it would silently skip everything the replay is delivering.
+            // Only adopt the ack's head with no cursor of our own: a replaying attach's
+            // head sits AHEAD of what was asked for, so taking it skips the replay.
             lastEventId: position.lastEventId || (next.result.headEventId ?? ""),
             recovery: "replay",
           };

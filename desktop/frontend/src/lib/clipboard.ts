@@ -1,13 +1,9 @@
-// Clipboard domain service. The availability guard + permission-failure
-// swallow is the invariant every call site needs (unfocused windows and
-// non-secure contexts throw on write); only the success feedback differs —
-// sites with their own inline "copied" state use copyText, sites without
-// one use writeToClipboard for a toast confirmation.
+// Unfocused windows and non-secure contexts THROW on write, so every call site needs the
+// availability guard and the permission-failure swallow; only the feedback differs.
 
 import { toast } from "sonner";
 
-/** Silent core: resolves false when the clipboard is unavailable or the
- *  write was rejected — never throws. */
+/** Resolves false when unavailable or rejected — never throws. */
 export async function copyText(text: string): Promise<boolean> {
   if (!text || typeof navigator === "undefined" || !navigator.clipboard) return false;
   try {
@@ -23,9 +19,8 @@ export interface RichClipboardText {
   htmlText?: string;
 }
 
-/** Copy one semantic payload in both of the formats desktop editors understand.
- *  Older WebViews keep the exact plain-text fallback rather than losing the
- *  action because ClipboardItem is unavailable. */
+/** Both formats desktop editors understand; falls back to plain text where ClipboardItem
+ *  is unavailable rather than losing the action. */
 export async function copyRichText({ plainText, htmlText }: RichClipboardText): Promise<boolean> {
   if (!plainText || typeof navigator === "undefined" || !navigator.clipboard) return false;
   const clipboard = navigator.clipboard;
@@ -51,9 +46,7 @@ export async function copyRichText({ plainText, htmlText }: RichClipboardText): 
   }
 }
 
-/** copyText + optional sonner confirmation. Success confirmations stay
- *  toast-only — they're feedback, not events worth re-reading in the
- *  notification feed. */
+/** copyText plus an optional toast. Toast-only on success: feedback, not an event. */
 export async function writeToClipboard(
   text: string,
   options?: { successLabel?: string },

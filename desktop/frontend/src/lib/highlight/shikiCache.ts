@@ -1,14 +1,12 @@
-// Completed code blocks rarely re-render, but they DO re-mount on scroll-away/back, theme
-// toggle, and memo-key invalidation in long histories — each re-mount re-runs the tokenizer
-// at ~3-10ms. Bounded so a long session cannot grow the map without limit.
+// Blocks re-mount on scroll-away/back and theme toggle, each re-running the tokenizer at
+// ~3-10ms. Bounded so a long session cannot grow the map without limit.
 
 import QuickLRU from "quick-lru";
 
 const cache = new QuickLRU<string, string>({ maxSize: 128 });
 
-// `:` delimits the key fields. It can't appear in a Shiki lang or theme id
-// (lowercase / digits / hyphens), and `code` is last, so an arbitrary code
-// body — even one containing `:` — can never collide with another entry.
+// `:` delimits the fields: it cannot appear in a lang or theme id, and `code` is last, so a
+// body containing `:` cannot collide.
 function cacheKey(lang: string, theme: string, code: string): string {
   return `${lang}:${theme}:${code}`;
 }

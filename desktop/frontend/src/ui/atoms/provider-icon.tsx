@@ -14,9 +14,8 @@ import { Icon } from "@/ui/icons";
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
-// A Map, not an object: the key is a provider name the runtime chose, and an object
-// answers `constructor` and `toString` with inherited members — a provider named
-// either would hand back a FUNCTION here and render it as a component.
+// Map, not object: keyed by a runtime-chosen name, and an object answers `constructor`
+// with an inherited FUNCTION that then renders as a component.
 const BRAND = new Map<string, BrandIcon>([
   ["deepseek", DeepSeek],
   ["openai", OpenAI],

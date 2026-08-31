@@ -1,20 +1,13 @@
-// A PASSIVE snapshot: leaf modules read the active appearance without reaching into the
-// preference store or plugin registry, which would invert the dependency ring from leaf UI
-// into application composition. The theme context publishes into it from the painter.
-// Nothing here reads a store, a registry, or the DOM.
-//
-// The defaults apply only before the first publish, and in tests that install no painter.
+// A passive snapshot the painter publishes into. Reads no store, registry or DOM; the
+// defaults apply only before the first publish.
 
 import { useSyncExternalStore } from "react";
 
-// Declared here because this is the ONE module every ring may import, so the design system,
-// the SDK theme contract and the theme kit cannot spell the union out separately.
+// Declared here because this is the one module every ring may import.
 export type Scheme = "dark" | "light";
 export type ColorThemeId = string;
 export type VisualStyleId = string;
 
-// Lives here rather than beside the maths in `theme/kit/accentTint` because the preference
-// store persists it and `state` sits BELOW the plugins.
 export const ACCENT_TINTS = ["off", "soft", "standard"] as const;
 export type AccentTint = (typeof ACCENT_TINTS)[number];
 
@@ -70,14 +63,8 @@ export function publishScheme(next: Scheme): void {
   announce();
 }
 
-/**
- * Publish that the colour tokens on `:root` were just rewritten.
- *
- * For the code that can't use a token — an SVG generator handed literal colours,
- * a canvas — and has to read the computed values instead. It needs to know WHEN
- * to re-read, and only the painter knows that. Consumers subscribe to appearance
- * replacement rather than guessing which preferences affect computed colours.
- */
+/** Signals that `:root`'s colour tokens were rewritten, for code that must read COMPUTED
+ *  values (an SVG generator, a canvas) and so needs to know when to re-read. */
 export function publishTokens(): void {
   tokenRevision = {};
   announce();

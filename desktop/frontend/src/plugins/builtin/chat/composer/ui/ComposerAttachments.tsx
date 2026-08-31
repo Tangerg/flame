@@ -98,9 +98,8 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
 
 const PREVIEW_LIMIT = 160;
 
-// Cutting by code UNIT lands inside any character outside the BMP, and half of one
-// renders as a replacement glyph right before the ellipsis. Backing off the lone
-// leading surrogate costs one character of preview.
+// Cutting by code UNIT lands inside any non-BMP character, and half of one renders as a
+// replacement glyph before the ellipsis.
 function previewOf(text: string): string {
   if (text.length <= PREVIEW_LIMIT) return text;
   const last = text.charCodeAt(PREVIEW_LIMIT - 1);

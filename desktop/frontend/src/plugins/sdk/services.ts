@@ -1,8 +1,5 @@
-// What a plugin declares in `requires` to reach a capability the shell owns. Anything that
-// is really "a point plus a call to `ctx.contribute`" does NOT belong here.
-//
-// `ctx.notify` and `ctx.storage` live on the plugin context instead: they are ambient and
-// identity-scoped, so there is no provider to declare.
+// What a plugin declares in `requires`. Anything that is really "a point plus a call to
+// `ctx.contribute`" does NOT belong here.
 
 import { service } from "dougong";
 import type { ConfigValue } from "./config";
@@ -20,10 +17,7 @@ export interface ConfigService {
 }
 
 export interface I18nService {
-  /**
-   * Plugin keys live ALONGSIDE the kernel's and resolve through `t()` normally. Last
-   * writer wins on collision.
-   */
+  /** Plugin keys live ALONGSIDE the kernel's; last writer wins on collision. */
   addBundle(locale: string, dict: Record<string, string>): void;
 }
 
@@ -42,10 +36,7 @@ export interface WorkspaceService {
 }
 
 export interface CommandsService {
-  /**
-   * Run a command by id — the lightweight cross-plugin call. Warns and no-ops
-   * on an unknown id.
-   */
+  /** Warns and no-ops on an unknown id. */
   execute(id: string, ...args: unknown[]): Promise<void>;
 }
 
@@ -55,11 +46,10 @@ export const WINDOW = service<WindowService>("flame.shell.window");
 export const WORKSPACE = service<WorkspaceService>("flame.shell.workspace");
 export const COMMANDS = service<CommandsService>("flame.shell.commands");
 
-/** The ambient half, bound per plugin by `definePlugin` — all three carry the
- *  plugin's identity, so there is no provider to declare. */
+/** Bound per plugin by `definePlugin`; all three carry the plugin's identity. */
 export interface AmbientShell {
   notify(message: string, level?: NotificationLevel): void;
   readonly storage: KeyValueStore;
-  /** Register a long-running task; settled ones linger so the outcome is seen. */
+  /** Settled tasks linger so the outcome is seen. */
   startTask(opts: TaskStartOptions): TaskHandle;
 }

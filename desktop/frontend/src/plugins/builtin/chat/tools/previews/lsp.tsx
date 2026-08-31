@@ -63,9 +63,8 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   );
 }
 
-// A Map, not an object: the key is the first word of a tool's output line, so a
-// diagnostic starting with `constructor` would otherwise pull an inherited member
-// out and paint its source text into the className.
+// Map, not object: keyed by the first word of a tool's output line, so `constructor` would
+// pull an inherited member out and paint its source into the className.
 const SEVERITY_TONE = new Map([
   ["error", "text-negative"],
   ["warning", "text-warning"],

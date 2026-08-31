@@ -36,8 +36,7 @@ export default definePlugin({
   setup(ctx) {
     const composerMode = GoalComposerModeOwner.install();
     const runtimeAdapter = installGoalRuntimeAdapter(ctx.runtime.connectionGeneration() !== null);
-    // Goal is the only follower that distinguishes losing the connection from getting a new
-    // one: a retired generation stops its commands, a replaced one re-arms them.
+    // Retired generation stops its commands; a REPLACED one re-arms them.
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
       if (next === null) runtimeAdapter.retireRuntimeGeneration();
       else runtimeAdapter.replaceRuntimeGeneration();

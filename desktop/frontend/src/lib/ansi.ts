@@ -1,9 +1,5 @@
-/**
- * Hand-written rather than `anser` / `ansi-to-html` because of the PALETTE: those emit
- * inline styles or HTML carrying literal colours, and a literal cannot follow the scheme,
- * the contrast preference or a contributed theme. What comes out here is spans plus a TONE,
- * and the renderer dresses them.
- */
+// Hand-written rather than `anser` / `ansi-to-html`: those emit literal colours, which cannot
+// follow the scheme or a contributed theme. This emits spans plus a TONE.
 
 export type AnsiTone = "negative" | "success" | "warning" | "info" | "accent" | "muted";
 
@@ -15,11 +11,8 @@ export interface AnsiSpan {
   underline?: boolean;
 }
 
-// The eight SGR colours onto the tones this app has. Cyan and magenta have no tone of
-// their own here — mapping them to `info` and `accent` keeps every colour on the
-// ramp, which is what makes them legible in both schemes. Bright variants (90–97)
-// share their base tone: brightness in a terminal is a second axis this palette
-// expresses with weight instead.
+// The eight SGR colours onto this app's tones. Cyan and magenta borrow `info` / `accent` to
+// stay on the ramp; bright variants (90-97) share their base tone and differ by weight.
 const TONE_BY_SGR: Record<number, AnsiTone> = {
   30: "muted",
   31: "negative",
@@ -58,18 +51,15 @@ function applySgr(style: Style, params: string): Style {
     else if (code === 39) next.tone = undefined;
     else if (code in TONE_BY_SGR) next.tone = TONE_BY_SGR[code];
     else if (code >= 90 && code <= 97) next.tone = TONE_BY_SGR[code - 60];
-    // 256-colour and truecolour selectors carry their own arguments; skip them
-    // rather than read the arguments as further codes.
+    // 256-colour and truecolour selectors carry arguments; skip them rather than read the
+    // arguments as further codes.
     else if (code === 38 || code === 48) i += codes[i + 1] === 5 ? 2 : 4;
   }
   return next;
 }
 
-/**
- * Cursor moves and erases are DROPPED rather than honoured: this is a transcript, not a
- * terminal, so there is no cursor to move and a progress bar redrawing itself with `\r`
- * would otherwise stack every intermediate frame in the log.
- */
+/** Cursor moves and erases are DROPPED: a transcript has no cursor, and a progress bar
+ *  redrawing with `\r` would otherwise stack every intermediate frame. */
 export function parseAnsi(input: string): AnsiSpan[] {
   const spans: AnsiSpan[] = [];
   let style: Style = {};
@@ -78,8 +68,6 @@ export function parseAnsi(input: string): AnsiSpan[] {
   const push = (text: string) => {
     if (text === "") return;
     const last = spans[spans.length - 1];
-    // Merge with the previous span when the style is unchanged, so a line broken up
-    // by resets does not become a span per word.
     if (
       last &&
       last.tone === style.tone &&
@@ -103,8 +91,7 @@ export function parseAnsi(input: string): AnsiSpan[] {
   return spans;
 }
 
-/** Whether the text carries any escape sequence at all — the cheap check a caller
- *  uses to skip the parse for the overwhelmingly common plain case. */
+/** Cheap pre-check so a caller can skip the parse for the common plain case. */
 export function hasAnsi(input: string): boolean {
   return input.includes("\u001b");
 }

@@ -1,5 +1,4 @@
-// Separate from the transient toaster because a toast that has vanished cannot answer "did
-// anything fail?", and because views can read this without subscribing to DOM events.
+// Separate from the toaster: a vanished toast cannot answer "did anything fail?".
 
 import type { NotificationEntry, NotificationLevel } from "./types";
 import { dispatchToast } from "./hostToast";
@@ -52,15 +51,11 @@ export const useNotificationStore = create<NotificationStoreState & Notification
   }),
 );
 
-// The non-plugin twin of `host.notify`, with the same contract: a durable feed entry PLUS a
-// transient toast. Success confirmations stay toast-only — they are feedback on an action
-// the user just watched succeed, not events worth re-reading.
+// The non-plugin twin of `host.notify`: a durable feed entry PLUS a toast. Success stays
+// toast-only — feedback on an action just watched, not an event worth re-reading.
 
-/**
- * An IDENTIFIER, not copy: it renders in the same column as a plugin's name, so it stays
- * untranslated for the same reason plugin ids do. CLOSED because as a `string` one typo
- * opens a second, silent attribution bucket that reads as a new subsystem.
- */
+/** An IDENTIFIER, not copy, so untranslated. CLOSED because as a `string` one typo opens a
+ *  second silent attribution bucket that reads as a new subsystem. */
 export type NotifySource =
   | "composer"
   | "events"
@@ -82,9 +77,7 @@ export interface NotifyOptions {
   source?: NotifySource;
 }
 
-// The app's own notify helpers speak two of the feed's three levels — there is no
-// notifyWarn, so "warn" reaches the feed only from a plugin's host.notify. Stated
-// as a narrowing of the feed's vocabulary rather than a second list of words.
+// No notifyWarn: "warn" reaches the feed only from a plugin's host.notify.
 type Level = Extract<NotificationLevel, "info" | "error">;
 
 const TOAST_BY_LEVEL: Record<Level, typeof toast.info> = {
@@ -108,12 +101,8 @@ export function notifyError(message: string, opts?: NotifyOptions): void {
   notify("error", message, opts);
 }
 
-/**
- * A plugin's own notification, attributed to it in the feed and reaching "warn", which the
- * app-side helpers deliberately do not. The feed entry is written BEFORE the toast so
- * anything reacting to the toast can cross-reference it, and the toast goes out as an event
- * so this path pulls no React portal machinery into the SDK.
- */
+/** The feed entry is written BEFORE the toast so anything reacting to the toast can
+ *  cross-reference it; the toast goes out as an event to keep React out of the SDK. */
 export function notifyFrom(plugin: string, message: string, level: NotificationLevel): void {
   useNotificationStore.getState().push({ plugin, level, message });
   dispatchToast(message, level);

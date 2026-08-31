@@ -1,9 +1,5 @@
-// A LIVE WINDOW, not a telemetry database: durable telemetry leaves the device via OTLP.
-// In-memory only — localStorage blocks the main thread on every write at this volume, and
-// IndexedDB buys nothing for live triage.
-//
-// Spans and logs are append streams, so each is a bounded ring buffer; metrics are
-// CUMULATIVE and bounded by attribute cardinality, so they are keyed rows instead.
+// A live window, not a database. Spans and logs are append streams, so each is a bounded
+// ring buffer; metrics are CUMULATIVE and bounded by attribute cardinality, so keyed rows.
 
 import type { ResourceMetrics } from "@opentelemetry/sdk-metrics";
 import { create } from "zustand";
@@ -11,8 +7,7 @@ import { create } from "zustand";
 const SPAN_CAP = 500;
 const LOG_CAP = 1000;
 
-// Inlined rather than imported so this module does not pull the metrics SDK into the
-// static graph — ./setup dynamic-imports it, keeping it off the first-paint path.
+// Inlined, not imported: keeps the metrics SDK out of this module's static graph.
 const HISTOGRAM_DATA_POINT = 0;
 
 type Attrs = Record<string, string | number | boolean>;
@@ -44,8 +39,7 @@ export interface SpanRow {
   startMs: number; // epoch ms
   durationMillis: number;
   status: "unset" | "ok" | "error";
-  /** Status description — for error spans this is the failure message
-   *  (endSpan sets it from the thrown error). Absent on ok/unset spans. */
+  /** For error spans, the failure message. Absent on ok/unset spans. */
   statusMessage?: string;
   attrs: Attrs;
 }
@@ -56,8 +50,6 @@ export interface LogRow {
   timeMs: number; // epoch ms
   severity: string; // "INFO" / "WARN" / …
   body: string;
-  // Correlation — filled natively from the active span when the log was
-  // emitted, so a log lines up with the run/rpc span it happened inside.
   traceId?: string;
   spanId?: string;
   attrs: Attrs;
@@ -78,8 +70,8 @@ export const useTelemetryStore = create<State>((set) => ({
   spans: [],
   logs: [],
 
-  // CUMULATIVE temporality → every export carries running totals, so replace
-  // wholesale rather than merge (merging would double-count).
+  // CUMULATIVE temporality: every export carries running totals, so replace rather than
+  // merge — merging double-counts.
   ingestMetrics: (batch) => {
     const next: Record<string, MetricRow> = {};
     for (const scope of batch.scopeMetrics) {
@@ -97,8 +89,6 @@ export const useTelemetryStore = create<State>((set) => ({
     set({ metrics: next });
   },
 
-  // Append + clamp to the newest SPAN_CAP. The sink hands a whole batch so
-  // this runs once per flush, not once per span.
   ingestSpans: (rows) =>
     set((s) => {
       if (rows.length === 0) return s;
@@ -122,8 +112,6 @@ interface HistogramValue {
   buckets: { boundaries: number[]; counts: number[] };
 }
 
-// MetricDescriptor is structurally `{ name, unit, description }` for our use;
-// avoid importing the SDK type here to keep this module SDK-free.
 interface Descriptor {
   name: string;
   unit: string;
@@ -169,10 +157,8 @@ function stableKey(attrs: Attrs): string {
     .join(",");
 }
 
-// Returns the upper boundary of the bucket the percentile lands in, so it errs HIGH — except
-// in the unbounded overflow bucket, which has no upper boundary and so under-reports the
-// tail. The histogram keeps counts rather than observations, so this cannot be made exact:
-// fine for a dev "is this slow?" eyeball, not an SLO number.
+// The bucket's upper boundary, so it errs HIGH — except in the unbounded overflow bucket,
+// which under-reports the tail. Counts, not observations: cannot be made exact.
 function estimatePercentiles(buckets: HistogramValue["buckets"]): { p50: number; p95: number } {
   const total = buckets.counts.reduce((a, b) => a + b, 0);
   if (total === 0) return { p50: 0, p95: 0 };
@@ -192,7 +178,6 @@ function estimatePercentiles(buckets: HistogramValue["buckets"]): { p50: number;
     }
   }
   const last = buckets.boundaries.at(-1) ?? 0;
-  // Use p50Done to avoid the falsy-value trap: p50 could legitimately be 0
-  // (the first bucket boundary), but `p50 || last` would substitute `last`.
+  // p50Done, not `p50 || last`: p50 can legitimately be 0 (the first bucket boundary).
   return { p50: p50Done ? p50 : last, p95: last };
 }

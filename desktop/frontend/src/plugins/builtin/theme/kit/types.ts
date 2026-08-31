@@ -1,6 +1,3 @@
-// Its own file so `tokens.ts` can import these without forming a cycle with
-// `defineColorThemePlugin.ts`, which imports token defaults back from `tokens.ts`.
-
 import type { ThemeNeutralSteps } from "@/plugins/sdk";
 import type { Scheme } from "@/lib/appearance";
 
@@ -13,12 +10,8 @@ export interface ThemeBrand {
   accentPress?: string;
 }
 
-/**
- * The surface-2/-3/-4 steps are ALWAYS derived by color-mix off `--depth-step`; a theme
- * cannot pin them, or the contrast slider goes partially dead. `elevated` and `sunken` are
- * anchors rather than rungs on that ladder: it walks one direction only, toward the ink,
- * while a card lifts away from the ink on light and toward it on dark.
- */
+/** surface-2/-3/-4 are ALWAYS derived off `--depth-step`; pinning them makes the contrast
+ *  slider partially dead. `elevated` / `sunken` are anchors, not rungs on that ladder. */
 export interface ThemeSurfaces {
   bg: string;
   surface: string;
@@ -29,13 +22,11 @@ export interface ThemeSurfaces {
   sunken?: string;
 }
 
-/** See DESIGN.md §2 for the hierarchy each step carries. */
 export interface ThemeInk {
   /** The anchor: the soft/muted/faint ramp derives from this when omitted. */
   text: string;
   textBright: string;
-  /** Omit to auto-derive at ~82% alpha, which adapts to the surface behind it. Pin a hue
-   *  only when the palette's own ink ramp is intentional (Solarized, Catppuccin). */
+  /** Auto-derives at ~82% alpha when omitted. */
   textSoft?: string;
   /** Omit to auto-derive (~56% alpha). Must clear WCAG AA at 11-12px. */
   textMuted?: string;
@@ -50,7 +41,6 @@ export interface ThemeBorders {
   divider: string;
 }
 
-/** Used SPARINGLY per DESIGN.md §9 — never decoratively. */
 export interface ThemeSemantic {
   negative: string;
   warning: string;
@@ -85,17 +75,11 @@ export interface ColorThemePluginSpec {
 
   cta?: Partial<ThemeCta>;
 
-  /**
-   * Opt in to having the neutral family follow the LIVE accent; `surfaces` and `borders`
-   * stay the first-paint values for the default accent. A palette theme must NOT set it —
-   * Solarized's base3 is Solarized, not a tint of the selected accent.
-   */
+  /** Opt in to the neutral family following the LIVE accent. A palette theme must NOT set
+   *  it: Solarized's base3 is Solarized, not a tint of the selected accent. */
   neutralSteps?: ThemeNeutralSteps;
 
-  /**
-   * Escape hatch for palette variables not captured by the typed sections.
-   * Geometry, elevation and motion belong to a visual-style contribution.
-   * Keys are CSS-variable names WITHOUT the leading `--`.
-   */
+  /** Keys are CSS-variable names WITHOUT the leading `--`. Geometry, elevation and motion
+   *  belong to a visual-style contribution instead. */
   extras?: Record<string, string>;
 }

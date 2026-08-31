@@ -160,8 +160,7 @@ export function ChatPanel({ onSend }: Props) {
   const [dockAvailable, setDockAvailable] = useState(true);
 
   const hasDockOwner = activeSessionId !== "";
-  // Open with nothing in it is a REAL state: the dock shows its catalogue then, so being open
-  // no longer depends on already holding a tab.
+  // Open with nothing in it is a REAL state — the dock shows its catalogue.
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];

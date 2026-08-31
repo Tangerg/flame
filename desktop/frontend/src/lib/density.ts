@@ -1,9 +1,5 @@
-// A SEPARATE axis from the type ladder on purpose: type size is legibility, density is how
-// many rows fit, and scaling type to get a denser list makes the list unreadable.
-//
-// Chrome-bar heights deliberately do NOT scale: the content header, drawer header and the
-// macOS traffic-light gutter share one number so they line up across the seam, and a
-// density pick must not break that.
+// A separate axis from the type ladder. Chrome-bar heights deliberately do NOT scale: the
+// content header, drawer header and traffic-light gutter share one number across the seam.
 
 export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];
@@ -51,10 +47,7 @@ export function normalizeUiDensity(value: unknown): UiDensity {
   return isUiDensity(value) ? value : DEFAULT_UI_DENSITY;
 }
 
-/**
- * The mode as the `--density-*` custom properties the chrome reads. Names are
- * spelled out so a grep for a token finds both its writer and its readers.
- */
+/** Names spelled out so a grep for a token finds both its writer and its readers. */
 export function densityCssVariables(mode: unknown): Readonly<Record<string, string>> {
   const scale = SCALE[normalizeUiDensity(mode)];
   const px = (base: number) => `${Math.round(base * scale)}px`;

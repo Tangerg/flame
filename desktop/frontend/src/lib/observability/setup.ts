@@ -1,11 +1,4 @@
-// The ONE place all three OTel signals are wired onto the global providers; everything else
-// calls the static accessors, with no injection.
-//
-// The local in-memory sink is always on; OTLP is added only when an endpoint is configured,
-// so swapping to a real collector costs zero call-site changes. The W3C propagator is what
-// makes the `traceparent` injected on every RPC extend the backend's existing trace.
-//
-// The whole module is dynamic-imported by the bootstrap plugin, keeping it off first paint.
+// The one place all three OTel signals are wired onto the global providers.
 
 import { metrics } from "@opentelemetry/api";
 import { logs } from "@opentelemetry/api-logs";
@@ -27,8 +20,7 @@ import { LocalLogProcessor, LocalMetricExporter, LocalSpanProcessor } from "./si
 export interface ObservabilityOptions {
   serviceName: string;
   serviceVersion: string;
-  /** OTLP/HTTP base URL (e.g. the backend's collector ingress). When set,
-   *  traces/metrics/logs are ALSO exported there — the production swap. */
+  /** OTLP/HTTP base URL. When set, all three signals are ALSO exported there. */
   otlpEndpoint?: string;
 }
 
@@ -44,16 +36,12 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
     "service.version": opts.serviceVersion,
   });
 
-  // OTLP exporters live behind a dynamic import so they never land in the
-  // default chunk; only pulled when an endpoint is configured.
   const otlp = opts.otlpEndpoint ? await loadOtlp(opts.otlpEndpoint) : null;
 
   // ── Traces ──────────────────────────────────────────────────────────────
   const spanProcessors: SpanProcessor[] = [new LocalSpanProcessor()];
   if (otlp) spanProcessors.push(otlp.spanProcessor);
   const tracerProvider = new WebTracerProvider({ resource, spanProcessors });
-  // register() installs the global TracerProvider + context manager + the
-  // propagator that propagation.inject() will use on RPC headers.
   tracerProvider.register({
     propagator: new CompositePropagator({
       propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
@@ -70,9 +58,8 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
   if (otlp) readers.push(otlp.metricReader);
   const meterProvider = new MeterProvider({ resource, readers });
   metrics.setGlobalMeterProvider(meterProvider);
-  // The metrics API has no proxy meter, so lib/metrics' instruments must be
-  // created NOW (post-registration), not at its module load — otherwise every
-  // measurement is a permanent no-op. See lib/metrics' header.
+  // The metrics API has no proxy meter: instruments created before registration are a
+  // permanent no-op, so lib/metrics builds them here rather than at module load.
   bindMetricInstruments();
 
   // ── Logs ────────────────────────────────────────────────────────────────
@@ -101,15 +88,11 @@ interface OtlpBundle {
   logProcessor: LogRecordProcessor;
 }
 
-// Construct the OTLP/HTTP exporters + their batching wrappers. Batch
-// processors (not simple/sync) so high telemetry volume never turns into
-// one network call per span/log.
+// Batch processors, not simple/sync: high volume must not become one network call per span.
 async function loadOtlp(endpoint: string): Promise<OtlpBundle> {
   const base = endpoint.replace(/\/$/, "");
-  // Only the OTLP exporter packages are dynamic — they're the part that never
-  // loads unless an endpoint is configured. The Batch*Processor wrappers come
-  // from sdk-trace-web / sdk-logs, already in this chunk via the static imports
-  // above, so re-importing them dynamically would be a no-op chunk split.
+  // Only the exporter packages are dynamic; the Batch*Processor wrappers are already in
+  // this chunk, so importing them dynamically would be a no-op split.
   const [traceExp, metricExp, logExp] = await Promise.all([
     import("@opentelemetry/exporter-trace-otlp-http"),
     import("@opentelemetry/exporter-metrics-otlp-http"),

@@ -84,9 +84,8 @@ function LogsPanel() {
   );
 }
 
-// A Map, not an object: the key is a severity string off the telemetry stream, and
-// an object would answer `constructor` with an inherited member instead of the
-// fallback tone.
+// Map, not object: keyed off the telemetry stream, where `constructor` would answer with an
+// inherited member instead of the fallback tone.
 const SEVERITY_TONE = new Map([
   ["ERROR", "text-negative"],
   ["WARN", "text-warning"],
@@ -121,9 +120,8 @@ interface NameGroup {
   rows: MetricRow[];
 }
 
-// A Map, not an object: grouped by an instrument name off the telemetry stream, and
-// an object literal answers `constructor` with a function — which reads as an existing
-// group and then throws on `g.rows.push`.
+// Map, not object: grouped by instrument name, where `constructor` answers with a function
+// that reads as an existing group and then throws on `g.rows.push`.
 function groupByName(rows: MetricRow[]): NameGroup[] {
   const by = new Map<string, NameGroup>();
   for (const r of rows) {

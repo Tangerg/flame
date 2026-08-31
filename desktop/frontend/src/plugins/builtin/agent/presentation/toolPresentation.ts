@@ -3,9 +3,8 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { ActivityShell } from "@/lib/activityShell";
 import { fmtDuration } from "@/lib/format";
 
-// Typed rather than a bare string: a path truncates from the other end (see FilePath), and
-// only this layer knows which of a call's arguments it read. A plain string leaves the
-// renderer guessing and every path loses its filename to an ellipsis.
+// Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
+// the renderer guessing — every path then loses its filename to an ellipsis.
 export type ToolDetail = { kind: "path" | "text"; value: string };
 
 export interface ToolIntent {
@@ -22,9 +21,8 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-// A row's title is either one of these UI-chosen verbs or the runtime's own tool name,
-// which is data and stays verbatim. That mix is why the translator arrives as an argument
-// here instead of this returning a `labelKey`.
+// A title is either one of these verbs or the runtime's tool name, which is data and stays
+// verbatim. That mix is why the translator arrives as an argument rather than a `labelKey`.
 const TOOL_LABEL_KEYS = new Map([
   ["shell", "tool.label.shell"],
   ["read", "tool.label.read"],
@@ -34,8 +32,7 @@ const TOOL_LABEL_KEYS = new Map([
   ["grep", "tool.label.grep"],
   ["glob", "tool.label.glob"],
   ["lsp", "tool.label.lsp"],
-  // No identifying argument to title with, so without an entry here these read as raw
-  // snake_case names.
+  // No identifying argument to title with; without an entry these read as snake_case.
   ["enter_plan_mode", "tool.label.enterPlanMode"],
   ["set_plan", "tool.label.setPlan"],
   ["exit_plan_mode", "tool.label.exitPlanMode"],
@@ -44,8 +41,8 @@ const TOOL_LABEL_KEYS = new Map([
   ["read_tool_result", "tool.label.readToolResult"],
 ]);
 
-// `path` is the runtime's own spelling (ApprovalSubject reads the same field), so a rename
-// cannot drift these apart without also breaking the approval rules.
+// `path` is the runtime's own spelling, which ApprovalSubject reads too, so a rename cannot
+// drift these apart silently.
 const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }> = [
   { key: "path", kind: "path" },
   { key: "query", kind: "text" },
@@ -55,25 +52,22 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const parsed = parseToolArgs(tool.args);
-  // Keyed on "the projection had nothing better than the tool's own name", NOT on `fn`
-  // matching a table entry — the same thing by coincidence until a shell command happens
-  // to be spelled `grep`.
+  // Keyed on "the projection had nothing better than the tool's name", NOT on `fn` matching
+  // a table entry — the same thing until a shell command is spelled `grep`.
   const labelKey = tool.fn === tool.name ? TOOL_LABEL_KEYS.get(tool.name) : undefined;
   const label: ToolDetail = labelKey
     ? { kind: "text", value: t(labelKey) }
     : { kind: tool.fnKind ?? "text", value: tool.fn };
   const detail = text(tool.command) ?? text(tool.step) ?? (parsed ? toolDetail(parsed) : undefined);
-  // Where the title already IS the subject the second slot has nothing to say: `description`
-  // is the tool's contract, not the wire's guarantee, so an absent one falls the title back
-  // to the command and both slots print the same shell line at different widths.
+  // `description` is the tool's contract, not the wire's guarantee: an absent one falls the
+  // title back to the command, and both slots then print the same line at two widths.
   return detail && detail.value === label.value ? { label } : { label, detail };
 }
 
 export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   const items: ToolMetaItem[] = [];
-  // Added/removed are deliberately NOT chips — a diffstat is one fact with two numbers and
-  // renders through `toolDiffStat`. Ratios and line spans stay as notation rather than
-  // catalog entries: they read the same in every language.
+  // Added/removed are NOT chips: a diffstat is one fact with two numbers. Ratios and line
+  // spans stay notation — they read the same in every language.
   if (tool.progress != null) {
     items.push({
       id: "progress",
@@ -100,8 +94,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
       tone: "negative",
     });
   }
-  // Sub-second calls omitted: the number only earns its place once it answers "why did
-  // that take so long".
+  // Sub-second calls omitted.
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
     items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
   }
@@ -111,8 +104,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   return items;
 }
 
-// Absent rather than zeroed when nothing was measured: the atom draws a dash to hold a
-// column, and a dash on a transcript row is a mark the reader has to stop and interpret.
+// Absent, not zeroed, when nothing was measured: a zero would draw a dash on the row.
 export function toolDiffStat(tool: ToolCall): { added: number; removed: number } | undefined {
   const added = tool.added ?? 0;
   const removed = tool.removed ?? 0;
@@ -121,17 +113,14 @@ export function toolDiffStat(tool: ToolCall): { added: number; removed: number }
   return { added, removed };
 }
 
-// The runtime's own answer, stamped on the Item — the same table the approval gate reads,
-// so the row's weight and the gate's decision cannot disagree. A presentation-side list
-// would duplicate protocol policy and go stale.
+// The runtime's own answer, the same table the approval gate reads, so the row's weight and
+// the gate's decision cannot disagree.
 export function isReadOnlyTool(tool: ToolCall): boolean {
   return tool.safetyClass === "safe";
 }
 
-// Constant on purpose: an invocation stays on the work-narrative plane regardless of safety
-// class or outcome, and only material results earn a surface inside the disclosed body.
-// Keeping the boundary here stops new tools and lifecycle states from reintroducing a
-// dashboard-like stack of tinted cards.
+// Constant on purpose: an invocation stays on the work-narrative plane whatever its safety
+// class or outcome.
 export function toolActivityShell(_tool: ToolCall): ActivityShell {
   return "line";
 }
@@ -140,9 +129,9 @@ export function toolGroupNeedsAttention(tools: readonly ToolCall[]): boolean {
   return tools.some((tool) => tool.status === "running" || tool.status === "err");
 }
 
-// The runtime's own safety classes plus the two reads worth telling apart, so a tool added
-// or renamed on the backend lands in the right family with no table here to update. Order
-// is FIXED, not by count: a row that reorders as counts change must be re-read every time.
+// Derived from the runtime's safety classes, so a tool added on the backend lands in the
+// right family with no table here. Order is FIXED, not by count: a row that reorders as
+// counts change has to be re-read every time.
 const ACTIVITY_FAMILIES = ["read", "search", "lookup", "write", "run", "fetch"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];

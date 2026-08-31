@@ -1,13 +1,6 @@
-// The four scalars below are the whole answer to "what am I looking at", and they live in
-// router search params so browser history contains the complete location.
-//
-// THE OWNERSHIP RULE, because getting it wrong is how a URL becomes a mirror: the location
-// owns where you ARE, stores own what you KEPT. A transition may READ memory to seed the
-// location it navigates to; nothing writes memory back into the location behind the user's
-// back, and nothing keeps a second copy of these four.
-//
-// A port rather than a direct router import, so tests and visual fixtures can install an
-// in-memory navigator instead of standing up a router they have no other use for.
+// OWNERSHIP RULE: the location owns where you ARE, stores own what you KEPT. A transition
+// may read memory to seed a navigation; nothing writes memory back into the location, and
+// nothing keeps a second copy of these four scalars.
 
 import { createSingletonPort } from "./ports/singletonPort";
 
@@ -33,20 +26,17 @@ export type LocationPatch = Partial<AppLocation>;
 
 export interface Navigator {
   get(): AppLocation;
-  /**
-   * Reactive read. Select ONE field: the selected value is compared by identity,
-   * so returning the whole location re-renders on every navigation.
-   */
+  /** Select ONE field: the result is compared by identity, so returning the whole location
+   *  re-renders on every navigation. */
   use<T>(select: (location: AppLocation) => T): T;
   subscribe(listener: (location: AppLocation, previous: AppLocation) => void): () => void;
   /**
    * Omitted fields keep their value; `null` clears one. `replace` is for corrections that
-   * were never a place the user went, such as seeding the last session on a cold start.
+   * were never a place the user went.
    *
-   * Do NOT wrap this in `startTransition` expecting the render to be deferred: React
-   * de-opts a transition to a SYNCHRONOUS render when the update arrives through
-   * `useSyncExternalStore`, which is how both the location and the transcript reach a
-   * component. Nothing is deferred and the extra render is spent for nothing.
+   * Do NOT wrap in `startTransition`: React de-opts a transition to a SYNCHRONOUS render
+   * when the update arrives through `useSyncExternalStore`, which is how the location and
+   * the transcript both reach a component. Nothing defers and the extra render is wasted.
    */
   go(patch: LocationPatch, options?: { replace?: boolean }): void;
   back(): void;

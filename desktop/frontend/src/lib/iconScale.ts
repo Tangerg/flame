@@ -1,19 +1,14 @@
-// Sizes derive from the type base, so a glyph beside a label grows when the label does.
-//
-// Weight is NOT derived here. Reicon draws most of its outlines as filled geometry rather
-// than stroked paths, so there is no stroke-width to compensate with — the artwork carries
-// its own optical weight and scales with the box.
+// Sizes derive from the type base. Weight is NOT: reicon draws filled geometry, not stroked
+// paths, so there is no stroke-width to compensate with.
 
 import { normalizeUiFontSize } from "./typography";
 
-/** `sm` is the default: a glyph beside body text. */
 export type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 export const ICON_SIZES: readonly IconSize[] = ["xs", "sm", "md", "lg", "xl"];
 
-// Offsets from the type base, in px. `xl` is the only multiplier: display glyphs
-// (empty states, avatars) scale with the whole surface rather than tracking a
-// label two steps away.
+// Offsets from the type base, in px. `xl` is the only multiplier: display glyphs scale with
+// the surface rather than tracking a label.
 const OFFSETS: Readonly<Record<Exclude<IconSize, "xl">, number>> = {
   xs: -2,
   sm: 0,
