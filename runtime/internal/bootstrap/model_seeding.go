@@ -37,8 +37,8 @@ func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 		}
 	}
 	patch := provider.Patch{}
-	if cfg.APIKey != "" {
-		apiKey, keyErr := provider.NewAPIKey(cfg.APIKey)
+	if rawAPIKey, present := cfg.APIKey.FileValue(); present {
+		apiKey, keyErr := provider.NewAPIKey(rawAPIKey)
 		if keyErr != nil {
 			return keyErr
 		}

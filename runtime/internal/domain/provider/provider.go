@@ -37,6 +37,13 @@ func NewAPIKey(value string) (APIKey, error) {
 
 func (k APIKey) Present() bool { return k.value != "" }
 
+// Format makes every fmt verb a redaction boundary, including recursive %+v
+// and %#v formatting of Credential or Provider. Reveal remains the only API
+// that can expose the secret to an explicit consumer.
+func (k APIKey) Format(state fmt.State, _ rune) {
+	_, _ = state.Write([]byte("[REDACTED]"))
+}
+
 // Reveal is an explicit sensitive-data boundary. Callers must not log or
 // project its result.
 func (k APIKey) Reveal() string { return k.value }
@@ -112,6 +119,14 @@ type Credential struct {
 	source KeySource
 }
 
+func (c Credential) Format(state fmt.State, _ rune) {
+	value := "<absent>"
+	if c.Configured() {
+		value = "[REDACTED]"
+	}
+	_, _ = state.Write([]byte(value))
+}
+
 func StoredCredential(key APIKey) Credential {
 	if !key.Present() {
 		return Credential{}
@@ -146,6 +161,16 @@ type Provider struct {
 	id         modelref.ProviderIdentity
 	credential Credential
 	baseURL    BaseURL
+}
+
+func (p Provider) Format(state fmt.State, _ rune) {
+	_, _ = fmt.Fprintf(
+		state,
+		"Provider{id:%q, credential:%v, baseURL:%q}",
+		p.ID(),
+		p.credential,
+		p.baseURL.String(),
+	)
 }
 
 func New(id string) (Provider, error) {
@@ -193,6 +218,19 @@ const (
 type Change[T any] struct {
 	kind  changeKind
 	value T
+}
+
+func (c Change[T]) Format(state fmt.State, _ rune) {
+	label := "invalid"
+	switch c.kind {
+	case changePreserve:
+		label = "preserve"
+	case changeSet:
+		label = "set"
+	case changeClear:
+		label = "clear"
+	}
+	_, _ = fmt.Fprintf(state, "Change{%s}", label)
 }
 
 func Preserve[T any]() Change[T] { return Change[T]{} }

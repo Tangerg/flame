@@ -1,5 +1,56 @@
 package config
 
+import "fmt"
+
+type apiKeySource uint8
+
+const (
+	apiKeyFromFile apiKeySource = iota + 1
+	apiKeyFromEnvironment
+)
+
+// APIKeyInput keeps credential material inseparable from the process source
+// that supplied it. A file key may seed durable provider configuration; an
+// environment key is process-scoped and must remain an in-memory overlay.
+// The zero value is the explicit absence of a credential.
+type APIKeyInput struct {
+	value  string
+	source apiKeySource
+}
+
+func FileAPIKey(value string) APIKeyInput {
+	if value == "" {
+		return APIKeyInput{}
+	}
+	return APIKeyInput{value: value, source: apiKeyFromFile}
+}
+
+func EnvironmentAPIKey(value string) APIKeyInput {
+	if value == "" {
+		return APIKeyInput{}
+	}
+	return APIKeyInput{value: value, source: apiKeyFromEnvironment}
+}
+
+func (k APIKeyInput) Present() bool { return k.value != "" }
+
+// Format makes every fmt verb a redaction boundary, including recursive %+v
+// and %#v formatting of Settings. Credential material is only available via
+// the two source-specific accessors below.
+func (k APIKeyInput) Format(state fmt.State, _ rune) {
+	_, _ = state.Write([]byte("[REDACTED]"))
+}
+
+// FileValue exposes a credential only to the durable configuration boundary.
+func (k APIKeyInput) FileValue() (string, bool) {
+	return k.value, k.Present() && k.source == apiKeyFromFile
+}
+
+// EnvironmentValue exposes a credential only to the process overlay boundary.
+func (k APIKeyInput) EnvironmentValue() (string, bool) {
+	return k.value, k.Present() && k.source == apiKeyFromEnvironment
+}
+
 // Server holds the runtime HTTP transport settings.
 type Server struct {
 	Listen         string
@@ -64,7 +115,7 @@ type A2AAgent struct {
 type Settings struct {
 	Provider string
 	Model    string
-	APIKey   string
+	APIKey   APIKeyInput
 
 	// BaseURL optionally overrides the provider's default API endpoint —
 	// every adapter accepts one (native openai/anthropic via a request

@@ -2,11 +2,37 @@ package provider
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
+
+func TestCredentialFormattingNeverRevealsTheAPIKey(t *testing.T) {
+	const secret = "sk-format-must-not-escape"
+	key, err := NewAPIKey(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := New("openai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err = entry.Apply(Patch{APIKey: Set(key)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential, _ := entry.Credential()
+
+	for _, value := range []any{key, credential, entry, Set(key), Patch{APIKey: Set(key)}} {
+		for _, format := range []string{"%s", "%v", "%+v", "%#v", "%q"} {
+			if rendered := fmt.Sprintf(format, value); strings.Contains(rendered, secret) {
+				t.Fatalf("format %q of %T revealed credential material", format, value)
+			}
+		}
+	}
+}
 
 func TestProviderCredentialIsClosedAndStoredWinsEnvironmentFallback(t *testing.T) {
 	storedKey, err := NewAPIKey("sk-stored")

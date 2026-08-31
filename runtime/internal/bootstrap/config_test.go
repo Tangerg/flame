@@ -2,6 +2,8 @@ package bootstrap
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/config"
@@ -16,7 +18,7 @@ func TestResolveProviderConfigAllowsOptionalAPIKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.APIKey != "" || settings.Provider != "ollama" || settings.Model != "local-model" {
+	if settings.APIKey.Present() || settings.Provider != "ollama" || settings.Model != "local-model" {
 		t.Fatalf("settings = %+v", settings)
 	}
 	if _, err := resolveProviderConfig(config.Settings{Provider: "openai", Model: "gpt-5.6-sol"}); err == nil {
@@ -77,7 +79,7 @@ func TestSeedConfiguredProvider(t *testing.T) {
 		{
 			name:    "new provider is configured",
 			stored:  map[string]provider.Provider{},
-			cfg:     config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
+			cfg:     config.Settings{Provider: "anthropic", APIKey: config.FileAPIKey("sk-new"), BaseURL: "https://api"},
 			wantKey: "sk-new", wantBaseURL: "https://api",
 		},
 		{
@@ -85,7 +87,7 @@ func TestSeedConfiguredProvider(t *testing.T) {
 			stored: map[string]provider.Provider{
 				"anthropic": bootstrapProvider(t, "anthropic", "sk-stored", "https://stored"),
 			},
-			cfg:     config.Settings{Provider: "anthropic", APIKey: "sk-new", BaseURL: "https://api"},
+			cfg:     config.Settings{Provider: "anthropic", APIKey: config.FileAPIKey("sk-new"), BaseURL: "https://api"},
 			wantKey: "sk-stored", wantBaseURL: "https://stored",
 		},
 	}
@@ -130,13 +132,13 @@ func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T
 func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoint(t *testing.T) {
 	t.Setenv("OPENAI_COMPATIBLE_API_KEY", "sk-env")
 	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	registry, err := ProviderRegistry(inner)
+	registry, err := ProviderRegistry(inner, config.Settings{Provider: "openai-compatible", APIKey: config.EnvironmentAPIKey("sk-env")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := config.Settings{
 		Provider: "openai-compatible",
-		APIKey:   "sk-env",
+		APIKey:   config.EnvironmentAPIKey("sk-env"),
 		BaseURL:  "https://gateway.example.test",
 	}
 
@@ -158,8 +160,50 @@ func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoin
 	effectiveCredential, _ := effective.Credential()
 	effectiveKey, _ := effectiveCredential.APIKey()
 	effectiveSource, _ := effectiveCredential.Source()
-	if effectiveSource != provider.KeyEnvironment || effectiveKey.Reveal() != cfg.APIKey {
+	wantKey, _ := cfg.APIKey.EnvironmentValue()
+	if effectiveSource != provider.KeyEnvironment || effectiveKey.Reveal() != wantKey {
 		t.Fatalf("effective credential = (%q, %q)", effectiveKey.Reveal(), effectiveSource)
+	}
+}
+
+func TestGenericEnvironmentKeyNeverCrossesTheDurableProviderBoundary(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(directory, "config.yaml"),
+		[]byte("provider: anthropic\napiKey: sk-file\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_APIKEY", "sk-process")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+
+	settings, err := LoadConfig([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inner := &providerRegistry{stored: map[string]provider.Provider{}}
+	registry, err := ProviderRegistry(inner, settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+		t.Fatal(err)
+	}
+
+	if stored, found := inner.stored[settings.Provider]; found {
+		if _, configured := stored.Credential(); configured {
+			t.Fatal("generic environment credential was persisted")
+		}
+	}
+	effective, found, err := registry.Get(t.Context(), settings.Provider)
+	if err != nil || !found {
+		t.Fatalf("effective provider found=%t, err=%v", found, err)
+	}
+	credential, configured := effective.Credential()
+	source, hasSource := credential.Source()
+	if !configured || !hasSource || source != provider.KeyEnvironment {
+		t.Fatalf("effective credential configured=%t, source=(%q, %t)", configured, source, hasSource)
 	}
 }
 

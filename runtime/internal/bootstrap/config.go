@@ -39,17 +39,21 @@ func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
 	}
 	apiKeyEnvironmentVariable := profile.CredentialEnvironment()
 	if apiKey := os.Getenv(apiKeyEnvironmentVariable); apiKey != "" {
-		settings.APIKey = apiKey
+		settings.APIKey = config.EnvironmentAPIKey(apiKey)
 	}
-	if profile.RequiresAPIKey() && settings.APIKey == "" {
+	if profile.RequiresAPIKey() && !settings.APIKey.Present() {
 		return config.Settings{}, errors.New("config: apiKey is empty — set it in config/config.yaml or " + apiKeyEnvironmentVariable)
 	}
 	return settings, nil
 }
 
 // ProviderRegistry wraps the durable provider registry with env-key fallback.
-func ProviderRegistry(registry models.ProviderRegistry) (models.ProviderRegistry, error) {
-	return providerregistry.WithEnvironmentKeys(registry, llm.EnvKeys())
+func ProviderRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
+	environmentKeys := llm.EnvKeys()
+	if apiKey, present := settings.APIKey.EnvironmentValue(); present {
+		environmentKeys[settings.Provider] = apiKey
+	}
+	return providerregistry.WithEnvironmentKeys(registry, environmentKeys)
 }
 
 // MCPServers projects config-file MCP entries into the runtime registry model.

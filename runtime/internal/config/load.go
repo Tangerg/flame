@@ -66,9 +66,12 @@ func Load(configDirectories []string) (Settings, error) {
 
 	model := v.GetString("model")
 
-	// API key from yaml `apiKey` or FLAME_APIKEY. Provider-native environment
-	// fallback is resolved separately against the selected provider.
-	apiKey := v.GetString("apiKey")
+	// Viper applies FLAME_APIKEY over yaml `apiKey`; recover that source here so
+	// later composition cannot mistake a process-scoped secret for durable input.
+	apiKey := FileAPIKey(v.GetString("apiKey"))
+	if environmentKey := apiKeyEnvironment.Value(); environmentKey != "" {
+		apiKey = EnvironmentAPIKey(environmentKey)
+	}
 
 	servers, err := parseMCPServers(mcpServersEnvironment.Value())
 	if err != nil {

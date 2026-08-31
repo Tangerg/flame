@@ -103,7 +103,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 
-	providers, err := ProviderRegistry(stores.Providers)
+	providers, err := ProviderRegistry(stores.Providers, settings)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}

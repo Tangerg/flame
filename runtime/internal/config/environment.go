@@ -6,6 +6,7 @@ type environmentVariable string
 
 const (
 	environmentPrefix environmentVariable = "FLAME"
+	apiKeyEnvironment environmentVariable = "FLAME_APIKEY"
 
 	mcpServersEnvironment   environmentVariable = "FLAME_MCP_SERVERS"
 	a2aAgentsEnvironment    environmentVariable = "FLAME_A2A_AGENTS"

@@ -1,11 +1,24 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestAPIKeyInputFormattingNeverRevealsTheCredential(t *testing.T) {
+	const secret = "sk-config-must-not-escape"
+	for _, key := range []APIKeyInput{FileAPIKey(secret), EnvironmentAPIKey(secret)} {
+		settings := Settings{Provider: "anthropic", APIKey: key}
+		for _, format := range []string{"%s", "%v", "%+v", "%#v", "%q"} {
+			if rendered := fmt.Sprintf(format, settings); strings.Contains(rendered, secret) {
+				t.Fatalf("format %q revealed configuration credential material", format)
+			}
+		}
+	}
+}
 
 func TestLoadUsesOnlyExplicitAbsoluteSearchDirectories(t *testing.T) {
 	if _, err := Load([]string{"relative/config"}); err == nil {
