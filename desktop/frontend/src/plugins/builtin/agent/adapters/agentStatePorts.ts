@@ -8,7 +8,7 @@ import {
 } from "../application/session/sessionSelectionModel";
 import {
   configureAgentSessionStatePort,
-  type AgentSessionLifecycleSnapshot,
+  type AgentOpenSessions,
 } from "../application/ports/sessionState";
 import { configureAgentSessionViewPort } from "../application/ports/sessionView";
 import {
@@ -31,7 +31,7 @@ function activeSessionId(): string {
   return navigator().get().session;
 }
 
-function getLifecycleSnapshot(): AgentSessionLifecycleSnapshot {
+function getLifecycleSnapshot(): AgentOpenSessions {
   return {
     activeSessionId: activeSessionId(),
     openSessionIds: useAgentSessionStore.getState().openSessionIds,

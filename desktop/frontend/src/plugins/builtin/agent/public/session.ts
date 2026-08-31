@@ -9,7 +9,7 @@ export {
   useActiveSession,
   useActiveSessionWorkspace,
   useActiveSessionId,
-  type AgentSessionLifecycleSnapshot,
+  type AgentOpenSessions,
 } from "../application/session/activeSession";
 export {
   useReconcilePersistedAgentSessions,

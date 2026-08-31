@@ -1,14 +1,10 @@
 import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { InputImage } from "@/plugins/builtin/chat/composer/public/input";
 import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
-
-export interface MessageDraftImage {
-  mime: string;
-  data: string;
-}
 
 export interface MessageDraftContent {
   text: string;
-  images: MessageDraftImage[];
+  images: InputImage[];
 }
 
 export interface RegenerationPrompt extends MessageDraftContent {
@@ -41,7 +37,7 @@ export function regenerationPromptBefore(
   return null;
 }
 
-function messageImages(message: Message): MessageDraftImage[] {
+function messageImages(message: Message): InputImage[] {
   return message.blocks
     .filter(
       (block): block is Extract<Message["blocks"][number], { kind: "image" }> =>

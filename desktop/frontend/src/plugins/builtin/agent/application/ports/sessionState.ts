@@ -1,16 +1,15 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
-export interface AgentSessionLifecycleSnapshot {
-  activeSessionId: string;
-  openSessionIds: string[];
-}
+import type { AgentOpenSessions } from "../session/sessionSelectionModel";
+
+export type { AgentOpenSessions };
 
 export interface AgentSessionStatePort {
   useActiveSessionId(): string;
   getActiveSessionId(): string;
-  getLifecycleSnapshot(): AgentSessionLifecycleSnapshot;
+  getLifecycleSnapshot(): AgentOpenSessions;
   subscribeActiveSessionId(onChange: (sessionId: string) => void): () => void;
-  subscribeLifecycle(onChange: (snapshot: AgentSessionLifecycleSnapshot) => void): () => void;
+  subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
   /**
    * Go to a session: hold it open and make it the place the user is. Leaves any
    * promoted view behind — selecting a session means looking at that

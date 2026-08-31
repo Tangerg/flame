@@ -1,11 +1,11 @@
-import type { AgentSessionLifecycleSnapshot } from "@/plugins/builtin/agent/public/session";
+import type { AgentOpenSessions } from "@/plugins/builtin/agent/public/session";
 
 export type AgentSessionListener = (sessionId: string) => void;
-export type AgentSessionLifecycleListener = (state: AgentSessionLifecycleSnapshot) => void;
+export type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
 
 export interface WorkspaceSessionNavigationPorts {
   activeSessionId: () => string;
-  lifecycleSnapshot: () => AgentSessionLifecycleSnapshot;
+  lifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: AgentSessionListener) => () => void;
   subscribeLifecycle: (listener: AgentSessionLifecycleListener) => () => void;
   activateSessionScope: (sessionId: string) => void;
@@ -13,7 +13,7 @@ export interface WorkspaceSessionNavigationPorts {
 }
 
 export function syncWorkspaceSessionLifecycle(
-  state: AgentSessionLifecycleSnapshot,
+  state: AgentOpenSessions,
   ports: Pick<WorkspaceSessionNavigationPorts, "forgetSessionScopes">,
 ): void {
   ports.forgetSessionScopes(state.openSessionIds);

@@ -4,13 +4,13 @@
 // port surface, so declaring the requirement and using it are one act.
 
 import { service } from "dougong";
-import type { AgentSessionLifecycleSnapshot } from "./session";
+import type { AgentOpenSessions } from "./session";
 
 export interface AgentSessionPorts {
   activeSessionId: () => string;
-  lifecycleSnapshot: () => AgentSessionLifecycleSnapshot;
+  lifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: (sessionId: string) => void) => () => void;
-  subscribeLifecycle: (listener: (state: AgentSessionLifecycleSnapshot) => void) => () => void;
+  subscribeLifecycle: (listener: (state: AgentOpenSessions) => void) => () => void;
 }
 
 export const AGENT_SESSION_PORTS = service<AgentSessionPorts>("flame.agent.sessionPorts");
