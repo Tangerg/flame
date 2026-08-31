@@ -109,8 +109,6 @@ func New() *Runtime {
 	return runtime
 }
 
-var _ agent.Runtime = (*Runtime)(nil)
-
 func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err

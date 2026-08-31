@@ -25,7 +25,7 @@ import (
 )
 
 type postCommitDeleteRuntime struct {
-	agent.Runtime
+	Runtime
 	request agent.DeleteSession
 }
 
@@ -40,7 +40,7 @@ func (p *postCommitDeleteRuntime) DeleteSession(ctx context.Context, request age
 // executeCommand runs the CLI in memory and returns stdout, stderr and the command error.
 // Nothing here touches the process's own streams, which is what lets the tests
 // run in parallel and assert on exact output.
-func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string) (string, string, error) {
+func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (string, string, error) {
 	t.Helper()
 	if rt == nil {
 		rt = runtimefixture.New()
@@ -50,14 +50,14 @@ func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string
 
 func executeCommandWithRuntime(
 	t *testing.T,
-	runtime agent.Runtime,
+	runtime Runtime,
 	profile *runtimebinding.Profile,
 	stdin string,
 	args ...string,
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	dependencies := Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return runtime, profile, nil
 	}}
 	root := NewRoot(dependencies)
@@ -75,7 +75,7 @@ func instantRuntime() *runtimefixture.Runtime {
 	return rt
 }
 
-func firstSession(t *testing.T, rt agent.Runtime) string {
+func firstSession(t *testing.T, rt Runtime) string {
 	t.Helper()
 	sessions, err := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()})
 	if err != nil {
@@ -460,7 +460,7 @@ func TestOutputFormatCompletionFiltersCandidates(t *testing.T) {
 	}
 }
 
-type alwaysDisconnected struct{ agent.Runtime }
+type alwaysDisconnected struct{ Runtime }
 
 func (a alwaysDisconnected) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
 	stream, err := a.Runtime.StartRun(ctx, input)
@@ -706,7 +706,7 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	}
 	profile := commandRuntimeProfile(t)
 	profile.Features[runtimebinding.FeatureRelocate] = runtimebinding.Feature{}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return base, new(profile.Clone()), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
@@ -728,7 +728,7 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	}
 }
 
-func requireSessionUpdate(t *testing.T, runtime agent.Runtime, id string) {
+func requireSessionUpdate(t *testing.T, runtime Runtime, id string) {
 	t.Helper()
 	snapshot, err := runtime.GetSession(t.Context(), id)
 	if err != nil {
@@ -799,7 +799,7 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 	}
 }
 
-func requireSessionShow(t *testing.T, runtime agent.Runtime, id string) {
+func requireSessionShow(t *testing.T, runtime Runtime, id string) {
 	t.Helper()
 	shown, _, err := executeCommand(t, runtime, "", "sessions", "show", id)
 	if err != nil || !strings.Contains(shown, "The fixed sleep races the janitor") {
@@ -807,7 +807,7 @@ func requireSessionShow(t *testing.T, runtime agent.Runtime, id string) {
 	}
 }
 
-func requireSessionRename(t *testing.T, runtime agent.Runtime, id string) {
+func requireSessionRename(t *testing.T, runtime Runtime, id string) {
 	t.Helper()
 	snapshot, err := runtime.GetSession(t.Context(), id)
 	if err != nil {
@@ -819,7 +819,7 @@ func requireSessionRename(t *testing.T, runtime agent.Runtime, id string) {
 	}
 }
 
-func forkTestSession(t *testing.T, runtime agent.Runtime, id string) string {
+func forkTestSession(t *testing.T, runtime Runtime, id string) string {
 	t.Helper()
 	forked, _, err := executeCommand(t, runtime, "", "sessions", "fork", id, "--from-run", "run_demo_history", "--title", "Alternative")
 	if err != nil {
@@ -833,7 +833,7 @@ func forkTestSession(t *testing.T, runtime agent.Runtime, id string) string {
 	return forkID
 }
 
-func requireSessionDelete(t *testing.T, runtime agent.Runtime, id string) {
+func requireSessionDelete(t *testing.T, runtime Runtime, id string) {
 	t.Helper()
 	if _, _, err := executeCommand(t, runtime, "", "sessions", "delete", id); err == nil {
 		t.Fatal("sessions delete did not require confirmation")
@@ -857,7 +857,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 			return runtime, nil, nil
 		},
 		StateDirectory: stateDirectory,
@@ -976,7 +976,7 @@ func TestApprovalRuleCommandsInspectAndForget(t *testing.T) {
 	}
 }
 
-func createProjectApprovalRule(t *testing.T, runtime agent.Runtime, sessionID string) string {
+func createProjectApprovalRule(t *testing.T, runtime Runtime, sessionID string) string {
 	t.Helper()
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: sessionID, Message: agent.Message{Text: "remember this"},
@@ -1011,7 +1011,7 @@ func followApprovalInterrupt(t *testing.T, stream agent.SegmentStream) agent.App
 	return interrupted
 }
 
-func resumeProjectApproval(t *testing.T, runtime agent.Runtime, runID string, interrupted agent.Approval) agent.SegmentStream {
+func resumeProjectApproval(t *testing.T, runtime Runtime, runID string, interrupted agent.Approval) agent.SegmentStream {
 	t.Helper()
 	stream, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
 		RunID: runID, Answers: []agent.InterruptAnswer{{
@@ -1034,7 +1034,7 @@ func drainContinuation(t *testing.T, stream agent.SegmentStream) {
 	}
 }
 
-func onlyApprovalRule(t *testing.T, runtime agent.Runtime, sessionID string) agent.ApprovalRule {
+func onlyApprovalRule(t *testing.T, runtime Runtime, sessionID string) agent.ApprovalRule {
 	t.Helper()
 	rules, err := runtime.ListApprovalRules(t.Context(), sessionID)
 	if err != nil {
@@ -1046,7 +1046,7 @@ func onlyApprovalRule(t *testing.T, runtime agent.Runtime, sessionID string) age
 	return rules[0]
 }
 
-func requireApprovalList(t *testing.T, runtime agent.Runtime, sessionID string) {
+func requireApprovalList(t *testing.T, runtime Runtime, sessionID string) {
 	t.Helper()
 	out, _, err := executeCommand(t, runtime, "", "approvals", "ls", "--session", sessionID)
 	if err != nil || !strings.Contains(out, "edit") || !strings.Contains(out, "internal/store/cache_test.go") || !strings.Contains(out, "project") {
@@ -1068,7 +1068,7 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		resolved = true
 		return instantRuntime(), nil, nil
 	}})

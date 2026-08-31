@@ -44,7 +44,7 @@ type finishObservingRuntime struct {
 }
 
 type blockingFirstStartRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu             sync.Mutex
 	blocked        bool

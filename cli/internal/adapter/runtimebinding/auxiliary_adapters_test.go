@@ -37,7 +37,7 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 		Name: "inspect", Description: "inspect state", SafetyClass: protocol.SafetyClassSafe,
 		Parameters: map[string]any{"type": "object"},
 	}}), result: map[string]any{"ok": true}}
-	adapter := &diagnosticToolAdapter{runtime: &Connection{diagnosticTools: stub, meta: requestMeta("test")}}
+	adapter := &DiagnosticTools{runtime: &Connection{diagnosticTools: stub, meta: requestMeta("test")}}
 	tools, err := adapter.Tools(t.Context())
 	if err != nil || len(tools) != 1 || tools[0].Name != "inspect" {
 		t.Fatalf("Tools = (%+v, %v)", tools, err)
@@ -61,7 +61,7 @@ func TestDiagnosticToolAdapterRejectsUnaddressableOrUnsafeCatalogs(t *testing.T)
 		}),
 	} {
 		t.Run(name, func(t *testing.T) {
-			adapter := &diagnosticToolAdapter{runtime: &Connection{
+			adapter := &DiagnosticTools{runtime: &Connection{
 				diagnosticTools: &diagnosticToolBindingStub{t: t, page: page}, meta: requestMeta("test"),
 			}}
 			if _, err := adapter.Tools(t.Context()); err == nil {
@@ -96,7 +96,7 @@ func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
 			Name: "review", Body: "review $ARGUMENTS", Scope: protocol.RecipeScopeProject, Source: "/workspace/.flame/recipes/review.md",
 		}}),
 	}
-	adapter := &authoringContextAdapter{runtime: &Connection{authoringContext: stub, meta: requestMeta("test")}}
+	adapter := &AuthoringContext{runtime: &Connection{authoringContext: stub, meta: requestMeta("test")}}
 	documents, err := adapter.Documents(t.Context(), "/workspace")
 	if err != nil || len(documents) != 1 || documents[0].Scope != workspace.AuthoringDocumentProjectRoot {
 		t.Fatalf("Documents = (%+v, %v)", documents, err)
@@ -139,7 +139,7 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 		ProjectRoot: projectRoot, ProjectTrusted: false,
 		Hooks: []protocol.HookInfo{{Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: protocol.HookScopeProject, Source: filepath.Join(workspace, ".flame", "hooks.json")}},
 	}}
-	hookAdapter := &hookAdapter{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
+	hookAdapter := &Hooks{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
 	catalog, err := hookAdapter.Catalog(t.Context(), workspace)
 	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Active {
 		t.Fatalf("Catalog = (%+v, %v)", catalog, err)
@@ -149,7 +149,7 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 	}
 
 	feedbacks := &feedbackBindingStub{t: t}
-	feedbackAdapter := &feedbackAdapter{runtime: &Connection{feedback: feedbacks, meta: requestMeta("test")}}
+	feedbackAdapter := &Feedback{runtime: &Connection{feedback: feedbacks, meta: requestMeta("test")}}
 	signal := agent.FeedbackSignal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: agent.FeedbackPositive, Text: "useful"}
 	if err := feedbackAdapter.Record(t.Context(), signal); err != nil || feedbacks.recorded != signal {
 		t.Fatalf("Record = %v, recorded %+v", err, feedbacks.recorded)
@@ -159,7 +159,7 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 func TestHookAdapterRejectsCatalogForAnotherProject(t *testing.T) {
 	workspace := t.TempDir()
 	hooks := &hookBindingStub{t: t, workspace: workspace, result: &protocol.HooksListResult{ProjectRoot: t.TempDir()}}
-	adapter := &hookAdapter{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
+	adapter := &Hooks{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
 	_, err := adapter.Catalog(t.Context(), workspace)
 	requireRuntimeContractViolation(t, err)
 }

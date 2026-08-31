@@ -13,11 +13,9 @@ type feedbackBinding interface {
 	CreateFeedback(context.Context, protocol.FeedbackRequest, flameruntime.CommandOptions) error
 }
 
-type feedbackAdapter struct{ runtime *Connection }
+type Feedback struct{ runtime *Connection }
 
-var _ agent.FeedbackService = (*feedbackAdapter)(nil)
-
-func (f *feedbackAdapter) Record(ctx context.Context, signal agent.FeedbackSignal) error {
+func (f *Feedback) Record(ctx context.Context, signal agent.FeedbackSignal) error {
 	r := f.runtime
 	if err := signal.Validate(); err != nil {
 		return err

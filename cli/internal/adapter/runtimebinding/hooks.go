@@ -16,11 +16,9 @@ type hookBinding interface {
 	SetHookTrust(context.Context, protocol.SetHookTrustRequest, flameruntime.CommandOptions) error
 }
 
-type hookAdapter struct{ runtime *Connection }
+type Hooks struct{ runtime *Connection }
 
-var _ workspace.HookService = (*hookAdapter)(nil)
-
-func (h *hookAdapter) Catalog(ctx context.Context, workspacePath string) (workspace.HookCatalog, error) {
+func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.HookCatalog, error) {
 	r := h.runtime
 	workspacePath = strings.TrimSpace(workspacePath)
 	if workspacePath == "" {
@@ -74,7 +72,7 @@ func hookProjectRootContainsWorkspace(projectRoot, workspace string) bool {
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func (h *hookAdapter) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
+func (h *Hooks) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
 	r := h.runtime
 	projectRoot = strings.TrimSpace(projectRoot)
 	if projectRoot == "" {

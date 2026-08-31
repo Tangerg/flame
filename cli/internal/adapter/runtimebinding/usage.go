@@ -16,8 +16,6 @@ type usageBinding interface {
 	GetUsageSummary(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
-var _ agent.UsageService = (*Connection)(nil)
-
 func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.SessionUsageReport, error) {
 	if sessionID == "" {
 		return agent.SessionUsageReport{}, errors.New("session usage: session id is empty")

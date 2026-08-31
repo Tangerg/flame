@@ -268,44 +268,6 @@ func TestRuntimeBindingOwnsCommandReplayPolicyProjection(t *testing.T) {
 	}
 }
 
-func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
-	root := moduleRoot(t)
-	config := cliStructFieldTypes(t, filepath.Join(root, "internal", "delivery", "terminal", "run.go"), "Config")
-	appConfig := cliStructFieldTypes(t, filepath.Join(root, "internal", "delivery", "terminal", "application.go"), "appConfig")
-	ports := []struct{ public, private, typeName string }{
-		{public: "Runtime", private: "runtime", typeName: "agent.Runtime"},
-		{public: "Workspaces", private: "workspaces", typeName: "workspace.Service"},
-		{public: "Changes", private: "changes", typeName: "changefeed.Source"},
-		{public: "Transfers", private: "transfers", typeName: "session.TransferService"},
-		{public: "Usage", private: "usage", typeName: "agent.UsageService"},
-		{public: "ModelConfig", private: "modelConfig", typeName: "models.Service"},
-		{public: "Goals", private: "goals", typeName: "agent.GoalService"},
-		{public: "Skills", private: "skills", typeName: "workspace.SkillService"},
-		{public: "MCP", private: "mcp", typeName: "mcp.Service"},
-		{public: "Schedules", private: "schedules", typeName: "schedule.Service"},
-		{public: "AgentMemory", private: "agentMemory", typeName: "agent.MemoryService"},
-		{public: "Knowledge", private: "knowledge", typeName: "workspace.KnowledgeService"},
-		{public: "DiagnosticTools", private: "diagnosticTools", typeName: "workspace.DiagnosticToolService"},
-		{public: "AuthoringContext", private: "authoringContext", typeName: "workspace.AuthoringContextService"},
-		{public: "Hooks", private: "hooks", typeName: "workspace.HookService"},
-		{public: "Feedback", private: "feedback", typeName: "agent.FeedbackService"},
-	}
-	for _, port := range ports {
-		if got := config[port.public]; got != port.typeName {
-			t.Errorf("terminal.Config.%s type = %q, want %q", port.public, got, port.typeName)
-		}
-		if got := appConfig[port.private]; got != port.typeName {
-			t.Errorf("terminal.appConfig.%s type = %q, want %q", port.private, got, port.typeName)
-		}
-	}
-	if _, exists := config["Services"]; exists {
-		t.Fatal("terminal.Config restored a service locator")
-	}
-	if _, exists := appConfig["services"]; exists {
-		t.Fatal("terminal.appConfig restored a service locator")
-	}
-}
-
 func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
 	root := moduleRoot(t)
 	profilePath := filepath.Join(root, "internal", "adapter", "runtimebinding", "negotiated_profile.go")

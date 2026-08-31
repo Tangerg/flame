@@ -21,9 +21,21 @@ type Renderer interface {
 	Close() error
 }
 
+type SessionReader interface {
+	GetSession(context.Context, string) (agent.SessionSnapshot, error)
+}
+
+type RunLifecycle interface {
+	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
+	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
+	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
+	SteerRun(context.Context, agent.SteerRun) error
+	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+}
+
 type Runtime interface {
-	agent.RunLifecycle
-	agent.SessionReader
+	RunLifecycle
+	SessionReader
 }
 
 type Invocation struct {
@@ -129,7 +141,7 @@ type cancellationWatcher struct {
 
 func watchCancellation(
 	ctx context.Context,
-	runtime agent.RunLifecycle,
+	runtime RunLifecycle,
 	runID string,
 	replayPolicy commandreplay.Policy,
 ) *cancellationWatcher {
@@ -156,7 +168,7 @@ func (c *cancellationWatcher) Finish(cancelRun bool) error {
 
 func cancelAbandonedRun(
 	ctx context.Context,
-	runtime agent.RunLifecycle,
+	runtime RunLifecycle,
 	runID string,
 	replayPolicy commandreplay.Policy,
 ) error {

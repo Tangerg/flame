@@ -1,9 +1,8 @@
-// Package schedule defines the CLI-owned scheduled-run entity and its runtime
-// management port. Cron parsing and firing remain runtime responsibilities.
+// Package schedule defines the CLI-owned scheduled-run values. Cron parsing and
+// firing remain Runtime responsibilities.
 package schedule
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -293,14 +292,6 @@ func (r RunHandle) Validate() error {
 		return fmt.Errorf("schedule run handle: %w", err)
 	}
 	return nil
-}
-
-type Service interface {
-	Schedules(context.Context) ([]Schedule, error)
-	Create(context.Context, Candidate) (Schedule, error)
-	Update(context.Context, Patch) (Schedule, error)
-	Delete(context.Context, string) error
-	RunNow(context.Context, string) (RunHandle, error)
 }
 
 func validateInstructionsAndCron(instructions, cron string) error {

@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"path"
@@ -126,9 +125,4 @@ func (c HookCatalog) ValidateTrustAcknowledgement(projectRoot string, trusted bo
 		return fmt.Errorf("project hook trust is %t, want %t", c.ProjectTrusted, trusted)
 	}
 	return nil
-}
-
-type HookService interface {
-	Catalog(context.Context, string) (HookCatalog, error)
-	SetProjectTrust(context.Context, string, bool) error
 }

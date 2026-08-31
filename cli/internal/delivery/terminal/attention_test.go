@@ -64,7 +64,7 @@ func newAttentionTestHost(t *testing.T) *attentionTestHost {
 func (a *attentionTestHost) SetTitle(title string) { a.titles <- title }
 func (a *attentionTestHost) Notify(text string)    { a.notifications <- text }
 
-func runUIWithAttentionHost(t *testing.T, backend agent.Runtime) (*attentionTestHost, func()) {
+func runUIWithAttentionHost(t *testing.T, backend Runtime) (*attentionTestHost, func()) {
 	t.Helper()
 	host := newAttentionTestHost(t)
 	ctx, cancel := context.WithCancel(t.Context())

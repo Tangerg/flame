@@ -50,7 +50,7 @@ func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &knowledgeBindingStub{t: t, updated: now, listed: test.listed, nilList: test.nilList}
-			adapter := &knowledgeAdapter{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
+			adapter := &Knowledge{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
 			if _, err := adapter.Entries(t.Context(), "/workspace"); err == nil {
 				t.Fatal("unaddressable catalog was accepted")
 			} else {
@@ -102,7 +102,7 @@ func (k *knowledgeBindingStub) assertMeta(meta protocol.RequestMeta) {
 
 func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 	stub := &knowledgeBindingStub{t: t, updated: time.Now()}
-	adapter := &knowledgeAdapter{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
+	adapter := &Knowledge{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
 	entries, err := adapter.Entries(t.Context(), "/workspace")
 	if err != nil || len(entries) != 1 || entries[0].UpdatedAt == nil {
 		t.Fatalf("Entries = (%+v, %v)", entries, err)
@@ -133,7 +133,7 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 
 func TestKnowledgeAdapterDoesNotAcceptAnUpdateBeforeTheAuthoritativeReadConverges(t *testing.T) {
 	stub := &knowledgeBindingStub{t: t, updated: time.Now(), dropUpdate: true}
-	adapter := &knowledgeAdapter{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
+	adapter := &Knowledge{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
 	target, err := workspace.NewKnowledgeTarget(workspace.KnowledgeProjectRoot, "/workspace")
 	if err != nil {
 		t.Fatal(err)

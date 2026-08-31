@@ -41,7 +41,7 @@ type runtimeSubscriptionRegistration struct {
 
 func installChangedSessionProjection(
 	t *testing.T,
-	runtime agent.Runtime,
+	runtime Runtime,
 	source *runtimeChangeSourceStub,
 	sessionID string,
 	title string,
@@ -69,7 +69,7 @@ func installChangedSessionProjection(
 }
 
 type mutableRuntimeCatalog struct {
-	agent.Runtime
+	Runtime
 
 	mu                 sync.Mutex
 	models             []agent.Model
@@ -79,21 +79,21 @@ type mutableRuntimeCatalog struct {
 }
 
 type blockingApprovalModeRuntime struct {
-	agent.Runtime
+	Runtime
 	started  chan agent.ApprovalMode
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 type blockingSessionDeleteRuntime struct {
-	agent.Runtime
+	Runtime
 	started  chan agent.DeleteSession
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 type blockingSessionCatalogRuntime struct {
-	agent.Runtime
+	Runtime
 	calls           atomic.Uint64
 	refreshStarted  chan struct{}
 	releaseRefresh  chan struct{}
@@ -1235,7 +1235,7 @@ type snapshotCountingRuntime struct {
 }
 
 type blockedResumeRuntime struct {
-	agent.Runtime
+	Runtime
 	started chan agent.ResumeRun
 	release chan struct{}
 	calls   atomic.Int32
@@ -1272,11 +1272,11 @@ func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (ag
 	return s.Runtime.GetSession(ctx, id)
 }
 
-func runUIWithRuntimeChanges(t *testing.T, runtime agent.Runtime, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
+func runUIWithRuntimeChanges(t *testing.T, runtime Runtime, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
 	return runUIWithRuntimeChangeServices(t, runtime, nil, source, sessionID)
 }
 
-func runUIWithRuntimeChangeServices(t *testing.T, runtime agent.Runtime, workspaces workspace.Service, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
+func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Workspaces, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
 	t.Helper()
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())

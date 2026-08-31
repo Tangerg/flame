@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal/sideload"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
@@ -32,7 +31,7 @@ func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
 
 func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd.Dependencies {
 	return cmd.Dependencies{
-		OpenRuntime: func(ctx context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(ctx context.Context) (cmd.Runtime, *runtimebinding.Profile, error) {
 			connection, err := owner.Connection(ctx)
 			if err != nil {
 				return nil, nil, err
@@ -57,10 +56,10 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	cfg := terminal.Config{
 		Runtime: connection, RuntimeProfile: &profile,
 		Workspaces: connection, Changes: connection, Usage: connection, ModelConfig: connection,
-		DiagnosticTools:  connection.DiagnosticToolService(),
-		AuthoringContext: connection.AuthoringContextService(), Hooks: connection.HookService(),
-		Feedback: connection.FeedbackService(), AgentMemory: connection.AgentMemoryService(),
-		Knowledge:     connection.KnowledgeService(),
+		DiagnosticTools:  connection.DiagnosticTools(),
+		AuthoringContext: connection.AuthoringContext(), Hooks: connection.Hooks(),
+		Feedback: connection.Feedback(), AgentMemory: connection.AgentMemory(),
+		Knowledge:     connection.Knowledge(),
 		ClientVersion: cmd.Version(), SessionID: request.SessionID, Workspace: request.Workspace,
 		InitialPrompt: request.InitialPrompt, Settings: &configured,
 		PluginSources:  []extensions.Source{sideload.New(configured.Plugins.Directories)},

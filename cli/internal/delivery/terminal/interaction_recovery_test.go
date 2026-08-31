@@ -14,7 +14,7 @@ import (
 )
 
 type invalidEventAfterInterruptRuntime struct {
-	agent.Runtime
+	Runtime
 	release <-chan struct{}
 }
 

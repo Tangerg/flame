@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,11 +69,6 @@ func (r DiagnosticToolResult) Validate() error {
 
 func (r DiagnosticToolResult) Clone() DiagnosticToolResult {
 	return DiagnosticToolResult{JSON: append(json.RawMessage(nil), r.JSON...)}
-}
-
-type DiagnosticToolService interface {
-	Tools(context.Context) ([]DiagnosticToolDescriptor, error)
-	Invoke(context.Context, DiagnosticToolInvocation) (DiagnosticToolResult, error)
 }
 
 // ParseDiagnosticToolArguments owns the direct-invocation JSON-object invariant without

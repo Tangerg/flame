@@ -3,7 +3,6 @@
 package agent
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -68,8 +67,4 @@ func (s FeedbackSignal) Validate() error {
 		return fmt.Errorf("feedback signal: %w", err)
 	}
 	return nil
-}
-
-type FeedbackService interface {
-	Record(context.Context, FeedbackSignal) error
 }

@@ -79,7 +79,7 @@ func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) 
 	return agent.Session{}, errors.New("unexpected import")
 }
 
-func runUIWithCopyHost(t *testing.T, backend agent.Runtime, workspace string) (*copyTestHost, func()) {
+func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTestHost, func()) {
 	t.Helper()
 	host := &copyTestHost{Host: programtest.New(t, programtest.Config{Width: 96, Height: 28}), copied: make(chan string, 8)}
 	ctx, cancel := context.WithCancel(t.Context())

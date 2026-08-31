@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"iter"
 	"slices"
 )
@@ -19,70 +18,6 @@ type SegmentStream struct {
 	UserItemID  string
 	HeadEventID string
 	Events      EventStream
-}
-
-// Runtime is the complete capability assembled at the application boundary.
-// Use cases depend on the narrower consumer-owned interfaces below.
-type Runtime interface {
-	SessionCatalog
-	SessionReader
-	SessionWriter
-	RunCatalog
-	RunLifecycle
-	ModelCatalog
-	ApprovalCatalog
-}
-
-type SessionCatalog interface {
-	ListSessions(context.Context, SessionQuery) (SessionPage, error)
-}
-
-// SessionReader returns a cold, authoritative projection assembled from the
-// runtime's session, item, run, plan, and interrupt reads.
-type SessionReader interface {
-	GetSession(context.Context, string) (SessionSnapshot, error)
-}
-
-type SessionWriter interface {
-	CreateSession(context.Context, CreateSession) (Session, error)
-	UpdateSession(context.Context, UpdateSession) (Session, error)
-	ForkSession(context.Context, ForkSession) (Session, error)
-	RollbackSession(context.Context, RollbackSession) (RollbackResult, error)
-	DeleteSession(context.Context, DeleteSession) error
-}
-
-// RunCatalog exposes durable run projections independently from a session
-// transcript. It is the read side used by operational commands and recovery
-// diagnostics that already hold a run identity.
-type RunCatalog interface {
-	GetRun(context.Context, string) (Run, error)
-	ListRuns(context.Context, RunQuery) (RunPage, error)
-}
-
-// RunLifecycle opens and rebinds segment streams. StartRun and ResumeRun return
-// the stream created by the same atomic runtime operation; consumers never have
-// to race a second subscription against the first event.
-type RunLifecycle interface {
-	StartRun(context.Context, StartRun) (SegmentStream, error)
-	ResumeRun(context.Context, ResumeRun) (SegmentStream, error)
-	SubscribeRun(context.Context, SubscribeRun) (SegmentStream, error)
-	SteerRun(context.Context, SteerRun) error
-	CancelRun(context.Context, CancelRun) (RunCancellation, error)
-}
-
-// ModelCatalog exposes provider-qualified models. Model IDs are not assumed to
-// be globally unique.
-type ModelCatalog interface {
-	ListModels(context.Context) ([]Model, error)
-}
-
-// ApprovalCatalog manages the runtime-wide approval stance and the remembered
-// rules visible from a particular session.
-type ApprovalCatalog interface {
-	GetApprovalMode(context.Context) (ApprovalMode, error)
-	SetApprovalMode(context.Context, ApprovalMode) (ApprovalMode, error)
-	ListApprovalRules(context.Context, string) ([]ApprovalRule, error)
-	DeleteApprovalRule(context.Context, string) error
 }
 
 type StartRun struct {

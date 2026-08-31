@@ -817,7 +817,7 @@ func TestFlameProcess(t *testing.T) {
 	}
 	stateDirectory := filepath.Join(flameHome, "cli")
 	dependencies := cmd.Dependencies{
-		OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(context.Context) (cmd.Runtime, *runtimebinding.Profile, error) {
 			announce()
 			return runtime, nil, nil
 		},

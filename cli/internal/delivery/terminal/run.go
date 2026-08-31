@@ -29,29 +29,27 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 // Config describes one terminal application instance.
 type Config struct {
-	Runtime          agent.Runtime
+	Runtime          Runtime
 	RuntimeProfile   *runtimebinding.Profile
-	Workspaces       workspace.Service
+	Workspaces       Workspaces
 	Changes          changefeed.Source
 	Transfers        session.TransferService
-	Usage            agent.UsageService
+	Usage            Usage
 	ModelConfig      models.Service
-	Goals            agent.GoalService
-	Skills           workspace.SkillService
+	Goals            Goals
+	Skills           Skills
 	MCP              mcp.Service
-	Schedules        schedule.Service
-	AgentMemory      agent.MemoryService
-	Knowledge        workspace.KnowledgeService
-	DiagnosticTools  workspace.DiagnosticToolService
-	AuthoringContext workspace.AuthoringContextService
-	Hooks            workspace.HookService
-	Feedback         agent.FeedbackService
+	Schedules        Schedules
+	AgentMemory      AgentMemory
+	Knowledge        Knowledge
+	DiagnosticTools  DiagnosticTools
+	AuthoringContext AuthoringContext
+	Hooks            Hooks
+	Feedback         Feedback
 	ClientVersion    string
 	SessionID        string
 	Workspace        string
@@ -122,8 +120,17 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	if active != nil {
 		err = errors.Join(err, active.Close(ctx))
 	}
+	if errors.Is(err, term.ErrNotTerminal) {
+		return terminalUnavailableError{cause: err}
+	}
 	return err
 }
+
+type terminalUnavailableError struct{ cause error }
+
+func (e terminalUnavailableError) Error() string      { return e.cause.Error() }
+func (e terminalUnavailableError) Unwrap() error      { return e.cause }
+func (terminalUnavailableError) TerminalUnavailable() {}
 
 type preparedSession struct {
 	opened           agent.SessionSnapshot
@@ -193,7 +200,7 @@ func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Confi
 
 func recoverSessionCommands(
 	ctx context.Context,
-	runtime agent.Runtime,
+	runtime Runtime,
 	authoring *workbench.Store,
 	profile *runtimebinding.Profile,
 ) error {

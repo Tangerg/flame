@@ -120,7 +120,7 @@ type hookServiceStub struct {
 }
 
 type blockingHookTrustService struct {
-	workspace.HookService
+	Hooks
 	started  chan bool
 	release  chan struct{}
 	canceled chan struct{}
@@ -130,7 +130,7 @@ func (b *blockingHookTrustService) SetProjectTrust(ctx context.Context, projectR
 	b.started <- trusted
 	select {
 	case <-b.release:
-		return b.HookService.SetProjectTrust(ctx, projectRoot, trusted)
+		return b.Hooks.SetProjectTrust(ctx, projectRoot, trusted)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
@@ -228,7 +228,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := &hookServiceStub{changed: make(chan bool, 1)}
 	hooks := &blockingHookTrustService{
-		HookService: base, started: make(chan bool, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		Hooks: base, started: make(chan bool, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(hooks.release) })
 	t.Cleanup(release)
@@ -276,7 +276,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 type feedbackServiceStub struct{ recorded chan agent.FeedbackSignal }
 
 type blockingFeedbackService struct {
-	agent.FeedbackService
+	Feedback
 	started  chan agent.FeedbackSignal
 	release  chan struct{}
 	canceled chan struct{}
@@ -286,7 +286,7 @@ func (b *blockingFeedbackService) Record(ctx context.Context, signal agent.Feedb
 	b.started <- signal
 	select {
 	case <-b.release:
-		return b.FeedbackService.Record(ctx, signal)
+		return b.Feedback.Record(ctx, signal)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
@@ -316,7 +316,7 @@ func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	backend := runtimefixture.New()
 	base := &feedbackServiceStub{recorded: make(chan agent.FeedbackSignal, 1)}
 	feedbacks := &blockingFeedbackService{
-		FeedbackService: base, started: make(chan agent.FeedbackSignal, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		Feedback: base, started: make(chan agent.FeedbackSignal, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(feedbacks.release) })
 	t.Cleanup(release)

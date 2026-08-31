@@ -16,11 +16,9 @@ type authoringContextBinding interface {
 	ListRecipes(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error)
 }
 
-type authoringContextAdapter struct{ runtime *Connection }
+type AuthoringContext struct{ runtime *Connection }
 
-var _ workspace.AuthoringContextService = (*authoringContextAdapter)(nil)
-
-func (a *authoringContextAdapter) Documents(ctx context.Context, workspacePath string) ([]workspace.AuthoringDocument, error) {
+func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) ([]workspace.AuthoringDocument, error) {
 	r := a.runtime
 	query, err := authoringWorkspaceQuery(workspacePath)
 	if err != nil {
@@ -41,7 +39,7 @@ func (a *authoringContextAdapter) Documents(ctx context.Context, workspacePath s
 	})
 }
 
-func (a *authoringContextAdapter) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {
+func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {
 	r := a.runtime
 	query, err := authoringWorkspaceQuery(workspacePath)
 	if err != nil {

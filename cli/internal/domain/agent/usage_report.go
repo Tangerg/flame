@@ -2,7 +2,6 @@
 package agent
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -109,9 +108,4 @@ func validateBuckets(context string, buckets []UsageBucket) error {
 		seen[bucket.Key] = struct{}{}
 	}
 	return nil
-}
-
-type UsageService interface {
-	SessionUsage(context.Context, string) (SessionUsageReport, error)
-	Summary(context.Context, UsageSummaryPeriod) (UsageSummary, error)
 }

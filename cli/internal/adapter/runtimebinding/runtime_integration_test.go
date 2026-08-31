@@ -144,7 +144,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := runtime.KnowledgeService().Document(t.Context(), target)
+	document, err := runtime.Knowledge().Document(t.Context(), target)
 	if err != nil || document.Content != "# External knowledge\n" {
 		t.Fatalf("knowledge after external invalidation = (%+v, %v)", document, err)
 	}
@@ -161,7 +161,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		t.Fatalf("write external hooks: %v", writeFileErr)
 	}
 	awaitRuntimeInvalidation(t, events, streamErrors, changefeed.HooksChanged)
-	catalog, err := runtime.HookService().Catalog(t.Context(), workspace)
+	catalog, err := runtime.Hooks().Catalog(t.Context(), workspace)
 	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Inject != "external context" {
 		t.Fatalf("hooks after external invalidation = (%+v, %v)", catalog, err)
 	}
@@ -192,10 +192,10 @@ func awaitRuntimeInvalidation(
 
 func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, workspace string) {
 	t.Helper()
-	diagnosticTools := runtime.DiagnosticToolService()
-	authoringContext := runtime.AuthoringContextService()
-	hooks := runtime.HookService()
-	feedbackService := runtime.FeedbackService()
+	diagnosticTools := runtime.DiagnosticTools()
+	authoringContext := runtime.AuthoringContext()
+	hooks := runtime.Hooks()
+	feedbackService := runtime.Feedback()
 	if diagnosticTools == nil || authoringContext == nil || hooks == nil || feedbackService == nil {
 		t.Fatal("stable auxiliary adapters were not constructed")
 	}
@@ -221,8 +221,8 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 
 func requireContextManagement(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	agentMemory := runtime.AgentMemoryService()
-	knowledgeService := runtime.KnowledgeService()
+	agentMemory := runtime.AgentMemory()
+	knowledgeService := runtime.Knowledge()
 	if agentMemory == nil || knowledgeService == nil {
 		t.Fatal("context adapters were not advertised")
 	}
@@ -656,9 +656,9 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if secondProfile.RuntimeTopics[0] == "mutated" {
 		t.Fatal("owner leaked mutable profile state")
 	}
-	if first.AgentMemoryService() == nil || first.KnowledgeService() == nil ||
-		first.DiagnosticToolService() == nil || first.AuthoringContextService() == nil ||
-		first.HookService() == nil || first.FeedbackService() == nil {
+	if first.AgentMemory() == nil || first.Knowledge() == nil ||
+		first.DiagnosticTools() == nil || first.AuthoringContext() == nil ||
+		first.Hooks() == nil || first.Feedback() == nil {
 		t.Fatal("connection adapters were not composed")
 	}
 	if err := owner.Close(); err != nil {

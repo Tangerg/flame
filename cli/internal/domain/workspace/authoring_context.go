@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -107,9 +106,4 @@ func expandRecipeTemplate(template, allArguments string, positional []string) st
 		offset++
 	}
 	return expanded.String()
-}
-
-type AuthoringContextService interface {
-	Documents(context.Context, string) ([]AuthoringDocument, error)
-	Recipes(context.Context, string) ([]AuthoringRecipe, error)
 }

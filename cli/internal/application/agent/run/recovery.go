@@ -12,7 +12,7 @@ const sessionAttachAttempts = 8
 
 // RecoverySource is the narrow runtime surface needed for cold recovery.
 type RecoverySource interface {
-	agent.SessionReader
+	SessionReader
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 }
 
@@ -139,7 +139,7 @@ func stateWithoutStream(snapshot agent.SessionSnapshot) Recovery {
 	return Recovery{Snapshot: snapshot, Run: run}
 }
 
-func read(ctx context.Context, source agent.SessionReader, sessionID, runID string) (agent.SessionSnapshot, agent.Run, error) {
+func read(ctx context.Context, source SessionReader, sessionID, runID string) (agent.SessionSnapshot, agent.Run, error) {
 	snapshot, err := readSnapshot(ctx, source, sessionID)
 	if err != nil {
 		return agent.SessionSnapshot{}, agent.Run{}, err
@@ -151,7 +151,7 @@ func read(ctx context.Context, source agent.SessionReader, sessionID, runID stri
 	return snapshot, run, nil
 }
 
-func readSnapshot(ctx context.Context, source agent.SessionReader, sessionID string) (agent.SessionSnapshot, error) {
+func readSnapshot(ctx context.Context, source SessionReader, sessionID string) (agent.SessionSnapshot, error) {
 	snapshot, err := source.GetSession(ctx, sessionID)
 	if err != nil {
 		return agent.SessionSnapshot{}, err

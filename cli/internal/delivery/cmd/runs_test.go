@@ -32,7 +32,7 @@ func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T)
 }
 
 type recordingRunCatalog struct {
-	agent.Runtime
+	Runtime
 	queries []agent.RunQuery
 }
 
@@ -108,7 +108,7 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 
 func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 	var opened bool
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		opened = true
 		return instantRuntime(), nil, nil
 	}}
@@ -131,7 +131,7 @@ func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsListCommand(provider)
@@ -218,12 +218,12 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 }
 
 type childCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 	result agent.RunCancellation
 }
 
 type uncertainRunCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu       sync.Mutex
 	attempts []agent.CancelRun
@@ -323,7 +323,7 @@ func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsShowCommand(provider)

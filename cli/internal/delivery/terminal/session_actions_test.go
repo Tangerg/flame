@@ -24,7 +24,7 @@ import (
 )
 
 type postCommitSessionDeleteRuntime struct {
-	agent.Runtime
+	Runtime
 	mu      sync.Mutex
 	request agent.DeleteSession
 	calls   int

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
@@ -56,7 +55,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
-			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
+			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 				return runtimefixture.New(), new(profile.Clone()), nil
 			}})
 			root.SetOut(&output)

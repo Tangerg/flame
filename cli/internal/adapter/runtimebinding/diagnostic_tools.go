@@ -16,11 +16,9 @@ type diagnosticToolBinding interface {
 	InvokeTool(context.Context, protocol.InvokeToolRequest, flameruntime.CommandOptions) (any, error)
 }
 
-type diagnosticToolAdapter struct{ runtime *Connection }
+type DiagnosticTools struct{ runtime *Connection }
 
-var _ workspace.DiagnosticToolService = (*diagnosticToolAdapter)(nil)
-
-func (d *diagnosticToolAdapter) Tools(ctx context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
+func (d *DiagnosticTools) Tools(ctx context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
 	r := d.runtime
 	page, err := r.diagnosticTools.ListTools(ctx, r.callOptions())
 	if err != nil {
@@ -53,7 +51,7 @@ func (d *diagnosticToolAdapter) Tools(ctx context.Context) ([]workspace.Diagnost
 	return tools, nil
 }
 
-func (d *diagnosticToolAdapter) Invoke(ctx context.Context, invocation workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error) {
+func (d *DiagnosticTools) Invoke(ctx context.Context, invocation workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error) {
 	r := d.runtime
 	if err := invocation.Validate(); err != nil {
 		return workspace.DiagnosticToolResult{}, err

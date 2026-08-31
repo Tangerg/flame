@@ -21,11 +21,9 @@ type agentMemoryBinding interface {
 	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 }
 
-type agentMemoryAdapter struct{ runtime *Connection }
+type AgentMemory struct{ runtime *Connection }
 
-var _ agent.MemoryService = (*agentMemoryAdapter)(nil)
-
-func (a *agentMemoryAdapter) Items(ctx context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
+func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
@@ -61,7 +59,7 @@ func (a *agentMemoryAdapter) Items(ctx context.Context, target agent.MemoryTarge
 	return items, nil
 }
 
-func (a *agentMemoryAdapter) Review(ctx context.Context, id string, decision agent.MemoryReviewDecision) error {
+func (a *AgentMemory) Review(ctx context.Context, id string, decision agent.MemoryReviewDecision) error {
 	r := a.runtime
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -79,7 +77,7 @@ func (a *agentMemoryAdapter) Review(ctx context.Context, id string, decision age
 	}, options))
 }
 
-func (a *agentMemoryAdapter) Update(ctx context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
+func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
 	r := a.runtime
 	if err := patch.Validate(); err != nil {
 		return agent.MemoryItem{}, err
@@ -106,7 +104,7 @@ func (a *agentMemoryAdapter) Update(ctx context.Context, patch agent.MemoryPatch
 	return item, nil
 }
 
-func (a *agentMemoryAdapter) Delete(ctx context.Context, id string) error {
+func (a *AgentMemory) Delete(ctx context.Context, id string) error {
 	r := a.runtime
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -119,7 +117,7 @@ func (a *agentMemoryAdapter) Delete(ctx context.Context, id string) error {
 	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, protocol.AgentMemoryItemRequest{ID: id}, options))
 }
 
-func (a *agentMemoryAdapter) Add(ctx context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
+func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
@@ -148,7 +146,7 @@ func (a *agentMemoryAdapter) Add(ctx context.Context, target agent.MemoryTarget,
 	return item, nil
 }
 
-func (a *agentMemoryAdapter) resolveTarget(ctx context.Context, target agent.MemoryTarget) (agent.MemoryTarget, error) {
+func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarget) (agent.MemoryTarget, error) {
 	if err := target.Validate(); err != nil {
 		return agent.MemoryTarget{}, err
 	}

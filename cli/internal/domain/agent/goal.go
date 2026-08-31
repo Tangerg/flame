@@ -3,7 +3,6 @@
 package agent
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -437,13 +436,4 @@ func (s StartGoal) ValidateResult(result Goal) error {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	return nil
-}
-
-type GoalService interface {
-	GetGoal(context.Context, string) (Goal, bool, error)
-	StartGoal(context.Context, StartGoal) (Goal, error)
-	UpdateGoal(context.Context, UpdateGoal) (Goal, error)
-	ClearGoal(context.Context, string) error
-	StopGoal(context.Context, string) (Goal, error)
-	ResumeGoal(context.Context, string) (Goal, error)
 }

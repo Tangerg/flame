@@ -140,11 +140,11 @@ func TestConnectionProfileControlsOptionalAdapterAvailability(t *testing.T) {
 		!profile.Supports(FeatureSchedules) || profile.Supports(FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Features)
 	}
-	if runtime.AgentMemoryService() == nil || runtime.KnowledgeService() == nil {
+	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
 		t.Fatal("advertised context adapters were not exposed")
 	}
 	runtime.profile.Features[FeatureAgentMemory] = Feature{}
-	if runtime.AgentMemoryService() != nil {
+	if runtime.AgentMemory() != nil {
 		t.Fatal("unadvertised agent memory exposed an adapter")
 	}
 }

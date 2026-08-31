@@ -68,7 +68,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &agentMemoryBindingStub{t: t, now: now, listed: test.listed, nilList: test.nilList}
-			adapter := &agentMemoryAdapter{runtime: &Connection{
+			adapter := &AgentMemory{runtime: &Connection{
 				agentMemory: stub,
 				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 					Ref:          protocol.WorkspaceRef{Path: "/workspace"},
@@ -150,7 +150,7 @@ func (a *agentMemoryBindingStub) assertCommand(options flameruntime.CommandOptio
 
 func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t, now: time.Now()}
-	adapter := &agentMemoryAdapter{runtime: &Connection{
+	adapter := &AgentMemory{runtime: &Connection{
 		agentMemory: stub,
 		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
@@ -227,12 +227,12 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	tests := []struct {
 		name   string
 		stub   *agentMemoryBindingStub
-		invoke func(*agentMemoryAdapter) error
+		invoke func(*AgentMemory) error
 	}{
 		{
 			name: "update content",
 			stub: &agentMemoryBindingStub{updateResult: &wrongUpdate},
-			invoke: func(adapter *agentMemoryAdapter) error {
+			invoke: func(adapter *AgentMemory) error {
 				content, pinned := "edited", true
 				_, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: "mem_1", Content: &content, Pinned: &pinned})
 				return err
@@ -241,7 +241,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 		{
 			name: "add content",
 			stub: &agentMemoryBindingStub{addResult: &wrongAdd},
-			invoke: func(adapter *agentMemoryAdapter) error {
+			invoke: func(adapter *AgentMemory) error {
 				target, err := agent.NewMemoryTarget(agent.MemoryUser, "")
 				if err != nil {
 					return err
@@ -255,7 +255,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			test.stub.t, test.stub.now = t, now
-			adapter := &agentMemoryAdapter{runtime: &Connection{agentMemory: test.stub, meta: requestMeta("test")}}
+			adapter := &AgentMemory{runtime: &Connection{agentMemory: test.stub, meta: requestMeta("test")}}
 			requireRuntimeContractViolation(t, test.invoke(adapter))
 		})
 	}

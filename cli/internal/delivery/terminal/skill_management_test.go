@@ -47,7 +47,7 @@ type skillDecision struct {
 }
 
 type blockingSkillArchiveService struct {
-	workspace.SkillService
+	Skills
 	started   chan string
 	release   chan struct{}
 	canceled  chan struct{}
@@ -58,7 +58,7 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 	b.started <- name
 	select {
 	case <-b.release:
-		err := b.SkillService.Archive(ctx, name)
+		err := b.Skills.Archive(ctx, name)
 		b.committed <- err
 		return err
 	case <-ctx.Done():
@@ -264,7 +264,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 	backend := runtimefixture.New()
 	base := newSkillServiceStub()
 	service := &blockingSkillArchiveService{
-		SkillService: base, started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		Skills: base, started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 		committed: make(chan error, 1),
 	}
 	release := sync.OnceFunc(func() { close(service.release) })

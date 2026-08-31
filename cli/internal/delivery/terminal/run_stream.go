@@ -190,7 +190,7 @@ func (a *app) requeueDefinitivelyRefusedStart(input agent.StartRun, failure erro
 
 func openStartRun(
 	ctx context.Context,
-	runtime agent.RunLifecycle,
+	runtime runworkflow.RunLifecycle,
 	command agent.StartRun,
 	policy retry.ReconnectPolicy,
 	admit mutation.Admission,
@@ -904,7 +904,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 
 func openStartRunWithBackoff(
 	ctx context.Context,
-	runtime agent.RunLifecycle,
+	runtime runworkflow.RunLifecycle,
 	command agent.StartRun,
 	replay commandreplay.Guard,
 	profile *runtimebinding.Profile,

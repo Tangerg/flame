@@ -21,8 +21,6 @@ type skillBinding interface {
 	RejectSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
 }
 
-var _ workspace.SkillService = (*Connection)(nil)
-
 func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]workspace.DiscoveredSkill, error) {
 	query, err := skillWorkspaceQuery(workspacePath)
 	if err != nil {

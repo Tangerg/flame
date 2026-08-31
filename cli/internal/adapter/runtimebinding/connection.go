@@ -19,7 +19,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 const clientName = "flame-cli"
@@ -94,8 +93,6 @@ type Connection struct {
 	profile          Profile
 }
 
-var _ agent.Runtime = (*Connection)(nil)
-var _ workspace.Service = (*Connection)(nil)
 var _ changefeed.Source = (*Connection)(nil)
 
 // Open starts and validates one in-process Runtime connection. A connection
@@ -350,34 +347,34 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 // Profile returns the immutable discovery projection for this connection.
 func (r *Connection) Profile() Profile { return r.profile.Clone() }
 
-func (r *Connection) AgentMemoryService() agent.MemoryService {
+func (r *Connection) AgentMemory() *AgentMemory {
 	if !r.supportsFeature(FeatureAgentMemory) {
 		return nil
 	}
-	return &agentMemoryAdapter{runtime: r}
+	return &AgentMemory{runtime: r}
 }
 
-func (r *Connection) KnowledgeService() workspace.KnowledgeService {
+func (r *Connection) Knowledge() *Knowledge {
 	if !r.supportsFeature(FeatureKnowledge) {
 		return nil
 	}
-	return &knowledgeAdapter{runtime: r}
+	return &Knowledge{runtime: r}
 }
 
-func (r *Connection) DiagnosticToolService() workspace.DiagnosticToolService {
-	return &diagnosticToolAdapter{runtime: r}
+func (r *Connection) DiagnosticTools() *DiagnosticTools {
+	return &DiagnosticTools{runtime: r}
 }
 
-func (r *Connection) AuthoringContextService() workspace.AuthoringContextService {
-	return &authoringContextAdapter{runtime: r}
+func (r *Connection) AuthoringContext() *AuthoringContext {
+	return &AuthoringContext{runtime: r}
 }
 
-func (r *Connection) HookService() workspace.HookService {
-	return &hookAdapter{runtime: r}
+func (r *Connection) Hooks() *Hooks {
+	return &Hooks{runtime: r}
 }
 
-func (r *Connection) FeedbackService() agent.FeedbackService {
-	return &feedbackAdapter{runtime: r}
+func (r *Connection) Feedback() *Feedback {
+	return &Feedback{runtime: r}
 }
 
 func (r *Connection) supportsFeature(name FeatureName) bool {

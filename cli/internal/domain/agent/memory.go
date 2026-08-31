@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -218,12 +217,4 @@ func (t MemoryTarget) ValidateAddResult(content string, result MemoryItem) error
 		return fmt.Errorf("add agent memory: %w", err)
 	}
 	return nil
-}
-
-type MemoryService interface {
-	Items(context.Context, MemoryTarget) ([]MemoryItem, error)
-	Review(context.Context, string, MemoryReviewDecision) error
-	Update(context.Context, MemoryPatch) (MemoryItem, error)
-	Delete(context.Context, string) error
-	Add(context.Context, MemoryTarget, string) (MemoryItem, error)
 }

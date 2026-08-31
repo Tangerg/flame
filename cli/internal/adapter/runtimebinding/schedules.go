@@ -29,8 +29,6 @@ type scheduleBinding interface {
 	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error)
 }
 
-var _ schedule.Service = (*Connection)(nil)
-
 func (r *Connection) Schedules(ctx context.Context) ([]schedule.Schedule, error) {
 	var schedules []schedule.Schedule
 	seenIDs := make(map[string]struct{})

@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// ErrVersionControlUnavailable means the workspace has no version-control
+// projection. It is distinct from an empty change set and from an adapter
+// failure.
+var ErrVersionControlUnavailable = errors.New("version control unavailable")
+
 type Availability string
 
 const (

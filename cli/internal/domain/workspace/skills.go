@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -200,14 +199,4 @@ func validateProposalIdentity(name, revision string, scope SkillScope) error {
 		return fmt.Errorf("skill proposal revision: %w", err)
 	}
 	return scope.Validate()
-}
-
-type SkillService interface {
-	Discover(context.Context, string) ([]DiscoveredSkill, error)
-	Managed(context.Context) ([]ManagedSkill, error)
-	Proposals(context.Context, string) ([]SkillProposal, error)
-	Archive(context.Context, string) error
-	Restore(context.Context, string) error
-	Approve(context.Context, SkillProposalReference) error
-	Reject(context.Context, SkillProposalReference) error
 }

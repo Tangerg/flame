@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -109,10 +108,4 @@ func (u KnowledgeUpdate) Validate() error {
 		return errors.New("knowledge update expected revision is empty")
 	}
 	return nil
-}
-
-type KnowledgeService interface {
-	Entries(context.Context, string) ([]KnowledgeEntry, error)
-	Document(context.Context, KnowledgeTarget) (KnowledgeEntry, error)
-	Save(context.Context, KnowledgeUpdate) (KnowledgeEntry, error)
 }

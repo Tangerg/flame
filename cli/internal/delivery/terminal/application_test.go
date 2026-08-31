@@ -47,21 +47,21 @@ func showsPlain(t *testing.T, host *programtest.Host, expected string) {
 	})
 }
 
-func runUIWith(t *testing.T, backend agent.Runtime, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIWith(t *testing.T, backend Runtime, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
 	return runUIWithWorkspace(t, backend, "/tmp/flame-cli-test", plugins...)
 }
 
-func runUIWithWorkspace(t *testing.T, backend agent.Runtime, workspace string, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIWithWorkspace(t *testing.T, backend Runtime, workspace string, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	return runUIConfigured(t, backend, workspace, nil, plugins...)
 }
 
-func runUIWithSettings(t *testing.T, backend agent.Runtime, configured settings.Config) (*programtest.Host, func()) {
+func runUIWithSettings(t *testing.T, backend Runtime, configured settings.Config) (*programtest.Host, func()) {
 	t.Helper()
 	return runUIConfigured(t, backend, "/tmp/flame-cli-test", &configured)
 }
 
-func runUIConfigured(t *testing.T, backend agent.Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIConfigured(t *testing.T, backend Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
 	return runUIFromConfig(t, Config{Runtime: backend, Workspace: workspace, Plugins: plugins, Settings: configured})
 }
@@ -89,7 +89,7 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 	return host, stop
 }
 
-func runUIForSession(t *testing.T, backend agent.Runtime, sessionID string) (*programtest.Host, func()) {
+func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*programtest.Host, func()) {
 	t.Helper()
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
@@ -111,7 +111,7 @@ func runUIForSession(t *testing.T, backend agent.Runtime, sessionID string) (*pr
 	return host, stop
 }
 
-func runUIWithState(t *testing.T, backend agent.Runtime, workspace, sessionID, stateDirectory string) (*programtest.Host, func()) {
+func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDirectory string) (*programtest.Host, func()) {
 	t.Helper()
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
@@ -136,14 +136,14 @@ func runUIWithState(t *testing.T, backend agent.Runtime, workspace, sessionID, s
 
 const terminalTestReplayNamespace = "terminal-test-runtime"
 
-func runUIWithReplay(t *testing.T, backend agent.Runtime) (*programtest.Host, func()) {
+func runUIWithReplay(t *testing.T, backend Runtime) (*programtest.Host, func()) {
 	t.Helper()
 	return runUIWithReplayState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", "")
 }
 
 func runUIWithReplayState(
 	t *testing.T,
-	backend agent.Runtime,
+	backend Runtime,
 	workspace string,
 	sessionID string,
 	stateDirectory string,
@@ -233,7 +233,7 @@ type refusingFirstResumeRuntime struct {
 }
 
 type blockingRefusingResumeRuntime struct {
-	agent.Runtime
+	Runtime
 
 	started chan agent.ResumeRun
 	release chan struct{}
@@ -241,7 +241,7 @@ type blockingRefusingResumeRuntime struct {
 }
 
 type blockingAcceptedResumeRuntime struct {
-	agent.Runtime
+	Runtime
 
 	started  chan agent.ResumeRun
 	release  chan struct{}
@@ -250,7 +250,7 @@ type blockingAcceptedResumeRuntime struct {
 }
 
 type invalidAcceptedResumeRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu            sync.Mutex
 	resumes       []agent.ResumeRun
@@ -258,7 +258,7 @@ type invalidAcceptedResumeRuntime struct {
 }
 
 type corruptingAcceptedResumeRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu                  sync.Mutex
 	cancellations       []agent.CancelRun
@@ -310,7 +310,7 @@ func (e *expiringUncommittedResumeRuntime) resumeAttempts() []agent.ResumeRun {
 }
 
 type blockingSessionChangeRuntime struct {
-	agent.Runtime
+	Runtime
 
 	creates       atomic.Int32
 	blockCreateAt int32
@@ -333,7 +333,7 @@ type transientForkProjectionRuntime struct {
 }
 
 type flakyCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 
 	attempts  atomic.Int32
 	remaining atomic.Int32
@@ -341,7 +341,7 @@ type flakyCancellationRuntime struct {
 }
 
 type uncertainCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu                  sync.Mutex
 	attempts            []agent.CancelRun
@@ -350,13 +350,13 @@ type uncertainCancellationRuntime struct {
 }
 
 type refusingCloseCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 	canceled chan agent.CancelRun
 	err      error
 }
 
 type blockingCloseCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu       sync.Mutex
 	attempts []agent.CancelRun
@@ -365,7 +365,7 @@ type blockingCloseCancellationRuntime struct {
 }
 
 type invalidCloseCancellationRuntime struct {
-	agent.Runtime
+	Runtime
 }
 
 func (i *invalidCloseCancellationRuntime) CancelRun(
@@ -412,7 +412,7 @@ func (b *blockingCloseCancellationRuntime) cancelAttempts() []agent.CancelRun {
 }
 
 type mismatchedSessionUpdateRuntime struct {
-	agent.Runtime
+	Runtime
 	returned agent.Session
 }
 
@@ -2950,7 +2950,7 @@ func TestSessionSwitchRebindsWorkspaceAttachmentsAndDropsOldChips(t *testing.T) 
 	stop()
 }
 
-func firstRuntimeSession(t *testing.T, runtime agent.SessionCatalog) string {
+func firstRuntimeSession(t *testing.T, runtime Runtime) string {
 	t.Helper()
 	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: catalogPageSize(t, 1)})
 	if err != nil || len(page.Items) != 1 {

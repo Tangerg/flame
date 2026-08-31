@@ -96,7 +96,7 @@ func (h *heldCancellationResultRuntime) CancelRun(
 }
 
 type activeConflictRuntime struct {
-	agent.Runtime
+	Runtime
 	attempted chan agent.StartRun
 	conflict  agent.CommandID
 }
@@ -110,7 +110,7 @@ type refusingFirstCommandRuntime struct {
 }
 
 type invalidAcceptedStartRuntime struct {
-	agent.Runtime
+	Runtime
 
 	mu            sync.Mutex
 	starts        []agent.StartRun

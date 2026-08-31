@@ -169,7 +169,7 @@ func (c *changeSourceStub) Subscribe(ctx context.Context, _ changefeed.Subscript
 	}, nil
 }
 
-func runUIWithWorkspaceBackend(t *testing.T, service workspace.Service, source changefeed.Source) (*programtest.Host, func()) {
+func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefeed.Source) (*programtest.Host, func()) {
 	t.Helper()
 	backend := runtimefixture.New()
 	backend.Instant = true
@@ -618,5 +618,5 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	}
 }
 
-var _ workspace.Service = (*workspaceServiceStub)(nil)
+var _ Workspaces = (*workspaceServiceStub)(nil)
 var _ changefeed.Source = (*changeSourceStub)(nil)

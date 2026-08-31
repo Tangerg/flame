@@ -29,8 +29,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 const (
@@ -63,22 +61,22 @@ const (
 type app struct {
 	ctx              context.Context
 	loop             *program.Runtime
-	runtime          agent.Runtime
-	workspaces       workspace.Service
+	runtime          Runtime
+	workspaces       Workspaces
 	changes          changefeed.Source
 	transfers        session.TransferService
-	usage            agent.UsageService
+	usage            Usage
 	modelConfig      models.Service
-	goals            agent.GoalService
-	skills           workspace.SkillService
+	goals            Goals
+	skills           Skills
 	mcp              mcp.Service
-	schedules        schedule.Service
-	agentMemory      agent.MemoryService
-	knowledge        workspace.KnowledgeService
-	diagnosticTools  workspace.DiagnosticToolService
-	authoringContext workspace.AuthoringContextService
-	hooks            workspace.HookService
-	feedback         agent.FeedbackService
+	schedules        Schedules
+	agentMemory      AgentMemory
+	knowledge        Knowledge
+	diagnosticTools  DiagnosticTools
+	authoringContext AuthoringContext
+	hooks            Hooks
+	feedback         Feedback
 	runtimeProfile   *runtimebinding.Profile
 	artifacts        sessionartifact.Store
 	session          agent.Session
@@ -185,22 +183,22 @@ type app struct {
 
 type appConfig struct {
 	context          context.Context
-	runtime          agent.Runtime
-	workspaces       workspace.Service
+	runtime          Runtime
+	workspaces       Workspaces
 	changes          changefeed.Source
 	transfers        session.TransferService
-	usage            agent.UsageService
+	usage            Usage
 	modelConfig      models.Service
-	goals            agent.GoalService
-	skills           workspace.SkillService
+	goals            Goals
+	skills           Skills
 	mcp              mcp.Service
-	schedules        schedule.Service
-	agentMemory      agent.MemoryService
-	knowledge        workspace.KnowledgeService
-	diagnosticTools  workspace.DiagnosticToolService
-	authoringContext workspace.AuthoringContextService
-	hooks            workspace.HookService
-	feedback         agent.FeedbackService
+	schedules        Schedules
+	agentMemory      AgentMemory
+	knowledge        Knowledge
+	diagnosticTools  DiagnosticTools
+	authoringContext AuthoringContext
+	hooks            Hooks
+	feedback         Feedback
 	runtimeProfile   *runtimebinding.Profile
 	clientVersion    string
 	snapshot         agent.SessionSnapshot

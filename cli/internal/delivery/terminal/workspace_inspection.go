@@ -282,7 +282,7 @@ func workspaceChangesDocument(path string, changes []workspace.Change) readerDoc
 func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
 	workspacePath := a.session.Workspace.Path
-	var repository workspace.ChangeReader
+	var repository WorkspaceChanges
 	if a.runtimeSupports(runtimebinding.FeatureGit) {
 		repository = a.workspaces
 	}
@@ -343,7 +343,7 @@ func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 
 type runtimeChangeMonitor struct {
 	workspace          string
-	repository         workspace.ChangeReader
+	repository         WorkspaceChanges
 	source             changefeed.Source
 	recovery           retry.Backoff
 	watchFiles         bool

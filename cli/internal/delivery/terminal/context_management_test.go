@@ -25,14 +25,14 @@ type agentMemoryServiceStub struct {
 }
 
 type blockingAgentMemoryReviewService struct {
-	agent.MemoryService
+	AgentMemory
 	started  chan agent.MemoryReviewDecision
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 type blockingAgentMemoryUpdateService struct {
-	agent.MemoryService
+	AgentMemory
 	started  chan agent.MemoryPatch
 	release  chan struct{}
 	canceled chan struct{}
@@ -45,7 +45,7 @@ func (b *blockingAgentMemoryUpdateService) Update(
 	b.started <- patch
 	select {
 	case <-b.release:
-		return b.MemoryService.Update(ctx, patch)
+		return b.AgentMemory.Update(ctx, patch)
 	case <-ctx.Done():
 		close(b.canceled)
 		return agent.MemoryItem{}, context.Cause(ctx)
@@ -60,7 +60,7 @@ func (b *blockingAgentMemoryReviewService) Review(
 	b.started <- decision
 	select {
 	case <-b.release:
-		return b.MemoryService.Review(ctx, id, decision)
+		return b.AgentMemory.Review(ctx, id, decision)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
@@ -327,7 +327,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryReviewService{
-		MemoryService: base, started: make(chan agent.MemoryReviewDecision, 1),
+		AgentMemory: base, started: make(chan agent.MemoryReviewDecision, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -376,7 +376,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryUpdateService{
-		MemoryService: base, started: make(chan agent.MemoryPatch, 1),
+		AgentMemory: base, started: make(chan agent.MemoryPatch, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })

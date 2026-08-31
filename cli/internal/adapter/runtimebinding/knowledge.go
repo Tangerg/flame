@@ -16,11 +16,9 @@ type knowledgeBinding interface {
 	UpdateKnowledge(context.Context, protocol.UpdateKnowledgeRequest, flameruntime.CommandOptions) (*protocol.KnowledgeEntry, error)
 }
 
-type knowledgeAdapter struct{ runtime *Connection }
+type Knowledge struct{ runtime *Connection }
 
-var _ workspace.KnowledgeService = (*knowledgeAdapter)(nil)
-
-func (k *knowledgeAdapter) Entries(ctx context.Context, workspacePath string) ([]workspace.KnowledgeEntry, error) {
+func (k *Knowledge) Entries(ctx context.Context, workspacePath string) ([]workspace.KnowledgeEntry, error) {
 	r := k.runtime
 	workspacePath = strings.TrimSpace(workspacePath)
 	if workspacePath == "" {
@@ -52,7 +50,7 @@ func (k *knowledgeAdapter) Entries(ctx context.Context, workspacePath string) ([
 	return entries, nil
 }
 
-func (k *knowledgeAdapter) Document(ctx context.Context, target workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error) {
+func (k *Knowledge) Document(ctx context.Context, target workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error) {
 	r := k.runtime
 	if err := target.Validate(); err != nil {
 		return workspace.KnowledgeEntry{}, err
@@ -78,7 +76,7 @@ func (k *knowledgeAdapter) Document(ctx context.Context, target workspace.Knowle
 	return entry, nil
 }
 
-func (k *knowledgeAdapter) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
+func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
 	r := k.runtime
 	if err := update.Validate(); err != nil {
 		return workspace.KnowledgeEntry{}, err

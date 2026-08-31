@@ -56,8 +56,6 @@ func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-var _ agent.GoalService = (*Connection)(nil)
-
 func (r *Connection) GetGoal(ctx context.Context, sessionID string) (agent.Goal, bool, error) {
 	if sessionID == "" {
 		return agent.Goal{}, false, errors.New("get goal: session id is empty")
