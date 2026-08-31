@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
@@ -18,7 +19,7 @@ import (
 
 func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 	a.dialogs.modelPicker = newPicker(theme, glyphs, "search models",
-		func(model agent.Model) string {
+		func(model protocol.Model) string {
 			label := model.DisplayName
 			if label == "" {
 				label = model.ID
@@ -28,8 +29,8 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 			return label
 		},
-		func(model agent.Model) string { return model.Provider + "/" + model.ID },
-		func(model agent.Model) {
+		func(model protocol.Model) string { return model.Provider + "/" + model.ID },
+		func(model protocol.Model) {
 			if !a.dialogs.modelDialog.Open() {
 				return
 			}
@@ -62,7 +63,7 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 	a.dialogs.approvalModePicker.cancel = a.dialogs.approvalModeDialog.Dismiss
 }
 
-func (a *app) selectSessionModel(model agent.Model) {
+func (a *app) selectSessionModel(model protocol.Model) {
 	sessionID := a.session.current.ID
 	a.runSessionChange("selecting model",
 		func(ctx context.Context) (agent.Session, error) {
@@ -96,14 +97,10 @@ func (a *app) ChooseModel() {
 
 func (a *app) loadModelPicker(reset bool) {
 	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) ([]agent.Model, error) { return a.runtime.ListModels(ctx) },
-		func(models []agent.Model, err error) {
+		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
+		func(models []protocol.Model, err error) {
 			if err != nil {
 				a.message("could not load models: " + err.Error())
-				return
-			}
-			if err := agent.ValidateModels(models); err != nil {
-				a.message(fmt.Sprintf("runtime models: %v", err))
 				return
 			}
 			if reset {

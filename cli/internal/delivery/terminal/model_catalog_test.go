@@ -4,32 +4,29 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 	t.Parallel()
 	contextWindow, maxInput, maxOutput := int64(200_000), int64(180_000), int64(20_000)
-	limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
+	limits := &protocol.ModelTokenLimits{
 		ContextWindow: &contextWindow, MaxInputTokens: &maxInput, MaxOutputTokens: &maxOutput,
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 
-	document := modelCatalogDocument([]agent.Model{{
+	document := modelCatalogDocument([]protocol.Model{{
 		ID: "reasoner", Provider: "provider", DisplayName: "Reasoner", Deprecated: true,
 		TokenLimits:     limits,
 		KnowledgeCutoff: "2026-01-31",
-		Capabilities: &agent.ModelCapabilities{
+		Capabilities: &protocol.ModelCapabilities{
 			Reasoning: true, ReasoningLevels: []string{"low", "high"}, ReasoningDefaultLevel: "high",
-			Multimodal: true, InputModalities: []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage},
-			OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true, StructuredOutput: true,
+			Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage},
+			OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true,
 		},
-		Pricing: &agent.ModelPricing{
+		Pricing: &protocol.ModelPricing{
 			InputUSDPerMillionTokens: 0.2, OutputUSDPerMillionTokens: 0.8,
 			CacheReadUSDPerMillionTokens: 0.02, CacheWriteUSDPerMillionTokens: 0.1,
 		},

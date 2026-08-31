@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -72,7 +73,7 @@ type mutableRuntimeCatalog struct {
 	Runtime
 
 	mu                 sync.Mutex
-	models             []agent.Model
+	models             []protocol.Model
 	rules              []agent.ApprovalRule
 	deleted            chan string
 	ignoreRuleDeletion bool
@@ -157,7 +158,7 @@ func (b *blockingApprovalModeRuntime) SetApprovalMode(
 	}
 }
 
-func (m *mutableRuntimeCatalog) ListModels(context.Context) ([]agent.Model, error) {
+func (m *mutableRuntimeCatalog) ListModels(context.Context) ([]protocol.Model, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return slices.Clone(m.models), nil
@@ -181,7 +182,7 @@ func (m *mutableRuntimeCatalog) DeleteApprovalRule(_ context.Context, id string)
 	return nil
 }
 
-func (m *mutableRuntimeCatalog) setModels(models ...agent.Model) {
+func (m *mutableRuntimeCatalog) setModels(models ...protocol.Model) {
 	m.mu.Lock()
 	m.models = slices.Clone(models)
 	m.mu.Unlock()
@@ -196,7 +197,7 @@ func (m *mutableRuntimeCatalog) setRules(rules ...agent.ApprovalRule) {
 func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model picker", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
-		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
+		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
@@ -205,7 +206,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Press(input.Enter)
 		host.Shows(t, "Old model")
 
-		catalog.setModels(agent.Model{ID: "new", Provider: "mock", DisplayName: "New model"})
+		catalog.setModels(protocol.Model{ID: "new", Provider: "mock", DisplayName: "New model"})
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed delivery")
 		host.Shows(t, "New model")
@@ -215,7 +216,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("model reader", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
-		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
+		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
@@ -224,7 +225,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Press(input.Enter)
 		host.Shows(t, "Old catalog model")
 
-		catalog.setModels(agent.Model{ID: "new", Provider: "mock", DisplayName: "New catalog model"})
+		catalog.setModels(protocol.Model{ID: "new", Provider: "mock", DisplayName: "New catalog model"})
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed delivery")
 		host.Shows(t, "New catalog model")

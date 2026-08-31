@@ -64,9 +64,9 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 	walkProduction(t, root, func(relative, path string) {
 		for _, imported := range imports(t, path) {
 			switch {
-			case importsPath(imported, runtimePath):
+			case importsPath(imported, runtimePath) && imported != runtimePath+"/protocol":
 				if !strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
-					t.Errorf("%s imports Runtime outside runtimebinding", relative)
+					t.Errorf("%s imports the concrete Runtime binding outside runtimebinding", relative)
 				}
 			case importsPath(imported, oolongPath):
 				if !strings.HasPrefix(relative, "internal/delivery/terminal/") {

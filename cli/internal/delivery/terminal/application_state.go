@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 
@@ -58,7 +59,7 @@ type dialogState struct {
 	workspaceDialog     *presentationDialog
 	timeline            *timelinePane
 	timelineDialog      *presentationDialog
-	modelPicker         *picker[agent.Model]
+	modelPicker         *picker[protocol.Model]
 	modelDialog         *presentationDialog
 	approvalModePicker  *picker[agent.ApprovalMode]
 	approvalModeDialog  *presentationDialog

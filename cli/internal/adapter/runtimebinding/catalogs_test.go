@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"reflect"
-	"strings"
 	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -19,24 +18,6 @@ type approvalBindingRecorder struct {
 	listCalls     int
 	forgetCalls   int
 	setMode       protocol.ApprovalMode
-}
-
-func TestModelCatalogRejectsPresentEmptyTokenLimits(t *testing.T) {
-	t.Parallel()
-
-	stub := modelCatalogBindingStub{
-		providers: protocol.NewPage([]protocol.Provider{{ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyRequired}}),
-		models: map[string]*protocol.Page[protocol.Model]{
-			"provider": protocol.NewPage([]protocol.Model{{
-				ID: "broken", Provider: "provider", TokenLimits: &protocol.ModelTokenLimits{},
-			}}),
-		},
-	}
-	runtime := &Connection{modelCatalog: stub, meta: requestMeta("test")}
-	_, err := runtime.ListModels(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "token limits object is empty") {
-		t.Fatalf("ListModels() error = %v, want empty token-limits contract violation", err)
-	}
 }
 
 func (*approvalBindingRecorder) GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error) {
@@ -117,12 +98,11 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 		t.Fatalf("models = %+v", models)
 	}
 	model := models[0]
-	projectedContext, contextKnown := model.TokenLimits.ContextWindow()
-	projectedInput, inputKnown := model.TokenLimits.MaxInputTokens()
-	projectedOutput, outputKnown := model.TokenLimits.MaxOutputTokens()
-	wantInput := []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage}
+	wantInput := []protocol.Modality{protocol.ModalityText, protocol.ModalityImage}
 	if model.ID != "reasoner" || model.Provider != "provider" || model.DisplayName != "Reasoner" ||
-		projectedContext != 200_000 || !contextKnown || projectedInput != 180_000 || !inputKnown || projectedOutput != 20_000 || !outputKnown ||
+		model.TokenLimits == nil || model.TokenLimits.ContextWindow == nil || *model.TokenLimits.ContextWindow != 200_000 ||
+		model.TokenLimits.MaxInputTokens == nil || *model.TokenLimits.MaxInputTokens != 180_000 ||
+		model.TokenLimits.MaxOutputTokens == nil || *model.TokenLimits.MaxOutputTokens != 20_000 ||
 		model.KnowledgeCutoff != "2026-01-31" || !model.Deprecated || model.Capabilities == nil || model.Pricing == nil ||
 		!model.Capabilities.Reasoning || model.Capabilities.ReasoningDefaultLevel != "high" ||
 		!model.Capabilities.Multimodal || !model.Capabilities.ToolUse || !model.Capabilities.StructuredOutput ||
@@ -134,7 +114,7 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 	capabilities.InputModalities[0] = protocol.ModalityAudio
 	pricing.InputUSDPerMillionTokens = 99
 	if model.Capabilities.ReasoningLevels[0] != "low" ||
-		model.Capabilities.InputModalities[0] != agent.ModelModalityText ||
+		model.Capabilities.InputModalities[0] != protocol.ModalityText ||
 		model.Pricing.InputUSDPerMillionTokens != 0.2 {
 		t.Fatal("model projection aliases runtime-owned metadata")
 	}

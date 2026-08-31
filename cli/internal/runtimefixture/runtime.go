@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -109,26 +111,20 @@ func New() *Runtime {
 	return runtime
 }
 
-func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {
+func (r *Runtime) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	models := []agent.Model{
-		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", TokenLimits: mockModelTokenLimits(200_000, 32_000), Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []agent.ModelModality{agent.ModelModalityText, agent.ModelModalityImage}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true, StructuredOutput: true}},
-		{ID: "fast", Provider: "mock", DisplayName: "Mock Fast", TokenLimits: mockModelTokenLimits(128_000, 16_000), Capabilities: &agent.ModelCapabilities{InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
-		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", TokenLimits: mockModelTokenLimits(400_000, 64_000), Capabilities: &agent.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []agent.ModelModality{agent.ModelModalityText}, OutputModalities: []agent.ModelModality{agent.ModelModalityText}, ToolUse: true}},
+	models := []protocol.Model{
+		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", TokenLimits: mockModelTokenLimits(200_000, 32_000), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true}},
+		{ID: "fast", Provider: "mock", DisplayName: "Mock Fast", TokenLimits: mockModelTokenLimits(128_000, 16_000), Capabilities: &protocol.ModelCapabilities{InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
+		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", TokenLimits: mockModelTokenLimits(400_000, 64_000), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
 	}
 	return models, nil
 }
 
-func mockModelTokenLimits(contextWindow, maxOutput int64) agent.ModelTokenLimits {
-	limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
-		ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput,
-	})
-	if err != nil {
-		panic(err)
-	}
-	return limits
+func mockModelTokenLimits(contextWindow, maxOutput int64) *protocol.ModelTokenLimits {
+	return &protocol.ModelTokenLimits{ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput}
 }
 
 func (r *Runtime) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {

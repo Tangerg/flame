@@ -26,7 +26,7 @@ type approvalBinding interface {
 	ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, flameruntime.CommandOptions) error
 }
 
-func (r *Connection) ListModels(ctx context.Context) ([]agent.Model, error) {
+func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	providers, err := r.modelCatalog.ListProviders(ctx, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
@@ -36,10 +36,11 @@ func (r *Connection) ListModels(ctx context.Context) ([]agent.Model, error) {
 		return nil, err
 	}
 
-	var models []agent.Model
+	var models []protocol.Model
 	seenProviders := make(map[string]struct{}, len(providerValues))
+	seenModels := make(map[string]struct{})
 	for _, provider := range providerValues {
-		if _, err := projectProvider(provider); err != nil {
+		if err := provider.ValidateWire(); err != nil {
 			return nil, runtimeContractViolation("model catalog returned an invalid provider: %v", err)
 		}
 		if _, duplicate := seenProviders[provider.ID]; duplicate {
@@ -58,68 +59,40 @@ func (r *Connection) ListModels(ctx context.Context) ([]agent.Model, error) {
 			if value.Provider != provider.ID {
 				return nil, runtimeContractViolation("models for provider %q returned model %q from %q", provider.ID, value.ID, value.Provider)
 			}
-			projected, err := projectModel(value)
-			if err != nil {
-				return nil, runtimeContractViolation("models for provider %q returned invalid token limits in item %d: %v", provider.ID, index+1, err)
-			}
-			if err := projected.Validate(); err != nil {
+			if err := value.ValidateWire(); err != nil {
 				return nil, runtimeContractViolation("models for provider %q returned invalid item %d: %v", provider.ID, index+1, err)
 			}
-			models = append(models, projected)
+			identity := value.Provider + "\x00" + value.ID
+			if _, duplicate := seenModels[identity]; duplicate {
+				return nil, runtimeContractViolation("models for provider %q repeats model %q", provider.ID, value.ID)
+			}
+			seenModels[identity] = struct{}{}
+			models = append(models, cloneProtocolModel(value))
 		}
-	}
-	if err := agent.ValidateModels(models); err != nil {
-		return nil, runtimeContractViolation("list models returned an invalid projection: %v", err)
 	}
 	return models, nil
 }
 
-func projectModel(value protocol.Model) (agent.Model, error) {
-	model := agent.Model{
-		ID: value.ID, Provider: value.Provider, DisplayName: value.DisplayName,
-		KnowledgeCutoff: value.KnowledgeCutoff,
-		Deprecated:      value.Deprecated,
-	}
+func cloneProtocolModel(value protocol.Model) protocol.Model {
 	if value.TokenLimits != nil {
-		limits, err := agent.NewModelTokenLimits(agent.ModelTokenLimitValues{
-			ContextWindow: value.TokenLimits.ContextWindow, MaxInputTokens: value.TokenLimits.MaxInputTokens,
-			MaxOutputTokens: value.TokenLimits.MaxOutputTokens,
-		})
-		if err != nil {
-			return agent.Model{}, err
-		}
-		if limits.Unknown() {
-			return agent.Model{}, errors.New("model token limits object is empty")
-		}
-		model.TokenLimits = limits
+		limits := *value.TokenLimits
+		limits.ContextWindow = clonePointer(limits.ContextWindow)
+		limits.MaxInputTokens = clonePointer(limits.MaxInputTokens)
+		limits.MaxOutputTokens = clonePointer(limits.MaxOutputTokens)
+		value.TokenLimits = &limits
 	}
 	if value.Capabilities != nil {
-		capabilities := &agent.ModelCapabilities{
-			Reasoning: value.Capabilities.Reasoning, ReasoningLevels: slices.Clone(value.Capabilities.ReasoningLevels),
-			ReasoningDefaultLevel: value.Capabilities.ReasoningDefaultLevel,
-			Multimodal:            value.Capabilities.Multimodal,
-			ToolUse:               value.Capabilities.ToolUse,
-			StructuredOutput:      value.Capabilities.StructuredOutput,
-			InputModalities:       make([]agent.ModelModality, len(value.Capabilities.InputModalities)),
-			OutputModalities:      make([]agent.ModelModality, len(value.Capabilities.OutputModalities)),
-		}
-		for index, modality := range value.Capabilities.InputModalities {
-			capabilities.InputModalities[index] = agent.ModelModality(modality)
-		}
-		for index, modality := range value.Capabilities.OutputModalities {
-			capabilities.OutputModalities[index] = agent.ModelModality(modality)
-		}
-		model.Capabilities = capabilities
+		capabilities := *value.Capabilities
+		capabilities.ReasoningLevels = slices.Clone(capabilities.ReasoningLevels)
+		capabilities.InputModalities = slices.Clone(capabilities.InputModalities)
+		capabilities.OutputModalities = slices.Clone(capabilities.OutputModalities)
+		value.Capabilities = &capabilities
 	}
 	if value.Pricing != nil {
-		model.Pricing = &agent.ModelPricing{
-			InputUSDPerMillionTokens:      value.Pricing.InputUSDPerMillionTokens,
-			OutputUSDPerMillionTokens:     value.Pricing.OutputUSDPerMillionTokens,
-			CacheReadUSDPerMillionTokens:  value.Pricing.CacheReadUSDPerMillionTokens,
-			CacheWriteUSDPerMillionTokens: value.Pricing.CacheWriteUSDPerMillionTokens,
-		}
+		pricing := *value.Pricing
+		value.Pricing = &pricing
 	}
-	return model, nil
+	return value
 }
 
 func (r *Connection) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {

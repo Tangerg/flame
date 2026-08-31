@@ -3,6 +3,8 @@ package terminal
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -26,7 +28,7 @@ type Runtime interface {
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 	SteerRun(context.Context, agent.SteerRun) error
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
-	ListModels(context.Context) ([]agent.Model, error)
+	ListModels(context.Context) ([]protocol.Model, error)
 	GetApprovalMode(context.Context) (agent.ApprovalMode, error)
 	SetApprovalMode(context.Context, agent.ApprovalMode) (agent.ApprovalMode, error)
 	ListApprovalRules(context.Context, string) ([]agent.ApprovalRule, error)

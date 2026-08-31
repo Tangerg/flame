@@ -244,45 +244,6 @@ func (r RunOptions) Equal(other RunOptions) bool {
 		slices.Equal(r.Generation.Stop, other.Generation.Stop)
 }
 
-type Model struct {
-	ID              string
-	Provider        string
-	DisplayName     string
-	TokenLimits     ModelTokenLimits
-	KnowledgeCutoff string
-	Deprecated      bool
-	Capabilities    *ModelCapabilities
-	Pricing         *ModelPricing
-}
-
-type ModelModality string
-
-const (
-	ModelModalityText  ModelModality = "text"
-	ModelModalityImage ModelModality = "image"
-	ModelModalityAudio ModelModality = "audio"
-	ModelModalityVideo ModelModality = "video"
-	ModelModalityPDF   ModelModality = "pdf"
-)
-
-type ModelCapabilities struct {
-	Reasoning             bool
-	ReasoningLevels       []string
-	ReasoningDefaultLevel string
-	Multimodal            bool
-	InputModalities       []ModelModality
-	OutputModalities      []ModelModality
-	ToolUse               bool
-	StructuredOutput      bool
-}
-
-type ModelPricing struct {
-	InputUSDPerMillionTokens      float64
-	OutputUSDPerMillionTokens     float64
-	CacheReadUSDPerMillionTokens  float64
-	CacheWriteUSDPerMillionTokens float64
-}
-
 // Interaction is a closed interrupt payload.
 type Interaction interface{ isInteraction() }
 

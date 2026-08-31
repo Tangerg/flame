@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (a *app) ShowModels() {
@@ -27,12 +27,12 @@ func (a *app) modelsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func modelCatalogDocument(models []agent.Model) readerDocument {
+func modelCatalogDocument(models []protocol.Model) readerDocument {
 	if len(models) == 0 {
 		return paragraphDocument("Models", "none available", []string{"The runtime did not advertise any models."})
 	}
 	ordered := slices.Clone(models)
-	slices.SortFunc(ordered, func(left, right agent.Model) int {
+	slices.SortFunc(ordered, func(left, right protocol.Model) int {
 		if compared := strings.Compare(left.Provider, right.Provider); compared != 0 {
 			return compared
 		}
@@ -55,7 +55,7 @@ func modelCatalogDocument(models []agent.Model) readerDocument {
 	return readerDocument{Title: "Models", Detail: fmt.Sprintf("%d available", len(ordered)), Sections: sections}
 }
 
-func modelCatalogLines(model agent.Model) []string {
+func modelCatalogLines(model protocol.Model) []string {
 	lines := make([]string, 0, 7)
 	if limits := modelTokenLimits(model); limits != "" {
 		lines = append(lines, "tokens        "+limits)
@@ -77,28 +77,27 @@ func modelCatalogLines(model agent.Model) []string {
 	return lines
 }
 
-func modelTokenLimits(model agent.Model) string {
+func modelTokenLimits(model protocol.Model) string {
+	if model.TokenLimits == nil {
+		return ""
+	}
 	var limits []string
-	contextWindow, contextKnown := model.TokenLimits.ContextWindow()
-	maxInput, inputKnown := model.TokenLimits.MaxInputTokens()
-	maxOutput, outputKnown := model.TokenLimits.MaxOutputTokens()
 	for _, limit := range []struct {
-		name    string
-		value   int64
-		present bool
+		name  string
+		value *int64
 	}{
-		{name: "context", value: contextWindow, present: contextKnown},
-		{name: "input", value: maxInput, present: inputKnown},
-		{name: "output", value: maxOutput, present: outputKnown},
+		{name: "context", value: model.TokenLimits.ContextWindow},
+		{name: "input", value: model.TokenLimits.MaxInputTokens},
+		{name: "output", value: model.TokenLimits.MaxOutputTokens},
 	} {
-		if limit.present {
-			limits = append(limits, limit.name+" "+formatThousands(limit.value))
+		if limit.value != nil {
+			limits = append(limits, limit.name+" "+formatThousands(*limit.value))
 		}
 	}
 	return strings.Join(limits, " · ")
 }
 
-func modelCapabilityLines(capabilities agent.ModelCapabilities) []string {
+func modelCapabilityLines(capabilities protocol.ModelCapabilities) []string {
 	features := make([]string, 0, 4)
 	if capabilities.Reasoning {
 		reasoning := "reasoning"
@@ -132,7 +131,7 @@ func modelCapabilityLines(capabilities agent.ModelCapabilities) []string {
 	return lines
 }
 
-func joinModalities(modalities []agent.ModelModality) string {
+func joinModalities(modalities []protocol.Modality) string {
 	values := make([]string, len(modalities))
 	for index, modality := range modalities {
 		values[index] = string(modality)
@@ -140,7 +139,7 @@ func joinModalities(modalities []agent.ModelModality) string {
 	return strings.Join(values, ", ")
 }
 
-func modelPricingText(pricing agent.ModelPricing) string {
+func modelPricingText(pricing protocol.ModelPricing) string {
 	rates := []string{
 		"input $" + formatModelRate(pricing.InputUSDPerMillionTokens) + "/M",
 		"output $" + formatModelRate(pricing.OutputUSDPerMillionTokens) + "/M",
