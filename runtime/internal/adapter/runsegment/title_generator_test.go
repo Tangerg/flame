@@ -1,4 +1,4 @@
-package sessiontitle
+package runsegment
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewGenerator(func(context.Context) *chatclient.Client { return &client })
+	generator := NewTitleGenerator(func(context.Context) *chatclient.Client { return &client })
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider outage  \ninclude the request log")
 	if !errors.Is(err, providerErr) {
@@ -67,7 +67,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 }
 
 func TestGenerateUsesOpeningMessageFallbackWithoutUtilityClient(t *testing.T) {
-	got, err := NewGenerator(nil).Generate(t.Context(), "  修复会话恢复反馈。\n附带诊断日志")
+	got, err := NewTitleGenerator(nil).Generate(t.Context(), "  修复会话恢复反馈。\n附带诊断日志")
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}

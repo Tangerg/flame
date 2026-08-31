@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/runrecovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
-	"github.com/Tangerg/flame/runtime/internal/adapter/sessiontitle"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
@@ -305,7 +304,7 @@ func buildAssemblyCore(
 		Checkpoints: workspaceServices.checkpoints,
 		Titles: &runsegment.TitleMaintenance{
 			Sessions:  sessionCoordinator,
-			Generator: sessiontitle.NewGenerator(execution.models.utilityClient),
+			Generator: runsegment.NewTitleGenerator(execution.models.utilityClient),
 			Tasks:     runEffectTasks,
 		},
 	})

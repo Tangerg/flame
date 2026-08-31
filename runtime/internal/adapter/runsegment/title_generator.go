@@ -1,6 +1,4 @@
-// Package sessiontitle generates a best-effort Session title through the
-// utility-model capability without exposing model clients to Application.
-package sessiontitle
+package runsegment
 
 import (
 	"context"
@@ -23,17 +21,18 @@ const (
 // truncated rather than rejected (a usable title beats none).
 const titleMaxRunes = 80
 
-// Generator produces a short, human-readable Session title from the opening
-// user message. It uses one middleware-free call to the typically cheaper
-// utility model. A nil Generator or Resolver makes [Generator.Generate] a
-// no-op.
-type Generator struct {
+// modelTitleGenerator produces a short, human-readable Session title from the
+// opening user message. It uses one middleware-free call to the typically
+// cheaper utility model. A nil generator or Resolver uses only the deterministic
+// opening-message fallback.
+type modelTitleGenerator struct {
 	client utilitymodel.Resolver
 }
 
-// NewGenerator builds a Generator over a per-call chat-client resolver.
-func NewGenerator(client utilitymodel.Resolver) *Generator {
-	return &Generator{client: client}
+// NewTitleGenerator builds the Run-boundary title generator over a per-call
+// utility-model resolver.
+func NewTitleGenerator(client utilitymodel.Resolver) TitleGenerator {
+	return &modelTitleGenerator{client: client}
 }
 
 const titlePrompt = `Write a concise title for a conversation that opens with the user message below.
@@ -48,7 +47,7 @@ Rules:
 // produces no title. A provider failure returns that usable fallback together
 // with the error so the caller can persist stable Session identity while still
 // recording the degraded maintenance attempt.
-func (g *Generator) Generate(ctx context.Context, firstMessage string) (string, error) {
+func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string) (string, error) {
 	msg := strings.TrimSpace(firstMessage)
 	if msg == "" {
 		return "", nil

@@ -586,6 +586,8 @@ P287把公共同进程Runtime binding从无独立语义的`runtime/embedded`子�
 
 P288把Runtime根下9个按identity种类拆分的微包收敛为一个受限`internal/identity` shared kernel。Executable build、write-set commit、executor member/effect、durable idempotency namespace、Runtime process incarnation、产品identity与model/resource/cursor envelope按职责文件共处；所有值仍以语义命名的不同类型、构造器、错误与上限保持不可互换，不提供generic `ID`或字符串修复。Session/Run/Goal/Schedule/Provider等领域identity继续由各自Domain owner拥有，只消费shared-kernel policy。旧包物理删除且无alias/forwarder；公共Go surface、Protocol、Artifact、SQLite与HTTP wire不变。
 
+P289把只有`runsegment.Finalizer`一个语义消费者的`adapter/sessiontitle`收回`adapter/runsegment`。consumer-owned `TitleGenerator`接口、model-backed实现、fallback sanitization、terminal/parked maintenance结算与Bootstrap construction现在同属Run边界owner；`adapter/utilitymodel`继续作为title/compaction/Memory/Skill共同消费的Scope model SDK防腐与资源包络。旧package物理删除且无alias/forwarder；title输入输出预算、provider failure fallback、Session first-writer行为及公共合同均不变。
+
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
 MCP server registry identity现由独立`ServerName`拥有1–32位canonical lowercase ASCII spelling，并贯穿registry/live supersession/OAuth/tool policy/tool namespace；公开Go/Schema/TypeScript与fresh SQLite CHECK使用同一规则。SQLite当前epoch因此为94，Artifact仍为v27。
