@@ -25,12 +25,6 @@ type fakeScheduleRegistry struct {
 	deleted []string
 }
 
-type serverScheduleIdentities struct{}
-
-func (serverScheduleIdentities) NewSessionID() string  { return "ses_schedule" }
-func (serverScheduleIdentities) NewRunID() string      { return "run_schedule" }
-func (serverScheduleIdentities) NewScheduleID() string { return "sch_created" }
-
 func (f *fakeScheduleRegistry) ListPage(ctx context.Context, _ time.Time, _ string, _ int) ([]schedule.Schedule, error) {
 	return f.listed, f.listErr
 }
@@ -77,10 +71,10 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	t.Helper()
 	s := newTestHandler(&stubRuntime{})
 	coordinator, err := schedules.New(schedules.Dependencies{
-		Store:      reg,
-		Paths:      workspaceadapter.Resolver{},
-		Models:     allowModelSelections{},
-		Identities: serverScheduleIdentities{},
+		Store:         reg,
+		Paths:         workspaceadapter.Resolver{},
+		Models:        allowModelSelections{},
+		NewScheduleID: func() string { return "sch_created" },
 	})
 	if err != nil {
 		t.Fatalf("construct Schedule coordinator: %v", err)
@@ -88,7 +82,8 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	s.schedules = coordinator
 	firing, err := schedules.NewFiring(schedules.FiringDependencies{
 		Store: reg, RunStarter: schedules.NewRunLauncher(s.runs, s.serverInfo.DefaultWorkspace.Path),
-		Identities: serverScheduleIdentities{},
+		NewSessionID: func() string { return "ses_schedule" },
+		NewRunID:     func() string { return "run_schedule" },
 	})
 	if err != nil {
 		t.Fatalf("construct Schedule firing: %v", err)

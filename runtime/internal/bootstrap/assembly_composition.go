@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
@@ -65,7 +64,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 			Store:         cfg.ScheduleStore,
 			Paths:         workspaceadapter.Resolver{},
 			Models:        modeladapter.Capabilities{},
-			Identities:    scheduleidentity.Source{},
+			NewScheduleID: newScheduleID,
 			Invalidations: invalidations.Publish,
 		})
 		if err != nil {

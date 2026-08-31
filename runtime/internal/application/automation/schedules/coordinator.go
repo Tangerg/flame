@@ -33,7 +33,7 @@ type Coordinator struct {
 	store         ManagementStore
 	paths         CWDResolver
 	models        ModelAdmitter
-	identities    ManagementIdentities
+	newScheduleID func() string
 	now           func() time.Time
 	invalidations invalidation.Publish
 }
@@ -51,11 +51,6 @@ type ModelAdmitter interface {
 	AdmitSelection(selection modelref.Selection) error
 }
 
-// ManagementIdentities supplies new Schedule aggregate identities.
-type ManagementIdentities interface {
-	NewScheduleID() string
-}
-
 // ErrUnavailable reports that scheduled-run management was not assembled in
 // this Runtime.
 var ErrUnavailable = errors.New("schedules: unavailable")
@@ -65,7 +60,7 @@ type Dependencies struct {
 	Store         ManagementStore
 	Paths         CWDResolver
 	Models        ModelAdmitter
-	Identities    ManagementIdentities
+	NewScheduleID func() string
 	Invalidations invalidation.Publish
 }
 
@@ -99,7 +94,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{name: "store", value: deps.Store},
 		{name: "cwd resolver", value: deps.Paths},
 		{name: "model admitter", value: deps.Models},
-		{name: "identity source", value: deps.Identities},
+		{name: "schedule identity factory", value: deps.NewScheduleID},
 	} {
 		if dependencyMissing(required.value) {
 			return nil, fmt.Errorf("schedules: %s is required", required.name)
@@ -109,7 +104,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		store:         deps.Store,
 		paths:         deps.Paths,
 		models:        deps.Models,
-		identities:    deps.Identities,
+		newScheduleID: deps.NewScheduleID,
 		now:           time.Now,
 		invalidations: deps.Invalidations,
 	}, nil
@@ -188,7 +183,7 @@ func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.S
 		return schedule.Schedule{}, err
 	}
 	draft.CWD = resolvedCWD
-	created, err := schedule.New(c.identities.NewScheduleID(), draft, c.now())
+	created, err := schedule.New(c.newScheduleID(), draft, c.now())
 	if err != nil {
 		return schedule.Schedule{}, err
 	}

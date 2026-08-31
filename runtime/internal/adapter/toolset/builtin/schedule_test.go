@@ -163,10 +163,10 @@ func newMemoryScheduleRegistry() *memoryScheduleRegistry {
 
 func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Coordinator {
 	value, err := scheduleapp.New(scheduleapp.Dependencies{
-		Store:      reg,
-		Paths:      workspaceadapter.Resolver{},
-		Models:     scheduleModelAdmitter{},
-		Identities: scheduleTestIdentities{},
+		Store:         reg,
+		Paths:         workspaceadapter.Resolver{},
+		Models:        scheduleModelAdmitter{},
+		NewScheduleID: func() string { return "sch_test_1" },
 	})
 	if err != nil {
 		panic(err)
@@ -177,10 +177,6 @@ func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Co
 type scheduleModelAdmitter struct{}
 
 func (scheduleModelAdmitter) AdmitSelection(modelref.Selection) error { return nil }
-
-type scheduleTestIdentities struct{}
-
-func (scheduleTestIdentities) NewScheduleID() string { return "sch_test_1" }
 
 func (m *memoryScheduleRegistry) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]scheduledomain.Schedule, error) {
 	out := make([]scheduledomain.Schedule, 0, len(m.items))

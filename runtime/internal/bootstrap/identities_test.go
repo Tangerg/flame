@@ -1,4 +1,4 @@
-package scheduleidentity
+package bootstrap
 
 import (
 	"strings"
@@ -9,13 +9,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-func TestSourceProducesNamespacedFreshIdentities(t *testing.T) {
+func TestProductionIdentityFactoriesProduceNamespacedFreshValues(t *testing.T) {
 	t.Parallel()
 
-	source := Source{}
-	firstSchedule, secondSchedule := source.NewScheduleID(), source.NewScheduleID()
-	firstSession, secondSession := source.NewSessionID(), source.NewSessionID()
-	firstRun, secondRun := source.NewRunID(), source.NewRunID()
+	firstSchedule, secondSchedule := newScheduleID(), newScheduleID()
+	firstSession, secondSession := newSessionID(), newSessionID()
+	firstRun, secondRun := newRunID(), newRunID()
 	for name, check := range map[string]bool{
 		"schedule prefix": strings.HasPrefix(firstSchedule, schedule.IDPrefix),
 		"session prefix":  strings.HasPrefix(firstSession, session.IDPrefix),

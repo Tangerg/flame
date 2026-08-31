@@ -29,7 +29,8 @@ type Firing struct {
 	runNowStore   RunNowStore
 	workerStore   WorkerStore
 	runStarter    ScheduledRunStarter
-	identities    OccurrenceIdentities
+	newSessionID  func() string
+	newRunID      func() string
 	now           func() time.Time
 	invalidations invalidation.Publish
 }
@@ -39,7 +40,8 @@ type Firing struct {
 type FiringDependencies struct {
 	Store         FiringStore
 	RunStarter    ScheduledRunStarter
-	Identities    OccurrenceIdentities
+	NewSessionID  func() string
+	NewRunID      func() string
 	Invalidations invalidation.Publish
 }
 
@@ -55,7 +57,8 @@ func NewFiring(deps FiringDependencies) (*Firing, error) {
 	}{
 		{name: "store", value: deps.Store},
 		{name: "run starter", value: deps.RunStarter},
-		{name: "occurrence identities", value: deps.Identities},
+		{name: "occurrence Session identity factory", value: deps.NewSessionID},
+		{name: "occurrence Run identity factory", value: deps.NewRunID},
 	} {
 		if dependencyMissing(required.value) {
 			return nil, fmt.Errorf("schedules: firing %s is required", required.name)
@@ -63,7 +66,8 @@ func NewFiring(deps FiringDependencies) (*Firing, error) {
 	}
 	return &Firing{
 		runNowStore: deps.Store, workerStore: deps.Store, runStarter: deps.RunStarter,
-		identities: deps.Identities, now: time.Now, invalidations: deps.Invalidations,
+		newSessionID: deps.NewSessionID, newRunID: deps.NewRunID,
+		now: time.Now, invalidations: deps.Invalidations,
 	}, nil
 }
 
@@ -114,7 +118,8 @@ func (f *Firing) RunWorker(ctx context.Context) {
 		return
 	}
 	newWorker(workerDependencies{
-		Store: f.workerStore, RunStarter: f.runStarter, Identities: f.identities,
+		Store: f.workerStore, RunStarter: f.runStarter,
+		NewSessionID: f.newSessionID, NewRunID: f.newRunID,
 		Invalidations: f.invalidations,
 	}).Run(ctx)
 }

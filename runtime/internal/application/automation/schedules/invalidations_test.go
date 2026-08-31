@@ -52,9 +52,9 @@ func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 	}
 	var notices []invalidation.Notice
 	coordinator := mustCoordinator(t, Dependencies{
-		Store:      store,
-		Models:     allowModels{},
-		Identities: managementIdentity("sch_created"),
+		Store:         store,
+		Models:        allowModels{},
+		NewScheduleID: fixedIdentity("sch_created"),
 		Invalidations: func(notice invalidation.Notice) {
 			notices = append(notices, notice)
 		},
@@ -97,7 +97,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 				fail: operation, deleteFound: true,
 			}
 			var notices []invalidation.Notice
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, Identities: managementIdentity("sch_created"), Invalidations: func(notice invalidation.Notice) {
+			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedIdentity("sch_created"), Invalidations: func(notice invalidation.Notice) {
 				notices = append(notices, notice)
 			}})
 

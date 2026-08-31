@@ -77,7 +77,7 @@ func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
 	runner := &recordingScheduledRunStarter{startErr: errors.New("boom")}
 	var notices []invalidation.Notice
 	w := newWorker(workerDependencies{
-		Store: store, RunStarter: runner, Identities: fixedOccurrenceIdentities{},
+		Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID,
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
 
@@ -101,7 +101,7 @@ func TestWorkerFireDueRejectsAnInvalidAggregate(t *testing.T) {
 	store := &workerStore{due: []schedule.Schedule{{}}}
 	runner := &recordingScheduledRunStarter{}
 
-	newWorker(workerDependencies{Store: store, RunStarter: runner, Identities: fixedOccurrenceIdentities{}}).fireDue(context.Background(), now)
+	newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(context.Background(), now)
 
 	if len(runner.startedScheduleIDs) != 0 {
 		t.Fatalf("started = %d, want 0", len(runner.startedScheduleIDs))
@@ -115,7 +115,7 @@ func TestWorkerFireDueStopsOnDueError(t *testing.T) {
 	store := &workerStore{dueErr: errors.New("db down")}
 	runner := &recordingScheduledRunStarter{}
 
-	newWorker(workerDependencies{Store: store, RunStarter: runner, Identities: fixedOccurrenceIdentities{}}).fireDue(context.Background(), time.Now())
+	newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(context.Background(), time.Now())
 
 	if len(runner.startedScheduleIDs) != 0 || len(store.claims) != 0 {
 		t.Fatalf("started=%d claims=%d, want none", len(runner.startedScheduleIDs), len(store.claims))
@@ -131,7 +131,7 @@ func TestWorkerFireDueDoesNotConsumeCancellationAbortedFiring(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: false}
 
-	newWorker(workerDependencies{Store: store, RunStarter: &runner, Identities: fixedOccurrenceIdentities{}}).fireDue(ctx, now)
+	newWorker(workerDependencies{Store: store, RunStarter: &runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(ctx, now)
 
 	if len(runner.startedScheduleIDs) != 1 || runner.startedScheduleIDs[0] != "sch_1" {
 		t.Fatalf("started = %v, want only sch_1", runner.startedScheduleIDs)
@@ -150,7 +150,7 @@ func TestWorkerFireDuePersistsAcceptedFiringAfterCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: true}
 
-	newWorker(workerDependencies{Store: store, RunStarter: &runner, Identities: fixedOccurrenceIdentities{}}).fireDue(ctx, now)
+	newWorker(workerDependencies{Store: store, RunStarter: &runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(ctx, now)
 
 	if len(runner.startedScheduleIDs) != 1 || runner.startedScheduleIDs[0] != "sch_1" {
 		t.Fatalf("started = %v, want only sch_1", runner.startedScheduleIDs)
@@ -169,7 +169,7 @@ func TestWorkerRunScansImmediately(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: true}
-	worker := newWorker(workerDependencies{Store: store, RunStarter: &runner, Identities: fixedOccurrenceIdentities{}})
+	worker := newWorker(workerDependencies{Store: store, RunStarter: &runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID})
 	worker.now = func() time.Time { return now }
 
 	done := make(chan struct{})

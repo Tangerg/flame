@@ -48,19 +48,12 @@ type WorkerStore interface {
 	Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error)
 }
 
-// OccurrenceIdentities supplies the stable Session and Run identities captured
-// before a durable claim. Concrete entropy and namespace formats belong to the
-// composition edge, not this use case.
-type OccurrenceIdentities interface {
-	NewSessionID() string
-	NewRunID() string
-}
-
 // workerDependencies is the complete collaborator set for a due scanner.
 type workerDependencies struct {
 	Store         WorkerStore
 	RunStarter    ScheduledRunStarter
-	Identities    OccurrenceIdentities
+	NewSessionID  func() string
+	NewRunID      func() string
 	Invalidations invalidation.Publish
 }
 
@@ -72,14 +65,16 @@ type workerDependencies struct {
 type worker struct {
 	schedules     WorkerStore
 	runStarter    ScheduledRunStarter
-	identities    OccurrenceIdentities
+	newSessionID  func() string
+	newRunID      func() string
 	now           func() time.Time
 	invalidations invalidation.Publish
 }
 
 func newWorker(deps workerDependencies) worker {
 	return worker{
-		schedules: deps.Store, runStarter: deps.RunStarter, identities: deps.Identities,
+		schedules: deps.Store, runStarter: deps.RunStarter,
+		newSessionID: deps.NewSessionID, newRunID: deps.NewRunID,
 		now: time.Now, invalidations: deps.Invalidations,
 	}
 }
@@ -201,8 +196,8 @@ func (w worker) claimDueOccurrence(
 ) (schedule.Occurrence, bool) {
 	claim, err := schedule.NewClaim(
 		scheduled,
-		w.identities.NewSessionID(),
-		w.identities.NewRunID(),
+		w.newSessionID(),
+		w.newRunID(),
 		now,
 	)
 	if err != nil {

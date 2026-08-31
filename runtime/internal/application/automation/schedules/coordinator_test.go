@@ -17,15 +17,13 @@ type allowModels struct{}
 
 func (allowModels) AdmitSelection(modelref.Selection) error { return nil }
 
-type fixedOccurrenceIdentities struct{}
+func fixedSessionID() string  { return "ses_schedule" }
+func fixedRunID() string      { return "run_schedule" }
+func fixedScheduleID() string { return "sch_test" }
 
-func (fixedOccurrenceIdentities) NewSessionID() string  { return "ses_schedule" }
-func (fixedOccurrenceIdentities) NewRunID() string      { return "run_schedule" }
-func (fixedOccurrenceIdentities) NewScheduleID() string { return "sch_test" }
-
-type managementIdentity string
-
-func (m managementIdentity) NewScheduleID() string { return string(m) }
+func fixedIdentity(value string) func() string {
+	return func() string { return value }
+}
 
 type identityCWDResolver struct{}
 
@@ -36,8 +34,8 @@ func mustCoordinator(t testing.TB, deps Dependencies) *Coordinator {
 	if deps.Paths == nil {
 		deps.Paths = identityCWDResolver{}
 	}
-	if deps.Identities == nil {
-		deps.Identities = fixedOccurrenceIdentities{}
+	if deps.NewScheduleID == nil {
+		deps.NewScheduleID = fixedScheduleID
 	}
 	value, err := New(deps)
 	if err != nil {
@@ -48,6 +46,12 @@ func mustCoordinator(t testing.TB, deps Dependencies) *Coordinator {
 
 func mustFiring(t testing.TB, deps FiringDependencies) *Firing {
 	t.Helper()
+	if deps.NewSessionID == nil {
+		deps.NewSessionID = fixedSessionID
+	}
+	if deps.NewRunID == nil {
+		deps.NewRunID = fixedRunID
+	}
 	value, err := NewFiring(deps)
 	if err != nil {
 		t.Fatalf("NewFiring: %v", err)
@@ -92,9 +96,9 @@ func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) 
 		name string
 		deps Dependencies
 	}{
-		{name: "missing store", deps: Dependencies{Paths: identityCWDResolver{}, Models: allowModels{}, Identities: fixedOccurrenceIdentities{}}},
-		{name: "missing paths", deps: Dependencies{Store: store, Models: allowModels{}, Identities: fixedOccurrenceIdentities{}}},
-		{name: "missing models", deps: Dependencies{Store: store, Paths: identityCWDResolver{}, Identities: fixedOccurrenceIdentities{}}},
+		{name: "missing store", deps: Dependencies{Paths: identityCWDResolver{}, Models: allowModels{}, NewScheduleID: fixedScheduleID}},
+		{name: "missing paths", deps: Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedScheduleID}},
+		{name: "missing models", deps: Dependencies{Store: store, Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID}},
 		{name: "missing identity", deps: Dependencies{Store: store, Paths: identityCWDResolver{}, Models: allowModels{}}},
 	}
 	var typedNilStore *runNowStore
@@ -102,7 +106,7 @@ func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) 
 		name string
 		deps Dependencies
 	}{name: "typed nil store", deps: Dependencies{
-		Store: typedNilStore, Paths: identityCWDResolver{}, Models: allowModels{}, Identities: fixedOccurrenceIdentities{},
+		Store: typedNilStore, Paths: identityCWDResolver{}, Models: allowModels{}, NewScheduleID: fixedScheduleID,
 	}})
 	for _, test := range coordinatorCases {
 		t.Run("coordinator "+test.name, func(t *testing.T) {
@@ -115,10 +119,11 @@ func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) 
 		name string
 		deps FiringDependencies
 	}{
-		{name: "missing store", deps: FiringDependencies{RunStarter: runner, Identities: fixedOccurrenceIdentities{}}},
-		{name: "missing runner", deps: FiringDependencies{Store: store, Identities: fixedOccurrenceIdentities{}}},
-		{name: "missing identities", deps: FiringDependencies{Store: store, RunStarter: runner}},
-		{name: "typed nil store", deps: FiringDependencies{Store: typedNilStore, RunStarter: runner, Identities: fixedOccurrenceIdentities{}}},
+		{name: "missing store", deps: FiringDependencies{RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}},
+		{name: "missing runner", deps: FiringDependencies{Store: store, NewSessionID: fixedSessionID, NewRunID: fixedRunID}},
+		{name: "missing Session identity", deps: FiringDependencies{Store: store, RunStarter: runner, NewRunID: fixedRunID}},
+		{name: "missing Run identity", deps: FiringDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID}},
+		{name: "typed nil store", deps: FiringDependencies{Store: typedNilStore, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}},
 	}
 	for _, test := range firingCases {
 		t.Run("firing "+test.name, func(t *testing.T) {
@@ -136,7 +141,7 @@ func TestRunNowRecordsAcceptedRunAfterRequestCancellation(t *testing.T) {
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: true}
 	var notices []invalidation.Notice
 	firing := mustFiring(t, FiringDependencies{
-		Store: store, RunStarter: &runner, Identities: fixedOccurrenceIdentities{},
+		Store: store, RunStarter: &runner,
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
 	firing.now = func() time.Time { return now }
@@ -161,7 +166,7 @@ func TestRunNowDoesNotRecordCancellationAbortedRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: false}
 	firing := mustFiring(t, FiringDependencies{
-		Store: store, RunStarter: &runner, Identities: fixedOccurrenceIdentities{},
+		Store: store, RunStarter: &runner,
 	})
 
 	if _, err := firing.RunNow(ctx, "sch_1"); !errors.Is(err, context.Canceled) {
@@ -180,7 +185,7 @@ func TestRunNowRecordFailureDoesNotPublishSchedule(t *testing.T) {
 	runner := &cancelingScheduledRunStarter{cancel: func() {}, succeed: true}
 	var notices []invalidation.Notice
 	firing := mustFiring(t, FiringDependencies{
-		Store: store, RunStarter: runner, Identities: fixedOccurrenceIdentities{},
+		Store: store, RunStarter: runner,
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
 
@@ -199,7 +204,7 @@ func TestRunNowRejectsInvalidRunFactBeforeStarting(t *testing.T) {
 	})}
 	runner := &cancelingScheduledRunStarter{cancel: func() {}, succeed: true}
 	firing := mustFiring(t, FiringDependencies{
-		Store: store, RunStarter: runner, Identities: fixedOccurrenceIdentities{},
+		Store: store, RunStarter: runner,
 	})
 	firing.now = func() time.Time { return createdAt.Add(-time.Millisecond) }
 
@@ -221,9 +226,9 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	store := &runNowStore{}
 	c := mustCoordinator(t, Dependencies{
-		Store:      store,
-		Models:     allowModels{},
-		Identities: managementIdentity("sch_created"),
+		Store:         store,
+		Models:        allowModels{},
+		NewScheduleID: fixedIdentity("sch_created"),
 		Paths: cwdResolverFunc(func(path string) (string, error) {
 			if path != "workspace" {
 				t.Fatalf("ResolveExistingDir(%q), want workspace", path)
@@ -307,9 +312,9 @@ func TestUpdateRequiresAnExplicitRevision(t *testing.T) {
 func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 	resolved := false
 	c := mustCoordinator(t, Dependencies{
-		Store:      &runNowStore{},
-		Models:     allowModels{},
-		Identities: managementIdentity("sch_created"),
+		Store:         &runNowStore{},
+		Models:        allowModels{},
+		NewScheduleID: fixedIdentity("sch_created"),
 		Paths: cwdResolverFunc(func(string) (string, error) {
 			resolved = true
 			return "", errors.New("unexpected resolution")

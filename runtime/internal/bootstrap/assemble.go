@@ -7,13 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
-	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
@@ -30,7 +27,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
@@ -224,16 +220,10 @@ func buildAssemblyCore(
 		Admissions:            admissionGate,
 		Invalidations:         policy.invalidations.Publish,
 		Now:                   time.Now,
-		NewID: func() string {
-			return session.IDPrefix + uuid.NewString()
-		},
-		NewRunID: func() string {
-			return runs.NewRunID(uuid.NewString())
-		},
-		NewItemID: func() string {
-			return runs.NewItemID(uuid.NewString())
-		},
-		NewToolResultID: toolresult.NewID,
+		NewID:                 newSessionID,
+		NewRunID:              newRunID,
+		NewItemID:             newItemID,
+		NewToolResultID:       toolresult.NewID,
 	}
 	if cfg.PlanStore != nil {
 		sessionDependencies.Plan = &sessions.PlanServices{
@@ -337,16 +327,12 @@ func buildAssemblyCore(
 			Workspace:                   workspaceNotifier,
 			Finalizer:                   runFinalizer,
 		},
-		Runs:       cfg.RunStore,
-		Items:      cfg.TranscriptStore,
-		Admissions: admissionGate,
-		Now:        time.Now,
-		NewRunID: func() string {
-			return runs.NewRunID(uuid.NewString())
-		},
-		NewSegmentID: func() string {
-			return runs.NewSegmentID(uuid.NewString())
-		},
+		Runs:          cfg.RunStore,
+		Items:         cfg.TranscriptStore,
+		Admissions:    admissionGate,
+		Now:           time.Now,
+		NewRunID:      newRunID,
+		NewSegmentID:  newSegmentID,
 		Invalidations: policy.invalidations.Publish,
 	}
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
@@ -364,7 +350,8 @@ func buildAssemblyCore(
 		scheduleFiring, err = schedules.NewFiring(schedules.FiringDependencies{
 			Store:         cfg.ScheduleStore,
 			RunStarter:    schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
-			Identities:    scheduleidentity.Source{},
+			NewSessionID:  newSessionID,
+			NewRunID:      newRunID,
 			Invalidations: policy.invalidations.Publish,
 		})
 		if err != nil {
