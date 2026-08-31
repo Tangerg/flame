@@ -1,6 +1,6 @@
 import { colord } from "colord";
 import type { StoreApi } from "zustand";
-import type { AccentTint, ColorThemeId, Scheme, VisualStyleId } from "@/lib/appearance";
+import type { AccentTint, ColorThemeId, VisualStyleId } from "@/lib/appearance";
 import {
   publishMotionScale,
   publishScheme,
@@ -16,6 +16,7 @@ import { subscribeContributions } from "@/plugins/sdk";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import type { UiState } from "@/state/uiPreferences";
 import { accentTintedNeutral } from "../kit/accentTint";
+import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
 import { subscribeSystemScheme } from "./systemAppearance";
@@ -25,17 +26,6 @@ type UiEffectStore<T extends UiState> = Pick<StoreApi<T>, "getState" | "subscrib
 function lightAccent(darkHex: string): string {
   const preset = lookupExtensionPoint(ACCENT).find((accent) => accent.dark === darkHex);
   return preset?.light ?? preset?.dark ?? colord(darkHex).darken(0.2).toHex();
-}
-
-/**
- * Doubled on dark because equal ink percentages do not buy equal separation: 4% of a
- * near-white ink into a near-black surface moves roughly a third as far in perceived
- * lightness as the reverse, so one setting that reads right on light flattened every dark
- * scheme's regions, chips and row states into a single value.
- */
-function depthStep(scheme: Scheme, contrast: number): string {
-  const step = (2 + (contrast / 100) * 8) * (scheme === "dark" ? 2 : 1);
-  return `${step.toFixed(1)}%`;
 }
 
 function replaceTokens(previous: string[], tokens: Record<string, string>): string[] {

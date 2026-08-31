@@ -21,6 +21,19 @@ const SCHEME_SUNKEN: Record<Scheme, string> = {
   light: "#f1f1f4",
 };
 
+/**
+ * The ink step every region, chip and row state is one rung of.
+ *
+ * Doubled on dark because equal ink percentages do not buy equal separation: 4% of a
+ * near-white ink into a near-black surface moves roughly a third as far in perceived
+ * lightness as the reverse, so one setting that reads right on light flattened every dark
+ * scheme into a single value. `globals.css` mirrors both schemes' defaults.
+ */
+export function depthStep(scheme: Scheme, contrast: number): string {
+  const step = (2 + (contrast / 100) * 8) * (scheme === "dark" ? 2 : 1);
+  return `${step.toFixed(1)}%`;
+}
+
 // buildTokenMap — spec → flat CSS-variable map
 
 /**

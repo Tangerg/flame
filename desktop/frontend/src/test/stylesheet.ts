@@ -15,12 +15,27 @@ export function declaredInCss(property: string): string | undefined {
   return new RegExp(`${property}:\\s*([^;]+);`).exec(CSS)?.[1]?.trim();
 }
 
-/** The declaration inside one block. Required for anything a per-scheme block redeclares. */
+/**
+ * What one selector declares for a property. Required for anything a per-scheme block
+ * redeclares.
+ *
+ * EVERY block with that selector, last one winning, because that is what the cascade does
+ * and because the sheet opens `:root` more than once — the palette in one and the motion
+ * ladder in another. Reading only the first silently skipped the second, and a comparison
+ * that skips is a comparison that passes.
+ */
 export function declaredInBlock(selector: string, property: string): string | undefined {
-  const start = CSS.indexOf(`${selector} {`);
-  if (start === -1) return undefined;
-  const block = CSS.slice(start, CSS.indexOf("\n}", start));
-  return new RegExp(`^\\s*${property}:\\s*([^;]+);`, "m").exec(block)?.[1]?.trim();
+  const pattern = new RegExp(`^\\s*${property}:\\s*([^;]+);`, "m");
+  let declared: string | undefined;
+  for (
+    let at = CSS.indexOf(`${selector} {`);
+    at !== -1;
+    at = CSS.indexOf(`${selector} {`, at + 1)
+  ) {
+    const found = pattern.exec(CSS.slice(at, CSS.indexOf("\n}", at)))?.[1];
+    if (found !== undefined) declared = found.trim();
+  }
+  return declared;
 }
 
 /** Compared as CSS, not as text: the formatter wraps a long `color-mix()` across lines, and
