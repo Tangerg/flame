@@ -1,11 +1,11 @@
 import {
   createContext,
-  useContext,
+  type ReactNode,
+  use,
   useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from "react";
 import type { MessageActionMaterialization } from "@/plugins/builtin/chat/message-actions/public/messageActions";
 
@@ -109,7 +109,7 @@ export function useVisibleActionMaterialization(
 }
 
 export function useVisibleTextMaterial(settled: boolean): void {
-  const material = useContext(MessageVisibleMaterialContext);
+  const material = use(MessageVisibleMaterialContext);
   const [token] = useState<VisibleMaterialToken>(() => Symbol("visible-text-material"));
 
   useLayoutEffect(() => {

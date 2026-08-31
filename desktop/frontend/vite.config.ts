@@ -90,8 +90,10 @@ export default defineConfig({
           if (id.includes("node_modules/@base-ui")) return "base-ui";
           // TanStack
           if (id.includes("node_modules/@tanstack")) return "tanstack";
-          // Icons
-          if (id.includes("node_modules/@lobehub/icons")) return "icons";
+          // Icons. Reicon only: the ten provider marks the composer needs are pulled in with
+          // whatever imports them, and the icon gallery globs all 321 of them behind a lazy
+          // route. Naming the whole package here put that glob on the startup path, which is
+          // the one place its own laziness could not reach.
           if (id.includes("node_modules/reicon-react")) return "icons";
           // Markdown pipeline — eager: every rendered message goes through it.
           if (
