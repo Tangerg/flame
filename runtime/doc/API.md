@@ -843,7 +843,8 @@ provider 的 key，读取面自然回落到 `credential:{source:"env",masked}`�
 Endpoint-owned 模型目录使用 provider profile 的真实 wire protocol，而不是统一伪装成 OpenAI：OpenAI-compatible、Azure OpenAI
 与 Ollama 请求 `{baseURL}/models`，按配置发送 Bearer credential；Anthropic-compatible 把 `baseURL` 解释为 `/v1` 之前的
 API origin/gateway prefix，请求 `{baseURL}/v1/models`，并发送 `x-api-key` 与 `anthropic-version`。模型列表、provider test
-和实际 chat adapter 因而共享同一协议归属；应用层不按 provider identity 猜路径或鉴权。
+和实际 chat adapter 因而共享同一协议归属；应用层不按 provider identity 猜路径或鉴权。Anthropic 请求使用官方单页上限
+`limit=1000`；若响应仍声明 `has_more:true`，Runtime 拒绝该不完整目录，不把第一页发布成完整事实。
 
 `models.*` 提供模型目录与 utility / embedding 角色；`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
 
