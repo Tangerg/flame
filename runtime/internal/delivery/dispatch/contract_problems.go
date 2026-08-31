@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -76,7 +76,7 @@ func mustProblemContracts() []ProblemContract {
 		}
 	}
 
-	add(ProblemChannelRPC, operation.ProblemTypes()...)
+	add(ProblemChannelRPC, delivery.ProblemTypes()...)
 	add(ProblemChannelExecution,
 		protocol.ProblemInternalError,
 		protocol.ProblemRunLost,

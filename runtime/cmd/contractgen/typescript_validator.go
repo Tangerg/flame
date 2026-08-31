@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 )
 
@@ -42,7 +42,7 @@ type checkEmitter struct {
 	used map[string]bool
 }
 
-func newWireChecks(registry *operation.Registry, shapes *dispatch.Shapes, set *schemaSet) string {
+func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *schemaSet) string {
 	emitter := &checkEmitter{set: set, used: make(map[string]bool)}
 	names := slices.Sorted(maps.Keys(set.defs))
 
@@ -139,7 +139,7 @@ export function validateWire(type: WireTypeName, value: unknown): WireViolation[
 // methodResults emits the terminal result check for every callable method. Ack-only
 // methods still have one wire result — the empty success object — so every entry is
 // total and a client never needs a "validator missing" fallback.
-func (c *checkEmitter) methodResults(registry *operation.Registry) string {
+func (c *checkEmitter) methodResults(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_RESULTS: Record<WireMethodName, WireCheck> = {\n")
 	for _, meta := range registry.Metas() {

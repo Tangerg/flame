@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 // (~/.flame) + the project's (.flame) — each marked active iff it currently runs
 // (global always; project only when the project is trusted). The client renders
 // this for review + a trust toggle (hooks.list, API.md §7.5).
-func (s *Server) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
+func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
 	insp, err := s.workspaceHooks.Inspect(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(fmt.Errorf("workspace: inspect hooks: %w", err))
@@ -85,7 +85,7 @@ func presentHookScope(scope hooks.Scope) (protocol.HookScope, bool) {
 // SetHookTrust trusts (or revokes) a project's hooks (hooks.
 // setTrust). The change takes effect on the next Run — the resolver re-reads
 // trust per Run.
-func (s *Server) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
+func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
 	if in.ProjectRoot == "" {
 		return protocol.ErrInvalidParams
 	}

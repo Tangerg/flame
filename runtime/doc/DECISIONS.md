@@ -149,7 +149,7 @@
 
 ## ADR-RT-024：Delivery Server 与 Dispatch 分离
 
-- 状态：已接受。
+- 状态：关于 JSON-RPC `dispatch` 的独立 mechanism 仍有效；`server` package 独立性已被 ADR-RT-124 取代。
 - 决策：协议方法实现/projection 与通用 JSON-RPC registry/router 保持不同 package；保留准确的 `server` 和 `dispatch` 名称，不为目录对称改成语义更宽的 `api`/`rpc`，也不合包。
 - 后果：HTTP transport 复用 RPC dispatch，业务入口只驱动 Application。已删除无生产消费者且位于 `internal`、无法充当公共 SDK 的 in-process 原型；未来新增公共 binding 仍必须复用同一 dispatch/Application 路径。
 
@@ -344,7 +344,7 @@
 
 ## ADR-RT-053：公开类型化 `protocol` 与嵌入式 Runtime binding
 
-- 状态：已接受；取代 ADR-RT-024 中“当前没有公共同进程 binding”的现状结论，不改变 `server` 与 HTTP envelope dispatch 分责。
+- 状态：公共 typed binding 与单 Endpoint 语义仍有效；`operation`/`server` 物理分包已被 ADR-RT-124 取代。
 - 背景：`app/cli` 已成为真实的同进程消费者。让它经 loopback HTTP 使用同一进程会额外引入 listener、鉴权 token、JSON 编解码和 SSE framing；复制 Session、Run、Event、Interrupt DTO 又会形成第二协议真相。此前删除的 `internal/delivery/transport/inprocess` 只是 JSON-RPC envelope 的 channel transport，既不能被外部 module 导入，也不是稳定的类型化 Runtime API。
 - 决策：把 binding-neutral 的 DTO、枚举、请求/响应、事件、客户端可见错误、版本和严格验证原子移动到公共 `runtime/protocol`。稳定错误由 sentinel 支持 `errors.Is`，结构化恢复事实由窄 `ProblemError` 支持 `errors.As`；HTTP 与公共 `runtime/embedded` 只消费这一份合同。旧 `internal/delivery/protocol` 物理删除，不保留 alias、forwarding package 或双份类型。
 - 决策：公共 `embedded.Open` 返回 concrete `*embedded.Runtime`。它公开 Runtime 的完整类型化能力与显式 command/subscription options，不导出胖 `Runtime` interface，也不暴露 Application concrete type、Host、Store、Engine、Router、context private key 或 JSON-RPC envelope。消费方按需要自行定义窄接口。
@@ -718,7 +718,7 @@
 
 ## ADR-RT-101：泛型操作行为归还 Registry 与 Endpoint
 
-- 状态：已接受并实施，P184 完成；允许 Runtime internal Delivery API breaking change，公共 Protocol、Artifact、SQLite、Desktop binding 与 Agent Framework execution contract 不变。
+- 状态：已接受并实施，P184 完成；Registry/Endpoint 行为 owner 仍有效，物理 package owner 由 ADR-RT-124 收回 `internal/delivery`。
 - 背景：operation catalog 已由 `Registry` 独占注册状态和方法元数据，却仍通过 `Query(registry, ...)`、`Command(registry, ...)` 等自由泛型函数修改它；typed invocation 同样通过 `Call(endpoint, ...)` 绕开 receiver。这是“对象持有状态、过程函数持有行为”的贫血模型，也让架构守卫只能识别无 owner 的函数名。86 个协议操作名还分别以裸字符串出现在注册和 embedded binding，形成两份需要人工同步的身份。Hook command 的成功结果允许空 `CommandVerdict` 被 Application 默认为 allow，文件变更范围的无效零值也可能弱化 bypass-immunity。
 - 决策：利用 Go 1.27 方法泛型，把六类注册行为及 typed unary/stream invocation 分别收回 `Registry` 和 `Endpoint`；private register 流程也保持同一 receiver，不新增 builder、service 或 façade。操作身份建模为自校验 `operation.Name`，常量就近声明在对应领域注册文件；注册、materialization 与 embedded binding 共同引用它，只有 JSON-RPC transport 边界把外部字符串显式转换为 `Name`。Hook adapter 必须把空 stdout 显式解码为 `CommandAllow`，Application 拒绝其他无效 verdict；Tool authorization 要求有效 `FileMutationScope`，未知范围保守提升为需要确认。验证字段按确定顺序显式调用，不使用 `map[string]string` 参数袋。
 - 后果：86 个 operation 的类型推导、元数据填充、协议身份、注册和调用都从唯一 owner 出发；AST 守卫直接审计 receiver method 与已声明的 `Name` 常量。外部 JSON method text、idempotency、stream、SQLite 与生成合同不变，没有自由函数转发、重复 wire literal 或兼容入口。
@@ -883,3 +883,10 @@
 - 背景：Endpoint-owned provider 没有 bundled probe model，`providers.test` 因而用模型列表验证连接；但旧路径直接调用通用 lister，没有构造实际 chat client。Scope 的 Azure OpenAI adapter 明确要求 base URL 以 `/openai/v1` 结尾，失败优先真实 HTTP 反例却让一个只响应根 `/models` 的错误 URL 通过 provider test；第一条 Run 到 `BuildClient` 才暴露同一配置不可执行。URL presence、HTTP 200 和非空模型列表不能替代 adapter-specific construction contract。
 - 决策：modelcatalog 以唯一 `providerClientSpec` 从 Provider rich value 投影 credential、optional endpoint 与 model identity。Bundled provider 的最小 chat call 和 endpoint model discovery 都先通过该 spec 调用 `llm.BuildClient`；endpoint probe 使用一个合法、无网络语义的内部模型 identity，只验证 adapter construction，再按 profile listing protocol 发请求。所有 provider-specific URL/credential 规则继续由各 Scope builder 拥有，modelcatalog 不识别 Azure 名称或复制 suffix。
 - 后果：Azure 错误 root、未来 adapter-specific construction failure 与模型目录探测会在 `providers.test/models.list` 同一边界失败，不再出现 test 成功、Run 必败；OpenAI-compatible、Anthropic-compatible、Ollama 和 bundled provider 的成功路径不变。没有 endpoint validator map、provider switch、第二 URL parser、虚构部署名持久化、网络 preflight、兼容重试或协议变化。
+
+## ADR-RT-124：Delivery package 边界服从语义 owner，不服从处理阶段矩阵
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Delivery 边界批次完成；允许 Runtime internal Delivery API breaking change，公共 Go surface、Protocol method/event、Artifact 与 SQLite shape 不变。
+- 背景：operation catalog、method metadata、typed invocation、Application handler 和 protocol projection 围绕同一份 operation identity 共同变化。旧 `internal/delivery/operation` 与 `internal/delivery/server` 将一条内聚边界按处理阶段拆分，造成单文件 package、重复命名与 `Server`/`Endpoint` 双 lifecycle；Bootstrap 同时保存并关闭两者。Go MCP SDK 的设计证据同样表明，一个内聚的协议 API 应优先留在一个 package，只把拥有独立机制和语汇的边界拆出。
+- 决策：`internal/delivery` 根 package 统一拥有 `Endpoint`、operation catalog、`Handler` 和 presenters。`Endpoint` 是唯一 binding-neutral 入口和 Delivery lifecycle owner；`Handler` 只拥有 Application/protocol 翻译，其 shutdown admission 只能由 Endpoint 内部触发。Bootstrap 构造 Handler 后立即封装到 Endpoint，Instance 只保存 Endpoint。`dispatch` 保留 JSON-RPC envelope/routing，`transport` 保留 HTTP/SSE 和 envelope mechanism；HTTP 与 embedded 仍只进入同一 Endpoint。
+- 后果：物理删除 `operation`/`server` 子 package 与所有旧 import，不保留 alias、shim、forwarding package 或平行 closer。架构门禁改为按 receiver 语义识别 Handler，不再依赖目录形状。这不合并 Domain/Application 环，也不把 JSON-RPC/HTTP mechanism 吸入根 package；新子 package 仍必须证明独立 vocabulary、invariant、lifecycle、replaceable boundary 或 reusable mechanism。

@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -31,10 +31,10 @@ type InstanceConfig struct {
 	ServerInfo           protocol.ServerInfo
 }
 
-// Instance owns one complete Runtime: its operation endpoint, workers,
+// Instance owns one complete Runtime: its delivery endpoint, workers,
 // application Host and persistence graph.
 type Instance struct {
-	delivery            operationDelivery
+	delivery            *delivery.Endpoint
 	serverInfo          protocol.ServerInfo
 	host                *Host
 	stopRuntime         context.CancelFunc
@@ -172,7 +172,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 	serverInfo.Home = cfg.UserHome
 	serverInfo.DefaultWorkspace = protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}
-	delivery, err := host.application.openOperationDelivery(
+	endpoint, err := host.application.newDeliveryEndpoint(
 		runtimeContext,
 		serverInfo,
 		idempotencyNamespace,
@@ -186,15 +186,15 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	)
 	if err != nil {
 		stopRuntime()
-		delivery.beginShutdown()
+		endpoint.BeginShutdown()
 		rollbackCtx, cancelRollback := context.WithTimeout(context.Background(), defaultShutdownWaitTimeout)
 		defer cancelRollback()
-		return nil, config.Settings{}, errors.Join(err, delivery.awaitShutdown(rollbackCtx))
+		return nil, config.Settings{}, errors.Join(err, endpoint.AwaitShutdown(rollbackCtx))
 	}
 	workerJoins := host.application.startWorkers(runtimeContext)
 
 	instance := &Instance{
-		delivery:            delivery,
+		delivery:            endpoint,
 		serverInfo:          serverInfo,
 		host:                host,
 		stopRuntime:         stopRuntime,
@@ -242,11 +242,11 @@ func (i InstanceConfig) validate() error {
 
 // Endpoint returns the instance-owned binding-neutral operation entrypoint.
 // Public bindings keep it private and expose only their typed methods.
-func (i *Instance) Endpoint() *operation.Endpoint {
+func (i *Instance) Endpoint() *delivery.Endpoint {
 	if i == nil {
 		return nil
 	}
-	return i.delivery.endpoint
+	return i.delivery
 }
 
 // ServerInfo returns the immutable identity advertised by every binding.
@@ -304,13 +304,13 @@ func runInstanceShutdown(
 	}
 	instance.closeMu.Unlock()
 	if begin {
-		instance.delivery.beginShutdown()
+		instance.delivery.BeginShutdown()
 		if instance.stopRuntime != nil {
 			instance.stopRuntime()
 		}
 	}
 
-	if err := instance.delivery.awaitShutdown(ownerCtx); err != nil {
+	if err := instance.delivery.AwaitShutdown(ownerCtx); err != nil {
 		finishInstanceShutdown(instance, attempt, false, err)
 		return
 	}

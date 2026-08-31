@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 // ResolveWorkspace projects the application's current filesystem identity onto
 // the canonical wire resource.
-func (s *Server) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspaceRequest) (*protocol.WorkspaceInfo, error) {
+func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspaceRequest) (*protocol.WorkspaceInfo, error) {
 	path := ""
 	if in.Ref != nil {
 		path = in.Ref.Path
@@ -23,7 +23,7 @@ func (s *Server) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspac
 
 // ListWorkspaces projects the application-owned distinct-workspace view
 // derived from user-facing sessions.
-func (s *Server) ListWorkspaces(ctx context.Context) (*protocol.Page[protocol.WorkspaceSummary], error) {
+func (s *Handler) ListWorkspaces(ctx context.Context) (*protocol.Page[protocol.WorkspaceSummary], error) {
 	workspaces, err := s.workspaceDiscovery.Workspaces(ctx)
 	if err != nil {
 		return nil, wireWorkspaceError(err)

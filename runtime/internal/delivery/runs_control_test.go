@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -29,7 +28,7 @@ func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Canceled,
 		Outcome: &outcome, Detail: "user stopped"}),
 	}}
-	server := &Server{runs: useCases}
+	server := &Handler{runs: useCases}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{
 		RunID: "run_1", Reason: "user stopped",
@@ -52,7 +51,7 @@ func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
 func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.T) {
 	outcome := run.OutcomeCanceled
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Canceled, Outcome: &outcome})}}
-	server := &Server{runs: useCases}
+	server := &Handler{runs: useCases}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{
 			protocol.FeatureSubagents: {Enabled: true},
@@ -69,7 +68,7 @@ func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.
 }
 
 func TestCancelRunMapsFinishedToTheSharedLifecycleError(t *testing.T) {
-	server := &Server{runs: &cancelRunUseCaseStub{err: runs.ErrRunFinished}}
+	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrRunFinished}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
 	if result != nil || !errors.Is(err, protocol.ErrRunFinished) {
@@ -78,7 +77,7 @@ func TestCancelRunMapsFinishedToTheSharedLifecycleError(t *testing.T) {
 }
 
 func TestCancelRunMapsInvalidReasonToInvalidParams(t *testing.T) {
-	server := &Server{runs: &cancelRunUseCaseStub{err: runs.ErrInvalidCancellationReason}}
+	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrInvalidCancellationReason}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
 	if result != nil || !errors.Is(err, protocol.ErrInvalidParams) ||
@@ -88,13 +87,13 @@ func TestCancelRunMapsInvalidReasonToInvalidParams(t *testing.T) {
 }
 
 func TestCancelRunNamesTheCapabilityNeededForAChild(t *testing.T) {
-	server := &Server{runs: &cancelRunUseCaseStub{err: runs.ErrChildRunNotAllowed}}
+	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrChildRunNotAllowed}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_child"})
 	if result != nil || !errors.Is(err, protocol.ErrCapabilityNotNeg) {
 		t.Fatalf("CancelRun = (%+v, %v), want nil/capability_not_negotiated", result, err)
 	}
-	gap, ok := errors.AsType[*operation.CapabilityGapError](err)
+	gap, ok := errors.AsType[*CapabilityGapError](err)
 	if !ok || len(gap.Requirements) != 1 ||
 		gap.Requirements[0].Type != protocol.RequirementFeature ||
 		gap.Requirements[0].Name != protocol.FeatureSubagents {

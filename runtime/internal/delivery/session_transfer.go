@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -20,7 +19,7 @@ import (
 // transcript (not re-importable).
 // Returned inline: flame is a local loopback runtime, so there's no out-of-band
 // file channel nor a giant-payload concern.
-func (s *Server) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
+func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
 	result, err := s.sessions.ExportSession(ctx, request.SessionID)
 	if err != nil {
 		if errors.Is(err, sessions.ErrSessionBusy) {
@@ -58,11 +57,11 @@ func (s *Server) ExportSession(ctx context.Context, request protocol.ExportSessi
 // validateArtifactPlanCapability rejects a Plan when this composition does not own
 // Plan. Import must not restore the conversation while silently dropping companion
 // product material.
-func (s *Server) validateArtifactPlanCapability(plan []protocol.PlanStep) error {
+func (s *Handler) validateArtifactPlanCapability(plan []protocol.PlanStep) error {
 	if len(plan) == 0 || s.features.plan {
 		return nil
 	}
-	return operation.NewCapabilityGapError(protocol.CapabilityRequirement{
+	return NewCapabilityGapError(protocol.CapabilityRequirement{
 		Type: protocol.RequirementFeature, Name: protocol.FeaturePlan,
 	})
 }
@@ -70,7 +69,7 @@ func (s *Server) validateArtifactPlanCapability(plan []protocol.PlanStep) error 
 // ImportSession recreates a Session from a SessionArtifact under its original
 // identity. Re-importing the same artifact is idempotent; importing over an
 // existing Session restores it atomically.
-func (s *Server) ImportSession(ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
+func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
 		return nil, fmt.Errorf("%w: unsupported artifact version %d (want %d)", protocol.ErrInvalidParams, artifact.Version, protocol.SessionArtifactVersion)

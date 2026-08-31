@@ -7,15 +7,15 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 	t.Parallel()
 
-	set := walkWireTypes(operation.Contract(), dispatch.WireShapes())
+	set := walkWireTypes(delivery.Contract(), dispatch.WireShapes())
 	pageFamily := genericBaseOf(reflect.TypeFor[protocol.Page[protocol.Session]]())
 	continuationFields := contractshape.Fields(reflect.TypeFor[protocol.PageContinuation]())
 	if len(continuationFields) != 1 {
@@ -40,7 +40,7 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 }
 
 func TestManifestPublishesToolsetPresentationContracts(t *testing.T) {
-	registry, shapes := operation.Contract(), dispatch.WireShapes()
+	registry, shapes := delivery.Contract(), dispatch.WireShapes()
 	generated := build(walkWireTypes(registry, shapes))
 
 	want := make(map[string]string)
@@ -168,7 +168,7 @@ func TestGeneratedMethodsPublishMaterializedQueryFacts(t *testing.T) {
 func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 	t.Parallel()
 
-	generated := build(walkWireTypes(operation.Contract(), dispatch.WireShapes()))
+	generated := build(walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
 	want := map[string]struct {
 		method   string
 		path     string

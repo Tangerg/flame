@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -697,7 +696,7 @@ func TestSessionImportRefusesPlanWhenFeatureIsDisabled(t *testing.T) {
 	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
 		t.Fatalf("import err = %v, want capability_not_negotiated", err)
 	}
-	gap, ok := errors.AsType[*operation.CapabilityGapError](err)
+	gap, ok := errors.AsType[*CapabilityGapError](err)
 	if !ok || len(gap.Requirements) != 1 {
 		t.Fatalf("gap = %+v, want one requirement", gap)
 	}

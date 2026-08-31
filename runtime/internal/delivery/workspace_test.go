@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -88,7 +88,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	}
 }
 
-func applyWorkspaceSurfaces(s *Server, surfaces workspaceSurfaces) {
+func applyWorkspaceSurfaces(s *Handler, surfaces workspaceSurfaces) {
 	s.workspaceFiles = surfaces.files
 	s.workspaceVCS = surfaces.vcs
 	s.workspaceDiscovery = surfaces.discovery
@@ -99,14 +99,14 @@ func applyWorkspaceSurfaces(s *Server, surfaces workspaceSurfaces) {
 	s.workspaceAuthoredWatch = surfaces.authoredWatch
 }
 
-func newWorkspaceServer(cwd string) *Server {
-	s := &Server{}
+func newWorkspaceHandler(cwd string) *Handler {
+	s := &Handler{}
 	applyWorkspaceSurfaces(s, newWorkspaceSurfaces(cwd, workspaceTestConfig{}))
 	return s
 }
 
-func newWorkspaceServerWithConfig(cwd string, cfg workspaceTestConfig) *Server {
-	s := &Server{}
+func newWorkspaceHandlerWithConfig(cwd string, cfg workspaceTestConfig) *Handler {
+	s := &Handler{}
 	applyWorkspaceSurfaces(s, newWorkspaceSurfaces(cwd, cfg))
 	return s
 }
@@ -125,7 +125,7 @@ func TestWorkspaceGetFileHead(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "wide.txt"), []byte(strings.Repeat("x", (1<<20)+1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	got, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: valuePtr(2)})
 	if err != nil {
@@ -159,7 +159,7 @@ func TestWorkspaceListFilesPaginatesInspectedEntries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	first, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{Recursive: true, PageQuery: protocol.PageQuery{Limit: valuePtr(2)}})
 	if err != nil {
@@ -224,7 +224,7 @@ func TestWorkspaceListFilesRejectsSymlinkDirectoryEscape(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	s := newWorkspaceServer(root)
+	s := newWorkspaceHandler(root)
 
 	if _, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{Path: "escape"}); !errors.Is(err, protocol.ErrPathOutsideRoot) {
 		t.Fatalf("list symlink escape err = %v, want ErrPathOutsideRoot", err)
@@ -240,7 +240,7 @@ func TestWorkspaceReadFileRejectsSymlinkEscape(t *testing.T) {
 	if err := os.Symlink(filepath.Join(outside, "secret.txt"), filepath.Join(root, "leak.txt")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	s := newWorkspaceServer(root)
+	s := newWorkspaceHandler(root)
 
 	if _, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "leak.txt"}); !errors.Is(err, protocol.ErrPathOutsideRoot) {
 		t.Fatalf("read symlink escape err = %v, want ErrPathOutsideRoot", err)
@@ -255,7 +255,7 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "long.txt"), []byte("abcdef"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	got, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "f.txt", StartLine: valuePtr(2), EndLine: valuePtr(3)})
 	if err != nil {
@@ -284,7 +284,7 @@ func TestWorkspaceReadFileOwnsDefaultAndMaximumByteBudgets(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "maximum.txt"), []byte(strings.Repeat("x\n", (9<<20)/2)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	t.Run("default", func(t *testing.T) {
 		defaulted, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "default.txt"})
@@ -314,7 +314,7 @@ func TestWorkspaceReadFilePreservesCancellationAndClassifiesBinaryText(t *testin
 	if err := os.WriteFile(filepath.Join(dir, "binary.txt"), []byte{'o', 'k', 0xff}, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	t.Run("cancellation", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
@@ -335,7 +335,7 @@ func TestWorkspaceReadFileRejectsInvalidRange(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("a\nb\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	cases := []protocol.ReadFileRequest{
 		{Path: "f.txt", StartLine: valuePtr(-1)},
@@ -366,7 +366,7 @@ func TestWorkspaceGrep(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 
 	if _, err := s.GrepWorkspace(context.Background(), protocol.GrepRequest{}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Errorf("empty query err = %v, want ErrInvalidParams", err)
@@ -404,7 +404,7 @@ func (f fakeRecipeLister) List(context.Context, string) ([]workspaceapp.Recipe, 
 // carrying each one's scope through the wire, and defaults cwd to the serve dir.
 func TestListDiscoveredSkills(t *testing.T) {
 	dir := t.TempDir()
-	s := newWorkspaceServerWithConfig(dir, workspaceTestConfig{Skills: fakeSkillCatalog{skills: []workspaceapp.SkillSummary{
+	s := newWorkspaceHandlerWithConfig(dir, workspaceTestConfig{Skills: fakeSkillCatalog{skills: []workspaceapp.SkillSummary{
 		{Name: "pdf", Description: "PDF tools", Scope: "project"},
 		{Name: "web", Description: "web tools", Scope: "user"},
 	}}})
@@ -421,7 +421,7 @@ func TestListDiscoveredSkills(t *testing.T) {
 // carrying scope + body through, and defaults cwd to the serve dir.
 func TestListRecipes(t *testing.T) {
 	dir := t.TempDir()
-	s := newWorkspaceServerWithConfig(dir, workspaceTestConfig{Recipes: fakeRecipeLister{recipes: []workspaceapp.Recipe{
+	s := newWorkspaceHandlerWithConfig(dir, workspaceTestConfig{Recipes: fakeRecipeLister{recipes: []workspaceapp.Recipe{
 		{Name: "review", Description: "review diff", Body: "Review $ARGUMENTS", Scope: workspaceapp.RecipeScopeProject, Source: "/p/review.md"},
 		{Name: "commit", Body: "Write a commit", Scope: workspaceapp.RecipeScopeGlobal, Source: "/g/commit.md"},
 	}}})
@@ -444,7 +444,7 @@ func TestListRecipes(t *testing.T) {
 // (mcp/skills) and closes on ctx cancel. The watches path has its own coverage
 // in filewatch_test.go.
 func TestWorkspaceSubscribe(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	s.workspaceHub = newWorkspaceHub()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -478,7 +478,7 @@ func TestWorkspaceSubscribe(t *testing.T) {
 }
 
 func TestWorkspaceSubscribe_EarlyRangeStopReleasesSubscription(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	s.workspaceHub = newWorkspaceHub()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -504,11 +504,12 @@ func TestWorkspaceSubscribe_EarlyRangeStopReleasesSubscription(t *testing.T) {
 
 // TestWorkspaceSubscribeLifetimeIsTheRequest: a subscription's stream is bounded
 // by its request ctx (client disconnect / the transport's forced shutdown), not
-// by Server.Close — delivery owns no task group (§16 rule 5). Server.Close only
-// gates NEW subscriptions; an in-flight, request-owned stream is left to its ctx.
+// by Handler retirement — delivery owns no task group (§16 rule 5). Retirement
+// only gates new subscriptions; an in-flight stream is left to its request ctx.
 func TestWorkspaceSubscribeLifetimeIsTheRequest(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	s.workspaceHub = newWorkspaceHub()
+	endpoint := mustNewEndpoint(t, s, EndpointConfig{})
 	reqCtx, cancelReq := context.WithCancel(context.Background())
 	_, seq, err := s.SubscribeRuntime(reqCtx, protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
@@ -518,13 +519,13 @@ func TestWorkspaceSubscribeLifetimeIsTheRequest(t *testing.T) {
 	}
 	events := drainSeq(reqCtx, seq)
 
-	// Server.Close gates new work but must not disturb an in-flight request-owned
+	// Handler retirement gates new work but must not disturb an in-flight request-owned
 	// stream (the transport joins active handlers on shutdown).
-	s.Close()
+	endpoint.BeginShutdown()
 	select {
 	case _, ok := <-events:
 		if !ok {
-			t.Fatal("Server.Close must not close a request-owned stream")
+			t.Fatal("Handler retirement must not close a request-owned stream")
 		}
 	case <-time.After(50 * time.Millisecond):
 	}
@@ -540,8 +541,8 @@ func TestWorkspaceSubscribeLifetimeIsTheRequest(t *testing.T) {
 		t.Fatal("stream not closed after request ctx cancel")
 	}
 
-	// A new subscription after Close is rejected. The request is a VALID one, so the
-	// refusal is about the closed server rather than about the request.
+	// A new subscription after Endpoint shutdown is rejected. The request is valid, so the
+	// refusal is about the retired Handler rather than about the request.
 	if _, _, err := s.SubscribeRuntime(context.Background(), protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}); !errors.Is(err, errSubscriptionAdmissionsClosed) {
@@ -551,7 +552,7 @@ func TestWorkspaceSubscribeLifetimeIsTheRequest(t *testing.T) {
 
 // TestAgentDocScope pins the cwd→home cascade classification.
 func TestListAgentDocsRejectsUnavailableCWD(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	missing := filepath.Join(t.TempDir(), "missing")
 
 	_, err := s.ListAgentDocs(context.Background(), protocol.WorkspaceQuery{

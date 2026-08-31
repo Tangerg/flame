@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 // ListKnowledge enumerates FLAME.md entries across scopes (API.md §7.7).
 // The entire knowledge.* group is capability-gated, so an unwired store is a
 // capability error rather than a synthetic empty collection.
-func (s *Server) ListKnowledge(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error) {
+func (s *Handler) ListKnowledge(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error) {
 	entries, err := s.workspaceKnowledge.Entries(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -32,7 +32,7 @@ func (s *Server) ListKnowledge(ctx context.Context, in protocol.WorkspaceQuery) 
 
 // GetKnowledge returns one scope's FLAME.md content. Dispatch has already
 // validated the scope (KnowledgeScope.Valid).
-func (s *Server) GetKnowledge(ctx context.Context, in protocol.GetKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
+func (s *Handler) GetKnowledge(ctx context.Context, in protocol.GetKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
 	scope, err := knowledgeScopeFromWire(in.Scope)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (s *Server) GetKnowledge(ctx context.Context, in protocol.GetKnowledgeReque
 	return &wire, nil
 }
 
-func (s *Server) UpdateKnowledge(ctx context.Context, in protocol.UpdateKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
+func (s *Handler) UpdateKnowledge(ctx context.Context, in protocol.UpdateKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
 	scope, err := knowledgeScopeFromWire(in.Scope)
 	if err != nil {
 		return nil, err

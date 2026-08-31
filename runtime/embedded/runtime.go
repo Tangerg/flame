@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -119,7 +119,7 @@ func embeddedVersion() string {
 	return info.Main.Version
 }
 
-func (r *Runtime) endpoint() (*operation.Endpoint, error) {
+func (r *Runtime) endpoint() (*delivery.Endpoint, error) {
 	if r == nil {
 		return nil, ErrClosed
 	}

@@ -1,4 +1,4 @@
-package operation
+package delivery
 
 import (
 	"errors"
@@ -168,7 +168,7 @@ type FieldCondition struct {
 	Value    string
 }
 
-// CapabilityRule states which server features a call needs.
+// CapabilityRule states which Runtime features a call needs.
 //
 // An empty When means the whole method needs them. A non-empty When means only
 // the requests matching it do — which is how a method stays available in its
@@ -223,7 +223,7 @@ type MethodMeta struct {
 	// Materializes names independently callable query fact families this query
 	// returns together. It does not alias their request filters or pagination:
 	// clients still call those methods for standalone browsing. The metadata lets
-	// consumer gates distinguish a deliberately server-composed product read from
+	// consumer gates distinguish a deliberately Runtime-composed product read from
 	// an orphaned backend capability without forcing redundant network calls.
 	Materializes []Name
 

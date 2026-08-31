@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
@@ -23,7 +23,7 @@ func presentRunStatus(status rundomain.Status) protocol.RunStatus {
 	case rundomain.StatusFinished:
 		return protocol.RunStatusFinished
 	default:
-		panic("server: unknown run status")
+		panic("delivery: unknown run status")
 	}
 }
 
@@ -62,12 +62,12 @@ func presentCancelResult(result runs.CancelResult) *protocol.CancelRunResponse {
 	run := presentRun(result.Run)
 	if result.RootRun == nil {
 		if result.Run.Lineage().IsChild() {
-			panic("server: child cancel result has no root run")
+			panic("delivery: child cancel result has no root run")
 		}
 		return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: run}
 	}
 	if result.Run.Lineage().IsRoot() {
-		panic("server: root cancel result unexpectedly carries a root run")
+		panic("delivery: root cancel result unexpectedly carries a root run")
 	}
 	root := presentRun(*result.RootRun)
 	return &protocol.CancelRunResponse{
@@ -116,7 +116,7 @@ func presentSegmentFinished(run rundomain.Run, interrupts []transcript.Interrupt
 func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	outcome, terminal := run.Outcome()
 	if !terminal {
-		panic("server: terminal run has no outcome")
+		panic("delivery: terminal run has no outcome")
 	}
 	var kind protocol.RunOutcomeType
 	switch outcome {
@@ -135,7 +135,7 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	case rundomain.OutcomeLost:
 		kind = protocol.OutcomeLost
 	default:
-		panic("server: unknown run outcome")
+		panic("delivery: unknown run outcome")
 	}
 	failure, failed := run.Failure()
 	var problem *protocol.ProblemData
@@ -228,7 +228,7 @@ func presentRunFailure(problem *rundomain.Failure) *protocol.ProblemData {
 	case rundomain.FailureProviderRejected:
 		kind = protocol.ProblemProviderRejected
 	default:
-		panic("server: unknown run failure kind")
+		panic("delivery: unknown run failure kind")
 	}
 	// The problem's scope is not published: where the frame LANDS already says it —
 	// a run's outcome or a tool call's error — and a field restating that is a second
@@ -257,7 +257,7 @@ func presentToolFailure(failure *tool.Failure) *protocol.ProblemData {
 	case tool.FailureCanceled:
 		kind = protocol.ProblemToolCanceled
 	default:
-		panic("server: unknown tool failure kind")
+		panic("delivery: unknown tool failure kind")
 	}
 	return &protocol.ProblemData{
 		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
@@ -273,7 +273,7 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 		switch request.Kind {
 		case interrupt.Approval:
 			if request.Approval == nil {
-				panic("server: approval interrupt has no approval payload")
+				panic("delivery: approval interrupt has no approval payload")
 			}
 			entry.Payload = &protocol.InterruptPayload{
 				Tool:         new(presentTool(request.Approval.Tool)),
@@ -283,7 +283,7 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 			}
 		case interrupt.Question:
 			if request.Question == nil {
-				panic("server: question interrupt has no question payload")
+				panic("delivery: question interrupt has no question payload")
 			}
 			entry.Payload = &protocol.InterruptPayload{Question: new(presentQuestion(*request.Question))}
 		}

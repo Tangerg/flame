@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 // ListDiscoveredSkills maps application skill discovery to the protocol shape.
-func (s *Server) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error) {
+func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error) {
 	found, err := s.workspaceSkills.List(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -43,7 +43,7 @@ func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope
 // (skills.library.list). The library is small, so it comes back in one page
 // (same as skills.discovered.list). capability_not_negotiated when the library
 // curator is disabled.
-func (s *Server) ListManagedSkills(ctx context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
+func (s *Handler) ListManagedSkills(ctx context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
 	entries, err := s.workspaceSkills.Managed(ctx)
 	if err != nil {
 		return nil, mapSkillLibraryErr(err, "skills.library.list")
@@ -77,7 +77,7 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 // ArchiveSkill removes a skill from active use without deleting it
 // (skills.library.archive). The application use case publishes the refresh
 // nudge after its durable mutation commits.
-func (s *Server) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
+func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
 	if in.Name == "" {
 		return protocol.ErrInvalidParams
 	}
@@ -90,7 +90,7 @@ func (s *Server) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest)
 // RestoreSkill returns an archived skill to active use
 // (skills.library.restore). The application use case publishes the refresh
 // nudge after its durable mutation commits.
-func (s *Server) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
+func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
 	if in.Name == "" {
 		return protocol.ErrInvalidParams
 	}
@@ -102,7 +102,7 @@ func (s *Server) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest)
 
 // ListSkillProposals returns complete project and user proposals awaiting
 // review (skills.proposals.list).
-func (s *Server) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
+func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
 	proposals, err := s.workspaceSkills.Proposals(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, mapSkillProposalErr(err, "skills.proposals.list")
@@ -132,7 +132,7 @@ func (s *Server) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQu
 }
 
 // ApproveSkillProposal activates exactly the reviewed immutable proposal.
-func (s *Server) ApproveSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
+func (s *Handler) ApproveSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
 	ref, err := skillProposalRef(in)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (s *Server) ApproveSkillProposal(ctx context.Context, in protocol.SkillProp
 }
 
 // RejectSkillProposal removes exactly the reviewed immutable proposal.
-func (s *Server) RejectSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
+func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
 	ref, err := skillProposalRef(in)
 	if err != nil {
 		return err

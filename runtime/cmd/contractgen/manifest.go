@@ -5,8 +5,8 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -185,7 +185,7 @@ type invariantEntry struct {
 }
 
 func build(walked *schemaSet) manifest {
-	registry := operation.Contract()
+	registry := delivery.Contract()
 	shapes := dispatch.WireShapes()
 	return manifest{
 		ProtocolVersion:     protocol.ProtocolVersion,
@@ -239,7 +239,7 @@ func notificationNames(shapes *dispatch.Shapes) []string {
 	return out
 }
 
-func methods(registry *operation.Registry) []methodEntry {
+func methods(registry *delivery.Registry) []methodEntry {
 	metas := registry.Metas()
 	out := make([]methodEntry, 0, len(metas))
 	for _, meta := range metas {
@@ -258,7 +258,7 @@ func methods(registry *operation.Registry) []methodEntry {
 	return out
 }
 
-func errors(registry *operation.Registry) errorRegistry {
+func errors(registry *delivery.Registry) errorRegistry {
 	// The codes come from the dispatcher's own wire-behavior table: the artifacts
 	// must publish the number the runtime actually sends, and a table here was a
 	// copy of it.
@@ -275,7 +275,7 @@ func errors(registry *operation.Registry) errorRegistry {
 	}
 }
 
-func capabilities(registry *operation.Registry) []capabilityEntry {
+func capabilities(registry *delivery.Registry) []capabilityEntry {
 	var out []capabilityEntry
 	for _, meta := range registry.Metas() {
 		if len(meta.CapabilityRules) == 0 {
@@ -290,7 +290,7 @@ func capabilities(registry *operation.Registry) []capabilityEntry {
 	return out
 }
 
-func conditions(in []operation.FieldCondition) []conditionRow {
+func conditions(in []delivery.FieldCondition) []conditionRow {
 	if len(in) == 0 {
 		return nil
 	}
@@ -436,7 +436,7 @@ func valueConstraints(shapes *dispatch.Shapes) []valueConstraintEntry {
 // errorTypes publishes one entry per business error: its code, the recovery action
 // declared beside its wire behavior, and the methods whose registrations say they
 // return it. Sorted by type so the artifact is stable.
-func errorTypes(registry *operation.Registry, codes map[string]int) []errorEntry {
+func errorTypes(registry *delivery.Registry, codes map[string]int) []errorEntry {
 	byType := make(map[string][]string, len(codes))
 	for _, meta := range registry.Metas() {
 		for _, problem := range meta.ProblemTypes() {
@@ -445,7 +445,7 @@ func errorTypes(registry *operation.Registry, codes map[string]int) []errorEntry
 	}
 	out := make([]errorEntry, 0, len(codes))
 	for problemType, code := range codes {
-		recovery, declared := operation.RecoveryFor(problemType)
+		recovery, declared := delivery.RecoveryFor(problemType)
 		if !declared {
 			panic("contractgen: problem type " + problemType + " declares no recovery action")
 		}
@@ -453,7 +453,7 @@ func errorTypes(registry *operation.Registry, codes map[string]int) []errorEntry
 		slices.Sort(methods)
 		out = append(out, errorEntry{
 			Type: problemType, Code: code, Recovery: string(recovery),
-			RetryAfterSeconds: operation.RetryAfterFor(problemType),
+			RetryAfterSeconds: delivery.RetryAfterFor(problemType),
 			Methods:           methods,
 		})
 	}
@@ -461,7 +461,7 @@ func errorTypes(registry *operation.Registry, codes map[string]int) []errorEntry
 	return out
 }
 
-func methodNames(names []operation.Name) []string {
+func methodNames(names []delivery.Name) []string {
 	if len(names) == 0 {
 		return nil
 	}
@@ -474,7 +474,7 @@ func methodNames(names []operation.Name) []string {
 
 // problemCodes is the type→code map, read back from the published registry so the
 // OpenRPC document and the manifest cannot state different numbers.
-func problemCodes(registry *operation.Registry) map[string]int {
+func problemCodes(registry *delivery.Registry) map[string]int {
 	out := make(map[string]int)
 	for _, entry := range errors(registry).Types {
 		out[entry.Type] = entry.Code

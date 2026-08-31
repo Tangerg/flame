@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -18,7 +18,7 @@ func presentSafetyClass(class tool.SafetyClass) protocol.SafetyClass {
 	case tool.SafetyClassNetwork:
 		return protocol.SafetyClassNetwork
 	default:
-		panic("server: unknown tool safety class")
+		panic("delivery: unknown tool safety class")
 	}
 }
 
@@ -33,6 +33,6 @@ func presentApprovalRisk(risk tool.RiskLevel) protocol.ApprovalRisk {
 	case tool.RiskHigh:
 		return protocol.ApprovalRiskHigh
 	default:
-		panic("server: unknown tool risk level")
+		panic("delivery: unknown tool risk level")
 	}
 }

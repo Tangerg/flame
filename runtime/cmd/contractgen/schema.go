@@ -11,8 +11,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 )
 
 // The schema walker turns the registered wire types into JSON Schema.
@@ -374,9 +374,9 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 		// An equals condition pins the value; a presence condition only asks that
 		// the field be there, which `required` already says.
 		switch when.Operator {
-		case operation.OperatorEquals:
+		case delivery.OperatorEquals:
 			parent.Properties[leaf] = &schema{Const: when.Value}
-		case operation.OperatorPresent:
+		case delivery.OperatorPresent:
 		default:
 			panic(fmt.Sprintf(
 				"contractgen: %s.%s uses unsupported condition operator %s",

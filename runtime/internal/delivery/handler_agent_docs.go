@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 // ListAgentDocs maps the application-owned instruction-document cascade onto
 // the protocol shape.
-func (s *Server) ListAgentDocs(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {
+func (s *Handler) ListAgentDocs(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {
 	docs, err := s.workspaceDiscovery.AgentDocs(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)

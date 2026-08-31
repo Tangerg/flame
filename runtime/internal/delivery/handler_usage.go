@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 // SessionUsage projects the application-owned session usage report onto the
 // usage.session wire contract.
-func (s *Server) SessionUsage(ctx context.Context, sessionID string) (*protocol.Usage, error) {
+func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol.Usage, error) {
 	report, err := s.usage.Session(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -20,7 +20,7 @@ func (s *Server) SessionUsage(ctx context.Context, sessionID string) (*protocol.
 
 // UsageSummary projects the application-owned aggregate usage report onto the
 // usage.summary wire contract.
-func (s *Server) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
+func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
 	period := usage.AllTime()
 	if in.SinceDays != nil {
 		recent, periodErr := usage.RecentDays(*in.SinceDays)

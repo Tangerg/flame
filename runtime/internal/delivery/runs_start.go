@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -25,7 +24,7 @@ import (
 // sequence — including outcome:interrupt when the run parks for HITL
 // approval, after which the run suspends and the client answers via
 // runs.resume.
-func (s *Server) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
 	options := generationOptionsFromWire(in.Params)
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
@@ -97,7 +96,7 @@ func wireRunStartErr(err error) error {
 	// A session that already has a run is refused WITH that run: the client offers
 	// steer / resume / cancel, and the runtime cancels nothing on its own.
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
-		return &operation.ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
+		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
 			RunID: conflict.RunID, Status: presentRunStatus(conflict.Status),
 		}}
 	}

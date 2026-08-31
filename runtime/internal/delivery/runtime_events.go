@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -6,7 +6,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func (s *Server) observeFileChanges(observe func(func(workspaceapp.FileChangeNotice))) {
+func (s *Handler) observeFileChanges(observe func(func(workspaceapp.FileChangeNotice))) {
 	observe(func(change workspaceapp.FileChangeNotice) {
 		s.workspaceHub.publish(protocol.RuntimeEvent{
 			Type:      protocol.RuntimeFilesChanged,
@@ -16,7 +16,7 @@ func (s *Server) observeFileChanges(observe func(func(workspaceapp.FileChangeNot
 	})
 }
 
-func (s *Server) observeInvalidations(observe func(func(invalidation.Notice))) {
+func (s *Handler) observeInvalidations(observe func(func(invalidation.Notice))) {
 	observe(func(notice invalidation.Notice) {
 		if event, ok := runtimeEventFor(notice); ok {
 			s.workspaceHub.publish(event)

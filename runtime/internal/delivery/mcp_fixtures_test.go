@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"cmp"
@@ -116,19 +116,19 @@ func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) e
 	return nil
 }
 
-// serverWithMCP builds a Server whose capabilities coordinator is wired for the
+// handlerWithMCP builds a Handler whose capabilities coordinator is wired for the
 // MCP handlers (live pool + registry + policy), plus the workspace event hub the
 // reconnect/configure paths publish through — bridged like the composition root
 // via a neutral signal so the coordinator's connecting → settled frames
 // reach the hub.
-func serverWithMCP(cfg mcpapp.Config) *Server {
+func handlerWithMCP(cfg mcpapp.Config) *Handler {
 	if cfg.Policy == nil {
 		policy := mcpserver.NewToolPolicy(nil)
 		cfg.Policy = mcpapp.NewToolPolicyState(policy)
 	}
 	mcpInvalidations := &testNotification[invalidation.Notice]{}
 	cfg.Invalidations = mcpInvalidations.Publish
-	s := &Server{mcp: mcpapp.New(cfg), workspaceHub: newWorkspaceHub()}
+	s := &Handler{mcp: mcpapp.New(cfg), workspaceHub: newWorkspaceHub()}
 	s.observeInvalidations(mcpInvalidations.Observe)
 	return s
 }

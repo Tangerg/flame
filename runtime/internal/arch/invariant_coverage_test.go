@@ -119,7 +119,7 @@ var invariantFixtures = map[string]map[transactionBoundary]fixtureRef{
 		boundarySegmentEvent: {"internal/adapter/runsegment", "TestCommitEventPersistsTheTerminalRunsResult"},
 		boundaryRunRecovery:  {"internal/adapter/runrecovery", "TestRecoveryRepairsWholeDurableLifecycle"},
 		boundarySessionImport: {
-			"internal/delivery/server", "TestSessionImportRejectsAFailedRunWithoutItsFailure",
+			"internal/delivery", "TestSessionImportRejectsAFailedRunWithoutItsFailure",
 		},
 	},
 	"run_capabilities_are_immutable": {
@@ -153,7 +153,7 @@ var invariantFixtures = map[string]map[transactionBoundary]fixtureRef{
 		boundarySessionDelete:   {"internal/bootstrap", "TestApplyDeleteRemovesRunRows"},
 	},
 	"imported_session_keeps_its_identity": {
-		boundarySessionImport: {"internal/delivery/server", "TestSessionExportImport_RoundTrip"},
+		boundarySessionImport: {"internal/delivery", "TestSessionExportImport_RoundTrip"},
 	},
 	"goal_never_outlives_its_session": {
 		boundaryGoalLifecycle:   {"internal/infra/sqlite", "TestGoalStoreRejectsMissingSession"},
@@ -233,18 +233,18 @@ func TestEveryPlanLifecycleClaimHasAFixture(t *testing.T) {
 var planLifecycleFixtures = map[string][]fixtureRef{
 	"plan_revision_never_goes_backwards": {
 		{"internal/infra/sqlite", "TestPlanIsOwnedByItsSession"},
-		{"internal/delivery/server", "TestPlanQueryAnswersWithTheStreamsOwnSnapshot"},
+		{"internal/delivery", "TestPlanQueryAnswersWithTheStreamsOwnSnapshot"},
 		{"internal/bootstrap", "TestApplyRollbackRepublishesBoundaryPlan"},
 	},
 	"session_plan_is_owned_by_its_session": {
 		{"internal/infra/sqlite", "TestPlanIsOwnedByItsSession"},
-		{"internal/delivery/server", "TestPlanChangeKeepsSessionScope"},
+		{"internal/delivery", "TestPlanChangeKeepsSessionScope"},
 	},
 	"segment_fences_its_final_plan": {
 		{"internal/application/runs", "TestSegmentFencesItsFinalPlanBeforeFinishing"},
 	},
 	"committed_plan_change_reaches_other_windows": {
-		{"internal/delivery/server", "TestPlanChangeKeepsSessionScope"},
+		{"internal/delivery", "TestPlanChangeKeepsSessionScope"},
 		{"internal/application/plans", "TestCommittedPlanChangeReachesOtherWindows"},
 	},
 }

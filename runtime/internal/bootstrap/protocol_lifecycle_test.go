@@ -14,8 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
-	runtimeserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -58,7 +57,6 @@ func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 	restartedConfig.Resources = nil
 	restartedHost, restartedAPI := buildProtocolRuntime(t, restartedConfig, stores.DataDirectory)
 	defer func() {
-		restartedAPI.Close()
 		if closeErr := restartedHost.Close(); closeErr != nil {
 			t.Errorf("close restarted runtime: %v", closeErr)
 		}
@@ -86,7 +84,7 @@ type protocolLifecycleFixture struct {
 	ctx       context.Context
 	model     *lifecycleModel
 	host      *Host
-	api       *runtimeserver.Server
+	api       *delivery.Handler
 	stores    *persistence.Bundle
 	sessionID string
 	started   *protocol.StartRunResponse
@@ -113,7 +111,7 @@ func newProtocolLifecycleFixture(t *testing.T) *protocolLifecycleFixture {
 }
 
 func protocolLifecycleContext(ctx context.Context) context.Context {
-	return operation.WithRequestMeta(ctx, protocol.RequestMeta{
+	return delivery.WithRequestMeta(ctx, protocol.RequestMeta{
 		ProtocolVersion: protocol.ProtocolVersion,
 		ClientCapabilities: &protocol.ClientCapabilities{
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
@@ -215,7 +213,7 @@ func (p *protocolLifecycleFixture) resumeAndCancel(question protocol.Interrupt) 
 }
 
 func (p *protocolLifecycleFixture) resumeAndCancelWith(
-	api *runtimeserver.Server,
+	api *delivery.Handler,
 	question protocol.Interrupt,
 	closeFirst bool,
 ) {
@@ -295,7 +293,6 @@ func (p *protocolLifecycleFixture) assertColdState() {
 	p.t.Helper()
 	restartedHost, restartedAPI := openProtocolRuntime(p.t, newReplyStub("unused"))
 	defer func() {
-		restartedAPI.Close()
 		if err := restartedHost.Close(); err != nil {
 			p.t.Errorf("close restarted runtime: %v", err)
 		}
@@ -333,7 +330,6 @@ func (p *protocolLifecycleFixture) closeFirstRuntime() {
 	if p.closed {
 		return
 	}
-	p.api.Close()
 	if err := p.host.Close(); err != nil {
 		p.t.Fatalf("close first runtime: %v", err)
 	}
@@ -406,7 +402,7 @@ func (noMaintenance) Maintain(
 	return agentexec.RunMaintenanceResult{}
 }
 
-func openProtocolRuntime(t *testing.T, model chat.Model) (*Host, *runtimeserver.Server) {
+func openProtocolRuntime(t *testing.T, model chat.Model) (*Host, *delivery.Handler) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
 	stores, err := persistence.Open(t.Context(), persistence.Config{
@@ -441,7 +437,7 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	return cfg
 }
 
-func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *runtimeserver.Server) {
+func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *delivery.Handler) {
 	t.Helper()
 	assembly := NewAssembly(t.Context(), cfg)
 	host, err := BuildAssembly(t.Context(), assembly)
@@ -453,7 +449,7 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *runtime
 		_ = host.Close()
 		t.Fatalf("recover runtime: %v", recoverStartupErr)
 	}
-	api, err := protocolServer(host, cwd)
+	api, err := protocolHandler(host, cwd)
 	if err != nil {
 		_ = host.Close()
 		t.Fatalf("build protocol server: %v", err)
@@ -461,8 +457,8 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *runtime
 	return host, api
 }
 
-func protocolServer(host *Host, cwd string) (*runtimeserver.Server, error) {
-	return host.application.newOperationService(protocol.ServerInfo{
+func protocolHandler(host *Host, cwd string) (*delivery.Handler, error) {
+	return host.application.newDeliveryHandler(protocol.ServerInfo{
 		Name: "conformance-test", Version: "0.0.0-test", InstanceID: identityfixture.RuntimeInstanceID,
 		DefaultWorkspace: protocol.WorkspaceRef{Path: cwd}, Home: cwd,
 	}, identityfixture.IdempotencyNamespace)

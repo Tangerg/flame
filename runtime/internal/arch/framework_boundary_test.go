@@ -1288,8 +1288,8 @@ func TestHostApplicationIsAnInternalCompositionCapsule(t *testing.T) {
 		t.Fatalf("Host.application type = %s, want *hostApplication", got)
 	}
 	applicationPath := filepath.Join(root, "internal", "bootstrap", "delivery.go")
-	if got := namedStructFieldType(t, applicationPath, "hostApplication", "delivery"); got != "server.Config" {
-		t.Fatalf("hostApplication.delivery type = %s, want server.Config", got)
+	if got := namedStructFieldType(t, applicationPath, "hostApplication", "delivery"); got != "delivery.HandlerConfig" {
+		t.Fatalf("hostApplication.delivery type = %s, want delivery.HandlerConfig", got)
 	}
 	if got := namedStructFieldType(t, applicationPath, "hostApplication", "idempotencyStore"); got != "idempotency.Store" {
 		t.Fatalf("hostApplication.idempotencyStore type = %s, want idempotency.Store", got)

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,7 +20,7 @@ func decodeForTest[Parameters any](request *transport.Request) (Parameters, *tra
 	}
 	parameters := decoded.(Parameters)
 	if err := protocol.ValidateWireTree(parameters); err != nil {
-		return zero, errorToRPC(operation.InvalidParameters(err))
+		return zero, errorToRPC(delivery.InvalidParameters(err))
 	}
 	return parameters, nil
 }

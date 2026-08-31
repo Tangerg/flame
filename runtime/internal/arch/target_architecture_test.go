@@ -4,6 +4,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -72,6 +73,20 @@ func TestTargetHasNoCompatibilityPackages(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("scan compatibility packages: %v", err)
+	}
+}
+
+// TestDeliveryPhasePackagesStayCollapsed prevents the binding-neutral API from
+// being split again by processing stage. Endpoint, catalog, Handler, and
+// presenters share one semantic owner; only dispatch and transport have an
+// independent mechanism that justifies a child package.
+func TestDeliveryPhasePackagesStayCollapsed(t *testing.T) {
+	root := moduleRoot(t)
+	for _, name := range []string{"operation", "server"} {
+		path := filepath.Join(root, "internal", "delivery", name)
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("delivery processing-stage package is forbidden: %s (stat error %v)", path, err)
+		}
 	}
 }
 

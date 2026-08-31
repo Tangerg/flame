@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -16,11 +16,11 @@ import (
 func TestEveryDeclarableProblemTypeHasARecoveryAction(t *testing.T) {
 	t.Parallel()
 
-	for _, problemType := range operation.ProblemTypes() {
-		if !operation.IsMethodProblemType(problemType) {
+	for _, problemType := range delivery.ProblemTypes() {
+		if !delivery.IsMethodProblemType(problemType) {
 			continue
 		}
-		if _, declared := operation.RecoveryFor(problemType); !declared {
+		if _, declared := delivery.RecoveryFor(problemType); !declared {
 			t.Errorf("%s is declarable and has no recovery action", problemType)
 		}
 	}
@@ -29,7 +29,7 @@ func TestEveryDeclarableProblemTypeHasARecoveryAction(t *testing.T) {
 func TestMethodDeclarabilityComesFromTheRPCErrorRegistry(t *testing.T) {
 	t.Parallel()
 
-	if !operation.IsMethodProblemType(protocol.ErrRunNotFound.Error()) {
+	if !delivery.IsMethodProblemType(protocol.ErrRunNotFound.Error()) {
 		t.Fatal("run_not_found should be method-declarable")
 	}
 	for _, boundaryProblem := range []string{
@@ -37,7 +37,7 @@ func TestMethodDeclarabilityComesFromTheRPCErrorRegistry(t *testing.T) {
 		protocol.ErrMethodNotFound.Error(),
 		protocol.ErrIdempotencyConflict.Error(),
 	} {
-		if operation.IsMethodProblemType(boundaryProblem) {
+		if delivery.IsMethodProblemType(boundaryProblem) {
 			t.Fatalf("%s is a boundary failure, not a method-declarable problem", boundaryProblem)
 		}
 	}
@@ -102,7 +102,7 @@ func TestRPCErrorResolutionUsesRegistryOrder(t *testing.T) {
 func TestAStructuredProblemCarriesItsPayload(t *testing.T) {
 	t.Parallel()
 
-	conflict := problemOf(t, &operation.ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
+	conflict := problemOf(t, &delivery.ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
 		RunID: "run_1", Status: protocol.RunStatusWaiting,
 	}})
 	if conflict.Type != protocol.ErrSessionHasActiveRun.Error() {
@@ -117,7 +117,7 @@ func TestAStructuredProblemCarriesItsPayload(t *testing.T) {
 
 	// Deduplicated and ordered by (registry, name), so two refusals for the same gap
 	// are the same frame instead of two transcripts of it.
-	gap := problemOf(t, operation.NewCapabilityGapError(
+	gap := problemOf(t, delivery.NewCapabilityGapError(
 		protocol.CapabilityRequirement{Type: protocol.RequirementInterruptType, Name: "question"},
 		protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"},
 		protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"},

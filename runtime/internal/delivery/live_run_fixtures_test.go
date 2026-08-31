@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -25,14 +25,14 @@ type blockingRunRuntime struct {
 	stubRuntime
 }
 
-func newBlockingServer(t *testing.T) *Server {
+func newBlockingHandler(t *testing.T) *Handler {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("open blocking runtime store: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newTestServer(&blockingRunRuntime{stubRuntime: stubRuntime{
+	return newTestHandler(&blockingRunRuntime{stubRuntime: stubRuntime{
 		sess:       sqlite.NewSessionStore(db),
 		hist:       sqlite.NewTranscriptStore(db),
 		runs:       sqlite.NewRunStore(db),
@@ -69,9 +69,9 @@ func (b *blockingRunRuntime) RunSegmentEffects() *runsegment.Effects {
 }
 
 // startLiveRun starts a run that blocks forever (via a blockingRunRuntime the
-// caller wired into the Server), waits until the coordinator has registered it,
+// caller wired into the Handler), waits until the coordinator has registered it,
 // and schedules teardown. Use for tests that need a live run present.
-func startLiveRun(t *testing.T, s *Server, cwd string) (runID, segmentID string) {
+func startLiveRun(t *testing.T, s *Handler, cwd string) (runID, segmentID string) {
 	t.Helper()
 	sess, err := s.sessions.CreateView(context.Background(), "", cwd)
 	if err != nil {
@@ -92,6 +92,6 @@ func startLiveRun(t *testing.T, s *Server, cwd string) (runID, segmentID string)
 	if err != nil {
 		t.Fatalf("Start returned before the live run was addressable: %v", err)
 	}
-	t.Cleanup(s.Close)
+	t.Cleanup(s.beginShutdown)
 	return result.RunID, result.SegmentID
 }

@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -244,7 +243,7 @@ func TestChildRunCannotBecomeAnIndependentSubscriptionRoot(t *testing.T) {
 
 func assertSubagentCapabilityGap(t *testing.T, operationName string, err error) {
 	t.Helper()
-	var gap *operation.CapabilityGapError
+	var gap *CapabilityGapError
 	if !errors.As(err, &gap) {
 		t.Fatalf("%s = %v, want typed capability gap", operationName, err)
 	}
@@ -407,7 +406,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			CreatedAt: created,
 		},
 	}}
-	s := &Server{queries: queries.New(queries.Dependencies{Interrupts: reader})}
+	s := &Handler{queries: queries.New(queries.Dependencies{Interrupts: reader})}
 
 	got, err := s.ListInterrupts(context.Background(), protocol.ListInterruptsRequest{SessionID: "ses_1"})
 	if err != nil {

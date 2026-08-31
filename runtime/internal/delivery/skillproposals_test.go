@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -43,7 +43,7 @@ func (s *stubSkillProposals) RejectProposal(_ context.Context, root string, ref 
 }
 
 func TestSkillProposalHandlersDisabled(t *testing.T) {
-	s := newWorkspaceServerWithConfig("", workspaceTestConfig{})
+	s := newWorkspaceHandlerWithConfig("", workspaceTestConfig{})
 	query := protocol.WorkspaceQuery{}
 	if _, err := s.ListSkillProposals(t.Context(), query); !errors.Is(err, protocol.ErrCapabilityNotNeg) {
 		t.Fatalf("list err = %v, want capability_not_negotiated", err)
@@ -68,7 +68,7 @@ func TestSkillProposalListMapsCompleteReviewContent(t *testing.T) {
 		SourceSession: "ses_1",
 		Revises:       true,
 	}}}
-	s := newWorkspaceServerWithConfig(root, workspaceTestConfig{Proposals: stub})
+	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
 
 	out, err := s.ListSkillProposals(t.Context(), protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: root}})
 	if err != nil {
@@ -95,7 +95,7 @@ func TestSkillProposalListMapsCompleteReviewContent(t *testing.T) {
 func TestSkillProposalApproveRejectValidateAndDelegate(t *testing.T) {
 	root := t.TempDir()
 	stub := &stubSkillProposals{}
-	s := newWorkspaceServerWithConfig(root, workspaceTestConfig{Proposals: stub})
+	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
 	ref := skills.NewProposalRef(skills.ScopeUser, "run-tests", []byte("content"))
 	wire := wireProposalRef(root, ref)
 
@@ -121,7 +121,7 @@ func TestSkillProposalApproveRejectValidateAndDelegate(t *testing.T) {
 func TestSkillProposalApproveConflictMapsInvalidParams(t *testing.T) {
 	root := t.TempDir()
 	stub := &stubSkillProposals{approveErr: skills.ErrConflict}
-	s := newWorkspaceServerWithConfig(root, workspaceTestConfig{Proposals: stub})
+	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
 	err := s.ApproveSkillProposal(t.Context(), wireProposalRef(root, skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content"))))
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("conflict → %v, want invalid_params", err)

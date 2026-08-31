@@ -6,21 +6,21 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Router adapts JSON-RPC envelopes to the binding-neutral operation endpoint.
+// Router adapts JSON-RPC envelopes to the binding-neutral Delivery Endpoint.
 // It owns no validation, capability, idempotency or business invocation policy.
 type Router struct {
-	endpoint *operation.Endpoint
+	endpoint *delivery.Endpoint
 }
 
-// New builds a Router over the canonical Runtime operation endpoint.
-func New(endpoint *operation.Endpoint) *Router {
+// New builds a Router over the canonical Runtime Delivery Endpoint.
+func New(endpoint *delivery.Endpoint) *Router {
 	if endpoint == nil {
-		panic("dispatch: nil operation endpoint")
+		panic("dispatch: nil delivery endpoint")
 	}
 	return &Router{endpoint: endpoint}
 }
@@ -47,7 +47,7 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 
 	requestCopy := *request
 	request = &requestCopy
-	options := operation.Options{
+	options := delivery.Options{
 		IdempotencyKey:       transport.IdempotencyKeyFrom(ctx),
 		IdempotencyNamespace: transport.IdempotencyNamespaceFrom(ctx),
 		AfterEventID:         transport.LastEventIDFrom(ctx),
@@ -65,11 +65,11 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 		r.handleNotification(ctx, request)
 		return Result{}
 	}
-	name := operation.Name(request.Method)
-	meta, found := operation.Contract().Lookup(name)
+	name := delivery.Name(request.Method)
+	meta, found := delivery.Contract().Lookup(name)
 	if !found {
 		return responseError(request.ID, errorToRPC(
-			operation.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method)),
+			delivery.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method)),
 		))
 	}
 	parameters, decodeError := decodeParameters(request.Params, meta.Params)
@@ -79,15 +79,15 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 	return adaptResult(request.ID, r.endpoint.Invoke(ctx, name, parameters, options))
 }
 
-func decodeParameters(raw []byte, parameterType reflect.Type) (any, *operation.Failure) {
+func decodeParameters(raw []byte, parameterType reflect.Type) (any, *delivery.Failure) {
 	target := reflect.New(parameterType)
 	if err := decodeParams(raw, target.Interface()); err != nil {
-		return nil, operation.NewFailure(protocol.ErrInvalidParams, err.Error())
+		return nil, delivery.NewFailure(protocol.ErrInvalidParams, err.Error())
 	}
 	return target.Elem().Interface(), nil
 }
 
-func adaptResult(id transport.ID, result operation.Result) Result {
+func adaptResult(id transport.ID, result delivery.Result) Result {
 	if result.Failure != nil {
 		return responseError(id, errorToRPC(result.Failure))
 	}

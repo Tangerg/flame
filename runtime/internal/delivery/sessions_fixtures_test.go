@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -96,7 +96,7 @@ func forkSessionFixture(
 	return child, nil
 }
 
-// testRuntime is the Delivery test seam newTestServer uses to build the Run
+// testRuntime is the Delivery test seam newTestHandler uses to build the Run
 // coordinator: semantic execution plus a Run-segment effects factory. The test
 // double stays on application-owned ports so handler fixtures do not depend on
 // Agent adapter handles.
@@ -203,7 +203,7 @@ type stubRuntime struct {
 	admissions  *sessionadmission.Gate
 }
 
-// sessionsCoordinatorProvider is the optional test seam newTestServer uses to
+// sessionsCoordinatorProvider is the optional test seam newTestHandler uses to
 // wire s.sessions: a fake that can build the real lifecycle coordinator over its
 // own in-memory stores (stubRuntime). Fakes that never drive a lifecycle
 // write-set may omit it, leaving s.sessions nil.
@@ -327,8 +327,8 @@ func (s stubRuntime) queriesCoordinator() *queries.Coordinator {
 	})
 }
 
-func newTestServer(rt testRuntime) *Server {
-	s := &Server{}
+func newTestHandler(rt testRuntime) *Handler {
+	s := &Handler{}
 	admissions := &sessionadmission.Gate{}
 	var sessionPorts runs.SessionPorts
 	// Wire the session/run lifecycle coordinator over the fake's in-memory stores
@@ -402,7 +402,7 @@ func newTestServer(rt testRuntime) *Server {
 	if p, ok := rt.(queriesCoordinatorProvider); ok {
 		s.queries = p.queriesCoordinator()
 	}
-	// Capability handler tests replace this coordinator through serverWithModels;
+	// Capability handler tests replace this coordinator through handlerWithModels;
 	// session projection reads its complete model choice from the session use case.
 	s.models = models.New(models.Config{})
 	// Default to a disabled schedules coordinator (schedules.* report
@@ -411,16 +411,16 @@ func newTestServer(rt testRuntime) *Server {
 	return s
 }
 
-// serverWithModels builds a Server whose only wired coordinator is the models one
+// handlerWithModels builds a Handler whose only wired coordinator is the models one
 // — enough for the providers / models handler tests.
-func serverWithModels(cfg models.Config) *Server {
-	return &Server{models: models.New(cfg)}
+func handlerWithModels(cfg models.Config) *Handler {
+	return &Handler{models: models.New(cfg)}
 }
 
-// serverWithTools builds a Server whose only wired coordinator is the tools one —
+// handlerWithTools builds a Handler whose only wired coordinator is the tools one —
 // enough for the tools.* handler tests.
-func serverWithTools(useCases toolUseCases) *Server {
-	return &Server{tools: useCases}
+func handlerWithTools(useCases toolUseCases) *Handler {
+	return &Handler{tools: useCases}
 }
 
 func (s stubRuntime) Transcript() *sqlite.TranscriptStore     { return s.hist }
@@ -875,7 +875,7 @@ func (s stubMessageCounter) Write(ctx context.Context, id string, messages ...ch
 }
 
 // sessionsCoordinator builds the real lifecycle coordinator over the stub's
-// in-memory stores and execution release, so newTestServer can wire s.sessions the way the
+// in-memory stores and execution release, so newTestHandler can wire s.sessions the way the
 // composition root does — delivery drives every lifecycle write-set through it.
 // File restore stays disabled (nil restorer); the checkpoint tests rebuild it
 // with a real restorer via [stubRuntime.sessionsCoordinatorWithRestorer].
@@ -1230,7 +1230,7 @@ func (s stubRuntime) SeedHistory(_ context.Context, id string, msgs []chat.Messa
 	return nil
 }
 
-func newSessionServer(t *testing.T) (*Server, *sqlite.SessionStore, *stubRuntime) {
+func newSessionHandler(t *testing.T) (*Handler, *sqlite.SessionStore, *stubRuntime) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
@@ -1241,5 +1241,5 @@ func newSessionServer(t *testing.T) (*Server, *sqlite.SessionStore, *stubRuntime
 	// Interrupts is always wired in production (runtime composition root), and
 	// the wire status now reads it (liveStatus), so give the stub a real store.
 	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db))}
-	return newTestServer(runtime), svc, runtime
+	return newTestHandler(runtime), svc, runtime
 }

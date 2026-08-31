@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -48,12 +48,11 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 	cfg.Maintenance = noMaintenance{}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer func() {
-		api.Close()
 		if closeErr := host.Close(); closeErr != nil {
 			t.Errorf("close runtime: %v", closeErr)
 		}
 	}()
-	ctx := operation.WithRequestMeta(t.Context(), protocol.RequestMeta{
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.ProtocolVersion,
 	})
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{

@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 
 // GetApprovalMode returns the runtime's default tool-permission stance
 // (approval.getMode).
-func (s *Server) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeResult, error) {
+func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeResult, error) {
 	m, err := s.approvals.DefaultMode(ctx)
 	if err != nil {
 		return nil, err
 	}
 	mode, ok := presentApprovalMode(m)
 	if !ok {
-		return nil, fmt.Errorf("server: %w: %q", approval.ErrInvalidMode, m)
+		return nil, fmt.Errorf("delivery: %w: %q", approval.ErrInvalidMode, m)
 	}
 	return &protocol.ApprovalModeResult{Mode: mode}, nil
 }
 
 // SetApprovalMode sets the runtime's default tool-permission stance (approval.setMode).
-func (s *Server) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
+func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
 	mode, ok := approvalModeFromWire(in.Mode)
 	if !ok {
 		return nil, fmt.Errorf("%w: unknown approval mode %q", protocol.ErrInvalidParams, in.Mode)
@@ -38,7 +38,7 @@ func (s *Server) SetApprovalMode(ctx context.Context, in protocol.SetApprovalMod
 // (approval.listRules) — its session rules, its project's rules, and all
 // global rules. Runtime resolves the session's project directory; an unknown
 // session degrades to session + global only.
-func (s *Server) ListApprovalRules(ctx context.Context, in protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {
+func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {
 	rules, err := s.approvals.ListRules(ctx, in.SessionID)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (s *Server) ListApprovalRules(ctx context.Context, in protocol.ListApproval
 
 // ForgetApprovalRule removes one persisted approval rule by id
 // (approval.forgetRule). A missing id is not an error.
-func (s *Server) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
+func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
 	return s.approvals.ForgetRule(ctx, in.ID)
 }
 

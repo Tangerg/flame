@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -70,10 +70,10 @@ func newTestServer(t *testing.T) (*httptest.Server, *fakeRuntime) {
 	return newTestServerFor(t, api), api
 }
 
-func newTestEndpoint(t *testing.T, target any, config operation.Config) *operation.Endpoint {
+func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *delivery.Endpoint {
 	t.Helper()
 	config.Lifetime = t.Context()
-	endpoint, err := operation.New(target, config)
+	endpoint, err := delivery.NewEndpoint(target, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func newTestEndpoint(t *testing.T, target any, config operation.Config) *operati
 func newTestServerFor(t *testing.T, api any) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, api, operation.Config{IdempotencyNamespace: identityfixture.IdempotencyNamespace}),
+		Endpoint:        newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: identityfixture.IdempotencyNamespace}),
 		Addr:            ":0",
 		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 		ProtocolVersion: testProtocolVersion,

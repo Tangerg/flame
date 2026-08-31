@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 // The whole guarded operation — single-writer + working-tree admission, working
 // tree restore, and durable truncation — belongs to the session use case. This
 // method only decodes the wire intent and projects the result.
-func (s *Server) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
+func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
 	intent, err := rollbackIntentFromWire(in)
 	if err != nil {
 		return nil, err

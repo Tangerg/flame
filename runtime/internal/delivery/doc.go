@@ -1,5 +1,5 @@
-// Package operation owns Runtime's binding-neutral typed operation catalog and
-// execution policies. HTTP and in-process bindings both enter through this
-// boundary so validation, capability gating, idempotency, error projection and
+// Package delivery owns Runtime's binding-neutral Endpoint, operation catalog,
+// protocol handlers, and presentation. Every binding enters through Endpoint so
+// validation, capability gating, idempotency, lifecycle, error projection, and
 // event filtering have one implementation.
-package operation
+package delivery

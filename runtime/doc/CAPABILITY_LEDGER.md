@@ -580,6 +580,8 @@ P284回收Runtime合同校验面的无消费者原语：6个当前生成合同�
 
 P285关闭Run journal测试中的虚假成功通道：所有普通append与close现在都必须证明sequence/cursor分配和terminal publication成功，只有sequence exhaustion反例显式消费失败；并发append/close/cancel用例在goroutine汇合后检查各自错误，benchmark也不再丢弃失败。Catalog filter、MCP row decode、child binding、shell ID解析与Tool测试同时删除无效赋值或单分支形式噪声，没有新增package、接口或生产行为。Runtime与CLI的workspace/standalone test、vet、build、Staticcheck和GolangCI全绿，真实DeepSeek Question跨Runtime重启恢复再次通过。
 
+P286将`internal/delivery/operation`与`internal/delivery/server`的处理阶段分包治本式收回`internal/delivery`根package。Endpoint、catalog、Handler和presenters现在围绕同一operation identity共同变化；Endpoint是唯一binding-neutral入口和Delivery lifecycle owner，Handler的admission退役只能由Endpoint内部触发，Bootstrap只持有concrete Endpoint，原`operationDelivery`转发壳与平行service closer一并删除。JSON-RPC `dispatch`与HTTP/SSE `transport`仍保留独立mechanism，HTTP与embedded仍进入同一Endpoint。旧子package、import、alias与shim均删除；公共Go surface、Protocol method/event、Artifact与SQLite shape不变。Runtime合同生成零漂移，workspace/standalone test、vet、build、Staticcheck、GolangCI与Delivery/Bootstrap/embedded定向race全绿。
+
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
 MCP server registry identity现由独立`ServerName`拥有1–32位canonical lowercase ASCII spelling，并贯穿registry/live supersession/OAuth/tool policy/tool namespace；公开Go/Schema/TypeScript与fresh SQLite CHECK使用同一规则。SQLite当前epoch因此为94，Artifact仍为v27。

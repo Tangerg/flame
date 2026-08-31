@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 // ListMCPServers returns the single authoritative MCP resource collection:
 // durable configuration enriched with current live state.
-func (s *Server) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.MCPServer], error) {
+func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.MCPServer], error) {
 	servers, err := s.mcp.Servers(ctx)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (s *Server) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.MC
 }
 
 // CreateMCPServer creates and returns one unified MCP server resource.
-func (s *Server) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPServer, error) {
+func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPServer, error) {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (s *Server) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandi
 
 // UpdateMCPServer applies an explicit partial update and returns the resulting
 // unified resource.
-func (s *Server) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
+func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
 	name, err := parseMCPServerName(in.Server)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *Server) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServe
 }
 
 // DeleteMCPServer deletes one configured server and its live projection.
-func (s *Server) DeleteMCPServer(ctx context.Context, server string) error {
+func (s *Handler) DeleteMCPServer(ctx context.Context, server string) error {
 	name, err := parseMCPServerName(server)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (s *Server) DeleteMCPServer(ctx context.Context, server string) error {
 }
 
 // TestMCPServer probes a complete candidate without persisting it.
-func (s *Server) TestMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPTestResult, error) {
+func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPTestResult, error) {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (s *Server) TestMCPServer(ctx context.Context, in protocol.MCPServerCandida
 
 // ListMCPTools lists tools advertised by connected MCP servers, optionally
 // narrowed to one server.
-func (s *Server) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
+func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
 	var name *mcpserver.ServerName
 	if in.Server != "" {
 		parsed, err := parseMCPServerName(in.Server)
@@ -119,7 +119,7 @@ func (s *Server) ListMCPTools(ctx context.Context, in protocol.MCPListToolsReque
 
 // ReconnectMCPServer starts a new live dial. Its state transitions invalidate
 // the server resource through runtime.event.
-func (s *Server) ReconnectMCPServer(ctx context.Context, server string) error {
+func (s *Handler) ReconnectMCPServer(ctx context.Context, server string) error {
 	name, err := parseMCPServerName(server)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *Server) ReconnectMCPServer(ctx context.Context, server string) error {
 
 // CreateMCPAuthorizationAttempt starts interactive OAuth and returns its
 // observable asynchronous resource immediately.
-func (s *Server) CreateMCPAuthorizationAttempt(ctx context.Context, server string) (*protocol.MCPAuthorizationAttempt, error) {
+func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server string) (*protocol.MCPAuthorizationAttempt, error) {
 	name, err := parseMCPServerName(server)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (s *Server) CreateMCPAuthorizationAttempt(ctx context.Context, server strin
 }
 
 // GetMCPAuthorizationAttempt returns a pending or retained terminal OAuth flow.
-func (s *Server) GetMCPAuthorizationAttempt(ctx context.Context, attemptID string) (*protocol.MCPAuthorizationAttempt, error) {
+func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID string) (*protocol.MCPAuthorizationAttempt, error) {
 	attempt, err := s.mcp.AuthorizationAttempt(ctx, attemptID)
 	if err != nil {
 		return nil, wireMCPError(err)

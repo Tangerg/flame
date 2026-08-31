@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 // ListModels projects the application-owned model-discovery result onto the
 // protocol page. Discovery policy, remote fallback, and catalog enrichment all
 // remain in application/models.
-func (s *Server) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
+func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
 	if err != nil {
 		return nil, mapModelError(err)
@@ -29,14 +29,14 @@ func (s *Server) ListModels(ctx context.Context, in protocol.ListModelsRequest) 
 // GetUtilityRole reports the (provider, model) the in-house maintenance
 // services run on — empty model when unset, meaning they run on the main Run
 // model (models.getUtilityRole).
-func (s *Server) GetUtilityRole(_ context.Context) (*protocol.UtilityRole, error) {
+func (s *Handler) GetUtilityRole(_ context.Context) (*protocol.UtilityRole, error) {
 	role := s.models.UtilityRole()
 	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}, nil
 }
 
 // SetUtilityRole points the maintenance services at a (provider, model),
 // validated and persisted by the application use case. Returns the stored role.
-func (s *Server) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*protocol.UtilityRole, error) {
+func (s *Handler) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*protocol.UtilityRole, error) {
 	role, err := s.models.SetUtilityRole(ctx, in.Provider, in.Model)
 	if err != nil {
 		return nil, mapModelError(err)
@@ -47,14 +47,14 @@ func (s *Server) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*
 // GetEmbeddingRole reports the optional (provider, model) for agent-memory ranking
 // embeds with — empty model when unset (the feature is off)
 // (models.getEmbeddingRole).
-func (s *Server) GetEmbeddingRole(_ context.Context) (*protocol.EmbeddingRole, error) {
+func (s *Handler) GetEmbeddingRole(_ context.Context) (*protocol.EmbeddingRole, error) {
 	role := s.models.EmbeddingRole()
 	return &protocol.EmbeddingRole{Provider: role.Provider(), Model: role.Model()}, nil
 }
 
 // SetEmbeddingRole points the index at an (embedding-capable provider, model),
 // validated and persisted by the application use case. Returns the stored role.
-func (s *Server) SetEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
+func (s *Handler) SetEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 	role, err := s.models.SetEmbeddingRole(ctx, in.Provider, in.Model)
 	if err != nil {
 		return nil, mapModelError(err)

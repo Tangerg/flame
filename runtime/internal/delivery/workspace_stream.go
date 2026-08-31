@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -11,13 +11,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // errSubscriptionAdmissionsClosed reports that a runtime subscription could not
-// start because the Server has stopped admitting new streams.
-var errSubscriptionAdmissionsClosed = errors.New("server: runtime subscriptions are closed")
+// start because the Handler has stopped admitting new streams.
+var errSubscriptionAdmissionsClosed = errors.New("delivery: runtime subscriptions are closed")
 
 // runtimeSubscriptionQueueCapacity absorbs short UI/refetch bursts without
 // back-pressuring publishers. Sustained lag does not consume more memory: the
@@ -117,7 +116,7 @@ func (w *workspaceHub) register(
 	}, true
 }
 
-// closeAdmissions linearizes Server.Close with workspace subscription
+// closeAdmissions linearizes Handler retirement with workspace subscription
 // registration. Existing request-owned streams keep running until their own
 // contexts end, but once this returns no racing check-then-register path can
 // create another subscription.
@@ -283,7 +282,7 @@ func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) (prot
 		event = w.resyncEvent()
 		event.Sequence = next.wire()
 		if recoveryErr := protocol.ValidateWireTree(event); recoveryErr != nil {
-			panic("server: invalid runtime resync invariant: " + recoveryErr.Error())
+			panic("delivery: invalid runtime resync invariant: " + recoveryErr.Error())
 		}
 	}
 	return event, true
@@ -463,7 +462,7 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 
 // SubscribeRuntime opens the change-signal stream (§7.1). The stream's lifetime is
 // bounded by the request ctx and by the consumer's range: it ends on client
-// disconnect, server shutdown (the transport force-closes the connection), or an
+// disconnect, transport shutdown (the transport force-closes the connection), or an
 // early range stop.
 //
 // The caller says which topics it can fold. There is no wildcard: a client that has
@@ -477,7 +476,7 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 // re-reads the diff. (Working-tree file
 // edits aren't watched directly — see gitWatcher; the agent's own edits arrive as
 // files.changed from its tools.)
-func (s *Server) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
+func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
 	topics, err := s.subscribedTopics(request.Topics)
 	if err != nil {
 		return nil, nil, err
@@ -621,7 +620,7 @@ func subscriptionEventSequence(
 // set. The generated RuntimeSubscribeRequest validator owns non-empty/unique
 // semantics; this method retains the composition-dependent checks: the enforced
 // fan-out cap and whether this runtime actually advertises each topic.
-func (s *Server) subscribedTopics(requested []protocol.RuntimeTopic) (map[protocol.RuntimeTopic]bool, error) {
+func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[protocol.RuntimeTopic]bool, error) {
 	if len(requested) > protocol.MaxSubscriptionTopics {
 		return nil, fmt.Errorf("%w: at most %d topics per subscription", protocol.ErrInvalidParams, protocol.MaxSubscriptionTopics)
 	}
@@ -629,7 +628,7 @@ func (s *Server) subscribedTopics(requested []protocol.RuntimeTopic) (map[protoc
 	topics := make(map[protocol.RuntimeTopic]bool, len(requested))
 	for _, topic := range requested {
 		if !slices.Contains(advertised, topic) {
-			return nil, operation.NewCapabilityGapError(protocol.CapabilityRequirement{
+			return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
 				Type: protocol.RequirementRuntimeTopic, Name: string(topic),
 			})
 		}
@@ -675,7 +674,7 @@ func validateWorkspaceWatches(watches []protocol.WatchSpec, topics map[protocol.
 // capability and delegates all other workspace failures to the shared mapper.
 func mapWorkspaceWatchError(err error) error {
 	if errors.Is(err, workspaceapp.ErrFileWatchUnavailable) {
-		return operation.NewCapabilityGapError(protocol.CapabilityRequirement{
+		return NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature, Name: protocol.FeatureFileWatch,
 		})
 	}

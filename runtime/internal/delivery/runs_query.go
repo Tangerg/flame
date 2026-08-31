@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -19,7 +18,7 @@ import (
 // caller supplies no session: a runId already identifies one run, and requiring
 // the session would mean knowing where a run lives before being able to ask what
 // it is.
-func (s *Server) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protocol.RunRef, error) {
+func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protocol.RunRef, error) {
 	run, found, err := s.queries.Run(ctx, in.RunID)
 	switch {
 	case err != nil:
@@ -42,7 +41,7 @@ func (s *Server) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protoc
 // process restarted and never held the ones a person is being asked to approve.
 // The registered capability rule decides whether a caller may ask for descendants;
 // this handler preserves the accepted filter all the way to the durable read.
-func (s *Server) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
+func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
@@ -95,7 +94,7 @@ func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.Status, error) {
 // that publishes more than this caller can follow is refused, never trimmed. A
 // trimmed set would be answered, consumed as if complete, and leave the run waiting
 // on interrupts the client believes it resolved.
-func (s *Server) ListInterrupts(ctx context.Context, in protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
+func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wireInterruptPageError(wirePageError(err))
@@ -147,7 +146,7 @@ func wireInterruptPageError(err error) error {
 // attaches at the current head and returns it, so a client can read the durable
 // state afterwards and fold this stream on top without a gap. History is NOT
 // replayed for a cursorless subscribe — that is what items.list answers.
-func (s *Server) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -157,7 +156,7 @@ func (s *Server) SubscribeRun(ctx context.Context, in protocol.SubscribeRunReque
 		SegmentID: in.SegmentID,
 		// The application's cursor is prefix-free; the evt_ framing is this layer's
 		// (§11.2). TrimPrefix leaves an absent id untouched, which is the tail-only case.
-		Cursor:             strings.TrimPrefix(operation.AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
+		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
 		CallerCapabilities: caller,
 	})
 	if err != nil {

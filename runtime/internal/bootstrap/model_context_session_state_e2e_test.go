@@ -12,8 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
-	runtimeserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -161,7 +160,7 @@ type sessionStateE2EModel interface {
 func newSessionStateE2ERuntime(
 	t *testing.T,
 	model sessionStateE2EModel,
-) (*persistence.Bundle, *runtimeserver.Server, context.Context, string) {
+) (*persistence.Bundle, *delivery.Handler, context.Context, string) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
@@ -188,12 +187,11 @@ func newSessionStateE2ERuntime(
 	cfg.Maintenance = noMaintenance{}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
-		api.Close()
 		if closeErr := host.Close(); closeErr != nil {
 			t.Errorf("close runtime: %v", closeErr)
 		}
 	})
-	ctx := operation.WithRequestMeta(t.Context(), protocol.RequestMeta{
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.ProtocolVersion,
 	})
 	return stores, api, ctx, home
@@ -202,7 +200,7 @@ func newSessionStateE2ERuntime(
 func createSessionWithInitialPlan(
 	t *testing.T,
 	stores *persistence.Bundle,
-	api *runtimeserver.Server,
+	api *delivery.Handler,
 	ctx context.Context,
 	home string,
 	title string,

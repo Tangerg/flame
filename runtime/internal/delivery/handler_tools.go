@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 // ListTools surfaces every read-only diagnostic tool valid outside an agent
 // Run (API.md §7.6).
-func (s *Server) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpec], error) {
+func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpec], error) {
 	internal, err := s.tools.List(ctx)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (s *Server) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpe
 // InvokeTool runs one diagnostic tool directly outside a run. The application
 // admits cwd before the adapter confines tool paths beneath it; the result is
 // a canonical JSON value projected only at this Delivery boundary.
-func (s *Server) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
+func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
 	args, err := json.Marshal(in.Arguments)
 	if err != nil {
 		return nil, err

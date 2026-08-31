@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type agentMemoryUseCases interface {
 
 // ListAgentMemory returns active + pending memory for one explicit target
 // (agentMemory.list).
-func (s *Server) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
+func (s *Handler) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
 	scope, cwd, err := agentMemoryTargetFromWire(in.Scope, in.Workspace)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (s *Server) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryLis
 }
 
 // ReviewAgentMemory approves or rejects a pending proposal (agentMemory.review).
-func (s *Server) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemoryReviewRequest) error {
+func (s *Handler) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemoryReviewRequest) error {
 	var decision agentmemory.ReviewDecision
 	switch in.Decision {
 	case protocol.AgentMemoryReviewApprove:
@@ -62,7 +62,7 @@ func (s *Server) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemoryR
 }
 
 // UpdateAgentMemory edits and/or pins an item (agentMemory.update).
-func (s *Server) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
+func (s *Handler) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
 	item, err := s.agentMemory.Update(ctx, in.ID, in.Content, in.Pinned)
 	if err != nil {
 		return nil, mapAgentMemoryErr(err, "agentMemory.update")
@@ -75,12 +75,12 @@ func (s *Server) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemoryU
 }
 
 // DeleteAgentMemory removes an item (agentMemory.delete).
-func (s *Server) DeleteAgentMemory(ctx context.Context, in protocol.AgentMemoryItemRequest) error {
+func (s *Handler) DeleteAgentMemory(ctx context.Context, in protocol.AgentMemoryItemRequest) error {
 	return mapAgentMemoryErr(s.agentMemory.Delete(ctx, in.ID), "agentMemory.delete")
 }
 
 // AddAgentMemory stores a user-authored active item (agentMemory.add).
-func (s *Server) AddAgentMemory(ctx context.Context, in protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error) {
+func (s *Handler) AddAgentMemory(ctx context.Context, in protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error) {
 	scope, cwd, err := agentMemoryTargetFromWire(in.Scope, in.Workspace)
 	if err != nil {
 		return nil, err

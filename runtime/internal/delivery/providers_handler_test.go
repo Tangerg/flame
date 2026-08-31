@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -96,8 +96,8 @@ func (p *providerFake) Probe(_ context.Context, entry provider.Provider) error {
 	return p.probeErr
 }
 
-func serverWithProviders(rt *providerFake) *Server {
-	return serverWithModels(models.Config{Providers: rt, Catalog: rt, Prober: rt})
+func handlerWithProviders(rt *providerFake) *Handler {
+	return handlerWithModels(models.Config{Providers: rt, Catalog: rt, Prober: rt})
 }
 
 func serverProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
@@ -129,7 +129,7 @@ func serverProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provid
 }
 
 func TestListProvidersMergesSupportedCatalogWithRegistry(t *testing.T) {
-	s := serverWithProviders(&providerFake{entries: map[string]provider.Provider{
+	s := handlerWithProviders(&providerFake{entries: map[string]provider.Provider{
 		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", ""),
 	}})
 
@@ -156,7 +156,7 @@ func TestListProvidersMergesSupportedCatalogWithRegistry(t *testing.T) {
 }
 
 func TestListProvidersPublishesConfiguredOptionalCredentialProvider(t *testing.T) {
-	s := serverWithProviders(&providerFake{
+	s := handlerWithProviders(&providerFake{
 		entries: map[string]provider.Provider{},
 		supported: []models.ProviderMetadata{serverOptionalAPIKeyProviderMetadata(
 			"ollama", models.ProviderEndpointOptional, models.ProviderModelsEndpoint, models.EmbeddingCapabilityWithoutDefault(),
@@ -178,7 +178,7 @@ func TestListProvidersPublishesConfiguredOptionalCredentialProvider(t *testing.T
 
 func TestUpdateProviderPersistsThenReturnsStoredEntry(t *testing.T) {
 	rt := &providerFake{}
-	s := serverWithProviders(rt)
+	s := handlerWithProviders(rt)
 
 	got, err := s.UpdateProvider(context.Background(), protocol.UpdateProviderRequest{
 		Provider: "anthropic",
@@ -206,7 +206,7 @@ func TestUpdateProviderRequiresBaseURLWhenMetadataRequiresIt(t *testing.T) {
 	rt := &providerFake{supported: []models.ProviderMetadata{serverProviderMetadata(
 		"openai-compatible", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability(),
 	)}}
-	s := serverWithProviders(rt)
+	s := handlerWithProviders(rt)
 
 	_, err := s.UpdateProvider(context.Background(), protocol.UpdateProviderRequest{
 		Provider: "openai-compatible",
@@ -224,7 +224,7 @@ func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 	rt := &providerFake{entries: map[string]provider.Provider{
 		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", "https://old.test"),
 	}}
-	s := serverWithProviders(rt)
+	s := handlerWithProviders(rt)
 
 	got, err := s.UpdateProvider(context.Background(), protocol.UpdateProviderRequest{
 		Provider: "anthropic",
@@ -250,7 +250,7 @@ func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 }
 
 func TestUpdateProviderRejectsAmbiguousConfigChanges(t *testing.T) {
-	s := serverWithProviders(&providerFake{})
+	s := handlerWithProviders(&providerFake{})
 	empty := ""
 	for _, change := range []*protocol.ProviderConfigChange{
 		{Type: protocol.ProviderConfigSet},
@@ -283,7 +283,7 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 		},
 		probeErr: probeErr,
 	}
-	s := serverWithProviders(rt)
+	s := handlerWithProviders(rt)
 
 	got, err := s.TestProvider(context.Background(), "anthropic")
 	if err != nil {

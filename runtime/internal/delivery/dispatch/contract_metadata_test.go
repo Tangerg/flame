@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -121,8 +121,8 @@ func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 	objectSpec := ObjectConstraintSpec{
 		GoType: reflect.TypeFor[protocol.ProblemData](),
 		Rules: []ConditionalRule{{
-			When: []operation.FieldCondition{{
-				Field: "type", Operator: operation.ConditionOperator("invalid"),
+			When: []delivery.FieldCondition{{
+				Field: "type", Operator: delivery.ConditionOperator("invalid"),
 			}},
 			Required: []string{"detail"},
 		}},

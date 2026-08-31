@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 // (R model, API.md §6). in.RunID is the stable run to continue; the response
 // decision is delivered to the live executor tree, and the continuation streams
 // under the same runId with a fresh segmentId.
-func (s *Server) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
 		return nil, nil, err

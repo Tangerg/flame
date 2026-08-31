@@ -4,14 +4,14 @@ import (
 	"context"
 	"iter"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func (r *Runtime) invoke[Request, Response any](
 	ctx context.Context,
-	name operation.Name,
+	name delivery.Name,
 	request Request,
-	options operation.Options,
+	options delivery.Options,
 ) (Response, error) {
 	var zero Response
 	endpoint, err := r.endpoint()
@@ -23,9 +23,9 @@ func (r *Runtime) invoke[Request, Response any](
 
 func (r *Runtime) invokeAck[Request any](
 	ctx context.Context,
-	name operation.Name,
+	name delivery.Name,
 	request Request,
-	options operation.Options,
+	options delivery.Options,
 ) error {
 	_, err := r.invoke[Request, struct{}](ctx, name, request, options)
 	return err
@@ -33,9 +33,9 @@ func (r *Runtime) invokeAck[Request any](
 
 func (r *Runtime) invokeStream[Request, Ack, Event any](
 	ctx context.Context,
-	name operation.Name,
+	name delivery.Name,
 	request Request,
-	options operation.Options,
+	options delivery.Options,
 ) (Ack, iter.Seq2[Event, error], error) {
 	var zero Ack
 	endpoint, err := r.endpoint()

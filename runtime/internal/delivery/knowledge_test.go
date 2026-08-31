@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -53,17 +53,17 @@ func (f *fakeKnowledgeStore) Update(_ context.Context, scope knowledge.Scope, cw
 	return knowledge.Entry{Scope: scope, Content: content, Revision: "rev-2"}, nil
 }
 
-// serverWithKnowledge builds a test Server whose knowledge use case is backed by
+// handlerWithKnowledge builds a test Handler whose knowledge use case is backed by
 // store (nil store means the capability is unavailable).
-func serverWithKnowledge(store workspaceapp.KnowledgeStore) *Server {
-	s := newTestServer(&stubRuntime{})
+func handlerWithKnowledge(store workspaceapp.KnowledgeStore) *Handler {
+	s := newTestHandler(&stubRuntime{})
 	applyWorkspaceSurfaces(s, newWorkspaceSurfaces("", workspaceTestConfig{Knowledge: store}))
 	s.features.knowledge = store != nil
 	return s
 }
 
 func TestListKnowledgeWithoutStoreReturnsCapabilityError(t *testing.T) {
-	s := serverWithKnowledge(nil)
+	s := handlerWithKnowledge(nil)
 
 	_, err := s.ListKnowledge(context.Background(), protocol.WorkspaceQuery{
 		Workspace: protocol.WorkspaceRef{Path: "/repo"},
@@ -74,7 +74,7 @@ func TestListKnowledgeWithoutStoreReturnsCapabilityError(t *testing.T) {
 }
 
 func TestKnowledgeHandlersReturnCapabilityErrorWithoutStore(t *testing.T) {
-	s := serverWithKnowledge(nil)
+	s := handlerWithKnowledge(nil)
 
 	_, err := s.GetKnowledge(context.Background(), protocol.GetKnowledgeRequest{Scope: protocol.KnowledgeScopeHome})
 	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
@@ -99,7 +99,7 @@ func TestListKnowledgeMapsEntriesToWire(t *testing.T) {
 			UpdatedAt: captured,
 		}},
 	}
-	s := serverWithKnowledge(store)
+	s := handlerWithKnowledge(store)
 
 	got, err := s.ListKnowledge(context.Background(), protocol.WorkspaceQuery{
 		Workspace: protocol.WorkspaceRef{Path: repo},
@@ -119,7 +119,7 @@ func TestGetAndUpdateKnowledgeMapScopeToRuntime(t *testing.T) {
 	store := &fakeKnowledgeStore{getEntry: knowledge.Entry{
 		Scope: knowledge.ScopeProjectRoot, Content: "project notes", Revision: "rev-1",
 	}}
-	s := serverWithKnowledge(store)
+	s := handlerWithKnowledge(store)
 	repo := t.TempDir()
 
 	got, err := s.GetKnowledge(context.Background(), protocol.GetKnowledgeRequest{
@@ -148,7 +148,7 @@ func TestGetAndUpdateKnowledgeMapScopeToRuntime(t *testing.T) {
 
 func TestProjectKnowledgeRejectsUnavailableCWD(t *testing.T) {
 	store := &fakeKnowledgeStore{}
-	s := serverWithKnowledge(store)
+	s := handlerWithKnowledge(store)
 	missing := filepath.Join(t.TempDir(), "missing")
 
 	if _, err := s.GetKnowledge(context.Background(), protocol.GetKnowledgeRequest{
@@ -168,7 +168,7 @@ func TestProjectKnowledgeRejectsUnavailableCWD(t *testing.T) {
 }
 
 func TestUpdateKnowledgeMapsStaleRevisionToProtocolConflict(t *testing.T) {
-	s := serverWithKnowledge(&fakeKnowledgeStore{updateErr: knowledge.ErrRevisionConflict})
+	s := handlerWithKnowledge(&fakeKnowledgeStore{updateErr: knowledge.ErrRevisionConflict})
 
 	_, err := s.UpdateKnowledge(t.Context(), protocol.UpdateKnowledgeRequest{
 		Scope: protocol.KnowledgeScopeHome, ExpectedRevision: "rev-old", Content: "stale",
@@ -179,7 +179,7 @@ func TestUpdateKnowledgeMapsStaleRevisionToProtocolConflict(t *testing.T) {
 }
 
 func TestUpdateKnowledgeMapsOversizedDocumentToInvalidParams(t *testing.T) {
-	s := serverWithKnowledge(&fakeKnowledgeStore{})
+	s := handlerWithKnowledge(&fakeKnowledgeStore{})
 
 	_, err := s.UpdateKnowledge(t.Context(), protocol.UpdateKnowledgeRequest{
 		Scope: protocol.KnowledgeScopeHome, ExpectedRevision: "rev-1",
@@ -191,7 +191,7 @@ func TestUpdateKnowledgeMapsOversizedDocumentToInvalidParams(t *testing.T) {
 }
 
 func TestKnowledgeHandlersMapPhysicalPathEscape(t *testing.T) {
-	s := serverWithKnowledge(&fakeKnowledgeStore{updateErr: knowledge.ErrPathOutsideScope})
+	s := handlerWithKnowledge(&fakeKnowledgeStore{updateErr: knowledge.ErrPathOutsideScope})
 
 	_, err := s.UpdateKnowledge(t.Context(), protocol.UpdateKnowledgeRequest{
 		Scope: protocol.KnowledgeScopeHome, ExpectedRevision: "rev-1", Content: "outside",
@@ -202,7 +202,7 @@ func TestKnowledgeHandlersMapPhysicalPathEscape(t *testing.T) {
 }
 
 func TestKnowledgeMappingRejectsUnknownScopes(t *testing.T) {
-	s := serverWithKnowledge(&fakeKnowledgeStore{})
+	s := handlerWithKnowledge(&fakeKnowledgeStore{})
 
 	if _, err := s.GetKnowledge(t.Context(), protocol.GetKnowledgeRequest{
 		Scope: protocol.KnowledgeScope("workspace"),

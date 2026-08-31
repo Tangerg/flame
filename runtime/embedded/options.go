@@ -1,11 +1,11 @@
 package embedded
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// CallOptions describes one read or other non-mutating operation.
+// CallOptions describes one read or other non-mutating delivery.
 type CallOptions struct {
 	RequestMeta protocol.RequestMeta
 }
@@ -37,20 +37,20 @@ type SubscriptionOptions struct {
 	RequestMeta protocol.RequestMeta
 }
 
-func callOptions(options CallOptions) operation.Options {
-	return operation.Options{RequestMeta: currentRequestMeta(options.RequestMeta)}
+func callOptions(options CallOptions) delivery.Options {
+	return delivery.Options{RequestMeta: currentRequestMeta(options.RequestMeta)}
 }
 
-func commandOptions(options CommandOptions) operation.Options {
-	return operation.Options{
+func commandOptions(options CommandOptions) delivery.Options {
+	return delivery.Options{
 		RequestMeta:          currentRequestMeta(options.RequestMeta),
 		IdempotencyKey:       options.IdempotencyKey,
 		IdempotencyNamespace: options.IdempotencyNamespace,
 	}
 }
 
-func runCommandOptions(options RunCommandOptions) operation.Options {
-	return operation.Options{
+func runCommandOptions(options RunCommandOptions) delivery.Options {
+	return delivery.Options{
 		RequestMeta:          currentRequestMeta(options.RequestMeta),
 		IdempotencyKey:       options.IdempotencyKey,
 		IdempotencyNamespace: options.IdempotencyNamespace,
@@ -58,15 +58,15 @@ func runCommandOptions(options RunCommandOptions) operation.Options {
 	}
 }
 
-func runSubscriptionOptions(options RunSubscriptionOptions) operation.Options {
-	return operation.Options{
+func runSubscriptionOptions(options RunSubscriptionOptions) delivery.Options {
+	return delivery.Options{
 		RequestMeta:  currentRequestMeta(options.RequestMeta),
 		AfterEventID: options.AfterEventID,
 	}
 }
 
-func subscriptionOptions(options SubscriptionOptions) operation.Options {
-	return operation.Options{RequestMeta: currentRequestMeta(options.RequestMeta)}
+func subscriptionOptions(options SubscriptionOptions) delivery.Options {
+	return delivery.Options{RequestMeta: currentRequestMeta(options.RequestMeta)}
 }
 
 func currentRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {

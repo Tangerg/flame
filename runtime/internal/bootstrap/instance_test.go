@@ -7,8 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
-	runtimeserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -67,7 +66,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = instance.Close() })
 
-	result := instance.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, operation.Options{})
+	result := instance.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
 	if result.Failure != nil {
 		t.Fatalf("runtime.discover: %v", result.Failure)
 	}
@@ -86,7 +85,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second OpenInstance sharing data directory: %v", err)
 	}
-	secondResult := second.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, operation.Options{})
+	secondResult := second.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
 	if secondResult.Failure != nil {
 		t.Fatalf("second runtime.discover: %v", secondResult.Failure)
 	}
@@ -108,7 +107,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen after Close: %v", err)
 	}
-	reopenedResult := reopened.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, operation.Options{})
+	reopenedResult := reopened.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
 	if reopenedResult.Failure != nil {
 		t.Fatalf("runtime.discover after reopen: %v", reopenedResult.Failure)
 	}
@@ -130,7 +129,7 @@ func TestInstanceCloseIsIdempotent(t *testing.T) {
 	close(done)
 	instance := &Instance{
 		shutdownWait:  defaultShutdownWaitPolicy(),
-		delivery:      operationDelivery{service: &runtimeserver.Server{}},
+		delivery:      nil,
 		host:          &Host{},
 		stopRuntime:   func() {},
 		schedulerDone: done,
@@ -164,7 +163,7 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	instance := &Instance{
-		delivery:      operationDelivery{service: &runtimeserver.Server{}},
+		delivery:      nil,
 		host:          host,
 		stopRuntime:   func() {},
 		schedulerDone: done,
@@ -184,14 +183,14 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 	}
 }
 
-type blockingInstanceOperationService struct {
+type blockingDeliveryTarget struct {
 	started  chan struct{}
 	canceled chan struct{}
 	release  chan struct{}
 	startOne sync.Once
 }
 
-func (b *blockingInstanceOperationService) Discover(ctx context.Context) (*protocol.DiscoverResponse, error) {
+func (b *blockingDeliveryTarget) Discover(ctx context.Context) (*protocol.DiscoverResponse, error) {
 	b.startOne.Do(func() { close(b.started) })
 	<-ctx.Done()
 	close(b.canceled)
@@ -201,12 +200,12 @@ func (b *blockingInstanceOperationService) Discover(ctx context.Context) (*proto
 
 func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T) {
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())
-	service := &blockingInstanceOperationService{
+	target := &blockingDeliveryTarget{
 		started:  make(chan struct{}),
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := operation.New(service, operation.Config{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +214,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	resourceClosed := make(chan struct{})
 	instance := &Instance{
 		shutdownWait: defaultShutdownWaitPolicy(),
-		delivery:     operationDelivery{endpoint: endpoint, service: &runtimeserver.Server{}},
+		delivery:     endpoint,
 		host: &Host{lifetime: &hostLifetime{hostResources: terminalClosers([]func() error{
 			func() error {
 				close(resourceClosed)
@@ -229,10 +228,10 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	callDone := make(chan struct{})
 	go func() {
 		defer close(callDone)
-		endpoint.Invoke(t.Context(), "runtime.discover", struct{}{}, operation.Options{})
+		endpoint.Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
 	}()
 	select {
-	case <-service.started:
+	case <-target.started:
 	case <-time.After(time.Second):
 		t.Fatal("operation did not start")
 	}
@@ -240,7 +239,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	closeDone := make(chan error, 1)
 	go func() { closeDone <- instance.Close() }()
 	select {
-	case <-service.canceled:
+	case <-target.canceled:
 	case <-time.After(time.Second):
 		t.Fatal("operation did not observe Close cancellation")
 	}
@@ -257,7 +256,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	default:
 	}
 
-	close(service.release)
+	close(target.release)
 	select {
 	case <-callDone:
 	case <-time.After(time.Second):
@@ -287,12 +286,12 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 
 func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())
-	service := &blockingInstanceOperationService{
+	target := &blockingDeliveryTarget{
 		started:  make(chan struct{}),
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := operation.New(service, operation.Config{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +299,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	close(workersDone)
 	resourceClosed := make(chan struct{})
 	instance := &Instance{
-		delivery: operationDelivery{endpoint: endpoint, service: &runtimeserver.Server{}},
+		delivery: endpoint,
 		host: &Host{lifetime: &hostLifetime{hostResources: terminalClosers([]func() error{
 			func() error {
 				close(resourceClosed)
@@ -317,10 +316,10 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	callDone := make(chan struct{})
 	go func() {
 		defer close(callDone)
-		endpoint.Invoke(t.Context(), "runtime.discover", struct{}{}, operation.Options{})
+		endpoint.Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
 	}()
 	select {
-	case <-service.started:
+	case <-target.started:
 	case <-time.After(time.Second):
 		t.Fatal("operation did not start")
 	}
@@ -329,7 +328,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 		t.Fatalf("Close error = %v, want caller deadline", err)
 	}
 	select {
-	case <-service.canceled:
+	case <-target.canceled:
 	case <-time.After(time.Second):
 		t.Fatal("operation did not observe shutdown cancellation")
 	}
@@ -339,7 +338,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	default:
 	}
 
-	close(service.release)
+	close(target.release)
 	select {
 	case <-callDone:
 	case <-time.After(time.Second):

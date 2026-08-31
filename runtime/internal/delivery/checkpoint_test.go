@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -37,10 +37,10 @@ func (t testCheckpointRestorer) DropSession(sessionID string) error {
 
 // checkpointHarness extends the rollback harness with a real shadow-git
 // checkpoint store and a session whose cwd is a populated temp dir. It returns
-// the server, runtime stub, the checkpoint store, session id, and cwd so a test
+// the Handler, runtime stub, checkpoint store, session id, and cwd so a test
 // can mutate + snapshot. The store is owned by the Host in production, so the
 // harness holds it locally and wires it into the sessions coordinator restorer.
-func checkpointHarness(t *testing.T) (*Server, *stubRuntime, *workspace.Checkpoints, string, string) {
+func checkpointHarness(t *testing.T) (*Handler, *stubRuntime, *workspace.Checkpoints, string, string) {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not installed; skipping checkpoint rollback test")
@@ -48,7 +48,7 @@ func checkpointHarness(t *testing.T) (*Server, *stubRuntime, *workspace.Checkpoi
 	s, rt := rollbackHarness(t)
 	cp := workspace.NewCheckpoints(t.TempDir())
 	// The restorer lives on the sessions coordinator now, so rebuild it over the
-	// real checkpoint store (newTestServer wired a disabled one).
+	// real checkpoint store (newTestHandler wired a disabled one).
 	s.sessions = rt.sessionsCoordinatorWithRestorer(testCheckpointRestorer{cp: cp})
 	cwd := t.TempDir()
 	// Checkpoints only fire in a real git repo now (Checkpoints.Snapshot's gate,

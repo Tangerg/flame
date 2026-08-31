@@ -8,8 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
-	"github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -18,7 +17,7 @@ import (
 // receives its own consumer config; startup recovery and workers stay behind
 // behavior methods instead of leaking a coordinator locator to Instance.
 type hostApplication struct {
-	delivery         server.Config
+	delivery         delivery.HandlerConfig
 	sessions         *sessions.Coordinator
 	workers          hostWorkers
 	idempotencyStore idempotency.Store
@@ -35,65 +34,43 @@ type workerJoins struct {
 	recovery  <-chan struct{}
 }
 
-type operationDelivery struct {
-	endpoint *operation.Endpoint
-	service  *server.Server
-}
-
 const ownershipRecoveryInterval = time.Second
 
 func (h *hostApplication) recoverStartup(ctx context.Context) error {
 	return h.sessions.RecoverWorkspaceMutations(ctx)
 }
 
-func (h *hostApplication) newOperationService(
+func (h *hostApplication) newDeliveryHandler(
 	info protocol.ServerInfo,
 	idempotencyNamespace string,
-) (*server.Server, error) {
+) (*delivery.Handler, error) {
 	cfg := h.delivery
 	cfg.ServerInfo = info
 	cfg.IdempotencyLimits = protocol.IdempotencyLimits{
 		RetentionSeconds: int(idempotency.Retention.Seconds()),
 		Namespace:        idempotencyNamespace,
 	}
-	return server.New(cfg)
+	return delivery.NewHandler(cfg)
 }
 
-func (h *hostApplication) openOperationDelivery(
+func (h *hostApplication) newDeliveryEndpoint(
 	lifetime context.Context,
 	info protocol.ServerInfo,
 	idempotencyNamespace string,
-) (operationDelivery, error) {
-	service, err := h.newOperationService(info, idempotencyNamespace)
+) (*delivery.Endpoint, error) {
+	handler, err := h.newDeliveryHandler(info, idempotencyNamespace)
 	if err != nil {
-		return operationDelivery{}, err
+		return nil, err
 	}
-	endpoint, err := operation.New(service, operation.Config{
+	endpoint, err := delivery.NewEndpoint(handler, delivery.EndpointConfig{
 		IdempotencyStore:     h.idempotencyStore,
 		IdempotencyNamespace: idempotencyNamespace,
 		Lifetime:             lifetime,
 	})
 	if err != nil {
-		service.Close()
-		return operationDelivery{}, err
+		return nil, err
 	}
-	return operationDelivery{endpoint: endpoint, service: service}, nil
-}
-
-func (o operationDelivery) beginShutdown() {
-	if o.service != nil {
-		o.service.Close()
-	}
-	if o.endpoint != nil {
-		o.endpoint.BeginShutdown()
-	}
-}
-
-func (o operationDelivery) awaitShutdown(ctx context.Context) error {
-	if o.endpoint == nil {
-		return nil
-	}
-	return o.endpoint.AwaitShutdown(ctx)
+	return endpoint, nil
 }
 
 func (h *hostApplication) notifyExternalChange() {

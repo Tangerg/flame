@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 	}
 
 	runtimeType := publicGoTypeByName(t, embedded, "Runtime")
-	if got, want := len(runtimeType.Methods), len(operation.Contract().Metas())+1; got != want {
+	if got, want := len(runtimeType.Methods), len(delivery.Contract().Metas())+1; got != want {
 		t.Fatalf("Runtime methods = %d, want %d operations plus Close", got, want)
 	}
 	if !slices.ContainsFunc(runtimeType.Methods, func(method publicGoFunction) bool {

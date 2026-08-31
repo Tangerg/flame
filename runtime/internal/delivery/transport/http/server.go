@@ -29,8 +29,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -75,7 +75,7 @@ type Server struct {
 type Config struct {
 	// Endpoint is the Runtime instance's binding-neutral operation entrypoint.
 	// Required. HTTP never constructs a second policy pipeline.
-	Endpoint *operation.Endpoint
+	Endpoint *delivery.Endpoint
 
 	// Addr is the listen address (":8080", "127.0.0.1:0", ...). Required.
 	Addr string

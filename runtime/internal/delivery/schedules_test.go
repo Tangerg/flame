@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -71,11 +71,11 @@ func (f *fakeScheduleRegistry) Pending(context.Context, int) ([]schedule.Occurre
 	return nil, nil
 }
 
-// serverWithSchedules builds a test Server whose schedules coordinator is backed
+// handlerWithSchedules builds a test Handler whose schedules coordinator is backed
 // by reg (used as both the CRUD registry and the worker store).
-func serverWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Server {
+func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	t.Helper()
-	s := newTestServer(&stubRuntime{})
+	s := newTestHandler(&stubRuntime{})
 	coordinator, err := schedules.New(schedules.Dependencies{
 		Store:      reg,
 		Paths:      workspacepath.Resolver{},
@@ -100,7 +100,7 @@ func serverWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Server {
 
 func TestCreateScheduleBuildsEnabledDomainSchedule(t *testing.T) {
 	reg := &fakeScheduleRegistry{}
-	s := serverWithSchedules(t, reg)
+	s := handlerWithSchedules(t, reg)
 	cwd := t.TempDir()
 
 	got, err := s.CreateSchedule(context.Background(), protocol.CreateScheduleRequest{
@@ -129,7 +129,7 @@ func TestCreateScheduleBuildsEnabledDomainSchedule(t *testing.T) {
 
 func TestCreateScheduleRejectsUnavailableCWD(t *testing.T) {
 	reg := &fakeScheduleRegistry{}
-	s := serverWithSchedules(t, reg)
+	s := handlerWithSchedules(t, reg)
 
 	_, err := s.CreateSchedule(context.Background(), protocol.CreateScheduleRequest{
 		Instructions: "Summarize the repo",
@@ -157,7 +157,7 @@ func TestUpdateSchedulePreservesStoredTimestampsAndCanDisable(t *testing.T) {
 			NextRunAt: last.Add(time.Hour), Revision: 1,
 		}),
 	}}
-	s := serverWithSchedules(t, reg)
+	s := handlerWithSchedules(t, reg)
 	cwd := t.TempDir()
 	effort := "xhigh"
 
@@ -202,7 +202,7 @@ func TestUpdateScheduleCanReturnToDefaultWorkspace(t *testing.T) {
 			CWD: t.TempDir(), Cron: "@daily", Enabled: true,
 		}),
 	}}
-	s := serverWithSchedules(t, reg)
+	s := handlerWithSchedules(t, reg)
 
 	got, err := s.UpdateSchedule(context.Background(), protocol.UpdateScheduleRequest{
 		ID:               "sch_1",
@@ -221,7 +221,7 @@ func TestUpdateScheduleCanReturnToDefaultWorkspace(t *testing.T) {
 }
 
 func TestUpdateScheduleUnknownIDIsInvalidParams(t *testing.T) {
-	s := serverWithSchedules(t, &fakeScheduleRegistry{})
+	s := handlerWithSchedules(t, &fakeScheduleRegistry{})
 
 	_, err := s.UpdateSchedule(context.Background(), protocol.UpdateScheduleRequest{
 		ID:               "missing",
@@ -260,7 +260,7 @@ func mustServerSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 
 func TestScheduleUnavailableIsCapabilityNotNegotiated(t *testing.T) {
 	reg := &fakeScheduleRegistry{listErr: schedules.ErrUnavailable}
-	s := serverWithSchedules(t, reg)
+	s := handlerWithSchedules(t, reg)
 
 	_, err := s.ListSchedules(context.Background(), protocol.PageQuery{})
 	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {

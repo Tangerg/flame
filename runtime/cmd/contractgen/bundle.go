@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -26,7 +26,7 @@ const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 // params, its result, and — for a streaming method — its events. Downstream
 // notification params are registered separately because they are not callable
 // methods, but are equally part of the wire surface.
-func walkWireTypes(registry *operation.Registry, shapes *dispatch.Shapes) *schemaSet {
+func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) *schemaSet {
 	set := newSchemaSet(shapes)
 	httpContract := runtimehttp.Contract()
 	for _, enum := range httpContract.Enums {

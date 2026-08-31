@@ -4,14 +4,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 )
 
 func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	t.Parallel()
 
-	registry, shapes := operation.Contract(), dispatch.WireShapes()
+	registry, shapes := delivery.Contract(), dispatch.WireShapes()
 	document := newOpenRPC(registry, shapes, walkWireTypes(registry, shapes))
 
 	ack := openRPCMethod(t, document, "sessions.delete")
@@ -44,7 +44,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 func TestOpenRPCRequestFramesAreStrictAndPublishUniversalMetadata(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(operation.Contract(), dispatch.WireShapes(), walkWireTypes(operation.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
 	for _, method := range document.Methods {
 		if method.RequestFrame == nil || method.RequestFrame.UnevaluatedProps == nil || *method.RequestFrame.UnevaluatedProps {
 			t.Errorf("%s request frame does not reject unknown top-level params", method.Name)
@@ -72,7 +72,7 @@ func TestOpenRPCRequestFramesAreStrictAndPublishUniversalMetadata(t *testing.T) 
 func TestOpenRPCPublishesRunReplayCursorPolicy(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(operation.Contract(), dispatch.WireShapes(), walkWireTypes(operation.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
 	for _, test := range []struct {
 		method string
 		want   string
@@ -90,7 +90,7 @@ func TestOpenRPCPublishesRunReplayCursorPolicy(t *testing.T) {
 func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(operation.Contract(), dispatch.WireShapes(), walkWireTypes(operation.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
 	for _, test := range []struct {
 		method    string
 		param     string

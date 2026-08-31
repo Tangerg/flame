@@ -35,7 +35,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/tools"
 	"github.com/Tangerg/flame/runtime/internal/application/usage"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
@@ -470,7 +470,7 @@ func buildAssemblyCore(
 	)
 	host := &Host{
 		application: &hostApplication{
-			delivery: server.Config{
+			delivery: delivery.HandlerConfig{
 				Sessions:      sessionCoordinator,
 				MCP:           mcpCoordinator,
 				Approvals:     approvalCoordinator,

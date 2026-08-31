@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 // ListProviders projects the application-owned supported-provider set onto the
 // protocol page. The application combines static support and runtime state.
-func (s *Server) ListProviders(ctx context.Context) (*protocol.Page[protocol.Provider], error) {
+func (s *Handler) ListProviders(ctx context.Context) (*protocol.Page[protocol.Provider], error) {
 	providers, err := s.models.ListProviders(ctx)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (s *Server) ListProviders(ctx context.Context) (*protocol.Page[protocol.Pro
 
 // UpdateProvider validates and persists one provider through the application
 // use case, then projects its redacted result onto the wire.
-func (s *Server) UpdateProvider(ctx context.Context, in protocol.UpdateProviderRequest) (*protocol.Provider, error) {
+func (s *Handler) UpdateProvider(ctx context.Context, in protocol.UpdateProviderRequest) (*protocol.Provider, error) {
 	apiKey, err := providerConfigChange(in.APIKey, provider.NewAPIKey)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse fu
 // TestProvider returns an inline verdict for a supported, configured provider.
 // The application owns eligibility and probing; Delivery selects the protocol
 // failure envelope.
-func (s *Server) TestProvider(ctx context.Context, providerID string) (*protocol.ProviderTestResult, error) {
+func (s *Handler) TestProvider(ctx context.Context, providerID string) (*protocol.ProviderTestResult, error) {
 	outcome, err := s.models.TestProvider(ctx, providerID)
 	if err != nil {
 		return nil, mapModelError(err)
@@ -97,6 +97,6 @@ func (s *Server) TestProvider(ctx context.Context, providerID string) (*protocol
 			Type: protocol.ProblemProviderTestFailed,
 		}}, nil
 	default:
-		return nil, fmt.Errorf("server: unknown provider test outcome %q", outcome)
+		return nil, fmt.Errorf("delivery: unknown provider test outcome %q", outcome)
 	}
 }

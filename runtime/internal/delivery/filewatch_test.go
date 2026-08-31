@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func TestWorkspaceSubscribe_GitWatch(t *testing.T) {
 		t.Fatalf("seed index: %v", err)
 	}
 	fileWatchGitCommand(t, dir, "add", "tracked.txt")
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 	s.workspaceHub = newWorkspaceHub()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -65,7 +65,7 @@ func TestWorkspaceSubscribe_GitWatch(t *testing.T) {
 // contributes no watcher (and doesn't error) — the broadcast stream still works.
 func TestWorkspaceSubscribe_NonRepoInert(t *testing.T) {
 	dir := t.TempDir() // no .git
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 	s.workspaceHub = newWorkspaceHub()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -95,7 +95,7 @@ func TestWorkspaceSubscribe_NonRepoInert(t *testing.T) {
 // hooks.json needs to be staged before its query projection becomes stale.
 func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 	dir := t.TempDir()
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 	s.workspaceHub = newWorkspaceHub()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -146,7 +146,7 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := newWorkspaceServerWithConfig(workspaceRoot, workspaceTestConfig{AuthoredWatcher: authored})
+	s := newWorkspaceHandlerWithConfig(workspaceRoot, workspaceTestConfig{AuthoredWatcher: authored})
 	s.workspaceHub = newWorkspaceHub()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -195,7 +195,7 @@ func TestWorkspaceSubscribe_KnowledgeUpdateDoesNotDoublePublishFromFileObservati
 		t.Fatal(err)
 	}
 	surfaces := newWorkspaceSurfaces(dir, workspaceTestConfig{Knowledge: store})
-	s := &Server{}
+	s := &Handler{}
 	applyWorkspaceSurfaces(s, surfaces)
 	s.workspaceHub = newWorkspaceHub()
 	s.workspaceKnowledge = workspaceapp.NewKnowledge(
@@ -255,7 +255,7 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	surfaces := newWorkspaceSurfaces(workspaceRoot, workspaceTestConfig{
 		Curator: curator, AuthoredWatcher: authored,
 	})
-	s := &Server{}
+	s := &Handler{}
 	applyWorkspaceSurfaces(s, surfaces)
 	s.workspaceHub = newWorkspaceHub()
 	s.workspaceSkills = workspaceapp.NewSkills(
@@ -312,7 +312,7 @@ func fileWatchGitCommand(t *testing.T, dir string, args ...string) {
 // reaches the workspace event hub. Tool-item-to-nudge decisions belong to and
 // are tested in application/runs.
 func TestRunEffectsNudgePublishesFileChange(t *testing.T) {
-	s := &Server{workspaceHub: newWorkspaceHub()}
+	s := &Handler{workspaceHub: newWorkspaceHub()}
 	events, unsub := s.workspaceHub.subscribe()
 	defer unsub()
 
@@ -336,7 +336,7 @@ func TestRunEffectsNudgePublishesFileChange(t *testing.T) {
 
 // TestWorkspaceSubscribe_MissingWatchID rejects a watch with no id.
 func TestWorkspaceSubscribe_MissingWatchID(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	s.workspaceHub = newWorkspaceHub()
 	if _, _, err := s.SubscribeRuntime(context.Background(), protocol.RuntimeSubscribeRequest{
 		Watches: []protocol.WatchSpec{{}},

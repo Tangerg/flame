@@ -1,10 +1,8 @@
-package server
+package delivery
 
 import (
 	"context"
 	"fmt"
-
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -29,8 +27,8 @@ import (
 //
 // Absent capabilities map to the Minimal Profile, not an error — §8.3 makes "send a
 // message, watch the reply, reload the history" a complete client.
-func (s *Server) negotiateCapabilities(ctx context.Context) (run.Capabilities, error) {
-	caps, ok := operation.ClientCapabilitiesFrom(ctx)
+func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, error) {
+	caps, ok := ClientCapabilitiesFrom(ctx)
 	if !ok {
 		return run.Capabilities{}, nil
 	}
@@ -46,7 +44,7 @@ func (s *Server) negotiateCapabilities(ctx context.Context) (run.Capabilities, e
 		}
 		published, known := protocol.LookupFeature(key)
 		if !known || !advertised[key].Enabled {
-			return run.Capabilities{}, operation.NewCapabilityGapError(protocol.CapabilityRequirement{
+			return run.Capabilities{}, NewCapabilityGapError(protocol.CapabilityRequirement{
 				Type: protocol.RequirementFeature, Name: key,
 			})
 		}
@@ -59,7 +57,7 @@ func (s *Server) negotiateCapabilities(ctx context.Context) (run.Capabilities, e
 				capabilities.ChildRuns = true
 			default:
 				return run.Capabilities{}, fmt.Errorf(
-					"server: required Run protocol feature %q has no application policy mapping",
+					"delivery: required Run protocol feature %q has no application policy mapping",
 					key,
 				)
 			}
@@ -77,15 +75,15 @@ func (s *Server) negotiateCapabilities(ctx context.Context) (run.Capabilities, e
 	return capabilities.Normalized(), nil
 }
 
-// missingFeatureRequirements is the server-side entry point for a gate whose
+// missingFeatureRequirements is the Delivery entry point for a gate whose
 // trigger depends on durable state and therefore cannot live in MethodMeta.When.
-// The actual server/client decision is shared with the static dispatcher gate.
-func (s *Server) missingFeatureRequirements(
+// The actual Runtime/client decision is shared with the static dispatcher gate.
+func (s *Handler) missingFeatureRequirements(
 	ctx context.Context,
 	required ...string,
 ) []protocol.CapabilityRequirement {
 	var client *protocol.ClientCapabilities
-	if declared, ok := operation.ClientCapabilitiesFrom(ctx); ok {
+	if declared, ok := ClientCapabilitiesFrom(ctx); ok {
 		client = declared
 	}
 	return protocol.MissingFeatureRequirements(
@@ -93,15 +91,15 @@ func (s *Server) missingFeatureRequirements(
 	)
 }
 
-func (s *Server) requireFeature(ctx context.Context, feature string) error {
+func (s *Handler) requireFeature(ctx context.Context, feature string) error {
 	missing := s.missingFeatureRequirements(ctx, feature)
 	if len(missing) == 0 {
 		return nil
 	}
-	return operation.NewCapabilityGapError(missing...)
+	return NewCapabilityGapError(missing...)
 }
 
-func (s *Server) requestCanUseFeature(ctx context.Context, feature string) bool {
+func (s *Handler) requestCanUseFeature(ctx context.Context, feature string) bool {
 	return len(s.missingFeatureRequirements(ctx, feature)) == 0
 }
 
@@ -109,7 +107,7 @@ func (s *Server) requestCanUseFeature(ctx context.Context, feature string) bool 
 //
 // Every gap at once, because a caller told about one at a time cannot get itself into
 // a state where the call succeeds.
-func capabilityGap(missing run.Capabilities) *operation.CapabilityGapError {
+func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 	requirements := make([]protocol.CapabilityRequirement, 0,
 		1+len(missing.InterruptKinds))
 	if missing.ChildRuns {
@@ -122,7 +120,7 @@ func capabilityGap(missing run.Capabilities) *operation.CapabilityGapError {
 			Type: protocol.RequirementInterruptType, Name: string(presentInterruptType(kind)),
 		})
 	}
-	return operation.NewCapabilityGapError(requirements...)
+	return NewCapabilityGapError(requirements...)
 }
 
 // interruptKindFromWire maps a declared interrupt type onto the durable kind the
@@ -148,6 +146,6 @@ func presentInterruptType(kind interrupt.Kind) protocol.InterruptType {
 	case interrupt.Question:
 		return protocol.InterruptQuestion
 	default:
-		panic("server: unknown interrupt kind")
+		panic("delivery: unknown interrupt kind")
 	}
 }

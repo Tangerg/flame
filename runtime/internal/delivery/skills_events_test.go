@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestSkillInvalidationPublishesWorkspaceRefresh(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	s.workspaceHub = newWorkspaceHub()
 	notifier := new(testNotification[invalidation.Notice])
 	s.observeInvalidations(notifier.Observe)

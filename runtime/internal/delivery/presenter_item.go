@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
@@ -55,7 +55,7 @@ func presentMessagePhase(phase transcript.MessagePhase) protocol.MessagePhase {
 	case transcript.MessageFinalAnswer:
 		return protocol.MessagePhaseFinalAnswer
 	default:
-		panic("server: unknown transcript message phase")
+		panic("delivery: unknown transcript message phase")
 	}
 }
 
@@ -105,13 +105,13 @@ func presentItemStatus(status transcript.ItemStatus) protocol.ItemStatus {
 	case transcript.ItemIncomplete:
 		return protocol.ItemStatusIncomplete
 	default:
-		panic("server: unknown transcript item status")
+		panic("delivery: unknown transcript item status")
 	}
 }
 
 func presentItemKind(kind transcript.ItemKind) protocol.ItemType {
 	if !kind.Valid() {
-		panic("server: unknown transcript item kind")
+		panic("delivery: unknown transcript item kind")
 	}
 	return protocol.ItemType(kind)
 }
@@ -119,7 +119,7 @@ func presentItemKind(kind transcript.ItemKind) protocol.ItemType {
 func presentContent(block transcript.ContentBlock) protocol.ContentBlock {
 	encoded, err := encodeContent(block)
 	if err != nil {
-		panic("server: " + err.Error())
+		panic("delivery: " + err.Error())
 	}
 	return protocol.ContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
 }
@@ -134,7 +134,7 @@ func presentQuestion(question transcript.Question) protocol.Question {
 		case transcript.QuestionChoice:
 			kind = protocol.QuestionFieldChoice
 		default:
-			panic("server: unknown transcript question-field kind")
+			panic("delivery: unknown transcript question-field kind")
 		}
 		var options []protocol.QuestionOption
 		if len(field.Options) > 0 {
@@ -185,6 +185,6 @@ func presentDelta(delta runs.ItemDelta) protocol.ItemDelta {
 	case runs.ToolOutputItemDelta:
 		return protocol.ItemDelta{Type: protocol.DeltaToolOutput, Text: delta.Text()}
 	default:
-		panic("server: unknown Item delta variant")
+		panic("delivery: unknown Item delta variant")
 	}
 }

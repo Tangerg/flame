@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -39,7 +39,7 @@ func wireSessionErr(err error) error {
 // ListSessions returns one page of the session list (sessions.list). A non-empty
 // NextCursor is the "has more" signal — never a silent truncation. The page is
 // cut by the read, so only the sessions on it are resolved.
-func (s *Server) ListSessions(ctx context.Context, q protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
 	limit, err := requestedPageLimit(q.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
@@ -70,7 +70,7 @@ func (s *Server) ListSessions(ctx context.Context, q protocol.ListSessionsReques
 	return protocol.NewPageWithCursor(data, page.NextCursor), nil
 }
 
-func (s *Server) GetSession(ctx context.Context, id string) (*protocol.Session, error) {
+func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session, error) {
 	view, err := s.sessions.View(ctx, id)
 	if err != nil {
 		return nil, wireSessionErr(err)
@@ -83,7 +83,7 @@ func (s *Server) GetSession(ctx context.Context, id string) (*protocol.Session, 
 // complete material read used by mounted clients. Capability checks apply to
 // the snapshot as a whole, so no response can silently trim a waiting set or a
 // child Run that the caller could not fold.
-func (s *Server) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
+func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
 	snapshot, err := s.sessions.MaterialSnapshot(ctx, in.SessionID)
 	if err != nil {
 		return nil, wireSessionErr(err)
@@ -132,7 +132,7 @@ func (s *Server) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionS
 	return out, nil
 }
 
-func (s *Server) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
+func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
 	// Workspace defaults to the serve directory when the
 	// client omits it — cold-start zero friction (API.md §7.2 / §0.2).
 	cwd := s.serverInfo.DefaultWorkspace.Path
@@ -147,7 +147,7 @@ func (s *Server) CreateSession(ctx context.Context, in protocol.CreateSessionReq
 	return &out, nil
 }
 
-func (s *Server) DeleteSession(ctx context.Context, id string) error {
+func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 	if id == "" {
 		return protocol.ErrSessionNotFound
 	}
@@ -167,7 +167,7 @@ func (s *Server) DeleteSession(ctx context.Context, id string) error {
 // (relocate, gated by features.relocate), and favorite are all live. Nil
 // fields are left alone; the updated session is returned. The
 // dispatch layer already rejects an empty SessionID.
-func (s *Server) UpdateSession(ctx context.Context, in protocol.UpdateSessionRequest) (*protocol.Session, error) {
+func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRequest) (*protocol.Session, error) {
 	var cwd *string
 	if in.Workspace != nil {
 		path := in.Workspace.Path
@@ -202,7 +202,7 @@ func (s *Server) UpdateSession(ctx context.Context, in protocol.UpdateSessionReq
 // fork. Snapshot semantics: only terminal runs are copied; an in-flight run and
 // all of its mutable history tail are excluded. Forking deletes nothing, so
 // unlike rollback it needs no session_busy guard.
-func (s *Server) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
+func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
 	child, err := s.sessions.ForkView(ctx, sessions.ForkSpec{
 		ParentID:  in.SessionID,
 		FromRunID: in.FromRunID,

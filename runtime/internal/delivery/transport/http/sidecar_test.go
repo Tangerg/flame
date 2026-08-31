@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -16,7 +16,7 @@ import (
 func newProbeServer(t *testing.T, probes ...flamehttp.HealthProbe) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+		Endpoint: newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
 		Addr:     ":0",
 		ServerInfo: protocol.ServerInfo{
 			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
@@ -189,7 +189,7 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := flamehttp.NewServer(flamehttp.Config{
-				Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+				Endpoint:        newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
 				Addr:            ":0",
 				ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
 				ProtocolVersion: testProtocolVersion,
@@ -203,7 +203,7 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 
 func TestNewServerRejectsAmbiguousHealthProbes(t *testing.T) {
 	base := flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, operation.Config{}),
+		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
 		Addr:            ":0",
 		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 		ProtocolVersion: testProtocolVersion,

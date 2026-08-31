@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func TestWorkspaceVcsUnavailable(t *testing.T) {
 	if !workspace.GitAvailable() {
 		t.Skip("git not on PATH")
 	}
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	if _, err := s.ListWorkspaceFileChanges(context.Background(), protocol.WorkspaceQuery{}); !errors.Is(err, protocol.ErrVcsUnavailable) {
 		t.Errorf("listFileChanges err = %v, want ErrVcsUnavailable", err)
 	}
@@ -26,7 +26,7 @@ func TestWorkspaceVcsUnavailable(t *testing.T) {
 }
 
 func TestWorkspaceDiffRejectsMeaninglessOrNonPositiveRowLimits(t *testing.T) {
-	s := newWorkspaceServer(t.TempDir())
+	s := newWorkspaceHandler(t.TempDir())
 	if _, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{
 		Format: protocol.DiffFormatRaw,
 		Limit:  valuePtr(1),
@@ -63,7 +63,7 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := newWorkspaceServer(dir)
+	s := newWorkspaceHandler(dir)
 	page, err := s.ListWorkspaceFileChanges(context.Background(), protocol.WorkspaceQuery{})
 	if err != nil {
 		t.Fatalf("listFileChanges: %v", err)

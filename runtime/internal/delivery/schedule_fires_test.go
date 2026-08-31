@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 
 func TestScheduleInvalidationProjectsToARuntimeSignal(t *testing.T) {
 	notifier := &testNotification[invalidation.Notice]{}
-	s := &Server{workspaceHub: newWorkspaceHub()}
+	s := &Handler{workspaceHub: newWorkspaceHub()}
 	s.observeInvalidations(notifier.Observe)
 	events, unsubscribe := s.workspaceHub.subscribe()
 	defer unsubscribe()

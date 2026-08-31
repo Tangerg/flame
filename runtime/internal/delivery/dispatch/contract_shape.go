@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 // This file holds the shape half of the contract: which wire types are closed
@@ -88,7 +88,7 @@ type ObjectConstraintSpec struct {
 // restricted to a smaller value set when a condition holds. Field names are
 // dotted JSON paths.
 type ConditionalRule struct {
-	When          []operation.FieldCondition
+	When          []delivery.FieldCondition
 	Required      []string
 	RequiredAny   []string
 	Forbidden     []string
@@ -624,7 +624,7 @@ func (o ObjectConstraintSpec) validate() error {
 					name, index, condition.Field, condition.Operator,
 				)
 			}
-			if err := operation.ValidateFieldCondition(
+			if err := delivery.ValidateFieldCondition(
 				fmt.Sprintf("%s rule %d", name, index),
 				o.GoType,
 				condition,

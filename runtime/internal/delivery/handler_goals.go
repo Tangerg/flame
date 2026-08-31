@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -26,7 +26,7 @@ type goalUseCases interface {
 }
 
 // UpdateGoal revises only the current objective (goals.update).
-func (s *Server) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) (*protocol.Goal, error) {
+func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) (*protocol.Goal, error) {
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, err
@@ -42,12 +42,12 @@ func (s *Server) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) 
 }
 
 // ClearGoal removes the current objective and stops its drive (goals.clear).
-func (s *Server) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
+func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
 	return mapGoalErr(s.goals.Clear(ctx, in.SessionID), "goals.clear")
 }
 
 // StartGoal opens and begins driving a goal for the session (goals.start).
-func (s *Server) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
+func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, mapGoalErr(err, "goals.start")
@@ -68,7 +68,7 @@ func (s *Server) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*
 }
 
 // GetGoal returns the session's goal, or a nil result when it has none (goals.get).
-func (s *Server) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
 	g, ok, err := s.goals.Current(ctx, in.SessionID)
 	if err != nil {
 		return nil, mapGoalErr(err, "goals.get")
@@ -80,7 +80,7 @@ func (s *Server) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoco
 }
 
 // StopGoal pauses the session's goal and stops the loop (goals.stop).
-func (s *Server) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
 	g, err := s.goals.Stop(ctx, in.SessionID)
 	if err != nil {
 		return nil, mapGoalErr(err, "goals.stop")
@@ -89,7 +89,7 @@ func (s *Server) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 }
 
 // ResumeGoal re-activates a paused or blocked goal (goals.resume).
-func (s *Server) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, err

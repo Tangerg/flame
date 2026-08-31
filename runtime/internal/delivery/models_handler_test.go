@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -55,9 +55,9 @@ func (u *utilitySaverRecorder) SaveUtilityRole(_ context.Context, role modelref.
 	return nil
 }
 
-func modelRoleServer(entries map[string]provider.Provider, saver *utilitySaverRecorder) *Server {
+func modelRoleServer(entries map[string]provider.Provider, saver *utilitySaverRecorder) *Handler {
 	fake := &modelProviderFake{entries: entries}
-	return serverWithModels(models.Config{
+	return handlerWithModels(models.Config{
 		Providers:        fake,
 		Catalog:          fake,
 		UtilityRoleState: models.NewRoleState(modelref.Selection{}),

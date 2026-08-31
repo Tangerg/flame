@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 // ListRecipes maps application recipe discovery to the protocol shape.
-func (s *Server) ListRecipes(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Recipe], error) {
+func (s *Handler) ListRecipes(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Recipe], error) {
 	found, err := s.workspaceDiscovery.Recipes(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)

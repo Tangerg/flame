@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
 // dependency): the exact Items the runtime streamed (same ids, runId,
 // text, createdAt). The page is cut by the query, so a long session's
 // history is not loaded to return a slice of it.
-func (s *Server) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
+func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
@@ -100,7 +100,7 @@ func (s *Server) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*
 // A session with no list yet answers with an absent Plan.state. That is a fact
 // rather than a gap: the panel renders empty, while a present empty state means an
 // explicit clear; only a session that does not exist is an error.
-func (s *Server) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*protocol.Plan, error) {
+func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*protocol.Plan, error) {
 	state, err := s.queries.PlanState(ctx, in.SessionID)
 	if err != nil {
 		return nil, wireItemScopeError(err)

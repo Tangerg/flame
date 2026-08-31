@@ -6,7 +6,7 @@ import (
 	"iter"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -17,9 +17,9 @@ type capabilityRuntime struct {
 	features map[string]bool
 }
 
-func newOperationEndpoint(t *testing.T, target any) *operation.Endpoint {
+func newOperationEndpoint(t *testing.T, target any) *delivery.Endpoint {
 	t.Helper()
-	endpoint, err := operation.New(target, operation.Config{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context()})
 	if err != nil {
 		t.Fatal(err)
 	}

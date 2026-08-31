@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -38,7 +38,7 @@ func presentRunEvent(event runs.RunEvent) protocol.StreamEvent {
 		plan := presentPlan(event)
 		return protocol.StreamEvent{Type: protocol.StreamPlanUpdated, Plan: &plan}
 	default:
-		panic("server: unknown canonical run event")
+		panic("delivery: unknown canonical run event")
 	}
 }
 
@@ -94,7 +94,7 @@ func presentPlanStatus(status plan.Status) protocol.PlanStatus {
 	case plan.StatusCompleted:
 		return protocol.PlanStatusCompleted
 	default:
-		panic("server: unknown plan status")
+		panic("delivery: unknown plan status")
 	}
 }
 
@@ -122,7 +122,7 @@ func mapRunEvents(ctx context.Context, in iter.Seq[runs.Event]) iter.Seq[protoco
 func safePresentRunEvent(ctx context.Context, event runs.RunEvent) (presented protocol.StreamEvent, ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
-			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("server: run-event presenter panicked, terminating stream: %v", r))
+			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("delivery: run-event presenter panicked, terminating stream: %v", r))
 			presented = protocol.StreamEvent{}
 			ok = false
 		}

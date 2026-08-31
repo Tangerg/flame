@@ -1,22 +1,20 @@
-package server
+package delivery
 
 import (
 	"context"
 	"errors"
-	"slices"
-	"testing"
-	"time"
-
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"slices"
+	"testing"
+	"time"
 )
 
 // withClientCapabilities builds the request context a client's `_meta` produces.
 func withClientCapabilities(caps protocol.ClientCapabilities) context.Context {
-	return operation.WithRequestMeta(context.Background(), protocol.RequestMeta{ClientCapabilities: &caps})
+	return WithRequestMeta(context.Background(), protocol.RequestMeta{ClientCapabilities: &caps})
 }
 
 // TestStartRunRefusesCapabilitiesThisBuildDoesNotHave covers the refusals §8.1

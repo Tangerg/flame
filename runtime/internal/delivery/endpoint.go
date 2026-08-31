@@ -1,4 +1,4 @@
-package operation
+package delivery
 
 import (
 	"context"
@@ -41,9 +41,9 @@ type Endpoint struct {
 	invocations          *invocationGroup
 }
 
-// Config supplies durable operation mechanisms. A nil IdempotencyStore selects
-// a Runtime-instance-local store, useful for tests and non-durable hosts.
-type Config struct {
+// EndpointConfig supplies durable operation mechanisms. A nil IdempotencyStore
+// selects a Runtime-instance-local store, useful for tests and non-durable hosts.
+type EndpointConfig struct {
 	IdempotencyStore     idempotency.Store
 	IdempotencyNamespace string
 	// Lifetime ends every in-flight operation and stream owned by this Runtime
@@ -52,14 +52,14 @@ type Config struct {
 	Lifetime context.Context
 }
 
-// New constructs a binding-neutral operation endpoint.
-func New(target any, config Config) (*Endpoint, error) {
+// NewEndpoint constructs the binding-neutral Runtime delivery endpoint.
+func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 	if config.Lifetime == nil {
-		return nil, errors.New("operation: lifetime is required")
+		return nil, errors.New("delivery endpoint: lifetime is required")
 	}
 	namespace, _, err := idempotencynamespace.ParseOptional(config.IdempotencyNamespace)
 	if err != nil {
-		return nil, fmt.Errorf("operation: idempotency namespace: %w", err)
+		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
 	}
 	store := config.IdempotencyStore
 	if store == nil {
@@ -76,7 +76,13 @@ func New(target any, config Config) (*Endpoint, error) {
 // BeginShutdown rejects new calls and cancels every accepted call or stream.
 // The Runtime owner follows it with AwaitShutdown before closing dependencies.
 func (e *Endpoint) BeginShutdown() {
-	if e == nil || e.invocations == nil {
+	if e == nil {
+		return
+	}
+	if target, ok := e.target.(interface{ beginShutdown() }); ok {
+		target.beginShutdown()
+	}
+	if e.invocations == nil {
 		return
 	}
 	e.invocations.BeginShutdown()

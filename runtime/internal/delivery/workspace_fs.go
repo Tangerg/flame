@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 // ListWorkspaceFiles projects a paged application workspace-file listing onto
 // the wire contract.
-func (s *Server) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error) {
+func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error) {
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wireWorkspaceError(wirePageError(err))
@@ -59,7 +59,7 @@ func presentFileEntryType(kind workspaceapp.FileEntryKind) (protocol.FileEntryTy
 }
 
 // GetWorkspaceFileHead projects the application file preview onto wire lines.
-func (s *Server) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHeadRequest) (*protocol.FileHead, error) {
+func (s *Handler) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHeadRequest) (*protocol.FileHead, error) {
 	lineLimit := workspaceapp.DefaultHeadLineLimit()
 	if in.Lines != nil {
 		explicit, err := workspaceapp.NewHeadLineLimit(*in.Lines)
@@ -80,7 +80,7 @@ func (s *Server) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHe
 }
 
 // ReadWorkspaceFile maps the application file read onto the protocol response.
-func (s *Server) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequest) (*protocol.FileContent, error) {
+func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequest) (*protocol.FileContent, error) {
 	lineRange, err := fileLineRangeFromWire(in.StartLine, in.EndLine)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -110,7 +110,7 @@ func (s *Server) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequ
 }
 
 // GrepWorkspace maps the application content search onto the protocol result.
-func (s *Server) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*protocol.GrepResult, error) {
+func (s *Handler) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*protocol.GrepResult, error) {
 	limit := workspaceapp.DefaultGrepResultLimit()
 	if in.Limit != nil {
 		explicit, err := workspaceapp.NewGrepResultLimit(*in.Limit)

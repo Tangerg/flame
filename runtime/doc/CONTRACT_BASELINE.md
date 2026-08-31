@@ -336,6 +336,8 @@ identity 后才读写，域内 symlink 的 alias 本身保持不变；跨进程 
 
 公共 Go surface 只有 `runtime/protocol`、`runtime/embedded` 与 `runtime/localruntime`，由生成的 `contract/go-api.json` 完整冻结。`protocol` 只公开 binding-neutral values、strict validation、版本、稳定错误 identity 与 `ProblemError`；`embedded` 只公开 concrete Runtime lifecycle、准确 options 和类型化 operation methods；`localruntime` 只公开 durable token 的 validated `Token`、`OpenToken`、`ReadToken` 与稳定 `ErrInvalidToken`，不公开 transport/server 或 host-directory discovery。同一 canonical data directory 可由另一个 embedded/HTTP Runtime 同时打开，因此旧的 `embedded.ErrDataDirectoryInUse` 已 breaking 删除；实际冲突在对应 Session operation 上投影既有 `session_busy`。服务端 method interface、request context plumbing、numeric JSON-RPC code、reflection shape walker、artifact catalogue、Host、Store、Engine 和 Router 均属于 `internal`，不构成公共 Go surface。P113 对 Assembly、operation、Interaction、Toolset、LSP、MCP 以及 Runs/Sessions/Runsegment constructor 的 breaking correction 只收紧 internal valid construction 与 lifetime ownership；P148/P149 先分离 terminal diagnostic、再按 SDK 合同纠正 MCP close，P150 删除失去生产消费者的 Retryable/settlement 双态并让 terminal Sequence 在失败 Assembly timeout 后继续完成逆序资源图，P151 让 Host 整体 shutdown generation 独立于 caller wait，P152 再让 Instance 以同一 owner 规则从 operation Endpoint 穿过 workers 加入 Host；公共/CLI Close timeout 不再遗弃下层图。P174 breaking 增加唯一 deployment handoff package 并删除 HTTP internal token owner；Protocol method/event、Artifact 与 SQLite shape 不变。
 
+P286 将 `internal/delivery/operation` 与 `internal/delivery/server` 的人工阶段分包收回内聚的 `internal/delivery` 根 package。`Endpoint` 现在同时拥有唯一 binding-neutral 进入点与 Delivery shutdown admission；`Handler` 只拥有 Application/protocol 翻译，不再向 Bootstrap 提供平行 lifecycle。`dispatch` 和 `transport` 仍保留为 JSON-RPC 与 HTTP/SSE 的独立 mechanism。这是 Runtime internal API 的 breaking 替换，不保留 alias、shim 或 forwarding package；公共 Go surface、Protocol method/event、Artifact 和 SQLite shape 不变。
+
 ## 3. 持久化 Baseline 1
 
 ### 3.1 SQLite
@@ -521,7 +523,7 @@ P2–P10 已建立：
 
 - Runtime 对 Agent Framework Platform 的接入；
 - 前端/TUI/CLI 新 consumer API；
-- Delivery `server`/`dispatch` 保持现名；未由真实职责变化证明时不做目录改名；
+- 新 binding 或 transport 必须有真实消费者与独立语义，不为未来客户端预留 package、factory 或 interface；
 - 未来数据库 epoch、artifact version 或 Agent Framework TreeSnapshot version。
 
 这些内容不能以 placeholder、预留字段或空接口提前进入代码；真实阶段完成后再冻结。

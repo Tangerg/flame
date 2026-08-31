@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -514,14 +514,14 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ReadFileRequest](),
 		Rules: []ConditionalRule{{
-			When:     []operation.FieldCondition{{Field: "endLine", Operator: operation.OperatorPresent}},
+			When:     []delivery.FieldCondition{{Field: "endLine", Operator: delivery.OperatorPresent}},
 			Required: []string{"startLine"},
 		}},
 	})
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.GetDiffRequest](),
 		Rules: []ConditionalRule{{
-			When:      []operation.FieldCondition{{Field: "format", Operator: operation.OperatorEquals, Value: string(protocol.DiffFormatRaw)}},
+			When:      []delivery.FieldCondition{{Field: "format", Operator: delivery.OperatorEquals, Value: string(protocol.DiffFormatRaw)}},
 			Forbidden: []string{"limit"},
 		}},
 	})
@@ -529,24 +529,24 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.StreamEvent](),
 		Rules: []ConditionalRule{{
-			When: []operation.FieldCondition{{
-				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamItemStarted),
+			When: []delivery.FieldCondition{{
+				Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.StreamItemStarted),
 			}},
 			AllowedValues: slices.Concat(
 				allowedStreamItemKinds(protocol.ItemTypeAgentMessage, protocol.ItemTypeReasoning, protocol.ItemTypeToolCall),
 				allowedStreamItemStatuses(protocol.ItemStatusRunning),
 			),
 		}, {
-			When: []operation.FieldCondition{{
-				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamItemCompleted),
+			When: []delivery.FieldCondition{{
+				Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.StreamItemCompleted),
 			}},
 			AllowedValues: allowedStreamItemStatuses(
 				protocol.ItemStatusCompleted,
 				protocol.ItemStatusIncomplete,
 			),
 		}, {
-			When: []operation.FieldCondition{{
-				Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.StreamPlanUpdated),
+			When: []delivery.FieldCondition{{
+				Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.StreamPlanUpdated),
 			}},
 			Required: []string{"plan.state"},
 		}},
@@ -559,10 +559,10 @@ func registerObjectConstraints(s *Shapes) {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
 			Rules: []ConditionalRule{{
-				When:     []operation.FieldCondition{{Field: "provider", Operator: operation.OperatorPresent}},
+				When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
 				Required: []string{"model"},
 			}, {
-				When:     []operation.FieldCondition{{Field: "model", Operator: operation.OperatorPresent}},
+				When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
 				Required: []string{"provider"},
 			}},
 		})
@@ -571,21 +571,21 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.UpdateScheduleRequest](),
 		Rules: []ConditionalRule{{
-			When:      []operation.FieldCondition{{Field: "workspaceMode", Operator: operation.OperatorEquals, Value: string(protocol.ScheduleWorkspaceDefault)}},
+			When:      []delivery.FieldCondition{{Field: "workspaceMode", Operator: delivery.OperatorEquals, Value: string(protocol.ScheduleWorkspaceDefault)}},
 			Forbidden: []string{"workspace"},
 		}},
 	})
 
 	terminalToolRules := []ConditionalRule{{
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
 		},
 		Required: []string{"finishedAt"},
 	}, {
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
 		},
 		Required: []string{"finishedAt"},
 	}}
@@ -595,27 +595,27 @@ func registerObjectConstraints(s *Shapes) {
 	})
 
 	runtimeItemRules := slices.Concat(terminalToolRules, []ConditionalRule{{
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
 		},
 		Forbidden: []string{"finishedAt", "durationMillis"},
 	}, {
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusRunning)},
 		},
 		Forbidden: []string{"phase"},
 	}, {
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeAgentMessage)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
 		},
 		Required: []string{"phase", "content"},
 	}, {
-		When: []operation.FieldCondition{
-			{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ItemTypeReasoning)},
-			{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
+		When: []delivery.FieldCondition{
+			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeReasoning)},
+			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
 		},
 		Required: []string{"text"},
 	}})
@@ -631,10 +631,10 @@ func registerObjectConstraints(s *Shapes) {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
 			Rules: []ConditionalRule{{
-				When:     []operation.FieldCondition{{Field: "scope", Operator: operation.OperatorEquals, Value: string(protocol.AgentMemoryScopeProject)}},
+				When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryScopeProject)}},
 				Required: []string{"workspace"},
 			}, {
-				When:      []operation.FieldCondition{{Field: "scope", Operator: operation.OperatorEquals, Value: string(protocol.AgentMemoryScopeUser)}},
+				When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryScopeUser)}},
 				Forbidden: []string{"workspace"},
 			}},
 		})
@@ -643,16 +643,16 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
 		Rules: []ConditionalRule{{
-			When:      []operation.FieldCondition{{Field: "status.type", Operator: operation.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptPending)}},
+			When:      []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptPending)}},
 			Forbidden: []string{"finishedAt"},
 		}, {
-			When:     []operation.FieldCondition{{Field: "status.type", Operator: operation.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptSucceeded)}},
+			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptSucceeded)}},
 			Required: []string{"finishedAt"},
 		}, {
-			When:     []operation.FieldCondition{{Field: "status.type", Operator: operation.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptFailed)}},
+			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptFailed)}},
 			Required: []string{"finishedAt"},
 		}, {
-			When:     []operation.FieldCondition{{Field: "status.type", Operator: operation.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptCanceled)}},
+			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptCanceled)}},
 			Required: []string{"finishedAt"},
 		}},
 	})
@@ -668,13 +668,13 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Rules: append([]ConditionalRule{{
-			When:     []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
+			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
 			Required: []string{"outcome", "finishedAt"},
 		}, {
-			When:      []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusRunning)}},
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusRunning)}},
 			Forbidden: []string{"outcome", "finishedAt"},
 		}, {
-			When:      []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusWaiting)}},
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusWaiting)}},
 			Forbidden: []string{"outcome", "finishedAt"},
 		}}, childLineageRules()...),
 	})
@@ -686,13 +686,13 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunRef](),
 		Rules: []ConditionalRule{{
-			When:     []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusRunning)}},
+			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusRunning)}},
 			Required: []string{"activeSegmentId"},
 		}, {
-			When:      []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusWaiting)}},
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusWaiting)}},
 			Forbidden: []string{"activeSegmentId"},
 		}, {
-			When:      []operation.FieldCondition{{Field: "status", Operator: operation.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
 			Forbidden: []string{"activeSegmentId"},
 		}},
 	})
@@ -711,11 +711,11 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.SegmentOutcome](),
 		Rules: append(failureTerminalRules(), ConditionalRule{
-			When:      []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.SegmentInterrupt)}},
+			When:      []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.SegmentInterrupt)}},
 			Required:  []string{"interrupts"},
 			Forbidden: []string{"error", "detail"},
 		}, ConditionalRule{
-			When:      []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.SegmentSuspended)}},
+			When:      []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.SegmentSuspended)}},
 			Forbidden: []string{"interrupts", "error", "detail"},
 		}),
 	})
@@ -741,7 +741,7 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ArtifactRun](),
 		Rules: append([]ConditionalRule{{
-			When:      []operation.FieldCondition{{Field: "spawnedByItemId", Operator: operation.OperatorPresent}},
+			When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
 			Forbidden: []string{"protocolProfile"},
 		}}, childLineageRules()...),
 	})
@@ -757,9 +757,9 @@ func registerObjectConstraints(s *Shapes) {
 
 func failureArtifactRules() []ConditionalRule {
 	return []ConditionalRule{
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.ArtifactOutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 	}
 }
 
@@ -780,7 +780,7 @@ func childLineageRules() []ConditionalRule {
 	for index, edge := range edges {
 		others := append(append([]string{}, edges[:index]...), edges[index+1:]...)
 		rules = append(rules, ConditionalRule{
-			When:     []operation.FieldCondition{{Field: edge, Operator: operation.OperatorPresent}},
+			When:     []delivery.FieldCondition{{Field: edge, Operator: delivery.OperatorPresent}},
 			Required: others,
 		})
 	}
@@ -791,9 +791,9 @@ func childLineageRules() []ConditionalRule {
 // mandatory and mutually exclusive with the free-form detail field.
 func failureTerminalRules() []ConditionalRule {
 	return []ConditionalRule{
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []operation.FieldCondition{{Field: "type", Operator: operation.OperatorEquals, Value: string(protocol.OutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
+		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
 	}
 }
 

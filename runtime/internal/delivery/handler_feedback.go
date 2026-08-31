@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 // CreateFeedback records an ungated quality signal in the runtime's durable
 // feedback ledger. The write-only protocol shape intentionally has no readback,
 // but a successful ack always means the application receiver accepted it.
-func (s *Server) CreateFeedback(ctx context.Context, in protocol.FeedbackRequest) error {
+func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackRequest) error {
 	err := s.feedback.Record(ctx, feedbackapp.Command{
 		SessionID: in.SessionID,
 		RunID:     in.RunID,

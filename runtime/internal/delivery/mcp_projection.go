@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"fmt"
@@ -70,7 +70,7 @@ func presentMCPServerState(state mcpapp.ServerState) protocol.MCPServerState {
 		out.Type = protocol.MCPServerNeedsAuth
 		out.Error = mcpStatusProblem(mcpserver.ConnectionNeedsAuth)
 	default:
-		panic("server: unknown MCP server state")
+		panic("delivery: unknown MCP server state")
 	}
 	return out
 }
@@ -103,7 +103,7 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protoco
 	case mcpapp.AuthorizationAttemptCanceled:
 		status.Type = protocol.MCPAuthorizationAttemptCanceled
 	default:
-		panic("server: unknown MCP authorization attempt status")
+		panic("delivery: unknown MCP authorization attempt status")
 	}
 	return protocol.MCPAuthorizationAttempt{
 		ID: attempt.ID.String(), Server: attempt.Server.String(), Status: status,

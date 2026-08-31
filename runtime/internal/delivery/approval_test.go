@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// serverWithApprovals builds a Server whose only wired coordinator is the
+// handlerWithApprovals builds a Handler whose only wired coordinator is the
 // approvals one — enough for the approval.* handler tests.
-func serverWithApprovals(policy approvals.Policy, sessions approvals.SessionLookup) *Server {
-	return &Server{approvals: approvals.New(policy, sessions)}
+func handlerWithApprovals(policy approvals.Policy, sessions approvals.SessionLookup) *Handler {
+	return &Handler{approvals: approvals.New(policy, sessions)}
 }
 
 // approvalPolicyFake is the approval-management policy the coordinator drives; it
@@ -84,7 +84,7 @@ func TestApprovalModeWireRoundTrip(t *testing.T) {
 
 func TestApprovalModeHandlersMapToWire(t *testing.T) {
 	rt := &approvalPolicyFake{mode: approval.ModeYolo}
-	s := serverWithApprovals(rt, nil)
+	s := handlerWithApprovals(rt, nil)
 
 	got, err := s.GetApprovalMode(context.Background())
 	if err != nil {
@@ -107,7 +107,7 @@ func TestApprovalModeHandlersMapToWire(t *testing.T) {
 }
 
 func TestGetApprovalModeRejectsUnknownDomainValue(t *testing.T) {
-	s := serverWithApprovals(&approvalPolicyFake{mode: approval.Mode("invalid")}, nil)
+	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.Mode("invalid")}, nil)
 	if _, err := s.GetApprovalMode(t.Context()); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("GetApprovalMode error = %v, want ErrInvalidMode", err)
 	}
@@ -122,7 +122,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 		Subject:  "npm test",
 		Decision: approval.Allow,
 	}}}
-	s := serverWithApprovals(rt, fakeSessionLookup{err: session.ErrNotFound})
+	s := handlerWithApprovals(rt, fakeSessionLookup{err: session.ErrNotFound})
 
 	got, err := s.ListApprovalRules(context.Background(), protocol.ListApprovalRulesRequest{SessionID: "ses_1"})
 	if err != nil {
@@ -138,7 +138,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 
 func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	rt := &approvalPolicyFake{}
-	s := serverWithApprovals(rt, nil)
+	s := handlerWithApprovals(rt, nil)
 
 	if err := s.ForgetApprovalRule(context.Background(), protocol.ForgetApprovalRuleRequest{ID: "rule_1"}); err != nil {
 		t.Fatalf("forget approval rule: %v", err)

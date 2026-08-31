@@ -17,8 +17,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	applicationruns "github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
-	deliveryserver "github.com/Tangerg/flame/runtime/internal/delivery/server"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -172,7 +171,7 @@ func TestSessionMutationHasOneOwner(t *testing.T) {
 //	               internal/config, cmd/**       lifecycle. Wires every ring, so it imports anything —
 //	                                             but nothing imports IT.
 //	protocol       protocol/**                   public binding-neutral values and strict validation
-//	delivery       internal/delivery/**          operation, HTTP+SSE dispatch and transport
+//	delivery       internal/delivery/**          Endpoint, JSON-RPC dispatch, and HTTP/SSE transport
 //	adapter        internal/adapter/**           capability adapters, incl. adapter/agentexec (the
 //	                                              agent-execution adapter over the agent SDK)
 //	application    internal/application/**        use-case coordinators (runs / sessions / capabilities /
@@ -632,14 +631,14 @@ func TestDeliveryDoesNotControlAgentExecutions(t *testing.T) {
 // a worker/launcher, or start the worker loop itself.
 func TestDeliveryDoesNotWireApplicationCollaborators(t *testing.T) {
 	root := moduleRoot(t)
-	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery", "server"), map[string]string{
+	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"BindRunner":        "post-construction schedule wiring is forbidden",
 		"NewRunLauncher":    "Bootstrap owns scheduled-run launcher construction",
 		"NewWorker":         "Bootstrap owns background worker construction",
 		"RunWorker":         "Bootstrap owns background worker lifetime",
 		"StartScheduledRun": "the schedule application owns scheduled Run starts",
 	})
-	forbidQualifiedCalls(t, filepath.Join(root, "internal", "delivery", "server"), map[string]string{
+	forbidQualifiedCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"schedules.New":      "Bootstrap owns schedule coordinator construction",
 		"workspace.NewScope": "Bootstrap owns workspace use-case construction",
 	})
@@ -706,7 +705,7 @@ func TestModelSearchUsesTheFiniteWorkspaceCorpus(t *testing.T) {
 // and its adapter. Server handlers may project use-case values only.
 func TestDeliveryServerDoesNotOwnFilesystemTechnology(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "delivery", "server"), []string{
+	forbidExternalImports(t, filepath.Join(root, "internal", "delivery"), []string{
 		"os",
 		"path/filepath",
 		"io/fs",
@@ -770,7 +769,7 @@ func TestProductSessionsDoNotCarryAgentContinuation(t *testing.T) {
 // it must not enumerate catalog data or duplicate provider capability rules.
 func TestDeliveryDoesNotOwnModelPolicy(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "delivery", "server"),
+	forbidExternalImports(t, filepath.Join(root, "internal", "delivery"),
 		[]string{"github.com/Tangerg/scope/models/catalog"})
 }
 
@@ -861,14 +860,11 @@ func TestBootstrapExposesNoBusinessMethod(t *testing.T) {
 	allowed := map[string]map[string]bool{
 		"Host": {"Close": true},
 		"hostApplication": {
-			"recoverStartup": true, "newOperationService": true,
-			"openOperationDelivery": true, "notifyExternalChange": true,
+			"recoverStartup": true, "newDeliveryHandler": true,
+			"newDeliveryEndpoint": true, "notifyExternalChange": true,
 			"startWorkers": true,
 		},
-		"hostWorkers": {"runOwnershipRecovery": true},
-		"operationDelivery": {
-			"beginShutdown": true, "awaitShutdown": true,
-		},
+		"hostWorkers":    {"runOwnershipRecovery": true},
 		"Instance":       {"Close": true, "Endpoint": true, "ServerInfo": true},
 		"InstanceConfig": {"validate": true},
 	}
@@ -1022,7 +1018,7 @@ func collectStructDeclarations(root string) (map[string]*ast.StructType, error) 
 	return structs, err
 }
 
-// TestDeliveryHoldsNoRunLifecycleState enforces §16 rule 5: the delivery Server
+// TestDeliveryHoldsNoRunLifecycleState enforces §16 rule 5: the delivery Handler
 // (the protocol handler) drives the run coordinator as a use-case surface, but
 // must not itself HOLD the run registry, a cancel func, a task group, or a
 // checkpoint store — the run-lifecycle ownership §20 moved to the application/Host.
@@ -1033,7 +1029,7 @@ func collectStructDeclarations(root string) (map[string]*ast.StructType, error) 
 // GitAvailable probe; application/runs' Coordinator + Event).
 func TestDeliveryHoldsNoRunLifecycleState(t *testing.T) {
 	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "delivery", "server")
+	dir := filepath.Join(root, "internal", "delivery", "handler.go")
 	forbidExternalImports(t, dir, []string{"github.com/Tangerg/flame/runtime/internal/application/taskgroup"})
 
 	// taskgroup.Group is also import-forbidden above; context.CancelFunc and
@@ -1218,7 +1214,7 @@ func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 // the versioned wire document to/from the application portable model.
 func TestDeliveryDoesNotOwnArchiveRecoveryOrValidation(t *testing.T) {
 	root := moduleRoot(t)
-	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery", "server"), map[string]string{
+	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"NormalizeForRestore":       "archive normalization belongs to application/sessions",
 		"ValidateToolResults":       "archive structural validation belongs to application/sessions",
 		"CanonicalSnapshot":         "terminal archive derivation belongs to application/sessions",
@@ -1243,9 +1239,9 @@ func TestDeliveryDoesNotOwnArchiveRecoveryOrValidation(t *testing.T) {
 // surface where the client already renders by symbol.
 func TestDeliveryDoesNotAuthorDomainText(t *testing.T) {
 	root := moduleRoot(t)
-	server := filepath.Join(root, "internal", "delivery", "server")
+	server := filepath.Join(root, "internal", "delivery")
 	for _, name := range []string{
-		"presenter_run.go", "artifact_encode.go", "mcp_projection.go", "providers.go",
+		"presenter_run.go", "artifact_encode.go", "mcp_projection.go", "handler_providers.go",
 	} {
 		forbidAuthoredText(t, filepath.Join(server, name),
 			"a run's explanation is authored where the case is known and worded by the client")
@@ -1264,7 +1260,7 @@ func TestGoalReasonStaysMachineReadable(t *testing.T) {
 		t.Errorf("protocol.Goal.Reason = %s, want %s", reason.Type, want)
 	}
 	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery", "server"), map[string]string{
+	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"goalReason": "a plain-text reason loses the stable code and client localization boundary",
 	})
 }
@@ -1275,12 +1271,18 @@ func TestGoalReasonStaysMachineReadable(t *testing.T) {
 // projections behind different names.
 func TestDeliveryProjectionUsesOneVerb(t *testing.T) {
 	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "delivery", "server")
+	dir := filepath.Join(root, "internal", "delivery")
 	walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if entry.IsDir() {
+			if path != dir {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
@@ -1304,23 +1306,53 @@ func TestDeliveryProjectionUsesOneVerb(t *testing.T) {
 		return nil
 	})
 	if walkErr != nil {
-		t.Fatalf("walk delivery server: %v", walkErr)
+		t.Fatalf("walk delivery projection sources: %v", walkErr)
 	}
 }
 
-// TestDeliveryServerDependsOnUseCaseBoundaries prevents concrete execution,
+// TestDeliveryHandlerDependsOnUseCaseBoundaries prevents concrete execution,
 // persistence, or composition types from entering the protocol implementation.
-// Adapter imports remain available to other delivery packages where a transport
-// integration genuinely needs them; the server itself translates only between
-// protocol values and application/domain ports.
-func TestDeliveryServerDependsOnUseCaseBoundaries(t *testing.T) {
+// Adapter imports remain available to other delivery mechanisms where a real
+// integration needs them; Handler methods translate only between protocol
+// values and application/domain ports.
+func TestDeliveryHandlerDependsOnUseCaseBoundaries(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "delivery", "server"), []string{
-		"github.com/Tangerg/flame/runtime/internal/adapter",
-		"github.com/Tangerg/flame/runtime/internal/infra",
-		"github.com/Tangerg/flame/runtime/internal/bootstrap",
-		"github.com/Tangerg/flame/runtime/internal/idempotency",
-	})
+	for _, path := range deliveryHandlerFiles(t, root) {
+		forbidExternalImports(t, path, []string{
+			"github.com/Tangerg/flame/runtime/internal/adapter",
+			"github.com/Tangerg/flame/runtime/internal/infra",
+			"github.com/Tangerg/flame/runtime/internal/bootstrap",
+			"github.com/Tangerg/flame/runtime/internal/idempotency",
+		})
+	}
+}
+
+// deliveryHandlerFiles identifies the flattened package's Application-facing
+// handler files by behavior owner rather than by a directory naming convention.
+func deliveryHandlerFiles(t *testing.T, root string) []string {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(root, "internal", "delivery", "*.go"))
+	if err != nil {
+		t.Fatalf("list delivery sources: %v", err)
+	}
+	var handlers []string
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		for _, declaration := range file.Decls {
+			function, ok := declaration.(*ast.FuncDecl)
+			if ok && receiverName(function.Recv) == "Handler" {
+				handlers = append(handlers, path)
+				break
+			}
+		}
+	}
+	return handlers
 }
 
 // TestDeliveryDoesNotImplementQuerySemantics keeps delivery out of deciding which
@@ -1335,7 +1367,7 @@ func TestDeliveryServerDependsOnUseCaseBoundaries(t *testing.T) {
 // invalid_params — but it may not run the mechanics.
 func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 	root := moduleRoot(t)
-	server := filepath.Join(root, "internal", "delivery", "server")
+	server := filepath.Join(root, "internal", "delivery")
 	forbidTopLevelNames(t, server, map[string]string{
 		"pageByCursor":            "cutting a page belongs to the read that ordered the rows",
 		"defaultItemPageLimit":    "how wide a page may be is the read's policy",
@@ -1353,21 +1385,21 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 // maps the resulting enum but cannot duplicate the precedence rule.
 func TestDeliveryDoesNotDeriveSessionActivity(t *testing.T) {
 	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery", "server"), map[string]string{
+	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"liveStatus":        "session activity is an application read model",
 		"runningSessionSet": "active-run lookup is an application read model",
 		"waitingSessionSet": "interrupt lookup is an application read model",
 	})
 }
 
-// TestDeliveryServerMatchesRegisteredOperationCapabilities keeps each wire
+// TestDeliveryHandlerMatchesRegisteredOperationCapabilities keeps each wire
 // operation coupled only to the one handler method it invokes while still
-// proving that the production Server covers the complete catalog. A monolithic
+// proving that the production Handler covers the complete catalog. A monolithic
 // Service interface would make every focused consumer and test fake depend on
 // all operations merely to call one.
-func TestDeliveryServerMatchesRegisteredOperationCapabilities(t *testing.T) {
+func TestDeliveryHandlerMatchesRegisteredOperationCapabilities(t *testing.T) {
 	root := moduleRoot(t)
-	operationDir := filepath.Join(root, "internal", "delivery", "operation")
+	deliveryDir := filepath.Join(root, "internal", "delivery")
 
 	handlers := make(map[string]int)
 	registrationCount := 0
@@ -1375,11 +1407,17 @@ func TestDeliveryServerMatchesRegisteredOperationCapabilities(t *testing.T) {
 		"Query": {}, "Command": {}, "CommandAck": {},
 		"Subscription": {}, "RunSubscription": {}, "RunStreamCommand": {},
 	}
-	walkErr := filepath.WalkDir(operationDir, func(path string, entry fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(deliveryDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if entry.IsDir() {
+			if path != deliveryDir {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
@@ -1423,28 +1461,25 @@ func TestDeliveryServerMatchesRegisteredOperationCapabilities(t *testing.T) {
 		t.Fatalf("inspect operation registrations: %v", walkErr)
 	}
 
-	registered := operation.Contract().Metas()
+	registered := delivery.Contract().Metas()
 	if registrationCount != len(registered) {
 		t.Errorf("operation registrations = %d, catalog methods = %d", registrationCount, len(registered))
 	}
 	if len(handlers) != registrationCount {
 		t.Errorf("unique operation handler capabilities = %d, registrations = %d", len(handlers), registrationCount)
 	}
-	serverType := reflect.TypeFor[*deliveryserver.Server]()
+	serverType := reflect.TypeFor[*delivery.Handler]()
 	for name, count := range handlers {
 		if count != 1 {
 			t.Errorf("handler method %s is declared by %d operation capabilities, want one", name, count)
 		}
 		if _, exists := serverType.MethodByName(name); !exists {
-			t.Errorf("registered handler method %s is absent from delivery Server", name)
+			t.Errorf("registered handler method %s is absent from delivery Handler", name)
 		}
 	}
 	for method := range serverType.Methods() {
-		if method.Name == "Close" {
-			continue
-		}
 		if handlers[method.Name] == 0 {
-			t.Errorf("delivery Server exports unregistered handler method %s", method.Name)
+			t.Errorf("delivery Handler exports unregistered method %s", method.Name)
 		}
 	}
 }
@@ -1580,7 +1615,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 	allowed := map[string]struct{}{
 		"internal/application/sessions/portable_snapshot.go":   {},
 		"internal/application/sessions/snapshot_validation.go": {},
-		"internal/delivery/server/artifact_decode.go":          {},
+		"internal/delivery/artifact_decode.go":                 {},
 		"internal/infra/sqlite/transcript.go":                  {},
 		"internal/infra/sqlite/transcript_codec.go":            {},
 		"internal/testsupport/itemfixture/item.go":             {},
@@ -1644,7 +1679,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 // record through the query port instead.
 func TestDeliveryReadsRunsFromDurableProjection(t *testing.T) {
 	root := moduleRoot(t)
-	forbidInterfaceMethods(t, filepath.Join(root, "internal", "delivery", "server", "application_ports.go"),
+	forbidInterfaceMethods(t, filepath.Join(root, "internal", "delivery", "application_ports.go"),
 		map[string]map[string]string{
 			"runUseCases": {
 				"List": "the set of Runs is a durable projection, not this process's live registry",
@@ -1947,7 +1982,7 @@ func forbidTestImports(t *testing.T, dir string, banned []string) {
 }
 
 // forbidSelectorCalls rejects direct calls whose selector name belongs to a
-// forbidden construction or lifecycle operation. The package receiver does not
+// forbidden construction or lifecycle action. The package receiver does not
 // matter here: these names are intentionally specific to the ownership seams
 // guarded above.
 func forbidSelectorCalls(t *testing.T, dir string, banned map[string]string) {

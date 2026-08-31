@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 )
 
 func TestUpdateSession(t *testing.T) {
-	s, svc, rt := newSessionServer(t)
+	s, svc, rt := newSessionHandler(t)
 	ctx := context.Background()
 	created, _ := insertSessionFixture(ctx, svc, "old", "/w")
 
@@ -162,7 +162,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	history := map[string][]chat.Message{id: {chat.NewUserMessage(chat.NewTextPart("hi"))}}
 
 	runtime := &stubRuntime{sess: svc, hist: hist, runs: runStore, interrupts: ints, history: history}
-	s := newTestServer(runtime)
+	s := newTestHandler(runtime)
 	if err := s.DeleteSession(ctx, id); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 }
 
 func TestDeleteSession_RejectsActiveSession(t *testing.T) {
-	s, svc, rt := newSessionServer(t)
+	s, svc, rt := newSessionHandler(t)
 	ctx := context.Background()
 	created, err := insertSessionFixture(ctx, svc, "live", "/w")
 	if err != nil {
@@ -234,7 +234,7 @@ func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
 	}
 
 	executions := &recordingExecutions{}
-	s := newTestServer(&stubRuntime{sess: svc, hist: hist, runs: sqlite.NewRunStore(db), interrupts: ints, history: map[string][]chat.Message{}, execution: executions})
+	s := newTestHandler(&stubRuntime{sess: svc, hist: hist, runs: sqlite.NewRunStore(db), interrupts: ints, history: map[string][]chat.Message{}, execution: executions})
 	if err := s.DeleteSession(ctx, id); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestForkSession(t *testing.T) {
 	parent, _ := insertSessionFixture(ctx, svc, "research", "/work/proj")
 
 	hist := map[string][]chat.Message{parent.ID(): {chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi"))}}
-	s := newTestServer(&stubRuntime{sess: svc, history: hist, hist: sqlite.NewTranscriptStore(db), runs: sqlite.NewRunStore(db)})
+	s := newTestHandler(&stubRuntime{sess: svc, history: hist, hist: sqlite.NewTranscriptStore(db), runs: sqlite.NewRunStore(db)})
 
 	child, err := s.ForkSession(ctx, protocol.ForkSessionRequest{SessionID: parent.ID(), Title: "branch A"})
 	if err != nil {

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -90,7 +90,7 @@ type openrpcError struct {
 	Message string `json:"message"`
 }
 
-func newOpenRPC(registry *operation.Registry, shapes *dispatch.Shapes, set *schemaSet) openrpcDocument {
+func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schemaSet) openrpcDocument {
 	codes := problemCodes(registry)
 	document := openrpcDocument{
 		OpenRPC: openrpcVersion,
@@ -112,7 +112,7 @@ func newOpenRPC(registry *operation.Registry, shapes *dispatch.Shapes, set *sche
 	return document
 }
 
-func openrpcMethodFor(meta operation.MethodMeta, set *schemaSet, codes map[string]int) openrpcMethod {
+func openrpcMethodFor(meta delivery.MethodMeta, set *schemaSet, codes map[string]int) openrpcMethod {
 	requestFrame := set.walk(meta.Params)
 	method := openrpcMethod{
 		Name:           meta.Name.String(),
@@ -205,7 +205,7 @@ func requestPropertySchema(set *schemaSet, frame *schema, owner reflect.Type, fi
 	return node
 }
 
-func capabilityRowsFor(meta operation.MethodMeta) []capabilityRow {
+func capabilityRowsFor(meta delivery.MethodMeta) []capabilityRow {
 	if len(meta.CapabilityRules) == 0 {
 		return nil
 	}

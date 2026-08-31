@@ -14,13 +14,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 	_, source, _, _ := runtime.Caller(0)
 	directory := filepath.Dir(source)
-	operationNames := declaredOperationNames(t, filepath.Join(directory, "..", "internal", "delivery", "operation"))
+	operationNames := declaredOperationNames(t, filepath.Join(directory, "..", "internal", "delivery"))
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatalf("read embedded package: %v", err)
@@ -52,12 +52,12 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 				}
 				selector, ok := call.Args[1].(*ast.SelectorExpr)
 				if !ok {
-					t.Errorf("%s must call the operation through its operation.Name constant", function.Name.Name)
+					t.Errorf("%s must call the operation through its delivery.Name constant", function.Name.Name)
 					return false
 				}
 				owner, ownerOK := selector.X.(*ast.Ident)
-				if !ownerOK || owner.Name != "operation" {
-					t.Errorf("%s must call the operation through its operation.Name constant", function.Name.Name)
+				if !ownerOK || owner.Name != "delivery" {
+					t.Errorf("%s must call the operation through its delivery.Name constant", function.Name.Name)
 					return false
 				}
 				operationName, declared := operationNames[selector.Sel.Name]
@@ -77,7 +77,7 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 	runtimeType := reflect.TypeFor[*Runtime]()
 	errorType := reflect.TypeFor[error]()
 	contextType := reflect.TypeFor[context.Context]()
-	for _, meta := range operation.Contract().Metas() {
+	for _, meta := range delivery.Contract().Metas() {
 		methodName := bindings[meta.Name.String()]
 		if methodName == "" {
 			t.Errorf("operation %q has no public embedded method", meta.Name)
@@ -113,7 +113,7 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 			t.Errorf("%s options = %s, want %s", methodName, got, want)
 		}
 
-		if meta.Kind == operation.KindStream {
+		if meta.Kind == delivery.KindStream {
 			if method.Type.NumOut() != 3 || method.Type.Out(0) != meta.Result || method.Type.Out(2) != errorType {
 				t.Errorf("%s stream result does not match %s", methodName, meta.Name)
 				continue
@@ -131,20 +131,20 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 			t.Errorf("%s result does not match %s", methodName, meta.Name)
 		}
 	}
-	if len(bindings) != len(operation.Contract().Metas()) {
-		t.Fatalf("embedded bindings = %d, operations = %d", len(bindings), len(operation.Contract().Metas()))
+	if len(bindings) != len(delivery.Contract().Metas()) {
+		t.Fatalf("embedded bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
 	}
 }
 
-func optionType(meta operation.MethodMeta) reflect.Type {
+func optionType(meta delivery.MethodMeta) reflect.Type {
 	switch {
-	case meta.Kind == operation.KindStream && meta.Operation == operation.OperationCommand:
+	case meta.Kind == delivery.KindStream && meta.Operation == delivery.OperationCommand:
 		return reflect.TypeFor[RunCommandOptions]()
-	case meta.ReplayCursor == operation.ReplayCursorRun:
+	case meta.ReplayCursor == delivery.ReplayCursorRun:
 		return reflect.TypeFor[RunSubscriptionOptions]()
-	case meta.Kind == operation.KindStream:
+	case meta.Kind == delivery.KindStream:
 		return reflect.TypeFor[SubscriptionOptions]()
-	case meta.Operation == operation.OperationCommand:
+	case meta.Operation == delivery.OperationCommand:
 		return reflect.TypeFor[CommandOptions]()
 	default:
 		return reflect.TypeFor[CallOptions]()
@@ -183,7 +183,7 @@ func declaredOperationNames(t *testing.T, directory string) map[string]string {
 	t.Helper()
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		t.Fatalf("read operation package: %v", err)
+		t.Fatalf("read delivery package: %v", err)
 	}
 	names := make(map[string]string)
 	files := token.NewFileSet()

@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -6,14 +6,13 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // CancelRun hard-stops a running run (outcome:canceled, API.md §7.3).
 // A parked Run is also abandoned — its live parked execution is torn down
 // and its open interrupt dropped so it stops surfacing as resumable.
-func (s *Server) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
+func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
 	// Root cancel is the emergency stop and is always allowed. Whether the target
 	// is a child is durable state resolved by the application, so do not reject
 	// unsupported client preferences before that identity is known.
@@ -32,7 +31,7 @@ func (s *Server) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
 		return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
-		return nil, operation.NewCapabilityGapError(protocol.CapabilityRequirement{
+		return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
 			Name: protocol.FeatureSubagents,
 		})
@@ -51,7 +50,7 @@ func (s *Server) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*
 // steered at all, and a run that has moved to a different segment refuses rather
 // than delivering the instruction to work the user never saw. The refusals are
 // the same set a subscribe gets, because both are addressing one live segment.
-func (s *Server) SteerRun(ctx context.Context, in protocol.SteerRunRequest) error {
+func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) error {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
 		return err

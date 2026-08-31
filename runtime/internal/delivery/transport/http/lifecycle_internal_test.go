@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -34,7 +34,7 @@ func (s *streamingLifecycleRuntime) SubscribeRuntime(
 
 func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 	t.Helper()
-	endpoint, err := operation.New(lifecycleRuntime{}, operation.Config{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestShutdownCancelsLongLivedTransportHandler(t *testing.T) {
 	defer cancelWait()
 	runtime := &streamingLifecycleRuntime{subscribed: make(chan struct{})}
 	srv := newLifecycleServer(t, func(cfg *Config) {
-		endpoint, err := operation.New(runtime, operation.Config{Lifetime: t.Context()})
+		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context()})
 		if err != nil {
 			t.Fatal(err)
 		}

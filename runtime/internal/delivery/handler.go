@@ -1,6 +1,4 @@
-// Package server translates binding-neutral operation requests into application
-// use cases and projects their results back to protocol values.
-package server
+package delivery
 
 import (
 	"errors"
@@ -10,16 +8,15 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
 	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Config declares the application use cases, notification sources, and contract
-// facts required to construct a Server.
-type Config struct {
+// HandlerConfig declares the application use cases, notification sources, and
+// contract facts required to construct a Handler.
+type HandlerConfig struct {
 	Sessions  sessionUseCases
 	MCP       mcpUseCases
 	Approvals approvalUseCases
@@ -64,8 +61,10 @@ type Config struct {
 	PlanEnabled  bool
 }
 
-// Server is the complete operation handler target exposed via [New].
-type Server struct {
+// Handler is the complete protocol-to-application translation target used by
+// [Endpoint]. It is not an entrypoint or lifecycle owner: every production
+// call and shutdown transition goes through the Endpoint.
+type Handler struct {
 	serverInfo protocol.ServerInfo
 
 	sessions       sessionUseCases
@@ -117,9 +116,8 @@ type featureAvailability struct {
 	schedules   bool
 }
 
-// Close rejects new runtime subscriptions. Existing streams retain their
-// request-owned lifetime. It is safe to call repeatedly.
-func (s *Server) Close() {
+// beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
+func (s *Handler) beginShutdown() {
 	if s == nil {
 		return
 	}
@@ -128,8 +126,8 @@ func (s *Server) Close() {
 	}
 }
 
-// New builds a Server from its required application use cases.
-func New(cfg Config) (*Server, error) {
+// NewHandler builds the protocol handler set from its required application use cases.
+func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -138,12 +136,12 @@ func New(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := newServer(cfg, facts)
-	server.observeNotificationSources(cfg)
-	return server, nil
+	handler := newHandler(cfg, facts)
+	handler.observeNotificationSources(cfg)
+	return handler, nil
 }
 
-func (c Config) validate() error {
+func (c HandlerConfig) validate() error {
 	for _, dependency := range []struct {
 		name      string
 		available bool
@@ -161,24 +159,24 @@ func (c Config) validate() error {
 		{name: "ScheduleFiring", available: c.ScheduleFiring != nil},
 	} {
 		if !dependency.available {
-			return fmt.Errorf("server: %s is required", dependency.name)
+			return fmt.Errorf("delivery: %s is required", dependency.name)
 		}
 	}
 	if c.WorkspaceFiles == nil || c.WorkspaceVCS == nil ||
 		c.WorkspaceDiscovery == nil || c.WorkspaceKnowledge == nil || c.WorkspaceSkills == nil ||
 		c.WorkspaceHooks == nil || c.WorkspaceWatch == nil {
-		return errors.New("server: workspace use cases are required")
+		return errors.New("delivery: workspace use cases are required")
 	}
 	if c.WorkspaceAuthoredWatch == nil {
-		return errors.New("server: authored workspace observation is required")
+		return errors.New("delivery: authored workspace observation is required")
 	}
 	if _, err := runtimeinstanceidentity.Parse(c.ServerInfo.InstanceID); err != nil {
-		return fmt.Errorf("server: ServerInfo.InstanceID: %w", err)
+		return fmt.Errorf("delivery: ServerInfo.InstanceID: %w", err)
 	}
 	return nil
 }
 
-func (c Config) withServerInfoDefaults() Config {
+func (c HandlerConfig) withServerInfoDefaults() HandlerConfig {
 	if c.ServerInfo.Name == "" {
 		c.ServerInfo.Name = productidentity.Name
 	}
@@ -194,7 +192,7 @@ type contractFacts struct {
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits
 }
 
-func deriveContractFacts(cfg Config) (contractFacts, error) {
+func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
 			knowledge:   cfg.WorkspaceKnowledge.Available(),
@@ -219,17 +217,17 @@ func deriveContractFacts(cfg Config) (contractFacts, error) {
 		{label: "MCP returned invalid authorization attempt retention", value: facts.mcpAuthorizationAttempts},
 	} {
 		if err := protocol.ValidateWireTree(wireShape.value); err != nil {
-			return contractFacts{}, fmt.Errorf("server: %s: %w", wireShape.label, err)
+			return contractFacts{}, fmt.Errorf("delivery: %s: %w", wireShape.label, err)
 		}
 	}
 	if _, err := idempotencynamespace.Parse(cfg.IdempotencyLimits.Namespace); err != nil {
-		return contractFacts{}, fmt.Errorf("server: IdempotencyLimits namespace: %w", err)
+		return contractFacts{}, fmt.Errorf("delivery: IdempotencyLimits namespace: %w", err)
 	}
 	return facts, nil
 }
 
-func newServer(cfg Config, facts contractFacts) *Server {
-	return &Server{
+func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
+	return &Handler{
 		sessions:                 cfg.Sessions,
 		mcp:                      cfg.MCP,
 		approvals:                cfg.Approvals,
@@ -260,7 +258,7 @@ func newServer(cfg Config, facts contractFacts) *Server {
 	}
 }
 
-func (s *Server) observeNotificationSources(cfg Config) {
+func (s *Handler) observeNotificationSources(cfg HandlerConfig) {
 	if cfg.FileChanges != nil {
 		s.observeFileChanges(cfg.FileChanges)
 	}
@@ -269,10 +267,10 @@ func (s *Server) observeNotificationSources(cfg Config) {
 	}
 }
 
-// capabilities returns this Server's capability snapshot (API.md §9). Its
+// capabilities returns this Handler's capability snapshot (API.md §9). Its
 // optional keys come from the same immutable composition facts that handlers
 // use for their capability gates.
-func (s *Server) capabilities() protocol.ServerCapabilities {
+func (s *Handler) capabilities() protocol.ServerCapabilities {
 	return capabilitiesFor(s.features, s.replay, s.idempotency, s.mcpAuthorizationAttempts)
 }
 
@@ -340,7 +338,7 @@ func capabilitiesFor(
 		// The streaming methods, read from the registry that routes them. A
 		// hand-kept list here would be a second author of "which calls stream" —
 		// and the one clients trust, since this is what discovery advertises (§9).
-		StreamingMethods: operation.Contract().StreamMethods(),
+		StreamingMethods: Contract().StreamMethods(),
 		// Open features map (§9): a client treats an absent key as off. This is the
 		// one composition fact per key — whether THIS build offers it — joined with
 		// the feature's own published facts (opt-in and whether it reshapes
@@ -380,7 +378,7 @@ func capabilitiesFor(
 func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapability {
 	for key := range enabled {
 		if _, published := protocol.LookupFeature(key); !published {
-			panic("server: composition advertises unpublished feature " + key)
+			panic("delivery: composition advertises unpublished feature " + key)
 		}
 	}
 	features := protocol.Features()

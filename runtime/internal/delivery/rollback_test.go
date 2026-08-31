@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -19,9 +19,9 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// rollbackHarness wires a Server over a sqlite-backed stub: a real session
+// rollbackHarness wires a Handler over a sqlite-backed stub: a real session
 // service + history + interrupt store, plus the in-memory conversation map.
-func rollbackHarness(t *testing.T) (*Server, *stubRuntime) {
+func rollbackHarness(t *testing.T) (*Handler, *stubRuntime) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
@@ -40,7 +40,7 @@ func rollbackHarness(t *testing.T) (*Server, *stubRuntime) {
 		muts:        persistence.NewWorkspaceMutationStore(sqlite.NewWorkspaceMutationStore(db)),
 		plan:        sqlite.NewPlanStore(db),
 	}
-	return newTestServer(rt), rt
+	return newTestHandler(rt), rt
 }
 
 // putTestSession seeds the shared session fixture. Reads that refuse a scope

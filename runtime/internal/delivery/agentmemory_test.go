@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -83,7 +83,7 @@ func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
 	rec := &recordingAgentMemory{items: []agentmemory.Item{
 		{ID: serverAgentMemoryItemID('1'), Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending},
 	}}
-	s := newTestServer(&stubRuntime{})
+	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
 	s.features.agentMemory = true
 
@@ -117,7 +117,7 @@ func TestAgentMemoryTargetRefusesPartialTargets(t *testing.T) {
 		{Scope: protocol.AgentMemoryScopeProject},
 		{Scope: protocol.AgentMemoryScopeUser, Workspace: &protocol.WorkspaceRef{Path: "/ignored"}},
 	} {
-		server := newTestServer(&stubRuntime{})
+		server := newTestHandler(&stubRuntime{})
 		server.agentMemory = &recordingAgentMemory{}
 		if _, err := server.ListAgentMemory(context.Background(), request); !errors.Is(err, protocol.ErrInvalidParams) {
 			t.Errorf("ListAgentMemory(%+v) error = %v, want invalid_params", request, err)
@@ -127,7 +127,7 @@ func TestAgentMemoryTargetRefusesPartialTargets(t *testing.T) {
 
 func TestAgentMemoryReviewMapsDecision(t *testing.T) {
 	rec := &recordingAgentMemory{}
-	s := newTestServer(&stubRuntime{})
+	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
 	s.features.agentMemory = true
 
@@ -155,7 +155,7 @@ func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 		ID: itemID, Scope: agentmemory.ScopeProject, Content: "- edited", Origin: agentmemory.OriginUser,
 		Pinned: true, Status: agentmemory.StatusActive,
 	}}
-	s := newTestServer(&stubRuntime{})
+	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
 	s.features.agentMemory = true
 
@@ -184,7 +184,7 @@ func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 }
 
 func TestAgentMemoryTargetFullMapsToInvalidParams(t *testing.T) {
-	s := newTestServer(&stubRuntime{})
+	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = &recordingAgentMemory{err: agentmemory.ErrTargetFull}
 	s.features.agentMemory = true
 	_, err := s.AddAgentMemory(t.Context(), protocol.AgentMemoryAddRequest{

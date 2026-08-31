@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -74,12 +74,12 @@ func errorToRPC(err error) *transport.Error {
 	if rpcError, ok := errors.AsType[*transport.Error](err); ok {
 		return rpcError
 	}
-	return marshalFailure(operation.ProjectError(err))
+	return marshalFailure(delivery.ProjectError(err))
 }
 
-func marshalFailure(failure *operation.Failure) *transport.Error {
+func marshalFailure(failure *delivery.Failure) *transport.Error {
 	if failure == nil {
-		failure = operation.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
+		failure = delivery.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
 	}
 	problem := failure.Problem()
 	code, ok := problemCode(problem.Type)
@@ -94,7 +94,7 @@ func marshalFailure(failure *operation.Failure) *transport.Error {
 }
 
 func problemError(sentinel error, detail string) *transport.Error {
-	return marshalFailure(operation.NewFailure(sentinel, detail))
+	return marshalFailure(delivery.NewFailure(sentinel, detail))
 }
 
 func invalidProblemResponse(detail string) *transport.Error {

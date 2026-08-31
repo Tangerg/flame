@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSchema: %v", err)
 	}
-	s := serverWithTools(&toolRegistryFake{tools: []tool.Tool{
+	s := handlerWithTools(&toolRegistryFake{tools: []tool.Tool{
 		{
 			Name:        "shell",
 			Description: "run a command",
@@ -58,7 +58,7 @@ func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
 
 func TestInvokeToolPassesJSONArgumentsToRuntime(t *testing.T) {
 	rt := &toolRegistryFake{}
-	s := serverWithTools(rt)
+	s := handlerWithTools(rt)
 
 	got, err := s.InvokeTool(context.Background(), protocol.InvokeToolRequest{
 		Name:      "read",

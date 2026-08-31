@@ -1,4 +1,4 @@
-package operation
+package delivery
 
 import (
 	"context"
@@ -18,12 +18,12 @@ type lifetimeService struct {
 
 type nilDiscoverService struct{}
 
-func mustNewEndpoint(t *testing.T, target any, config Config) *Endpoint {
+func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint {
 	t.Helper()
 	if config.Lifetime == nil {
 		config.Lifetime = t.Context()
 	}
-	endpoint, err := New(target, config)
+	endpoint, err := NewEndpoint(target, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,13 +31,13 @@ func mustNewEndpoint(t *testing.T, target any, config Config) *Endpoint {
 }
 
 func TestEndpointRequiresProcessLifetime(t *testing.T) {
-	if endpoint, err := New(struct{}{}, Config{}); err == nil || endpoint != nil {
+	if endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{}); err == nil || endpoint != nil {
 		t.Fatalf("New without lifetime = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
 	}
 }
 
 func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
-	endpoint, err := New(struct{}{}, Config{
+	endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{
 		Lifetime:             t.Context(),
 		IdempotencyNamespace: "idp_test",
 	})
@@ -60,7 +60,7 @@ func TestEndpointRejectsMissingMethodCapability(t *testing.T) {
 		{name: "typed nil", target: typedNil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := mustNewEndpoint(t, test.target, Config{}).Invoke(
+			result := mustNewEndpoint(t, test.target, EndpointConfig{}).Invoke(
 				t.Context(),
 				"runtime.discover",
 				struct{}{},
@@ -143,7 +143,7 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := mustNewEndpoint(t, struct{}{}, Config{}).Invoke(
+			result := mustNewEndpoint(t, struct{}{}, EndpointConfig{}).Invoke(
 				t.Context(),
 				test.method,
 				test.parameters,
@@ -166,7 +166,7 @@ func (l *lifetimeService) SubscribeRuntime(ctx context.Context, _ protocol.Runti
 func TestEndpointLifetimeEndsStreamsAndRejectsLaterCalls(t *testing.T) {
 	lifetime, stop := context.WithCancel(context.Background())
 	service := &lifetimeService{streamStarted: make(chan struct{})}
-	endpoint := mustNewEndpoint(t, service, Config{Lifetime: lifetime})
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{Lifetime: lifetime})
 	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}, Options{})
@@ -199,7 +199,7 @@ func TestEndpointLifetimeEndsStreamsAndRejectsLaterCalls(t *testing.T) {
 func TestEndpointShutdownClaimsUnstartedStreamAndJoinsItsSource(t *testing.T) {
 	lifetime, stop := context.WithCancel(context.Background())
 	service := &lifetimeService{streamStarted: make(chan struct{})}
-	endpoint := mustNewEndpoint(t, service, Config{Lifetime: lifetime})
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{Lifetime: lifetime})
 	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}, Options{})
@@ -250,7 +250,7 @@ func TestEndpointShutdownWaitsForStartedStreamSourceToReturn(t *testing.T) {
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint := mustNewEndpoint(t, service, Config{})
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{})
 	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}, Options{})

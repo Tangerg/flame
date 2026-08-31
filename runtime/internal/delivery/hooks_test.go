@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -34,13 +34,13 @@ func (f *fakeHookTrust) Untrust(_ context.Context, projectRoot string) error {
 	return nil
 }
 
-func serverWithHookTrust(trust workspaceapp.HookTrustStore) *Server {
-	return newWorkspaceServerWithConfig("", workspaceTestConfig{Trust: trust})
+func handlerWithHookTrust(trust workspaceapp.HookTrustStore) *Handler {
+	return newWorkspaceHandlerWithConfig("", workspaceTestConfig{Trust: trust})
 }
 
 func TestSetHookTrustCanonicalizesProjectRoot(t *testing.T) {
 	trust := &fakeHookTrust{}
-	s := serverWithHookTrust(trust)
+	s := handlerWithHookTrust(trust)
 	projectRoot := t.TempDir()
 
 	err := s.SetHookTrust(context.Background(), protocol.SetHookTrustRequest{
@@ -57,7 +57,7 @@ func TestSetHookTrustCanonicalizesProjectRoot(t *testing.T) {
 
 func TestSetHookTrustRejectsUnavailableProjectRoot(t *testing.T) {
 	trust := &fakeHookTrust{}
-	s := serverWithHookTrust(trust)
+	s := handlerWithHookTrust(trust)
 	missing := filepath.Join(t.TempDir(), "missing")
 
 	err := s.SetHookTrust(context.Background(), protocol.SetHookTrustRequest{
@@ -86,7 +86,7 @@ func (s staticHookInspector) Inspect(context.Context, string) (apphooks.Inspecti
 
 func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 	root := t.TempDir()
-	s := newWorkspaceServerWithConfig(root, workspaceTestConfig{Hooks: staticHookInspector{inspection: apphooks.Inspection{
+	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Hooks: staticHookInspector{inspection: apphooks.Inspection{
 		ProjectRoot: root,
 		Hooks: []domainhooks.Hook{{
 			Event: domainhooks.SubagentStart, Command: "audit", TimeoutMillis: 2500,
@@ -110,7 +110,7 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 func TestListHooksPreservesInspectionFailure(t *testing.T) {
 	wantErr := errors.New("hook trust unavailable")
 	root := t.TempDir()
-	s := newWorkspaceServerWithConfig(root, workspaceTestConfig{Hooks: failingHookInspector{err: wantErr}})
+	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Hooks: failingHookInspector{err: wantErr}})
 
 	if _, err := s.ListHooks(context.Background(), protocol.ListHooksRequest{}); !errors.Is(err, wantErr) {
 		t.Fatalf("ListHooks error = %v, want %v", err, wantErr)

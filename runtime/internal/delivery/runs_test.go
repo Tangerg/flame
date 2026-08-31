@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 // already published, so this stream carries only what comes next, and the client
 // recovers the rest from items.list.
 func TestSubscribeRun_AttachesToTheAddressedSegment(t *testing.T) {
-	s := newBlockingServer(t)
+	s := newBlockingHandler(t)
 	runID, segmentID := startLiveRun(t, s, t.TempDir())
 
 	out, events, err := s.SubscribeRun(context.Background(), protocol.SubscribeRunRequest{
@@ -56,7 +56,7 @@ func TestSubscribeRun_AttachesToTheAddressedSegment(t *testing.T) {
 // way. Before this, every one of these was run_not_found — which told the client
 // to go looking for a run that was right there.
 func TestSteerRun_RefusesASegmentTheRunIsNotExecuting(t *testing.T) {
-	s := newBlockingServer(t)
+	s := newBlockingHandler(t)
 	runID, _ := startLiveRun(t, s, t.TempDir())
 
 	if err := s.SteerRun(context.Background(), protocol.SteerRunRequest{
@@ -163,7 +163,7 @@ func TestStartCommandMaterializeInput(t *testing.T) {
 // maxTotalTokens must never be confused with params.maxTokens, which is only a
 // per-model-call output cap.
 func TestStartRunCarriesOneLimitsValueToTheDurableRun(t *testing.T) {
-	s := newBlockingServer(t)
+	s := newBlockingHandler(t)
 	sess, err := s.sessions.CreateView(t.Context(), "", t.TempDir())
 	if err != nil {
 		t.Fatalf("create session: %v", err)
@@ -180,7 +180,7 @@ func TestStartRunCarriesOneLimitsValueToTheDurableRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start run: %v", err)
 	}
-	t.Cleanup(s.Close)
+	t.Cleanup(s.beginShutdown)
 
 	got, err := s.GetRun(t.Context(), protocol.GetRunRequest{RunID: started.RunID})
 	if err != nil {

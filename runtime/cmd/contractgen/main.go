@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/operation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -50,7 +50,7 @@ func run(dir, validatorDir, tsDir string) error {
 	}
 	// Built once: every artifact must describe the same registry snapshot, and a
 	// second build would let them disagree if anything about it were not pure.
-	registry, shapes := operation.Contract(), dispatch.WireShapes()
+	registry, shapes := delivery.Contract(), dispatch.WireShapes()
 	walked := walkWireTypes(registry, shapes)
 	built := build(walked)
 	// Generated validators are exported protocol methods, so they must exist on

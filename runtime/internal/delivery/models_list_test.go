@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -64,11 +64,11 @@ func (f failingModelRegistry) Update(context.Context, string, provider.Patch) (p
 	return provider.Provider{}, f.err
 }
 
-func probeServer(meta models.ProviderMetadata, lister models.ProviderModelLister) *Server {
-	return serverWithModels(models.Config{Providers: stubRegistry{}, Catalog: stubCatalog{meta: meta}, Lister: lister})
+func probeHandler(meta models.ProviderMetadata, lister models.ProviderModelLister) *Handler {
+	return handlerWithModels(models.Config{Providers: stubRegistry{}, Catalog: stubCatalog{meta: meta}, Lister: lister})
 }
 
-func listTestProviderModels(t *testing.T, s *Server) []protocol.Model {
+func listTestProviderModels(t *testing.T, s *Handler) []protocol.Model {
 	t.Helper()
 	page, err := s.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "testprov"})
 	if err != nil {
@@ -83,7 +83,7 @@ func listTestProviderModels(t *testing.T, s *Server) []protocol.Model {
 
 func TestListModelsProbesEndpointAuthoritativeProvider(t *testing.T) {
 	lister := &stubLister{ids: []string{"m-alpha", "m-beta"}}
-	got := listTestProviderModels(t, probeServer(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
+	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
 	if lister.calls != 1 {
 		t.Fatalf("lister calls = %d, want 1", lister.calls)
 	}
@@ -97,7 +97,7 @@ func TestListModelsProbesEndpointAuthoritativeProvider(t *testing.T) {
 
 func TestListModelsFallsBackWhenProbeEmpty(t *testing.T) {
 	lister := &stubLister{ids: nil}
-	got := listTestProviderModels(t, probeServer(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
+	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
 	if lister.calls != 1 {
 		t.Fatalf("lister calls = %d, want 1 (probe attempted)", lister.calls)
 	}
@@ -108,7 +108,7 @@ func TestListModelsFallsBackWhenProbeEmpty(t *testing.T) {
 
 func TestListModelsFallsBackWhenProbeErrors(t *testing.T) {
 	lister := &stubLister{err: errors.New("unreachable")}
-	got := listTestProviderModels(t, probeServer(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
+	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
 	if lister.calls != 1 {
 		t.Fatalf("lister calls = %d, want 1", lister.calls)
 	}
@@ -121,7 +121,7 @@ func TestListModelsPreservesCallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	page, err := probeServer(
+	page, err := probeHandler(
 		serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()),
 		&stubLister{err: context.Canceled},
 	).ListModels(ctx, protocol.ListModelsRequest{Provider: "testprov"})
@@ -141,7 +141,7 @@ func TestListModelsPreservesProviderRegistryFailure(t *testing.T) {
 		models.ProviderModelsEndpoint,
 		models.NoEmbeddingCapability(),
 	)
-	server := serverWithModels(models.Config{
+	server := handlerWithModels(models.Config{
 		Providers: failingModelRegistry{err: sentinel},
 		Catalog:   stubCatalog{meta: meta},
 		Lister:    &stubLister{ids: []string{"must-not-mask-registry-failure"}},
@@ -158,7 +158,7 @@ func TestListModelsPreservesProviderRegistryFailure(t *testing.T) {
 
 func TestListModelsSkipsProbeForCatalogProvider(t *testing.T) {
 	lister := &stubLister{ids: []string{"should-not-appear"}}
-	got := listTestProviderModels(t, probeServer(serverProviderMetadata("testprov", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()), lister))
+	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()), lister))
 	if lister.calls != 0 {
 		t.Fatalf("lister calls = %d, want 0 (catalog provider must not be probed)", lister.calls)
 	}
@@ -168,7 +168,7 @@ func TestListModelsSkipsProbeForCatalogProvider(t *testing.T) {
 }
 
 func TestListModelsMapsUnsupportedProviderToInvalidParams(t *testing.T) {
-	server := probeServer(
+	server := probeHandler(
 		serverProviderMetadata("testprov", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()),
 		new(stubLister),
 	)

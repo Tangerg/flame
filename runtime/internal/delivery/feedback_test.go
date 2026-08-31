@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func (f *feedbackRecorderFake) Record(_ context.Context, command feedbackapp.Com
 
 func TestCreateFeedbackMapsProtocolRequestToRecorder(t *testing.T) {
 	recorder := &feedbackRecorderFake{}
-	s := &Server{feedback: recorder}
+	s := &Handler{feedback: recorder}
 	err := s.CreateFeedback(t.Context(), protocol.FeedbackRequest{
 		SessionID: "ses_1", RunID: "run_1", ItemID: "item_1",
 		Rating: protocol.FeedbackNegative, Text: "the answer missed the request",
@@ -39,7 +39,7 @@ func TestCreateFeedbackMapsProtocolRequestToRecorder(t *testing.T) {
 }
 
 func TestCreateFeedbackMapsInvalidEntryToInvalidParams(t *testing.T) {
-	s := &Server{feedback: &feedbackRecorderFake{err: feedbackdomain.ErrInvalid}}
+	s := &Handler{feedback: &feedbackRecorderFake{err: feedbackdomain.ErrInvalid}}
 	err := s.CreateFeedback(t.Context(), protocol.FeedbackRequest{})
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("CreateFeedback = %v, want invalid params", err)

@@ -1,4 +1,4 @@
-package server
+package delivery
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 // ListWorkspaceFileChanges projects application VCS status onto the wire.
-func (s *Server) ListWorkspaceFileChanges(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.WorkspaceFileChange], error) {
+func (s *Handler) ListWorkspaceFileChanges(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.WorkspaceFileChange], error) {
 	changes, err := s.workspaceVCS.Changes(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -34,7 +34,7 @@ func (s *Server) ListWorkspaceFileChanges(ctx context.Context, in protocol.Works
 
 // GetWorkspaceDiff validates wire-specific mode values then projects the
 // application-owned diff onto the wire shape.
-func (s *Server) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffRequest) (*protocol.Diff, error) {
+func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffRequest) (*protocol.Diff, error) {
 	base := false
 	switch in.Mode {
 	case "", protocol.DiffModeWorktree:
