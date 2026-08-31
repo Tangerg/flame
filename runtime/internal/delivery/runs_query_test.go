@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
@@ -406,7 +406,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			CreatedAt: created,
 		},
 	}}
-	s := &Handler{queries: queries.New(queries.Dependencies{Interrupts: reader})}
+	s := &Handler{queries: sessions.NewQueryCoordinator(sessions.QueryDependencies{Interrupts: reader})}
 
 	got, err := s.ListInterrupts(context.Background(), protocol.ListInterruptsRequest{SessionID: "ses_1"})
 	if err != nil {

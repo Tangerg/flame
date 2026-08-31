@@ -1,7 +1,4 @@
-// Package plans owns the application use cases for reading and replacing a
-// session's execution Plan. Domain state decides each replacement; persistence
-// only compares the expected revision and saves that decided state.
-package plans
+package sessions
 
 import (
 	"context"
@@ -14,62 +11,62 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
-// Store is the use case's consumer-owned persistence port.
-type Store interface {
+// PlanStore is the use case's consumer-owned persistence port.
+type PlanStore interface {
 	State(ctx context.Context, sessionID string) (plan.Current, error)
 	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
 }
 
-// Clock supplies the commit time for a Plan replacement.
-type Clock func() time.Time
+// PlanClock supplies the commit time for a Plan replacement.
+type PlanClock func() time.Time
 
-// Coordinator executes Plan use cases over one canonical store.
-type Coordinator struct {
-	store         Store
-	now           Clock
+// PlanCoordinator executes Plan use cases over one canonical store.
+type PlanCoordinator struct {
+	store         PlanStore
+	now           PlanClock
 	invalidations invalidation.Publish
 }
 
-// Dependencies is the collaborator set [New] wires into a Coordinator.
-type Dependencies struct {
-	Store         Store
-	Now           Clock
+// PlanDependencies is the collaborator set [NewPlanCoordinator] wires into a PlanCoordinator.
+type PlanDependencies struct {
+	Store         PlanStore
+	Now           PlanClock
 	Invalidations invalidation.Publish
 }
 
-// New returns a Plan Coordinator. A nil Store means the optional capability is
+// NewPlanCoordinator returns a Plan Coordinator. A nil Store means the optional capability is
 // unavailable; callers should omit its tools and application wiring.
-func New(deps Dependencies) *Coordinator {
+func NewPlanCoordinator(deps PlanDependencies) *PlanCoordinator {
 	if deps.Store == nil {
 		return nil
 	}
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
-	return &Coordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}
+	return &PlanCoordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}
 }
 
 // State returns the canonical optional Plan aggregate for one session.
-func (c *Coordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
+func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
 	if c == nil || c.store == nil {
-		return plan.Current{}, errors.New("plans: store is unavailable")
+		return plan.Current{}, errors.New("sessions: Plan store is unavailable")
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
-		return plan.Current{}, fmt.Errorf("plans: %w", err)
+		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
 	state, err := c.store.State(ctx, sessionID)
 	if err != nil {
 		return plan.Current{}, err
 	}
 	if err := state.Validate(); err != nil {
-		return plan.Current{}, fmt.Errorf("plans: read invalid state: %w", err)
+		return plan.Current{}, fmt.Errorf("sessions: read invalid Plan state: %w", err)
 	}
 	return state, nil
 }
 
 // Replace computes and commits one complete replacement using optimistic
 // concurrency. An empty steps slice clears the Plan under a new revision.
-func (c *Coordinator) Replace(ctx context.Context, sessionID string, steps []plan.Step) (plan.State, error) {
+func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps []plan.Step) (plan.State, error) {
 	replacement, err := c.PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {
 		return plan.State{}, err
@@ -84,58 +81,58 @@ func (c *Coordinator) Replace(ctx context.Context, sessionID string, steps []pla
 // PrepareReplacement decides a replacement without committing it. Cross-
 // aggregate use cases use this to include the exact Plan transition in their
 // own atomic write set.
-func (c *Coordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (Replacement, error) {
+func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (PlanReplacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
-		return Replacement{}, err
+		return PlanReplacement{}, err
 	}
 	return c.replace(current, steps)
 }
 
 // PrepareInitial decides the first Plan state for a not-yet-created session.
 // It is used when a cross-aggregate write set assigns the session identity.
-func (c *Coordinator) PrepareInitial(steps []plan.Step) (Replacement, error) {
+func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (PlanReplacement, error) {
 	if c == nil {
-		return Replacement{}, errors.New("plans: coordinator is unavailable")
+		return PlanReplacement{}, errors.New("sessions: Plan coordinator is unavailable")
 	}
 	return c.replace(plan.Current{}, steps)
 }
 
-func (c *Coordinator) replace(current plan.Current, steps []plan.Step) (Replacement, error) {
+func (c *PlanCoordinator) replace(current plan.Current, steps []plan.Step) (PlanReplacement, error) {
 	next, err := current.Replace(steps, c.now())
 	if err != nil {
-		return Replacement{}, err
+		return PlanReplacement{}, err
 	}
-	return newReplacement(current.Version(), next)
+	return newPlanReplacement(current.Version(), next)
 }
 
-// Replacement is an immutable, application-decided Plan state transition.
+// PlanReplacement is an immutable, application-decided Plan state transition.
 // Persistence implementations may execute it but may not enrich or reinterpret it.
-type Replacement struct {
+type PlanReplacement struct {
 	expectedVersion plan.Version
 	state           plan.State
 }
 
-func newReplacement(expectedVersion plan.Version, state plan.State) (Replacement, error) {
-	replacement := Replacement{expectedVersion: expectedVersion, state: state}
+func newPlanReplacement(expectedVersion plan.Version, state plan.State) (PlanReplacement, error) {
+	replacement := PlanReplacement{expectedVersion: expectedVersion, state: state}
 	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
+		return PlanReplacement{}, err
 	}
 	return replacement, nil
 }
 
 // ExpectedVersion returns the optional state identity this replacement was based on.
-func (r Replacement) ExpectedVersion() plan.Version { return r.expectedVersion }
+func (r PlanReplacement) ExpectedVersion() plan.Version { return r.expectedVersion }
 
 // State returns the already-decided replacement state.
-func (r Replacement) State() plan.State {
+func (r PlanReplacement) State() plan.State {
 	return r.state
 }
 
 // Validate verifies that the replacement advances its expected revision once.
-func (r Replacement) Validate() error {
+func (r PlanReplacement) Validate() error {
 	if err := r.expectedVersion.AdvancesTo(r.state); err != nil {
-		return fmt.Errorf("plans: invalid replacement: %w", err)
+		return fmt.Errorf("sessions: invalid Plan replacement: %w", err)
 	}
 	return nil
 }

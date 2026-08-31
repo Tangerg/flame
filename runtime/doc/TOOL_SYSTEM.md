@@ -63,7 +63,7 @@
 
 - `steps` 是必填的完整有序 Plan；每次调用替换原值；
 - 空数组清空 Plan；
-- Tool Adapter 只把参数翻译为领域 Step 并调用 `application/plans`；Plan aggregate 负责 invariant/revision/time，SQLite 只执行 CAS 保存；
+- Tool Adapter 只把参数翻译为领域 Step 并调用 `application/sessions` 的 Plan coordinator；Plan aggregate 负责 invariant/revision/time，SQLite 只执行 CAS 保存；
 - `description` 是非空步骤描述；
 - `status` 只允许 `pending | in_progress | completed`；
 - 最多一个 Step 为 `in_progress`；

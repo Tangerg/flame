@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -30,7 +29,7 @@ type RollbackPlan struct {
 	// boundary held. Applying it is a NEW state commit
 	// (Replace, never delete-and-rewrite): the live revision has to move forward or a
 	// client holding a higher one discards the rolled-back list as stale.
-	PlanReplacement *planapp.Replacement
+	PlanReplacement *PlanReplacement
 }
 
 type ForkPlan struct {
@@ -47,7 +46,7 @@ type ForkPlan struct {
 	ToolResults []toolresult.Blob
 	// PlanReplacement is the initial child Plan decided from the parent's fork
 	// boundary. nil means the boundary held no value worth publishing.
-	PlanReplacement *planapp.Replacement
+	PlanReplacement *PlanReplacement
 }
 
 // SessionReplacement is an immutable Application decision to insert a restored
@@ -116,13 +115,13 @@ type RestorePlan struct {
 	ToolResults []toolresult.Blob
 	// PlanReplacement is the already-decided restored Plan transition. It updates
 	// the live row in place so the target session's revision space never restarts.
-	PlanReplacement *planapp.Replacement
+	PlanReplacement *PlanReplacement
 }
 
 func restorePlan(
 	snapshot Snapshot,
 	sessionReplacement SessionReplacement,
-	planReplacement *planapp.Replacement,
+	planReplacement *PlanReplacement,
 ) RestorePlan {
 	return RestorePlan{
 		Session: sessionReplacement, Messages: snapshot.Messages, Items: snapshot.Items,

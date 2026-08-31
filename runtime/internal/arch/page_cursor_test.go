@@ -169,19 +169,19 @@ const (
 
 var pageFixtures = map[string]map[queryProperty]fixtureRef{
 	"items": {
-		fixedOrder:    {"internal/application/queries", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
-		pageDirection: {"internal/application/queries", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
-		cursorBinding: {"internal/application/queries", "TestListItemPageRefusesAForeignCursor"},
+		fixedOrder:    {"internal/application/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
+		pageDirection: {"internal/application/sessions", "TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor"},
+		cursorBinding: {"internal/application/sessions", "TestListItemPageRefusesAForeignCursor"},
 	},
 	"runs": {
-		fixedOrder:    {"internal/application/queries", "TestListRunPageWalksBackwardThroughHistory"},
-		pageDirection: {"internal/application/queries", "TestListRunPageWalksBackwardThroughHistory"},
-		cursorBinding: {"internal/application/queries", "TestListRunPageRefusesACursorFromAnotherQuery"},
+		fixedOrder:    {"internal/application/sessions", "TestListRunPageWalksBackwardThroughHistory"},
+		pageDirection: {"internal/application/sessions", "TestListRunPageWalksBackwardThroughHistory"},
+		cursorBinding: {"internal/application/sessions", "TestListRunPageRefusesACursorFromAnotherQuery"},
 	},
 	"interrupts": {
-		fixedOrder:    {"internal/application/queries", "TestListPendingInterruptPagePagesOldestFirst"},
-		pageDirection: {"internal/application/queries", "TestListPendingInterruptPagePagesOldestFirst"},
-		cursorBinding: {"internal/application/queries", "TestListPendingInterruptPagePagesOldestFirst"},
+		fixedOrder:    {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
+		pageDirection: {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
+		cursorBinding: {"internal/application/sessions", "TestListPendingInterruptPagePagesOldestFirst"},
 	},
 	"sessions": {
 		fixedOrder:    {"internal/application/sessions", "TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor"},

@@ -1,4 +1,4 @@
-package plans
+package sessions
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 )
 
-type fakeStore struct {
+type planStoreFake struct {
 	state           plan.Current
 	expectedVersion plan.Version
 	saved           *plan.State
@@ -18,8 +18,10 @@ type fakeStore struct {
 	saveErr         error
 }
 
-func (f *fakeStore) State(context.Context, string) (plan.Current, error) { return f.state, f.readErr }
-func (f *fakeStore) Save(_ context.Context, _ string, expected plan.Version, replacement plan.State) error {
+func (f *planStoreFake) State(context.Context, string) (plan.Current, error) {
+	return f.state, f.readErr
+}
+func (f *planStoreFake) Save(_ context.Context, _ string, expected plan.Version, replacement plan.State) error {
 	f.expectedVersion = expected
 	owned := replacement
 	f.saved = &owned
@@ -39,9 +41,9 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := &fakeStore{state: currentProjection}
+	store := &planStoreFake{state: currentProjection}
 	var notices []invalidation.Notice
-	coordinator := New(Dependencies{
+	coordinator := NewPlanCoordinator(PlanDependencies{
 		Store: store, Now: func() time.Time { return now },
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
@@ -59,8 +61,8 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 }
 
 func TestPrepareReplacementDoesNotWrite(t *testing.T) {
-	store := &fakeStore{}
-	coordinator := New(Dependencies{Store: store, Now: func() time.Time { return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC) }})
+	store := &planStoreFake{}
+	coordinator := NewPlanCoordinator(PlanDependencies{Store: store, Now: func() time.Time { return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC) }})
 	replacement, err := coordinator.PrepareReplacement(t.Context(), "ses_1", nil)
 	if err != nil {
 		t.Fatalf("PrepareReplacement: %v", err)
@@ -71,9 +73,9 @@ func TestPrepareReplacementDoesNotWrite(t *testing.T) {
 }
 
 func TestReplacePropagatesRevisionConflict(t *testing.T) {
-	store := &fakeStore{saveErr: plan.ErrRevisionConflict}
+	store := &planStoreFake{saveErr: plan.ErrRevisionConflict}
 	var published bool
-	coordinator := New(Dependencies{
+	coordinator := NewPlanCoordinator(PlanDependencies{
 		Store: store, Now: time.Now,
 		Invalidations: func(invalidation.Notice) { published = true },
 	})
@@ -87,8 +89,8 @@ func TestReplacePropagatesRevisionConflict(t *testing.T) {
 }
 
 func TestStateRejectsInvalidSessionIdentityBeforePersistence(t *testing.T) {
-	store := &fakeStore{}
-	coordinator := New(Dependencies{Store: store, Now: time.Now})
+	store := &planStoreFake{}
+	coordinator := NewPlanCoordinator(PlanDependencies{Store: store, Now: time.Now})
 	for _, sessionID := range []string{"", " ses_1", "ses_1 "} {
 		if _, err := coordinator.State(t.Context(), sessionID); err == nil {
 			t.Errorf("State(%q) succeeded", sessionID)

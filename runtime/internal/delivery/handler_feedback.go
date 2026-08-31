@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	feedbackapp "github.com/Tangerg/flame/runtime/internal/application/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -14,7 +14,7 @@ import (
 // feedback ledger. The write-only protocol shape intentionally has no readback,
 // but a successful ack always means the application receiver accepted it.
 func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackRequest) error {
-	err := s.feedback.Record(ctx, feedbackapp.Command{
+	err := s.feedback.Record(ctx, sessions.FeedbackCommand{
 		SessionID: in.SessionID,
 		RunID:     in.RunID,
 		ItemID:    in.ItemID,

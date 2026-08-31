@@ -13,8 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
@@ -215,7 +213,7 @@ type sessionsCoordinatorProvider interface {
 // fake that can build it over its own transcript and interrupt stores. Fakes
 // that never drive a read (live-run tests) may omit it.
 type queriesCoordinatorProvider interface {
-	queriesCoordinator() *queries.Coordinator
+	queriesCoordinator() *sessions.QueryCoordinator
 }
 
 // runProjectionProvider is the seam for the durable run read that addressing a
@@ -314,8 +312,8 @@ func (s stubConversationReader) Read(ctx context.Context, id string) ([]chat.Mes
 	return s.runtime.ReadHistory(ctx, id)
 }
 
-func (s stubRuntime) queriesCoordinator() *queries.Coordinator {
-	return queries.New(queries.Dependencies{
+func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
+	return sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		Transcript: s.hist,
 		Interrupts: s.interrupts,
 		Runs:       s.runs,
@@ -928,7 +926,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if s.plan != nil {
 		deps.Plan = &sessions.PlanServices{
 			Boundaries: s.plan,
-			Replacements: planapp.New(planapp.Dependencies{
+			Replacements: sessions.NewPlanCoordinator(sessions.PlanDependencies{
 				Store: s.plan, Now: time.Now,
 			}),
 		}

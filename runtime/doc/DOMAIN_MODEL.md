@@ -275,7 +275,7 @@ revision 是 optimistic concurrency 的领域事实，但 CAS 和事务仍属于
 
 ### 7.2 Application 用例
 
-新增准确的 `application/plans` 用例边界，拥有：
+`application/sessions` 内的 Plan coordinator 拥有：
 
 1. 接收显式 Session identity；
 2. 读取当前 Plan；
@@ -404,7 +404,7 @@ Batch 1 是后续批次的前置，因为 Item recovery、Session parked termina
 ### Batch 3：Plan 纵切
 
 - 让 `plan.State` 拥有 replacement/revision/invariant；
-- 建立 `application/plans` 用例和消费方 Store port；
+- 在 `application/sessions` 建立 Plan 用例和消费方 Store port；
 - Tool Adapter 退回参数翻译与 presentation；
 - 删除 Adapter 直连 Store 的旧 owner；
 - 同步服务端 contract/projection，只在确有 shape 改变时提升版本。

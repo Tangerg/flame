@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
 	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
 )
@@ -38,7 +38,7 @@ type toolEnvironmentDependencies struct {
 	schedules           *schedules.Coordinator
 	goalReader          *goals.Reader
 	goalReporter        *goals.OutcomeReporter
-	plan                *planapp.Coordinator
+	plan                *sessions.PlanCoordinator
 	skillStore          *skillauthoring.Store
 	skillProposals      builtin.SkillProposalSubmitter
 }

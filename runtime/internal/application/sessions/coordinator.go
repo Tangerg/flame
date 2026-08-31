@@ -1,13 +1,12 @@
-// Package sessions owns the cross-domain atomic write-sets behind a few
-// session/run lifecycle use-cases — rollback truncation, the session-delete
-// cascade, the import/restore sequence, and the child-Run subtree purge. Each
-// spans several domain stores (the session row, the transcript, the chat history
-// log, open interrupts) and several commit as ONE transaction via RunInTx, so a
-// mid-sequence failure leaves no half-mutated session.
+// Package sessions owns Session lifecycle orchestration and its durable product
+// projections: Plan transitions, transcript and Run queries, usage reports, and
+// feedback recording. Cross-domain lifecycle changes such as rollback, delete,
+// restore, fork, and child-Run purge commit as one write-set, so a mid-sequence
+// failure leaves no half-mutated Session.
 //
-// The Coordinator reads canonical transcript values, decides each mutation, and
-// executes it atomically. These rules are use-case orchestration and stay
-// independent of request decoding, presentation, and stream management.
+// Responsibility-named coordinators keep command and read ports narrow; there
+// is no package-wide service facade. These rules remain independent of request
+// decoding, presentation, and stream management.
 package sessions
 
 import (
@@ -20,7 +19,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
@@ -77,8 +75,8 @@ type PlanBoundaries interface {
 // session write sets. Persistence receives the decided replacement and may only
 // apply its CAS; it never assigns a revision or update time itself.
 type PlanReplacements interface {
-	PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (planapp.Replacement, error)
-	PrepareInitial(steps []plan.Step) (planapp.Replacement, error)
+	PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (PlanReplacement, error)
+	PrepareInitial(steps []plan.Step) (PlanReplacement, error)
 }
 
 // RunStore is the lifecycle coordinator's read view of a session's Runs. Every

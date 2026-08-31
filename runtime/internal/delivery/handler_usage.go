@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/usage"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -21,9 +21,9 @@ func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol
 // UsageSummary projects the application-owned aggregate usage report onto the
 // usage.summary wire contract.
 func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
-	period := usage.AllTime()
+	period := sessions.AllTimeUsage()
 	if in.SinceDays != nil {
-		recent, periodErr := usage.RecentDays(*in.SinceDays)
+		recent, periodErr := sessions.RecentUsageDays(*in.SinceDays)
 		if periodErr != nil {
 			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, periodErr)
 		}
@@ -43,7 +43,7 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	}, nil
 }
 
-func presentSessionUsage(report usage.SessionReport) *protocol.Usage {
+func presentSessionUsage(report sessions.SessionUsageReport) *protocol.Usage {
 	out := &protocol.Usage{ModelUsage: presentModelUsage(report.Total)}
 	if len(report.ByModel) > 0 {
 		out.ByModel = make(map[string]protocol.ModelUsage, len(report.ByModel))
@@ -54,7 +54,7 @@ func presentSessionUsage(report usage.SessionReport) *protocol.Usage {
 	return out
 }
 
-func presentUsageBuckets(buckets []usage.Bucket) []protocol.UsageBucket {
+func presentUsageBuckets(buckets []sessions.UsageBucket) []protocol.UsageBucket {
 	out := make([]protocol.UsageBucket, 0, len(buckets))
 	for _, bucket := range buckets {
 		out = append(out, protocol.UsageBucket{Key: bucket.Key, ModelUsage: presentModelUsage(bucket.Usage), Runs: bucket.Runs})

@@ -1,6 +1,4 @@
-// Package usage reports durable Run metering through application-owned read
-// models.
-package usage
+package sessions
 
 import (
 	"cmp"
@@ -13,79 +11,79 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// RunReader reads the durable run history for one session.
-type RunReader interface {
+// UsageRunReader reads the durable run history for one session.
+type UsageRunReader interface {
 	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
 }
 
-// SessionLister lists the user-facing sessions that contribute to aggregate
+// UsageSessionLister lists the user-facing sessions that contribute to aggregate
 // usage. Child sessions are excluded by the session use case, preventing
 // subtree-aggregated runs from being counted twice.
-type SessionLister interface {
+type UsageSessionLister interface {
 	List(ctx context.Context) ([]session.Session, error)
 }
 
-// Bucket is one named portion of a summary report.
-type Bucket struct {
+// UsageBucket is one named portion of a summary report.
+type UsageBucket struct {
 	Key   string
 	Usage accounting.Totals
 	Runs  int
 }
 
-// SessionReport is one session's cumulative metering and per-model split.
-type SessionReport struct {
+// SessionUsageReport is one session's cumulative metering and per-model split.
+type SessionUsageReport struct {
 	Total   accounting.Totals
 	ByModel map[string]accounting.Totals
 }
 
-// Summary is a cross-session usage report. Provider and day buckets reconcile
+// UsageSummary is a cross-session usage report. Provider and day buckets reconcile
 // with Total because every completed run contributes as one whole run.
-type Summary struct {
+type UsageSummary struct {
 	Total      accounting.Totals
-	ByProvider []Bucket
-	ByModel    []Bucket
-	ByDay      []Bucket
+	ByProvider []UsageBucket
+	ByModel    []UsageBucket
+	ByDay      []UsageBucket
 	Sessions   int
 	Runs       int
 }
 
-// Dependencies are the durable projections and model policy a Reporter needs.
-type Dependencies struct {
-	Runs     RunReader
-	Sessions SessionLister
+// UsageDependencies are the durable projections and model policy a UsageReporter needs.
+type UsageDependencies struct {
+	Runs     UsageRunReader
+	Sessions UsageSessionLister
 	Now      func() time.Time
 }
 
-// Reporter folds durable terminal run records into read-only usage reports.
-type Reporter struct {
-	runs     RunReader
-	sessions SessionLister
+// UsageReporter folds durable terminal run records into read-only usage reports.
+type UsageReporter struct {
+	runs     UsageRunReader
+	sessions UsageSessionLister
 	now      func() time.Time
 }
 
-// New constructs a usage Reporter over the supplied projections.
-func New(deps Dependencies) *Reporter {
+// NewUsageReporter constructs a usage reporter over the supplied projections.
+func NewUsageReporter(deps UsageDependencies) *UsageReporter {
 	now := deps.Now
 	if now == nil {
 		now = time.Now
 	}
-	return &Reporter{
+	return &UsageReporter{
 		runs: deps.Runs, sessions: deps.Sessions, now: now,
 	}
 }
 
 // Session returns one session's cumulative metering and per-model split.
-func (r *Reporter) Session(ctx context.Context, sessionID string) (SessionReport, error) {
+func (r *UsageReporter) Session(ctx context.Context, sessionID string) (SessionUsageReport, error) {
 	runs, err := r.runs.ListRuns(ctx, sessionID)
 	if err != nil {
-		return SessionReport{}, err
+		return SessionUsageReport{}, err
 	}
 	total := usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
 	for _, run := range runs {
 		foldRun(run, time.Time{}, &total, nil, byModel, nil, false)
 	}
-	report := SessionReport{Total: total.usage()}
+	report := SessionUsageReport{Total: total.usage()}
 	if len(byModel) > 0 {
 		report.ByModel = make(map[string]accounting.Totals, len(byModel))
 		for name, bucket := range byModel {
@@ -97,14 +95,14 @@ func (r *Reporter) Session(ctx context.Context, sessionID string) (SessionReport
 
 // Summary returns usage across user-facing sessions under the requested
 // all-time or recent calendar-day period.
-func (r *Reporter) Summary(ctx context.Context, period SummaryPeriod) (Summary, error) {
+func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) (UsageSummary, error) {
 	since, err := period.Since(r.now())
 	if err != nil {
-		return Summary{}, err
+		return UsageSummary{}, err
 	}
 	sessions, err := r.sessions.List(ctx)
 	if err != nil {
-		return Summary{}, err
+		return UsageSummary{}, err
 	}
 
 	total := usageAccumulator{}
@@ -115,7 +113,7 @@ func (r *Reporter) Summary(ctx context.Context, period SummaryPeriod) (Summary, 
 	for _, sess := range sessions {
 		runs, err := r.runs.ListRuns(ctx, sess.ID())
 		if err != nil {
-			return Summary{}, err
+			return UsageSummary{}, err
 		}
 		before := total.runs
 		for _, run := range runs {
@@ -126,7 +124,7 @@ func (r *Reporter) Summary(ctx context.Context, period SummaryPeriod) (Summary, 
 		}
 	}
 
-	return Summary{
+	return UsageSummary{
 		Total:      total.usage(),
 		ByProvider: bucketsBySpend(byProvider),
 		ByModel:    bucketsBySpend(byModel),
@@ -220,9 +218,9 @@ func accumulatorFor(byKey map[string]*usageAccumulator, key string) *usageAccumu
 	return bucket
 }
 
-func bucketsBySpend(byKey map[string]*usageAccumulator) []Bucket {
+func bucketsBySpend(byKey map[string]*usageAccumulator) []UsageBucket {
 	buckets := bucketsOf(byKey)
-	slices.SortFunc(buckets, func(a, b Bucket) int {
+	slices.SortFunc(buckets, func(a, b UsageBucket) int {
 		return cmp.Or(
 			cmp.Compare(costOf(b.Usage.CostUSD), costOf(a.Usage.CostUSD)),
 			cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens),
@@ -231,16 +229,16 @@ func bucketsBySpend(byKey map[string]*usageAccumulator) []Bucket {
 	return buckets
 }
 
-func bucketsByKey(byKey map[string]*usageAccumulator) []Bucket {
+func bucketsByKey(byKey map[string]*usageAccumulator) []UsageBucket {
 	buckets := bucketsOf(byKey)
-	slices.SortFunc(buckets, func(a, b Bucket) int { return cmp.Compare(a.Key, b.Key) })
+	slices.SortFunc(buckets, func(a, b UsageBucket) int { return cmp.Compare(a.Key, b.Key) })
 	return buckets
 }
 
-func bucketsOf(byKey map[string]*usageAccumulator) []Bucket {
-	buckets := make([]Bucket, 0, len(byKey))
+func bucketsOf(byKey map[string]*usageAccumulator) []UsageBucket {
+	buckets := make([]UsageBucket, 0, len(byKey))
 	for key, accumulated := range byKey {
-		buckets = append(buckets, Bucket{Key: key, Usage: accumulated.usage(), Runs: accumulated.runs})
+		buckets = append(buckets, UsageBucket{Key: key, Usage: accumulated.usage(), Runs: accumulated.runs})
 	}
 	return buckets
 }

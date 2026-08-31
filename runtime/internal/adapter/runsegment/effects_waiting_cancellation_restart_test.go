@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -88,7 +88,7 @@ type restartedWaitingCancellationStores struct {
 	interrupts  *persistence.InterruptStore
 	transcript  *sqlite.TranscriptStore
 	checkpoints *persistence.ExecutorCheckpointStore
-	query       *queries.Coordinator
+	query       *sessions.QueryCoordinator
 }
 
 func reopenWaitingCancellationStores(t *testing.T, path string) restartedWaitingCancellationStores {
@@ -104,14 +104,14 @@ func reopenWaitingCancellationStores(t *testing.T, path string) restartedWaiting
 		interrupts:  persistence.NewInterruptStore(sqlite.NewInterruptStore(database)),
 		transcript:  sqlite.NewTranscriptStore(database),
 		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database)),
-		query:       queries.New(queries.Dependencies{Runs: runStore}),
+		query:       sessions.NewQueryCoordinator(sessions.QueryDependencies{Runs: runStore}),
 	}
 }
 
 func assertRestartedCancellationResult(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	query *queries.Coordinator,
+	query *sessions.QueryCoordinator,
 	result runs.WaitingSubtreeCancellationResult,
 ) {
 	t.Helper()
@@ -220,7 +220,7 @@ func normalizeRunSnapshot(record run.Run) run.Snapshot {
 
 func queryRun(
 	t *testing.T,
-	query *queries.Coordinator,
+	query *sessions.QueryCoordinator,
 	runID string,
 ) run.Run {
 	t.Helper()

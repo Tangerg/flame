@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
@@ -348,7 +347,7 @@ func (s *SessionStores) restorePlanAndHistory(ctx context.Context, sessionID str
 	return s.history.Seed(ctx, sessionID, restore.Messages)
 }
 
-func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *planapp.Replacement) error {
+func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *sessions.PlanReplacement) error {
 	if replacement == nil {
 		return nil
 	}

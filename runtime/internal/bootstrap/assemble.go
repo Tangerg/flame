@@ -20,19 +20,16 @@ import (
 	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
-	feedbackapp "github.com/Tangerg/flame/runtime/internal/application/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/tools"
-	"github.com/Tangerg/flame/runtime/internal/application/usage"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -478,17 +475,17 @@ func buildAssemblyCore(
 				Runs:          runCoordinator,
 				FileChanges:   fileChanges.Observe,
 				Invalidations: policy.invalidations.Observe,
-				Queries: queries.New(queries.Dependencies{
+				Queries: sessions.NewQueryCoordinator(sessions.QueryDependencies{
 					Transcript: cfg.TranscriptStore,
 					Interrupts: cfg.InterruptStore,
 					Runs:       cfg.RunStore,
 					Sessions:   cfg.SessionStore,
 					Plan:       cfg.PlanStore,
 				}),
-				Usage: usage.New(usage.Dependencies{
+				Usage: sessions.NewUsageReporter(sessions.UsageDependencies{
 					Runs: cfg.RunStore, Sessions: cfg.SessionStore,
 				}),
-				Feedback:               feedbackapp.New(cfg.FeedbackStore),
+				Feedback:               sessions.NewFeedbackRecorder(cfg.FeedbackStore),
 				WorkspaceFiles:         workspaceFiles,
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,

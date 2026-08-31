@@ -5,16 +5,13 @@ import (
 	"io"
 	"time"
 
-	feedbackapp "github.com/Tangerg/flame/runtime/internal/application/feedback"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	toolapp "github.com/Tangerg/flame/runtime/internal/application/tools"
-	"github.com/Tangerg/flame/runtime/internal/application/usage"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
@@ -94,20 +91,20 @@ type runUseCases interface {
 }
 
 type queryUseCases interface {
-	ListItemPage(ctx context.Context, scope queries.ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (queries.ItemPage, error)
+	ListItemPage(ctx context.Context, scope sessions.ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (sessions.ItemPage, error)
 	ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error)
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	PlanState(ctx context.Context, sessionID string) (plan.Current, error)
-	ListRunPage(ctx context.Context, filter queries.RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error)
+	ListRunPage(ctx context.Context, filter sessions.RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error)
 }
 
 type usageUseCases interface {
-	Session(ctx context.Context, sessionID string) (usage.SessionReport, error)
-	Summary(ctx context.Context, period usage.SummaryPeriod) (usage.Summary, error)
+	Session(ctx context.Context, sessionID string) (sessions.SessionUsageReport, error)
+	Summary(ctx context.Context, period sessions.UsageSummaryPeriod) (sessions.UsageSummary, error)
 }
 
 type feedbackUseCases interface {
-	Record(ctx context.Context, command feedbackapp.Command) error
+	Record(ctx context.Context, command sessions.FeedbackCommand) error
 }
 
 type scheduleManagementUseCases interface {

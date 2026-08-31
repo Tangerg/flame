@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
@@ -160,16 +159,16 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 
 func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) plan.State {
 	t.Helper()
-	state, err := planapp.New(planapp.Dependencies{Store: store, Now: time.Now}).Replace(ctx, sessionID, steps)
+	state, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).Replace(ctx, sessionID, steps)
 	if err != nil {
 		t.Fatalf("replace fixture Plan: %v", err)
 	}
 	return state
 }
 
-func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *planapp.Replacement {
+func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *sessions.PlanReplacement {
 	t.Helper()
-	replacement, err := planapp.New(planapp.Dependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
+	replacement, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {
 		t.Fatalf("prepare fixture Plan: %v", err)
 	}
@@ -609,7 +608,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		t.Fatalf("derive child: %v", err)
 	}
 
-	initial, err := planapp.New(planapp.Dependencies{Store: ss.plan, Now: time.Now}).PrepareInitial([]plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}})
+	initial, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: ss.plan, Now: time.Now}).PrepareInitial([]plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}})
 	if err != nil {
 		t.Fatalf("prepare child Plan: %v", err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -39,7 +38,7 @@ func boundaryCoordinator(stores testStores, boundaries PlanBoundaries) *Coordina
 	deps := testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{}})
 	deps.Plan = &PlanServices{
 		Boundaries: boundaries,
-		Replacements: planapp.New(planapp.Dependencies{
+		Replacements: NewPlanCoordinator(PlanDependencies{
 			Store: boundaryPlanStore{}, Now: func() time.Time { return time.Unix(100, 0) },
 		}),
 	}
@@ -55,7 +54,7 @@ func (boundaryPlanStore) Save(context.Context, string, plan.Version, plan.State)
 	return nil
 }
 
-func replacementSteps(replacement *planapp.Replacement) []plan.Step {
+func replacementSteps(replacement *PlanReplacement) []plan.Step {
 	if replacement == nil {
 		return nil
 	}

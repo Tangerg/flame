@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -117,23 +117,23 @@ func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*pro
 //
 // A run scope is legal for a root or a child run, and it carries no sessionId: the
 // run's own record says where it lives.
-func itemScopeFromWire(scope protocol.ItemListScope) (queries.ItemScope, error) {
+func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error) {
 	switch scope.Type {
 	case protocol.ItemScopeSession:
 		if scope.SessionID == "" {
-			return queries.ItemScope{}, fmt.Errorf("%w: scope.sessionId is required for a session scope", protocol.ErrInvalidParams)
+			return sessions.ItemScope{}, fmt.Errorf("%w: scope.sessionId is required for a session scope", protocol.ErrInvalidParams)
 		}
-		return queries.SessionItems(scope.SessionID), nil
+		return sessions.SessionItems(scope.SessionID), nil
 	case protocol.ItemScopeRun:
 		if scope.RunID == "" {
-			return queries.ItemScope{}, fmt.Errorf("%w: scope.runId is required for a run scope", protocol.ErrInvalidParams)
+			return sessions.ItemScope{}, fmt.Errorf("%w: scope.runId is required for a run scope", protocol.ErrInvalidParams)
 		}
 		if scope.IncludeDescendants {
-			return queries.RunTreeItems(scope.RunID), nil
+			return sessions.RunTreeItems(scope.RunID), nil
 		}
-		return queries.RunItems(scope.RunID), nil
+		return sessions.RunItems(scope.RunID), nil
 	default:
-		return queries.ItemScope{}, fmt.Errorf("%w: scope.type must be %q or %q", protocol.ErrInvalidParams,
+		return sessions.ItemScope{}, fmt.Errorf("%w: scope.type must be %q or %q", protocol.ErrInvalidParams,
 			protocol.ItemScopeSession, protocol.ItemScopeRun)
 	}
 }

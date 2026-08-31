@@ -1,4 +1,4 @@
-package feedback
+package sessions
 
 import (
 	"context"
@@ -20,7 +20,7 @@ func (s *storeFake) Append(_ context.Context, entry feedbackdomain.Entry) error 
 
 func TestRecorderPersistsValidatedEntry(t *testing.T) {
 	store := &storeFake{}
-	if err := New(store).Record(t.Context(), Command{ItemID: "item_1", Rating: feedbackdomain.RatingPositive}); err != nil {
+	if err := NewFeedbackRecorder(store).Record(t.Context(), FeedbackCommand{ItemID: "item_1", Rating: feedbackdomain.RatingPositive}); err != nil {
 		t.Fatalf("Record: %v", err)
 	}
 	if len(store.entries) != 1 || store.entries[0].ItemID != "item_1" || store.entries[0].CreatedAt.IsZero() {
@@ -30,7 +30,7 @@ func TestRecorderPersistsValidatedEntry(t *testing.T) {
 
 func TestRecorderRejectsEmptySignalWithoutPersisting(t *testing.T) {
 	store := &storeFake{}
-	err := New(store).Record(t.Context(), Command{ItemID: "item_1"})
+	err := NewFeedbackRecorder(store).Record(t.Context(), FeedbackCommand{ItemID: "item_1"})
 	if !errors.Is(err, feedbackdomain.ErrInvalid) {
 		t.Fatalf("Record = %v, want ErrInvalid", err)
 	}

@@ -5,17 +5,17 @@ import (
 	"errors"
 	"testing"
 
-	feedbackapp "github.com/Tangerg/flame/runtime/internal/application/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type feedbackRecorderFake struct {
-	command feedbackapp.Command
+	command sessions.FeedbackCommand
 	err     error
 }
 
-func (f *feedbackRecorderFake) Record(_ context.Context, command feedbackapp.Command) error {
+func (f *feedbackRecorderFake) Record(_ context.Context, command sessions.FeedbackCommand) error {
 	f.command = command
 	return f.err
 }
@@ -30,7 +30,7 @@ func TestCreateFeedbackMapsProtocolRequestToRecorder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateFeedback: %v", err)
 	}
-	if recorder.command != (feedbackapp.Command{
+	if recorder.command != (sessions.FeedbackCommand{
 		SessionID: "ses_1", RunID: "run_1", ItemID: "item_1",
 		Rating: feedbackdomain.RatingNegative, Text: "the answer missed the request",
 	}) {

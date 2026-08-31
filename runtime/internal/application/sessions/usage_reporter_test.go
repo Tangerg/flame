@@ -1,4 +1,4 @@
-package usage
+package sessions
 
 import (
 	"errors"
@@ -13,10 +13,10 @@ import (
 
 func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 30, 0, 0, time.FixedZone("test", 8*60*60))
-	if since, err := AllTime().Since(now); err != nil || !since.IsZero() {
+	if since, err := AllTimeUsage().Since(now); err != nil || !since.IsZero() {
 		t.Fatalf("all-time Since = (%v, %v), want zero", since, err)
 	}
-	recent, err := RecentDays(7)
+	recent, err := RecentUsageDays(7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,11 +25,11 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 		t.Fatalf("recent Since = (%v, %v), want %v", since, err, want)
 	}
 	for _, days := range []int{0, -1} {
-		if _, err := RecentDays(days); !errors.Is(err, ErrInvalidSummaryPeriod) {
+		if _, err := RecentUsageDays(days); !errors.Is(err, ErrInvalidUsageSummaryPeriod) {
 			t.Fatalf("RecentDays(%d) = %v", days, err)
 		}
 	}
-	if _, err := (SummaryPeriod{days: 1}).Since(now); !errors.Is(err, ErrInvalidSummaryPeriod) {
+	if _, err := (UsageSummaryPeriod{days: 1}).Since(now); !errors.Is(err, ErrInvalidUsageSummaryPeriod) {
 		t.Fatalf("corrupt all-time period = %v", err)
 	}
 }

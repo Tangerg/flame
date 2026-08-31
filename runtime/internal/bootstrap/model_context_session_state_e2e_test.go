@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/plan"
@@ -212,7 +212,7 @@ func createSessionWithInitialPlan(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := planapp.New(planapp.Dependencies{Store: stores.Plan}).Replace(
+	if _, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan}).Replace(
 		ctx,
 		session.ID,
 		[]plandomain.Step{{Description: stalePlanText, Status: plandomain.StatusInProgress}},

@@ -20,8 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	planapp "github.com/Tangerg/flame/runtime/internal/application/plans"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -40,7 +40,7 @@ type policyComposition struct {
 	goals         goals.Store
 	goalReader    *goals.Reader
 	goalReporter  *goals.OutcomeReporter
-	plans         *planapp.Coordinator
+	plans         *sessions.PlanCoordinator
 	mcp           mcpEnvironment
 	schedules     *schedules.Coordinator
 }
@@ -80,7 +80,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		goals:         goalStore,
 		goalReader:    goals.NewReader(goalStore),
 		goalReporter:  goals.NewOutcomeReporter(goalStore),
-		plans: planapp.New(planapp.Dependencies{
+		plans: sessions.NewPlanCoordinator(sessions.PlanDependencies{
 			Store: cfg.PlanStore, Now: time.Now, Invalidations: invalidations.Publish,
 		}),
 		mcp:       mcpSettings,

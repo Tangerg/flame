@@ -245,6 +245,6 @@ var planLifecycleFixtures = map[string][]fixtureRef{
 	},
 	"committed_plan_change_reaches_other_windows": {
 		{"internal/delivery", "TestPlanChangeKeepsSessionScope"},
-		{"internal/application/plans", "TestCommittedPlanChangeReachesOtherWindows"},
+		{"internal/application/sessions", "TestCommittedPlanChangeReachesOtherWindows"},
 	},
 }

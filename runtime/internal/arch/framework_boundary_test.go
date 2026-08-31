@@ -529,22 +529,22 @@ func TestUsageSummaryPeriodKeepsAllTimeOutOfNumericZero(t *testing.T) {
 	if got := namedStructFieldType(t, filepath.Join(root, "protocol", "usage.go"), "UsageSummaryRequest", "SinceDays"); got != "*int" {
 		t.Fatalf("protocol.UsageSummaryRequest.SinceDays type = %s, want *int", got)
 	}
-	periodPath := filepath.Join(root, "internal", "application", "usage", "period.go")
+	periodPath := filepath.Join(root, "internal", "application", "sessions", "usage_period.go")
 	periodFile, err := parser.ParseFile(token.NewFileSet(), periodPath, nil, 0)
 	if err != nil {
 		t.Fatalf("parse usage summary period: %v", err)
 	}
-	if fields := structFields(periodFile, "SummaryPeriod"); !slices.Equal(fields, []string{"recent", "days"}) {
-		t.Fatalf("usage.SummaryPeriod fields = %v, want private recent/days", fields)
+	if fields := structFields(periodFile, "UsageSummaryPeriod"); !slices.Equal(fields, []string{"recent", "days"}) {
+		t.Fatalf("sessions.UsageSummaryPeriod fields = %v, want private recent/days", fields)
 	}
 	for _, method := range []string{"Since", "Days"} {
-		if !slices.Contains(receiverMethods(periodFile, "SummaryPeriod"), method) {
-			t.Errorf("usage.SummaryPeriod is missing %s behavior", method)
+		if !slices.Contains(receiverMethods(periodFile, "UsageSummaryPeriod"), method) {
+			t.Errorf("sessions.UsageSummaryPeriod is missing %s behavior", method)
 		}
 	}
-	reporterPath := filepath.Join(root, "internal", "application", "usage", "reporter.go")
-	if got := methodParameterType(t, reporterPath, "Reporter", "Summary", 1); got != "SummaryPeriod" {
-		t.Fatalf("usage.Reporter.Summary period type = %s, want SummaryPeriod", got)
+	reporterPath := filepath.Join(root, "internal", "application", "sessions", "usage_reporter.go")
+	if got := methodParameterType(t, reporterPath, "UsageReporter", "Summary", 1); got != "UsageSummaryPeriod" {
+		t.Fatalf("sessions.UsageReporter.Summary period type = %s, want UsageSummaryPeriod", got)
 	}
 }
 

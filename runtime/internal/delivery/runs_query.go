@@ -7,8 +7,8 @@ import (
 	"iter"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/application/queries"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -50,7 +50,7 @@ func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queries.ListRunPage(ctx, queries.RunPageFilter{
+	page, err := s.queries.ListRunPage(ctx, sessions.RunPageFilter{
 		SessionID:          in.SessionID,
 		Statuses:           statuses,
 		IncludeDescendants: in.IncludeDescendants,
