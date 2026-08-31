@@ -1,6 +1,4 @@
-// Package agentmemory defines the CLI's projection of runtime-maintained facts
-// and the use cases through which a user governs them.
-package agentmemory
+package agent
 
 import (
 	"context"
@@ -11,53 +9,53 @@ import (
 	"time"
 )
 
-// Scope is the durable partition that owns a memory item.
-type Scope string
+// MemoryScope is the durable partition that owns a memory item.
+type MemoryScope string
 
 const (
-	Project Scope = "project"
-	User    Scope = "user"
+	MemoryProject MemoryScope = "project"
+	MemoryUser    MemoryScope = "user"
 )
 
-func ParseScope(value string) (Scope, error) {
-	scope := Scope(strings.TrimSpace(value))
+func ParseMemoryScope(value string) (MemoryScope, error) {
+	scope := MemoryScope(strings.TrimSpace(value))
 	if err := scope.Validate(); err != nil {
 		return "", err
 	}
 	return scope, nil
 }
 
-func (s Scope) Validate() error {
-	if s != Project && s != User {
+func (s MemoryScope) Validate() error {
+	if s != MemoryProject && s != MemoryUser {
 		return fmt.Errorf("agent memory scope must be project or user, got %q", s)
 	}
 	return nil
 }
 
-// Target couples a scope to exactly the workspace context it requires.
-type Target struct {
-	Scope     Scope
+// MemoryTarget couples a scope to exactly the workspace context it requires.
+type MemoryTarget struct {
+	Scope     MemoryScope
 	Workspace string
 }
 
-func NewTarget(scope Scope, workspace string) (Target, error) {
-	target := Target{Scope: scope, Workspace: strings.TrimSpace(workspace)}
+func NewMemoryTarget(scope MemoryScope, workspace string) (MemoryTarget, error) {
+	target := MemoryTarget{Scope: scope, Workspace: strings.TrimSpace(workspace)}
 	return target, target.Validate()
 }
 
-func (t Target) Validate() error {
+func (t MemoryTarget) Validate() error {
 	if err := t.Scope.Validate(); err != nil {
 		return err
 	}
 	switch t.Scope {
-	case Project:
+	case MemoryProject:
 		if t.Workspace == "" {
 			return errors.New("project agent memory requires a workspace")
 		}
 		if !filepath.IsAbs(t.Workspace) {
 			return errors.New("project agent memory workspace is not absolute")
 		}
-	case User:
+	case MemoryUser:
 		if t.Workspace != "" {
 			return errors.New("user agent memory does not belong to a workspace")
 		}
@@ -65,41 +63,41 @@ func (t Target) Validate() error {
 	return nil
 }
 
-type Origin string
+type MemoryOrigin string
 
 const (
-	Automatic Origin = "auto"
-	Authored  Origin = "user"
+	MemoryAutomatic MemoryOrigin = "auto"
+	MemoryAuthored  MemoryOrigin = "user"
 )
 
-func (o Origin) Validate() error {
-	if o != Automatic && o != Authored {
+func (o MemoryOrigin) Validate() error {
+	if o != MemoryAutomatic && o != MemoryAuthored {
 		return fmt.Errorf("unknown agent memory origin %q", o)
 	}
 	return nil
 }
 
-type Status string
+type MemoryStatus string
 
 const (
-	Active  Status = "active"
-	Pending Status = "pending"
+	MemoryActive  MemoryStatus = "active"
+	MemoryPending MemoryStatus = "pending"
 )
 
-func (s Status) Validate() error {
-	if s != Active && s != Pending {
+func (s MemoryStatus) Validate() error {
+	if s != MemoryActive && s != MemoryPending {
 		return fmt.Errorf("unknown agent memory status %q", s)
 	}
 	return nil
 }
 
-// Item is one stable, addressable fact together with its review provenance.
-type Item struct {
+// MemoryItem is one stable, addressable fact together with its review provenance.
+type MemoryItem struct {
 	ID        string
-	Scope     Scope
+	Scope     MemoryScope
 	Content   string
-	Origin    Origin
-	Status    Status
+	Origin    MemoryOrigin
+	Status    MemoryStatus
 	Pinned    bool
 	SessionID string
 	Day       string
@@ -107,7 +105,7 @@ type Item struct {
 	UpdatedAt time.Time
 }
 
-func (i Item) Validate() error {
+func (i MemoryItem) Validate() error {
 	if strings.TrimSpace(i.ID) == "" {
 		return errors.New("agent memory item id is empty")
 	}
@@ -123,7 +121,7 @@ func (i Item) Validate() error {
 	if err := i.Status.Validate(); err != nil {
 		return fmt.Errorf("agent memory item %s: %w", i.ID, err)
 	}
-	if i.Origin == Authored && i.Status != Active {
+	if i.Origin == MemoryAuthored && i.Status != MemoryActive {
 		return fmt.Errorf("agent memory item %s: user-authored memory must be active", i.ID)
 	}
 	if i.CreatedAt.IsZero() || i.UpdatedAt.IsZero() {
@@ -135,28 +133,28 @@ func (i Item) Validate() error {
 	return nil
 }
 
-type ReviewDecision string
+type MemoryReviewDecision string
 
 const (
-	Approve ReviewDecision = "approve"
-	Reject  ReviewDecision = "reject"
+	MemoryApprove MemoryReviewDecision = "approve"
+	MemoryReject  MemoryReviewDecision = "reject"
 )
 
-func (r ReviewDecision) Validate() error {
-	if r != Approve && r != Reject {
+func (r MemoryReviewDecision) Validate() error {
+	if r != MemoryApprove && r != MemoryReject {
 		return fmt.Errorf("agent memory review decision must be approve or reject, got %q", r)
 	}
 	return nil
 }
 
-// Patch changes one item without manufacturing a default for an omitted field.
-type Patch struct {
+// MemoryPatch changes one item without manufacturing a default for an omitted field.
+type MemoryPatch struct {
 	ID      string
 	Content *string
 	Pinned  *bool
 }
 
-func (p Patch) Validate() error {
+func (p MemoryPatch) Validate() error {
 	if strings.TrimSpace(p.ID) == "" {
 		return errors.New("agent memory patch id is empty")
 	}
@@ -169,7 +167,7 @@ func (p Patch) Validate() error {
 	return nil
 }
 
-func (p Patch) ValidateResult(result Item) error {
+func (p MemoryPatch) ValidateResult(result MemoryItem) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
@@ -192,7 +190,7 @@ func (p Patch) ValidateResult(result Item) error {
 	return nil
 }
 
-func (t Target) ValidateAddResult(content string, result Item) error {
+func (t MemoryTarget) ValidateAddResult(content string, result MemoryItem) error {
 	if err := t.Validate(); err != nil {
 		return err
 	}
@@ -210,10 +208,10 @@ func (t Target) ValidateAddResult(content string, result Item) error {
 	if result.Content != content {
 		problems = append(problems, fmt.Errorf("runtime returned content %q, want %q", result.Content, content))
 	}
-	if result.Origin != Authored || result.Status != Active {
+	if result.Origin != MemoryAuthored || result.Status != MemoryActive {
 		problems = append(problems, fmt.Errorf(
 			"runtime returned %s/%s provenance, want %s/%s",
-			result.Origin, result.Status, Authored, Active,
+			result.Origin, result.Status, MemoryAuthored, MemoryActive,
 		))
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -222,10 +220,10 @@ func (t Target) ValidateAddResult(content string, result Item) error {
 	return nil
 }
 
-type Service interface {
-	Items(context.Context, Target) ([]Item, error)
-	Review(context.Context, string, ReviewDecision) error
-	Update(context.Context, Patch) (Item, error)
+type MemoryService interface {
+	Items(context.Context, MemoryTarget) ([]MemoryItem, error)
+	Review(context.Context, string, MemoryReviewDecision) error
+	Update(context.Context, MemoryPatch) (MemoryItem, error)
 	Delete(context.Context, string) error
-	Add(context.Context, Target, string) (Item, error)
+	Add(context.Context, MemoryTarget, string) (MemoryItem, error)
 }

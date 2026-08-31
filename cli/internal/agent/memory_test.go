@@ -1,4 +1,4 @@
-package agentmemory
+package agent
 
 import (
 	"strings"
@@ -10,22 +10,22 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name      string
-		scope     Scope
+		scope     MemoryScope
 		workspace string
 		wantErr   bool
 	}{
-		{name: "project", scope: Project, workspace: "/repo"},
-		{name: "project with relative workspace", scope: Project, workspace: "repo", wantErr: true},
-		{name: "project without workspace", scope: Project, wantErr: true},
-		{name: "user", scope: User},
-		{name: "user with workspace", scope: User, workspace: "/repo", wantErr: true},
+		{name: "project", scope: MemoryProject, workspace: "/repo"},
+		{name: "project with relative workspace", scope: MemoryProject, workspace: "repo", wantErr: true},
+		{name: "project without workspace", scope: MemoryProject, wantErr: true},
+		{name: "user", scope: MemoryUser},
+		{name: "user with workspace", scope: MemoryUser, workspace: "/repo", wantErr: true},
 		{name: "unknown", scope: "session", wantErr: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := NewTarget(test.scope, test.workspace)
+			_, err := NewMemoryTarget(test.scope, test.workspace)
 			if (err != nil) != test.wantErr {
-				t.Fatalf("NewTarget() error = %v, wantErr %t", err, test.wantErr)
+				t.Fatalf("NewMemoryTarget() error = %v, wantErr %t", err, test.wantErr)
 			}
 		})
 	}
@@ -34,12 +34,12 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 func TestItemRejectsBrokenReviewProjection(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := Item{ID: "mem_1", Scope: Project, Content: "fact", Origin: Automatic, Status: Pending, CreatedAt: now, UpdatedAt: now}
+	valid := MemoryItem{ID: "mem_1", Scope: MemoryProject, Content: "fact", Origin: MemoryAutomatic, Status: MemoryPending, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	invalid := valid
-	invalid.Origin = Authored
+	invalid.Origin = MemoryAuthored
 	if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "must be active") {
 		t.Fatalf("Validate() = %v", err)
 	}
@@ -47,15 +47,15 @@ func TestItemRejectsBrokenReviewProjection(t *testing.T) {
 
 func TestPatchRequiresAnIntentionalChange(t *testing.T) {
 	t.Parallel()
-	if err := (Patch{ID: "mem_1"}).Validate(); err == nil {
+	if err := (MemoryPatch{ID: "mem_1"}).Validate(); err == nil {
 		t.Fatal("empty patch was accepted")
 	}
 	empty := "  "
-	if err := (Patch{ID: "mem_1", Content: &empty}).Validate(); err == nil {
+	if err := (MemoryPatch{ID: "mem_1", Content: &empty}).Validate(); err == nil {
 		t.Fatal("blank content was accepted")
 	}
 	pinned := true
-	if err := (Patch{ID: "mem_1", Pinned: &pinned}).Validate(); err != nil {
+	if err := (MemoryPatch{ID: "mem_1", Pinned: &pinned}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -63,11 +63,11 @@ func TestPatchRequiresAnIntentionalChange(t *testing.T) {
 func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := Item{
-		ID: "mem_1", Scope: User, Content: "authored", Origin: Authored, Status: Active,
+	valid := MemoryItem{
+		ID: "mem_1", Scope: MemoryUser, Content: "authored", Origin: MemoryAuthored, Status: MemoryActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	target, err := NewTarget(User, "")
+	target, err := NewMemoryTarget(MemoryUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}
 
 	content, pinned := "edited", true
-	patch := Patch{ID: valid.ID, Content: &content, Pinned: &pinned}
+	patch := MemoryPatch{ID: valid.ID, Content: &content, Pinned: &pinned}
 	updated := valid
 	updated.Content, updated.Pinned = content, pinned
 	if err := patch.ValidateResult(updated); err != nil {
@@ -89,12 +89,12 @@ func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name   string
-		mutate func(*Item)
+		mutate func(*MemoryItem)
 		want   string
 	}{
-		{name: "identity", mutate: func(result *Item) { result.ID = "mem_other" }, want: "item"},
-		{name: "content", mutate: func(result *Item) { result.Content = "ignored" }, want: "content"},
-		{name: "pinned", mutate: func(result *Item) { result.Pinned = false }, want: "pinned"},
+		{name: "identity", mutate: func(result *MemoryItem) { result.ID = "mem_other" }, want: "item"},
+		{name: "content", mutate: func(result *MemoryItem) { result.Content = "ignored" }, want: "content"},
+		{name: "pinned", mutate: func(result *MemoryItem) { result.Pinned = false }, want: "pinned"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := updated

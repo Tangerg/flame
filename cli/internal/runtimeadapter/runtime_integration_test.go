@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
@@ -227,7 +226,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil || knowledgeService == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := agentmemory.NewTarget(agentmemory.User, "")
+	userTarget, err := agent.NewMemoryTarget(agent.MemoryUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +239,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	updated, err := agentMemory.Update(t.Context(), agentmemory.Patch{ID: added.ID, Pinned: &pinned})
+	updated, err := agentMemory.Update(t.Context(), agent.MemoryPatch{ID: added.ID, Pinned: &pinned})
 	if err != nil || !updated.Pinned {
 		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
 	}

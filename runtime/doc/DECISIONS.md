@@ -946,3 +946,10 @@
 - 背景：`authoringcontext`、`knowledge`、`skills`、`hookpolicy` 与 `diagnostictool` 都只投影当前 workspace/project/home 上下文，生产消费者同为 Runtime adapter 与 Terminal，且各自只有一个生产文件。它们没有独立进程、持久生命周期或替换边界，却分别暴露含糊的 `Service`、`Scope`、`Catalog`，使同一上下文按管理菜单平铺成五个 package；架构 allowlist 还长期保留已删除 Goal/feedback/usage package，形成无效边界。
 - 决策：`cli/internal/workspace` 以职责文件共同拥有 resolved Workspace、authoring documents/recipes、Knowledge、Skills、lifecycle Hooks 与 direct diagnostic Tool 的 CLI rich projection 和 consumer-owned ports。合并词汇使用 `KnowledgeTarget`、`SkillProposal`、`HookCatalog`、`DiagnosticToolDescriptor`、`AuthoringRecipe` 等语义全名，不建立 Workspace 总 service facade；Runtime adapter 继续翻译外部合同，Terminal 继续拥有交互生命周期，独立 filesystem publication 与 plugin process 仍保留各自 package。
 - 后果：物理删除五个旧 package、全部 import、架构层与遗留空目录，不保留 alias、forwarder 或 compatibility package；同时删除架构 allowlist 中早已退役的 Goal/feedback/usage 路径。CLI package 图减少五个按 operation/menu 拆分的节点，但各 rich value 的不变量和窄接口仍保留；Runtime Protocol、持久化与用户行为不变。
+
+## ADR-RT-133：CLI Agent Memory 投影属于 Agent context
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 CLI Agent context 第二批完成；允许 CLI internal Go API breaking change，Runtime Domain、公共 Go surface、Protocol、Artifact、SQLite 与 Desktop 不变。
+- 背景：CLI `agentmemory` 只有一个生产文件，定义 Runtime-maintained Memory 的管理投影和 consumer port；生产消费者仍只有 Runtime adapter 与 Terminal，与 `internal/agent` 已拥有的 Session、Run、Goal、feedback 和 usage 完全相同。它没有独立持久化、文件、进程、连接或 workflow lifecycle，单独 package 只是复刻 Runtime 的 bounded-context 目录；Runtime `domain/agentmemory` 的长期记忆、review/fold/ranking 语义仍有真实独立 owner，不能据此要求每个客户端复制同一物理结构。
+- 决策：`cli/internal/agent` 以 `MemoryScope`、`MemoryTarget`、`MemoryItem`、`MemoryPatch`、`MemoryReviewDecision` 和 `MemoryService` 语义全名共同拥有该消费投影；Runtime adapter 继续负责 Protocol 翻译和 workspace canonicalization，Terminal 继续拥有管理交互，Runtime Domain 继续唯一拥有产品 Memory 规则。
+- 后果：物理删除 `cli/internal/agentmemory`、全部 import、架构层和空目录，不保留 alias、forwarder 或 compatibility package。CLI Agent context 增加一个职责文件而不是总 service facade；Runtime Agent Memory 聚合、Protocol shape、持久化和用户行为不变。

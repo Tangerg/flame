@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -59,7 +58,7 @@ type runtimeReaderQuery struct {
 type runtimeReaderSelection struct {
 	knowledgeTarget   workspace.KnowledgeTarget
 	knowledgeEntry    bool
-	agentMemoryTarget agentmemory.Target
+	agentMemoryTarget agent.MemoryTarget
 }
 
 type usageReport struct {

@@ -73,11 +73,13 @@ Independent mechanisms such as exact integer advancement remain separate when
 they have their own vocabulary and peer consumers.
 
 `internal/agent` owns the cohesive CLI projection of the Agent Session and Run
-context. Session, Run, Goal, feedback, and usage values use semantic type names
-inside that package and share its consumer-owned Runtime ports. These facts do
-not earn separate packages merely because Runtime exposes separate operations;
-new packages require a different lifecycle, external boundary, or bounded
-context rather than another `Service` interface.
+context. Session, Run, Goal, feedback, usage, and Agent Memory values use
+semantic type names inside that package and share its consumer-owned Runtime
+ports. Runtime keeps Agent Memory as an independent product domain; the CLI does
+not reproduce that server-side package graph for a projection with the same two
+consumers and no independent resource lifecycle. New CLI packages require a
+different lifecycle, external boundary, or bounded context rather than another
+`Service` interface.
 
 `internal/workspace` owns the CLI projection of the selected filesystem and
 project context. Resolved workspaces, authored agent documents and recipes,

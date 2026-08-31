@@ -18,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -352,7 +351,7 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 // Profile returns the immutable discovery projection for this connection.
 func (r *Connection) Profile() runtimeprofile.Profile { return r.profile.Clone() }
 
-func (r *Connection) AgentMemoryService() agentmemory.Service {
+func (r *Connection) AgentMemoryService() agent.MemoryService {
 	if !r.supportsFeature(runtimeprofile.FeatureAgentMemory) {
 		return nil
 	}

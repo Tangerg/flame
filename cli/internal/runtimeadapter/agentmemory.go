@@ -9,7 +9,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
+	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -23,16 +23,16 @@ type agentMemoryBinding interface {
 
 type agentMemoryAdapter struct{ runtime *Connection }
 
-var _ agentmemory.Service = (*agentMemoryAdapter)(nil)
+var _ agent.MemoryService = (*agentMemoryAdapter)(nil)
 
-func (a *agentMemoryAdapter) Items(ctx context.Context, target agentmemory.Target) ([]agentmemory.Item, error) {
+func (a *agentMemoryAdapter) Items(ctx context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 	request := protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScope(validated.Scope)}
-	if validated.Scope == agentmemory.Project {
+	if validated.Scope == agent.MemoryProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
 	}
 	result, err := r.agentMemory.ListAgentMemory(ctx, request, r.callOptions())
@@ -42,7 +42,7 @@ func (a *agentMemoryAdapter) Items(ctx context.Context, target agentmemory.Targe
 	if result == nil {
 		return nil, runtimeContractViolation("list agent memory returned nil")
 	}
-	items := make([]agentmemory.Item, 0, len(result.Items))
+	items := make([]agent.MemoryItem, 0, len(result.Items))
 	seen := make(map[string]struct{}, len(result.Items))
 	for index, value := range result.Items {
 		item := projectAgentMemoryItem(value)
@@ -61,7 +61,7 @@ func (a *agentMemoryAdapter) Items(ctx context.Context, target agentmemory.Targe
 	return items, nil
 }
 
-func (a *agentMemoryAdapter) Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error {
+func (a *agentMemoryAdapter) Review(ctx context.Context, id string, decision agent.MemoryReviewDecision) error {
 	r := a.runtime
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -79,10 +79,10 @@ func (a *agentMemoryAdapter) Review(ctx context.Context, id string, decision age
 	}, options))
 }
 
-func (a *agentMemoryAdapter) Update(ctx context.Context, patch agentmemory.Patch) (agentmemory.Item, error) {
+func (a *agentMemoryAdapter) Update(ctx context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
 	r := a.runtime
 	if err := patch.Validate(); err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	validated := patch
 	if patch.Content != nil {
@@ -91,17 +91,17 @@ func (a *agentMemoryAdapter) Update(ctx context.Context, patch agentmemory.Patch
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	result, err := r.agentMemory.UpdateAgentMemory(ctx, protocol.AgentMemoryUpdateRequest{
 		ID: validated.ID, Content: clonePointer(validated.Content), Pinned: clonePointer(validated.Pinned),
 	}, options)
 	item, err := projectAgentMemoryResult("update agent memory", validated.ID, "", result, err)
 	if err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	if err := validated.ValidateResult(item); err != nil {
-		return agentmemory.Item{}, runtimeContractViolation("update agent memory returned an invalid acknowledgement: %v", err)
+		return agent.MemoryItem{}, runtimeContractViolation("update agent memory returned an invalid acknowledgement: %v", err)
 	}
 	return item, nil
 }
@@ -119,78 +119,78 @@ func (a *agentMemoryAdapter) Delete(ctx context.Context, id string) error {
 	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, protocol.AgentMemoryItemRequest{ID: id}, options))
 }
 
-func (a *agentMemoryAdapter) Add(ctx context.Context, target agentmemory.Target, content string) (agentmemory.Item, error) {
+func (a *agentMemoryAdapter) Add(ctx context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return agentmemory.Item{}, errors.New("add agent memory: content is empty")
+		return agent.MemoryItem{}, errors.New("add agent memory: content is empty")
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScope(validated.Scope), Content: content}
-	if validated.Scope == agentmemory.Project {
+	if validated.Scope == agent.MemoryProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
 	}
 	result, err := r.agentMemory.AddAgentMemory(ctx, request, options)
 	item, err := projectAgentMemoryResult("add agent memory", "", validated.Scope, result, err)
 	if err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	if err := validated.ValidateAddResult(content, item); err != nil {
-		return agentmemory.Item{}, runtimeContractViolation("add agent memory returned an invalid acknowledgement: %v", err)
+		return agent.MemoryItem{}, runtimeContractViolation("add agent memory returned an invalid acknowledgement: %v", err)
 	}
 	return item, nil
 }
 
-func (a *agentMemoryAdapter) resolveTarget(ctx context.Context, target agentmemory.Target) (agentmemory.Target, error) {
+func (a *agentMemoryAdapter) resolveTarget(ctx context.Context, target agent.MemoryTarget) (agent.MemoryTarget, error) {
 	if err := target.Validate(); err != nil {
-		return agentmemory.Target{}, err
+		return agent.MemoryTarget{}, err
 	}
-	if target.Scope != agentmemory.Project {
+	if target.Scope != agent.MemoryProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
 	if err != nil {
-		return agentmemory.Target{}, fmt.Errorf("resolve agent memory workspace: %w", err)
+		return agent.MemoryTarget{}, fmt.Errorf("resolve agent memory workspace: %w", err)
 	}
-	return agentmemory.NewTarget(target.Scope, resolved.Path)
+	return agent.NewMemoryTarget(target.Scope, resolved.Path)
 }
 
 func projectAgentMemoryResult(
 	operation, expectedID string,
-	expectedScope agentmemory.Scope,
+	expectedScope agent.MemoryScope,
 	result *protocol.AgentMemoryItem,
 	err error,
-) (agentmemory.Item, error) {
+) (agent.MemoryItem, error) {
 	if err != nil {
-		return agentmemory.Item{}, classifyError(err)
+		return agent.MemoryItem{}, classifyError(err)
 	}
 	if result == nil {
-		return agentmemory.Item{}, runtimeContractViolation("%s returned nil", operation)
+		return agent.MemoryItem{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	item := projectAgentMemoryItem(*result)
 	if err := item.Validate(); err != nil {
-		return agentmemory.Item{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
+		return agent.MemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
 	if expectedID != "" && item.ID != expectedID {
-		return agentmemory.Item{}, runtimeContractViolation("%s returned id %q for %q", operation, item.ID, expectedID)
+		return agent.MemoryItem{}, runtimeContractViolation("%s returned id %q for %q", operation, item.ID, expectedID)
 	}
 	if expectedScope != "" && item.Scope != expectedScope {
-		return agentmemory.Item{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
+		return agent.MemoryItem{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
 	}
 	return item, nil
 }
 
-func projectAgentMemoryItem(value protocol.AgentMemoryItem) agentmemory.Item {
-	return agentmemory.Item{
-		ID: value.ID, Scope: agentmemory.Scope(value.Scope), Content: value.Content,
-		Origin: agentmemory.Origin(value.Origin), Status: agentmemory.Status(value.Status), Pinned: value.Pinned,
+func projectAgentMemoryItem(value protocol.AgentMemoryItem) agent.MemoryItem {
+	return agent.MemoryItem{
+		ID: value.ID, Scope: agent.MemoryScope(value.Scope), Content: value.Content,
+		Origin: agent.MemoryOrigin(value.Origin), Status: agent.MemoryStatus(value.Status), Pinned: value.Pinned,
 		SessionID: value.SessionID, Day: value.Day, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -19,49 +18,49 @@ import (
 
 type agentMemoryServiceStub struct {
 	mu      sync.Mutex
-	project []agentmemory.Item
-	user    []agentmemory.Item
+	project []agent.MemoryItem
+	user    []agent.MemoryItem
 	added   chan string
-	review  chan agentmemory.ReviewDecision
+	review  chan agent.MemoryReviewDecision
 }
 
 type blockingAgentMemoryReviewService struct {
-	agentmemory.Service
-	started  chan agentmemory.ReviewDecision
+	agent.MemoryService
+	started  chan agent.MemoryReviewDecision
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 type blockingAgentMemoryUpdateService struct {
-	agentmemory.Service
-	started  chan agentmemory.Patch
+	agent.MemoryService
+	started  chan agent.MemoryPatch
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 func (b *blockingAgentMemoryUpdateService) Update(
 	ctx context.Context,
-	patch agentmemory.Patch,
-) (agentmemory.Item, error) {
+	patch agent.MemoryPatch,
+) (agent.MemoryItem, error) {
 	b.started <- patch
 	select {
 	case <-b.release:
-		return b.Service.Update(ctx, patch)
+		return b.MemoryService.Update(ctx, patch)
 	case <-ctx.Done():
 		close(b.canceled)
-		return agentmemory.Item{}, context.Cause(ctx)
+		return agent.MemoryItem{}, context.Cause(ctx)
 	}
 }
 
 func (b *blockingAgentMemoryReviewService) Review(
 	ctx context.Context,
 	id string,
-	decision agentmemory.ReviewDecision,
+	decision agent.MemoryReviewDecision,
 ) error {
 	b.started <- decision
 	select {
 	case <-b.release:
-		return b.Service.Review(ctx, id, decision)
+		return b.MemoryService.Review(ctx, id, decision)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
@@ -71,33 +70,33 @@ func (b *blockingAgentMemoryReviewService) Review(
 func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	now := time.Now()
 	return &agentMemoryServiceStub{
-		project: []agentmemory.Item{{
-			ID: "mem_pending", Scope: agentmemory.Project, Content: "confirm release steps",
-			Origin: agentmemory.Automatic, Status: agentmemory.Pending, SessionID: "ses_origin",
+		project: []agent.MemoryItem{{
+			ID: "mem_pending", Scope: agent.MemoryProject, Content: "confirm release steps",
+			Origin: agent.MemoryAutomatic, Status: agent.MemoryPending, SessionID: "ses_origin",
 			Day: "2026-08-12", CreatedAt: now, UpdatedAt: now,
 		}},
-		user: []agentmemory.Item{{
-			ID: "mem_user", Scope: agentmemory.User, Content: "prefer concise answers",
-			Origin: agentmemory.Authored, Status: agentmemory.Active, Pinned: true,
+		user: []agent.MemoryItem{{
+			ID: "mem_user", Scope: agent.MemoryUser, Content: "prefer concise answers",
+			Origin: agent.MemoryAuthored, Status: agent.MemoryActive, Pinned: true,
 			CreatedAt: now, UpdatedAt: now,
 		}},
-		added: make(chan string, 1), review: make(chan agentmemory.ReviewDecision, 1),
+		added: make(chan string, 1), review: make(chan agent.MemoryReviewDecision, 1),
 	}
 }
 
-func (a *agentMemoryServiceStub) Items(_ context.Context, target agentmemory.Target) ([]agentmemory.Item, error) {
+func (a *agentMemoryServiceStub) Items(_ context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
 	if err := target.Validate(); err != nil {
 		return nil, err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if target.Scope == agentmemory.User {
-		return append([]agentmemory.Item(nil), a.user...), nil
+	if target.Scope == agent.MemoryUser {
+		return append([]agent.MemoryItem(nil), a.user...), nil
 	}
-	return append([]agentmemory.Item(nil), a.project...), nil
+	return append([]agent.MemoryItem(nil), a.project...), nil
 }
 
-func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision agentmemory.ReviewDecision) error {
+func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision agent.MemoryReviewDecision) error {
 	if err := decision.Validate(); err != nil {
 		return err
 	}
@@ -107,13 +106,13 @@ func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision a
 		if a.project[index].ID != id {
 			continue
 		}
-		if a.project[index].Status != agentmemory.Pending {
+		if a.project[index].Status != agent.MemoryPending {
 			return errors.New("not pending")
 		}
-		if decision == agentmemory.Reject {
+		if decision == agent.MemoryReject {
 			a.project = append(a.project[:index], a.project[index+1:]...)
 		} else {
-			a.project[index].Status = agentmemory.Active
+			a.project[index].Status = agent.MemoryActive
 			a.project[index].UpdatedAt = time.Now()
 		}
 		a.review <- decision
@@ -122,13 +121,13 @@ func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision a
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Update(_ context.Context, patch agentmemory.Patch) (agentmemory.Item, error) {
+func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
 	if err := patch.Validate(); err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]agentmemory.Item{&a.project, &a.user} {
+	for _, items := range []*[]agent.MemoryItem{&a.project, &a.user} {
 		for index := range *items {
 			item := &(*items)[index]
 			if item.ID != patch.ID {
@@ -144,13 +143,13 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, patch agentmemory.Pat
 			return *item, nil
 		}
 	}
-	return agentmemory.Item{}, errors.New("not found")
+	return agent.MemoryItem{}, errors.New("not found")
 }
 
 func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]agentmemory.Item{&a.project, &a.user} {
+	for _, items := range []*[]agent.MemoryItem{&a.project, &a.user} {
 		for index := range *items {
 			if (*items)[index].ID == id {
 				*items = append((*items)[:index], (*items)[index+1:]...)
@@ -161,17 +160,17 @@ func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Add(_ context.Context, target agentmemory.Target, content string) (agentmemory.Item, error) {
+func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
 	if err := target.Validate(); err != nil {
-		return agentmemory.Item{}, err
+		return agent.MemoryItem{}, err
 	}
 	now := time.Now()
-	item := agentmemory.Item{
-		ID: "mem_added", Scope: target.Scope, Content: content, Origin: agentmemory.Authored,
-		Status: agentmemory.Active, CreatedAt: now, UpdatedAt: now,
+	item := agent.MemoryItem{
+		ID: "mem_added", Scope: target.Scope, Content: content, Origin: agent.MemoryAuthored,
+		Status: agent.MemoryActive, CreatedAt: now, UpdatedAt: now,
 	}
 	a.mu.Lock()
-	if target.Scope == agentmemory.User {
+	if target.Scope == agent.MemoryUser {
 		a.user = append(a.user, item)
 	} else {
 		a.project = append(a.project, item)
@@ -316,7 +315,7 @@ func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if got := awaitValue(t, memory.review, "agent memory review"); got != agentmemory.Approve {
+	if got := awaitValue(t, memory.review, "agent memory review"); got != agent.MemoryApprove {
 		t.Fatalf("review = %q", got)
 	}
 	host.Shows(t, "Agent memory · project")
@@ -328,7 +327,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryReviewService{
-		Service: base, started: make(chan agentmemory.ReviewDecision, 1),
+		MemoryService: base, started: make(chan agent.MemoryReviewDecision, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -345,7 +344,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if decision := awaitValue(t, memory.started, "agent memory review"); decision != agentmemory.Approve {
+	if decision := awaitValue(t, memory.started, "agent memory review"); decision != agent.MemoryApprove {
 		t.Fatalf("review decision = %q", decision)
 	}
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
@@ -364,11 +363,11 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	default:
 	}
 	release()
-	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != agentmemory.Approve {
+	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != agent.MemoryApprove {
 		t.Fatalf("committed review decision = %q", decision)
 	}
-	items, err := base.Items(t.Context(), agentmemory.Target{Scope: agentmemory.Project, Workspace: "/tmp/demo/store"})
-	if err != nil || len(items) != 1 || items[0].Status != agentmemory.Active {
+	items, err := base.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryProject, Workspace: "/tmp/demo/store"})
+	if err != nil || len(items) != 1 || items[0].Status != agent.MemoryActive {
 		t.Fatalf("project memory after review = (%+v, %v)", items, err)
 	}
 	stop()
@@ -377,7 +376,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryUpdateService{
-		Service: base, started: make(chan agentmemory.Patch, 1),
+		MemoryService: base, started: make(chan agent.MemoryPatch, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -401,7 +400,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	release()
 	host.Shows(t, "agent memory updated · mem_user")
 	host.Hides(t, "Agent memory · user")
-	items, err := base.Items(t.Context(), agentmemory.Target{Scope: agentmemory.User})
+	items, err := base.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("user memory after update = (%+v, %v)", items, err)
 	}
@@ -426,7 +425,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
 	host.Shows(t, "Agent memory · user")
 	host.Shows(t, "prefer explicit answers")
-	items, err := memory.Items(t.Context(), agentmemory.Target{Scope: agentmemory.User})
+	items, err := memory.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryUser})
 	if err != nil || len(items) != 1 || items[0].Content != "prefer explicit answers\nwith evidence" {
 		t.Fatalf("edited user memory = (%+v, %v)", items, err)
 	}
@@ -436,7 +435,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-unpin user mem_user")
 	host.Press(input.Enter)
 	host.Shows(t, "Agent memory · user")
-	items, err = memory.Items(t.Context(), agentmemory.Target{Scope: agentmemory.User})
+	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("unpinned user memory = (%+v, %v)", items, err)
 	}
@@ -446,7 +445,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-pin user mem_user")
 	host.Press(input.Enter)
 	host.Shows(t, "pinned")
-	items, err = memory.Items(t.Context(), agentmemory.Target{Scope: agentmemory.User})
+	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryUser})
 	if err != nil || len(items) != 1 || !items[0].Pinned {
 		t.Fatalf("pinned user memory = (%+v, %v)", items, err)
 	}
@@ -462,7 +461,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Press(input.Down)
 	host.Press(input.Enter)
 	host.Shows(t, "No active or pending memory")
-	items, err = memory.Items(t.Context(), agentmemory.Target{Scope: agentmemory.User})
+	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: agent.MemoryUser})
 	if err != nil || len(items) != 0 {
 		t.Fatalf("deleted user memory = (%+v, %v)", items, err)
 	}

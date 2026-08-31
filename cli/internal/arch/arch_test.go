@@ -283,7 +283,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 		{public: "Skills", private: "skills", typeName: "workspace.SkillService"},
 		{public: "MCP", private: "mcp", typeName: "mcp.Service"},
 		{public: "Schedules", private: "schedules", typeName: "schedule.Service"},
-		{public: "AgentMemory", private: "agentMemory", typeName: "agentmemory.Service"},
+		{public: "AgentMemory", private: "agentMemory", typeName: "agent.MemoryService"},
 		{public: "Knowledge", private: "knowledge", typeName: "workspace.KnowledgeService"},
 		{public: "DiagnosticTools", private: "diagnosticTools", typeName: "workspace.DiagnosticToolService"},
 		{public: "AuthoringContext", private: "authoringContext", typeName: "workspace.AuthoringContextService"},
@@ -1143,7 +1143,6 @@ var layers = []struct {
 	{"internal/exactint/", "exactint"},
 	{"internal/identity/", "identity"},
 	{"internal/runtimeadapter/", "runtimeadapter"},
-	{"internal/agentmemory/", "agentmemory"},
 	{"internal/failure/", "failure"},
 	{"internal/changefeed/", "changefeed"},
 	{"internal/workspace/", "workspace"},
@@ -1182,7 +1181,6 @@ var allowed = map[string][]string{
 	"commandreplay":   nil,
 	"runtimeprofile":  {"commandreplay"},
 	"agent":           {"exactint", "failure", "identity", "workspace"},
-	"agentmemory":     nil,
 	"changefeed":      nil,
 	"workspace":       nil,
 	"modelconfig":     {"failure", "identity"},
@@ -1203,12 +1201,12 @@ var allowed = map[string][]string{
 	"attachment":     {"agent"},
 	"reconnect":      {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
-	"runtimeadapter": {"agent", "agentmemory", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "workspace"},
+	"runtimeadapter": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "workspace"},
 	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "reconnect", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "workbench", "workspace"},
+	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "reconnect", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
@@ -1279,7 +1277,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {

@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/attachment"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
@@ -48,7 +47,7 @@ type Config struct {
 	Skills           workspace.SkillService
 	MCP              mcp.Service
 	Schedules        schedule.Service
-	AgentMemory      agentmemory.Service
+	AgentMemory      agent.MemoryService
 	Knowledge        workspace.KnowledgeService
 	DiagnosticTools  workspace.DiagnosticToolService
 	AuthoringContext workspace.AuthoringContextService

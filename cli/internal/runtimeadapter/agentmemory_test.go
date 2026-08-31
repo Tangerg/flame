@@ -5,10 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/agent"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/agentmemory"
 )
 
 type agentMemoryBindingStub struct {
@@ -78,7 +77,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := agentmemory.NewTarget(agentmemory.Project, "/workspace")
+			target, err := agent.NewMemoryTarget(agent.MemoryProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -160,26 +159,26 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		}},
 		meta: requestMeta("test"),
 	}}
-	project, err := agentmemory.NewTarget(agentmemory.Project, "/workspace")
+	project, err := agent.NewMemoryTarget(agent.MemoryProject, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := adapter.Items(t.Context(), project)
-	if err != nil || len(items) != 1 || items[0].Status != agentmemory.Pending {
+	if err != nil || len(items) != 1 || items[0].Status != agent.MemoryPending {
 		t.Fatalf("Items = (%+v, %v)", items, err)
 	}
-	user, err := agentmemory.NewTarget(agentmemory.User, "")
+	user, err := agent.NewMemoryTarget(agent.MemoryUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, itemsErr := adapter.Items(t.Context(), user); itemsErr != nil {
 		t.Fatal(itemsErr)
 	}
-	if reviewErr := adapter.Review(t.Context(), "mem_1", agentmemory.Approve); reviewErr != nil {
+	if reviewErr := adapter.Review(t.Context(), "mem_1", agent.MemoryApprove); reviewErr != nil {
 		t.Fatal(reviewErr)
 	}
 	content, pinned := "edited", true
-	updated, err := adapter.Update(t.Context(), agentmemory.Patch{ID: "mem_1", Content: &content, Pinned: &pinned})
+	updated, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: "mem_1", Content: &content, Pinned: &pinned})
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
@@ -235,7 +234,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			stub: &agentMemoryBindingStub{updateResult: &wrongUpdate},
 			invoke: func(adapter *agentMemoryAdapter) error {
 				content, pinned := "edited", true
-				_, err := adapter.Update(t.Context(), agentmemory.Patch{ID: "mem_1", Content: &content, Pinned: &pinned})
+				_, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: "mem_1", Content: &content, Pinned: &pinned})
 				return err
 			},
 		},
@@ -243,7 +242,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			name: "add content",
 			stub: &agentMemoryBindingStub{addResult: &wrongAdd},
 			invoke: func(adapter *agentMemoryAdapter) error {
-				target, err := agentmemory.NewTarget(agentmemory.User, "")
+				target, err := agent.NewMemoryTarget(agent.MemoryUser, "")
 				if err != nil {
 					return err
 				}
