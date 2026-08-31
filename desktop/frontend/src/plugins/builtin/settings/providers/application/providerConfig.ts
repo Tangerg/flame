@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import type { ProviderTestOutcome } from "./ports/providerGateway";
 import { t } from "@/lib/i18n";
 import {
   type ProviderConfiguration,
@@ -87,7 +88,7 @@ export function useUpdateProvider(): (input: ProviderUpdate) => Promise<Provider
  * empty model clears it back to the main turn model. Validation is server-side, and the
  * failure is flattened to `{ ok, error }` here because the pane must not import `@/rpc`.
  */
-export async function setUtilityRole(role: ProviderRole): Promise<TestOutcome> {
+export async function setUtilityRole(role: ProviderRole): Promise<ProviderTestOutcome> {
   const owner = ProviderMutationOwner.current();
   try {
     await owner.setUtilityRole(role);
@@ -107,7 +108,7 @@ export async function setUtilityRole(role: ProviderRole): Promise<TestOutcome> {
  * keyword-only. Validated server-side and flattened to `{ ok, error }` so the pane, which
  * must not import `@/rpc`, renders the reason inline.
  */
-export async function setEmbeddingRole(role: ProviderRole): Promise<TestOutcome> {
+export async function setEmbeddingRole(role: ProviderRole): Promise<ProviderTestOutcome> {
   const owner = ProviderMutationOwner.current();
   try {
     await owner.setEmbeddingRole(role);
@@ -122,18 +123,12 @@ export async function setEmbeddingRole(role: ProviderRole): Promise<TestOutcome>
   }
 }
 
-export interface TestOutcome {
-  ok: boolean;
-  /** Human-readable failure reason (e.g. a 401 detail), already flattened. */
-  error?: string;
-}
-
 /**
  * Live-probe a provider (providers.test): the runtime sends a minimal request
  * with the provider's key. A failed probe comes back as `{ ok:false, error }`
  * (NOT an RPC error), so callers render the reason inline.
  */
-export function useTestProvider(): (provider: string) => Promise<TestOutcome> {
+export function useTestProvider(): (provider: string) => Promise<ProviderTestOutcome> {
   return useCallback(async (provider) => {
     const res = await ProviderMutationOwner.current().testProvider(provider);
     return {

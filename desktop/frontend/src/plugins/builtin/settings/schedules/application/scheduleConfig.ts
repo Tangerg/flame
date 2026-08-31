@@ -13,12 +13,7 @@ export interface ScheduleConfig {
   revision: number;
 }
 
-export interface ScheduleConfigInput {
-  title: string;
-  instructions: string;
-  cwd: string;
-  cron: string;
-}
+export type { ScheduleDraft as ScheduleConfigInput } from "./scheduleDraft";
 
 export interface ScheduledRunIdentity {
   sessionId: string;

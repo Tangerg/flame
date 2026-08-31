@@ -1,16 +1,10 @@
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
-import { TOOL_PREVIEW, useExtensionByKey } from "@/plugins/sdk";
+import { TOOL_PREVIEW, useExtensionByKey, type ToolPreviewProps } from "@/plugins/sdk";
 import { ToolInspector } from "./ToolInspector";
 import { toolRoutingKey } from "../public/toolIcon";
 import { createElement } from "react";
 
-interface Props {
-  tool: ToolCall;
-  onOpenView?: () => void;
-}
-
-export function ToolPreview({ tool, onOpenView }: Props) {
+export function ToolPreview({ tool, onOpenView }: ToolPreviewProps) {
   const key = toolRoutingKey(tool);
   const Preview = useExtensionByKey(TOOL_PREVIEW, key);
   if (!Preview) {

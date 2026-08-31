@@ -1,12 +1,6 @@
 import { ExternalLink } from "@/ui";
-export interface SearchResult {
-  url: string;
-  domain: string;
-  title: string;
-  snippet: string;
-}
-
-export function SearchResults({ results }: { results: SearchResult[] }) {
+import type { WebSearchPreviewResult } from "../../application/specialisedPreviewProjections";
+export function SearchResults({ results }: { results: WebSearchPreviewResult[] }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
       {results.map((r) => (
