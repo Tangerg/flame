@@ -18,13 +18,13 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 )
 
-// constClient adapts a fixed client to the per-call [auxiliary.Resolver] the
+// constClient adapts a fixed client to the per-call [modeladapter.AuxiliaryResolver] the
 // maintenance services take — these tests don't exercise the runtime's
 // utility-role swap, just a stable stub model.
-func constClient(c chatclient.Client) auxiliary.Resolver {
+func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
 	return func(context.Context) *chatclient.Client { return &c }
 }
 
@@ -42,7 +42,7 @@ func intPointer(value int) *int { return &value }
 func mustNewCompactor(
 	t *testing.T,
 	store compactionStore,
-	client auxiliary.Resolver,
+	client modeladapter.AuxiliaryResolver,
 	liveState LiveStateSnapshotter,
 	values CompactionPolicyValues,
 ) *Compactor {

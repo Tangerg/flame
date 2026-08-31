@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
@@ -32,7 +32,7 @@ type compactionStore interface {
 // Compactor makes [Compactor.CompactIfNeeded] a silent no-op.
 type Compactor struct {
 	store     compactionStore
-	client    auxiliary.Resolver
+	client    modeladapter.AuxiliaryResolver
 	liveState LiveStateSnapshotter // nil = no post-compaction live-state reminder
 	policy    compactionPolicy
 }
@@ -60,7 +60,7 @@ type compactionPlan struct {
 // per-call chat-client resolver. liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
 // model of running shells the summary cannot reconstruct.
-func NewCompactor(store compactionStore, client auxiliary.Resolver, liveState LiveStateSnapshotter, values CompactionPolicyValues) (*Compactor, error) {
+func NewCompactor(store compactionStore, client modeladapter.AuxiliaryResolver, liveState LiveStateSnapshotter, values CompactionPolicyValues) (*Compactor, error) {
 	policy, err := newCompactionPolicy(values)
 	if err != nil {
 		return nil, err

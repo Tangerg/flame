@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
@@ -93,7 +93,7 @@ type SkillProposalMiner struct {
 	history   messageReader
 	proposals proposalSubmitter
 	source    skillSource
-	client    auxiliary.Resolver
+	client    modeladapter.AuxiliaryResolver
 	policy    skillMiningPolicy
 	minMsgs   int
 
@@ -107,7 +107,7 @@ type SkillProposalMiner struct {
 // NewSkillProposalMiner builds the Run-boundary skill skillMiner over the conversation
 // history reader, the proposal use case, the active-Skill source (for the
 // read-before-write refinement guard), and the utility-model client resolver.
-func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client auxiliary.Resolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
+func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
 	policy, err := newSkillMiningPolicy(values)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ description: <what the skill does and WHEN to use it, one or two sentences>
 // directive, or a new-skill SKILL.md; the caller interprets which.
 func (s *SkillProposalMiner) askForSkill(ctx context.Context, messages []chat.Message) (string, error) {
 	transcript := renderTranscript(messages)
-	text, err := auxiliary.Complete(ctx, s.resolveClient(ctx), auxiliary.Prompt{
+	text, err := modeladapter.CompleteAuxiliary(ctx, s.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
 		SystemPrompt: skillMinerPrompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
@@ -335,7 +335,7 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 	input.WriteString(current.Instructions)
 	input.WriteString("\n\nCONVERSATION\n---\n")
 	input.WriteString(renderTranscript(messages))
-	text, err := auxiliary.Complete(ctx, s.resolveClient(ctx), auxiliary.Prompt{
+	text, err := modeladapter.CompleteAuxiliary(ctx, s.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
 		SystemPrompt: skillRevisePrompt, UserPrompt: input.String(),
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})

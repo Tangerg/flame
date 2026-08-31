@@ -16,7 +16,7 @@ const (
 	maintenanceModelInputBytes = 512 * 1024
 	// maintenanceTranscriptBytes is the aggregate model-input allocation for
 	// one rendered conversation. It mirrors the proven app2 envelope while
-	// keeping the hard request cap in adapter/model/auxiliary as the final guard.
+	// keeping the hard request cap in adapter/model as the final guard.
 	maintenanceTranscriptBytes = 384 * 1024
 	// maintenanceMessageBytes prevents one message from consuming the whole
 	// transcript when only a few messages are present.

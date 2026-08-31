@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -97,14 +97,14 @@ type messageReader interface {
 type MemoryConsolidator struct {
 	history messageReader
 	memory  agentMemory
-	client  auxiliary.Resolver
+	client  modeladapter.AuxiliaryResolver
 	policy  memoryCurationPolicy
 	minMsgs int
 	now     func() time.Time
 }
 
 // NewMemoryConsolidator builds the Run-boundary memory consolidation worker.
-func NewMemoryConsolidator(store messageReader, memory agentMemory, client auxiliary.Resolver, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
+func NewMemoryConsolidator(store messageReader, memory agentMemory, client modeladapter.AuxiliaryResolver, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
 	policy, err := newMemoryCurationPolicy(values)
 	if err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ transient state, one-off observations, and facts already obvious from source.
 If nothing deserves the append-only memory ledger, respond exactly NO_FACTS.
 Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bullets,
 ordered from most important to least important, without a preamble or code fence.`
-	text, err := auxiliary.Complete(ctx, m.resolveClient(ctx), auxiliary.Prompt{
+	text, err := modeladapter.CompleteAuxiliary(ctx, m.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
 		SystemPrompt: prompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
@@ -306,7 +306,7 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 	for _, fact := range pending {
 		fmt.Fprintf(&input, "[%s #%d] %s\n", fact.Day, fact.Sequence, fact.Content)
 	}
-	text, err := auxiliary.Complete(ctx, m.resolveClient(ctx), auxiliary.Prompt{
+	text, err := modeladapter.CompleteAuxiliary(ctx, m.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
 		SystemPrompt: systemPrompt, UserPrompt: input.String(),
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})

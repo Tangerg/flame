@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 // SessionStores is the SQLite-backed adapter for the session lifecycle's

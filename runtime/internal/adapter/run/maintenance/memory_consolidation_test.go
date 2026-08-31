@@ -15,7 +15,7 @@ import (
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 type scriptedReply struct {

@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 // Config is the construction-time bundle for [NewAssembly]. It contains Host

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
+	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {

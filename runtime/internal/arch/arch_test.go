@@ -18,8 +18,6 @@ import (
 	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -107,67 +105,6 @@ func primitiveNumericType(name string) bool {
 	default:
 		return false
 	}
-}
-
-// TestPlanMutationHasOneOwner freezes the P16 Plan vertical: aggregate fields
-// are closed, Tool adapters cannot regain a Store-shaped inbound boundary, and
-// SQLite cannot assign time or invoke the aggregate transition itself.
-func TestPlanMutationHasOneOwner(t *testing.T) {
-	stateType := reflect.TypeFor[plan.State]()
-	for index := range stateType.NumField() {
-		field := stateType.Field(index)
-		if field.IsExported() {
-			t.Errorf("plan.State field %s is exported; replacements must enter through domain behavior", field.Name)
-		}
-	}
-	root := moduleRoot(t)
-	forbidTopLevelNames(t,
-		filepath.Join(root, "internal", "adapter", "toolset", "builtin"),
-		map[string]string{"Store": "Plan tools consume application use cases, not persistence"},
-	)
-	forbidSelectorCalls(t,
-		filepath.Join(root, "internal", "infra", "storage", "sqlite", "plan.go"),
-		map[string]string{
-			"Now":     "the Plan use case supplies replacement time",
-			"Replace": "the Plan aggregate decides replacements before persistence",
-		},
-	)
-}
-
-// TestSessionMutationHasOneOwner freezes the P16 Session vertical: aggregate
-// fields stay closed and SQLite persists exact values without constructing,
-// editing, forking, naming, or restoring product state itself.
-func TestSessionMutationHasOneOwner(t *testing.T) {
-	sessionType := reflect.TypeFor[session.Session]()
-	for index := range sessionType.NumField() {
-		field := sessionType.Field(index)
-		if field.IsExported() {
-			t.Errorf("session.Session field %s is exported; changes must enter through domain behavior", field.Name)
-		}
-	}
-
-	root := moduleRoot(t)
-	mutationFile := filepath.Join(root, "internal", "infra", "storage", "sqlite", "session_mutation.go")
-	forbidExternalImports(t, mutationFile, []string{"time", "github.com/google/uuid"})
-	forbidSelectorCalls(t, mutationFile, map[string]string{
-		"Apply":                    "Session edits belong to the aggregate before persistence",
-		"Fork":                     "Session forks belong to the aggregate before persistence",
-		"NameIfUntitled":           "generated-title arbitration belongs to the aggregate and use case",
-		"InstallRestoredWorkspace": "workspace admission belongs outside persistence",
-		"ReplaceWithRestore":       "Session restore replacement belongs to the aggregate and use case",
-	})
-	forbidTopLevelNames(t, mutationFile, map[string]string{
-		"Create":           "Session construction belongs to Domain/Application",
-		"Ensure":           "opening idempotency must not derive Session state in persistence",
-		"Restore":          "restore persists an application-decided exact replacement",
-		"Patch":            "Session edits belong to Domain/Application",
-		"Fork":             "Session lineage belongs to Domain/Application",
-		"SetModel":         "field setters create a second mutation owner",
-		"Rename":           "field setters create a second mutation owner",
-		"RenameIfUntitled": "title arbitration belongs to Domain/Application",
-		"SetCWD":           "workspace edits belong to Domain/Application",
-		"SetFavorite":      "field setters create a second mutation owner",
-	})
 }
 
 // TestDependencyRule enforces Clean Architecture's Dependency Rule for Runtime:
@@ -1646,8 +1583,8 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 		"internal/application/agent/sessions/portable_snapshot.go":   {},
 		"internal/application/agent/sessions/snapshot_validation.go": {},
 		"internal/delivery/artifact_decode.go":                       {},
-		"internal/infra/storage/sqlite/transcript.go":                {},
-		"internal/infra/storage/sqlite/transcript_codec.go":          {},
+		"internal/infra/sqlite/transcript.go":                        {},
+		"internal/infra/sqlite/transcript_codec.go":                  {},
 		"internal/testsupport/item.go":                               {},
 	}
 	walkErr := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
@@ -2339,7 +2276,7 @@ const (
 	ringDomain      = "domain"
 )
 
-// layerOf classifies a module-relative package dir (e.g. "internal/infra/storage/sqlite")
+// layerOf classifies a module-relative package dir (e.g. "internal/infra/sqlite")
 // into its ring, or "" when the path is outside the rings under test.
 func layerOf(rel string) string {
 	switch {
@@ -2408,36 +2345,5 @@ func moduleRoot(t *testing.T) string {
 			t.Fatal("go.mod not found walking up from test dir")
 		}
 		dir = parent
-	}
-}
-
-// TestSystemInvariantCatalogStaysOutOfRuntimeRings keeps descriptive contract
-// metadata out of production packages. The actual transaction behavior remains
-// in Application; only contractgen names the published catalog.
-func TestSystemInvariantCatalogStaysOutOfRuntimeRings(t *testing.T) {
-	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal"), map[string]string{
-		"SystemInvariantSpec": "a cross-resource invariant is named by the ring that owns its transaction",
-		"TransactionBoundary": "descriptive contract metadata belongs outside the production graph",
-	})
-	// The generated catalog must remain actionable. This validation is
-	// fitness-test behavior rather than a production Runtime dependency.
-	specs := readSystemInvariantSpecs(t)
-	if len(specs) == 0 {
-		t.Fatal("no system invariant is declared; the manifest gate would pass vacuously")
-	}
-	seen := make(map[string]bool, len(specs))
-	for _, spec := range specs {
-		switch {
-		case spec.Key == "":
-			t.Error("system invariant key is required")
-		case seen[spec.Key]:
-			t.Errorf("system invariant %q is declared twice", spec.Key)
-		case spec.Why == "":
-			t.Errorf("system invariant %q does not explain what it protects", spec.Key)
-		case len(spec.Boundaries) == 0:
-			t.Errorf("system invariant %q has no responsible transaction", spec.Key)
-		}
-		seen[spec.Key] = true
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/storage/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 // InterruptStore translates the Application-owned waiting-tree hand-off to
