@@ -3,7 +3,14 @@
 // catalogs because a literal here is outside the dictionaries the locale guard checks. Each
 // key's leaf is the wire symbol VERBATIM, keeping the table one-to-one with the protocol.
 
-import { errorDetail, errorType, RPC_METHOD_NOT_FOUND, RpcError, RpcTransportError } from "@/rpc";
+import {
+  errorDetail,
+  errorType,
+  isErrorType,
+  RPC_METHOD_NOT_FOUND,
+  RpcError,
+  RpcTransportError,
+} from "@/rpc";
 import type { ProblemData } from "@/rpc";
 import { t } from "./i18n";
 
@@ -86,4 +93,14 @@ export function isUnsupportedMethod(err: unknown): boolean {
     (err instanceof RpcTransportError && err.status === 404) ||
     (err instanceof RpcError && err.code === RPC_METHOD_NOT_FOUND)
   );
+}
+
+/**
+ * A collection the connected Runtime does not implement is EMPTY, not broken. Anything else
+ * is still a failure and is rethrown. Two adapters carried a private copy of this; it is a
+ * reading of a protocol symbol, so it belongs with the rest of them.
+ */
+export function emptyListIfUngated(error: unknown): never[] {
+  if (isErrorType(error, "capability_not_negotiated")) return [];
+  throw error;
 }

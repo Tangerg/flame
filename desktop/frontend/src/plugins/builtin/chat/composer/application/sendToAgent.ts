@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useChatSend, type AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { UserInput } from "../public/input";
 
-function composerInputToAgentInput(input: UserInput): AgentInput {
+export function composerInputToAgentInput(input: UserInput): AgentInput {
   return {
     parts: input.parts.map((part) =>
       part.kind === "text"

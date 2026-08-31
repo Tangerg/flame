@@ -1,7 +1,7 @@
 import { getContainer } from "@/main/container";
+import { emptyListIfUngated } from "@/lib/rpcErrors";
 import type { Contributor, DataProviderSpec } from "@/plugins/sdk";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { isErrorType } from "@/rpc";
 import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,
@@ -11,11 +11,6 @@ import { mcpServerSettings } from "./runtimeMcpServerProjection";
 
 function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
   return request.then((page) => page.data);
-}
-
-function emptyListIfUngated(error: unknown): never[] {
-  if (isErrorType(error, "capability_not_negotiated")) return [];
-  throw error;
 }
 
 function requiredQuery(params: unknown): McpToolsQuery {

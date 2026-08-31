@@ -1,16 +1,6 @@
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { ComposerDraftInput } from "../../composer/public/draft";
-import type { UserInput } from "../../composer/public/input";
-
-export function composerInputToAgentInput(input: UserInput): AgentInput {
-  return {
-    parts: input.parts.map((part) =>
-      part.kind === "text"
-        ? { kind: "text", text: part.text }
-        : { kind: "image", mime: part.mime, data: part.data },
-    ),
-  };
-}
+export { composerInputToAgentInput } from "../../composer/public/sendToAgent";
 
 export function agentInputToComposerDraft(input: AgentInput): ComposerDraftInput {
   return {

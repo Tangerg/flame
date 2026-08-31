@@ -1,6 +1,7 @@
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
+import { basename } from "@/lib/path";
 import { Chip, Icon, IconButton, Tooltip } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
@@ -71,11 +72,6 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
       </AnimatePresence>
     </div>
   );
-}
-
-function basename(path: string): string {
-  const cut = path.lastIndexOf("/");
-  return cut >= 0 ? path.slice(cut + 1) : path;
 }
 
 function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () => void }) {

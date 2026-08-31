@@ -8,7 +8,6 @@ import type {
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
 } from "@/rpc";
-import { isErrorType } from "@/rpc";
 
 export function toAgentSessionSummary(session: Session): AgentSessionSummary {
   return {
@@ -57,7 +56,3 @@ export function toWorkspaceFileChangeSummary(change: RpcFileChange): WorkspaceFi
 
 // Capability-gated workspace reads should render as empty optional surfaces,
 // not as broken panes, when the runtime negotiated the feature off.
-export function emptyListIfUngated(error: unknown): never[] {
-  if (isErrorType(error, "capability_not_negotiated")) return [];
-  throw error;
-}

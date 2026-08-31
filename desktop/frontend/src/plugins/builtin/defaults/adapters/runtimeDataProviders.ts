@@ -1,4 +1,5 @@
 import type { ApprovalRulesQuery } from "@/plugins/builtin/agent/public/approvalPolicy";
+import { emptyListIfUngated } from "@/lib/rpcErrors";
 import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
@@ -52,7 +53,6 @@ import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
 import { asSessionId, type FlameClient, type Schedule } from "@/rpc";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import {
-  emptyListIfUngated,
   toWorkspaceFileChangeSummary,
   toWorkspaceProjectSummary,
   toAgentSessionSummary,
