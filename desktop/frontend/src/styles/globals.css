@@ -1224,19 +1224,24 @@ html[data-control-treatment="elevated"]
 
 .msg-scroll-viewport {
   --transcript-fade: 24px;
+  /* The transcript runs BEHIND the composer, which is translucent. The bottom fade therefore
+     has to end where the composer starts — anchored to the viewport's own edge it left the
+     band between them at full opacity, and a card's buttons read straight through the input
+     surface. `--composer-overlay` is the measured height of what covers it. */
+  --transcript-bottom-edge: calc(100% - var(--composer-overlay, 0px));
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
     #000 var(--transcript-fade),
-    #000 calc(100% - var(--transcript-fade)),
-    transparent 100%
+    #000 calc(var(--transcript-bottom-edge) - var(--transcript-fade)),
+    transparent var(--transcript-bottom-edge)
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
     #000 var(--transcript-fade),
-    #000 calc(100% - var(--transcript-fade)),
-    transparent 100%
+    #000 calc(var(--transcript-bottom-edge) - var(--transcript-fade)),
+    transparent var(--transcript-bottom-edge)
   );
   scroll-padding-top: var(--transcript-fade);
   scroll-padding-bottom: calc(var(--composer-overlay, 0px) + var(--transcript-fade));

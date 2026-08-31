@@ -883,3 +883,36 @@ for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme =
     ).toEqual([]);
   });
 }
+
+// The transcript scrolls BEHIND a translucent composer, so whatever the composer covers has
+// to be masked out — otherwise a card's buttons read straight through the input surface. The
+// mask is anchored to `--composer-overlay`, so the invariant is that the measured overlay
+// covers the whole overlap; a mask anchored to the viewport's own edge does not.
+for (const state of ["narrative", "long-content", "tool-shells"] as const) {
+  test(`nothing shows through the composer in ${state}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openFixture(page, { fixture: "agent", state });
+
+    const geometry = await page.evaluate(() => {
+      const viewport = document.querySelector(".msg-scroll-viewport");
+      const composer = document.querySelector(".agent-composer-glass");
+      if (!viewport || !composer) return null;
+      const style = getComputedStyle(viewport);
+      // The LAST stop is where the transcript has finished fading. Read it rather than the
+      // custom property: the property being right proves nothing if the mask ignores it.
+      const stops = [...style.maskImage.matchAll(/calc\(100% - ([\d.]+)px\)|\b(100)%\)/g)];
+      const last = stops.at(-1);
+      return {
+        overlap: viewport.getBoundingClientRect().bottom - composer.getBoundingClientRect().top,
+        overlay: Number.parseFloat(style.getPropertyValue("--composer-overlay")),
+        fadesOutAt: last?.[1] === undefined ? 0 : Number.parseFloat(last[1]),
+      };
+    });
+
+    expect(geometry).not.toBeNull();
+    // Non-vacuous: the composer really does cover part of the transcript here.
+    expect(geometry!.overlap).toBeGreaterThan(24);
+    expect(geometry!.overlay).toBeGreaterThanOrEqual(geometry!.overlap);
+    expect(geometry!.fadesOutAt).toBeCloseTo(geometry!.overlay, 0);
+  });
+}
