@@ -311,7 +311,7 @@ Adapter 实现 Application 消费端口并翻译外部能力。若 Domain 存在
 
 - `agentexec`：Agent Framework 防腐层；
 - `persistence` / `runsegment` / `runrecovery`：把应用 write-set 映射到 SQLite 技术事务；
-- `modelclient`：把 Provider/model selection 映射到 chat client；
+- `model`：把 Provider/model selection 统一映射到 catalog facts、probe、chat 与 embedding client；
 - `toolset`：组装通用 Tool 能力；
 - `workspace`、`maintenance`、`pricing`、`hooks`：各自准确的应用适配。
 

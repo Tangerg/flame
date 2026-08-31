@@ -1,4 +1,4 @@
-package modelcatalog
+package model
 
 import (
 	"errors"

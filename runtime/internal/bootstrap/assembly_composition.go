@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
@@ -64,7 +64,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		scheduleCoordinator, err = schedules.New(schedules.Dependencies{
 			Store:         cfg.ScheduleStore,
 			Paths:         workspaceadapter.Resolver{},
-			Models:        modelcatalog.Capabilities{},
+			Models:        modeladapter.Capabilities{},
 			Identities:    scheduleidentity.Source{},
 			Invalidations: invalidations.Publish,
 		})

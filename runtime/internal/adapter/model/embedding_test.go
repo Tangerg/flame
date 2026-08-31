@@ -1,4 +1,4 @@
-package modelclient
+package model
 
 import (
 	"strings"

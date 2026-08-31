@@ -906,24 +906,45 @@ func TestBootstrapDoesNotOwnLiveRuntimeState(t *testing.T) {
 	dir := filepath.Join(root, "internal", "bootstrap")
 	forbidExternalImports(t, dir, []string{"sync/atomic"})
 	forbidTopLevelNames(t, dir, map[string]string{
-		"buildUtilityEnvironment":   "utility role resolution belongs to modelclient",
-		"buildEmbeddingEnvironment": "embedding role resolution belongs to modelclient",
+		"buildUtilityEnvironment":   "utility role resolution belongs to adapter/model",
+		"buildEmbeddingEnvironment": "embedding role resolution belongs to adapter/model",
 		"DefaultClient":             "default selections must resolve through the live provider registry",
 		"liveStateSnapshot":         "Run maintenance live-state projection belongs to adapter/runmaintenance",
 	})
 }
 
-// TestModelClientDoesNotRetainCredentialGenerations keeps exact model-client
+// TestModelAdapterDoesNotRetainCredentialGenerations keeps exact model-client
 // construction tied to one resolution. A process-lifetime cache would retain
 // arbitrary compatible model ids and old SDK objects after key/endpoint
 // rotation; active executions already own the client they resolved.
-func TestModelClientDoesNotRetainCredentialGenerations(t *testing.T) {
+func TestModelAdapterDoesNotRetainCredentialGenerations(t *testing.T) {
 	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "adapter", "modelclient")
+	dir := filepath.Join(root, "internal", "adapter", "model")
 	forbidExternalImports(t, dir, []string{"sync", "sync/atomic"})
 	forbidTopLevelNames(t, dir, map[string]string{
 		"credentialClientIdentity": "credential-bound clients must not have process-lifetime cache identity",
 	})
+}
+
+// TestModelAdapterHasOneProviderClientConstructionOwner prevents catalog
+// probes, chat, and embeddings from rebuilding credential/endpoint policy in
+// separate files. provider_inputs.go is the sole translation from the Provider
+// aggregate to llm.ClientSpec.
+func TestModelAdapterHasOneProviderClientConstructionOwner(t *testing.T) {
+	root := moduleRoot(t)
+	files, err := filepath.Glob(filepath.Join(root, "internal", "adapter", "model", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range files {
+		name := filepath.Base(path)
+		if name == "provider_inputs.go" || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		forbidQualifiedCalls(t, path, map[string]string{
+			"llm.NewClientSpec": "provider_inputs.go owns Provider-to-client construction",
+		})
+	}
 }
 
 // TestApplicationCoordinatorsDoNotExposeAtomicState makes live-state

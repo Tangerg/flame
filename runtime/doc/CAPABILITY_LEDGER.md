@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P301 进行中。
+> 状态：当前能力快照；P302 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -556,7 +556,7 @@ P272 把Runtime provider integration从两个可独立漂移的magic map和Appli
 
 P273 让Runtime发布的`configured`成为provider readiness唯一权威事实，`credential`只说明实际secret material是否存在以及来自stored还是environment。required/optional authentication、adapter/default/configured endpoint三项policy共同决定可用性；Ollama在无registry row、无key时仍可使用catalog local endpoint，用户显式key则正常发送。Ollama依赖SDK的本地non-empty-key validation由最内层防腐adapter满足，unauthenticated RoundTripper在网络前删除Authorization，因此占位值不会泄漏。Desktop与CLI各自恢复immutable authentication/configuration model，模型目录、状态badge、test action与TUI不再从masked key猜测可用性。
 
-P274 让model client lifetime服从实际消费者：active Run持有staging时解析出的immutable client；fresh Run、utility call与embedding search各自从当前ProviderRegistry重新构造，不存在跨configuration generation的全局cache。provider key/endpoint轮换后旧SDK client只随既有调用/Run释放，任意compatible model identity也不会在resolver map中永久累加。Bootstrap不再持有静态default client，utility专用role失败时通过live resolver解析main fallback；architecture guard阻止`DefaultClient`与modelclient同步cache回流。
+P274 让model client lifetime服从实际消费者：active Run持有staging时解析出的immutable client；fresh Run、utility call与embedding search各自从当前ProviderRegistry重新构造，不存在跨configuration generation的全局cache。provider key/endpoint轮换后旧SDK client只随既有调用/Run释放，任意compatible model identity也不会在resolver map中永久累加。Bootstrap不再持有静态default client，utility专用role失败时通过live resolver解析main fallback；architecture guard阻止`DefaultClient`与`adapter/model`同步cache回流。
 
 P275 让provider/model/reasoning identity从跨层裸字符串收敛为Runtime Domain immutable value：分别最多64/256/32个Unicode code point，并拒绝invalid UTF-8、Unicode whitespace与不可打印字符；不trim、不截断、不normalize。Selection、Provider aggregate、Application catalog、remote discovery、usage snapshot与全部持久恢复路径共用Domain owner；remote endpoint任一非法model ID使整批目录fail closed并回退bundled catalog。Protocol generator从命名公共上限生成Go/JSON Schema/TypeScript的field、array item和map property-name约束；CLI与Desktop各自rich projection在恢复和command admission时执行同一边界。Artifact前移v27、SQLite前移epoch 92，旧数据不迁移。
 
@@ -611,6 +611,8 @@ P299把CLI portable Session document、format与Runtime transfer port从operatio
 P300把Runtime Skill proposal library translation从`adapter/skillproposal`收回`adapter/workspace`。`SkillLibraries`与authored-resource observation、filesystem/VCS/checkpoint translation共同消费admitted workspace及user/project路径，Application仍通过`SkillProposals`窄端口消费，Domain Proposal与`infra/skillauthoring.Store`仍各自拥有语义和存储机制。旧package、import、空目录及Bootstrap过时的`checkpointstore`别名均删除。
 
 P301把Runtime Workspace path resolution从`adapter/workspacepath`收回`adapter/workspace`。`Resolver`直接实现Workspace Application的cwd/path ports并服务Scope、Files、Knowledge、watch与Schedule consumers；通用canonical/resolve/contains仍由`infra/pathidentity`唯一拥有。Bootstrap与Delivery测试不再组合同一bounded context的两个adapter package，旧路径、import、架构例外和空目录均物理删除。
+
+P302把Runtime `adapter/modelcatalog`与`adapter/modelclient`收敛为`adapter/model`。catalog facts/probe/listing、selection admission、pricing、Run chat、utility role与embedding现在共用唯一`providerClientInputs`；只有该owner可把Domain Provider的credential/custom endpoint与exact model投影为`llm.ClientSpec`，architecture guard阻止第二构造路径。旧package、import、错误前缀和空目录均物理删除，client lifetime仍由每次真实消费者拥有而不新增cache。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

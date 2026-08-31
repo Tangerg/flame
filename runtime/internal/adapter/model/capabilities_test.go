@@ -1,4 +1,4 @@
-package modelcatalog
+package model
 
 import (
 	"net/http"
@@ -139,7 +139,7 @@ func TestProbeUsesCatalogEndpointWithoutInventingOllamaCredential(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	models, err := remoteModelIDs(t.Context(), entry)
+	models, err := (Capabilities{}).ListModels(t.Context(), entry)
 	if err != nil || len(models) != 1 || models[0] != "local-model" {
 		t.Fatalf("remote models = %v, %v", models, err)
 	}

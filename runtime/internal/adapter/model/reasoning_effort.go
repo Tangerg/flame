@@ -1,4 +1,4 @@
-package modelcatalog
+package model
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 
 // ErrUnsupportedReasoningEffort reports an explicit intensity absent from the
 // exact known model's advertised vocabulary.
-var ErrUnsupportedReasoningEffort = errors.New("modelcatalog: unsupported reasoning effort")
+var ErrUnsupportedReasoningEffort = errors.New("model: unsupported reasoning effort")
 
 // AdmitSelection validates the exact model-owned reasoning vocabulary for
 // catalog models. A catalog miss remains admissible because compatible
@@ -20,7 +20,7 @@ var ErrUnsupportedReasoningEffort = errors.New("modelcatalog: unsupported reason
 // locally; their provider remains the execution authority.
 func (Capabilities) AdmitSelection(selection modelref.Selection) error {
 	if err := selection.Validate(); err != nil {
-		return fmt.Errorf("modelcatalog: selection: %w", err)
+		return fmt.Errorf("model: selection: %w", err)
 	}
 	effort := selection.ReasoningEffort()
 	if effort == "" {

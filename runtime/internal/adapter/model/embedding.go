@@ -1,4 +1,4 @@
-package modelclient
+package model
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func NewEmbeddingResolver(providers CredentialLookup) *EmbeddingResolver {
 // Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
 	if !selection.Configured() {
-		return nil, errors.New("modelclient: explicit model selection is required")
+		return nil, errors.New("model: explicit model selection is required")
 	}
 	providerID, model := selection.Provider(), selection.Model()
 	entry, ok, err := e.providers.Get(ctx, providerID)
@@ -45,7 +45,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	spec, err := inputs.clientSpec(providerID, model)
+	spec, err := inputs.clientSpec(model)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	created := &embedder{id: inputs.embeddingSpaceID(providerID, model), client: client}
+	created := &embedder{id: inputs.embeddingSpaceID(model), client: client}
 	return created, nil
 }
 

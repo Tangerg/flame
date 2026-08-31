@@ -1,10 +1,4 @@
-// Package modelclient resolves per-(provider, model) chat and embedding clients
-// from the runtime-mutable provider registry credentials, caching by the
-// credential tuple so a credential mutation (new key or base URL) is picked up
-// rather than serving a stale client. It is the driven adapter the runtime's
-// per-run model selection, utility-model role, and Agent Memory embedding role all
-// resolve through.
-package modelclient
+package model
 
 import (
 	"context"
@@ -44,7 +38,7 @@ func NewChatResolver(providers CredentialLookup) *ChatResolver {
 // credentials; optional-key providers may resolve without a registry row.
 func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (*chatclient.Client, error) {
 	if !selection.Configured() {
-		return nil, errors.New("modelclient: explicit model selection is required")
+		return nil, errors.New("model: explicit model selection is required")
 	}
 	providerID, model := selection.Provider(), selection.Model()
 	entry, ok, err := c.providers.Get(ctx, providerID)
@@ -60,16 +54,16 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selec
 
 	inputs, err := resolveProviderClientInputs(providerID, entry)
 	if err != nil {
+		return nil, err
+	}
+	spec, err := inputs.clientSpec(model)
+	if err != nil {
 		if errors.Is(err, ErrCredentialUnavailable) {
 			return nil, &run.FailureError{
 				Kind: run.FailureInvalidCredentials,
-				Err:  fmt.Errorf("modelclient: provider %q requires an API key", providerID),
+				Err:  fmt.Errorf("model: provider %q requires an API key", providerID),
 			}
 		}
-		return nil, err
-	}
-	spec, err := inputs.clientSpec(providerID, model)
-	if err != nil {
 		return nil, err
 	}
 	client, err := llm.BuildClient(spec)

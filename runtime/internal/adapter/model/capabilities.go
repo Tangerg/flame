@@ -1,9 +1,10 @@
-// Package modelcatalog adapts provider infrastructure and static catalog data
-// to the application/models ports.
-package modelcatalog
+// Package model adapts provider configuration, static catalogs, chat clients,
+// and embedding clients to Runtime application ports.
+package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -62,26 +63,25 @@ func (Capabilities) LookupModel(providerID, modelID string) (modelsapp.Model, bo
 }
 
 func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
-	providerID := llm.Provider(entry.ID())
-	profile, found := llm.LookupProvider(providerID)
-	if !found {
-		return fmt.Errorf("modelcatalog: provider %q is unsupported", entry.ID())
+	inputs, err := resolveProviderClientInputs(entry.ID(), entry)
+	if err != nil {
+		return err
 	}
-	if profile.DiscoversModelsAtEndpoint() {
-		models, err := remoteModelIDs(ctx, entry)
+	if inputs.profile.DiscoversModelsAtEndpoint() {
+		models, err := remoteModelIDs(ctx, inputs)
 		if err != nil {
 			return err
 		}
 		if len(models) == 0 {
-			return fmt.Errorf("modelcatalog: provider %q advertised no models", entry.ID())
+			return fmt.Errorf("model: provider %q advertised no models", entry.ID())
 		}
 		return nil
 	}
-	defaultModel, hasDefault := profile.DefaultChatModel()
+	defaultModel, hasDefault := inputs.profile.DefaultChatModel()
 	if !hasDefault {
-		return fmt.Errorf("modelcatalog: provider %q has no probe model", entry.ID())
+		return fmt.Errorf("model: provider %q has no probe model", entry.ID())
 	}
-	spec, err := providerClientSpec(entry, providerID, defaultModel)
+	spec, err := inputs.clientSpec(defaultModel)
 	if err != nil {
 		return err
 	}
@@ -97,60 +97,29 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 }
 
 func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]string, error) {
-	return remoteModelIDs(ctx, entry)
+	inputs, err := resolveProviderClientInputs(entry.ID(), entry)
+	if err != nil {
+		return nil, err
+	}
+	return remoteModelIDs(ctx, inputs)
 }
 
-func remoteModelIDs(ctx context.Context, entry provider.Provider) ([]string, error) {
-	providerID := llm.Provider(entry.ID())
-	profile, found := llm.LookupProvider(providerID)
-	if !found {
-		return nil, fmt.Errorf("modelcatalog: provider %q is unsupported", entry.ID())
-	}
-	configuredBaseURL, hasConfiguredBaseURL := entry.BaseURL()
-	baseURL, hasBaseURL := profile.DefaultEndpoint()
-	if hasConfiguredBaseURL {
-		baseURL = configuredBaseURL.String()
-		hasBaseURL = true
-	}
+func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string, error) {
+	baseURL, hasBaseURL := inputs.endpoint()
 	if !hasBaseURL {
 		return nil, nil
 	}
-	apiKey := ""
-	if configuredKey, configured := entry.APIKey(); configured {
-		apiKey = configuredKey.Reveal()
-	} else if profile.RequiresAPIKey() {
-		return nil, fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
-	}
-	spec, err := providerClientSpec(entry, providerID, configurationProbeModel)
+	spec, err := inputs.clientSpec(configurationProbeModel)
 	if err != nil {
+		if errors.Is(err, ErrCredentialUnavailable) {
+			return nil, fmt.Errorf("model: provider %q is not configured", inputs.entry.ID())
+		}
 		return nil, err
 	}
 	if _, err := llm.BuildClient(spec); err != nil {
 		return nil, err
 	}
-	return profile.ListModels(ctx, baseURL, apiKey)
-}
-
-func providerClientSpec(entry provider.Provider, providerID llm.Provider, model string) (llm.ClientSpec, error) {
-	credential := llm.NoClientCredential()
-	if apiKey, configured := entry.APIKey(); configured {
-		var err error
-		credential, err = llm.NewAPIKeyCredential(apiKey.Reveal())
-		if err != nil {
-			return llm.ClientSpec{}, err
-		}
-	}
-	spec, err := llm.NewClientSpec(providerID, model, credential)
-	if err != nil {
-		return llm.ClientSpec{}, err
-	}
-	if baseURL, present := entry.BaseURL(); present {
-		spec, err = spec.WithBaseURL(baseURL.String())
-		if err != nil {
-			return llm.ClientSpec{}, err
-		}
-	}
-	return spec, nil
+	return inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())
 }
 
 func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
@@ -168,7 +137,7 @@ func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
 			var err error
 			embedding, err = modelsapp.EmbeddingCapabilityWithDefault(defaultModel)
 			if err != nil {
-				panic(fmt.Sprintf("modelcatalog: invalid embedding default for %q: %v", value.ID(), err))
+				panic(fmt.Sprintf("model: invalid embedding default for %q: %v", value.ID(), err))
 			}
 		} else {
 			embedding = modelsapp.EmbeddingCapabilityWithoutDefault()
@@ -180,7 +149,7 @@ func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
 	}
 	metadata, err := modelsapp.NewProviderMetadata(string(value.ID()), authentication, endpoint, modelSource, embedding)
 	if err != nil {
-		panic(fmt.Sprintf("modelcatalog: invalid provider metadata for %q: %v", value.ID(), err))
+		panic(fmt.Sprintf("model: invalid provider metadata for %q: %v", value.ID(), err))
 	}
 	return metadata
 }
@@ -191,7 +160,7 @@ func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
 		// The bundled catalog is static reference data, not user input. An invalid
 		// envelope is a broken application dependency and must fail loudly instead
 		// of publishing invented or partially discarded capability facts.
-		panic(fmt.Sprintf("modelcatalog: invalid bundled limits for %q/%q: %v", providerID, entry.ID, err))
+		panic(fmt.Sprintf("model: invalid bundled limits for %q/%q: %v", providerID, entry.ID, err))
 	}
 	details := &modelsapp.Details{
 		DisplayName: entry.DisplayName, TokenLimits: tokenLimits, KnowledgeCutoff: entry.KnowledgeCutoff, Deprecated: entry.Deprecated,
@@ -208,7 +177,7 @@ func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
 	}
 	model, err := modelsapp.NewModel(providerID, entry.ID, details)
 	if err != nil {
-		panic(fmt.Sprintf("modelcatalog: invalid bundled model %q/%q: %v", providerID, entry.ID, err))
+		panic(fmt.Sprintf("model: invalid bundled model %q/%q: %v", providerID, entry.ID, err))
 	}
 	return model
 }

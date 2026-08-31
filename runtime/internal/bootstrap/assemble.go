@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/isolation"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runrecovery"
@@ -190,7 +190,7 @@ func buildAssemblyCore(
 		Goals:               cfg.GoalStore,
 		Tx:                  persistence.Transactor(cfg.Transactor),
 	})
-	modelCapabilities := modelcatalog.Capabilities{}
+	modelCapabilities := modeladapter.Capabilities{}
 	modelCoordinator := models.New(models.Config{
 		Providers:          cfg.ProviderRegistry,
 		Catalog:            modelCapabilities,

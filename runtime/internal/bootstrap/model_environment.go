@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelclient"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -18,8 +18,8 @@ type modelEnvironment struct {
 	utilityRoleState   *models.RoleState
 	utilityClient      func(context.Context) *chatclient.Client
 	embeddingRoleState *models.RoleState
-	embeddingResolver  *modelclient.EmbeddingResolver
-	liveEmbedder       *modelclient.RoleEmbedder
+	embeddingResolver  *modeladapter.EmbeddingResolver
+	liveEmbedder       *modeladapter.RoleEmbedder
 	agentMemorySearch  *agentmemoryapp.Searcher
 }
 
@@ -36,13 +36,13 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver := modelclient.NewEmbeddingResolver(cfg.ProviderRegistry)
-	liveEmbedder := modelclient.NewRoleEmbedder(embeddingResolver, embeddingRoleState)
+	embeddingResolver := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry)
+	liveEmbedder := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRoleState)
 
 	environment := modelEnvironment{
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
-		utilityClient:      modelclient.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState),
+		utilityClient:      modeladapter.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState),
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 		liveEmbedder:       liveEmbedder,

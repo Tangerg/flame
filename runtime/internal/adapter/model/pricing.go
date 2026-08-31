@@ -1,4 +1,4 @@
-package modelcatalog
+package model
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"

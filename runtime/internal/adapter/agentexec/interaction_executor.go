@@ -19,7 +19,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
@@ -208,7 +208,7 @@ func validateModelOutputReservation(
 	if options == nil || options.MaxTokens == nil {
 		return nil
 	}
-	limits, found, err := modelcatalog.LookupTokenLimits(selection)
+	limits, found, err := modeladapter.LookupTokenLimits(selection)
 	if err != nil {
 		return fmt.Errorf("%w: %w", runs.ErrInvalidRunOptions, err)
 	}

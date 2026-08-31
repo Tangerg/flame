@@ -860,7 +860,7 @@
 
 - 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal provider catalog/model discovery、测试与配置/API 文档，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI shape 不变。
 - 背景：Provider catalog 已把 OpenAI-compatible、Anthropic-compatible、Azure OpenAI 与 Ollama 都标为 endpoint-owned model source，但旧 `ListRemoteModels` 又把该共同业务事实错误扩张成共同 wire protocol：一律请求 `{baseURL}/models` 并发送 Bearer token。当前 Scope Anthropic adapter 实际从配置的 API origin/prefix 请求 `{baseURL}/v1/messages`，使用 `x-api-key` 与 `anthropic-version`；失败优先 HTTP 反例证明正确配置的 Anthropic-compatible endpoint 会被 `models.list` / `providers.test` 请求到错误路径并携带错误鉴权，因而误报失败。
-- 决策：既有 immutable `modelPolicy` 在 endpoint source 旁携带闭合的 OpenAI-family 或 Anthropic-family listing protocol，并负责路径与鉴权；`ProviderProfile.ListModels` 是 modelcatalog adapter 的唯一行为入口。OpenAI-family 保持 `{baseURL}/models` 与可选 Bearer，Anthropic-family 使用 `{baseURL}/v1/models`、`x-api-key` 与 Scope/官方 SDK 同值的 `2023-06-01` protocol version。完整文档的四秒 timeout、1 MiB/4096-entry admission、identity validation、排序去重与 Application fallback 语义继续共用原 owner。
+- 决策：既有 immutable `modelPolicy` 在 endpoint source 旁携带闭合的 OpenAI-family 或 Anthropic-family listing protocol，并负责路径与鉴权；`ProviderProfile.ListModels` 是 `adapter/model` 的唯一行为入口。OpenAI-family 保持 `{baseURL}/models` 与可选 Bearer，Anthropic-family 使用 `{baseURL}/v1/models`、`x-api-key` 与 Scope/官方 SDK 同值的 `2023-06-01` protocol version。完整文档的四秒 timeout、1 MiB/4096-entry admission、identity validation、排序去重与 Application fallback 语义继续共用原 owner。
 - 后果：Anthropic-compatible 的 model picker 与 provider test 现在和实际 chat call 使用同一 base URL 解释及认证协议；OpenAI-compatible、Azure OpenAI 与 Ollama 行为不变。应用层没有 provider switch，配置面没有 auth/path 旋钮，也没有新增通用 lister interface、SDK client、兼容重试、双路径探测或多客户端测试。
 
 ## ADR-RT-121：Remote model catalog 必须完整，不能把第一页冒充全部
@@ -879,9 +879,9 @@
 
 ## ADR-RT-123：Endpoint probe 必须先通过真实 chat adapter 的配置准入
 
-- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal modelcatalog adapter、测试与 API 文档，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI shape 不变。
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal model adapter、测试与 API 文档，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI shape 不变。
 - 背景：Endpoint-owned provider 没有 bundled probe model，`providers.test` 因而用模型列表验证连接；但旧路径直接调用通用 lister，没有构造实际 chat client。Scope 的 Azure OpenAI adapter 明确要求 base URL 以 `/openai/v1` 结尾，失败优先真实 HTTP 反例却让一个只响应根 `/models` 的错误 URL 通过 provider test；第一条 Run 到 `BuildClient` 才暴露同一配置不可执行。URL presence、HTTP 200 和非空模型列表不能替代 adapter-specific construction contract。
-- 决策：modelcatalog 以唯一 `providerClientSpec` 从 Provider rich value 投影 credential、optional endpoint 与 model identity。Bundled provider 的最小 chat call 和 endpoint model discovery 都先通过该 spec 调用 `llm.BuildClient`；endpoint probe 使用一个合法、无网络语义的内部模型 identity，只验证 adapter construction，再按 profile listing protocol 发请求。所有 provider-specific URL/credential 规则继续由各 Scope builder 拥有，modelcatalog 不识别 Azure 名称或复制 suffix。
+- 决策：`adapter/model` 以唯一 `providerClientInputs.clientSpec` 从 Provider rich value 投影 credential、optional endpoint 与 model identity。Bundled provider 的最小 chat call 和 endpoint model discovery 都先通过该 spec 调用 `llm.BuildClient`；endpoint probe 使用一个合法、无网络语义的内部模型 identity，只验证 adapter construction，再按 profile listing protocol 发请求。所有 provider-specific URL/credential 规则继续由各 Scope builder 拥有，model adapter 不识别 Azure 名称或复制 suffix。
 - 后果：Azure 错误 root、未来 adapter-specific construction failure 与模型目录探测会在 `providers.test/models.list` 同一边界失败，不再出现 test 成功、Run 必败；OpenAI-compatible、Anthropic-compatible、Ollama 和 bundled provider 的成功路径不变。没有 endpoint validator map、provider switch、第二 URL parser、虚构部署名持久化、网络 preflight、兼容重试或协议变化。
 
 ## ADR-RT-124：Delivery package 边界服从语义 owner，不服从处理阶段矩阵
@@ -981,3 +981,10 @@
 - 背景：`adapter/workspacepath.Resolver` 直接实现 `application/workspace` 的 cwd/path ports，返回 `workspace.Resolved`，复用 Workspace 的 `ErrPathRequired/ErrPathOutsideRoot`，并只服务 Scope、Files、Knowledge、watch 和 Schedule 等 Workspace consumers。通用 filesystem canonical/resolve/contains 机制已经由 `infra/pathidentity` 独立拥有；旧 package 因 path 这一处理阶段另建目录，使 Bootstrap 同时组合 `workspace` 与 `workspacepath`，并让 Delivery 测试重复 import 同一 bounded context 的两半。
 - 决策：把 `Resolver`、`Canonical`、absolute/existing-directory admission、root confinement、symlink containment 与 nearest-project discovery收回 `adapter/workspace/path_resolver.go`。`adapter/workspace` 负责把外部 filesystem facts 翻译为 Workspace Application vocabulary；`infra/pathidentity` 继续只拥有可复用的路径机制，不依赖 Application。
 - 后果：物理删除 `adapter/workspacepath`、全部旧 import、架构例外和空目录，不保留 alias、forwarder 或 compatibility package。Bootstrap 和测试统一消费 `workspaceadapter.Resolver`；路径 identity、错误分类、symlink escape 防护、project-root discovery、协议与持久行为不变。
+
+## ADR-RT-138：Catalog probe 与 model client 必须共用 Provider 输入 owner
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Runtime Model Adapter 批次完成；允许 Runtime internal Go API breaking change，公共 Go surface、Protocol、Artifact、SQLite、Desktop 与 CLI 不变。
+- 背景：`adapter/modelcatalog` 与 `adapter/modelclient` 都翻译同一 Provider/model integration boundary，却分别从 `provider.Provider` 提取 credential/base URL 并构造 `llm.ClientSpec`。前者服务 bundled/remote catalog、configuration probe、selection/input/limits/pricing，后者服务 Run chat、utility role 与 Agent Memory embedding；物理分包使“配置测试能构造”与“真实 Run 能构造”存在两套规则，Bootstrap 和 maintenance 也必须同时认识两个 operation-shaped adapter。
+- 决策：建立单一 `adapter/model`，以职责文件共同拥有 catalog capabilities、probe/listing、selection admission、pricing、chat/embedding resolver 与 live model roles。唯一 `providerClientInputs` 保留 Domain `provider.Provider` 和 `llm.ProviderProfile`，只有其 `clientSpec` 可把 credential、custom endpoint 与 exact model投影为 `llm.ClientSpec`；remote listing、probe、chat 和 embedding 全部复用该 owner。缺失 required credential 由同一 sentinel 表达，再由 Run chat 边界翻译为产品 failure；client 仍按实际调用构造，不增加 cache。
+- 后果：物理删除 `adapter/modelcatalog` 与 `adapter/modelclient`、全部旧 import、错误前缀和空目录，不保留 alias、forwarder 或 compatibility package。架构守卫禁止其他 model 文件重新调用 `llm.NewClientSpec`；provider-specific SDK/URL 规则仍由 `infra/llm` 与 Scope provider builders 拥有，Protocol、catalog facts、credential precedence、Run/embedding 行为不变。

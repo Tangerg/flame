@@ -9,7 +9,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -72,7 +72,7 @@ func (c *Compactor) CompactModelContext(
 		ephemeral = cloneMessages(candidate[candidatePrefix:])
 	}
 
-	limits, _, err := modelcatalog.LookupTokenLimits(request.ModelSelection())
+	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, err
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 )
 
 // Pipeline composes the post-Run maintenance workers. It keeps the lifecycle
@@ -50,7 +50,7 @@ func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceI
 		return result
 	}
 
-	limits, _, err := modelcatalog.LookupTokenLimits(input.ModelSelection)
+	limits, _, err := modeladapter.LookupTokenLimits(input.ModelSelection)
 	if err != nil {
 		result.Errors = append(result.Errors, err)
 		return result

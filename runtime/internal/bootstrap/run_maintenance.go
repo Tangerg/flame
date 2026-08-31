@@ -8,7 +8,7 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runmaintenance"
 	"github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -27,7 +27,7 @@ func buildRunMaintenance(
 	resolveUtility func(context.Context) *chatclient.Client,
 ) (agentexec.RunMaintenance, agentexec.ModelContextCompactor, error) {
 	fallbackLimits := modelref.TokenLimits{}
-	limits, found, err := modelcatalog.LookupTokenLimits(defaultSelection)
+	limits, found, err := modeladapter.LookupTokenLimits(defaultSelection)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: default model token limits: %w", err)
 	}

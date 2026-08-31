@@ -1,4 +1,4 @@
-package modelcatalog
+package model
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 // configured compatible endpoints may legitimately expose private model IDs.
 func LookupTokenLimits(selection modelref.Selection) (modelref.TokenLimits, bool, error) {
 	if err := selection.Validate(); err != nil {
-		return modelref.TokenLimits{}, false, fmt.Errorf("modelcatalog: token-limit selection: %w", err)
+		return modelref.TokenLimits{}, false, fmt.Errorf("model: token-limit selection: %w", err)
 	}
 	if !selection.Configured() {
 		return modelref.TokenLimits{}, false, nil
@@ -25,7 +25,7 @@ func LookupTokenLimits(selection modelref.Selection) (modelref.TokenLimits, bool
 	limits, err := catalogTokenLimits(entry)
 	if err != nil {
 		return modelref.TokenLimits{}, false, fmt.Errorf(
-			"modelcatalog: token limits for %q/%q: %w",
+			"model: token limits for %q/%q: %w",
 			selection.Provider(),
 			selection.Model(),
 			err,

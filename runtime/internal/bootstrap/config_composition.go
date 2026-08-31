@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
@@ -21,7 +21,7 @@ func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver Cha
 		BuildID:                  buildID,
 		ChatResolver:             resolver,
 		ConversationStore:        stores.ChatHistory,
-		Pricing:                  modelcatalog.Pricing(),
+		Pricing:                  modeladapter.Pricing(),
 		SkillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
 		AgentMemoryStore:         stores.AgentMemory,
 		IdempotencyStore:         stores.Idempotency,

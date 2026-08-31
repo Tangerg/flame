@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/modelclient"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runtimeownership"
 	"github.com/Tangerg/flame/runtime/internal/completion"
@@ -108,7 +108,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	chatResolver := modelclient.NewChatResolver(providers)
+	chatResolver := modeladapter.NewChatResolver(providers)
 	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
