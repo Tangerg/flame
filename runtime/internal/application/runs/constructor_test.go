@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -138,7 +138,7 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 		deps.Items = &fakeItemProjection{}
 	}
 	if deps.Admissions == nil {
-		deps.Admissions = new(sessionadmission.Gate)
+		deps.Admissions = new(ownership.Gate)
 	}
 	if deps.NewRunID == nil {
 		deps.NewRunID = func() string { return "run_test" }

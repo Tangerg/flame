@@ -22,10 +22,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
-	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -175,7 +174,7 @@ func buildAssemblyCore(
 	}
 
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	admissionGate := sessionadmission.New(cfg.SessionOwnership)
+	admissionGate := ownership.NewGate(cfg.SessionOwnership)
 	sessionStores := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions:            cfg.SessionStore,
 		Transcript:          cfg.TranscriptStore,
@@ -439,11 +438,11 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: boot recovery: %w", err)
 	}
-	var goalRecovery ownershiprecovery.Goals
+	var goalRecovery ownership.GoalRecovery
 	if goalDriver != nil {
 		goalRecovery = goalDriver
 	}
-	ownershipRecovery, err := ownershiprecovery.New(bootRecovery, goalRecovery, cfg.RecoveryOwnership)
+	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalRecovery, cfg.RecoveryOwnership)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: ownership recovery: %w", err)
 	}

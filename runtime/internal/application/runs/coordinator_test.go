@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -720,7 +720,7 @@ func testCoordinator(executor interface {
 		Observations: executor,
 		Releases:     executor,
 		Projection:   testProjectionPorts(effects),
-		Admissions:   new(sessionadmission.Gate),
+		Admissions:   new(ownership.Gate),
 		Now: func() time.Time {
 			return time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
 		},

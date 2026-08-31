@@ -1,6 +1,4 @@
-// Package ownershiprecovery coordinates recovery policies that must observe one
-// ordered view of abandoned Runtime-owned work.
-package ownershiprecovery
+package ownership
 
 import (
 	"context"
@@ -8,46 +6,41 @@ import (
 	"fmt"
 )
 
-// Lease is one cross-process recovery-sweep ownership claim.
-type Lease interface {
-	Release()
-}
-
-// Ownership elects one Runtime process to perform a recovery sweep.
-type Ownership interface {
+// RecoveryBackend elects one Runtime process to perform a recovery sweep.
+type RecoveryBackend interface {
 	TryRecoverySweep() (Lease, bool)
 	AcquireRecoverySweep(ctx context.Context) (Lease, error)
 }
 
-// Runs reconciles abandoned Run trees and their Goal accounting.
-type Runs interface {
+// RunRecovery reconciles abandoned Run trees and their Goal accounting.
+type RunRecovery interface {
 	Reconcile(ctx context.Context) (int, error)
 }
 
-// Goals reconciles Goal lifecycle after Run terminal accounting has settled.
-type Goals interface {
+// GoalRecovery reconciles Goal lifecycle after Run terminal accounting has settled.
+type GoalRecovery interface {
 	Reconcile(ctx context.Context) error
 }
 
-// Coordinator is the single ordered recovery entry point shared by startup and
+// RecoveryCoordinator is the single ordered recovery entry point shared by startup and
 // survivor sweeps. The process winner always reconciles Runs before Goals.
-type Coordinator struct {
-	runs      Runs
-	goals     Goals
-	ownership Ownership
+type RecoveryCoordinator struct {
+	runs      RunRecovery
+	goals     GoalRecovery
+	ownership RecoveryBackend
 }
 
-// New constructs the ordered ownership recovery use case. Goals may be nil
-// when autonomous Goal capability is not assembled. A nil Ownership retains
+// NewRecovery constructs the ordered ownership recovery use case. Goals may be nil
+// when autonomous Goal capability is not assembled. A nil RecoveryBackend retains
 // single-process behavior for isolated assembly tests.
-func New(runs Runs, goals Goals, ownership Ownership) (*Coordinator, error) {
+func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend) (*RecoveryCoordinator, error) {
 	if runs == nil {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
 	}
 	if ownership == nil {
 		ownership = localOwnership{}
 	}
-	return &Coordinator{runs: runs, goals: goals, ownership: ownership}, nil
+	return &RecoveryCoordinator{runs: runs, goals: goals, ownership: ownership}, nil
 }
 
 type localOwnership struct{}
@@ -65,7 +58,7 @@ func (localLease) Release() {}
 // Reconcile performs one non-blocking recovery sweep. acquired is false when
 // another Runtime already owns the sweep; that process is responsible for the
 // current pass.
-func (c *Coordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
+func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
 	lease, ok := c.ownership.TryRecoverySweep()
 	if !ok {
 		return false, nil
@@ -76,7 +69,7 @@ func (c *Coordinator) Reconcile(ctx context.Context) (acquired bool, err error) 
 // ReconcileStartup waits for the current recovery winner, then performs its
 // own ordered pass before this Runtime begins serving requests. The second pass
 // is intentional: candidates may have appeared after the prior winner's read.
-func (c *Coordinator) ReconcileStartup(ctx context.Context) error {
+func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	lease, err := c.ownership.AcquireRecoverySweep(ctx)
 	if err != nil {
 		return fmt.Errorf("ownership recovery: acquire startup sweep: %w", err)
@@ -84,7 +77,7 @@ func (c *Coordinator) ReconcileStartup(ctx context.Context) error {
 	return c.reconcileOwned(ctx, lease)
 }
 
-func (c *Coordinator) reconcileOwned(ctx context.Context, lease Lease) error {
+func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) error {
 	defer lease.Release()
 	if _, err := c.runs.Reconcile(ctx); err != nil {
 		return fmt.Errorf("ownership recovery: reconcile Runs: %w", err)

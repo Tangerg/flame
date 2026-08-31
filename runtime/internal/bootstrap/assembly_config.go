@@ -13,9 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
-	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
@@ -38,13 +37,13 @@ type Config struct {
 
 	// SessionOwnership extends Run/session lifecycle and destructive working-tree
 	// admission across Runtime processes sharing one data directory.
-	SessionOwnership sessionadmission.Ownership
+	SessionOwnership ownership.AdmissionBackend
 	// GoalDriveOwnership elects one autonomous Goal driver per Session across
 	// those Runtime processes.
 	GoalDriveOwnership goals.DriveOwnership
 	// RecoveryOwnership elects one process to reconcile abandoned Runs before
 	// Goals, preserving their accounting order across shared Runtime instances.
-	RecoveryOwnership ownershiprecovery.Ownership
+	RecoveryOwnership ownership.RecoveryBackend
 
 	// ChatResolver resolves every frozen Run selection against the live provider
 	// registry. Bootstrap never keeps a process-lifetime default client whose

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -97,7 +97,7 @@ func TestStartAndTerminalPublishRunAndSessionChanges(t *testing.T) {
 		Now:           func() time.Time { return time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC) },
 		NewRunID:      func() string { return "run_new" },
 		NewSegmentID:  func() string { return "seg_new" },
-		Admissions:    new(sessionadmission.Gate),
+		Admissions:    new(ownership.Gate),
 		Invalidations: invalidations.publish,
 	})
 
@@ -151,7 +151,7 @@ func TestPlanSnapshotStaysOnOwningRunStream(t *testing.T) {
 		Now:           func() time.Time { return time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC) },
 		NewRunID:      func() string { return "run_new" },
 		NewSegmentID:  func() string { return "seg_new" },
-		Admissions:    new(sessionadmission.Gate),
+		Admissions:    new(ownership.Gate),
 		Invalidations: invalidations.publish,
 	})
 

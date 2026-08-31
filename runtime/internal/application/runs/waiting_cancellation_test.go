@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -734,7 +734,7 @@ func waitingCancellationCoordinator(
 		Projection:                         testProjectionPorts(effects),
 		Runs:                               &fakeRunProjection{runs: runsByID},
 		Items:                              &fakeItemProjection{items: waitingCancellationItems(plan)},
-		Admissions:                         new(sessionadmission.Gate),
+		Admissions:                         new(ownership.Gate),
 		Now: func() time.Time {
 			return time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC)
 		},

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -366,7 +366,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 	change WaitingSubtreeChange,
-	runAdmission *sessionadmission.RunAdmission,
+	runAdmission *ownership.RunAdmission,
 ) (CancelResult, error) {
 	rootContinuation, ok := transformation.continuation.root()
 	if !ok {

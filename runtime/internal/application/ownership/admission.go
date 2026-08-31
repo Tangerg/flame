@@ -1,7 +1,4 @@
-// Package sessionadmission owns the session admission facts shared by Run
-// execution and destructive Session lifecycle operations. A configured
-// Ownership extends the same invariants across Runtime processes.
-package sessionadmission
+package ownership
 
 import (
 	"context"
@@ -22,25 +19,20 @@ type Gate struct {
 	treeRuns      map[string]int
 	treeMutations map[string]struct{}
 	changed       chan struct{}
-	ownership     Ownership
+	ownership     AdmissionBackend
 }
 
-// Lease is a held cross-process ownership claim.
-type Lease interface {
-	Release()
-}
-
-// Ownership maps product identities to non-blocking cross-process leases.
+// AdmissionBackend maps product identities to non-blocking cross-process leases.
 // Implementations live outside Application and must fail closed.
-type Ownership interface {
+type AdmissionBackend interface {
 	TrySession(sessionID string) (Lease, bool)
 	TryWorkingTree(cwd string, shared bool) (Lease, bool)
 }
 
-// New constructs a Gate whose single-writer and working-tree invariants span
+// NewGate constructs a Gate whose single-writer and working-tree invariants span
 // every Runtime process sharing the ownership backend. A nil owner keeps the
 // zero-value process-local behavior used by isolated tests.
-func New(ownership Ownership) *Gate { return &Gate{ownership: ownership} }
+func NewGate(ownership AdmissionBackend) *Gate { return &Gate{ownership: ownership} }
 
 type liveRun struct {
 	sessionID string

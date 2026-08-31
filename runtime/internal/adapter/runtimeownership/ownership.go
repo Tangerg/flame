@@ -12,8 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
 	"github.com/Tangerg/flame/runtime/internal/infra/pathidentity"
 )
@@ -54,13 +53,13 @@ func New(dataDirectory string) (*Manager, error) {
 }
 
 // TrySession acquires the exclusive writer lease for one Session.
-func (m *Manager) TrySession(sessionID string) (sessionadmission.Lease, bool) {
+func (m *Manager) TrySession(sessionID string) (ownership.Lease, bool) {
 	return tryLease(m.sessions, sessionID, false)
 }
 
 // TryWorkingTree acquires a shared Run lease or exclusive destructive-mutation
 // lease for one physical working-tree identity.
-func (m *Manager) TryWorkingTree(cwd string, shared bool) (sessionadmission.Lease, bool) {
+func (m *Manager) TryWorkingTree(cwd string, shared bool) (ownership.Lease, bool) {
 	physical, err := pathidentity.Resolve("", cwd)
 	if err != nil {
 		return nil, false
@@ -74,7 +73,7 @@ func (m *Manager) TryGoalDrive(sessionID string) (goals.DriveLease, bool) {
 }
 
 // TryRecoverySweep elects one Runtime to reconcile abandoned Runs before Goals.
-func (m *Manager) TryRecoverySweep() (ownershiprecovery.Lease, bool) {
+func (m *Manager) TryRecoverySweep() (ownership.Lease, bool) {
 	lease, err := advisorylock.TryDirectory(m.recovery)
 	if err != nil {
 		return nil, false
@@ -83,7 +82,7 @@ func (m *Manager) TryRecoverySweep() (ownershiprecovery.Lease, bool) {
 }
 
 // AcquireRecoverySweep waits for the ordered startup recovery owner.
-func (m *Manager) AcquireRecoverySweep(ctx context.Context) (ownershiprecovery.Lease, error) {
+func (m *Manager) AcquireRecoverySweep(ctx context.Context) (ownership.Lease, error) {
 	lease, err := advisorylock.AcquireDirectory(ctx, m.recovery)
 	if err != nil {
 		return nil, err
@@ -133,7 +132,7 @@ func tryLease(directory, identity string, shared bool) (*fileLease, bool) {
 }
 
 var (
-	_ sessionadmission.Ownership  = (*Manager)(nil)
-	_ goals.DriveOwnership        = (*Manager)(nil)
-	_ ownershiprecovery.Ownership = (*Manager)(nil)
+	_ ownership.AdmissionBackend = (*Manager)(nil)
+	_ goals.DriveOwnership       = (*Manager)(nil)
+	_ ownership.RecoveryBackend  = (*Manager)(nil)
 )

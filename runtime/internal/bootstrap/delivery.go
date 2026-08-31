@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -25,7 +25,7 @@ type hostApplication struct {
 
 type hostWorkers struct {
 	scheduler     *schedules.Firing
-	recovery      *ownershiprecovery.Coordinator
+	recovery      *ownership.RecoveryCoordinator
 	invalidations invalidation.Publish
 }
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -275,12 +275,12 @@ func (c *Coordinator) resolveSession(
 	return sess, nil, err
 }
 
-func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (sessionadmission.RunAdmission, error) {
+func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
 	runAdmission, ok := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
 	if !ok {
 		// The in-process gate also guards working-tree mutations, so what it refuses is
 		// not always a Run and cannot always be named.
-		return sessionadmission.RunAdmission{}, ErrRunAdmissionBusy
+		return ownership.RunAdmission{}, ErrRunAdmissionBusy
 	}
 	// A Run the Session already holds is reported WITH its identity: the caller has to
 	// choose between steering it, answering it and canceling it, and it cannot choose
@@ -289,11 +289,11 @@ func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (
 	active, err := c.activeRunConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
-		return sessionadmission.RunAdmission{}, err
+		return ownership.RunAdmission{}, err
 	}
 	if active != nil {
 		runAdmission.Release()
-		return sessionadmission.RunAdmission{}, active
+		return ownership.RunAdmission{}, active
 	}
 	return runAdmission, nil
 }

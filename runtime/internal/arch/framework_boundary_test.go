@@ -836,7 +836,7 @@ func TestOwnershipRecoveryPolicyBelongsToApplication(t *testing.T) {
 	}
 	for _, required := range []string{
 		"runs.NewRecovery",
-		"ownershiprecovery.New",
+		"ownership.NewRecovery",
 		"ownershipRecovery.Reconcile",
 	} {
 		if !strings.Contains(string(bootstrapSource), required) {

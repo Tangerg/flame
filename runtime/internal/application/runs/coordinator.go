@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
@@ -62,7 +62,7 @@ type Coordinator struct {
 	// segments owns process-local Segment admission, replay and teardown;
 	// publications owns durable-write-before-notify ordering.
 	segments     segmentLifecycle
-	admission    *sessionadmission.Gate
+	admission    *ownership.Gate
 	publications runPublications
 }
 
@@ -94,7 +94,7 @@ type Dependencies struct {
 	Projection                         ProjectionPorts
 	Runs                               RunProjection
 	Items                              ItemProjection
-	Admissions                         *sessionadmission.Gate
+	Admissions                         *ownership.Gate
 	Isolation                          IsolationProvider // nil disables isolated sessions (their start is refused)
 	Now                                func() time.Time
 	// Retention bounds every segment's replay window. Zero takes

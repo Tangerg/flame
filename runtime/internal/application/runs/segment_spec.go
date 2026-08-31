@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -44,7 +44,7 @@ type segmentSpec struct {
 	Continuation *treeContinuation
 	// admission transfers the pre-commit reservation to the live Run only after
 	// its opening write-set commits.
-	admission *sessionadmission.RunAdmission
+	admission *ownership.RunAdmission
 	// BeginExecution crosses the executor side-effect boundary after opening commits.
 	BeginExecution func(context.Context) error
 	// DetachActivation is true for root Start/Resume commands whose durable

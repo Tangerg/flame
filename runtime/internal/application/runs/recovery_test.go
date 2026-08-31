@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	interruptdomain "github.com/Tangerg/flame/runtime/internal/domain/interrupt"
@@ -25,7 +25,7 @@ func newTestRecovery(
 	store RecoveryStore,
 	resumability WaitingExecutionResumability,
 ) (*Recovery, error) {
-	return NewRecovery(store, resumability, new(sessionadmission.Gate), nil)
+	return NewRecovery(store, resumability, new(ownership.Gate), nil)
 }
 
 type recoveryStoreStub struct {
@@ -445,7 +445,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 		waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
 			return false, nil
 		}),
-		new(sessionadmission.Gate),
+		new(ownership.Gate),
 		func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
 	if err != nil {

@@ -1,4 +1,4 @@
-package sessionadmission
+package ownership
 
 import (
 	"context"

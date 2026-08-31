@@ -13,9 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
-	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
@@ -198,7 +198,7 @@ type stubRuntime struct {
 	interrupts  *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
 	muts        *persistence.WorkspaceMutationStore // §8.5 recoverable file-rollback log
 	execution   executionRuntime
-	admissions  *sessionadmission.Gate
+	admissions  *ownership.Gate
 }
 
 // sessionsCoordinatorProvider is the optional test seam newTestHandler uses to
@@ -327,7 +327,7 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 
 func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
-	admissions := &sessionadmission.Gate{}
+	admissions := &ownership.Gate{}
 	var sessionPorts runs.SessionPorts
 	// Wire the session/run lifecycle coordinator over the fake's in-memory stores
 	// when the fake provides one, mirroring the composition root.
@@ -878,16 +878,16 @@ func (s stubMessageCounter) Write(ctx context.Context, id string, messages ...ch
 // File restore stays disabled (nil restorer); the checkpoint tests rebuild it
 // with a real restorer via [stubRuntime.sessionsCoordinatorWithRestorer].
 func (s *stubRuntime) sessionsCoordinator(admissions sessions.Admissions) *sessions.Coordinator {
-	gate, ok := admissions.(*sessionadmission.Gate)
+	gate, ok := admissions.(*ownership.Gate)
 	if !ok {
-		panic("test runtime requires sessionadmission.Gate")
+		panic("test runtime requires ownership.Gate")
 	}
 	s.admissions = gate
 	return s.sessionsCoordinatorWithRestorer(nil, admissions)
 }
 
 func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.WorkspaceCheckpoints, shared ...sessions.Admissions) *sessions.Coordinator {
-	admissions := sessions.Admissions(&sessionadmission.Gate{})
+	admissions := sessions.Admissions(&ownership.Gate{})
 	if len(shared) > 0 && shared[0] != nil {
 		admissions = shared[0]
 	}
