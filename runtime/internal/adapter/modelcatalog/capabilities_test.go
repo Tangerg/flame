@@ -88,6 +88,19 @@ func TestProbeRejectsPartialAnthropicModelCatalog(t *testing.T) {
 	}
 }
 
+func TestProbeRejectsEndpointConfigurationChatAdapterCannotBuild(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"data":[{"id":"deployment"}]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "azureopenai", "test-key", server.URL))
+	if err == nil {
+		t.Fatal("Probe accepted an Azure endpoint the chat adapter cannot build")
+	}
+}
+
 func TestProbeRejectsProviderWithoutCatalogOrAdvertisedModels(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.Header().Set("Content-Type", "application/json")

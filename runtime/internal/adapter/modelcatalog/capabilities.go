@@ -24,6 +24,7 @@ type Capabilities struct{}
 const (
 	providerProbePrompt      = "ping"
 	minimumProbeOutputTokens = int64(1)
+	configurationProbeModel  = "flame-configuration-probe"
 )
 
 func (Capabilities) Supported() []modelsapp.ProviderMetadata {
@@ -80,23 +81,9 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	if !hasDefault {
 		return fmt.Errorf("modelcatalog: provider %q has no probe model", entry.ID())
 	}
-	apiKey, configured := entry.APIKey()
-	if !configured {
-		return fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
-	}
-	credential, err := llm.NewAPIKeyCredential(apiKey.Reveal())
+	spec, err := providerClientSpec(entry, providerID, defaultModel)
 	if err != nil {
 		return err
-	}
-	spec, err := llm.NewClientSpec(providerID, defaultModel, credential)
-	if err != nil {
-		return err
-	}
-	if baseURL, present := entry.BaseURL(); present {
-		spec, err = spec.WithBaseURL(baseURL.String())
-		if err != nil {
-			return err
-		}
 	}
 	client, err := llm.BuildClient(spec)
 	if err != nil {
@@ -114,7 +101,8 @@ func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]
 }
 
 func remoteModelIDs(ctx context.Context, entry provider.Provider) ([]string, error) {
-	profile, found := llm.LookupProvider(llm.Provider(entry.ID()))
+	providerID := llm.Provider(entry.ID())
+	profile, found := llm.LookupProvider(providerID)
 	if !found {
 		return nil, fmt.Errorf("modelcatalog: provider %q is unsupported", entry.ID())
 	}
@@ -133,7 +121,36 @@ func remoteModelIDs(ctx context.Context, entry provider.Provider) ([]string, err
 	} else if profile.RequiresAPIKey() {
 		return nil, fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
 	}
+	spec, err := providerClientSpec(entry, providerID, configurationProbeModel)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := llm.BuildClient(spec); err != nil {
+		return nil, err
+	}
 	return profile.ListModels(ctx, baseURL, apiKey)
+}
+
+func providerClientSpec(entry provider.Provider, providerID llm.Provider, model string) (llm.ClientSpec, error) {
+	credential := llm.NoClientCredential()
+	if apiKey, configured := entry.APIKey(); configured {
+		var err error
+		credential, err = llm.NewAPIKeyCredential(apiKey.Reveal())
+		if err != nil {
+			return llm.ClientSpec{}, err
+		}
+	}
+	spec, err := llm.NewClientSpec(providerID, model, credential)
+	if err != nil {
+		return llm.ClientSpec{}, err
+	}
+	if baseURL, present := entry.BaseURL(); present {
+		spec, err = spec.WithBaseURL(baseURL.String())
+		if err != nil {
+			return llm.ClientSpec{}, err
+		}
+	}
+	return spec, nil
 }
 
 func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
