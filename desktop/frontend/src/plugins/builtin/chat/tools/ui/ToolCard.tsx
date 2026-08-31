@@ -1,6 +1,5 @@
-import type { IconName } from "@/ui";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
-import { DiffStat, IconButton, StatusDot } from "@/ui";
+import { DiffStat, IconButton, StatusDot, knownIconName } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
 import { cn } from "@/lib/classNames";
@@ -74,7 +73,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       actions={actions.map((action) => (
         <IconButton
           key={action.id}
-          icon={action.icon as IconName}
+          icon={knownIconName(action.icon) ?? "tool"}
           size="xs"
           quiet
           title={t(action.title)}

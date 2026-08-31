@@ -1,7 +1,6 @@
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
-import type { IconName } from "@/ui";
 import { useId, useRef, useState } from "react";
-import { Icon, IconButton, Pressable, TextButton } from "@/ui";
+import { Icon, IconButton, Pressable, TextButton, knownIconName } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
@@ -101,7 +100,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
             server.status === "failed" && "bg-negative-wash text-negative",
           )}
         >
-          <Icon name={server.icon as IconName} size="md" />
+          <Icon name={knownIconName(server.icon) ?? "tool"} size="md" />
         </div>
         <Pressable
           type="button"

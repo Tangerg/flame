@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
-import type { IconName } from "@/ui";
-import { Button, Icon, SearchField, SkeletonList, VerticalTabs } from "@/ui";
+import { Button, Icon, SearchField, SkeletonList, VerticalTabs, knownIconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
@@ -37,7 +36,7 @@ export function SettingsPage() {
       .map((p) => ({
         id: p.id,
         label: t(p.label),
-        icon: p.icon as IconName | undefined,
+        icon: knownIconName(p.icon),
         content: (
           <SettingsPaneFrame
             title={t(p.label)}

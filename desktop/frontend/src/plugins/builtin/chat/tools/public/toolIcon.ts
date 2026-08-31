@@ -1,3 +1,4 @@
+import { knownIconName } from "@/ui/icons";
 import type { IconName } from "@/ui/icons";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
@@ -11,9 +12,13 @@ export function toolRoutingKey(tool: ToolCall): string {
 }
 
 export function toolIconFor(key: string): IconName {
-  const registered = lookupExtensionByKey(TOOL_ICON, key);
-  if (registered) return registered as IconName;
-  return defaultToolIconFor(key) as IconName;
+  // A plugin contributes its glyph as a plain string, so an unknown one would draw nothing at
+  // all. The tool's own default is the next answer, and the generic tool mark the last.
+  return (
+    knownIconName(lookupExtensionByKey(TOOL_ICON, key)) ??
+    knownIconName(defaultToolIconFor(key)) ??
+    "tool"
+  );
 }
 
 /** Status outranks identity in the leading mark; otherwise each tool keeps its

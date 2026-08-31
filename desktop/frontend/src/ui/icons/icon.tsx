@@ -283,6 +283,19 @@ const ICON_MAP = {
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
+/**
+ * Narrow a contributed string to a glyph this set actually draws.
+ *
+ * Icon names reach us as plain strings — from plugin contributions, from a workspace view or
+ * settings pane spec, and from MCP server data the Runtime forwards. Casting one straight to
+ * `IconName` type-checks and then draws NOTHING for a name we do not have: no error, no
+ * fallback, just a gap where a glyph belongs. The cast is honest here because `has` earned it,
+ * and every caller is left to say what it wants shown instead.
+ */
+export function knownIconName(value: string | null | undefined): IconName | undefined {
+  return value != null && ICON_NAMES.has(value as IconName) ? (value as IconName) : undefined;
+}
+
 interface Props {
   name: IconName;
   size?: IconSize;

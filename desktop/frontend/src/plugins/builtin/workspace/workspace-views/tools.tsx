@@ -1,6 +1,5 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
-import type { IconName } from "@/ui";
 import {
   Badge,
   Collapsible,
@@ -11,6 +10,7 @@ import {
   SectionLabel,
   TextArea,
   TextButton,
+  knownIconName,
 } from "@/ui";
 import { McpRow } from "./views/McpRow";
 import { cn } from "@/lib/classNames";
@@ -132,7 +132,7 @@ function DiagnosticToolRowPresentation({
           size="xs"
           className={cn("mt-1 text-fg-faint transition-transform", !open && "-rotate-90")}
         />
-        <Icon name={tool.icon as IconName} size="xs" className="mt-1 text-fg-faint" />
+        <Icon name={knownIconName(tool.icon) ?? "tool"} size="xs" className="mt-1 text-fg-faint" />
         <span className="min-w-0">
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="truncate font-mono text-ui-sm text-fg">{tool.name}</span>

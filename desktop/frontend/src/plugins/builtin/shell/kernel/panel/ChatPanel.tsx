@@ -2,7 +2,7 @@ import { Activity, Fragment, useLayoutEffect, useRef, useState, type ReactNode }
 import { dockWidthRow } from "./dockWidth";
 import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
 import type { ViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
-import { CatalogPicker, type CatalogPickerGroup, type IconName } from "@/ui";
+import { CatalogPicker, knownIconName, type CatalogPickerGroup, type IconName } from "@/ui";
 import {
   AgentContentCard,
   AgentContextDock,
@@ -48,7 +48,7 @@ import { useT } from "@/lib/i18n";
 import { canPresentDock, defaultDockRatio } from "@/lib/shellGeometry";
 
 function viewIcon(name: string | undefined): IconName | undefined {
-  return name as IconName | undefined;
+  return knownIconName(name);
 }
 
 interface Props {

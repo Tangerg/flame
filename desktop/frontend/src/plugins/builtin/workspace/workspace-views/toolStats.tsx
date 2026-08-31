@@ -1,8 +1,7 @@
-import type { IconName } from "@/ui";
 import type { ToolStat, ToolStatsSummary } from "../application/toolStats";
 import { toolStats, toolTimeShare } from "../application/toolStats";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
-import { Badge, EmptyState, Icon, ProgressBar, Sparkline } from "@/ui";
+import { Badge, EmptyState, Icon, ProgressBar, Sparkline, knownIconName } from "@/ui";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
@@ -43,7 +42,7 @@ function ToolStatsTab() {
 
 function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummary }) {
   const t = useT();
-  const icon = (lookupExtensionByKey(TOOL_ICON, row.name) as IconName | undefined) ?? "lightning";
+  const icon = knownIconName(lookupExtensionByKey(TOOL_ICON, row.name)) ?? "lightning";
 
   return (
     <div className="px-3.5 py-2">
