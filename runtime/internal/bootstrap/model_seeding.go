@@ -9,32 +9,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
-// SeedConfiguredProvider ensures the config-file provider is present in the
-// registry with its key, so the default provider is enabled on first run. A
-// provider enabled by a stored key is left untouched — runtime edits win over
-// the config file. An environment key is never copied into storage; only a
-// missing configured endpoint is seeded beside it.
+// SeedConfiguredProvider writes config-file provider values only when the
+// durable registry has no row for that provider. Any existing row represents
+// an explicit runtime-owned value, including cleared credential/endpoint
+// fields, and wins as a whole. Callers must pass the unoverlaid durable
+// registry so an environment credential cannot masquerade as stored state.
 func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistry, cfg config.Settings) error {
 	id := cfg.Provider
-	existing, ok, err := registry.Get(ctx, id)
+	_, ok, err := registry.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 	if ok {
-		credential, configured := existing.Credential()
-		if configured {
-			source, _ := credential.Source()
-			_, hasBaseURL := existing.BaseURL()
-			if source != provider.KeyEnvironment || hasBaseURL || cfg.BaseURL == "" {
-				return nil
-			}
-			baseURL, parseErr := provider.NewBaseURL(cfg.BaseURL)
-			if parseErr != nil {
-				return parseErr
-			}
-			_, err = registry.Update(ctx, id, provider.Patch{BaseURL: provider.Set(baseURL)})
-			return err
-		}
+		return nil
 	}
 	patch := provider.Patch{}
 	if rawAPIKey, present := cfg.APIKey.FileValue(); present {

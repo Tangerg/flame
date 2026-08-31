@@ -103,11 +103,11 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 
-	providers, err := ProviderRegistry(stores.Providers, settings)
-	if err != nil {
+	if err = SeedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
-	if err = SeedConfiguredProvider(ctx, providers, settings); err != nil {
+	providers, err := ProviderRegistry(stores.Providers, settings)
+	if err != nil {
 		return nil, config.Settings{}, err
 	}
 	chatResolver := modelclient.NewChatResolver(providers)

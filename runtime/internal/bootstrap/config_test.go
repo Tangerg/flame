@@ -107,6 +107,28 @@ func TestSeedConfiguredProvider(t *testing.T) {
 	}
 }
 
+func TestSeedConfiguredProviderDoesNotUndoAnExplicitDurableClear(t *testing.T) {
+	stored := bootstrapProvider(t, "anthropic", "", "https://stored.example.test")
+	registry := &providerRegistry{stored: map[string]provider.Provider{"anthropic": stored}}
+	settings := config.Settings{
+		Provider: "anthropic",
+		APIKey:   config.FileAPIKey("sk-file"),
+		BaseURL:  "https://config.example.test",
+	}
+
+	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+		t.Fatal(err)
+	}
+	effective := registry.stored[settings.Provider]
+	if _, configured := effective.Credential(); configured {
+		t.Fatal("first-run seed re-enabled an explicitly cleared provider")
+	}
+	baseURL, present := effective.BaseURL()
+	if !present || baseURL.String() != "https://stored.example.test" {
+		t.Fatalf("first-run seed replaced durable endpoint = (%q, %t)", baseURL.String(), present)
+	}
+}
+
 func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T) {
 	registry := &providerRegistry{stored: map[string]provider.Provider{}}
 	if err := SeedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "ollama"}); err != nil {
@@ -132,17 +154,17 @@ func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T
 func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoint(t *testing.T) {
 	t.Setenv("OPENAI_COMPATIBLE_API_KEY", "sk-env")
 	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	registry, err := ProviderRegistry(inner, config.Settings{Provider: "openai-compatible", APIKey: config.EnvironmentAPIKey("sk-env")})
-	if err != nil {
-		t.Fatal(err)
-	}
 	cfg := config.Settings{
 		Provider: "openai-compatible",
 		APIKey:   config.EnvironmentAPIKey("sk-env"),
 		BaseURL:  "https://gateway.example.test",
 	}
 
-	if err := SeedConfiguredProvider(t.Context(), registry, cfg); err != nil {
+	if err := SeedConfiguredProvider(t.Context(), inner, cfg); err != nil {
+		t.Fatal(err)
+	}
+	registry, err := ProviderRegistry(inner, cfg)
+	if err != nil {
 		t.Fatal(err)
 	}
 	stored := inner.stored[cfg.Provider]
@@ -183,11 +205,11 @@ func TestGenericEnvironmentKeyNeverCrossesTheDurableProviderBoundary(t *testing.
 		t.Fatal(err)
 	}
 	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	registry, err := ProviderRegistry(inner, settings)
-	if err != nil {
+	if err := SeedConfiguredProvider(t.Context(), inner, settings); err != nil {
 		t.Fatal(err)
 	}
-	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+	registry, err := ProviderRegistry(inner, settings)
+	if err != nil {
 		t.Fatal(err)
 	}
 

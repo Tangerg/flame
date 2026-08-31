@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -10,6 +11,69 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/productidentity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_APIKEY", "")
+	t.Setenv("FLAME_BASEURL", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("FLAME_MCP_SERVERS", "")
+	t.Setenv("FLAME_A2A_AGENTS", "")
+	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+
+	configDirectory := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(configDirectory, "config.yaml"),
+		[]byte("provider: anthropic\napiKey: sk-file\nbaseURL: https://config.example.test\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	config := Config{
+		DataDirectory:        t.TempDir(),
+		DefaultWorkspacePath: t.TempDir(),
+		UserHomePath:         t.TempDir(),
+		ConfigDirectories:    []string{configDirectory},
+	}
+
+	runtime, err := Open(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
+		Provider: "anthropic",
+		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigClear},
+	}, CommandOptions{IdempotencyKey: "clear-provider-before-restart"}); err != nil {
+		_ = runtime.Close()
+		t.Fatal(err)
+	}
+	if err := runtime.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := Open(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	providers, err := reopened.ListProviders(t.Context(), CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, candidate := range providers.Data {
+		if candidate.ID != "anthropic" {
+			continue
+		}
+		if candidate.Credential != nil || candidate.Configured {
+			t.Fatalf("restart re-enabled cleared provider = %+v", candidate)
+		}
+		if candidate.BaseURL == nil || *candidate.BaseURL != "https://config.example.test" {
+			t.Fatalf("restart changed stored provider endpoint = %+v", candidate)
+		}
+		return
+	}
+	t.Fatal("anthropic provider missing after restart")
+}
 
 func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
 	data := t.TempDir()
