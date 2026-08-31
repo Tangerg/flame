@@ -97,7 +97,7 @@ type conditionRow struct {
 	Value    string `json:"value,omitempty"`
 }
 
-// eventEntry is the reliability classification API.md §5.2 derives from the
+// eventEntry is the reliability classification derived from the
 // event type. It is emitted so a client can build its replay/dedup logic from
 // data instead of re-implementing the derivation table.
 type eventEntry struct {
@@ -266,7 +266,7 @@ func errors(registry *delivery.Registry) errorRegistry {
 	return errorRegistry{
 		Types: errorTypes(registry, codes),
 		// The run/tool channels carry no numeric code — only a symbolic type
-		// (API.md §8.4). They are listed so a client's copy table can be checked
+		// They are listed so a client's copy table can be checked
 		// for completeness against the runtime rather than against a doc.
 		RunTypes: dispatch.ProblemTypesFor(dispatch.ProblemChannelExecution),
 		// Inline-status problems ride a query's own result instead of failing the
@@ -336,7 +336,7 @@ func topics(shapes *dispatch.Shapes) []topicEntry {
 
 // topicFeature reports the feature a topic's PRODUCTION depends on. files.changed
 // only exists for a client that registered watches; the rest are unconditional
-// (AUX_API §1).
+// used by the Runtime Protocol.
 func topicFeature(topic string) string {
 	if topic == string(protocol.RuntimeFilesChanged) {
 		return protocol.FeatureFileWatch

@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// agentMemory.* (API.md §7.x) — HITL review of the agent's self-maintained
+// Agent Memory operations provide HITL review of the agent's self-maintained
 // memory: proposals wait as pending until the user approves them, and only
 // approved memory reaches the prompt or the search_memory tool.
 

@@ -127,7 +127,7 @@ import type {
   WorkspaceQuery,
 } from "./wire.generated";
 
-// Every capability key discovery may advertise (API.md §9). Private: it exists to
+// Every capability key discovery may advertise. Private: it exists to
 // derive the union, and a published array with no reader would be a second table.
 const FEATURES = [
   "reasoning",

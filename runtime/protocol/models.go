@@ -22,13 +22,13 @@ type EmbeddingRole struct {
 	Model    string `json:"model,omitempty"`
 }
 
-// ListModelsRequest — models.list body (API.md §7.6). Provider is optional
+// ListModelsRequest is the models.list body. Provider is optional
 // (models are organized by provider; omitted → empty page).
 type ListModelsRequest struct {
 	Provider string `json:"provider,omitempty"`
 }
 
-// Model is one entry in models.list (API.md §4.9).
+// Model is one entry in models.list.
 type Model struct {
 	ID          string `json:"id"`
 	Provider    string `json:"provider"`
@@ -56,7 +56,7 @@ type ModelTokenLimits struct {
 }
 
 // Modality is a media type a model takes as input or emits as output
-// (API.md §4.9), mirroring core's chat.Modality. Open enum — new media types
+// It mirrors core's chat.Modality. The enum is open, so new media types
 // are added without bumping the contract.
 type Modality string
 
@@ -68,7 +68,7 @@ const (
 	ModalityPDF   Modality = "pdf"
 )
 
-// ModelCapabilities — per-model capabilities (API.md §4.9). The booleans are
+// ModelCapabilities describes per-model capabilities. The booleans are
 // quick gates; the list / level fields carry the detail a model picker needs
 // (which media the model accepts, what reasoning effort levels it offers).
 type ModelCapabilities struct {
@@ -94,7 +94,7 @@ type ModelCapabilities struct {
 	StructuredOutput bool `json:"structuredOutput,omitempty"`
 }
 
-// ModelPricing — per-million-token pricing (API.md §4.9). The primary rate
+// ModelPricing describes per-million-token pricing. The primary rate
 // band; cache rates are zero when the provider doesn't price cache separately.
 // Long-context models that reprice past a token threshold carry only their base
 // band here — full banded pricing isn't surfaced on the wire.

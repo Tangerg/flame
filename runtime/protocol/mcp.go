@@ -167,7 +167,7 @@ type UpdateMCPServerRequest struct {
 	AutoApproveTools *[]string            `json:"autoApproveTools,omitempty"`
 }
 
-// MCPTool is one tool exposed by an MCP server (API.md §4.10).
+// MCPTool is one tool exposed by an MCP server.
 type MCPTool struct {
 	Server      string         `json:"server"`
 	Name        string         `json:"name"`

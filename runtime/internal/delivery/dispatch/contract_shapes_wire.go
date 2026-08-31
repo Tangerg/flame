@@ -259,7 +259,7 @@ func registerItemUnions(s *Shapes) {
 	})
 
 	// Every delta is ephemeral and every one has a named authoritative landing
-	// (API.md §5.2). toolArguments is partial JSON TEXT, not an object — the
+	// in the contract. toolArguments is partial JSON TEXT, not an object — the
 	// parsed value only exists on the completed item.
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.ItemDelta](),
@@ -344,7 +344,7 @@ func registerInterruptUnions(s *Shapes) {
 	})
 
 	// editedArgs is one-shot by design: a remembered rule matches by the call's
-	// subject, never by a one-off argument rewrite (AUX_API §6).
+	// subject, never by a one-off argument rewrite.
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.InterruptResponseValue](),
 		Discriminator: "type",
@@ -799,6 +799,6 @@ func failureTerminalRules() []ConditionalRule {
 
 func registerCarriedShapes(s *Shapes) {
 	// `params._meta` is stripped before typed params are decoded, so the walk cannot
-	// reach it — yet every client constructs it (API.md §2.4).
+	// reach it, yet every client constructs it.
 	s.carriedShape(CarriedSpec{Carrier: "params._meta", GoType: typeOf[protocol.RequestMeta]()})
 }

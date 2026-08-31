@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Schedule is one scheduled run (API.md §4.12). Instructions is the final text
+// Schedule is one scheduled run. Instructions is the final text
 // sent as the run's input. cron is a 5-field standard expression
 // ("min hour dom month dow"). lastRunAt is omitted until first fired; nextRunAt
 // is omitted when the schedule is disabled.

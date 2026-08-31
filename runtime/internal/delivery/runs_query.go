@@ -138,8 +138,7 @@ func wireInterruptPageError(err error) error {
 }
 
 // SubscribeRun opens a fresh event stream onto the root segment the request
-// names (reconnect / crash recovery; subscribes the whole run tree, API.md
-// §5.4 / §7.3).
+// names for reconnect or crash recovery and subscribes the whole run tree.
 //
 // With a Last-Event-Id (carried out-of-band via ctx, TRANSPORT §9.2) it replays
 // the retained events after that position and then tails live; without one it

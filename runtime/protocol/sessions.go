@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SessionStatus mirrors the wire enum (API.md §4.1).
+// SessionStatus is the Session lifecycle vocabulary.
 type SessionStatus string
 
 const (
@@ -14,7 +14,7 @@ const (
 	SessionStatusIdle    SessionStatus = "idle"
 )
 
-// Session is one conversation, bound to a resolved workspace (API.md §4.1).
+// Session is one conversation bound to a resolved workspace.
 type Session struct {
 	ID              string        `json:"id"`
 	Title           string        `json:"title"`
@@ -70,7 +70,7 @@ type DeleteSessionRequest struct {
 }
 
 // CreateSessionRequest — sessions.create body. Workspace is optional and defaults
-// to ServerInfo.defaultWorkspace (cold-start zero friction, API.md §7.2).
+// to ServerInfo.defaultWorkspace for cold-start use.
 type CreateSessionRequest struct {
 	Workspace *WorkspaceRef `json:"workspace,omitempty"`
 	Title     string        `json:"title,omitempty"`
@@ -89,7 +89,7 @@ type UpdateSessionRequest struct {
 	Favorite         *bool         `json:"favorite,omitempty"`
 }
 
-// ForkSessionRequest — sessions.fork body (AUX_API §4.2). Omit fromRunId for a
+// ForkSessionRequest is the sessions.fork body. Omit fromRunId for a
 // whole-conversation fork; give it to truncate-copy up to and including that
 // run boundary. Inherits the source cwd.
 type ForkSessionRequest struct {
@@ -98,7 +98,7 @@ type ForkSessionRequest struct {
 	Title     string `json:"title,omitempty"`
 }
 
-// RollbackSessionRequest — sessions.rollback body (AUX_API §4.1). ToRunID is
+// RollbackSessionRequest is the sessions.rollback body. ToRunID is
 // inclusive-keep: the last ROOT run to keep, everything after it is dropped
 // (its continuation chain + child-Run subtree + dangling interrupts go too).
 // Omit ToRunID to drop every run and return to an empty session ("edit the
@@ -106,7 +106,7 @@ type ForkSessionRequest struct {
 type RollbackSessionRequest struct {
 	SessionID string `json:"sessionId"`
 	ToRunID   string `json:"toRunId,omitempty"`
-	// RestoreType selects what the rollback rewinds (AUX_API §4.3), default
+	// RestoreType selects what the rollback rewinds; the default
 	// "history". "files"/"both" restore the working tree to ToRunID's
 	// checkpoint and require ToRunID + features.checkpoints; "both" is atomic
 	// (files first — if they fail, history is left untouched).
@@ -130,7 +130,7 @@ type RollbackSessionResponse struct {
 	DroppedRuns []DroppedRun `json:"droppedRuns"`
 }
 
-// DroppedRun is one run sessions.rollback removed (AUX_API §4.1). UserInput is
+// DroppedRun is one Run removed by sessions.rollback. UserInput is
 // the dropped run's opening userMessage content — same shape as
 // StartRunRequest.input, so the client can re-populate the composer with zero
 // transformation. Continuation Runs (resume/edit) open no user message, so it is

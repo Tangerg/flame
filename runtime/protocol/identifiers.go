@@ -2,7 +2,7 @@ package protocol
 
 import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 
-// Server-generated resource ID prefixes (doc/API.md §2.2).
+// Server-generated resource ID prefixes.
 const (
 	IDPrefixSession  = runtimeidentity.SessionPrefix
 	IDPrefixRun      = runtimeidentity.RunPrefix

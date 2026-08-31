@@ -7,8 +7,9 @@
 // Consumers define their own narrow interfaces; the concrete Runtime is
 // published by the module-root runtime package.
 //
-// doc/API.md describes the semantics and contract/API_REFERENCE.md is the
-// generated operation index. The model is Session → Run → Item: Item is the
-// history and streaming primitive, and human-in-the-loop ends one Segment with
-// an interrupt before the same Run resumes in another Segment.
+// contract/API_REFERENCE.md is the generated operation index, while the JSON
+// artifacts in contract are the machine-readable method and shape authority.
+// The model is Session → Run → Item: Item is the history and streaming
+// primitive, and human-in-the-loop ends one Segment with an interrupt before
+// the same Run resumes in another Segment.
 package protocol

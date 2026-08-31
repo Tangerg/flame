@@ -38,7 +38,7 @@ func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
 }
 
 // ListItems returns a session's persisted history as durable Items
-// (API.md §7.4). History = the completed Item sequence; there is no
+// History is the completed Item sequence; there is no
 // separate Message type. The result is a Page[Item] (`data` + `nextCursor`)
 // plus the RunRefs needed to rebuild the run tree (§10.3). Over a page the
 // server backfills nextCursor rather than silently truncating (§4.11 — no

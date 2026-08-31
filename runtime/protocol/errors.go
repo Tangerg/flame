@@ -2,21 +2,21 @@ package protocol
 
 import "errors"
 
-// ProblemData is the structured error payload (API.md §4.6 / §8) — a
+// ProblemData is the structured error payload: a
 // transport-agnostic trim of RFC 9457 Problem Details. It rides
 // RPCError.data, RunResult.error, and toolCall.error. Type is the stable
 // symbolic name — clients judge errors by Type, never by numeric code
-// (API.md §8.2). First-party types are bare snake_case; third-party
+// according to Type. First-party types are bare snake_case; third-party
 // plugins namespace as `plugin:<name>/<symbol>` — one instance of the
-// unified extension-namespace convention (API.md §2.5, error case §8.4).
+// unified extension-namespace convention.
 type ProblemData struct {
 	Type   string `json:"type"`
 	Detail string `json:"detail,omitempty"` // per-occurrence human-readable note
 	// DocURL optionally points at this type's docs (Stripe doc_url), lowering
-	// integration cost (API.md §8.3); absent → look the symbolic type up in §8.2.
+	// integration cost; when absent, look up the symbolic type.
 	DocURL string `json:"docUrl,omitempty"`
 	// RetryAfterSeconds, when given, is the earliest sensible retry (e.g. a
-	// provider rate-limit backoff) the client honors before its own (API.md §8.3).
+	// provider rate-limit backoff) the client honors before its own.
 	// Only the kinds that waiting can clear carry one.
 	RetryAfterSeconds int `json:"retryAfterSeconds,omitempty"`
 	// RequiredCapabilities is required by capability_not_negotiated and non-empty:
@@ -29,7 +29,7 @@ type ProblemData struct {
 	ActiveRun *ActiveRunRef `json:"activeRun,omitempty"`
 	// Errors carries field-level validation failures (typically
 	// invalid_params / form validation), addressable by field so the UI
-	// can flag each one (API.md §8.3).
+	// can flag each one.
 	Errors []FieldError `json:"errors,omitempty"`
 }
 
@@ -114,14 +114,14 @@ type ActiveRunRef struct {
 }
 
 // FieldError is one field-level validation failure inside ProblemData
-// (API.md §4.6 / §8.3). Field is the offending params key.
+// Field is the offending params key.
 type FieldError struct {
 	Field  string `json:"field"`
 	Detail string `json:"detail"`
 }
 
 // First-party ProblemData.Type symbols for the run, tool and inline-status
-// channels (API.md §8.2). The contract registry combines these constants with
+// channels. The contract registry combines these constants with
 // the RPC sentinels below into the exact first-party union. Third-party types
 // have one deliberately narrow extension branch:
 // `plugin:<pluginName>/<symbol>`.
@@ -207,12 +207,12 @@ var (
 	ErrMCPServerDisabled               = errors.New("mcp_server_disabled")
 	ErrMCPAuthorizationAttemptNotFound = errors.New("mcp_authorization_attempt_not_found")
 	ErrInvalidProtocolVersion          = errors.New("invalid_protocol_version")
-	// ErrVcsUnavailable: git is available but the cwd isn't a repo (AUX_API
-	// §2.3) — distinct from "clean repo" (empty result). NOT for missing git
+	// ErrVcsUnavailable: git is available but the cwd isn't a repo. It is distinct
+	// from "clean repo" (empty result). NOT for missing git
 	// (that's features.git=false) nor an unresolvable base branch (invalid_params).
 	ErrVcsUnavailable = errors.New("vcs_unavailable")
 	// ErrSessionBusy: a session has a run in flight, so an operation that would
-	// race the in-progress history append is refused (AUX_API §4.1 — rollback).
+	// race the in-progress history append is refused.
 	ErrSessionBusy = errors.New("session_busy")
 	// ErrRevisionConflict: a conditional mutation used a stale resource revision.
 	ErrRevisionConflict         = errors.New("revision_conflict")

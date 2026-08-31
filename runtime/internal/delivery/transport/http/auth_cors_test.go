@@ -84,8 +84,7 @@ func newGatedServerWithOrigins(t *testing.T, origins []string) *httptest.Server 
 }
 
 // TestAuthGateMissingToken — gate-on POST without Authorization gets
-// 401 + a transport problem. Per API.md §7.3
-// this MUST NOT use the JSON-RPC envelope.
+// 401 + a transport problem. This MUST NOT use the JSON-RPC envelope.
 func TestAuthGateMissingToken(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()
@@ -171,7 +170,7 @@ func TestAuthGateCorrectToken(t *testing.T) {
 
 // TestAuthGateBypassesSidecars confirms operational endpoints stay open
 // when the gate is on. Operations / oncall must always be able to
-// curl these. TRANSPORT.md §安全.
+// curl these without browser CORS enforcement.
 func TestAuthGateBypassesSidecars(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()

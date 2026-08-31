@@ -201,8 +201,8 @@ type MethodMeta struct {
 	ReplayCursor ReplayCursorPolicy
 	Pagination   PaginationKind
 
-	// Errors is the method-SPECIFIC ProblemData.type values its contract documents
-	// (API.md §7 per-method "错误" lines). It deliberately does not include:
+	// Errors is the method-specific ProblemData.type values its contract declares.
+	// It deliberately does not include:
 	//
 	//   - internal_error — the universal fallback on every method;
 	//   - invalid_params — carried by any request whose type states constraints

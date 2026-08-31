@@ -5,7 +5,7 @@ type SessionUsageRequest struct {
 	SessionID string `json:"sessionId"`
 }
 
-// UsageSummaryRequest — usage.summary body (API.md §7.7).
+// UsageSummaryRequest is the usage.summary body.
 type UsageSummaryRequest struct {
 	// SinceDays limits the report to runs finished within the last N days;
 	// absence means all time, while a present value is strictly positive.

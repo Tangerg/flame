@@ -5,7 +5,7 @@ type TestProviderRequest struct {
 	Provider string `json:"provider"`
 }
 
-// Provider is one configured LLM provider (API.md §4.9). The key is
+// Provider is one configured LLM provider. The key is
 // returned masked, never reconstructable.
 type Provider struct {
 	ID                    string                        `json:"id"`

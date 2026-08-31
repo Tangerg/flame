@@ -1,6 +1,6 @@
 package protocol
 
-// FeedbackRating is the quality signal on feedback.create (API.md §7.7).
+// FeedbackRating is the quality signal on feedback.create.
 type FeedbackRating string
 
 const (
@@ -8,7 +8,7 @@ const (
 	FeedbackNegative FeedbackRating = "negative"
 )
 
-// FeedbackRequest — feedback.create body (API.md §7.7).
+// FeedbackRequest is the feedback.create body.
 type FeedbackRequest struct {
 	SessionID string         `json:"sessionId,omitempty"`
 	RunID     string         `json:"runId,omitempty"`

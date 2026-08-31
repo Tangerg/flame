@@ -12,7 +12,7 @@ package delivery
 // can read the whole contract without standing one up.
 //
 // Registrations are grouped into files by domain, mirroring the wire method
-// groups (API.md §7). Adding a method is one registration; there is no
+// groups. Adding a method is one registration; there is no
 // second table, name constant, or replay list to update alongside it.
 var contract = buildContract()
 

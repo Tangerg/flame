@@ -8,7 +8,7 @@ const (
 	SkillScopeUser    SkillScope = "user"
 )
 
-// Skill is one entry in skills.discovered.list (API.md §4.10).
+// Skill is one entry in skills.discovered.list.
 type Skill struct {
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`

@@ -98,7 +98,7 @@ func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
 
 // TestDecodeReportsFieldLevelConstraintViolations pins the two facts a request
 // constraint has to deliver: the failure is invalid_params, and it names the
-// offending params keys in ProblemData.errors (API.md §8.3) rather than only in
+// offending params keys in ProblemData.errors rather than only in
 // a prose detail the client would have to parse.
 func TestDecodeReportsFieldLevelConstraintViolations(t *testing.T) {
 	t.Parallel()

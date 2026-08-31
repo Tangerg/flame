@@ -14,7 +14,7 @@ const (
 )
 
 // EncodeRunEvent wraps one RunEvent into a notifications.run.event
-// JSON-RPC notification (API.md §5). The single downstream stream
+// JSON-RPC notification. The single downstream stream
 // carries segment / item / Plan events; segment.finished (the terminal event)
 // rides this same stream — there is no separate run-closed
 // notification. runId + eventId let the client filter by stream and

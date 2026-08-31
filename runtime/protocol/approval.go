@@ -1,6 +1,6 @@
 package protocol
 
-// ApprovalRule is one persisted fine-grained approval rule (AUX_API §6). The
+// ApprovalRule is one persisted fine-grained approval rule. The
 // rule auto-resolves a gated tool call when the call's scope matches, the tool
 // matches, and the call's per-tool subject (a shell command, an edited file's
 // path) matches the Subject glob — so a rule reads "allow `npm run *` in this

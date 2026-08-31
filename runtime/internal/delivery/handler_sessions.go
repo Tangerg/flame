@@ -134,7 +134,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 
 func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
 	// Workspace defaults to the serve directory when the
-	// client omits it — cold-start zero friction (API.md §7.2 / §0.2).
+	// client omits it for cold-start use.
 	cwd := s.serverInfo.DefaultWorkspace.Path
 	if in.Workspace != nil {
 		cwd = in.Workspace.Path
@@ -193,7 +193,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 }
 
 // ForkSession branches a session into a fresh child that continues from the
-// parent's conversation (API.md §7.2 / AUX_API §4.2): the child inherits the
+// parent's conversation: the child inherits the
 // parent's cwd and a copy of its chat history, then diverges. An optional title
 // overrides the default "<parent> (fork)".
 //

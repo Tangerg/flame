@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ExportSession serializes a session to a portable artifact (AUX_API §4.3).
+// ExportSession serializes a session to a portable artifact.
 // format=json (default) produces a round-trippable SessionArtifact —
 // session identity + chat history + canonical items + runs + portable offloaded tool
 // bodies — that ImportSession restores. format=md produces a human-readable

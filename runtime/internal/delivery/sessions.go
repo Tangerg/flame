@@ -59,7 +59,7 @@ func registerSessions(registry *Registry) {
 		return service.CreateSession(ctx, request)
 	})
 
-	// Setting workspace is a relocate, which is its own capability (API.md §9) — hence a
+	// Setting workspace is a relocate, which is its own capability — hence a
 	// conditional rule: the rest of sessions.update stays available when relocate
 	// is off, instead of the whole method disappearing.
 	registry.Command(MethodMeta{
@@ -102,7 +102,7 @@ func registerSessions(registry *Registry) {
 
 	// restoreType files/both rewind the working tree from a shadow-git snapshot,
 	// which needs features.checkpoints; the default history rollback needs nothing
-	// (AUX_API §4.1). Two rules rather than one because the contract states the
+	// Two rules rather than one because the contract states the
 	// requirement per value, and a generated schema reads them as two if/then.
 	registry.Command(MethodMeta{
 		Name: SessionsRollback,

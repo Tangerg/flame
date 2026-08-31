@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Goal is one session's autonomous objective and loop state (API.md §7.14).
+// Goal is one Session's autonomous objective and loop state.
 // status is active | paused | blocked | completing. Completing is the observable
 // settlement window after the model has declared success and before the owning
 // drive has charged the final Run and cleared the objective.

@@ -9,7 +9,7 @@ import (
 )
 
 // ListTools surfaces every read-only diagnostic tool valid outside an agent
-// Run (API.md §7.6).
+// Run.
 func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpec], error) {
 	internal, err := s.tools.List(ctx)
 	if err != nil {

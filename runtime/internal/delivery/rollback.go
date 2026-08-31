@@ -11,7 +11,7 @@ import (
 )
 
 // RollbackSession discards the runs after the kept boundary, truncating the
-// session in place at a run granularity (AUX_API §4.1). Destructive: it
+// session in place at a run granularity. Destructive: it
 // truncates the conversation message log to the kept watermark, deletes the
 // dropped runs' durable items + records, clears their dangling interrupts, and
 // purges the child-Run sessions they spawned. ToRunID is inclusive-keep

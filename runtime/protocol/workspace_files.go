@@ -1,6 +1,6 @@
 package protocol
 
-// WorkspaceQuery is the common explicit scope for workspace reads (API.md §7.5).
+// WorkspaceQuery is the common explicit scope for workspace reads.
 type WorkspaceQuery struct {
 	Workspace WorkspaceRef `json:"workspace"`
 }
@@ -24,7 +24,7 @@ type GrepRequest struct {
 	Limit     *int         `json:"limit,omitempty"`
 }
 
-// ListFilesRequest — workspace.files.list body (API.md §7.5). Lists files under
+// ListFilesRequest is the workspace.files.list body. It lists files under
 // Path (relative to CWD, jailed). Recursive (or a Glob) yields a flat subtree
 // file list — the @file / fuzzy source; otherwise the immediate children — the
 // lazy file-tree level. .gitignore + backstop excludes apply unless
@@ -38,7 +38,7 @@ type ListFilesRequest struct {
 	PageQuery
 }
 
-// ReadFileRequest — workspace.files.read body (API.md §7.5). Reads the whole
+// ReadFileRequest is the workspace.files.read body. It reads the whole
 // file, or the StartLine..EndLine window (1-based inclusive, editor-facing)
 // when given. A zero MaxBytes selects the 1 MiB default; larger values are
 // capped at 8 MiB. FileContent.Truncated reports omitted source material.
@@ -50,7 +50,7 @@ type ReadFileRequest struct {
 	MaxBytes  *int         `json:"maxBytes,omitempty"`
 }
 
-// FileContent is the workspace.files.read result (API.md §7.5). TotalLines is the
+// FileContent is the workspace.files.read result. TotalLines is the
 // whole-file line count even for a windowed read (so the UI can show "12–40 /
 // 320"). StartLine/EndLine describe the served window (1-based inclusive), set
 // only when a range was requested; a byte-limited last line may be a valid
@@ -65,7 +65,7 @@ type FileContent struct {
 	EndLine    int    `json:"endLine,omitempty"`
 }
 
-// FileEntryType is a listed entry's kind (workspace.files.list, API.md §7.5).
+// FileEntryType is a listed workspace entry's kind.
 type FileEntryType string
 
 const (
@@ -74,7 +74,7 @@ const (
 	FileEntrySymlink FileEntryType = "symlink"
 )
 
-// FileEntry is one inspected entry in workspace.files.list (API.md §7.5). Path
+// FileEntry is one inspected entry in workspace.files.list. Path
 // is relative to the workspace root; type, size, and modification time come
 // from one inspection of that entry.
 type FileEntry struct {
@@ -85,19 +85,19 @@ type FileEntry struct {
 	ModifiedAt string        `json:"modifiedAt"`
 }
 
-// FileHead is a file preview (API.md §4.5).
+// FileHead is a file preview.
 type FileHead struct {
 	Path  string     `json:"path"`
 	Lines []FileLine `json:"lines"`
 }
 
-// FileLine is one preview line — plain text, client highlights (API.md §4.5).
+// FileLine is one plain-text preview line for client-side highlighting.
 type FileLine struct {
 	LineNumber int    `json:"lineNumber"`
 	Text       string `json:"text"`
 }
 
-// GrepResult is the workspace.files.search result (API.md §4.5). Matches is a
+// GrepResult is the workspace.files.search result. Matches is a
 // stable whole-line prefix; Total is the exact count across admitted UTF-8 text
 // files and may exceed len(Matches) when count or material limits apply.
 type GrepResult struct {
@@ -105,7 +105,7 @@ type GrepResult struct {
 	Total   int         `json:"total"`
 }
 
-// GrepMatch is one grep hit — plain text (API.md §4.5).
+// GrepMatch is one plain-text grep hit.
 type GrepMatch struct {
 	Path       string `json:"path"`
 	LineNumber int    `json:"lineNumber"`

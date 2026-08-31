@@ -96,7 +96,7 @@ type Handler struct {
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits
 
 	// workspaceHub fans non-run change signals out to
-	// runtime.subscribe streams (AUX_API §3). It is ephemeral, lossy, and scoped
+	// runtime.subscribe streams. It is ephemeral, lossy, and scoped
 	// to this process; run streams have their own durable replay contract.
 	workspaceHub *workspaceHub
 }
@@ -265,7 +265,7 @@ func (s *Handler) observeNotificationSources(cfg HandlerConfig) {
 	}
 }
 
-// capabilities returns this Handler's capability snapshot (API.md §9). Its
+// capabilities returns this Handler's capability snapshot. Its
 // optional keys come from the same immutable composition facts that handlers
 // use for their capability gates.
 func (s *Handler) capabilities() protocol.ServerCapabilities {
@@ -394,7 +394,7 @@ func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapa
 // ─── helpers ────────────────────────────────────────────────────────
 
 // capabilityNotNegotiated marks a protocol method that exists in the contract
-// but isn't backed on this build. Maps to capability_not_negotiated (API.md §8.2)
+// but isn't backed on this build. Maps to capability_not_negotiated
 // — consistent with the feature flag advertised through discovery.
 func capabilityNotNegotiated(method string) error {
 	return fmt.Errorf("%w: %s", protocol.ErrCapabilityNotNeg, method)

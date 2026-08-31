@@ -29,7 +29,7 @@ import (
 // variants are exact; PatternVariant is its only optional extension seam.
 type UnionSpec struct {
 	GoType reflect.Type
-	// Discriminator is the JSON field carrying the tag. API.md §2.1 fixes it at
+	// Discriminator is the JSON field carrying the tag. The contract fixes it at
 	// `type` for every first-party union, with no exceptions.
 	Discriminator string
 	Variants      []VariantSpec
@@ -465,7 +465,7 @@ func (u *unionValidation) validateDiscriminator() error {
 	spec := u.spec
 	if spec.Discriminator != "type" {
 		return fmt.Errorf(
-			"%s: discriminator is %q — API.md §2.1 fixes it at \"type\"",
+			"%s: discriminator is %q; the contract requires \"type\"",
 			u.name,
 			spec.Discriminator,
 		)

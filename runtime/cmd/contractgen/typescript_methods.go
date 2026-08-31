@@ -213,7 +213,7 @@ func (m *methodsEmitter) imports() {
 }
 
 func (m *methodsEmitter) features() {
-	m.line("// Every capability key discovery may advertise (API.md §9). Private: it exists to")
+	m.line("// Every capability key discovery may advertise. Private: it exists to")
 	m.line("// derive the union, and a published array with no reader would be a second table.")
 	m.line("const FEATURES = [")
 	for _, key := range protocol.FeatureKeys() {

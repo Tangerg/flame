@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// schedules.* (API.md §7.9) — manage the cron-triggered headless runs the
+// Schedule operations manage the cron-triggered headless runs the
 // application scheduler fires. A schedule stores the final instructions
 // text, so the runtime fires it without resolving a recipe.
 

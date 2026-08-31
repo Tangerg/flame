@@ -3,8 +3,8 @@ package protocol
 import "time"
 
 // RunEvent is the params of the notifications.run.event notification —
-// the single downstream stream carrying segment / item / Plan events
-// (API.md §5). RunID is the stable logical run; SegmentID is the streamed
+// the single downstream stream carrying segment / item / Plan events. RunID is
+// the stable logical run; SegmentID is the streamed
 // segment the event belongs to (§0.3) — a client scopes its stream tree +
 // reconnect-replay dedup to it. eventId is monotonic within one segment stream.
 //
@@ -18,7 +18,7 @@ type RunEvent struct {
 	Event     StreamEvent `json:"event"`
 }
 
-// StreamEventType discriminates the StreamEvent union (API.md §5).
+// StreamEventType discriminates the StreamEvent union.
 type StreamEventType string
 
 const (
@@ -31,8 +31,8 @@ const (
 	StreamPlanUpdated     StreamEventType = "plan.updated"
 )
 
-// StreamEvent is a tag-discriminated union over downstream events
-// (API.md §5). Type selects which optional fields apply.
+// StreamEvent is a tag-discriminated union over downstream events. Type selects
+// which optional fields apply.
 //
 //	segment.started     → Run
 //	segment.progress    → Progress
@@ -85,7 +85,7 @@ func (s StreamEvent) Replayable() bool {
 }
 
 // RunProgress is the mid-run progress preview carried by a segment.progress
-// event (API.md §5). Ephemeral — it previews the same run-cumulative figures
+// event. It previews the same run-cumulative figures
 // that land authoritatively on segment.finished.metrics, so it may run briefly
 // ahead of them but never contradicts them.
 type RunProgress struct {
@@ -146,7 +146,7 @@ const (
 	PlanStatusCompleted  PlanStatus = "completed"
 )
 
-// ItemDeltaType discriminates the ItemDelta union (API.md §5.1).
+// ItemDeltaType discriminates the ItemDelta union.
 type ItemDeltaType string
 
 const (
@@ -156,8 +156,8 @@ const (
 	DeltaToolOutput    ItemDeltaType = "toolOutput"
 )
 
-// ItemDelta is a tag-discriminated union over incremental updates
-// (API.md §5.1). All delta events are non-authoritative and non-replayable.
+// ItemDelta is a tag-discriminated union over incremental updates. All delta
+// events are non-authoritative and non-replayable.
 //
 //	content       → Text
 //	reasoning     → Text

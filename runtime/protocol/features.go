@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// The capability keys of `capabilities.features` (API.md §9).
+// Capability keys advertised through capabilities.features.
 //
 // They are wire values — a client reads them from discovery and gates its UI on
 // them — so they belong here, with the shapes that carry them, and not in

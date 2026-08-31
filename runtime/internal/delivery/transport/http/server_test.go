@@ -344,7 +344,7 @@ func TestRPCUsesEnvelopeMethod(t *testing.T) {
 	}
 }
 
-// TestNonStringIDRejected confirms API.md §2.2: the envelope id must be a
+// TestNonStringIDRejected confirms that the envelope id must be a
 // STRING. This is a transport-shape constraint, so a numeric id is rejected
 // before dispatch instead of being coerced by the JSON-RPC SDK.
 func TestNonStringIDRejected(t *testing.T) {

@@ -8,7 +8,7 @@ import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 const MaximumPaginationCursorCharacters = runtimeidentity.MaximumCursorCharacters
 
 // PageQuery is the input shape for cursor-paginated list methods
-// (API.md §4.11). Cursor is opaque to the client.
+// Cursor is opaque to the client.
 type PageQuery struct {
 	// Limit is absent when the caller accepts the read's published default. A
 	// present value is strictly positive; zero is never a disable/default switch.
@@ -25,7 +25,7 @@ type PageContinuation struct {
 	NextCursor string `json:"nextCursor,omitempty"`
 }
 
-// Page is the wire response for ALL list methods (API.md §4.11): the
+// Page is the wire response for all list methods: the
 // client reads `resp.data` everywhere, and the presence of `nextCursor`
 // is the "has more" signal. A bounded local list leaves NextCursor empty
 // but keeps the shape — one read path, no breaking growth to pagination.

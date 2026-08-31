@@ -17,8 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// StartRun translates runs.start into in-process execution
-// path (API.md §7.3). It returns the runId synchronously; events flow
+// StartRun translates runs.start into the in-process execution path. It returns
+// the runId synchronously; events flow
 // out via the returned sequence as RunEvents (wrapped by the transport
 // into notifications.run.event). The terminal segment.finished rides this
 // sequence — including outcome:interrupt when the run parks for HITL

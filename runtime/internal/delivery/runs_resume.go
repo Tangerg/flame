@@ -13,7 +13,7 @@ import (
 )
 
 // ResumeRun answers an open interrupt by opening a NEW segment of the SAME run
-// (R model, API.md §6). in.RunID is the stable run to continue; the response
+// in the Run model. in.RunID is the stable run to continue; the response
 // decision is delivered to the live executor tree, and the continuation streams
 // under the same runId with a fresh segmentId.
 func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {

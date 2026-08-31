@@ -33,14 +33,14 @@ type Request = jsonrpc.Request
 // is set — never both.
 type Response = jsonrpc.Response
 
-// ID is an opaque JSON-RPC id. Flame's API.md §1 narrows calls and replies to
+// ID is an opaque JSON-RPC id. Flame narrows calls and replies to
 // string ids only; DecodeMessage enforces that wire constraint before the SDK
 // can coerce a numeric id.
 type ID = jsonrpc.ID
 
 // Error is the JSON-RPC error envelope. The wire shape carries
 // Code (int64), Message (string), Data (raw JSON — typically
-// [ProblemData] per API.md §8).
+// [ProblemData]).
 type Error = jsonrpc.Error
 
 // EncodeMessage serializes a Message to wire bytes (no trailing

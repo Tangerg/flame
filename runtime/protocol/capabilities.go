@@ -35,7 +35,7 @@ type FeaturePreference struct {
 }
 
 // ServerCapabilities is what Runtime advertises in runtime.discover
-// and the /v2/info sidecar (API.md §9).
+// and the /v2/info sidecar.
 type ServerCapabilities struct {
 	// RunEvents is the stream-event vocabulary a run publishes. It was called
 	// `events`, which said nothing about WHICH stream — and there are two.

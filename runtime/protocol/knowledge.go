@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// KnowledgeScope selects which FLAME.md a knowledge operation targets (API.md §4.10).
+// KnowledgeScope selects which FLAME.md a knowledge operation targets.
 type KnowledgeScope string
 
 const (
@@ -18,7 +18,7 @@ func (k KnowledgeScope) Valid() bool {
 	return k == KnowledgeScopeCWD || k == KnowledgeScopeProjectRoot || k == KnowledgeScopeHome
 }
 
-// KnowledgeEntry is one knowledge record (API.md §4.10).
+// KnowledgeEntry is one knowledge record.
 type KnowledgeEntry struct {
 	Scope     KnowledgeScope `json:"scope"`
 	Content   string         `json:"content"`

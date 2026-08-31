@@ -76,7 +76,7 @@ type ListItemsResponse struct {
 	Runs []RunSummary `json:"runs"`
 }
 
-// ItemStatus is the closed vocabulary used across Item variants (API.md §4.3).
+// ItemStatus is the closed vocabulary used across Item variants.
 // The Item union narrows it per owner: UserMessage/Question/Compaction are only
 // completed; AgentMessage/Reasoning are running rendering anchors or completed
 // facts; ToolCall alone owns running/completed/incomplete persistence.
@@ -88,7 +88,7 @@ const (
 	ItemStatusIncomplete ItemStatus = "incomplete" // interrupted/canceled before completion
 )
 
-// ItemType discriminates the Item union (API.md §4.3).
+// ItemType discriminates the Item union.
 type ItemType string
 
 const (
@@ -111,7 +111,7 @@ const (
 	MessagePhaseFinalAnswer MessagePhase = "finalAnswer"
 )
 
-// SafetyClass is a tool's mutation risk (API.md §4.4): safe (read-only),
+// SafetyClass is a tool's mutation risk: safe (read-only),
 // write (mutates the workspace), exec (runs arbitrary commands), network
 // (reaches off-host). Carried on a toolCall Item and on a client-supplied
 // ToolSpec.
@@ -124,7 +124,7 @@ const (
 	SafetyClassNetwork SafetyClass = "network"
 )
 
-// ContentBlockType discriminates a ContentBlock (API.md §4.3).
+// ContentBlockType discriminates a ContentBlock.
 type ContentBlockType string
 
 const (
@@ -132,7 +132,7 @@ const (
 	ContentBlockImage ContentBlockType = "image"
 )
 
-// QuestionFieldType is the input shape of a QuestionField (API.md §4.3).
+// QuestionFieldType is the input shape of a QuestionField.
 type QuestionFieldType string
 
 const (
@@ -140,7 +140,7 @@ const (
 	QuestionFieldChoice QuestionFieldType = "choice"
 )
 
-// DiffRowType discriminates a structured diff row (API.md §4.5).
+// DiffRowType discriminates a structured diff row.
 type DiffRowType string
 
 const (
@@ -150,7 +150,7 @@ const (
 	DiffRowDeleted DiffRowType = "deleted"
 )
 
-// Item is one wire projection in a Run stream or transcript read (API.md §4.3).
+// Item is one wire projection in a Run stream or transcript read.
 // A tag-discriminated union: Type selects which optional fields apply. Durable
 // user/message/reasoning/question/compaction facts are complete; a provisional
 // AgentMessage/Reasoning start exists only as a stream rendering anchor, while
@@ -193,7 +193,7 @@ type Item struct {
 	// ApprovalDecision is present only when this exact ToolCall crossed a human
 	// approval boundary. Auto-approved calls carry no decision.
 	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
-	Error            *ProblemData     `json:"error,omitempty"` // tool-level failure (API.md §4.3)
+	Error            *ProblemData     `json:"error,omitempty"` // tool-level failure
 	// Summary / DroppedMessages describe a compaction Item at a safe model-call
 	// or Run boundary. Summary is the required user-readable semantic fold,
 	// without the model-only system-message preamble. DroppedMessages is the net
@@ -202,7 +202,7 @@ type Item struct {
 	DroppedMessages int    `json:"droppedMessages,omitempty"` // compaction
 }
 
-// ContentBlock is one block of message content (API.md §4.3).
+// ContentBlock is one block of message content.
 //
 //	text  → Text
 //	image → Mime + Data (inline base64)
@@ -218,7 +218,7 @@ type ContentBlock struct {
 	Data string           `json:"data,omitempty"`
 }
 
-// Question is one ordered set of required clarifying fields (API.md §4.3).
+// Question is one ordered set of required clarifying fields.
 // InterruptResponseValue.answers uses this same order; no derivable field IDs
 // or dynamic map keys travel on the wire.
 type Question struct {
@@ -239,14 +239,14 @@ type QuestionField struct {
 	AllowCustom bool              `json:"allowCustom,omitempty"`
 }
 
-// QuestionOption is one choice option (API.md §4.3).
+// QuestionOption is one choice option.
 type QuestionOption struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 	Preview     string `json:"preview,omitempty"`
 }
 
-// ToolInvocation is the domain-neutral tool envelope (API.md §4.4). The
+// ToolInvocation is the domain-neutral tool envelope. The
 // core knows exactly ONE tool shape — not a union: Name is identity,
 // Arguments is the parsed JSON object, Result is best-effort JSON output.
 // Result is normalized before transcript persistence and delivery forwards its
@@ -266,12 +266,12 @@ type QuestionOption struct {
 //   - Tool-level failure does NOT go in Result — it rides the toolCall
 //     Item's Error + status:"incomplete" (§4.3 / §8).
 type ToolInvocation struct {
-	Name      string         `json:"name"`             // tool identity (stable); an MCP tool's is its LOSSY model-facing name — see API.md §4.4, authored by mcpserver.ToolName
+	Name      string         `json:"name"`             // stable tool identity; MCP names are authored by mcpserver.ToolName
 	Arguments map[string]any `json:"arguments"`        // parsed JSON object (always present; never a JSON string)
 	Result    any            `json:"result,omitempty"` // best-effort JSON; absent on item.started, authoritative on item.completed
 }
 
-// DiffRow is one structured row of a unified diff (API.md §4.5). Code
+// DiffRow is one structured row of a unified diff. Code
 // is plain text — the client highlights.
 //
 //	hunk    → Text
@@ -286,7 +286,7 @@ type DiffRow struct {
 	Code      string      `json:"code,omitempty"`
 }
 
-// ModelUsage is one model's usage slice (API.md §4.6): provider-reported
+// ModelUsage is one model's usage slice: provider-reported
 // inclusive totals (inputTokens incl. cacheRead, outputTokens incl.
 // reasoning) plus the non-overlapping sub-items, each tracked independently
 // so the client never subtracts. costUsd is the total at the top level and
@@ -300,7 +300,7 @@ type ModelUsage struct {
 	CostUSD          *float64 `json:"costUsd,omitempty"`
 }
 
-// Usage is cumulative token usage (API.md §4.6): the embedded ModelUsage is
+// Usage is cumulative token usage: the embedded ModelUsage is
 // the total (incl. the top-level costUsd = total cost), plus an optional
 // per-model breakdown. byModel entries are the same shape (cache fields
 // included — symmetric with the total).

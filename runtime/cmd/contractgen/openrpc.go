@@ -46,7 +46,7 @@ type openrpcMethod struct {
 	Name string `json:"name"`
 
 	// ParamStructure is by-name for every method: the wire passes one JSON object
-	// whose keys are the request's own fields (API.md §2.5), so each field is a
+	// whose keys are the request's own fields, so each field is a
 	// named param rather than a positional one.
 	ParamStructure string         `json:"paramStructure"`
 	Params         []openrpcParam `json:"params"`

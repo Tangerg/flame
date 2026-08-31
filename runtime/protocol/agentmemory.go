@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// AgentMemoryItem is one addressable memory item (API.md §7.x). status is
+// AgentMemoryItem is one addressable memory item. Status is
 // active | pending; origin is auto (mined) | user (authored).
 type AgentMemoryItem struct {
 	ID        string            `json:"id"`

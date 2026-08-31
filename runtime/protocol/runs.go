@@ -226,7 +226,7 @@ type SegmentOutcome struct {
 	Interrupts []Interrupt `json:"interrupts,omitempty"`
 }
 
-// StartRunRequest is the runs.start body (API.md §7.1). The session owns cwd,
+// StartRunRequest is the runs.start body. The session owns cwd,
 // available tools, and its Plan, so clients send only the user input and
 // explicit execution limits/model selection.
 type StartRunRequest struct {
@@ -266,7 +266,7 @@ type ResumeRunResponse struct {
 	UserItemID *string `json:"userItemId,omitempty"`
 }
 
-// GenerationParams is optional LLM generation tuning (API.md §7.1).
+// GenerationParams is optional LLM generation tuning.
 type GenerationParams struct {
 	Temperature *float64 `json:"temperature,omitempty"`
 	MaxTokens   *int64   `json:"maxTokens,omitempty"`
@@ -401,7 +401,7 @@ type SubscribeRunResponse struct {
 }
 
 // InterruptResponseType discriminates a client's answer to an interrupt
-// (API.md §6.1). "answer" responds to a "question" interrupt.
+// "answer" responds to a "question" interrupt.
 type InterruptResponseType string
 
 const (
@@ -409,7 +409,7 @@ const (
 	InterruptResponseAnswer   InterruptResponseType = "answer"
 )
 
-// ApprovalDecision is the verdict on an approval interrupt (API.md §6.1).
+// ApprovalDecision is the verdict on an approval interrupt.
 type ApprovalDecision string
 
 const (
@@ -417,7 +417,7 @@ const (
 	ApprovalDeny    ApprovalDecision = "deny"
 )
 
-// InterruptResponse answers one open interrupt, keyed by itemId (API.md §6.1).
+// InterruptResponse answers one open interrupt, keyed by itemId.
 // Response is a tag-discriminated union (Type):
 //
 //	approval → Decision, EditedArgs, Reason
@@ -431,14 +431,14 @@ type InterruptResponse struct {
 type InterruptResponseValue struct {
 	Type       InterruptResponseType `json:"type"`                 // see InterruptResponseType
 	Decision   ApprovalDecision      `json:"decision,omitempty"`   // approval: see ApprovalDecision
-	Remember   *RememberScope        `json:"remember,omitempty"`   // approval: keep this decision (AUX_API §6)
+	Remember   *RememberScope        `json:"remember,omitempty"`   // approval: keep this decision
 	EditedArgs map[string]any        `json:"editedArgs,omitempty"` // approval: one-shot arg override
 	Reason     string                `json:"reason,omitempty"`     // approval (deny rationale)
 	Answers    [][]string            `json:"answers,omitempty"`    // answer: one values array per Question.fields entry, in the same order
 }
 
-// RememberScopeKind is the persistence scope of a remembered approval (AUX_API
-// §6): the decision is stored as a rule reaching one session, one project
+// RememberScopeKind is the persistence scope of a remembered approval. The
+// decision is stored as a rule reaching one session, one project
 // directory, or everywhere. All three persist (sqlite-backed) and auto-resolve
 // matching future calls.
 type RememberScopeKind string
@@ -449,8 +449,8 @@ const (
 	RememberGlobal  RememberScopeKind = "global"
 )
 
-// RememberScope is the standing-decision directive on an approval response
-// (AUX_API §6). When present the runtime persists the approve/deny decision as
+// RememberScope is the standing-decision directive on an approval response.
+// When present, the Runtime persists the approve/deny decision as
 // a fine-grained rule so matching future calls skip the prompt. The rule is
 // keyed by tool NAME + the call's per-tool subject (a shell command, an edited
 // file's path) at the chosen Scope (session / project / global). editedArgs
@@ -460,7 +460,7 @@ type RememberScope struct {
 	Scope RememberScopeKind `json:"scope"` // see RememberScopeKind
 }
 
-// InterruptType discriminates a pending interrupt (API.md §4.8): a tool awaiting
+// InterruptType discriminates a pending interrupt: a tool awaiting
 // approval or a question awaiting an answer.
 type InterruptType string
 

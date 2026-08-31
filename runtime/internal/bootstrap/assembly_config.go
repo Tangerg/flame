@@ -202,7 +202,7 @@ type Config struct {
 	ApprovalMode approval.Mode
 
 	// ApprovalRuleStore persists fine-grained "remember this decision" rules
-	// (AUX_API §6). nil is supported for mode-only test environments: Decide
+	// across sessions. nil is supported for mode-only test environments: Decide
 	// never matches and remember/forget return an unavailable error. The product
 	// composition root injects the sqlite-backed store.
 	ApprovalRuleStore ApprovalRuleStore

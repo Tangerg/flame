@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// goals.* (API.md §7.14) — Goal mode: an autonomous loop that drives runs toward
+// Goal operations drive an autonomous loop toward
 // an objective until the model signals complete/blocked, a budget is spent, or
 // the user stops it.
 

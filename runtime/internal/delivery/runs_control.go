@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// CancelRun hard-stops a running run (outcome:canceled, API.md §7.3).
+// CancelRun hard-stops a running run with a canceled outcome.
 // A parked Run is also abandoned — its live parked execution is torn down
 // and its open interrupt dropped so it stops surfacing as resumable.
 func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
@@ -43,7 +43,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 }
 
 // SteerRun injects a user message into the segment the request names so the model
-// reads it on its next tool round (runs.steer, API.md §6).
+// reads it on its next tool round.
 //
 // Only the addressed segment is steerable, and every other position says so by
 // name: a waiting run is answered via runs.resume, a finished one cannot be

@@ -246,14 +246,8 @@ func TestRegistryShapeRulesReachTheGoValidator(t *testing.T) {
 	}
 }
 
-// TestProtocolVersionAgreesEverywhere is contract §11.4 gate 12: the generated
-// manifest, the Runtime-owned canonical docs and the code state one protocol
-// version.
-//
-// This is the drift A1 had to fix by hand, machine-enforced. C16 flips the version
-// in ONE place — the constant — and this gate then names every document still
-// claiming the old one, instead of a reader discovering the mismatch later from a
-// client that negotiated against a stale header.
+// TestProtocolVersionAgreesEverywhere checks every machine-readable statement of
+// the current protocol version against the code owner.
 func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	root := moduleRoot(t)
 
@@ -271,31 +265,7 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 		t.Errorf("manifest protocol %q != code %q", manifest.ProtocolVersion, protocol.ProtocolVersion)
 	}
 
-	// The canonical docs each state the version in their own header. Any version
-	// literal they carry must be one the code actually serves; a doc naming a
-	// version the runtime would reject is worse than no doc, because a client
-	// negotiates against it.
-	dateLiteral := regexp.MustCompile(`\b20\d\d-\d\d-\d\d\b`)
-	for _, name := range []string{"API.md", "AUX_API.md", "TRANSPORT.md"} {
-		path := filepath.Join(root, "doc", name)
-		text, readFileErr := os.ReadFile(path)
-		if readFileErr != nil {
-			t.Fatalf("read %s: %v", name, readFileErr)
-		}
-		found := false
-		for _, match := range dateLiteral.FindAllString(string(text), -1) {
-			if match != protocol.ProtocolVersion {
-				t.Errorf("%s names protocol version %q, which this build does not serve", name, match)
-				continue
-			}
-			found = true
-		}
-		if !found {
-			t.Errorf("%s states no protocol version; a canonical doc must say which one it describes", name)
-		}
-	}
-
-	// The canonical samples are the third published statement. A client copies them
+	// Canonical samples are another published statement. A client copies them
 	// — that is what a canonical sample is for — so one naming a retired version
 	// hands out a handshake the runtime refuses. The shape gate cannot see it: the
 	// schema constrains the field's type, never which date is current.

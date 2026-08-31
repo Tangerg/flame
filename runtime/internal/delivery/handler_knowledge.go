@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListKnowledge enumerates FLAME.md entries across scopes (API.md §7.7).
+// ListKnowledge enumerates FLAME.md entries across scopes.
 // The entire knowledge.* group is capability-gated, so an unwired store is a
 // capability error rather than a synthetic empty collection.
 func (s *Handler) ListKnowledge(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error) {
