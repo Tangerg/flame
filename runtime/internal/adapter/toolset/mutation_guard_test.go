@@ -20,7 +20,7 @@ func guardedPatchTools(dir string, format bool) (toolcontract.Tool, toolcontract
 	tracker := newReadTracker()
 	executor := fs.NewLocalExecutor(dir)
 	read := withReadTracking(newRuntimeReadTool(dir, executor), tracker, dir)
-	var mutation toolcontract.Tool = withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor))
+	mutation := toolcontract.Tool(withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor)))
 	if format {
 		mutation = withAutoFormat(mutation, dir)
 	}

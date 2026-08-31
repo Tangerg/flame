@@ -193,10 +193,10 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 	if waiting.Status != protocol.RunStatusWaiting {
 		t.Fatalf("Run before restart = %+v, want waiting", waiting)
 	}
-	pending := fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
+	_ = fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
 
 	fixture.restart(t)
-	pending = fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
+	pending := fixture.pendingQuestion(t, session.ID, started.RunID, requestMeta)
 	resumed, resumedEvents, err := fixture.runtime.ResumeRun(fixture.ctx, protocol.ResumeRunRequest{
 		RunID: started.RunID,
 		Responses: []protocol.InterruptResponse{{

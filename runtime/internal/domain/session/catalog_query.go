@@ -58,18 +58,16 @@ func NewCatalogFilter(search string, workspace *Workspace) (CatalogFilter, error
 		workspacePath = workspace.Path()
 	}
 
-	kind := allCatalogEntries
 	switch {
 	case normalizedSearch != "" && workspacePath != "":
-		kind = searchWorkspaceCatalogEntries
+		return CatalogFilter{kind: searchWorkspaceCatalogEntries, search: normalizedSearch, workspace: workspacePath}, nil
 	case normalizedSearch != "":
-		kind = searchCatalogEntries
+		return CatalogFilter{kind: searchCatalogEntries, search: normalizedSearch}, nil
 	case workspacePath != "":
-		kind = workspaceCatalogEntries
+		return CatalogFilter{kind: workspaceCatalogEntries, workspace: workspacePath}, nil
 	default:
 		return CatalogFilter{}, errors.New("sessions: filtered catalog requires search or workspace")
 	}
-	return CatalogFilter{kind: kind, search: normalizedSearch, workspace: workspacePath}, nil
 }
 
 // NormalizeCatalogText is the sole canonicalizer shared by query admission and

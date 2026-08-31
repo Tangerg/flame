@@ -176,7 +176,7 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 
 func TestSubscribeWithoutACursorTailsAndNamesTheHead(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	hub.append(ev(true)) // already published: history, not this subscription's
+	mustAppendJournal(t, hub, ev(true)) // already published: history, not this subscription's
 
 	attached, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
@@ -188,8 +188,8 @@ func TestSubscribeWithoutACursorTailsAndNamesTheHead(t *testing.T) {
 	if attached.Record.SegmentID != testSegmentID {
 		t.Fatalf("record segment = %q, want %q", attached.Record.SegmentID, testSegmentID)
 	}
-	hub.append(ev(true))
-	hub.close()
+	mustAppendJournal(t, hub, ev(true))
+	mustCloseJournal(t, hub)
 	if got := drain(attached.Events); len(got) != 1 || got[0] != 2 {
 		t.Fatalf("tail delivered %v, want only the event published after attaching", got)
 	}
@@ -199,14 +199,14 @@ func TestSubscribeWithoutACursorTailsAndNamesTheHead(t *testing.T) {
 // trip is the whole reconnect contract.
 func TestSubscribeResumesFromTheHeadItWasHandedEarlier(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	hub.append(ev(true))
+	mustAppendJournal(t, hub, ev(true))
 	connection, drop := context.WithCancel(t.Context())
 	first, err := c.Subscribe(connection, SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
 		t.Fatalf("first Subscribe: %v", err)
 	}
 	drop() // the connection goes away without the stream ever being read
-	hub.append(ev(true))
+	mustAppendJournal(t, hub, ev(true))
 
 	second, err := c.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: first.HeadCursor,
@@ -214,7 +214,7 @@ func TestSubscribeResumesFromTheHeadItWasHandedEarlier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconnect Subscribe: %v", err)
 	}
-	hub.close()
+	mustCloseJournal(t, hub)
 	if got := drain(second.Events); len(got) != 1 || got[0] != 2 {
 		t.Fatalf("reconnect delivered %v, want the event missed while detached", got)
 	}
@@ -225,9 +225,9 @@ func TestSubscribeResumesFromTheHeadItWasHandedEarlier(t *testing.T) {
 // would hand the client a different execution's events under its own cursor.
 func TestSubscribeRefusesACursorFromAnotherSegment(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	hub.append(ev(true))
+	mustAppendJournal(t, hub, ev(true))
 	other := mustNewJournal(t, testStreamScope(c.segments.epoch, testRunID, "seg_previous"), c.segments.retention)
-	other.append(ev(true))
+	mustAppendJournal(t, other, ev(true))
 	stale := other.tail().HeadCursor
 
 	_, err := c.Subscribe(t.Context(), SubscribeRequest{
@@ -244,14 +244,14 @@ func TestSubscribeRefusesACursorFromAnotherSegment(t *testing.T) {
 // client combines with a new tail subscription.
 func TestSubscribeRefusesACursorFromAnotherRuntimeInstance(t *testing.T) {
 	previous, previousHub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	previousHub.append(ev(true))
+	mustAppendJournal(t, previousHub, ev(true))
 	before, err := previous.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
 		t.Fatalf("first Subscribe: %v", err)
 	}
 
 	restarted, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	hub.append(ev(true))
+	mustAppendJournal(t, hub, ev(true))
 	_, err = restarted.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: before.HeadCursor,
 	})
@@ -276,7 +276,7 @@ func TestSubscribeRefusesACursorFromAnotherRuntimeInstance(t *testing.T) {
 // subscribe returns run_finished and the cold query exposes the terminal reason.
 func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing.T) {
 	previous, previousHub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
-	previousHub.append(ev(true))
+	mustAppendJournal(t, previousHub, ev(true))
 	before, err := previous.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID,
 	})

@@ -203,7 +203,6 @@ func scanMCPServer(scan func(...any) error) (mcpserver.Server, error) {
 	}
 	srv.Name = parsedName
 	srv.Transport = mcpserver.Transport(transport)
-	err = nil
 	if srv.Headers, err = decodeStringMap(headers); err != nil {
 		return mcpserver.Server{}, mcpJSONFieldError(srv.Name, "headers", err)
 	}

@@ -29,10 +29,8 @@ func (c ChildRunBinding) Validate() error {
 	if _, err := resourceid.ParseRun(c.ParentRunID); err != nil {
 		return fmt.Errorf("runs: child Run binding parent: %w", err)
 	}
-	switch {
-	case c.RunID == c.ParentRunID:
+	if c.RunID == c.ParentRunID {
 		return errors.New("runs: child Run binding refers to itself as parent")
-	default:
-		return nil
 	}
+	return nil
 }

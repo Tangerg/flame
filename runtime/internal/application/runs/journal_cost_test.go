@@ -44,7 +44,7 @@ func TestRetentionByteBudgetTracksHeap(t *testing.T) {
 	// Overfill deliberately: the window must be at its budget, not below it, and
 	// eviction is what puts it there.
 	for range (maxBytes / payload) * 2 {
-		j.append(sized(payload))
+		mustAppendJournal(t, j, sized(payload))
 	}
 	after := heapInUse()
 
@@ -92,7 +92,9 @@ func BenchmarkJournalAppendReplayable(b *testing.B) {
 			b.SetBytes(int64(size.bytes))
 			b.ReportAllocs()
 			for b.Loop() {
-				j.append(e)
+				if err := j.append(e); err != nil {
+					b.Fatal(err)
+				}
 				next()
 			}
 		})
@@ -107,7 +109,9 @@ func BenchmarkJournalReplayAttach(b *testing.B) {
 		b.Run(fmt.Sprintf("backlog_%d", depth), func(b *testing.B) {
 			j := testJournal(b)
 			for range depth {
-				j.append(sized(payload))
+				if err := j.append(sized(payload)); err != nil {
+					b.Fatal(err)
+				}
 			}
 			// Resume from the oldest event the window still holds, not from a fixed
 			// sequence: at these payload sizes the byte budget decides how deep the

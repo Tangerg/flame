@@ -92,7 +92,7 @@ func parseShellID(raw string) (shellID, bool) {
 	}
 	epoch := rest[:shellIDEpochBytes]
 	for index := range len(epoch) {
-		if character := epoch[index]; !((character >= 'A' && character <= 'Z') || (character >= '2' && character <= '7')) {
+		if character := epoch[index]; (character < 'A' || character > 'Z') && (character < '2' || character > '7') {
 			return shellID{}, false
 		}
 	}
