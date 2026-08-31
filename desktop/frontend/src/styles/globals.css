@@ -313,7 +313,7 @@
   --color-text-bright: #000000;
   --color-text-soft: #3d4147;
   --color-text-muted: #5a5d63;
-  --color-text-faint: #74777f;
+  --color-text-faint: #63666d;
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
   --color-text-on-fg: var(--color-bg);
@@ -344,8 +344,8 @@
   --color-diff-deleted-meta: #b0342b;
   --color-diff-deleted-code: #6e211c;
 
-  --color-cta: var(--color-accent-border);
-  --color-cta-hover: var(--color-accent-press);
+  --color-cta: var(--color-accent);
+  --color-cta-hover: var(--color-accent-border);
   --color-cta-text: var(--color-text-on-accent);
 
   --fs-ui-2xs: 11px;

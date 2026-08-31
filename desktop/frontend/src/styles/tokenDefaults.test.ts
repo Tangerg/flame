@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { colord } from "colord";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { densityCssVariables, DEFAULT_UI_DENSITY } from "@/lib/density";
 import { iconScaleCssVariables } from "@/lib/iconScale";
 import { normalizeUiFontSize, uiTypeLadderCssVariables } from "@/lib/typography";
+import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
+import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
+import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 // `globals.css` declares every `--density-*`, `--icon-*`, `--fs-*` and accent shade as a
 // literal, and the appearance painter writes the same properties from TypeScript once a
@@ -77,5 +80,42 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     expect(expectDefaults({ "--density-not-a-property": "1px" })).toEqual([
       "--density-not-a-property: css=absent ts=1px",
     ]);
+  });
+});
+
+// The palette is the largest mirror of all: each built-in theme's spec carries the tokens
+// the painter writes, and `globals.css` restates them per scheme. Three light values had
+// gone stale while the dark block stayed correct — the signature of a palette change
+// applied to the spec and to one block but not the other, which is what nothing comparing
+// them buys you.
+describe("the stylesheet's palette blocks and the theme specs they mirror", () => {
+  beforeEach(async () => {
+    await loadPluginsForTest(
+      (await import("@/plugins/builtin/theme/themes/flame-light")).default,
+      (await import("@/plugins/builtin/theme/themes/flame-dark")).default,
+    );
+  });
+
+  it.each([
+    [":root", "light"],
+    ["html.theme-dark", "dark"],
+  ])("agree on every token %s declares (%s)", (selector, themeId) => {
+    const spec = lookupExtensionByKey(COLOR_THEME, themeId) as
+      { tokens?: Record<string, string> } | undefined;
+    const tokens = spec?.tokens ?? {};
+    expect(Object.keys(tokens).length, `${themeId} contributed no tokens`).toBeGreaterThan(10);
+
+    // Only what the block DECLARES: a token the dark block omits inherits the light one on
+    // purpose, and demanding it here would be asking the stylesheet to repeat itself.
+    const disagreed: string[] = [];
+    let compared = 0;
+    for (const [name, value] of Object.entries(tokens)) {
+      const declared = declaredInBlock(selector, `--${name}`);
+      if (declared === undefined) continue;
+      compared++;
+      if (declared !== value) disagreed.push(`--${name}: css=${declared} spec=${value}`);
+    }
+    expect(compared, `${selector} mirrors none of the spec`).toBeGreaterThan(10);
+    expect(disagreed).toEqual([]);
   });
 });
