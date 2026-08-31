@@ -5,6 +5,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -53,6 +55,26 @@ type WorkspaceChanges interface {
 type Usage interface {
 	SessionUsage(context.Context, string) (agent.SessionUsageReport, error)
 	Summary(context.Context, agent.UsageSummaryPeriod) (agent.UsageSummary, error)
+}
+
+type ModelConfiguration interface {
+	Roles(context.Context) (models.Roles, error)
+	SetRole(context.Context, models.Role) (models.Role, error)
+	Providers(context.Context) ([]models.Provider, error)
+	UpdateProvider(context.Context, models.UpdateProvider) (models.Provider, error)
+	TestProvider(context.Context, string) (models.TestResult, error)
+}
+
+type MCPManagement interface {
+	Servers(context.Context) ([]mcp.Server, error)
+	CreateServer(context.Context, mcp.Candidate) (mcp.Server, error)
+	UpdateServer(context.Context, mcp.ServerUpdate) (mcp.Server, error)
+	DeleteServer(context.Context, string) error
+	TestServer(context.Context, mcp.Candidate) (mcp.TestResult, error)
+	Tools(context.Context, string) ([]mcp.Tool, error)
+	ReconnectServer(context.Context, string) error
+	StartAuthorization(context.Context, string) (mcp.AuthorizationAttempt, error)
+	GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error)
 }
 
 type Goals interface {

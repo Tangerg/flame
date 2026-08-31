@@ -22,8 +22,6 @@ type modelConfigBinding interface {
 	TestProvider(context.Context, protocol.TestProviderRequest, flameruntime.CallOptions) (*protocol.ProviderTestResult, error)
 }
 
-var _ models.Service = (*Connection)(nil)
-
 func (r *Connection) Roles(ctx context.Context) (models.Roles, error) {
 	utility, err := r.modelConfig.GetUtilityRole(ctx, r.callOptions())
 	if err != nil {

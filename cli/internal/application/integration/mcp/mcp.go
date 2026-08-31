@@ -1,9 +1,8 @@
 // Package mcp defines the CLI-owned MCP server configuration, live status,
-// tool catalog, and interactive authorization port.
+// tool catalog, and interactive authorization values.
 package mcp
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -712,18 +711,6 @@ func (a AuthorizationAttempt) Pending() bool { return a.Status == AuthorizationP
 
 func (a AuthorizationAttempt) Reference() AuthorizationReference {
 	return AuthorizationReference{ID: a.ID, Server: a.Server}
-}
-
-type Service interface {
-	Servers(context.Context) ([]Server, error)
-	CreateServer(context.Context, Candidate) (Server, error)
-	UpdateServer(context.Context, ServerUpdate) (Server, error)
-	DeleteServer(context.Context, string) error
-	TestServer(context.Context, Candidate) (TestResult, error)
-	Tools(context.Context, string) ([]Tool, error)
-	ReconnectServer(context.Context, string) error
-	StartAuthorization(context.Context, string) (AuthorizationAttempt, error)
-	GetAuthorization(context.Context, AuthorizationReference) (AuthorizationAttempt, error)
 }
 
 func validateMapChange(label string, kind ChangeKind, values map[string]string) error {

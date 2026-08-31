@@ -23,8 +23,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -66,10 +64,10 @@ type app struct {
 	changes          changefeed.Source
 	transfers        session.TransferService
 	usage            Usage
-	modelConfig      models.Service
+	modelConfig      ModelConfiguration
 	goals            Goals
 	skills           Skills
-	mcp              mcp.Service
+	mcp              MCPManagement
 	schedules        Schedules
 	agentMemory      AgentMemory
 	knowledge        Knowledge
@@ -135,10 +133,10 @@ type appConfig struct {
 	changes          changefeed.Source
 	transfers        session.TransferService
 	usage            Usage
-	modelConfig      models.Service
+	modelConfig      ModelConfiguration
 	goals            Goals
 	skills           Skills
-	mcp              mcp.Service
+	mcp              MCPManagement
 	schedules        Schedules
 	agentMemory      AgentMemory
 	knowledge        Knowledge

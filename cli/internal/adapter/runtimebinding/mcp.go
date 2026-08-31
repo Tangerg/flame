@@ -27,8 +27,6 @@ type mcpBinding interface {
 	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRequest, flameruntime.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
 }
 
-var _ mcp.Service = (*Connection)(nil)
-
 func (r *Connection) Servers(ctx context.Context) ([]mcp.Server, error) {
 	page, err := r.mcp.ListMCPServers(ctx, r.callOptions())
 	if err != nil {

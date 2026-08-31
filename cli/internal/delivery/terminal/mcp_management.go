@@ -389,9 +389,13 @@ func (a *app) pollMCPAuthorization(initial mcp.AuthorizationAttempt) {
 }
 
 type mcpAuthorizationObserver struct {
-	service      mcp.Service
+	service      mcpAuthorizationReader
 	pollInterval time.Duration
 	recovery     retry.Backoff
+}
+
+type mcpAuthorizationReader interface {
+	GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error)
 }
 
 func (m mcpAuthorizationObserver) observe(

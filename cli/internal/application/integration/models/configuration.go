@@ -3,7 +3,6 @@
 package models
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -340,12 +339,4 @@ func (t TestResult) Validate() error {
 		return t.Problem.Validate()
 	}
 	return nil
-}
-
-type Service interface {
-	Roles(context.Context) (Roles, error)
-	SetRole(context.Context, Role) (Role, error)
-	Providers(context.Context) ([]Provider, error)
-	UpdateProvider(context.Context, UpdateProvider) (Provider, error)
-	TestProvider(context.Context, string) (TestResult, error)
 }
