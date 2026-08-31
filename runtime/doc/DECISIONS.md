@@ -876,3 +876,10 @@
 - 背景：Provider catalog 是受支持 identity 的唯一 owner，`providers.update`、`providers.test` 与 role validation 都通过 `supportedProvider` 拒绝未知值；旧 `ListModels` 却只在 metadata lookup 成功时尝试远端发现，lookup 缺失随后直接读取静态 catalog 并返回成功空页。失败优先 Application/Delivery 反例证明 `models.list(provider="missing")` 不报错、也不触发 lister，使客户端无法区分“不支持”与“合法 provider 暂无模型”。
 - 决策：`Coordinator.ListModels` 在任何 registry access、remote probe 或 catalog fallback 前调用既有 `supportedProvider`；缺失 identity 返回 `ErrProviderUnsupported`。Delivery 的 `ListModels` 与其他 model 命令共用 `mapModelError`，把该领域错误投影为既有 `invalid_params`；registry/caller/infra 错误仍保持原样。
 - 后果：`providers.list` 与 `models.list` 对支持集合只有一份事实，未知 provider 不再产生可缓存的假空目录；合法 endpoint probe failure 仍可按既有策略回退真正的 provider catalog。没有新增 error code、provider allowlist、handler 分支、兼容空页、协议字段或第二 metadata lookup。
+
+## ADR-RT-123：Endpoint probe 必须先通过真实 chat adapter 的配置准入
+
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal modelcatalog adapter、测试与 API 文档，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI shape 不变。
+- 背景：Endpoint-owned provider 没有 bundled probe model，`providers.test` 因而用模型列表验证连接；但旧路径直接调用通用 lister，没有构造实际 chat client。Scope 的 Azure OpenAI adapter 明确要求 base URL 以 `/openai/v1` 结尾，失败优先真实 HTTP 反例却让一个只响应根 `/models` 的错误 URL 通过 provider test；第一条 Run 到 `BuildClient` 才暴露同一配置不可执行。URL presence、HTTP 200 和非空模型列表不能替代 adapter-specific construction contract。
+- 决策：modelcatalog 以唯一 `providerClientSpec` 从 Provider rich value 投影 credential、optional endpoint 与 model identity。Bundled provider 的最小 chat call 和 endpoint model discovery 都先通过该 spec 调用 `llm.BuildClient`；endpoint probe 使用一个合法、无网络语义的内部模型 identity，只验证 adapter construction，再按 profile listing protocol 发请求。所有 provider-specific URL/credential 规则继续由各 Scope builder 拥有，modelcatalog 不识别 Azure 名称或复制 suffix。
+- 后果：Azure 错误 root、未来 adapter-specific construction failure 与模型目录探测会在 `providers.test/models.list` 同一边界失败，不再出现 test 成功、Run 必败；OpenAI-compatible、Anthropic-compatible、Ollama 和 bundled provider 的成功路径不变。没有 endpoint validator map、provider switch、第二 URL parser、虚构部署名持久化、网络 preflight、兼容重试或协议变化。

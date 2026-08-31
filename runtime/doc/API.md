@@ -838,7 +838,8 @@ provider 的 key，读取面自然回落到 `credential:{source:"env",masked}`�
 在更新后的最终状态中必须保有 endpoint，不能靠 credential presence 掩盖 endpoint 缺失，也不能清空已有 URL。
 `providers.test` 是只读探测，失败 verdict 走 `ProviderTestResult.error`，不改变配置。
 探测由 Runtime 以 10 秒 deadline 有界结算；caller cancel 仍终止 command，Runtime-owned timeout 则返回稳定的 failed verdict，
-不会让一个不响应的 endpoint 永久占住客户端配置操作。
+不会让一个不响应的 endpoint 永久占住客户端配置操作。对 endpoint-owned model source，Runtime 会先用同一 provider profile
+构造实际 chat client，再访问模型目录；因此 adapter-specific endpoint 约束不能在 test 成功后延迟到第一条 Run 才失败。
 
 Endpoint-owned 模型目录使用 provider profile 的真实 wire protocol，而不是统一伪装成 OpenAI：OpenAI-compatible、Azure OpenAI
 与 Ollama 请求 `{baseURL}/models`，按配置发送 Bearer credential；Anthropic-compatible 把 `baseURL` 解释为 `/v1` 之前的
