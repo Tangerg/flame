@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/cmd"
-	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/runtimeadapter"
-	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sideload"
-	"github.com/Tangerg/flame/cli/internal/terminal"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimeadapter"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/delivery/sideload"
+	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 )
 
 func newRuntimeOwnerAt(flameHome string) (*runtimeadapter.Owner, error) {

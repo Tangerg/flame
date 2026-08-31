@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 var errCanceled = errors.New("mock: run canceled")

@@ -20,7 +20,7 @@ import (
 
 func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 	root := moduleRoot(t)
-	goalPath := filepath.Join(root, "internal", "agent", "goal.go")
+	goalPath := filepath.Join(root, "internal", "domain", "agent", "goal.go")
 	wantGoal := map[string]string{
 		"sessionID": "string", "objective": "string", "status": "GoalStatus", "reason": "*GoalReason",
 		"provider": "string", "model": "string", "budget": "GoalBudget", "used": "GoalUsage",
@@ -40,7 +40,7 @@ func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 		t.Fatalf("agent.GoalUsage fields = %v, want private accounting state", fields)
 	}
 
-	adapterPath := filepath.Join(root, "internal", "runtimeadapter", "goals.go")
+	adapterPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "goals.go")
 	contents, err := os.ReadFile(adapterPath)
 	if err != nil {
 		t.Fatal(err)
@@ -58,9 +58,9 @@ func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 
 func TestWorkspaceRequestModelsOwnOptionalPositiveIntent(t *testing.T) {
 	root := moduleRoot(t)
-	files := filepath.Join(root, "internal", "workspace", "files.go")
-	policies := filepath.Join(root, "internal", "workspace", "file_request_policy.go")
-	diff := filepath.Join(root, "internal", "workspace", "diff.go")
+	files := filepath.Join(root, "internal", "domain", "workspace", "files.go")
+	policies := filepath.Join(root, "internal", "domain", "workspace", "file_request_policy.go")
+	diff := filepath.Join(root, "internal", "domain", "workspace", "diff.go")
 
 	checks := []struct {
 		path      string
@@ -114,7 +114,7 @@ func TestWorkspaceRequestModelsOwnOptionalPositiveIntent(t *testing.T) {
 
 func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	paginationPath := filepath.Join(root, "internal", "runtimeadapter", "pagination.go")
+	paginationPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "pagination.go")
 	contents, err := os.ReadFile(paginationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *tes
 		{path: "schedules.go", policy: "maximumSchedulePageRequests"},
 		{path: "workspaces.go", policy: "maximumWorkspaceFilePageRequests"},
 	} {
-		path := filepath.Join(root, "internal", "runtimeadapter", caller.path)
+		path := filepath.Join(root, "internal", "adapter", "runtimeadapter", caller.path)
 		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -157,7 +157,7 @@ func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *tes
 }
 
 func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
-	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "runtimeadapter", "connection.go"))
+	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "adapter", "runtimeadapter", "connection.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
 
 func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "runtimeadapter", "sessions.go")
+	path := filepath.Join(root, "internal", "adapter", "runtimeadapter", "sessions.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +200,7 @@ func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 
 func TestUsageSummaryOwnsAllTimeVsRecentPeriod(t *testing.T) {
 	root := moduleRoot(t)
-	usagePath := filepath.Join(root, "internal", "agent", "usage_report.go")
+	usagePath := filepath.Join(root, "internal", "domain", "agent", "usage_report.go")
 	fields := cliStructFieldTypes(t, usagePath, "UsageSummary")
 	if got := fields["Period"]; got != "UsageSummaryPeriod" {
 		t.Fatalf("agent.UsageSummary.Period type = %q, want UsageSummaryPeriod", got)
@@ -208,7 +208,7 @@ func TestUsageSummaryOwnsAllTimeVsRecentPeriod(t *testing.T) {
 	if _, exists := fields["SinceDays"]; exists {
 		t.Fatal("agent.UsageSummary restored primitive SinceDays")
 	}
-	periodPath := filepath.Join(root, "internal", "agent", "usage_period.go")
+	periodPath := filepath.Join(root, "internal", "domain", "agent", "usage_period.go")
 	period := cliStructFieldTypes(t, periodPath, "UsageSummaryPeriod")
 	if period["kind"] != "usageSummaryPeriodKind" || period["days"] != "int" {
 		t.Fatalf("agent.UsageSummaryPeriod fields = %v, want private kind/days", period)
@@ -217,7 +217,7 @@ func TestUsageSummaryOwnsAllTimeVsRecentPeriod(t *testing.T) {
 
 func TestRuntimeProfileOwnsRunConcurrencySemantics(t *testing.T) {
 	root := moduleRoot(t)
-	profilePath := filepath.Join(root, "internal", "runtimeprofile", "profile.go")
+	profilePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "profile.go")
 	limits := cliStructFieldTypes(t, profilePath, "Limits")
 	if got := limits["RunConcurrency"]; got != "RunConcurrencyLimit" {
 		t.Fatalf("runtimeprofile.Limits.RunConcurrency type = %q, want RunConcurrencyLimit", got)
@@ -233,7 +233,7 @@ func TestRuntimeProfileOwnsRunConcurrencySemantics(t *testing.T) {
 			t.Fatalf("runtimeprofile.Limits restored primitive %s", retired)
 		}
 	}
-	valuePath := filepath.Join(root, "internal", "runtimeprofile", "run_concurrency.go")
+	valuePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "run_concurrency.go")
 	value := cliStructFieldTypes(t, valuePath, "RunConcurrencyLimit")
 	if value["kind"] != "RunConcurrencyLimitKind" || value["maximum"] != "int" {
 		t.Fatalf("runtimeprofile.RunConcurrencyLimit fields = %v, want private kind/maximum", value)
@@ -242,7 +242,7 @@ func TestRuntimeProfileOwnsRunConcurrencySemantics(t *testing.T) {
 
 func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "runtimeprofile", "command_replay.go")
+	path := filepath.Join(root, "internal", "adapter", "runtimeprofile", "command_replay.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -252,9 +252,9 @@ func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
 		t.Fatal("runtimeprofile does not own optional profile to replay policy projection")
 	}
 	for _, consumer := range []string{
-		filepath.Join(root, "internal", "terminal", "run.go"),
-		filepath.Join(root, "internal", "cmd", "run.go"),
-		filepath.Join(root, "internal", "cmd", "sessions.go"),
+		filepath.Join(root, "internal", "delivery", "terminal", "run.go"),
+		filepath.Join(root, "internal", "delivery", "cmd", "run.go"),
+		filepath.Join(root, "internal", "delivery", "cmd", "sessions.go"),
 	} {
 		contents, err := os.ReadFile(consumer)
 		if err != nil {
@@ -270,8 +270,8 @@ func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
 
 func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 	root := moduleRoot(t)
-	config := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "run.go"), "Config")
-	appConfig := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "application.go"), "appConfig")
+	config := cliStructFieldTypes(t, filepath.Join(root, "internal", "delivery", "terminal", "run.go"), "Config")
+	appConfig := cliStructFieldTypes(t, filepath.Join(root, "internal", "delivery", "terminal", "application.go"), "appConfig")
 	ports := []struct{ public, private, typeName string }{
 		{public: "Runtime", private: "runtime", typeName: "agent.Runtime"},
 		{public: "Workspaces", private: "workspaces", typeName: "workspace.Service"},
@@ -308,7 +308,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 
 func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
 	root := moduleRoot(t)
-	profilePath := filepath.Join(root, "internal", "runtimeprofile", "profile.go")
+	profilePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "profile.go")
 	contents, err := os.ReadFile(profilePath)
 	if err != nil {
 		t.Fatal(err)
@@ -316,7 +316,7 @@ func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.
 	if strings.Contains(string(contents), "func (p Profile) Available() bool") {
 		t.Fatal("runtime profile restored Server.Name-based presence inference")
 	}
-	runtimePath := filepath.Join(root, "internal", "runtimeadapter", "connection.go")
+	runtimePath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "connection.go")
 	contents, err = os.ReadFile(runtimePath)
 	if err != nil {
 		t.Fatal(err)
@@ -328,7 +328,7 @@ func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.
 
 func TestWorkbenchOwnsExplicitPersistenceAndCapacitySemantics(t *testing.T) {
 	root := moduleRoot(t)
-	storePath := filepath.Join(root, "internal", "workbench", "store.go")
+	storePath := filepath.Join(root, "internal", "application", "workbench", "store.go")
 	config := cliStructFieldTypes(t, storePath, "Config")
 	for _, field := range []string{"HistoryCapacity", "StashCapacity", "WorkspaceCapacity"} {
 		if got := config[field]; got != "*Capacity" {
@@ -366,11 +366,11 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 		structure string
 		fields    []string
 	}{
-		{path: filepath.Join(root, "internal", "workbench", "pending_run.go"), structure: "PendingRun", fields: []string{"Replay", "CancelReplay"}},
-		{path: filepath.Join(root, "internal", "workbench", "pending_run.go"), structure: "PendingResume", fields: []string{"Replay"}},
-		{path: filepath.Join(root, "internal", "workbench", "steer.go"), structure: "PendingSteer", fields: []string{"replay"}},
-		{path: filepath.Join(root, "internal", "workbench", "session_deletion.go"), structure: "PendingSessionDeletion", fields: []string{"Replay"}},
-		{path: filepath.Join(root, "internal", "workbench", "session_rollback.go"), structure: "PendingSessionRollback", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "workbench", "pending_run.go"), structure: "PendingRun", fields: []string{"Replay", "CancelReplay"}},
+		{path: filepath.Join(root, "internal", "application", "workbench", "pending_run.go"), structure: "PendingResume", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "workbench", "steer.go"), structure: "PendingSteer", fields: []string{"replay"}},
+		{path: filepath.Join(root, "internal", "application", "workbench", "session_deletion.go"), structure: "PendingSessionDeletion", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "workbench", "session_rollback.go"), structure: "PendingSessionRollback", fields: []string{"Replay"}},
 	}
 	for _, check := range checks {
 		fields := cliStructFieldTypes(t, check.path, check.structure)
@@ -385,7 +385,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 			}
 		}
 	}
-	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "run", "execution.go"), "Invocation")
+	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "application", "run", "execution.go"), "Invocation")
 	if got := invocation["ReplayPolicy"]; got != "commandreplay.Policy" {
 		t.Fatalf("run.Invocation.ReplayPolicy type = %q, want commandreplay.Policy", got)
 	}
@@ -393,9 +393,9 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 		t.Fatal("run.Invocation restored primitive ReplayRetention")
 	}
 	for _, path := range []string{
-		filepath.Join(root, "internal", "run", "steering.go"),
-		filepath.Join(root, "internal", "session", "deletion.go"),
-		filepath.Join(root, "internal", "session", "rollback.go"),
+		filepath.Join(root, "internal", "application", "run", "steering.go"),
+		filepath.Join(root, "internal", "application", "session", "deletion.go"),
+		filepath.Join(root, "internal", "application", "session", "rollback.go"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
@@ -405,7 +405,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 			t.Errorf("%s restored a consumer-local ReplayWindow", path)
 		}
 	}
-	mutationPath := filepath.Join(root, "internal", "mutation", "confirmation.go")
+	mutationPath := filepath.Join(root, "internal", "application", "mutation", "confirmation.go")
 	contents, err := os.ReadFile(mutationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -419,7 +419,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 
 func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "workbench", "steer.go")
+	path := filepath.Join(root, "internal", "application", "workbench", "steer.go")
 	want := map[string]string{
 		"sessionID": "string", "command": "agent.SteerRun", "stagedAt": "time.Time",
 		"replay": "commandreplay.Guard",
@@ -437,7 +437,7 @@ func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing
 		}
 	}
 
-	applicationPath := filepath.Join(root, "internal", "run", "steering.go")
+	applicationPath := filepath.Join(root, "internal", "application", "run", "steering.go")
 	contents, err := os.ReadFile(applicationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -453,7 +453,7 @@ func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing
 
 func TestTerminalOperationLeaseIdentityCannotWrap(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "operations.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "operations.go")
 	if got := cliStructFieldTypes(t, path, "operationLease")["id"]; got != "operationLeaseID" {
 		t.Fatalf("terminal.operationLease.id type = %q, want operationLeaseID", got)
 	}
@@ -480,11 +480,11 @@ func TestTerminalOperationLeaseIdentityCannotWrap(t *testing.T) {
 
 func TestStreamFollowerUsesSingleOperationOwnership(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "run_stream.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "run_stream.go")
 	if got := cliStructFieldTypes(t, path, "streamFollower")["lease"]; got != "operationLease" {
 		t.Fatalf("terminal.streamFollower.lease type = %q, want operationLease", got)
 	}
-	if _, exists := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "application.go"), "app")["streamSeq"]; exists {
+	if _, exists := cliStructFieldTypes(t, filepath.Join(root, "internal", "delivery", "terminal", "application.go"), "app")["streamSeq"]; exists {
 		t.Fatal("terminal app restored a parallel stream generation counter")
 	}
 	contents, err := os.ReadFile(path)
@@ -508,11 +508,11 @@ func TestStreamFollowerUsesSingleOperationOwnership(t *testing.T) {
 
 func TestPluginCommandOperationRegistryOwnsCheckedIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	applicationPath := filepath.Join(root, "internal", "terminal", "application.go")
+	applicationPath := filepath.Join(root, "internal", "delivery", "terminal", "application.go")
 	if got := cliStructFieldTypes(t, applicationPath, "app")["commandOperations"]; got != "commandOperationRegistry" {
 		t.Fatalf("terminal.app.commandOperations type = %q, want commandOperationRegistry", got)
 	}
-	path := filepath.Join(root, "internal", "terminal", "commands.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "commands.go")
 	if got := cliStructFieldTypes(t, path, "commandOperationRegistry")["next"]; got != "commandOperationID" {
 		t.Fatalf("terminal.commandOperationRegistry.next type = %q, want commandOperationID", got)
 	}
@@ -542,11 +542,11 @@ func TestPluginCommandOperationRegistryOwnsCheckedIdentity(t *testing.T) {
 
 func TestSessionPresentationUsesRetirableOwnership(t *testing.T) {
 	root := moduleRoot(t)
-	applicationPath := filepath.Join(root, "internal", "terminal", "application.go")
+	applicationPath := filepath.Join(root, "internal", "delivery", "terminal", "application.go")
 	if got := cliStructFieldTypes(t, applicationPath, "app")["sessionContext"]; got != "*sessionContextLease" {
 		t.Fatalf("terminal.app.sessionContext type = %q, want *sessionContextLease", got)
 	}
-	path := filepath.Join(root, "internal", "terminal", "session_context.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "session_context.go")
 	if fields := cliStructFieldTypes(t, path, "sessionContextLease"); !maps.Equal(fields, map[string]string{"retired": "bool"}) {
 		t.Fatalf("terminal.sessionContextLease fields = %v, want private retirement state", fields)
 	}
@@ -571,7 +571,7 @@ func TestSessionPresentationUsesRetirableOwnership(t *testing.T) {
 
 func TestReusablePresentationsUseRetirableIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "presentation_dialog.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "presentation_dialog.go")
 	if got := cliStructFieldTypes(t, path, "presentationLease")["current"]; got != "*presentationIdentity" {
 		t.Fatalf("terminal.presentationLease.current type = %q, want *presentationIdentity", got)
 	}
@@ -602,7 +602,7 @@ func TestReusablePresentationsUseRetirableIdentity(t *testing.T) {
 
 func TestTranscriptFramesUseRetirableContentOwnership(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "transcript.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "transcript.go")
 	if got := cliStructFieldTypes(t, path, "transcriptView")["contentLease"]; got != "*transcriptContentLease" {
 		t.Fatalf("terminal.transcriptView.contentLease type = %q, want *transcriptContentLease", got)
 	}
@@ -633,7 +633,7 @@ func TestTranscriptFramesUseRetirableContentOwnership(t *testing.T) {
 
 func TestReaderDocumentObserversOwnNonReusableTokens(t *testing.T) {
 	root := moduleRoot(t)
-	observersPath := filepath.Join(root, "internal", "terminal", "reader_document_observers.go")
+	observersPath := filepath.Join(root, "internal", "delivery", "terminal", "reader_document_observers.go")
 	if fields := cliStructFieldTypes(t, observersPath, "readerDocumentObserverToken"); !maps.Equal(fields, map[string]string{"active": "bool"}) {
 		t.Fatalf("terminal.readerDocumentObserverToken fields = %v, want private activity state", fields)
 	}
@@ -641,8 +641,8 @@ func TestReaderDocumentObserversOwnNonReusableTokens(t *testing.T) {
 		path      string
 		structure string
 	}{
-		{path: filepath.Join(root, "internal", "terminal", "tool_block.go"), structure: "toolBlock"},
-		{path: filepath.Join(root, "internal", "terminal", "tool_group.go"), structure: "toolGroupBlock"},
+		{path: filepath.Join(root, "internal", "delivery", "terminal", "tool_block.go"), structure: "toolBlock"},
+		{path: filepath.Join(root, "internal", "delivery", "terminal", "tool_group.go"), structure: "toolGroupBlock"},
 	} {
 		fields := cliStructFieldTypes(t, aggregate.path, aggregate.structure)
 		if got := fields["observers"]; got != "readerDocumentObservers" {
@@ -671,7 +671,7 @@ func TestReaderDocumentObserversOwnNonReusableTokens(t *testing.T) {
 
 func TestExtensionRegistryOwnsCheckedRegistrationSequence(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "extensions", "registry.go")
+	path := filepath.Join(root, "internal", "application", "extensions", "registry.go")
 	if got := cliStructFieldTypes(t, path, "Registry")["next"]; got != "registrationSequence" {
 		t.Fatalf("extensions.Registry.next type = %q, want registrationSequence", got)
 	}
@@ -701,7 +701,7 @@ func TestExtensionRegistryOwnsCheckedRegistrationSequence(t *testing.T) {
 
 func TestConversationDoesNotMaintainAnUnconsumedRevision(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "agent", "conversation.go")
+	path := filepath.Join(root, "internal", "domain", "agent", "conversation.go")
 	if _, exists := cliStructFieldTypes(t, path, "Conversation")["revision"]; exists {
 		t.Fatal("agent.Conversation restored an unconsumed revision counter")
 	}
@@ -743,9 +743,9 @@ func TestRevisionedCLIProjectionsShareOneExactIntegerEnvelope(t *testing.T) {
 		}
 	}
 	for _, consumer := range []string{
-		filepath.Join(root, "internal", "agent", "session.go"),
-		filepath.Join(root, "internal", "agent", "plan.go"),
-		filepath.Join(root, "internal", "schedule", "schedule.go"),
+		filepath.Join(root, "internal", "domain", "agent", "session.go"),
+		filepath.Join(root, "internal", "domain", "agent", "plan.go"),
+		filepath.Join(root, "internal", "domain", "schedule", "schedule.go"),
 	} {
 		contents, err := os.ReadFile(consumer)
 		if err != nil {
@@ -759,7 +759,7 @@ func TestRevisionedCLIProjectionsShareOneExactIntegerEnvelope(t *testing.T) {
 
 func TestDraftPersistenceRevisionIdentityCannotWrap(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "draft_persistence.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "draft_persistence.go")
 	if got := cliStructFieldTypes(t, path, "draftSnapshot")["revision"]; got != "draftRevision" {
 		t.Fatalf("terminal.draftSnapshot.revision type = %q, want draftRevision", got)
 	}
@@ -787,7 +787,7 @@ func TestDraftPersistenceRevisionIdentityCannotWrap(t *testing.T) {
 
 func TestCatalogQueriesOwnNamedPageSizeIntent(t *testing.T) {
 	root := moduleRoot(t)
-	agentRoot := filepath.Join(root, "internal", "agent")
+	agentRoot := filepath.Join(root, "internal", "domain", "agent")
 	for _, check := range []struct {
 		path      string
 		structure string
@@ -811,7 +811,7 @@ func TestCatalogQueriesOwnNamedPageSizeIntent(t *testing.T) {
 
 func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "agent", "run_limits.go")
+	path := filepath.Join(root, "internal", "domain", "agent", "run_limits.go")
 	fields := cliStructFieldTypes(t, path, "RunLimits")
 	if fields["initialized"] != "bool" {
 		t.Fatalf("agent.RunLimits fields = %v, want explicit initialization state", fields)
@@ -830,8 +830,8 @@ func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 		path string
 		want string
 	}{
-		{path: filepath.Join(root, "internal", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
-		{path: filepath.Join(root, "internal", "runtimeadapter", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
+		{path: filepath.Join(root, "internal", "application", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
+		{path: filepath.Join(root, "internal", "adapter", "runtimeadapter", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
 	} {
 		contents, err := os.ReadFile(consumer.path)
 		if err != nil {
@@ -845,7 +845,7 @@ func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 
 func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "agent", "run.go")
+	path := filepath.Join(root, "internal", "domain", "agent", "run.go")
 	fields := cliStructFieldTypes(t, path, "RunLineage")
 	want := map[string]string{
 		"kind": "runLineageKind", "spawnedByBlockID": "string",
@@ -867,7 +867,7 @@ func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 	if strings.Contains(text, "return r == (RunLineage{})") {
 		t.Fatal("agent.RunLineage restored zero-value root inference")
 	}
-	projectionPath := filepath.Join(root, "internal", "runtimeadapter", "projection.go")
+	projectionPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "projection.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
@@ -880,7 +880,7 @@ func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 
 func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "modelconfig", "modelconfig.go")
+	path := filepath.Join(root, "internal", "application", "modelconfig", "modelconfig.go")
 	fields := cliStructFieldTypes(t, path, "Role")
 	want := map[string]string{
 		"kind": "RoleKind", "mode": "roleMode", "provider": "string", "model": "string",
@@ -900,7 +900,7 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 			t.Errorf("modelconfig.Role lacks constructor %q", constructor)
 		}
 	}
-	projectionPath := filepath.Join(root, "internal", "runtimeadapter", "modelconfig.go")
+	projectionPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "modelconfig.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
@@ -909,7 +909,7 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 	if !strings.Contains(projection, "projectUtilityRole(") || !strings.Contains(projection, "projectEmbeddingRole(") {
 		t.Fatal("Runtime adapter no longer owns role-specific wire projection")
 	}
-	terminalPath := filepath.Join(root, "internal", "terminal", "runtime_management.go")
+	terminalPath := filepath.Join(root, "internal", "delivery", "terminal", "runtime_management.go")
 	contents, err = os.ReadFile(terminalPath)
 	if err != nil {
 		t.Fatal(err)
@@ -921,7 +921,7 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 
 func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.T) {
 	root := moduleRoot(t)
-	queuePath := filepath.Join(root, "internal", "promptqueue", "queue.go")
+	queuePath := filepath.Join(root, "internal", "application", "promptqueue", "queue.go")
 	entry := cliStructFieldTypes(t, queuePath, "Entry")
 	if got := entry["ID"]; got != "EntryID" {
 		t.Fatalf("promptqueue.Entry.ID type = %q, want EntryID", got)
@@ -939,7 +939,7 @@ func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.
 	if _, exists := cliStructFieldTypes(t, queuePath, "Queue")["revision"]; exists {
 		t.Fatal("promptqueue.Queue restored an unowned revision counter")
 	}
-	idPath := filepath.Join(root, "internal", "promptqueue", "entry_id.go")
+	idPath := filepath.Join(root, "internal", "application", "promptqueue", "entry_id.go")
 	id := cliStructFieldTypes(t, idPath, "EntryID")
 	if !maps.Equal(id, map[string]string{"value": "uint64"}) {
 		t.Fatalf("promptqueue.EntryID fields = %v, want private uint64 value", id)
@@ -954,7 +954,7 @@ func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.
 			t.Errorf("prompt queue restored numeric identity sentinel shape %q", retired)
 		}
 	}
-	drawerPath := filepath.Join(root, "internal", "terminal", "queue_drawer.go")
+	drawerPath := filepath.Join(root, "internal", "delivery", "terminal", "queue_drawer.go")
 	drawer := cliStructFieldTypes(t, drawerPath, "queueDrawer")
 	if drawer["selectedID"] != "*promptqueue.EntryID" || drawer["editingEntry"] != "*promptqueue.Entry" {
 		t.Fatalf("terminal.queueDrawer identity state = %v, want explicit optional selection/editing", drawer)
@@ -963,7 +963,7 @@ func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.
 
 func TestChangefeedSequenceWatermarkCannotRegressOrWrap(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "changefeed", "sequence.go")
+	path := filepath.Join(root, "internal", "application", "changefeed", "sequence.go")
 	tracker := cliStructFieldTypes(t, path, "SequenceTracker")
 	if !maps.Equal(tracker, map[string]string{"last": "*sequence"}) {
 		t.Fatalf("changefeed.SequenceTracker fields = %v, want optional rich watermark", tracker)
@@ -978,7 +978,7 @@ func TestChangefeedSequenceWatermarkCannotRegressOrWrap(t *testing.T) {
 			t.Errorf("changefeed sequence tracker lacks %s", disposition)
 		}
 	}
-	consumerPath := filepath.Join(root, "internal", "terminal", "workspace_inspection.go")
+	consumerPath := filepath.Join(root, "internal", "delivery", "terminal", "workspace_inspection.go")
 	contents, err = os.ReadFile(consumerPath)
 	if err != nil {
 		t.Fatal(err)
@@ -991,7 +991,7 @@ func TestChangefeedSequenceWatermarkCannotRegressOrWrap(t *testing.T) {
 
 func TestRetrySchedulesRequireNamedConstructionAndOneTerminalOwner(t *testing.T) {
 	root := moduleRoot(t)
-	retryPath := filepath.Join(root, "internal", "retry", "retry.go")
+	retryPath := filepath.Join(root, "internal", "application", "retry", "retry.go")
 	backoff := cliStructFieldTypes(t, retryPath, "Backoff")
 	if backoff["mode"] != "backoffMode" || backoff["base"] != "time.Duration" || backoff["maximum"] != "time.Duration" {
 		t.Fatalf("retry.Backoff fields = %v, want private mode/base/maximum", backoff)
@@ -1001,12 +1001,12 @@ func TestRetrySchedulesRequireNamedConstructionAndOneTerminalOwner(t *testing.T)
 			t.Errorf("retry.Backoff restored mutable exported field %s", leaked)
 		}
 	}
-	reconnectPath := filepath.Join(root, "internal", "retry", "reconnect.go")
+	reconnectPath := filepath.Join(root, "internal", "application", "retry", "reconnect.go")
 	policy := cliStructFieldTypes(t, reconnectPath, "ReconnectPolicy")
 	if len(policy) != 2 || policy["attempts"] != "int" || policy["backoff"] != "Backoff" {
 		t.Fatalf("retry.ReconnectPolicy fields = %v, want only private attempt budget and shared backoff", policy)
 	}
-	applicationPath := filepath.Join(root, "internal", "terminal", "application.go")
+	applicationPath := filepath.Join(root, "internal", "delivery", "terminal", "application.go")
 	if got := cliStructFieldTypes(t, applicationPath, "app")["reconnectPolicy"]; got != "retry.ReconnectPolicy" {
 		t.Fatalf("terminal.app.reconnectPolicy type = %q, want retry.ReconnectPolicy", got)
 	}
@@ -1014,7 +1014,7 @@ func TestRetrySchedulesRequireNamedConstructionAndOneTerminalOwner(t *testing.T)
 
 func TestAttachmentCompletionOwnsItsFiniteResultBudget(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "attachment", "resolver.go")
+	path := filepath.Join(root, "internal", "adapter", "attachment", "resolver.go")
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
 		t.Fatalf("parse attachment resolver: %v", err)
@@ -1038,7 +1038,7 @@ func TestAttachmentCompletionOwnsItsFiniteResultBudget(t *testing.T) {
 
 func TestPromptHistoryOwnsOneNamedRetentionCapacity(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "terminal", "composer.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "composer.go")
 	fields := cliStructFieldTypes(t, path, "promptHistory")
 	if _, exists := fields["limit"]; exists {
 		t.Fatal("terminal.promptHistory restored caller-shaped limit field")
@@ -1056,7 +1056,7 @@ func TestPromptHistoryOwnsOneNamedRetentionCapacity(t *testing.T) {
 
 func TestSideloadCommandTimeoutKeepsJSONPresenceInARichDeclaration(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "sideload", "directory_source.go")
+	path := filepath.Join(root, "internal", "delivery", "sideload", "directory_source.go")
 	manifest := cliStructFieldTypes(t, path, "commandManifest")
 	if got := manifest["Timeout"]; got != "commandTimeoutDeclaration" {
 		t.Fatalf("sideload.commandManifest.Timeout type = %q, want commandTimeoutDeclaration", got)
@@ -1141,31 +1141,31 @@ var layers = []struct {
 }{
 	{"internal/testsupport/runtimefixture/", "runtimefixture"},
 	{"internal/exactint/", "exactint"},
-	{"internal/identity/", "identity"},
-	{"internal/runtimeadapter/", "runtimeadapter"},
-	{"internal/failure/", "failure"},
-	{"internal/changefeed/", "changefeed"},
-	{"internal/workspace/", "workspace"},
-	{"internal/modelconfig/", "modelconfig"},
-	{"internal/mcp/", "mcp"},
-	{"internal/schedule/", "schedule"},
-	{"internal/sideload/", "sideload"},
-	{"internal/terminal/", "terminal"},
-	{"internal/attachment/", "attachment"},
-	{"internal/promptqueue/", "promptqueue"},
-	{"internal/mutation/", "mutation"},
-	{"internal/retry/", "retry"},
-	{"internal/run/", "run"},
-	{"internal/commandreplay/", "commandreplay"},
-	{"internal/runtimeprofile/", "runtimeprofile"},
-	{"internal/session/", "session"},
-	{"internal/sessionartifact/", "sessionartifact"},
-	{"internal/workbench/", "workbench"},
-	{"internal/agent/", "agent"},
-	{"internal/settings/", "settings"},
-	{"internal/extensions/", "extensions"},
-	{"internal/render/", "render"},
-	{"internal/cmd/", "cmd"},
+	{"internal/domain/identity/", "identity"},
+	{"internal/adapter/runtimeadapter/", "runtimeadapter"},
+	{"internal/domain/failure/", "failure"},
+	{"internal/application/changefeed/", "changefeed"},
+	{"internal/domain/workspace/", "workspace"},
+	{"internal/application/modelconfig/", "modelconfig"},
+	{"internal/application/mcp/", "mcp"},
+	{"internal/domain/schedule/", "schedule"},
+	{"internal/delivery/sideload/", "sideload"},
+	{"internal/delivery/terminal/", "terminal"},
+	{"internal/adapter/attachment/", "attachment"},
+	{"internal/application/promptqueue/", "promptqueue"},
+	{"internal/application/mutation/", "mutation"},
+	{"internal/application/retry/", "retry"},
+	{"internal/application/run/", "run"},
+	{"internal/domain/commandreplay/", "commandreplay"},
+	{"internal/adapter/runtimeprofile/", "runtimeprofile"},
+	{"internal/application/session/", "session"},
+	{"internal/adapter/sessionartifact/", "sessionartifact"},
+	{"internal/application/workbench/", "workbench"},
+	{"internal/domain/agent/", "agent"},
+	{"internal/application/settings/", "settings"},
+	{"internal/application/extensions/", "extensions"},
+	{"internal/delivery/render/", "render"},
+	{"internal/delivery/cmd/", "cmd"},
 	{"internal/arch/", "arch"},
 }
 
@@ -1341,42 +1341,42 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		from, to string
 		refused  bool
 	}{
-		{"internal/agent", "internal/testsupport/runtimefixture", true},
-		{"internal/agent", "internal/terminal", true},
-		{"internal/agent", "internal/runtimeadapter", true},
-		{"internal/extensions", "internal/agent", true},
-		{"internal/testsupport/runtimefixture", "internal/render", true},
-		{"internal/attachment", "internal/terminal", true},
-		{"internal/retry", "internal/cmd", true},
-		{"internal/run", "internal/cmd", true},
-		{"internal/session", "internal/terminal", true},
-		{"internal/sessionartifact", "internal/terminal", true},
-		{"internal/workbench", "internal/terminal", true},
-		{"internal/settings", "internal/terminal", true},
-		{"internal/promptqueue", "internal/terminal", true},
-		{"internal/render", "internal/terminal", true},
-		{"internal/terminal", "internal/cmd", true},
-		{"internal/sideload", "internal/cmd", true},
+		{"internal/domain/agent", "internal/testsupport/runtimefixture", true},
+		{"internal/domain/agent", "internal/delivery/terminal", true},
+		{"internal/domain/agent", "internal/adapter/runtimeadapter", true},
+		{"internal/application/extensions", "internal/domain/agent", true},
+		{"internal/testsupport/runtimefixture", "internal/delivery/render", true},
+		{"internal/adapter/attachment", "internal/delivery/terminal", true},
+		{"internal/application/retry", "internal/delivery/cmd", true},
+		{"internal/application/run", "internal/delivery/cmd", true},
+		{"internal/application/session", "internal/delivery/terminal", true},
+		{"internal/adapter/sessionartifact", "internal/delivery/terminal", true},
+		{"internal/application/workbench", "internal/delivery/terminal", true},
+		{"internal/application/settings", "internal/delivery/terminal", true},
+		{"internal/application/promptqueue", "internal/delivery/terminal", true},
+		{"internal/delivery/render", "internal/delivery/terminal", true},
+		{"internal/delivery/terminal", "internal/delivery/cmd", true},
+		{"internal/delivery/sideload", "internal/delivery/cmd", true},
 
-		{"internal/testsupport/runtimefixture", "internal/agent", false},
-		{"internal/runtimeadapter", "internal/agent", false},
-		{"internal/runtimeadapter", "internal/terminal", true},
-		{"internal/terminal", "internal/agent", false},
-		{"internal/terminal", "internal/sessionartifact", false},
-		{"internal/terminal", "internal/session", false},
-		{"internal/terminal", "internal/workbench", false},
-		{"internal/terminal", "internal/extensions", false},
-		{"internal/cmd", "internal/terminal", true},
-		{"internal/sideload", "internal/extensions", false},
-		{"internal/render", "internal/agent", false},
-		{"internal/attachment", "internal/agent", false},
-		{"internal/retry", "internal/agent", false},
-		{"internal/run", "internal/agent", false},
-		{"internal/cmd", "internal/session", false},
-		{"internal/cmd", "internal/run", false},
-		{"internal/settings", "internal/agent", false},
-		{"internal/session", "internal/agent", false},
-		{"internal/promptqueue", "internal/agent", false},
+		{"internal/testsupport/runtimefixture", "internal/domain/agent", false},
+		{"internal/adapter/runtimeadapter", "internal/domain/agent", false},
+		{"internal/adapter/runtimeadapter", "internal/delivery/terminal", true},
+		{"internal/delivery/terminal", "internal/domain/agent", false},
+		{"internal/delivery/terminal", "internal/adapter/sessionartifact", false},
+		{"internal/delivery/terminal", "internal/application/session", false},
+		{"internal/delivery/terminal", "internal/application/workbench", false},
+		{"internal/delivery/terminal", "internal/application/extensions", false},
+		{"internal/delivery/cmd", "internal/delivery/terminal", true},
+		{"internal/delivery/sideload", "internal/application/extensions", false},
+		{"internal/delivery/render", "internal/domain/agent", false},
+		{"internal/adapter/attachment", "internal/domain/agent", false},
+		{"internal/application/retry", "internal/domain/agent", false},
+		{"internal/application/run", "internal/domain/agent", false},
+		{"internal/delivery/cmd", "internal/application/session", false},
+		{"internal/delivery/cmd", "internal/application/run", false},
+		{"internal/application/settings", "internal/domain/agent", false},
+		{"internal/application/session", "internal/domain/agent", false},
+		{"internal/application/promptqueue", "internal/domain/agent", false},
 	} {
 		from, to := layerOf(tc.from), layerOf(tc.to)
 		if from == "" {

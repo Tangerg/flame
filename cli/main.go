@@ -11,7 +11,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Tangerg/flame/cli/internal/cmd"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 )
 
 const runtimeCloseAttempts = 3

@@ -37,13 +37,38 @@ main
              CLI application and domain
 ```
 
-The arrows show source dependencies toward CLI policy. The outer packages may import Cobra, Viper, Oolong, and Runtime public packages. Inner packages must not.
+The arrows show source dependencies toward CLI policy. Delivery may depend on
+Application, Domain, and explicit adapters; Adapter may depend on Application
+and Domain; Application may depend on Domain. Cobra and Viper remain in
+`delivery/cmd`, Oolong remains in `delivery/terminal`, and the public Runtime
+module remains in `adapter/runtimeadapter`.
 
-`internal/runtimeadapter.Connection` owns the public binding lifecycle, negotiated profile, command metadata, and protocol translation. It does not own product state or define a second Runtime model. `main` is the only place that fans one Connection out into the narrow interfaces defined by CLI consumers; commands receive only `agent.Runtime` plus the immutable profile, and terminal construction receives explicit ports. There is no backend service bag or service locator.
+`internal/adapter/runtimeadapter.Connection` owns the public binding lifecycle,
+negotiated profile, command metadata, and protocol translation. It does not own
+product state or define a second Runtime model. `main` is the only place that
+fans one Connection out into the narrow interfaces defined by CLI consumers;
+commands receive only `agent.Runtime` plus the immutable profile, and terminal
+construction receives explicit ports. There is no backend service bag or
+service locator.
 
 ## Package shape
 
-The desired shape is domain-focused and flatter than the current tree. A package earns independence by owning at least one of these concerns:
+The physical tree makes the four dependency rings visible without adding
+umbrella Go packages:
+
+```text
+internal/
+├── domain/       CLI-owned values, aggregates, and invariants
+├── application/  use cases, local workflows, and durable Workbench state
+├── adapter/      Runtime and filesystem translation
+├── delivery/     Cobra, terminal interaction, rendering, and plugin delivery
+├── exactint/     cross-ring exact integer mechanism
+├── testsupport/  test-only runtime fixture
+└── arch/         dependency fitness tests
+```
+
+The ring directories are navigation and import boundaries, not facades. A leaf
+package earns independence by owning at least one of these concerns:
 
 - a stable consumer vocabulary or invariant
 - a durable CLI-local aggregate
@@ -55,33 +80,33 @@ Single-concept packages that only rename a value, expose one forwarding function
 
 Do not collapse the tree into a broad `service` or `backend` layer. Prefer cohesive packages with several responsibility-named files.
 
-`internal/run` owns the CLI application workflow for unattended execution,
-segment reattachment, and durable steering settlement. `internal/session` owns
+`internal/application/run` owns the CLI application workflow for unattended execution,
+segment reattachment, and durable steering settlement. `internal/application/session` owns
 Session opening, updates, deletion, rollback, and their local settlement. These
 packages orchestrate Runtime commands and CLI-local records; they do not own a
-second Run or Session state machine. `internal/retry` owns the shared retry
+second Run or Session state machine. `internal/application/retry` owns the shared retry
 mechanism and transport-recovery policy: `Backoff` is the only exponential
 schedule, while `ReconnectPolicy` adds classified admission and a finite
 attempt budget for Run, Runtime invalidation, workspace inspection, and MCP
 management. Do not split retry admission from the schedule it consumes.
 
-`internal/commandreplay` owns the pure, durable capability/guard/policy model
-for one Runtime replay store. `internal/mutation` consumes that model together
+`internal/domain/commandreplay` owns the pure, durable capability/guard/policy model
+for one Runtime replay store. `internal/application/mutation` consumes that model together
 with Agent error classification and retry to settle acknowledgement; combining
 them would make the persisted value owner depend on I/O behavior. Likewise,
-`internal/promptqueue` remains a CLI application aggregate rather than Terminal
+`internal/application/promptqueue` remains a CLI application aggregate rather than Terminal
 state: it owns per-Session FIFO order, stable identities, hold/edit rules,
 dispatch reservation, durable restore, and rollback. Terminal only presents
 and commands that aggregate.
 
-`internal/session` also owns the portable Session document value, export/import
+`internal/application/session` also owns the portable Session document value, export/import
 requests, and the consumer-owned Runtime transfer port. These facts share the
 Session identity and lifecycle; they are not a separate bounded context.
-`internal/sessionartifact` remains a distinct outbound filesystem adapter: it
+`internal/adapter/sessionartifact` remains a distinct outbound filesystem adapter: it
 owns path resolution, bounded reads, conflict-safe publication, and exact-byte
 transfer without owning the document semantics.
 
-`internal/identity` owns the CLI domain's admission policy for exact foreign
+`internal/domain/identity` owns the CLI domain's admission policy for exact foreign
 Runtime resource and model-selection identities. It keeps Session, Run,
 Segment, Item, Event, provider, model, and reasoning rules in
 responsibility-named files, but does not wrap those foreign strings in a second
@@ -90,7 +115,7 @@ identities, infers providers, normalizes values, or owns Runtime lifecycle.
 Independent mechanisms such as exact integer advancement remain separate when
 they have their own vocabulary and peer consumers.
 
-`internal/agent` owns the cohesive CLI projection of the Agent Session and Run
+`internal/domain/agent` owns the cohesive CLI projection of the Agent Session and Run
 context. Session, Run, Goal, feedback, usage, and Agent Memory values use
 semantic type names inside that package and share its consumer-owned Runtime
 ports. Runtime keeps Agent Memory as an independent product domain; the CLI does
@@ -99,7 +124,7 @@ consumers and no independent resource lifecycle. New CLI packages require a
 different lifecycle, external boundary, or bounded context rather than another
 `Service` interface.
 
-`internal/workspace` owns the CLI projection of the selected filesystem and
+`internal/domain/workspace` owns the CLI projection of the selected filesystem and
 project context. Resolved workspaces, authored agent documents and recipes,
 knowledge documents, discoverable and managed Skills, lifecycle Hook policy,
 and direct read-only diagnostics all derive their scope or authority from that

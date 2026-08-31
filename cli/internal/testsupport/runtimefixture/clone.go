@@ -1,6 +1,6 @@
 package runtimefixture
 
-import "github.com/Tangerg/flame/cli/internal/agent"
+import "github.com/Tangerg/flame/cli/internal/domain/agent"
 
 func projectRun(run *runState) agent.Run {
 	return agent.Run{

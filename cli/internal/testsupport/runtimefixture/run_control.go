@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.SegmentStream, error) {

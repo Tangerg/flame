@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 // Step is one scripted action: wait, then either emit an already committed

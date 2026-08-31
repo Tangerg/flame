@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {

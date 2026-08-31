@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/failure"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 func (r *Runtime) play(run *runState, steps []Step, interrupt bool) {

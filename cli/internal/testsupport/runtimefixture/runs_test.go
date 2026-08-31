@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {

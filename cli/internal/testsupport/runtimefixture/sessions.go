@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
-	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 var errSessionRevisionExhausted = errors.New("mock: session revision is exhausted")

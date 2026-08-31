@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (r *Runtime) GetRun(ctx context.Context, runID string) (agent.Run, error) {

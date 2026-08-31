@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agent.SegmentStream, error) {

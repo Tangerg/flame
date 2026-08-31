@@ -22,10 +22,10 @@ import (
 
 	"github.com/Tangerg/oolong/ptytest"
 
-	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/cmd"
-	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/terminal"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
