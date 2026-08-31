@@ -1,6 +1,6 @@
 # Flame CLI
 
-Flame CLI provides a scriptable command surface and an interactive terminal client over the public embedded Flame Runtime. Runtime owns durable product state and execution; the CLI owns process behavior, terminal interaction, rendering, and local prompt authoring.
+Flame CLI provides a scriptable command surface and an interactive terminal client over the public in-process Flame Runtime. Runtime owns durable product state and execution; the CLI owns process behavior, terminal interaction, rendering, and local prompt authoring.
 
 ## Run the CLI
 
@@ -19,7 +19,7 @@ The interactive command opens the Oolong TUI. `run` supports human-readable text
 
 ## Configuration
 
-CLI preferences and embedded Runtime configuration have separate owners.
+CLI preferences and Runtime configuration have separate owners.
 
 CLI preferences configure optional provider/model overrides, run limits, approvals, UI, plugins, and key bindings. With no override, new Runs inherit the active Session's Runtime-owned durable selection:
 
@@ -42,7 +42,7 @@ Provider and model identity is exact. An override is either a complete provider/
 
 ## Runtime ownership
 
-The process lazily opens one `runtime/embedded.Runtime` and closes it before exit. `internal/runtimeembedded` is the only package that imports Runtime public contracts. CLI application and terminal packages consume CLI-owned narrow interfaces and values.
+The process lazily opens one module-root `runtime.Runtime` and closes it before exit. The Runtime boundary imports public contracts; CLI application and terminal packages consume CLI-owned narrow interfaces and values.
 
 Runtime remains authoritative for:
 
@@ -78,4 +78,4 @@ GOWORK=off go build ./...
 GOWORK=off go mod tidy
 ```
 
-Run focused real embedded Runtime scenarios for changes to Goal, Plan, steering, human input, compaction, provider behavior, or recovery. Use the real pseudo-terminal suite only when terminal protocol, resize, input, focus, or restoration changes. Run targeted race tests only when concurrent ownership changes.
+Run focused real in-process Runtime scenarios for changes to Goal, Plan, steering, human input, compaction, provider behavior, or recovery. Use the real pseudo-terminal suite only when terminal protocol, resize, input, focus, or restoration changes. Run targeted race tests only when concurrent ownership changes.

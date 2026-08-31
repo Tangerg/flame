@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -31,15 +31,15 @@ type workspaceBindingStub struct {
 	content      *protocol.FileContent
 }
 
-func (w *workspaceBindingStub) ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, embedded.CallOptions) (*protocol.WorkspaceInfo, error) {
+func (w *workspaceBindingStub) ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, flameruntime.CallOptions) (*protocol.WorkspaceInfo, error) {
 	return w.resolved, nil
 }
 
-func (w *workspaceBindingStub) ListWorkspaces(context.Context, embedded.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error) {
+func (w *workspaceBindingStub) ListWorkspaces(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error) {
 	return w.known, nil
 }
 
-func (w *workspaceBindingStub) ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error) {
+func (w *workspaceBindingStub) ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error) {
 	w.changesCalls++
 	return w.changes, w.changesErr
 }
@@ -61,20 +61,20 @@ func TestWorkspaceAdapterProjectsVersionControlUnavailability(t *testing.T) {
 	}
 }
 
-func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, embedded.CallOptions) (*protocol.Diff, error) {
+func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, flameruntime.CallOptions) (*protocol.Diff, error) {
 	w.diffCalls++
 	return w.diff, nil
 }
 
-func (w *workspaceBindingStub) GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, embedded.CallOptions) (*protocol.FileHead, error) {
+func (w *workspaceBindingStub) GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, flameruntime.CallOptions) (*protocol.FileHead, error) {
 	return w.head, nil
 }
 
-func (w *workspaceBindingStub) SearchWorkspaceFiles(context.Context, protocol.GrepRequest, embedded.CallOptions) (*protocol.GrepResult, error) {
+func (w *workspaceBindingStub) SearchWorkspaceFiles(context.Context, protocol.GrepRequest, flameruntime.CallOptions) (*protocol.GrepResult, error) {
 	return w.search, nil
 }
 
-func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request protocol.ListFilesRequest, _ embedded.CallOptions) (*protocol.Page[protocol.FileEntry], error) {
+func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request protocol.ListFilesRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.FileEntry], error) {
 	w.fileCalls = append(w.fileCalls, request)
 	if w.filePages != nil {
 		return w.filePages[request.Cursor], nil
@@ -82,7 +82,7 @@ func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request pro
 	return w.files, nil
 }
 
-func (w *workspaceBindingStub) ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, embedded.CallOptions) (*protocol.FileContent, error) {
+func (w *workspaceBindingStub) ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, flameruntime.CallOptions) (*protocol.FileContent, error) {
 	return w.content, nil
 }
 

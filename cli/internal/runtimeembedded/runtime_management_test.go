@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/goal"
@@ -14,22 +14,22 @@ import (
 )
 
 type usageBindingStub struct {
-	session func(context.Context, protocol.SessionUsageRequest, embedded.CallOptions) (*protocol.Usage, error)
-	summary func(context.Context, protocol.UsageSummaryRequest, embedded.CallOptions) (*protocol.UsageSummary, error)
+	session func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error)
+	summary func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
-func (u usageBindingStub) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options embedded.CallOptions) (*protocol.Usage, error) {
+func (u usageBindingStub) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.Usage, error) {
 	return u.session(ctx, request, options)
 }
 
-func (u usageBindingStub) GetUsageSummary(ctx context.Context, request protocol.UsageSummaryRequest, options embedded.CallOptions) (*protocol.UsageSummary, error) {
+func (u usageBindingStub) GetUsageSummary(ctx context.Context, request protocol.UsageSummaryRequest, options flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 	return u.summary(ctx, request, options)
 }
 
 func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 	cost := 0.25
 	stub := usageBindingStub{
-		session: func(_ context.Context, request protocol.SessionUsageRequest, options embedded.CallOptions) (*protocol.Usage, error) {
+		session: func(_ context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.Usage, error) {
 			if request.SessionID != "ses_1" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 				t.Fatalf("session usage request = %+v, options = %+v", request, options)
 			}
@@ -40,7 +40,7 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 				},
 			}, nil
 		},
-		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ embedded.CallOptions) (*protocol.UsageSummary, error) {
+		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 			if request.SinceDays == nil || *request.SinceDays != 30 {
 				t.Fatalf("summary request = %+v", request)
 			}
@@ -64,7 +64,7 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 func TestUsageAdapterKeepsAllTimeAbsentOnTheWire(t *testing.T) {
 	t.Parallel()
 	runtime := &Runtime{usage: usageBindingStub{
-		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ embedded.CallOptions) (*protocol.UsageSummary, error) {
+		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 			if request.SinceDays != nil {
 				t.Fatalf("all-time summary sent sinceDays = %d", *request.SinceDays)
 			}
@@ -85,7 +85,7 @@ func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
 	t.Parallel()
 	called := false
 	runtime := &Runtime{usage: usageBindingStub{
-		summary: func(context.Context, protocol.UsageSummaryRequest, embedded.CallOptions) (*protocol.UsageSummary, error) {
+		summary: func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 			called = true
 			return &protocol.UsageSummary{}, nil
 		},
@@ -102,10 +102,10 @@ func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
 func TestUsageAdapterRejectsInvalidRuntimeReports(t *testing.T) {
 	t.Parallel()
 	runtime := &Runtime{usage: usageBindingStub{
-		session: func(context.Context, protocol.SessionUsageRequest, embedded.CallOptions) (*protocol.Usage, error) {
+		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error) {
 			return &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: -1}}, nil
 		},
-		summary: func(context.Context, protocol.UsageSummaryRequest, embedded.CallOptions) (*protocol.UsageSummary, error) {
+		summary: func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 			return &protocol.UsageSummary{ByModel: []protocol.UsageBucket{{Key: "same"}, {Key: "same"}}}, nil
 		},
 	}, meta: requestMeta("test")}
@@ -130,16 +130,16 @@ type modelConfigBindingStub struct {
 	providers     []protocol.Provider
 	utilityReply  *protocol.UtilityRole
 	providerReply *protocol.Provider
-	utilitySet    func(protocol.UtilityRole, embedded.CommandOptions)
-	embeddingSet  func(protocol.EmbeddingRole, embedded.CommandOptions)
-	updated       func(protocol.UpdateProviderRequest, embedded.CommandOptions)
+	utilitySet    func(protocol.UtilityRole, flameruntime.CommandOptions)
+	embeddingSet  func(protocol.EmbeddingRole, flameruntime.CommandOptions)
+	updated       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions)
 }
 
-func (m *modelConfigBindingStub) GetUtilityRole(context.Context, embedded.CallOptions) (*protocol.UtilityRole, error) {
+func (m *modelConfigBindingStub) GetUtilityRole(context.Context, flameruntime.CallOptions) (*protocol.UtilityRole, error) {
 	return &m.utility, nil
 }
 
-func (m *modelConfigBindingStub) SetUtilityRole(_ context.Context, request protocol.UtilityRole, options embedded.CommandOptions) (*protocol.UtilityRole, error) {
+func (m *modelConfigBindingStub) SetUtilityRole(_ context.Context, request protocol.UtilityRole, options flameruntime.CommandOptions) (*protocol.UtilityRole, error) {
 	m.utilitySet(request, options)
 	if m.utilityReply != nil {
 		return m.utilityReply, nil
@@ -148,21 +148,21 @@ func (m *modelConfigBindingStub) SetUtilityRole(_ context.Context, request proto
 	return &m.utility, nil
 }
 
-func (m *modelConfigBindingStub) GetEmbeddingRole(context.Context, embedded.CallOptions) (*protocol.EmbeddingRole, error) {
+func (m *modelConfigBindingStub) GetEmbeddingRole(context.Context, flameruntime.CallOptions) (*protocol.EmbeddingRole, error) {
 	return &m.embedding, nil
 }
 
-func (m *modelConfigBindingStub) SetEmbeddingRole(_ context.Context, request protocol.EmbeddingRole, options embedded.CommandOptions) (*protocol.EmbeddingRole, error) {
+func (m *modelConfigBindingStub) SetEmbeddingRole(_ context.Context, request protocol.EmbeddingRole, options flameruntime.CommandOptions) (*protocol.EmbeddingRole, error) {
 	m.embeddingSet(request, options)
 	m.embedding = request
 	return &m.embedding, nil
 }
 
-func (m *modelConfigBindingStub) ListProviders(context.Context, embedded.CallOptions) (*protocol.Page[protocol.Provider], error) {
+func (m *modelConfigBindingStub) ListProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return protocol.NewPage(m.providers), nil
 }
 
-func (m *modelConfigBindingStub) UpdateProvider(_ context.Context, request protocol.UpdateProviderRequest, options embedded.CommandOptions) (*protocol.Provider, error) {
+func (m *modelConfigBindingStub) UpdateProvider(_ context.Context, request protocol.UpdateProviderRequest, options flameruntime.CommandOptions) (*protocol.Provider, error) {
 	m.updated(request, options)
 	if m.providerReply != nil {
 		return m.providerReply, nil
@@ -175,8 +175,8 @@ func TestModelConfigurationRejectsMutationIdentityDrift(t *testing.T) {
 	stub := &modelConfigBindingStub{
 		utilityReply:  &protocol.UtilityRole{Provider: "other", Model: "model"},
 		providerReply: &protocol.Provider{ID: "other"},
-		utilitySet:    func(protocol.UtilityRole, embedded.CommandOptions) {},
-		updated:       func(protocol.UpdateProviderRequest, embedded.CommandOptions) {},
+		utilitySet:    func(protocol.UtilityRole, flameruntime.CommandOptions) {},
+		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
 	runtime := &Runtime{modelConfig: stub, meta: requestMeta("test")}
 	role, err := modelconfig.NewConfiguredRole(modelconfig.UtilityRole, "deepseek", "chat")
@@ -237,7 +237,7 @@ func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
 			test.mutate(&result)
 			stub := &modelConfigBindingStub{
 				providerReply: &result,
-				updated:       func(protocol.UpdateProviderRequest, embedded.CommandOptions) {},
+				updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 			}
 			runtime := &Runtime{modelConfig: stub, meta: requestMeta("test")}
 			_, err := runtime.UpdateProvider(t.Context(), update)
@@ -255,7 +255,7 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 	}
 	stub := &modelConfigBindingStub{
 		providerReply: &result,
-		updated:       func(protocol.UpdateProviderRequest, embedded.CommandOptions) {},
+		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
 	runtime := &Runtime{modelConfig: stub, meta: requestMeta("test")}
 	if _, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
@@ -301,7 +301,7 @@ func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T)
 	}
 }
 
-func (*modelConfigBindingStub) TestProvider(_ context.Context, request protocol.TestProviderRequest, _ embedded.CallOptions) (*protocol.ProviderTestResult, error) {
+func (*modelConfigBindingStub) TestProvider(_ context.Context, request protocol.TestProviderRequest, _ flameruntime.CallOptions) (*protocol.ProviderTestResult, error) {
 	return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
 		Type: protocol.ProblemProviderUnavailable, Detail: request.Provider,
 		DocURL: "https://docs.example/providers", RetryAfterSeconds: 3,
@@ -317,24 +317,24 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 			EmbeddingCapable: true,
 		}},
 	}
-	assertCommand := func(options embedded.CommandOptions) {
+	assertCommand := func(options flameruntime.CommandOptions) {
 		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 			t.Fatalf("command options = %+v", options)
 		}
 	}
-	stub.utilitySet = func(request protocol.UtilityRole, options embedded.CommandOptions) {
+	stub.utilitySet = func(request protocol.UtilityRole, options flameruntime.CommandOptions) {
 		assertCommand(options)
 		if request.Provider != "openai" || request.Model != "utility" {
 			t.Fatalf("utility role request = %+v", request)
 		}
 	}
-	stub.embeddingSet = func(request protocol.EmbeddingRole, options embedded.CommandOptions) {
+	stub.embeddingSet = func(request protocol.EmbeddingRole, options flameruntime.CommandOptions) {
 		assertCommand(options)
 		if request != (protocol.EmbeddingRole{}) {
 			t.Fatalf("embedding role request = %+v", request)
 		}
 	}
-	stub.updated = func(request protocol.UpdateProviderRequest, options embedded.CommandOptions) {
+	stub.updated = func(request protocol.UpdateProviderRequest, options flameruntime.CommandOptions) {
 		assertCommand(options)
 		if request.APIKey == nil || request.APIKey.Type != protocol.ProviderConfigSet || request.APIKey.Value == nil || *request.APIKey.Value != "secret" {
 			t.Fatalf("provider update request = %+v", request)
@@ -390,7 +390,7 @@ type goalBindingStub struct {
 	last         string
 }
 
-func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateGoalRequest, options embedded.CommandOptions) (*protocol.Goal, error) {
+func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateGoalRequest, options flameruntime.CommandOptions) (*protocol.Goal, error) {
 	if request.SessionID != "ses_1" || request.Objective == "" || options.IdempotencyKey == "" {
 		g.t.Fatalf("update goal request = %+v, options = %+v", request, options)
 	}
@@ -404,7 +404,7 @@ func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateG
 	return g.current, nil
 }
 
-func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequest, options embedded.CommandOptions) error {
+func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequest, options flameruntime.CommandOptions) error {
 	if request.SessionID == "" || options.IdempotencyKey == "" {
 		g.t.Fatalf("clear goal request = %+v, options = %+v", request, options)
 	}
@@ -413,11 +413,11 @@ func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequ
 	return nil
 }
 
-func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, embedded.CallOptions) (*protocol.Goal, error) {
+func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, flameruntime.CallOptions) (*protocol.Goal, error) {
 	return g.current, nil
 }
 
-func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoalRequest, options embedded.CommandOptions) (*protocol.Goal, error) {
+func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoalRequest, options flameruntime.CommandOptions) (*protocol.Goal, error) {
 	if request.SessionID != "ses_1" || request.Objective != "finish" || request.Budget == nil || request.Budget.MaxRuns == nil || *request.Budget.MaxRuns != 3 || options.IdempotencyKey == "" {
 		g.t.Fatalf("start goal request = %+v, options = %+v", request, options)
 	}
@@ -429,7 +429,7 @@ func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoa
 	return g.current, nil
 }
 
-func (g *goalBindingStub) StopGoal(context.Context, protocol.GoalRequest, embedded.CommandOptions) (*protocol.Goal, error) {
+func (g *goalBindingStub) StopGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error) {
 	g.last = "stop"
 	if g.stopResult != nil {
 		return g.stopResult, nil
@@ -441,7 +441,7 @@ func (g *goalBindingStub) StopGoal(context.Context, protocol.GoalRequest, embedd
 	return g.current, nil
 }
 
-func (g *goalBindingStub) ResumeGoal(context.Context, protocol.GoalRequest, embedded.CommandOptions) (*protocol.Goal, error) {
+func (g *goalBindingStub) ResumeGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error) {
 	g.last = "resume"
 	if g.resumeResult != nil {
 		return g.resumeResult, nil

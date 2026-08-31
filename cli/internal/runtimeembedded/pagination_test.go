@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -173,11 +173,11 @@ type modelCatalogBindingStub struct {
 	models    map[string]*protocol.Page[protocol.Model]
 }
 
-func (m modelCatalogBindingStub) ListProviders(context.Context, embedded.CallOptions) (*protocol.Page[protocol.Provider], error) {
+func (m modelCatalogBindingStub) ListProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return m.providers, nil
 }
 
-func (m modelCatalogBindingStub) ListModels(_ context.Context, request protocol.ListModelsRequest, _ embedded.CallOptions) (*protocol.Page[protocol.Model], error) {
+func (m modelCatalogBindingStub) ListModels(_ context.Context, request protocol.ListModelsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.Model], error) {
 	return m.models[request.Provider], nil
 }
 

@@ -1,4 +1,4 @@
-package embedded_test
+package runtime_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -42,7 +42,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 			liveGoalMarker + ". Then call report_goal_outcome with outcome completed. " +
 			"Do not ask the user, run shell commands, edit files, or perform any other work.",
 		Budget: &protocol.GoalBudget{MaxRuns: &maxRuns, MaxSteps: &maxSteps},
-	}, embedded.CommandOptions{})
+	}, flameruntime.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 		current, getErr := fixture.runtime.GetGoal(
 			fixture.ctx,
 			protocol.GoalRequest{SessionID: session.ID},
-			embedded.CallOptions{},
+			flameruntime.CallOptions{},
 		)
 		if getErr != nil {
 			t.Fatal(getErr)
@@ -72,7 +72,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	plan, err := fixture.runtime.GetPlan(
 		fixture.ctx,
 		protocol.GetPlanRequest{SessionID: session.ID},
-		embedded.CallOptions{},
+		flameruntime.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	runs, err := fixture.runtime.ListRuns(
 		fixture.ctx,
 		protocol.ListRunsRequest{SessionID: session.ID},
-		embedded.CallOptions{},
+		flameruntime.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +103,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 	if _, err := fixture.runtime.SetApprovalMode(
 		fixture.ctx,
 		protocol.SetApprovalModeRequest{Mode: protocol.ApprovalModeYolo},
-		embedded.CommandOptions{},
+		flameruntime.CommandOptions{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 				"Obey a later user steer instruction over this prompt.",
 		}},
 		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
-	}, embedded.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 				Text: "Override the earlier final-answer instruction. After the running shell settles, " +
 					"reply with exactly " + liveSteerMarker + " and nothing else.",
 			}},
-		}, embedded.CommandOptions{}); err != nil {
+		}, flameruntime.CommandOptions{}); err != nil {
 			t.Fatal(err)
 		}
 		steerSent = true
@@ -175,7 +175,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 				"Do not use another tool and do not answer before asking the question.",
 		}},
 		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
-	}, embedded.RunCommandOptions{RequestMeta: requestMeta})
+	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 		}
 	}
 	waiting, err := fixture.runtime.GetRun(
-		fixture.ctx, protocol.GetRunRequest{RunID: started.RunID}, embedded.CallOptions{RequestMeta: requestMeta},
+		fixture.ctx, protocol.GetRunRequest{RunID: started.RunID}, flameruntime.CallOptions{RequestMeta: requestMeta},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -206,7 +206,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 				Answers: [][]string{{"phoenix"}},
 			},
 		}},
-	}, embedded.RunCommandOptions{RequestMeta: requestMeta})
+	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +285,7 @@ func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
 		t.Fatal("live crash helper exited normally; process kill was not observed")
 	}
 
-	runtime, err := embedded.Open(ctx, embedded.Config{
+	runtime, err := flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        dataDirectory,
 		DefaultWorkspacePath: workspace,
 		UserHomePath:         userHome,
@@ -295,13 +295,13 @@ func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
 		t.Fatalf("open Runtime after killed helper: %v", err)
 	}
 	t.Cleanup(func() {
-		if closeErr := runtime.Close(); closeErr != nil && !errors.Is(closeErr, embedded.ErrClosed) {
+		if closeErr := runtime.Close(); closeErr != nil && !errors.Is(closeErr, flameruntime.ErrClosed) {
 			t.Errorf("close recovered Runtime: %v", closeErr)
 		}
 	})
 	fixture := liveDeepSeekFixture{ctx: ctx, runtime: runtime, workspace: workspace}
 
-	recovered, err := runtime.GetRun(ctx, protocol.GetRunRequest{RunID: state.RunID}, embedded.CallOptions{})
+	recovered, err := runtime.GetRun(ctx, protocol.GetRunRequest{RunID: state.RunID}, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	defer cancel()
 	configDirectory := resolveLiveConfigDirectory(t)
-	runtime, err := embedded.Open(ctx, embedded.Config{
+	runtime, err := flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        requiredLiveCrashPath(t, liveCrashDataEnvironment),
 		DefaultWorkspacePath: requiredLiveCrashPath(t, liveCrashWorkspaceEnvironment),
 		UserHomePath:         requiredLiveCrashPath(t, liveCrashHomeEnvironment),
@@ -340,7 +340,7 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 	}
 	if _, err := runtime.SetApprovalMode(ctx, protocol.SetApprovalModeRequest{
 		Mode: protocol.ApprovalModeYolo,
-	}, embedded.CommandOptions{}); err != nil {
+	}, flameruntime.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	fixture := liveDeepSeekFixture{
@@ -359,7 +359,7 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 				"After it finishes, reply exactly UNREACHABLE_HELPER_RESPONSE. Do not use another tool.",
 		}},
 		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
-	}, embedded.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +405,7 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	items, err := fixture.runtime.ListItems(fixture.ctx, protocol.ListItemsRequest{
 		Scope:     protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: session.ID},
 		PageQuery: protocol.PageQuery{Limit: &limit},
-	}, embedded.CallOptions{})
+	}, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	usage, err := fixture.runtime.GetSessionUsage(
 		fixture.ctx,
 		protocol.SessionUsageRequest{SessionID: session.ID},
-		embedded.CallOptions{},
+		flameruntime.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -435,7 +435,7 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 
 type liveDeepSeekFixture struct {
 	ctx               context.Context
-	runtime           *embedded.Runtime
+	runtime           *flameruntime.Runtime
 	workspace         string
 	dataDirectory     string
 	userHome          string
@@ -461,7 +461,7 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFi
 		userHome:          t.TempDir(),
 		configDirectories: []string{configDirectory},
 	}
-	runtime, err := embedded.Open(ctx, fixture.config())
+	runtime, err := flameruntime.Open(ctx, fixture.config())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +470,7 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFi
 		var closeErr error
 		for range 3 {
 			closeErr = fixture.runtime.Close()
-			if closeErr == nil || errors.Is(closeErr, embedded.ErrClosed) {
+			if closeErr == nil || errors.Is(closeErr, flameruntime.ErrClosed) {
 				return
 			}
 		}
@@ -545,13 +545,13 @@ func waitForLiveCrashFile(
 	}
 }
 
-func assertRecoveredShellIncomplete(t *testing.T, runtime *embedded.Runtime, ctx context.Context, runID string) {
+func assertRecoveredShellIncomplete(t *testing.T, runtime *flameruntime.Runtime, ctx context.Context, runID string) {
 	t.Helper()
 	limit := 100
 	items, err := runtime.ListItems(ctx, protocol.ListItemsRequest{
 		Scope:     protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID},
 		PageQuery: protocol.PageQuery{Limit: &limit},
-	}, embedded.CallOptions{})
+	}, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,8 +566,8 @@ func assertRecoveredShellIncomplete(t *testing.T, runtime *embedded.Runtime, ctx
 	t.Fatalf("recovered Run %s has no shell Item", runID)
 }
 
-func (f *liveDeepSeekFixture) config() embedded.Config {
-	return embedded.Config{
+func (f *liveDeepSeekFixture) config() flameruntime.Config {
+	return flameruntime.Config{
 		DataDirectory:        f.dataDirectory,
 		DefaultWorkspacePath: f.workspace,
 		UserHomePath:         f.userHome,
@@ -580,7 +580,7 @@ func (f *liveDeepSeekFixture) restart(t *testing.T) {
 	if err := f.runtime.Close(); err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := embedded.Open(f.ctx, f.config())
+	runtime, err := flameruntime.Open(f.ctx, f.config())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,7 +595,7 @@ func (f *liveDeepSeekFixture) pendingQuestion(
 	t.Helper()
 	interrupts, err := f.runtime.ListInterrupts(f.ctx, protocol.ListInterruptsRequest{
 		SessionID: sessionID,
-	}, embedded.CallOptions{RequestMeta: requestMeta})
+	}, flameruntime.CallOptions{RequestMeta: requestMeta})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +614,7 @@ func (f liveDeepSeekFixture) createSession(t *testing.T, title string) *protocol
 	session, err := f.runtime.CreateSession(f.ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: f.workspace},
 		Title:     title,
-	}, embedded.CommandOptions{})
+	}, flameruntime.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +634,7 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 		SessionID: sessionID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: prompt}},
 		Limits:    &protocol.RunLimits{MaxSteps: &maxSteps},
-	}, embedded.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -654,7 +654,7 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 
 func (f liveDeepSeekFixture) getCompletedRun(t *testing.T, runID string) *protocol.RunRef {
 	t.Helper()
-	run, err := f.runtime.GetRun(f.ctx, protocol.GetRunRequest{RunID: runID}, embedded.CallOptions{})
+	run, err := f.runtime.GetRun(f.ctx, protocol.GetRunRequest{RunID: runID}, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func (f liveDeepSeekFixture) finalAnswer(t *testing.T, runID string) string {
 	items, err := f.runtime.ListItems(f.ctx, protocol.ListItemsRequest{
 		Scope:     protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID},
 		PageQuery: protocol.PageQuery{Limit: &limit},
-	}, embedded.CallOptions{})
+	}, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

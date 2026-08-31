@@ -318,7 +318,7 @@ generation 是真实横切机制，但当前以每功能复制完整 singleton l
 默认不修改：
 
 - Runtime Protocol、Artifact 和 SQLite schema；
-- 公共 `runtime/protocol` 与 `runtime/embedded` Go API；
+- 公共 `runtime/protocol` 与 `runtime` Go API；
 - Agent Framework public API/baseline；
 - Frontend published plugin SDK；
 - `app/cli`。
@@ -403,7 +403,7 @@ P116 已完成原 C1–C3 的红例、根因修复和验收。具体授权、里
 - “旧逻辑服务端”的迟到响应写入“后继服务端”；产品没有这两个并存身份；
 - 两个 renderer 或多个 Desktop 同时竞争 mutation leader；真实产品只有一个 Desktop actor；
 - 仅因 mutation 参数形状相同就假设恢复歧义；没有单 Desktop 的可复现错误，不增加 disambiguation 状态；
-- 为未来 socket、embedded 或远程部署预建 transport factory、server registry、连接矩阵或通用 generation framework；
+- 为未来 socket、额外同进程 binding 或远程部署预建 transport factory、server registry、连接矩阵或通用 generation framework；
 - 为每个 `await`、每个函数入口或每个内部值重复验证 immutable identity。
 
 ### 12.2 后续实现尺度

@@ -17,19 +17,19 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 		t.Fatalf("public packages = %d, want %d", len(api.Packages), len(publicPackagePaths))
 	}
 
-	embedded := publicGoPackageByPath(t, api, runtimeModulePath+"/embedded")
-	if !slices.ContainsFunc(embedded.Functions, func(function publicGoFunction) bool {
+	binding := publicGoPackageByPath(t, api, runtimeModulePath)
+	if !slices.ContainsFunc(binding.Functions, func(function publicGoFunction) bool {
 		return function.Name == "Open" && strings.Contains(function.Signature, "(*Runtime, error)")
 	}) {
-		t.Fatal("embedded public API does not contain Open returning *Runtime")
+		t.Fatal("Runtime public API does not contain Open returning *Runtime")
 	}
-	if len(embedded.Imports) != 3 || slices.ContainsFunc(embedded.Imports, func(path string) bool {
+	if len(binding.Imports) != 3 || slices.ContainsFunc(binding.Imports, func(path string) bool {
 		return strings.Contains(path, "/internal/")
 	}) {
-		t.Fatalf("embedded public imports = %v", embedded.Imports)
+		t.Fatalf("Runtime public imports = %v", binding.Imports)
 	}
 
-	runtimeType := publicGoTypeByName(t, embedded, "Runtime")
+	runtimeType := publicGoTypeByName(t, binding, "Runtime")
 	if got, want := len(runtimeType.Methods), len(delivery.Contract().Metas())+1; got != want {
 		t.Fatalf("Runtime methods = %d, want %d operations plus Close", got, want)
 	}

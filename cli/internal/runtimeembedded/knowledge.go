@@ -5,16 +5,16 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 )
 
 type knowledgeBinding interface {
-	ListKnowledge(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.KnowledgeEntry], error)
-	GetKnowledge(context.Context, protocol.GetKnowledgeRequest, embedded.CallOptions) (*protocol.KnowledgeEntry, error)
-	UpdateKnowledge(context.Context, protocol.UpdateKnowledgeRequest, embedded.CommandOptions) (*protocol.KnowledgeEntry, error)
+	ListKnowledge(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.KnowledgeEntry], error)
+	GetKnowledge(context.Context, protocol.GetKnowledgeRequest, flameruntime.CallOptions) (*protocol.KnowledgeEntry, error)
+	UpdateKnowledge(context.Context, protocol.UpdateKnowledgeRequest, flameruntime.CommandOptions) (*protocol.KnowledgeEntry, error)
 }
 
 type knowledgeAdapter struct{ runtime *Runtime }

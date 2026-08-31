@@ -164,7 +164,7 @@ func validateContinuationCursor(operation, request, next string) error {
 // only prevents an invalid non-positive value from being serialized as present.
 func protocolPositiveInt(value int) *int {
 	if value <= 0 {
-		panic("runtimeembedded: protocol positive integer must be greater than zero")
+		panic("runtimeruntime: protocol positive integer must be greater than zero")
 	}
 	return &value
 }

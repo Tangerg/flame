@@ -39,7 +39,7 @@
 本 Goal 不包含：
 
 - 全局 generation framework、server registry、transport factory 或多窗口选主；
-- 为未来 socket、embedded 或远程部署预建 binding 矩阵；
+- 为未来 socket、额外同进程 binding 或远程部署预建 binding 矩阵；
 - Mutation Journal identity、claimed Resume 补偿或历史静态守卫的二次重构；
 - 兼容层、双写、刷新绕过、timer/debounce 竞态掩盖；
 - `app/cli` 的任何修改或暂存。

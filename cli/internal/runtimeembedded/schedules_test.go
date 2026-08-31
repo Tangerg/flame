@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/schedule"
@@ -22,7 +22,7 @@ type scheduleBindingStub struct {
 	updateResult *protocol.Schedule
 }
 
-func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options embedded.CallOptions) (*protocol.Page[protocol.Schedule], error) {
+func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error) {
 	s.assertMeta(options.RequestMeta)
 	if query.Limit == nil || *query.Limit != schedulePageLimit {
 		s.t.Fatalf("schedule page limit = %v", query.Limit)
@@ -35,7 +35,7 @@ func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.Pa
 	return protocol.NewPage([]protocol.Schedule{second}), nil
 }
 
-func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options embedded.CommandOptions) (*protocol.Schedule, error) {
+func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("create", options)
 	s.created = request
 	if s.createResult != nil {
@@ -48,7 +48,7 @@ func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol
 	return &created, nil
 }
 
-func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options embedded.CommandOptions) (*protocol.Schedule, error) {
+func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("update", options)
 	s.updated = request
 	if s.updateResult != nil {
@@ -83,12 +83,12 @@ func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol
 	return &updated, nil
 }
 
-func (s *scheduleBindingStub) DeleteSchedule(_ context.Context, request protocol.DeleteScheduleRequest, options embedded.CommandOptions) error {
+func (s *scheduleBindingStub) DeleteSchedule(_ context.Context, request protocol.DeleteScheduleRequest, options flameruntime.CommandOptions) error {
 	s.assertCommand("delete:"+request.ID, options)
 	return nil
 }
 
-func (s *scheduleBindingStub) RunScheduleNow(_ context.Context, request protocol.RunScheduleNowRequest, options embedded.CommandOptions) (*protocol.RunScheduleNowResponse, error) {
+func (s *scheduleBindingStub) RunScheduleNow(_ context.Context, request protocol.RunScheduleNowRequest, options flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error) {
 	s.assertCommand("run:"+request.ID, options)
 	return &protocol.RunScheduleNowResponse{SessionID: "ses_headless", RunID: "run_headless"}, nil
 }
@@ -100,7 +100,7 @@ func (s *scheduleBindingStub) assertMeta(meta protocol.RequestMeta) {
 	}
 }
 
-func (s *scheduleBindingStub) assertCommand(action string, options embedded.CommandOptions) {
+func (s *scheduleBindingStub) assertCommand(action string, options flameruntime.CommandOptions) {
 	s.t.Helper()
 	s.assertMeta(options.RequestMeta)
 	if options.IdempotencyKey == "" {

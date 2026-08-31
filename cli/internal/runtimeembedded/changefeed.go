@@ -7,7 +7,7 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/changefeed"
@@ -15,7 +15,7 @@ import (
 )
 
 type changeBinding interface {
-	SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest, embedded.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)
+	SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest, flameruntime.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)
 }
 
 func (r *Runtime) Supports(topic changefeed.Topic) bool {

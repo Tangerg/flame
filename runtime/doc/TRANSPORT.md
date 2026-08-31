@@ -15,10 +15,10 @@ API 定义 JSON-RPC 方法、资源、事件语义；transport 定义 message �
 | 客户端形态             | runtime 位置      | transport               | 状态                   |
 | ---------------------- | ----------------- | ----------------------- | ---------------------- |
 | 桌面 / Web / CLI / TUI | 本地 runtime 进程 | HTTP loopback           | 已实现                 |
-| Go host / CLI          | 同一进程          | public embedded binding | 可用                   |
+| Go host / CLI          | 同一进程          | module-root Go binding | 可用                   |
 | 未来远程 facade        | facade 之后       | HTTP                    | 同上，无需新 transport |
 
-网络 binding 是 streamable HTTP，暴露 request/response JSON-RPC、server→client 通知、显式取消和基于 event id 的流重连。P19 新增公共类型化 embedded binding；它不是 Transport 的第三种 envelope 实现，不搬运 JSON-RPC message，而是直接调用 HTTP 同源的 Delivery Endpoint。此前的 `internal` in-process channel 原型继续保持删除。桌面外壳当前走 loopback HTTP；这是当前打包实现，不是逻辑 Runtime identity 或永久产品拓扑。Desktop、CLI 等 Go host 若改用 embedded 或将来出现真实 socket binding，必须继续复用同一 Delivery Endpoint。
+网络 binding 是 streamable HTTP，暴露 request/response JSON-RPC、server→client 通知、显式取消和基于 event id 的流重连。公共类型化 Go binding 位于 Runtime 模块根；它不是 Transport 的第三种 envelope 实现，不搬运 JSON-RPC message，而是直接调用 HTTP 同源的 Delivery Endpoint。此前的 `internal` in-process channel 原型继续保持删除。桌面外壳当前走 loopback HTTP；这是当前打包实现，不是逻辑 Runtime identity 或永久产品拓扑。Desktop、CLI 等 Go host 若改用模块根 binding 或将来出现真实 socket binding，必须继续复用同一 Delivery Endpoint。
 
 ## 2. 元数据划分 —— 业务与请求自描述进 params，纯传输才走带外
 
@@ -78,23 +78,23 @@ transport **不**配对 request/response id —— 那是上层 RPC client 的�
 
 ## 4. Go 同进程接入边界
 
-公共 `protocol` 是 HTTP 与 embedded 共用的唯一语义合同；公共 `embedded.Open` 返回 concrete Runtime。embedded 直接调用 binding-neutral Delivery Endpoint，不启动 listener、不要求本地 token、不做 JSON-RPC/SSE 编解码。
+公共 `protocol` 是 HTTP 与模块根 Go binding 共用的唯一语义合同；公共 `runtime.Open` 返回 concrete Runtime。Go binding 直接调用 binding-neutral Delivery Endpoint，不启动 listener、不要求本地 token、不做 JSON-RPC/SSE 编解码。
 
 `RequestMeta` 仍表达协议版本与客户端能力。写调用通过 `CommandOptions.IdempotencyKey` 提交稳定幂等身份；run 续流通过 `RunSubscriptionOptions.AfterEventID` 表达同一 replay cursor 语义。两者是语义准确的 Go option，不复用 HTTP header 名。方法是否接受这些带外事实由生成合同的 `idempotency` / `replayCursor` policy 决定，并由 Endpoint 统一强制：query/subscription 不接受幂等 key，namespace 不能脱离 key，只有 run-opening retry 与 `runs.subscribe` 接受 run cursor。binding 不得静默忽略不相容元数据。请求 context 只约束当前调用/订阅，已接受 Run 由 Runtime lifecycle 继续拥有。
 
-embedded 不公开 protocol method-group interface、Router、Host、Store、Engine、Application concrete、context private key、JSON-RPC numeric code 或 transport problem。消费方在自身边界定义所需窄接口。
+模块根 Go binding 不公开 protocol method-group interface、Router、Host、Store、Engine、Application concrete、context private key、JSON-RPC numeric code 或 transport problem。消费方在自身边界定义所需窄接口。
 
-HTTP executable 与 embedded 共用同一 instance builder、setup lease、ownership-aware recovery、workers 和 reverse-order shutdown。同一 canonical data directory 可以由少量 Runtime 进程共同打开；客户端仍只绑定一个 Runtime。冲突的同 Session writer/Goal drive 返回 `session_busy`，active Run 对 physical working tree 使用 shared lease，rollback/restore 使用 exclusive lease。另一个 SQLite connection 的提交通过 `runtime.subscribe` 既有 `resync` 语义促使客户端重读；不新增跨进程事件总线、TTL lease 或兼容宿主路径。
+HTTP executable 与模块根 Go binding 共用同一 instance builder、setup lease、ownership-aware recovery、workers 和 reverse-order shutdown。同一 canonical data directory 可以由少量 Runtime 进程共同打开；客户端仍只绑定一个 Runtime。冲突的同 Session writer/Goal drive 返回 `session_busy`，active Run 对 physical working tree 使用 shared lease，rollback/restore 使用 exclusive lease。另一个 SQLite connection 的提交通过 `runtime.subscribe` 既有 `resync` 语义促使客户端重读；不新增跨进程事件总线、TTL lease 或兼容宿主路径。
 
 ## 5. 当前不新增 Desktop IPC binding
 
 当前 production Desktop 以 loopback HTTP 连接本地 Runtime 进程。本阶段不再增加 Wails / Tauri / Electron bridge 或 socket transport：
 
 - 现有 HTTP binding 已拥有 JSON-RPC/SSE envelope、顺序、背压、流式、取消和重连；
-- public embedded binding 已让同进程 Go host 直接复用同一 Delivery Endpoint，无需复制协议与业务路径；
+- 模块根 Go binding 已让同进程 Go host 直接复用同一 Delivery Endpoint，无需复制协议与业务路径；
 - sidecar 探针、CORS 和门禁 token 是 HTTP 专属 mechanism，不得泄露进 binding-neutral Delivery Endpoint（§11 / §12 / §13）。
 
-这是当前实现范围，不是“Desktop 永远只能是独立进程客户端”的产品裁决。未来桌面分发若因真实产品需求改用 embedded、socket 或宿主内存通道，新 binding 必须复用现有 Delivery Endpoint/Application owner，并以该宿主真实需要的背压、取消和 lifecycle 反例证明自己；不能复制可靠性规则或建立平行 read model。
+这是当前实现范围，不是“Desktop 永远只能是独立进程客户端”的产品裁决。未来桌面分发若因真实产品需求改用模块根 Go binding、socket 或宿主内存通道，新 binding 必须复用现有 Delivery Endpoint/Application owner，并以该宿主真实需要的背压、取消和 lifecycle 反例证明自己；不能复制可靠性规则或建立平行 read model。
 
 当前不为这些可能性预留 factory、registry、占位接口或 transport 矩阵。`Transport` 抽象（§3）只描述已经存在的网络消息管道；新的 binding 获得明确授权后再按其实际语义设计。
 

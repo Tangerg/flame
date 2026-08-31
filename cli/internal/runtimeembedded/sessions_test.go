@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -19,7 +19,7 @@ type sessionCatalogStub struct {
 	create func(protocol.CreateSessionRequest) (*protocol.Session, error)
 	update func(protocol.UpdateSessionRequest) (*protocol.Session, error)
 	fork   func(protocol.ForkSessionRequest) (*protocol.Session, error)
-	delete func(protocol.DeleteSessionRequest, embedded.CommandOptions) error
+	delete func(protocol.DeleteSessionRequest, flameruntime.CommandOptions) error
 }
 
 func testProtocolWorkspace(path, projectRoot string, availability protocol.WorkspaceAvailability) protocol.WorkspaceInfo {
@@ -33,7 +33,7 @@ const (
 	testSessionModel    = "balanced"
 )
 
-func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.ListSessionsRequest, _ embedded.CallOptions) (*protocol.Page[protocol.Session], error) {
+func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.ListSessionsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.Session], error) {
 	if s.list != nil {
 		return s.list(query)
 	}
@@ -78,21 +78,21 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 	requireRuntimeContractViolation(t, err)
 }
 
-func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ embedded.CommandOptions) (*protocol.Session, error) {
+func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
 	if s.create != nil {
 		return s.create(request)
 	}
 	return nil, errors.New("unexpected CreateSession")
 }
 
-func (s sessionCatalogStub) UpdateSession(_ context.Context, request protocol.UpdateSessionRequest, _ embedded.CommandOptions) (*protocol.Session, error) {
+func (s sessionCatalogStub) UpdateSession(_ context.Context, request protocol.UpdateSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
 	if s.update != nil {
 		return s.update(request)
 	}
 	return nil, errors.New("unexpected UpdateSession")
 }
 
-func (s sessionCatalogStub) ForkSession(_ context.Context, request protocol.ForkSessionRequest, _ embedded.CommandOptions) (*protocol.Session, error) {
+func (s sessionCatalogStub) ForkSession(_ context.Context, request protocol.ForkSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
 	if s.fork != nil {
 		return s.fork(request)
 	}
@@ -375,7 +375,7 @@ func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	}
 }
 
-func (s sessionCatalogStub) DeleteSession(_ context.Context, request protocol.DeleteSessionRequest, options embedded.CommandOptions) error {
+func (s sessionCatalogStub) DeleteSession(_ context.Context, request protocol.DeleteSessionRequest, options flameruntime.CommandOptions) error {
 	if s.delete != nil {
 		return s.delete(request, options)
 	}
@@ -387,7 +387,7 @@ func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 	commandID := agent.CommandID("cli_11111111111111111111111111111111")
 	const namespace = "idp_test"
 	called := false
-	runtime := &Runtime{sessionCatalog: sessionCatalogStub{delete: func(request protocol.DeleteSessionRequest, options embedded.CommandOptions) error {
+	runtime := &Runtime{sessionCatalog: sessionCatalogStub{delete: func(request protocol.DeleteSessionRequest, options flameruntime.CommandOptions) error {
 		called = true
 		if request.SessionID != "ses_1" || options.IdempotencyKey != string(commandID) ||
 			options.IdempotencyNamespace != namespace {

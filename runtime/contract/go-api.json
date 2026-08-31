@@ -1,7 +1,7 @@
 {
   "packages": [
     {
-      "path": "github.com/Tangerg/flame/runtime/embedded",
+      "path": "github.com/Tangerg/flame/runtime",
       "imports": [
         "context",
         "github.com/Tangerg/flame/runtime/protocol",

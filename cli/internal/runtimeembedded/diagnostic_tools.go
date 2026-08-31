@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 )
 
 type diagnosticToolBinding interface {
-	ListTools(context.Context, embedded.CallOptions) (*protocol.Page[protocol.ToolSpec], error)
-	InvokeTool(context.Context, protocol.InvokeToolRequest, embedded.CommandOptions) (any, error)
+	ListTools(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.ToolSpec], error)
+	InvokeTool(context.Context, protocol.InvokeToolRequest, flameruntime.CommandOptions) (any, error)
 }
 
 type diagnosticToolAdapter struct{ runtime *Runtime }

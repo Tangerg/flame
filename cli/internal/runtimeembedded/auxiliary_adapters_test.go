@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
@@ -20,12 +20,12 @@ type diagnosticToolBindingStub struct {
 	result any
 }
 
-func (d *diagnosticToolBindingStub) ListTools(_ context.Context, options embedded.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
+func (d *diagnosticToolBindingStub) ListTools(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
 	assertCallMeta(d.t, options.RequestMeta)
 	return d.page, nil
 }
 
-func (d *diagnosticToolBindingStub) InvokeTool(_ context.Context, request protocol.InvokeToolRequest, options embedded.CommandOptions) (any, error) {
+func (d *diagnosticToolBindingStub) InvokeTool(_ context.Context, request protocol.InvokeToolRequest, options flameruntime.CommandOptions) (any, error) {
 	assertCommandMeta(d.t, options)
 	if request.Name != "inspect" || request.Workspace == nil || request.Workspace.Path != "/workspace" || request.Arguments["depth"] != float64(2) {
 		d.t.Fatalf("tool invocation = %+v", request)
@@ -80,12 +80,12 @@ type authoringContextBindingStub struct {
 	recipes *protocol.Page[protocol.Recipe]
 }
 
-func (a *authoringContextBindingStub) ListAgentDocs(_ context.Context, request protocol.WorkspaceQuery, options embedded.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
+func (a *authoringContextBindingStub) ListAgentDocs(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
 	assertWorkspaceQuery(a.t, request, options)
 	return a.docs, nil
 }
 
-func (a *authoringContextBindingStub) ListRecipes(_ context.Context, request protocol.WorkspaceQuery, options embedded.CallOptions) (*protocol.Page[protocol.Recipe], error) {
+func (a *authoringContextBindingStub) ListRecipes(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error) {
 	assertWorkspaceQuery(a.t, request, options)
 	return a.recipes, nil
 }
@@ -116,7 +116,7 @@ type hookBindingStub struct {
 	trusted     *bool
 }
 
-func (h *hookBindingStub) ListHooks(_ context.Context, request protocol.ListHooksRequest, options embedded.CallOptions) (*protocol.HooksListResult, error) {
+func (h *hookBindingStub) ListHooks(_ context.Context, request protocol.ListHooksRequest, options flameruntime.CallOptions) (*protocol.HooksListResult, error) {
 	assertCallMeta(h.t, options.RequestMeta)
 	if request.Workspace.Path != h.workspace {
 		h.t.Fatalf("hooks request = %+v", request)
@@ -124,7 +124,7 @@ func (h *hookBindingStub) ListHooks(_ context.Context, request protocol.ListHook
 	return h.result, nil
 }
 
-func (h *hookBindingStub) SetHookTrust(_ context.Context, request protocol.SetHookTrustRequest, options embedded.CommandOptions) error {
+func (h *hookBindingStub) SetHookTrust(_ context.Context, request protocol.SetHookTrustRequest, options flameruntime.CommandOptions) error {
 	assertCommandMeta(h.t, options)
 	if request.ProjectRoot != h.projectRoot {
 		h.t.Fatalf("hook trust request = %+v", request)
@@ -170,7 +170,7 @@ type feedbackBindingStub struct {
 	recorded feedback.Signal
 }
 
-func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol.FeedbackRequest, options embedded.CommandOptions) error {
+func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol.FeedbackRequest, options flameruntime.CommandOptions) error {
 	assertCommandMeta(f.t, options)
 	f.recorded = feedback.Signal{
 		SessionID: request.SessionID, RunID: request.RunID, ItemID: request.ItemID,
@@ -179,7 +179,7 @@ func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol
 	return nil
 }
 
-func assertWorkspaceQuery(t *testing.T, request protocol.WorkspaceQuery, options embedded.CallOptions) {
+func assertWorkspaceQuery(t *testing.T, request protocol.WorkspaceQuery, options flameruntime.CallOptions) {
 	t.Helper()
 	assertCallMeta(t, options.RequestMeta)
 	if request.Workspace.Path != "/workspace" {
@@ -194,7 +194,7 @@ func assertCallMeta(t *testing.T, meta protocol.RequestMeta) {
 	}
 }
 
-func assertCommandMeta(t *testing.T, options embedded.CommandOptions) {
+func assertCommandMeta(t *testing.T, options flameruntime.CommandOptions) {
 	t.Helper()
 	assertCallMeta(t, options.RequestMeta)
 	if options.IdempotencyKey == "" {

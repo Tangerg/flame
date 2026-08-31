@@ -1,4 +1,4 @@
-package embedded
+package runtime
 
 import (
 	"errors"
@@ -232,7 +232,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 
 	create := protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: config.DefaultWorkspacePath},
-		Title:     "embedded",
+		Title:     "in-process",
 	}
 	first, err := runtime.CreateSession(t.Context(), create, CommandOptions{IdempotencyKey: "create-once"})
 	if err != nil {

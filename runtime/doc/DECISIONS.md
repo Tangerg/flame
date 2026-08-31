@@ -342,18 +342,18 @@
 - 决策：`pagination`、`taskgroup`、`opaquetoken` 分别归 `application/pagination`、`application/taskgroup`、`application/opaquetoken`。Pagination 继续拥有 keyset anchor、query binding、limit 和 `Page[T]`；Taskgroup 继续拥有 Application component 的 request-detached work；opaque-token 只拥有 Application continuation 的 strict URL-safe framing。标准库 Base64 在这里是 continuation contract 的纯算法，不是媒体内容 transport codec；门禁只为该精确 package 区分二者，不建立宽泛 encoding 例外。
 - 后果：根级 shared capability 只保留真正跨环的 completion、HTTP origin 与 idempotency。Delivery/Bootstrap 可以向内依赖 Application owner，但不能因此把机制提升成无环归属的 `internal` primitive；旧三个根路径永久禁止，不保留 alias、shim、`util` 或 `common`。
 
-## ADR-RT-053：公开类型化 `protocol` 与嵌入式 Runtime binding
+## ADR-RT-053：公开类型化 `protocol` 与同进程 Runtime binding
 
-- 状态：公共 typed binding 与单 Endpoint 语义仍有效；`operation`/`server` 物理分包已被 ADR-RT-124 取代。
+- 状态：公共 typed binding 与单 Endpoint 语义仍有效；binding 的公共包位置被 ADR-RT-125 取代，`operation`/`server` 物理分包被 ADR-RT-124 取代。
 - 背景：`app/cli` 已成为真实的同进程消费者。让它经 loopback HTTP 使用同一进程会额外引入 listener、鉴权 token、JSON 编解码和 SSE framing；复制 Session、Run、Event、Interrupt DTO 又会形成第二协议真相。此前删除的 `internal/delivery/transport/inprocess` 只是 JSON-RPC envelope 的 channel transport，既不能被外部 module 导入，也不是稳定的类型化 Runtime API。
-- 决策：把 binding-neutral 的 DTO、枚举、请求/响应、事件、客户端可见错误、版本和严格验证原子移动到公共 `runtime/protocol`。稳定错误由 sentinel 支持 `errors.Is`，结构化恢复事实由窄 `ProblemError` 支持 `errors.As`；HTTP 与公共 `runtime/embedded` 只消费这一份合同。旧 `internal/delivery/protocol` 物理删除，不保留 alias、forwarding package 或双份类型。
-- 决策：公共 `embedded.Open` 返回 concrete `*embedded.Runtime`。它公开 Runtime 的完整类型化能力与显式 command/subscription options，不导出胖 `Runtime` interface，也不暴露 Application concrete type、Host、Store、Engine、Router、context private key 或 JSON-RPC envelope。消费方按需要自行定义窄接口。
-- 决策：新增私有 binding-neutral `internal/delivery/operation`，唯一拥有 operation catalog、严格 request validation、静态/动态 capability gate、幂等 claim/fingerprint/complete/replay、transport-neutral problem projection 与 run-stream replay attachment。HTTP `dispatch` 只负责 JSON-RPC envelope、method routing、numeric error code 和 frame encoding；embedded 直接调用同一 typed operation，不经过 HTTP、JSON-RPC 或 SSE。
+- 决策：把 binding-neutral 的 DTO、枚举、请求/响应、事件、客户端可见错误、版本和严格验证原子移动到公共 `runtime/protocol`。稳定错误由 sentinel 支持 `errors.Is`，结构化恢复事实由窄 `ProblemError` 支持 `errors.As`；HTTP 与公共 `runtime` 只消费这一份合同。旧 `internal/delivery/protocol` 物理删除，不保留 alias、forwarding package 或双份类型。
+- 决策：公共 `runtime.Open` 返回 concrete `*runtime.Runtime`。它公开 Runtime 的完整类型化能力与显式 command/subscription options，不导出胖 `Runtime` interface，也不暴露 Application concrete type、Host、Store、Engine、Router、context private key 或 JSON-RPC envelope。消费方按需要自行定义窄接口。
+- 决策：新增私有 binding-neutral operation boundary，唯一拥有 operation catalog、严格 request validation、静态/动态 capability gate、幂等 claim/fingerprint/complete/replay、transport-neutral problem projection 与 run-stream replay attachment。HTTP `dispatch` 只负责 JSON-RPC envelope、method routing、numeric error code 和 frame encoding；同进程 binding 直接调用同一 typed operation，不经过 HTTP、JSON-RPC 或 SSE。
 - 决策：幂等 replay 的 stored outcome 是单一 versioned closed JSON document，必须恰好携带 value 或 problem 之一。重放 value 必须按该 operation 的 exact typed response 使用同一 closed decoder 解码，再执行公共 wire validation；未知 envelope/response 字段、尾随值、双结果或缺失结果都作为 durable contract violation fail closed，不能把已执行命令的权威结果当作可容错降级的展示缓存。
-- 决策：`RequestMeta` 是公共请求自描述值，但其 context 传播属于私有 operation 实现。`AfterEventID` 与 `IdempotencyKey` 在 embedded options 中显式表达；HTTP adapter 分别从 `Last-Event-Id` 与 `Idempotency-Key` 投影到同一 operation options。numeric JSON-RPC error code、HTTP status 与 transport problem 不进入公共 protocol。
-- 决策：HTTP 进程宿主与 embedded binding 共用同一个 Runtime instance builder。该 owner 在打开 SQLite/recovery 前取得 canonical data directory 的进程级独占锁，按顺序组装 stores、Host、恢复器、operation endpoint 和 Runtime workers；`Close` 停止新请求、解除订阅、取消并 join 后台任务、逆序关闭资源，最后释放锁。请求 context 只约束当前调用/订阅，已接受 Run 继续由 Runtime lifecycle 拥有。
-- 决策：`contract/go-api.json` 由 contract generator 从 `protocol + embedded` 的真实 Go type information 派生，完整冻结公共 package、constant、variable、function、type、field、method 与 visible import。架构门禁拒绝第三个公共 package 和任何 public signature 的 `internal` 类型，不用手写 API 清单形成第二真相源。
-- 后果：Runtime 是唯一服务端合同；CLI、前端和 TUI 后续按新公共面 breaking 接线，Runtime 不迁就旧消费者接口。一个数据目录同一时间只能由一个 HTTP 或 embedded Runtime owner 打开；需要多进程共享时必须使用单独宿主进程或其他 IPC，不能绕过独占锁。
+- 决策：`RequestMeta` 是公共请求自描述值，但其 context 传播属于私有 operation 实现。`AfterEventID` 与 `IdempotencyKey` 在 Go binding options 中显式表达；HTTP adapter 分别从 `Last-Event-Id` 与 `Idempotency-Key` 投影到同一 operation options。numeric JSON-RPC error code、HTTP status 与 transport problem 不进入公共 protocol。
+- 决策：HTTP 进程宿主与 module-root Go binding 共用同一个 Runtime instance builder。该 owner 在打开 SQLite/recovery 前取得 canonical data directory 的进程级独占锁，按顺序组装 stores、Host、恢复器、operation endpoint 和 Runtime workers；`Close` 停止新请求、解除订阅、取消并 join 后台任务、逆序关闭资源，最后释放锁。请求 context 只约束当前调用/订阅，已接受 Run 继续由 Runtime lifecycle 拥有。
+- 决策：`contract/go-api.json` 由 contract generator 从公共 Go packages 的真实 type information 派生，完整冻结 package、constant、variable、function、type、field、method 与 visible import。架构门禁拒绝清单外 package 和任何 public signature 的 `internal` 类型，不用手写 API 清单形成第二真相源。
+- 后果：Runtime 是唯一服务端合同；CLI、前端和 TUI 后续按新公共面 breaking 接线，Runtime 不迁就旧消费者接口。一个数据目录同一时间只能由一个 HTTP 或 in-process Runtime owner 打开；需要多进程共享时必须使用单独宿主进程或其他 IPC，不能绕过独占锁。
 
 ## ADR-RT-054：WorkingContext 来源由 Agent execution adapter 类型化归因
 
@@ -402,7 +402,7 @@
 
 - 状态：已接受并实施，P84 完成；取代 ADR-RT-053 的 data-directory 全生命周期独占结论，并把 ADR-RT-055 的 Goal drive process-local 所有权扩展为跨进程单 owner；不改变 Goal incarnation 的领域语义。
 - 背景：产品部署是 CLI 与 Desktop 各自内嵌一个 Runtime，一个 client 只请求一个 Runtime，但二者可能同时打开用户私有目录中的同一 SQLite 数据库并操作相同 cwd。以整个 data directory 为进程级独占单位会迫使本地应用引入无必要的常驻宿主/IPC；仅删除该锁又会让 Session Run、Goal drive、恢复器和破坏性 workspace mutation 在两个进程中各自认为自己是唯一 owner。
-- 决策：canonical data directory 强制为 `0700`，只在 store/schema/config seeding 期间持有短期 setup lease，之后允许少量同版本 Runtime instance 共享 SQLite WAL。Application 仍决定冲突语义；`adapter/runtimeownership` 只把 identity 映射到 OS advisory lease。每个 Session 同时只有一个 mutation/Run writer；active Run 同时持有 physical working-tree shared lease，rollback/restore 等破坏性 mutation 取得 exclusive lease；Goal autonomous drive 同一 Session 只有一个进程 owner。业务冲突继续投影既有 `session_busy`，不保留 `embedded.ErrDataDirectoryInUse` 或单宿主 fallback。
+- 决策：canonical data directory 强制为 `0700`，只在 store/schema/config seeding 期间持有短期 setup lease，之后允许少量同版本 Runtime instance 共享 SQLite WAL。Application 仍决定冲突语义；`adapter/runtimeownership` 只把 identity 映射到 OS advisory lease。每个 Session 同时只有一个 mutation/Run writer；active Run 同时持有 physical working-tree shared lease，rollback/restore 等破坏性 mutation 取得 exclusive lease；Goal autonomous drive 同一 Session 只有一个进程 owner。业务冲突继续投影既有 `session_busy`，不保留已删除的 data-directory 单宿主错误或 fallback。
 - 决策：内核 lease 是本机进程存活的唯一真相，进程退出或强杀后自动释放；不增加 heartbeat、TTL、owner row 或 wall-clock expiry。boot 与存活期 recovery 先竞争全局 sweep lease，单一 winner 固定先结算 Run/Goal accounting、再处理 Goal lifecycle；新 Runtime 在服务 admission 前等待当前 winner并再做一轮复核，存活期则非阻塞跳过。每个策略随后仍竞争目标 Session/Goal 的同一 live-owner lease并重读权威 facts。只有实际接管的 Session 可以进入 checkpoint/child-reservation cleanup，禁止全库 sweep。Schedule firing 和 HITL answer 继续使用既有数据库 claim/事务单赢家，不复制成文件锁。
 - 决策：进程内 invalidation 仍发布精确 topic；Persistence 观察 connection-local `PRAGMA data_version`，只在另一个 SQLite connection commit 时向本 Runtime 发布覆盖全部 topic 的 scoped `resync`。消费者收到后重读 durable projection；不建立跨进程事件日志或假装复制细粒度因果事件。
 - 后果：CLI 与 Desktop 可各自嵌入 Runtime、共享用户数据库，并在不同 Session 或同 cwd 的非破坏性 Run 上并存；同 Session 写入、Goal drive 和 workspace rollback/restore 仍 fail closed。强杀 owner 后存活 Runtime 无需重启即可接管恢复。该修订没有新增协议 wire 或 SQLite epoch，也没有把 Runtime、RPC、持久化、ownership lease 或 Desktop 抽象泄露进 Agent Framework。
@@ -449,7 +449,7 @@
 - 决策：`domain/session.Session` 直接持有既有 immutable `modelref.Selection`，并把 configured exact pair 设为聚合不变量；zero selection 不能构造、恢复、编辑或持久化 Session。Runtime 默认只在 Session Application admission 时安装一次，Runs Application 不再拥有第二份默认选择。省略 Run 选择时读取 Session pair；显式完整 pair 通过 executor staging 后与 Run opening 在同一 write-set 原子替换 Session pair。provider/model 缺一、空值或外围空白一律 fail closed，provider 永不由 model id 推断。
 - 决策：fresh create、scheduled admission、fork、restore、Artifact v23、SQLite epoch 78、公共 Session/UpdateSession 与生成 Go/Schema/TypeScript 合同一次性携带 pair。fork 继承父 Session 的 exact pair；归档 import 必须提供 pair；SQLite 列非空且 strict codec 重新建立 Domain 不变量。旧 wire、v22 artifact 与 epoch 77 database 确定性拒绝，不加 alias、双写、双读、fallback 或 migration。
 - 决策：Desktop 的 consumer-owned `AgentSessionSummary`、Composer resolution 与 Context gauge 都以 provider+model 比较；同名 model 反例必须命中 exact provider。React render 直接派生该 pair，只有用户明确选择才写 preference，不通过 effect 复制第二 selection store。`app/cli` 本批不修改，其迁移缺口只记录在 consumer handoff，不能倒逼 Runtime 恢复 model-only surface。
-- 后果：Session、Run staging、持久化、归档和 Desktop presentation 对“下一次 Run 使用哪个模型”只有一个可恢复答案。采用 app2 的 exact identity 与纵切经验，但拒绝 opaque JSON、额外 public package、god facade、能力删减和低覆盖；原 Runtime 的严格 Protocol、完整恢复矩阵、公共 `protocol`/`embedded` 边界与资源生命周期保持不变。
+- 后果：Session、Run staging、持久化、归档和 Desktop presentation 对“下一次 Run 使用哪个模型”只有一个可恢复答案。采用 app2 的 exact identity 与纵切经验，但拒绝 opaque JSON、额外 public package、god facade、能力删减和低覆盖；原 Runtime 的严格 Protocol、完整恢复矩阵、公共 `protocol`/module-root `runtime` 边界与资源生命周期保持不变。
 
 ## ADR-RT-065：Session Workspace 是精确领域值，filesystem admission 是外部事实
 
@@ -462,9 +462,9 @@
 ## ADR-RT-066：operation catalog 拥有带外调用元数据的适用性
 
 - 状态：已接受并实施，P146 完成。
-- 背景：HTTP adapter 可把 `Idempotency-Key` 带到 query，operation 却静默忽略并正常执行；embedded query 的 `CallOptions` 根本不能表达该 key。同样，通用 HTTP header bag 可把 namespace 或 `Last-Event-Id` 投给不会消费它们的方法。binding 因而既不等价，也可能让客户端误以为一次调用拥有实际不存在的 replay 保证。
+- 背景：HTTP adapter 可把 `Idempotency-Key` 带到 query，operation 却静默忽略并正常执行；同进程 query 的 `CallOptions` 根本不能表达该 key。同样，通用 HTTP header bag 可把 namespace 或 `Last-Event-Id` 投给不会消费它们的方法。binding 因而既不等价，也可能让客户端误以为一次调用拥有实际不存在的 replay 保证。
 - 决策：Contract Registry 在 operation/idempotency 之外发布 `ReplayCursorPolicy`；run-opening command 与 `runs.subscribe` 由 registration factory 获得 run cursor 能力，`runtime.subscribe` 等其他 stream 明确为 none。operation Endpoint 在 capability 与 handler admission 前统一拒绝非 replay 方法的 idempotency key、无 key 的 namespace、无 cursor 能力的方法携带 `AfterEventID`，以及没有 idempotency key 的 run-command cursor。
-- 决策：manifest、OpenRPC 与生成 TypeScript method policy 只投影 Registry 的同一事实；Desktop 低层 RPC client 在 transport send 前消费该生成策略。embedded surface guard 同样按 policy 选择 option 类型，不再按 `runs.subscribe` 方法名维护第二列表。HTTP/embedded 只负责把本地表示投影成 operation options，不自行决定承诺是否成立。
+- 决策：manifest、OpenRPC 与生成 TypeScript method policy 只投影 Registry 的同一事实；Desktop 低层 RPC client 在 transport send 前消费该生成策略。Go binding surface guard 同样按 policy 选择 option 类型，不再按 `runs.subscribe` 方法名维护第二列表。HTTP/Go binding 只负责把本地表示投影成 operation options，不自行决定承诺是否成立。
 - 后果：此前被静默忽略的带外元数据现在 breaking 地返回 `invalid_params` / 本地 `TypeError`；合法 command replay、run reattach、Runtime invalidation subscription 的业务、stream lifecycle 与 wire DTO 不变。没有兼容 fallback、双策略、第二 writer 或 transport-specific admission。
 
 ## ADR-RT-067：资源关闭 settlement 与 diagnostic 必须正交
@@ -472,7 +472,7 @@
 - 状态：已接受并实施，P148 完成；细化 ADR-RT-063 的合法构造与唯一 lifecycle owner，不改变公共 Protocol、Artifact、SQLite shape 或 Agent Framework 合同。
 - 背景：Host 过去把任意 `Shutdown` error 都解释为“资源仍未关闭”，保留该 step 并阻止依赖关闭。但生产 A2A、LSP、Shell 与 SQLite closer 都由 `sync.Once` 拥有终态：第一次调用即使报告诊断，后续只会永久返回同一缓存错误。于是一个已经完成的 close error 会让 Host 永久停在 stopping，Store 等下层依赖也永远得不到释放；旧 `Bundle.Shutdown(ctx)` 还把“预算已过期、根本没有调用 Close”伪装成同一种 error。
 - 决策：P148 先让 Infra teardown step 显式区分 `Terminal` 与 `Retryable`，并把 settlement 与 diagnostic 正交；Terminal action 一旦返回便冻结 settlement，Host 记录诊断但继续逆序关闭依赖。Config 只接收具有 one-shot `Close` 语义的 `TerminalResource`，SQLite 删除没有独立消费者且会混淆状态的 context-aware Shutdown adapter。P149 随后证明唯一 Retryable 生产消费者 MCP 也属于 terminal；P150 在 ADR-RT-069 中删除因此失去消费者的 Retryable/settlement 双态，并把 caller wait 与整张 terminal resource graph 的执行 generation 分开。
-- 后果：一次性 close error 只执行一次、只向实际观察它的 Close 调用报告，不能形成永久错误回放或资源保活；超时、未完成的 Close 与非协作第三方 closer 仍有界并由同一在途 generation 持有。关闭顺序、并发 Host copy 幂等性、失败 Assembly 回滚和公共 `embedded.Runtime.Close` 入口不变，没有兼容层、第二清理图或后台重试循环。
+- 后果：一次性 close error 只执行一次、只向实际观察它的 Close 调用报告，不能形成永久错误回放或资源保活；超时、未完成的 Close 与非协作第三方 closer 仍有界并由同一在途 generation 持有。关闭顺序、并发 Host copy 幂等性、失败 Assembly 回滚和公共 `runtime.Runtime.Close` 入口不变，没有兼容层、第二清理图或后台重试循环。
 
 ## ADR-RT-068：MCP ClientSession 关闭错误是 terminal diagnostic
 
@@ -497,8 +497,8 @@
 
 ## ADR-RT-071：Instance shutdown generation 连续拥有 delivery、workers 与 Host
 
-- 状态：已接受并实施，P152 完成；将 ADR-RT-070 的 Host owner 上移到完整 Runtime Instance，不改变公共 `embedded.Runtime.Close` 签名、Protocol、Artifact、SQLite shape、Desktop 或 Agent Framework 合同。
-- 背景：P151 保证 Host component 在 caller timeout 后迟到结束仍会进入 executor/resource teardown，但 `Instance.Close` 仍在单个 caller-owned context 内同步加入 operation Endpoint、scheduler、database observer 与 recovery worker；其中任一项超时都不会调用 Host。CLI 以一个 defer 调用 `Instance.Close`，公共 embedded Close 也只转发一次，不存在外部 retry 承诺。真实反例证明已接受 operation 在 caller deadline 后返回时，旧 Instance 既没有提前关闭 Host resource，也没有 owner 在 operation 结束后继续关闭它。
+- 状态：已接受并实施，P152 完成；将 ADR-RT-070 的 Host owner 上移到完整 Runtime Instance，不改变公共 `runtime.Runtime.Close` 签名、Protocol、Artifact、SQLite shape、Desktop 或 Agent Framework 合同。
+- 背景：P151 保证 Host component 在 caller timeout 后迟到结束仍会进入 executor/resource teardown，但 `Instance.Close` 仍在单个 caller-owned context 内同步加入 operation Endpoint、scheduler、database observer 与 recovery worker；其中任一项超时都不会调用 Host。CLI 以一个 defer 调用 `Instance.Close`，公共 Runtime Close 也只转发一次，不存在外部 retry 承诺。真实反例证明已接受 operation 在 caller deadline 后返回时，旧 Instance 既没有提前关闭 Host resource，也没有 owner 在 operation 结束后继续关闭它。
 - 决策：Instance 持有唯一 active shutdown attempt。第一个 Close 建立一个从 Host 已注入 Runtime lifetime 派生、不继承 caller cancellation 的 generation；它只广播一次 delivery admission close 与 Runtime cancellation，然后依次加入 Endpoint、scheduler/database/recovery workers，最后通过 package-private Host attempt 入口加入 P151/P150 关闭图。每个 Instance Close caller 单独使用有界 wait context；并发 caller 只 join 同一 attempt。已完成且返回明确 phase error 时，后续显式 Close 可开新 attempt。
 - 后果：已接受 operation 仍在依赖关闭前完整退出；即使唯一 public/CLI Close caller 先返回 timeout，operation 迟到结束也会自然推进 workers 和 Host resource 释放。Instance 不复制 Runtime context 字段，而是消费 Host 唯一 lifetime owner；没有 timer/backoff/retry loop、第二 Host graph、兼容路径或新公共 surface。
 
@@ -572,7 +572,7 @@
 ## ADR-RT-081：Knowledge Domain 拥有 `FLAME.md` 完整文档包络
 
 - 状态：已接受并实施，P162 完成；只改变 Runtime internal Knowledge Domain/Application/Infra/Delivery 与测试文档，公共 Protocol shape、Artifact、SQLite、Desktop source、Agent Framework 与 CLI 合同不变。
-- 背景：`FLAME.md` 同时进入非分页管理面和 fresh Run prompt，但原版 Domain/Application 没有 content bound，filesystem store 还直接 `io.ReadAll` 外部文件。失败优先反例 `756a86456` 证明 Application 会把超过 1 MiB 的更新交给 persistence port，Store 会原子写入同一内容，也会把外部放置的超大文档完整读入 revision/string/prompt 路径；补充反例 `2cfc5f58a` 证明 prompt composer 会丢弃整个 Knowledge cascade 的读取错误，让管理面失败与模型侧静默缺指令形成双重语义。HTTP request body 的 transport cap 既不保护 embedded/direct store consumer，也不表达单文档所有权。
+- 背景：`FLAME.md` 同时进入非分页管理面和 fresh Run prompt，但原版 Domain/Application 没有 content bound，filesystem store 还直接 `io.ReadAll` 外部文件。失败优先反例 `756a86456` 证明 Application 会把超过 1 MiB 的更新交给 persistence port，Store 会原子写入同一内容，也会把外部放置的超大文档完整读入 revision/string/prompt 路径；补充反例 `2cfc5f58a` 证明 prompt composer 会丢弃整个 Knowledge cascade 的读取错误，让管理面失败与模型侧静默缺指令形成双重语义。HTTP request body 的 transport cap 既不保护同进程/direct store consumer，也不表达单文档所有权。
 - 决策：采纳 app2 的 1 MiB authored-knowledge threshold，但把常量与稳定 `ErrDocumentTooLarge` 放在 Knowledge Domain。Application 在 store 之前验证完整 content；filesystem Store 的 direct Update 复验，read 则先检查 caller cancellation 与 stat，再以 cancellation-aware `limit+1` reader 覆盖读取期间增长。Delivery 只把命令侧越界映射为 `invalid_params`，外部 corrupt file 保持读取失败；管理面与 prompt composer 都对完整 cascade fail closed。Agent Memory、AGENTS.md 与 Plan 的既有 best-effort 策略不随本批改变。
 - 后果：Knowledge 管理页、revision 计算与模型 prompt 不再接纳无界 `FLAME.md`；exact 1 MiB 文档仍可读写。原有 content CAS、跨进程 directory lease、in-scope symlink identity、atomic rename、权限与 crash recovery 全部保留；不增加 truncation、skip、transport-only guard、配置旋钮、兼容 reader 或第二存储路径。
 
@@ -719,8 +719,8 @@
 ## ADR-RT-101：泛型操作行为归还 Registry 与 Endpoint
 
 - 状态：已接受并实施，P184 完成；Registry/Endpoint 行为 owner 仍有效，物理 package owner 由 ADR-RT-124 收回 `internal/delivery`。
-- 背景：operation catalog 已由 `Registry` 独占注册状态和方法元数据，却仍通过 `Query(registry, ...)`、`Command(registry, ...)` 等自由泛型函数修改它；typed invocation 同样通过 `Call(endpoint, ...)` 绕开 receiver。这是“对象持有状态、过程函数持有行为”的贫血模型，也让架构守卫只能识别无 owner 的函数名。86 个协议操作名还分别以裸字符串出现在注册和 embedded binding，形成两份需要人工同步的身份。Hook command 的成功结果允许空 `CommandVerdict` 被 Application 默认为 allow，文件变更范围的无效零值也可能弱化 bypass-immunity。
-- 决策：利用 Go 1.27 方法泛型，把六类注册行为及 typed unary/stream invocation 分别收回 `Registry` 和 `Endpoint`；private register 流程也保持同一 receiver，不新增 builder、service 或 façade。操作身份建模为自校验 `operation.Name`，常量就近声明在对应领域注册文件；注册、materialization 与 embedded binding 共同引用它，只有 JSON-RPC transport 边界把外部字符串显式转换为 `Name`。Hook adapter 必须把空 stdout 显式解码为 `CommandAllow`，Application 拒绝其他无效 verdict；Tool authorization 要求有效 `FileMutationScope`，未知范围保守提升为需要确认。验证字段按确定顺序显式调用，不使用 `map[string]string` 参数袋。
+- 背景：operation catalog 已由 `Registry` 独占注册状态和方法元数据，却仍通过 `Query(registry, ...)`、`Command(registry, ...)` 等自由泛型函数修改它；typed invocation 同样通过 `Call(endpoint, ...)` 绕开 receiver。这是“对象持有状态、过程函数持有行为”的贫血模型，也让架构守卫只能识别无 owner 的函数名。86 个协议操作名还分别以裸字符串出现在注册和 module-root Go binding，形成两份需要人工同步的身份。Hook command 的成功结果允许空 `CommandVerdict` 被 Application 默认为 allow，文件变更范围的无效零值也可能弱化 bypass-immunity。
+- 决策：利用 Go 1.27 方法泛型，把六类注册行为及 typed unary/stream invocation 分别收回 `Registry` 和 `Endpoint`；private register 流程也保持同一 receiver，不新增 builder、service 或 façade。操作身份建模为自校验 `operation.Name`，常量就近声明在对应领域注册文件；注册、materialization 与 module-root Go binding 共同引用它，只有 JSON-RPC transport 边界把外部字符串显式转换为 `Name`。Hook adapter 必须把空 stdout 显式解码为 `CommandAllow`，Application 拒绝其他无效 verdict；Tool authorization 要求有效 `FileMutationScope`，未知范围保守提升为需要确认。验证字段按确定顺序显式调用，不使用 `map[string]string` 参数袋。
 - 后果：86 个 operation 的类型推导、元数据填充、协议身份、注册和调用都从唯一 owner 出发；AST 守卫直接审计 receiver method 与已声明的 `Name` 常量。外部 JSON method text、idempotency、stream、SQLite 与生成合同不变，没有自由函数转发、重复 wire literal 或兼容入口。
 
 ## ADR-RT-102：上下文压缩必须在主模型调用前拥有可提交边界
@@ -803,7 +803,7 @@
 ## ADR-RT-112：Run 边界标题与 Host shutdown 共用已接纳维护生命周期
 
 - 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal task/lifecycle owner，公共 Protocol、Artifact、SQLite、Desktop、Agent Framework 与 CLI 合同不变。
-- 背景：Run title maintenance 已从请求取消中分离，但 Host shutdown 过去与 Goal/MCP/Run component 同时取消 maintenance task group。真实 DeepSeek one-shot 完成并成功输出后会立即关闭 embedded Runtime，已接纳的标题任务因此必然被取消；冷读新 Session 的 title 仍为空。等待 Approval/Question 的 parked Run 又被 `Finalizer` 整体提前返回，导致 CLI 虽明确提示用同一 Session 交互续接，Session 列表却长期没有可识别标题。让 CLI 轮询标题、把标题改为同步 Run 结果或无限等待 provider，都会制造第二 lifecycle owner或放大退出延迟。
+- 背景：Run title maintenance 已从请求取消中分离，但 Host shutdown 过去与 Goal/MCP/Run component 同时取消 maintenance task group。真实 DeepSeek one-shot 完成并成功输出后会立即关闭 in-process Runtime，已接纳的标题任务因此必然被取消；冷读新 Session 的 title 仍为空。等待 Approval/Question 的 parked Run 又被 `Finalizer` 整体提前返回，导致 CLI 虽明确提示用同一 Session 交互续接，Session 列表却长期没有可识别标题。让 CLI 轮询标题、把标题改为同步 Run 结果或无限等待 provider，都会制造第二 lifecycle owner或放大退出延迟。
 - 决策：Workspace checkpoint 只属于 terminal Run 文件边界，parked Run 必须跳过；Session title 只依赖 opening user text 与 first-writer Session policy，因此 terminal 与 parked 两种 Run 边界都可以异步接纳。Host 先停止并加入可能产生 Run 边界维护的 component；producer 全部收束后，Application `taskgroup` 对当前已接纳任务提供不关闭、不取消的 `Drain`，Host 最多等待五秒，再无条件 `Cancel`/`Wait`。`Drain` 只在 owner 已证明没有新 producer 后使用；普通 `Close` 仍是立即拒绝新任务并取消现有任务的强制边界。caller-local shutdown deadline、唯一 owner generation 与 terminal resource Sequence 不变。
 - 后果：真实 DeepSeek one-shot 无论完成还是等待 Question，都能在进程退出前持久化 Session title；相同可执行文件跨进程冷读仍保留 waiting Run、Question 与 executor checkpoint。parked Run 不制造可回滚文件快照，维护任务也不延迟 Run terminal/waiting 事件；卡住或慢于五秒的 provider 仍被取消。没有 CLI polling、sleep、标题 fallback 双写、后台 daemon、配置旋钮或新公共 API。
 
@@ -826,21 +826,21 @@
 - 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal JSON-RPC Dispatch、测试与文档，公共 Protocol shape/version、生成合同、Artifact、SQLite、Desktop、Agent Framework 与 CLI 不变。
 - 背景：Provider patch 已在 Domain 中严格区分 preserve、set 与 clear，wire 也用字段缺席、`{"type":"set","value":...}`、`{"type":"clear"}` 分别表达三态；但 Go 标准 JSON decoder 会把缺失 pointer 与显式 `null` 都解成 nil。失败优先反例证明 `providers.update` 的 `apiKey:null`、`baseUrl:null` 以及 clear branch 的 `value:null` 会穿过 strict unknown-field/union validation，分别被静默解释为 preserve 或“value 不存在”，与生成 schema 和协议注释矛盾。同类折叠也存在于其他 typed patch 字段。
 - 决策：唯一 JSON-RPC params decoder 在现有 strict typed decode 和 single-document 检查后，沿 `contractshape` 已拥有的 Go JSON field mapping 检查实际出现的 typed 成员；struct、slice、typed map 与 scalar 上的显式 `null` 一律拒绝，pointer 只表达字段缺席。`json.RawMessage` 与 interface-backed open JSON 不递归收紧，因此 Tool arguments 等 `map[string]any` value 仍可合法携带 null。Provider handler、Application 与 Domain 保持原有三态模型，不新增 nullable wrapper、presence DTO 或各方法手写 raw-map parser。
-- 后果：HTTP binding 与生成 JSON Schema 对 nullable 的判断一致，provider/session/schedule 等 patch 不再把无效第四种输入降级成合法 omission；embedded binding 继续直接传递 typed value并走同一 Operation/Wire validation。没有协议版本变化、兼容 null 语义、schema runtime 引擎、通用 JSON facade 或第二 decoder。
+- 后果：HTTP binding 与生成 JSON Schema 对 nullable 的判断一致，provider/session/schedule 等 patch 不再把无效第四种输入降级成合法 omission；module-root Go binding 继续直接传递 typed value并走同一 Operation/Wire validation。没有协议版本变化、兼容 null 语义、schema runtime 引擎、通用 JSON facade 或第二 decoder。
 
 ## ADR-RT-116：Provider credential 的来源必须在配置解析后继续存在
 
 - 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime internal config/provider composition，公共 Protocol、Artifact、SQLite shape、Desktop、Agent Framework 与 CLI 不变。
 - 背景：Provider Domain 已规定 environment credential 是 immutable process overlay、stored credential 优先且环境 secret 永不落库；但 Viper 把 YAML `apiKey` 与 `FLAME_APIKEY` 合并成同一个 `Settings.APIKey string`。失败优先反例证明：YAML 有 file key、通用环境变量临时覆盖、provider-native env 为空时，启动 seeding 会把临时环境 key 当作 stored key 写入 durable registry；移除环境变量后该 secret 仍然生效。第二个 restart 反例又证明：用户通过 `providers.update` 明确 clear credential 后，SQLite row 虽保留，旧 seeding 仍会在下次启动重写 YAML key并重新启用 provider，同时可能覆盖 durable endpoint。来源和“row absent / field explicitly cleared”在启动边界都被折叠，使下游无法遵守既有 ownership。
 - 决策：Config `APIKeyInput` 以私有 value/source 和零值缺省不可变地表达 file 或 environment input；Viper 解析后立即恢复 `FLAME_APIKEY` provenance，provider-native env 也投影为同一个 environment variant。Composition 先把 raw durable registry交给 first-run seed，再构造 environment overlay；只有 durable row 整体不存在时 file credential/endpoint才可 seed，任何已有 row（包括 NULL credential/endpoint）整体胜出。Environment variant只进入 overlay，仍由 Provider aggregate保证stored-first。API key、credential、provider、change 与 Settings 的 `fmt` 行为固定 redaction，所有 secret 读取只通过来源专用 accessor 或显式 `Reveal`。
-- 后果：`FLAME_APIKEY` 与 provider-native env 都只在当前进程生效且报告 `environment` provenance，不会跨 SQLite boundary；YAML values 只在真正 first run seed，Runtime clear/update 经重启仍权威。真实 embedded Protocol→Application→SQLite→restart 回归证明同一 YAML 不会重新启用已 clear provider或改写其 endpoint；真实 DeepSeek Goal/Plan 使用生产 YAML 再验通过。没有 tombstone、额外列、迁移、env 名称特判落库、布尔来源旁字段、日志过滤器、兼容双路径、协议或 schema 变化。
+- 后果：`FLAME_APIKEY` 与 provider-native env 都只在当前进程生效且报告 `environment` provenance，不会跨 SQLite boundary；YAML values 只在真正 first run seed，Runtime clear/update 经重启仍权威。真实同进程 Protocol→Application→SQLite→restart 回归证明同一 YAML 不会重新启用已 clear provider或改写其 endpoint；真实 DeepSeek Goal/Plan 使用生产 YAML 再验通过。没有 tombstone、额外列、迁移、env 名称特判落库、布尔来源旁字段、日志过滤器、兼容双路径、协议或 schema 变化。
 
 ## ADR-RT-117：Provider readiness 不能成为 durable registry 之前的启动门槛
 
-- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime bootstrap、embedded 回归与配置/API 文档，公共 Protocol、Artifact、SQLite shape、Desktop、Agent Framework 与 CLI 不变。
-- 背景：Runtime 已把 provider credential 的 stored truth 交给 SQLite，并公开 `providers.update` 允许交互客户端在启动后配置；Provider/Application 也完整表达 `unconfigured`、`not_configured` 与 Run `invalid_credentials`。但旧 `resolveProviderConfig` 在 persistence 打开前要求 required-key provider 必须从 YAML/env 提供 key。失败优先 embedded 反例证明：只有 `provider: anthropic` 的合法配置无法启动，因此用户进不了 TUI 配置 key；即使 key 已经通过 `providers.update` 存入同一 data directory，删除 YAML key 后仍无法重启读取它。启动前 primitive presence 成了绕过 durable owner 的第二份 readiness truth。
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime bootstrap、同进程回归与配置/API 文档，公共 Protocol、Artifact、SQLite shape、Desktop、Agent Framework 与 CLI 不变。
+- 背景：Runtime 已把 provider credential 的 stored truth 交给 SQLite，并公开 `providers.update` 允许交互客户端在启动后配置；Provider/Application 也完整表达 `unconfigured`、`not_configured` 与 Run `invalid_credentials`。但旧 `resolveProviderConfig` 在 persistence 打开前要求 required-key provider 必须从 YAML/env 提供 key。失败优先同进程反例证明：只有 `provider: anthropic` 的合法配置无法启动，因此用户进不了 TUI 配置 key；即使 key 已经通过 `providers.update` 存入同一 data directory，删除 YAML key 后仍无法重启读取它。启动前 primitive presence 成了绕过 durable owner 的第二份 readiness truth。
 - 决策：Bootstrap 只在配置边界解析 provider identity、默认 model 与可选 credential provenance，不在 durable registry 之前判定认证完备。Runtime 允许 required-key provider 以未配置状态启动；Application 的 `providers.list/update/test` 负责配置纵切，ChatResolver 在真正 Run admission 时把缺失 required credential 映射为稳定的 `invalid_credentials`。已有 file input 仍只 first-run seed，environment input 仍只进 process overlay，非空但非法 credential 仍在 Provider value construction 时 fail closed。
-- 后果：首次安装可先打开 CLI 再保存 key，stored-only 配置可在无 YAML/env secret 时重启；未配置状态不会伪装成可用，也不会把网络错误延迟成认证状态。真实 embedded 回归覆盖 unconfigured open → `providers.update` → Close → 无 key restart → stored provenance。没有 lazy SQLite lookup 塞回 Config、启动降级 catch、第二 readiness flag、默认 key、协议/schema 变化或跨模块兼容路径。
+- 后果：首次安装可先打开 CLI 再保存 key，stored-only 配置可在无 YAML/env secret 时重启；未配置状态不会伪装成可用，也不会把网络错误延迟成认证状态。真实同进程回归覆盖 unconfigured open → `providers.update` → Close → 无 key restart → stored provenance。没有 lazy SQLite lookup 塞回 Config、启动降级 catch、第二 readiness flag、默认 key、协议/schema 变化或跨模块兼容路径。
 
 ## ADR-RT-118：CLI 缺省模型必须继承 Session，而不是复制一个 vendor 默认
 
@@ -888,5 +888,12 @@
 
 - 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Delivery 边界批次完成；允许 Runtime internal Delivery API breaking change，公共 Go surface、Protocol method/event、Artifact 与 SQLite shape 不变。
 - 背景：operation catalog、method metadata、typed invocation、Application handler 和 protocol projection 围绕同一份 operation identity 共同变化。旧 `internal/delivery/operation` 与 `internal/delivery/server` 将一条内聚边界按处理阶段拆分，造成单文件 package、重复命名与 `Server`/`Endpoint` 双 lifecycle；Bootstrap 同时保存并关闭两者。Go MCP SDK 的设计证据同样表明，一个内聚的协议 API 应优先留在一个 package，只把拥有独立机制和语汇的边界拆出。
-- 决策：`internal/delivery` 根 package 统一拥有 `Endpoint`、operation catalog、`Handler` 和 presenters。`Endpoint` 是唯一 binding-neutral 入口和 Delivery lifecycle owner；`Handler` 只拥有 Application/protocol 翻译，其 shutdown admission 只能由 Endpoint 内部触发。Bootstrap 构造 Handler 后立即封装到 Endpoint，Instance 只保存 Endpoint。`dispatch` 保留 JSON-RPC envelope/routing，`transport` 保留 HTTP/SSE 和 envelope mechanism；HTTP 与 embedded 仍只进入同一 Endpoint。
+- 决策：`internal/delivery` 根 package 统一拥有 `Endpoint`、operation catalog、`Handler` 和 presenters。`Endpoint` 是唯一 binding-neutral 入口和 Delivery lifecycle owner；`Handler` 只拥有 Application/protocol 翻译，其 shutdown admission 只能由 Endpoint 内部触发。Bootstrap 构造 Handler 后立即封装到 Endpoint，Instance 只保存 Endpoint。`dispatch` 保留 JSON-RPC envelope/routing，`transport` 保留 HTTP/SSE 和 envelope mechanism；HTTP 与模块根 Go binding 仍只进入同一 Endpoint。
 - 后果：物理删除 `operation`/`server` 子 package 与所有旧 import，不保留 alias、shim、forwarding package 或平行 closer。架构门禁改为按 receiver 语义识别 Handler，不再依赖目录形状。这不合并 Domain/Application 环，也不把 JSON-RPC/HTTP mechanism 吸入根 package；新子 package 仍必须证明独立 vocabulary、invariant、lifecycle、replaceable boundary 或 reusable mechanism。
+
+## ADR-RT-125：公共同进程 Runtime 属于模块根
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的公共 binding 批次完成；这是 breaking Go API change，不提供旧包兼容层。
+- 背景：公共同进程 binding 拥有的就是 Runtime 产品生命周期、配置、调用 options 和完整 typed operation surface。旧子包没有独立词汇、不变量、替换边界或技术机制，只让消费者把产品本身称作另一种部署形态，并迫使生成器、架构门禁、文档和 CLI adapter 固化额外包路径。Go MCP SDK 的设计证据也把内聚 API 留在一个 package，仅为真实独立机制拆包。
+- 决策：模块根 `github.com/Tangerg/flame/runtime` 唯一公开 `Runtime`、`Config`、`Open`、`Close`、调用 options 与 typed operation methods；`protocol` 继续拥有 binding-neutral DTO/validation/error，`localruntime` 继续拥有部署 token 交接。HTTP executable 和模块根 binding 仍只经同一 `bootstrap.OpenInstance` 与 `delivery.Endpoint`。物理删除旧 binding 目录和包，CLI 同批迁移直接 import 模块根，生成的 Go API 基线改为 root/protocol/localruntime。
+- 后果：Desktop 或 CLI 作为 Go host 可直接消费 `runtime.Open` 与 consumer-defined narrow interfaces，不再穿过别名 package；任何代码导入旧路径都会立即编译失败。Runtime Protocol method/event、Artifact、SQLite shape 和 HTTP wire 均不变化；错误前缀统一为 `runtime:`，不保留 alias、forwarder、deprecated symbol 或双文档词汇。

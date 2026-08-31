@@ -5,15 +5,15 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 )
 
 type authoringContextBinding interface {
-	ListAgentDocs(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.AgentDoc], error)
-	ListRecipes(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.Recipe], error)
+	ListAgentDocs(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.AgentDoc], error)
+	ListRecipes(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error)
 }
 
 type authoringContextAdapter struct{ runtime *Runtime }

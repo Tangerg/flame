@@ -1,4 +1,4 @@
-package embedded
+package runtime
 
 import (
 	"context"

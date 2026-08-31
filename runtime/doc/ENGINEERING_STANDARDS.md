@@ -138,7 +138,7 @@ Entity 自己保护状态迁移和不变量。Application 不得通过一串 set
 - Handler 不持有 active Run map、pump、executor tree 或 connection registry，也不暴露独立入口或 lifecycle；
 - Delivery Endpoint 是严格验证、能力门禁、幂等、problem 投影和 replay attachment 的唯一 binding-neutral owner；
 - RPC dispatch 不解释业务字段；Transport 不解释 RPC method；
-- HTTP/SSE 与 embedded 使用同一 Delivery Endpoint/Application entrypoint；binding 不复制业务或可靠性规则；
+- HTTP/SSE 与模块根 Go binding 使用同一 Delivery Endpoint/Application entrypoint；binding 不复制业务或可靠性规则；
 - 协议类型只在 delivery/contract 边界，Application 不返回 wire DTO。
 
 ### 3.6 Bootstrap
@@ -152,7 +152,7 @@ Entity 自己保护状态迁移和不变量。Application 不得通过一串 set
 - required collaborator 和 lifetime 在 constructor boundary 完整验证；constructor 必须返回可运行对象或 error，不能把半初始化对象和延迟 `unavailable` 分支交给用例；
 - optional capability 只在真实配置关闭时为 nil/absent；多个依赖共同构成一项能力时用一个显式 capability group 表达，不能允许半启用。
 - `bootstrap.OpenInstance` 创建每个 Runtime 唯一的 context root，并拥有 cancel 与 join；Assembly、Delivery Endpoint、Interaction、Toolset、LSP、MCP/OAuth 和 workers 只消费注入 lifetime，不另造 immortal root。
-- HTTP host 与 embedded 共用同一 Runtime instance builder；共享目录 setup、所有权恢复、后台任务与资源关闭不能各装配一套。
+- HTTP host 与模块根 Go binding 共用同一 Runtime instance builder；共享目录 setup、所有权恢复、后台任务与资源关闭不能各装配一套。
 - canonical data directory 必须是 `0700` 私有目录；setup lease 只包围 store 打开与 schema/config seeding，不能扩张为 Runtime 全生命周期单实例锁。失败 Open 要逆序回滚；caller timeout 只停止等待，已启动的 Host generation 必须继续 join component/executor 并自行走完 terminal resource Sequence，不能要求拿不到 Host/Assembly 的外层调用方再次 Close。terminal diagnostic 不得让 Host 永久停在 stopping。
 - 每次 Session mutation/Run 必须取得跨进程 Session writer lease；Run 同时取得 physical working tree shared lease，rollback/restore 等破坏性操作取得 exclusive lease。Goal drive 和恢复器必须竞争同一 owner identity；恢复先选举一个跨进程 sweep winner并固定 Run-before-Goal 顺序，startup 必须等待 winner 后复核，存活期可以非阻塞跳过，cleanup 只能作用于已取得的 Session。
 - 不用 heartbeat/TTL 推断本机 owner 死亡；以 OS advisory lease 的持有/释放为真相。来自其他 SQLite connection 的提交必须触发 read-model resync，消费者收到后重读 durable projection。
@@ -160,12 +160,12 @@ Entity 自己保护状态迁移和不变量。Application 不得通过一串 set
 ### 3.7 公共 Go binding
 
 - `protocol` 只公开 binding-neutral values、strict validation 与客户端可见 problem，不公开服务端接口、context key、numeric JSON-RPC code 或 generator internals；
-- `embedded.Open` 返回 concrete `*embedded.Runtime`，不导出胖 interface；消费方在自己一侧定义窄接口；
-- embedded command/subscription metadata 使用准确 option 类型，不用 header 名、`map[string]any` 或 bool bag；
+- `runtime.Open` 返回 concrete `*runtime.Runtime`，不导出胖 interface；消费方在自己一侧定义窄接口；
+- 模块根 binding 的 command/subscription metadata 使用准确 option 类型，不用 header 名、`map[string]any` 或 bool bag；
 - 已接受 Run 脱离请求取消并归 Runtime lifecycle 所有；subscription context 只结束该订阅；
 - stream 必须显式定义终止、错误、背压和 Close 行为，不用 goroutine 泄漏换取看似异步的 API；
 - 公共 API 的参数、返回值、GoDoc、零值和 error 分支必须可从调用点直接理解，不暴露内部 composition object。
-- `contract/go-api.json` 必须由真实 Go type information 生成且零漂移；公共 package 只允许 `protocol` 与 `embedded`，public signature 不得引用 `internal` 类型；operation catalog 与 Runtime method 必须一一对应。
+- `contract/go-api.json` 必须由真实 Go type information 生成且零漂移；公共 package 精确为模块根、`protocol` 与 `localruntime`，public signature 不得引用 `internal` 类型；operation catalog 与 Runtime method 必须一一对应。
 - 稳定失败用 `errors.Is` 匹配 `protocol` sentinel；需要恢复动作或字段错误时用 `errors.As` 取得 `protocol.ProblemError`，不公开私有 error concrete，也不让消费者解析字符串。
 
 ## 4. Agent Framework 接线标准

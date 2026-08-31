@@ -3,14 +3,14 @@ package runtimeembedded
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/feedback"
 )
 
 type feedbackBinding interface {
-	CreateFeedback(context.Context, protocol.FeedbackRequest, embedded.CommandOptions) error
+	CreateFeedback(context.Context, protocol.FeedbackRequest, flameruntime.CommandOptions) error
 }
 
 type feedbackAdapter struct{ runtime *Runtime }

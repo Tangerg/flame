@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -25,7 +25,7 @@ type snapshotBindingStub struct {
 func (s *snapshotBindingStub) GetSession(
 	context.Context,
 	protocol.GetSessionRequest,
-	embedded.CallOptions,
+	flameruntime.CallOptions,
 ) (*protocol.Session, error) {
 	s.sessionCalls++
 	if s.sessionAt != nil {
@@ -41,7 +41,7 @@ func (s *snapshotBindingStub) GetSession(
 func (s *snapshotBindingStub) GetSessionSnapshot(
 	_ context.Context,
 	request protocol.GetSessionSnapshotRequest,
-	_ embedded.CallOptions,
+	_ flameruntime.CallOptions,
 ) (*protocol.SessionSnapshot, error) {
 	s.snapshotRequests = append(s.snapshotRequests, request)
 	return s.snapshot, s.snapshotErr

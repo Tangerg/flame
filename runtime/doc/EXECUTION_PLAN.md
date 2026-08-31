@@ -85,7 +85,7 @@
 
 - 以 exact provider/model/options 为唯一身份
 - 统一 credential、endpoint、catalog 与 capability 的准入 owner
-- 对 HTTP 和 embedded 运行同一 operation/Application 路径
+- 对 HTTP 和模块根 Go binding 运行同一 operation/Application 路径
 - 对缺失凭据、错误 endpoint、能力不匹配、重复 model、stream 中断与 provider error 建立真实反例
 - 必要协议能力先参考 Codex Server，再按 Flame 领域语言设计，不泄露 Framework 或 transport 类型
 

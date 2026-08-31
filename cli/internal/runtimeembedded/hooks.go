@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 )
 
 type hookBinding interface {
-	ListHooks(context.Context, protocol.ListHooksRequest, embedded.CallOptions) (*protocol.HooksListResult, error)
-	SetHookTrust(context.Context, protocol.SetHookTrustRequest, embedded.CommandOptions) error
+	ListHooks(context.Context, protocol.ListHooksRequest, flameruntime.CallOptions) (*protocol.HooksListResult, error)
+	SetHookTrust(context.Context, protocol.SetHookTrustRequest, flameruntime.CommandOptions) error
 }
 
 type hookAdapter struct{ runtime *Runtime }

@@ -6,18 +6,18 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
 type runBinding interface {
-	StartRun(context.Context, protocol.StartRunRequest, embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	ResumeRun(context.Context, protocol.ResumeRunRequest, embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	SubscribeRun(context.Context, protocol.SubscribeRunRequest, embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	SteerRun(context.Context, protocol.SteerRunRequest, embedded.CommandOptions) error
-	CancelRun(context.Context, protocol.CancelRunRequest, embedded.CommandOptions) (*protocol.CancelRunResponse, error)
+	StartRun(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	ResumeRun(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	SubscribeRun(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	SteerRun(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error
+	CancelRun(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
 }
 
 func (r *Runtime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {

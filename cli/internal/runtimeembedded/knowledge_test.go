@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/knowledge"
@@ -21,7 +21,7 @@ type knowledgeBindingStub struct {
 	getCalls   int
 }
 
-func (k *knowledgeBindingStub) ListKnowledge(_ context.Context, request protocol.WorkspaceQuery, options embedded.CallOptions) (*protocol.Page[protocol.KnowledgeEntry], error) {
+func (k *knowledgeBindingStub) ListKnowledge(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.KnowledgeEntry], error) {
 	k.assertMeta(options.RequestMeta)
 	if request.Workspace.Path != "/workspace" {
 		k.t.Fatalf("list request = %+v", request)
@@ -61,7 +61,7 @@ func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 	}
 }
 
-func (k *knowledgeBindingStub) GetKnowledge(_ context.Context, request protocol.GetKnowledgeRequest, options embedded.CallOptions) (*protocol.KnowledgeEntry, error) {
+func (k *knowledgeBindingStub) GetKnowledge(_ context.Context, request protocol.GetKnowledgeRequest, options flameruntime.CallOptions) (*protocol.KnowledgeEntry, error) {
 	k.assertMeta(options.RequestMeta)
 	k.getCalls++
 	if request.Scope == protocol.KnowledgeScopeHome {
@@ -85,7 +85,7 @@ func (k *knowledgeBindingStub) GetKnowledge(_ context.Context, request protocol.
 	return &protocol.KnowledgeEntry{Scope: request.Scope, Content: "document", Revision: "rev-document"}, nil
 }
 
-func (k *knowledgeBindingStub) UpdateKnowledge(_ context.Context, request protocol.UpdateKnowledgeRequest, options embedded.CommandOptions) (*protocol.KnowledgeEntry, error) {
+func (k *knowledgeBindingStub) UpdateKnowledge(_ context.Context, request protocol.UpdateKnowledgeRequest, options flameruntime.CommandOptions) (*protocol.KnowledgeEntry, error) {
 	k.assertMeta(options.RequestMeta)
 	if options.IdempotencyKey == "" {
 		k.t.Fatal("update has no idempotency key")

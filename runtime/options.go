@@ -1,4 +1,4 @@
-package embedded
+package runtime
 
 import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"

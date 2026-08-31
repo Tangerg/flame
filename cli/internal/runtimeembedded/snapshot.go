@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -15,8 +15,8 @@ import (
 )
 
 type snapshotBinding interface {
-	GetSession(context.Context, protocol.GetSessionRequest, embedded.CallOptions) (*protocol.Session, error)
-	GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest, embedded.CallOptions) (*protocol.SessionSnapshot, error)
+	GetSession(context.Context, protocol.GetSessionRequest, flameruntime.CallOptions) (*protocol.Session, error)
+	GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest, flameruntime.CallOptions) (*protocol.SessionSnapshot, error)
 }
 
 const snapshotStabilityAttempts = 8

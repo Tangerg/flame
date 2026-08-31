@@ -13,7 +13,7 @@ import (
 const runtimeModulePath = "github.com/Tangerg/flame/runtime"
 
 var publicPackagePaths = []string{
-	runtimeModulePath + "/embedded",
+	runtimeModulePath,
 	runtimeModulePath + "/localruntime",
 	runtimeModulePath + "/protocol",
 }

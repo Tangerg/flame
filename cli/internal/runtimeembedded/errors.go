@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -71,7 +71,7 @@ func classifyError(err error) error {
 		{protocol.ErrCapabilityNotNeg, agent.ErrIncompatibleRuntime},
 		{protocol.ErrInvalidProtocolVersion, agent.ErrIncompatibleRuntime},
 		{protocol.ErrVcsUnavailable, workspace.ErrVersionControlUnavailable},
-		{embedded.ErrClosed, agent.ErrDisconnected},
+		{flameruntime.ErrClosed, agent.ErrDisconnected},
 	} {
 		if errors.Is(err, mapping.source) {
 			kind = mapping.target

@@ -70,7 +70,7 @@ streamable HTTP、SSE replay、token、CORS、sidecar、capability、pagination 
   3 个 sidecar、16 个 Runtime event variant 和 7 个 Run event variant。
 
 反哺原版时不应重写协议层，也不应照搬 Codex 的 stdio、slash method、rollout JSONL 或多 connection 产品模型。
-原版现有的 `protocol + embedded + operation + generator` 继续作为不可轻易扰动的窄腰；只有真实 wire defect 才允许
+原版现有的 `protocol + public binding + operation catalog + generator` 继续作为不可轻易扰动的窄腰；只有真实 wire defect 才允许
 通过新 ADR 和单一新 shape 修改。
 
 ### 3.2 Session 的 provider/model 成为不可拆分身份
@@ -154,7 +154,7 @@ app2 的 [`runtimehost/acceptance_test.go`](../../../app2/runtime/runtimehost/ac
 
 这层测试的价值不在数量，而在于它用产品语言回答“一个公开 Runtime 是否真的完成一条能力”。原版拥有远强于 app2
 的领域、事务、故障、race、恢复和 architecture 测试，但顶层场景分散。反哺时可以新增少量、稳定、面向公共
-`embedded`/HTTP 的 capability acceptance suite，作为原版细粒度测试的上盖；绝不能用它替换原版 86k+ 行的深层证据。
+module-root `runtime`/HTTP 的 capability acceptance suite，作为原版细粒度测试的上盖；绝不能用它替换原版 86k+ 行的深层证据。
 
 ### 3.8 小而语义化的架构守卫更易长期维护
 
@@ -170,14 +170,14 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 
 | app2 现状 | 为什么不能迁移 |
 |---|---|
-| 没有 public `embedded` package | 文档承诺与实现漂移，并且丢失原版真实同进程 consumer 能力 |
+| 没有 public module-root `runtime` package | 文档承诺与实现漂移，并且丢失原版真实同进程 consumer 能力 |
 | 生产树未发现 A2A、isolated workspace/sandbox、完整 OTel trace/metric/log composition | 体积下降的一部分来自能力未实现，不能计为熵回收 |
 | Transcript 与 Conversation 主要保存 `Body []byte` | 把领域事实退化为 opaque JSON，弱于原版 typed aggregate 和跨投影闭包 |
 | `application.Runtime` 有 90 个方法 | 用一个 facade 汇总全部 operation，重新形成 God object |
 | `sqlite.Database` 有 122 个方法 | concrete composition 方便，但 persistence owner 过宽 |
 | `runflow.Service` 有 59 个方法，`Store` 同时承担大量上下文 | 纵切内部再次失去用例边界和窄端口 |
 | 21 个通用 `Service` struct | 命名没有表达真实职责，违背 app2 自己的标准 |
-| 65 个公共非命令 package | implementation 被外部模块可见，远差于原版只公开 `protocol`/`embedded` |
+| 65 个公共非命令 package | implementation 被外部模块可见，远差于原版只公开 `protocol`/module-root `runtime` |
 | 27 个测试文件、4,697 行测试 | 无法承接原版的并发、故障、恢复、strict codec、race 和 fuzz 证据 |
 | `runflow.locks` 只增长不删除 | 每个历史 Run 留下 mutex，生命周期 owner 不闭合 |
 | 多处 `Close` 直接无界 `WaitGroup.Wait` | 外部依赖不协作时 shutdown 可永久挂起 |
@@ -201,7 +201,7 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 | public acceptance suite | 采用 | 作为原版深层测试的上盖，不替换原测试 |
 | 小型语义 architecture guards | 采用 | 删除旧 guard 前必须证明同一风险已有稳定替代门禁 |
 | app2 opaque JSON domain | 拒绝 | 原版继续使用 typed Transcript/Conversation/Run facts |
-| app2 root-level public packages | 拒绝 | 公共 package 继续精确限制为 `protocol` 和 `embedded` |
+| app2 root-level public packages | 拒绝 | 公共 package 继续精确限制为 `protocol` 和 module-root `runtime` |
 | app2 Runtime/Store/Service God object | 拒绝 | 按用例、锁和生命周期拆解，不建立总 facade |
 | app2 功能/测试删减 | 拒绝 | 能力和验证证据零损失是先决条件 |
 
@@ -237,7 +237,7 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 - 风险：中到高；原版没有静态 dead code，剩余候选多为被真实调用的结构复杂度。
 - 证据：原版有 24 个 Application、25 个 Adapter、21 个 Domain、17 个 Infra package 和 263 个接口；app2 证明部分能力
   可以用更短路径表达，但不能证明任一具体 package 已可删除。
-- 改造：为 `runs.start/resume`、`sessions.snapshot`、provider/model、`runtime.subscribe`、`embedded.Open` 五条代表性纵切
+- 改造：为 `runs.start/resume`、`sessions.snapshot`、provider/model、`runtime.subscribe`、`runtime.Open` 五条代表性纵切
   记录 operation → use case → consumer port → adapter → mechanism 的真实边，逐一识别只转发参数、只改名或只为测试存在的
   边界。一次只重构一条纵切，并在同批删除旧 owner。
 - 代价：部分一实现接口仍承担依赖反转、故障注入或外部防腐，不能机械删除。
@@ -271,7 +271,7 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 - 信心：高。
 - 风险：低。
 - 证据：app2 的公共场景测试可读性好；原版的深层测试证据更强但分散。
-- 改造：在原版公共 `embedded` 与 HTTP conformance 上建立少量数据驱动场景，覆盖 normal、Question、Approval、Delegate、
+- 改造：在原版公共 module-root `runtime` 与 HTTP conformance 上建立少量数据驱动场景，覆盖 normal、Question、Approval、Delegate、
   provider failure、Artifact round-trip、restart/replay。共享 scenario 定义，但不建立巨型万能 harness。
 - 代价：会增加少量运行时间；必须避免重复已有低层断言。
 - 验收：同一场景对两个 binding 得到等价产品事实，且失败能定位到具体能力而非整套黑盒。
@@ -293,7 +293,7 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 ### 阶段 A：冻结零损失基线
 
 1. 复用当前 89 operation、3 sidecar、16 Runtime event、7 Run event 和 30 built-in Tool 的机器守卫；
-2. 补齐 operation 计数之外的能力清单：public embedded、A2A、isolated workspace/sandbox、OTel trace/metric/log、MCP、LSP、
+2. 补齐 operation 计数之外的能力清单：public module-root Go binding、A2A、isolated workspace/sandbox、OTel trace/metric/log、MCP、LSP、
    recovery、Artifact、shared data-directory ownership；
 3. 记录公共 package、package DAG、接口、直接依赖、goroutine owner 和五条代表性 capability trace；
 4. 把 app2 acceptance scenario 转写为原版 characterization tests，但不修改生产行为。
@@ -326,8 +326,8 @@ AST guard，不能为减少测试文件而弱化真实门禁。
 
 原版重构成功必须同时满足：
 
-- 用户能力零损失；operation 清单之外的 embedded、A2A、sandbox/isolation、OTel 和恢复能力也在账本内；
-- 公共 Go package 继续只有 `protocol` 与 `embedded`；
+- 用户能力零损失；operation 清单之外的同进程 binding、A2A、sandbox/isolation、OTel 和恢复能力也在账本内；
+- 公共 Go package 继续只有 `protocol` 与 module-root `runtime`；
 - Agent Framework concrete import 继续只存在于 `adapter/agentexec`；
 - Run、Session、Conversation、Transcript、Interrupt、Plan、Goal 继续是 typed domain/application facts，不退化为 opaque JSON bag；
 - SQLite 继续是唯一 durable truth，跨聚合 write-set、命令回执和恢复语义不弱化；

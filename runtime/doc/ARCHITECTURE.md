@@ -21,7 +21,7 @@ Runtime 必须同时满足：
 - Agent Framework、SQLite、模型 Provider、Git、Shell、MCP、LSP 和网络都停留在外环；
 - Delivery 只把协议请求投影为应用命令，把应用事实投影为协议响应；
 - Bootstrap 是唯一组合根，不承载业务行为；
-- streamable HTTP 与公共 embedded binding 只承载协议，且不改变应用语义；二者必须复用同一 binding-neutral operation 入口与 Application 用例；
+- streamable HTTP 与模块根 Go binding 只承载协议，且不改变应用语义；二者必须复用同一 binding-neutral operation 入口与 Application 用例；
 - 公共 `localruntime` 只承载本地部署交接：Runtime executable 与 Desktop 共同消费同一严格凭据文件合同，不把 token 生命周期塞进 HTTP transport、Protocol 或 Desktop 壳；
 - Agent Framework 是唯一托管执行内核，Runtime 不复制它的 Process loop、tree scheduler 或 snapshot 解释器。
 
@@ -336,7 +336,7 @@ Infra：
 - `dispatch` 保留为独立的 JSON-RPC envelope routing、numeric error mapping 与 stream frame encoding mechanism；
 - `transport` 保留 JSON-RPC envelope vocabulary 与 HTTP/SSE I/O mechanism。
 
-HTTP 和 embedded 都只从同一 `Endpoint` 进入，任何 binding 都不能直接调用 `Handler` 或绕过 validation、capability、idempotency、problem projection 与 replay 规则。只有具备独立 vocabulary、边界或可替换 mechanism 的部分才拆子 package；处理流水线阶段名本身不是 package 证据。
+HTTP 和模块根 Go binding 都只从同一 `Endpoint` 进入，任何 binding 都不能直接调用 `Handler` 或绕过 validation、capability、idempotency、problem projection 与 replay 规则。只有具备独立 vocabulary、边界或可替换 mechanism 的部分才拆子 package；处理流水线阶段名本身不是 package 证据。
 
 Operation idempotency replay 保存的是已执行命令的权威结果，不是可降级缓存。每条 stored outcome 是单一、versioned、闭合字段的 JSON document，并且必须恰好携带 value 或 problem 之一；value 再按该 operation 的 exact typed response 闭合解码并执行公共 wire validation。未知 envelope/response 字段、尾随值、双结果或缺失结果都 fail closed，不能静默丢字段后假装成功重放。
 
@@ -346,9 +346,9 @@ Delivery 只依赖公共 Protocol、Application 和必要的 Domain projection v
 
 ### 6.6 Bootstrap、Config、Embedded 与 Cmd
 
-私有 Runtime instance builder 是唯一组合根：创建 concrete dependency、组装 consumer port、在短期 setup lease 内打开并初始化共享数据目录、执行有所有权判断的恢复、启动有 owner 的后台任务并按逆序关闭资源。`bootstrap.OpenInstance` 创建每个 instance 唯一的 Runtime context root，并把它显式注入 Assembly、Delivery Endpoint、Interaction executor、Toolset、LSP、MCP/OAuth 与 workers；该 instance 同时拥有 cancel 和完整 join。HTTP executable 和公共 `embedded.Open` 都只能调用它，不得各自复制装配图；多个进程可各自持有一个完整 Runtime instance 并共享同一私有数据目录。
+私有 Runtime instance builder 是唯一组合根：创建 concrete dependency、组装 consumer port、在短期 setup lease 内打开并初始化共享数据目录、执行有所有权判断的恢复、启动有 owner 的后台任务并按逆序关闭资源。`bootstrap.OpenInstance` 创建每个 instance 唯一的 Runtime context root，并把它显式注入 Assembly、Delivery Endpoint、Interaction executor、Toolset、LSP、MCP/OAuth 与 workers；该 instance 同时拥有 cancel 和完整 join。HTTP executable 和公共 `runtime.Open` 都只能调用它，不得各自复制装配图；多个进程可各自持有一个完整 Runtime instance 并共享同一私有数据目录。
 
-Bootstrap 不提供业务 API，不成为 service locator，也不存在可向下游传播的完整 Stack。Assembly 只通过 package-private policy、workspace、execution 三个 composition capsule 组装 Session/Run 图：每个 capsule 构造成功即完整合法，execution acquisition 在任何错误返回前先把 closer/executor 转交唯一 `hostLifetime`。Host 的资源关闭图不从 `error` 猜状态，也不存在通用 retryable step：A2A、LSP、Shell、SQLite、isolation 与 MCP ClientSession 等 one-shot Close 一旦返回即为 terminal，错误只作为诊断。第一个 Host Close caller 启动由 `hostLifetime` 持有的唯一 shutdown generation：先停止并加入 Goal/MCP/Run producer，再给已经接纳的 Run 边界维护最多五秒自然收束，随后取消并加入剩余任务与 executor，最后进入 terminal resource Sequence。这样 one-shot 退出不会立即吞掉 terminal 或 parked Run 已接纳的 Session title，同时卡住的辅助 provider 仍有界；`Drain` 不能替代 producer stop，也不关闭可复用 task group。Workspace checkpoint 仍只属于 terminal Run，parked Run 只可从 immutable opening user text 生成 first-writer title，不能伪造可回滚文件边界。每个 caller 只有独立的有界 wait，timeout 不能终止、取代或并行复制该 generation；因此 post-transfer startup recovery 失败即使不返回 Host，迟到结束的 component 仍会触发下层依赖释放。component 明确返回 unsettled error 时，后续 Close 可开新 generation；terminal Sequence 仍只运行一次，不存在 timer retry loop 或第二清理图。host resources 先于 tool resources 取得，两组 creation-ordered steps 一次性交给唯一 `teardown.Sequence`；Sequence 以 `context.WithoutCancel` 逆序跑完图，terminal diagnostic 不重放动作。需要多 generation 推进的 subsystem 必须在自己的 owner 内表达状态，不能伪装成通用 resource closer。Instance 在 Host 之上拥有唯一 delivery-to-Host shutdown generation：退役 Delivery Endpoint admission 与 Runtime lifetime 后，加入 Endpoint、scheduler/database/recovery workers 再加入同一 Host attempt；Instance caller deadline 也只限制等待。Instance 不复制 context owner，而是从 Host 已注入 lifetime 派生 generation values。Host 的私有 application capsule 只持有 Delivery 自己的 consumer config、startup recovery 与 worker lifecycle 行为；Instance 不能取得 concrete coordinator。Bootstrap 构造 `Handler` 后立即将它封装在 `Endpoint` 内，Instance 只保存和退役 Endpoint，后续 observer 启动失败也必须完整回滚。公共 `embedded.Runtime` 只持有私有 instance 与 Delivery Endpoint，提供完整 `Open/Close` 和类型化方法，不泄露内部资源。Config 只解析外部设置和完成静态验证，不执行业务选择。Cmd 只负责进程参数、BuildID、信号、HTTP listener 与 Runtime 生命周期。
+Bootstrap 不提供业务 API，不成为 service locator，也不存在可向下游传播的完整 Stack。Assembly 只通过 package-private policy、workspace、execution 三个 composition capsule 组装 Session/Run 图：每个 capsule 构造成功即完整合法，execution acquisition 在任何错误返回前先把 closer/executor 转交唯一 `hostLifetime`。Host 的资源关闭图不从 `error` 猜状态，也不存在通用 retryable step：A2A、LSP、Shell、SQLite、isolation 与 MCP ClientSession 等 one-shot Close 一旦返回即为 terminal，错误只作为诊断。第一个 Host Close caller 启动由 `hostLifetime` 持有的唯一 shutdown generation：先停止并加入 Goal/MCP/Run producer，再给已经接纳的 Run 边界维护最多五秒自然收束，随后取消并加入剩余任务与 executor，最后进入 terminal resource Sequence。这样 one-shot 退出不会立即吞掉 terminal 或 parked Run 已接纳的 Session title，同时卡住的辅助 provider 仍有界；`Drain` 不能替代 producer stop，也不关闭可复用 task group。Workspace checkpoint 仍只属于 terminal Run，parked Run 只可从 immutable opening user text 生成 first-writer title，不能伪造可回滚文件边界。每个 caller 只有独立的有界 wait，timeout 不能终止、取代或并行复制该 generation；因此 post-transfer startup recovery 失败即使不返回 Host，迟到结束的 component 仍会触发下层依赖释放。component 明确返回 unsettled error 时，后续 Close 可开新 generation；terminal Sequence 仍只运行一次，不存在 timer retry loop 或第二清理图。host resources 先于 tool resources 取得，两组 creation-ordered steps 一次性交给唯一 `teardown.Sequence`；Sequence 以 `context.WithoutCancel` 逆序跑完图，terminal diagnostic 不重放动作。需要多 generation 推进的 subsystem 必须在自己的 owner 内表达状态，不能伪装成通用 resource closer。Instance 在 Host 之上拥有唯一 delivery-to-Host shutdown generation：退役 Delivery Endpoint admission 与 Runtime lifetime 后，加入 Endpoint、scheduler/database/recovery workers 再加入同一 Host attempt；Instance caller deadline 也只限制等待。Instance 不复制 context owner，而是从 Host 已注入 lifetime 派生 generation values。Host 的私有 application capsule 只持有 Delivery 自己的 consumer config、startup recovery 与 worker lifecycle 行为；Instance 不能取得 concrete coordinator。Bootstrap 构造 `Handler` 后立即将它封装在 `Endpoint` 内，Instance 只保存和退役 Endpoint，后续 observer 启动失败也必须完整回滚。公共 `runtime.Runtime` 只持有私有 instance 与 Delivery Endpoint，提供完整 `Open/Close` 和类型化方法，不泄露内部资源。Config 只解析外部设置和完成静态验证，不执行业务选择。Cmd 只负责进程参数、BuildID、信号、HTTP listener 与 Runtime 生命周期。
 
 ### 6.7 共享原语
 
@@ -560,18 +560,18 @@ Runtime Protocol 是外部语义契约，机器真相源在 `contract/`。重构
 - API semantic、transport binding 和 auxiliary capability 分别由现有三份规范拥有；
 - HTTP status 只表示 transport，业务失败使用协议 error；
 - transport metadata 不进入 JSON-RPC body；
-- HTTP/SSE 与 embedded 都驱动同一 binding-neutral Delivery Endpoint 和 Application use case；binding 只投影 metadata、options 与结果流，不得复制业务路径。Contract Registry 同时拥有 idempotency 与 run replay cursor 的方法适用性，Endpoint 在 capability/handler admission 前拒绝不相容的带外元数据；binding 不得静默忽略或自行扩大这些承诺。
-- embedded 不经过 JSON-RPC/SSE 编解码，但必须遵守同一严格验证、capability、idempotency、replay cursor 与 problem 语义。
+- HTTP/SSE 与模块根 Go binding 都驱动同一 binding-neutral Delivery Endpoint 和 Application use case；binding 只投影 metadata、options 与结果流，不得复制业务路径。Contract Registry 同时拥有 idempotency 与 run replay cursor 的方法适用性，Endpoint 在 capability/handler admission 前拒绝不相容的带外元数据；binding 不得静默忽略或自行扩大这些承诺。
+- 模块根 Go binding 不经过 JSON-RPC/SSE 编解码，但必须遵守同一严格验证、capability、idempotency、replay cursor 与 problem 语义。
 - Artifact 是只有一个当前版本的 durable 输入文档；`json.RawMessage` 只隔离公共 Protocol 与外部 DTO 类型，不能绕过闭合 codec。嵌套外部值必须证明 typed decode 不丢弃或改写语义；开放 metadata/details 由其明确的 JSON extension owner 保留，未知结构字段则在任何持久化写入前拒绝。
-- 同一 canonical data directory 可以由少量 embedded/HTTP Runtime 同时打开；目录 setup 只在 schema/config seeding 期间串行。冲突操作由 Session writer、working-tree shared/exclusive lease、Goal drive 和数据库事务共同 fail closed，跨进程提交通过既有 resync event 促使消费者重读。
+- 同一 canonical data directory 可以由少量 Go/HTTP Runtime 同时打开；目录 setup 只在 schema/config seeding 期间串行。冲突操作由 Session writer、working-tree shared/exclusive lease、Goal drive 和数据库事务共同 fail closed，跨进程提交通过既有 resync event 促使消费者重读。
 - durable local token 只有 `localruntime` 一个 owner：文件必须是未替换的 0600 regular file，内容必须精确为 43-byte canonical RawURL encoding of 32 random bytes；读取通过 `Lstat`/opened-file identity 与固定 44-byte probe 同时拒绝 symlink、竞态替换、增长、空白、padding 和 non-canonical Base64。HTTP 只消费已验证 bearer value，Desktop 只投影同一 value；缺失文件对 Desktop 表示 Runtime 尚未发布凭据，不触发第二创建者。
 
 ## 13. 目标目录
 
 ```text
 runtime/
+├── *.go                 public in-process Runtime binding
 ├── protocol/
-├── embedded/
 ├── localruntime/
 ├── cmd/
 ├── contract/

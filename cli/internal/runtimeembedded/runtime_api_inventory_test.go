@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -37,7 +37,7 @@ func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
 		t.Fatalf("aggregate-materialized runtime methods = %v, want %v", materialized, want)
 	}
 
-	runtimeType := reflect.TypeFor[*embedded.Runtime]()
+	runtimeType := reflect.TypeFor[*flameruntime.Runtime]()
 	exported := make(map[string]struct{}, runtimeType.NumMethod())
 	for index := range runtimeType.NumMethod() {
 		exported[runtimeType.Method(index).Name] = struct{}{}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
@@ -13,13 +13,13 @@ import (
 )
 
 type modelConfigBinding interface {
-	GetUtilityRole(context.Context, embedded.CallOptions) (*protocol.UtilityRole, error)
-	SetUtilityRole(context.Context, protocol.UtilityRole, embedded.CommandOptions) (*protocol.UtilityRole, error)
-	GetEmbeddingRole(context.Context, embedded.CallOptions) (*protocol.EmbeddingRole, error)
-	SetEmbeddingRole(context.Context, protocol.EmbeddingRole, embedded.CommandOptions) (*protocol.EmbeddingRole, error)
-	ListProviders(context.Context, embedded.CallOptions) (*protocol.Page[protocol.Provider], error)
-	UpdateProvider(context.Context, protocol.UpdateProviderRequest, embedded.CommandOptions) (*protocol.Provider, error)
-	TestProvider(context.Context, protocol.TestProviderRequest, embedded.CallOptions) (*protocol.ProviderTestResult, error)
+	GetUtilityRole(context.Context, flameruntime.CallOptions) (*protocol.UtilityRole, error)
+	SetUtilityRole(context.Context, protocol.UtilityRole, flameruntime.CommandOptions) (*protocol.UtilityRole, error)
+	GetEmbeddingRole(context.Context, flameruntime.CallOptions) (*protocol.EmbeddingRole, error)
+	SetEmbeddingRole(context.Context, protocol.EmbeddingRole, flameruntime.CommandOptions) (*protocol.EmbeddingRole, error)
+	ListProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.Provider], error)
+	UpdateProvider(context.Context, protocol.UpdateProviderRequest, flameruntime.CommandOptions) (*protocol.Provider, error)
+	TestProvider(context.Context, protocol.TestProviderRequest, flameruntime.CallOptions) (*protocol.ProviderTestResult, error)
 }
 
 var _ modelconfig.Service = (*Runtime)(nil)

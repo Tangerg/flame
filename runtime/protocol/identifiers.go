@@ -18,6 +18,6 @@ const (
 const MaximumResourceIdentityCharacters = resourceidentity.MaximumCharacters
 
 // MaximumRunEventIDCharacters is the public resource envelope for the opaque
-// event identity carried in Run events, subscription acknowledgements, embedded
+// event identity carried in Run events, subscription acknowledgements, in-process
 // options, and the HTTP Last-Event-Id header. It includes the evt_ framing.
 const MaximumRunEventIDCharacters = resourceidentity.MaximumEventCharacters

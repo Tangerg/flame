@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -25,12 +25,12 @@ type mcpBindingStub struct {
 	updateResult *protocol.MCPServer
 }
 
-func (m *mcpBindingStub) ListMCPServers(_ context.Context, options embedded.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
+func (m *mcpBindingStub) ListMCPServers(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
 	m.assertMeta(options.RequestMeta)
 	return protocol.NewPage([]protocol.MCPServer{wireMCPServer()}), nil
 }
 
-func (m *mcpBindingStub) CreateMCPServer(_ context.Context, request protocol.MCPServerCandidate, options embedded.CommandOptions) (*protocol.MCPServer, error) {
+func (m *mcpBindingStub) CreateMCPServer(_ context.Context, request protocol.MCPServerCandidate, options flameruntime.CommandOptions) (*protocol.MCPServer, error) {
 	m.assertCommand("create", options)
 	m.created = request
 	if m.createResult != nil {
@@ -40,7 +40,7 @@ func (m *mcpBindingStub) CreateMCPServer(_ context.Context, request protocol.MCP
 	return &server, nil
 }
 
-func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.UpdateMCPServerRequest, options embedded.CommandOptions) (*protocol.MCPServer, error) {
+func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.UpdateMCPServerRequest, options flameruntime.CommandOptions) (*protocol.MCPServer, error) {
 	m.assertCommand("update", options)
 	m.updated = request
 	if m.updateResult != nil {
@@ -73,18 +73,18 @@ func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.Upd
 	return &server, nil
 }
 
-func (m *mcpBindingStub) DeleteMCPServer(_ context.Context, request protocol.MCPServerRequest, options embedded.CommandOptions) error {
+func (m *mcpBindingStub) DeleteMCPServer(_ context.Context, request protocol.MCPServerRequest, options flameruntime.CommandOptions) error {
 	m.assertCommand("delete:"+request.Server, options)
 	return nil
 }
 
-func (m *mcpBindingStub) TestMCPServer(_ context.Context, request protocol.MCPServerCandidate, options embedded.CallOptions) (*protocol.MCPTestResult, error) {
+func (m *mcpBindingStub) TestMCPServer(_ context.Context, request protocol.MCPServerCandidate, options flameruntime.CallOptions) (*protocol.MCPTestResult, error) {
 	m.assertMeta(options.RequestMeta)
 	m.actions = append(m.actions, "test:"+request.Name)
 	return &protocol.MCPTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemMCPDialFailed}}, nil
 }
 
-func (m *mcpBindingStub) ListMCPTools(_ context.Context, request protocol.MCPListToolsRequest, options embedded.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
+func (m *mcpBindingStub) ListMCPTools(_ context.Context, request protocol.MCPListToolsRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
 	m.assertMeta(options.RequestMeta)
 	m.actions = append(m.actions, "tools:"+request.Server)
 	return protocol.NewPage([]protocol.MCPTool{{
@@ -93,12 +93,12 @@ func (m *mcpBindingStub) ListMCPTools(_ context.Context, request protocol.MCPLis
 	}}), nil
 }
 
-func (m *mcpBindingStub) ReconnectMCPServer(_ context.Context, request protocol.MCPServerRequest, options embedded.CommandOptions) error {
+func (m *mcpBindingStub) ReconnectMCPServer(_ context.Context, request protocol.MCPServerRequest, options flameruntime.CommandOptions) error {
 	m.assertCommand("reconnect:"+request.Server, options)
 	return nil
 }
 
-func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options embedded.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
+func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options flameruntime.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	m.assertCommand("authorize:"+request.Server, options)
 	return &protocol.MCPAuthorizationAttempt{
 		ID: "auth_1", Server: request.Server, Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
@@ -106,7 +106,7 @@ func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, reques
 	}, nil
 }
 
-func (m *mcpBindingStub) GetMCPAuthorizationAttempt(_ context.Context, request protocol.MCPAuthorizationAttemptRequest, options embedded.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
+func (m *mcpBindingStub) GetMCPAuthorizationAttempt(_ context.Context, request protocol.MCPAuthorizationAttemptRequest, options flameruntime.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	m.assertMeta(options.RequestMeta)
 	m.actions = append(m.actions, "authorization:"+request.AttemptID)
 	if m.authErr != nil {
@@ -129,7 +129,7 @@ func (m *mcpBindingStub) assertMeta(meta protocol.RequestMeta) {
 	}
 }
 
-func (m *mcpBindingStub) assertCommand(action string, options embedded.CommandOptions) {
+func (m *mcpBindingStub) assertCommand(action string, options flameruntime.CommandOptions) {
 	m.t.Helper()
 	m.assertMeta(options.RequestMeta)
 	if options.IdempotencyKey == "" {

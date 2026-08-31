@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{"embedded", "localruntime", "protocol"}
+	want := []string{".", "localruntime", "protocol"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -70,7 +70,7 @@ func directoryHasProductionGo(directory string) (bool, error) {
 
 // TestPublicBindingsCompileForAnExternalModule proves the public Go bindings
 // are usable without the Runtime module's internal-package privilege. Exact
-// operation coverage is enforced by embedded's own surface test.
+// operation coverage is enforced by the root binding's own surface test.
 func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	directory := t.TempDir()
 	goMod := fmt.Sprintf(`module example.com/runtimeconsumer
@@ -90,21 +90,21 @@ replace github.com/Tangerg/flame/runtime/localruntime => %s
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-var _ = embedded.Open
-var _ *embedded.Runtime
+var _ = flameruntime.Open
+var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ protocol.RunEvent
 
-func consume(ctx context.Context, runtime *embedded.Runtime) error {
-	if _, err := runtime.Discover(ctx, embedded.CallOptions{}); err != nil {
+func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
+	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {
 		return err
 	}
-	_, events, err := runtime.StartRun(ctx, protocol.StartRunRequest{}, embedded.RunCommandOptions{})
+	_, events, err := runtime.StartRun(ctx, protocol.StartRunRequest{}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func consume(ctx context.Context, runtime *embedded.Runtime) error {
 	command.Dir = directory
 	command.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("compile external embedded consumer: %v\n%s", err, output)
+		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}
 }
 

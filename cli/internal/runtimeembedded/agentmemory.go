@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
@@ -14,11 +14,11 @@ import (
 )
 
 type agentMemoryBinding interface {
-	ListAgentMemory(context.Context, protocol.AgentMemoryListRequest, embedded.CallOptions) (*protocol.AgentMemoryList, error)
-	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, embedded.CommandOptions) error
-	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, embedded.CommandOptions) (*protocol.AgentMemoryItem, error)
-	DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest, embedded.CommandOptions) error
-	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, embedded.CommandOptions) (*protocol.AgentMemoryItem, error)
+	ListAgentMemory(context.Context, protocol.AgentMemoryListRequest, flameruntime.CallOptions) (*protocol.AgentMemoryList, error)
+	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, flameruntime.CommandOptions) error
+	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
+	DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest, flameruntime.CommandOptions) error
+	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 }
 
 type agentMemoryAdapter struct{ runtime *Runtime }

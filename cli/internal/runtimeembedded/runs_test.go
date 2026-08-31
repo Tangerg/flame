@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -18,33 +18,33 @@ import (
 )
 
 type runBindingStub struct {
-	start     func(context.Context, protocol.StartRunRequest, embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	resume    func(context.Context, protocol.ResumeRunRequest, embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	subscribe func(context.Context, protocol.SubscribeRunRequest, embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	cancel    func(context.Context, protocol.CancelRunRequest, embedded.CommandOptions) (*protocol.CancelRunResponse, error)
-	steer     func(context.Context, protocol.SteerRunRequest, embedded.CommandOptions) error
+	start     func(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	resume    func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	subscribe func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	cancel    func(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
+	steer     func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error
 }
 
-func (r runBindingStub) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options embedded.CommandOptions) error {
+func (r runBindingStub) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
 	if r.steer == nil {
 		return errors.New("unexpected steer")
 	}
 	return r.steer(ctx, request, options)
 }
 
-func (r runBindingStub) StartRun(ctx context.Context, request protocol.StartRunRequest, options embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r runBindingStub) StartRun(ctx context.Context, request protocol.StartRunRequest, options flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.start(ctx, request, options)
 }
 
-func (r runBindingStub) ResumeRun(ctx context.Context, request protocol.ResumeRunRequest, options embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r runBindingStub) ResumeRun(ctx context.Context, request protocol.ResumeRunRequest, options flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.resume(ctx, request, options)
 }
 
-func (r runBindingStub) SubscribeRun(ctx context.Context, request protocol.SubscribeRunRequest, options embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r runBindingStub) SubscribeRun(ctx context.Context, request protocol.SubscribeRunRequest, options flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.subscribe(ctx, request, options)
 }
 
-func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRunRequest, options embedded.CommandOptions) (*protocol.CancelRunResponse, error) {
+func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRunRequest, options flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
 	return r.cancel(ctx, request, options)
 }
 
@@ -61,7 +61,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		segmentID = "seg_1"
 	)
 	stub := runBindingStub{}
-	stub.start = func(_ context.Context, request protocol.StartRunRequest, options embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	stub.start = func(_ context.Context, request protocol.StartRunRequest, options flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if request.SessionID != "ses_1" || len(request.Input) != 1 || request.Input[0].Text != "hello" {
 			t.Fatalf("start request = %+v", request)
 		}
@@ -128,19 +128,19 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
 	const namespace = "idp_test"
 	stub := runBindingStub{}
-	stub.start = func(_ context.Context, request protocol.StartRunRequest, options embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	stub.start = func(_ context.Context, request protocol.StartRunRequest, options flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
 			t.Fatalf("start idempotency options = %+v", options)
 		}
 		return &protocol.StartRunResponse{RunID: "run_1", SegmentID: "seg_1", UserItemID: "item_1"}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}
-	stub.resume = func(_ context.Context, request protocol.ResumeRunRequest, options embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	stub.resume = func(_ context.Context, request protocol.ResumeRunRequest, options flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
 			t.Fatalf("resume idempotency options = %+v", options)
 		}
 		return &protocol.ResumeRunResponse{RunID: request.RunID, SegmentID: "seg_2"}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}
-	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, options embedded.CommandOptions) (*protocol.CancelRunResponse, error) {
+	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, options flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
 			t.Fatalf("cancel idempotency options = %+v", options)
 		}
@@ -149,7 +149,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 			ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
 		}}, nil
 	}
-	stub.steer = func(_ context.Context, _ protocol.SteerRunRequest, options embedded.CommandOptions) error {
+	stub.steer = func(_ context.Context, _ protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
 			t.Fatalf("steer idempotency options = %+v", options)
 		}
@@ -216,15 +216,15 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 			t.Parallel()
 			called := false
 			stub := runBindingStub{
-				start: func(context.Context, protocol.StartRunRequest, embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+				start: func(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 					called = true
 					return nil, nil, nil
 				},
-				resume: func(context.Context, protocol.ResumeRunRequest, embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+				resume: func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 					called = true
 					return nil, nil, nil
 				},
-				steer: func(context.Context, protocol.SteerRunRequest, embedded.CommandOptions) error {
+				steer: func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error {
 					called = true
 					return nil
 				},
@@ -249,7 +249,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 
 func TestSubscribeRunPassesOpaqueReplayCursor(t *testing.T) {
 	stub := runBindingStub{}
-	stub.subscribe = func(_ context.Context, request protocol.SubscribeRunRequest, options embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	stub.subscribe = func(_ context.Context, request protocol.SubscribeRunRequest, options flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if request.RunID != "run_1" || request.SegmentID != "seg_1" || options.AfterEventID != "evt_opaque-event-cursor" {
 			t.Fatalf("subscribe = (%+v, %+v)", request, options)
 		}
@@ -270,7 +270,7 @@ func TestSubscribeRunPassesOpaqueReplayCursor(t *testing.T) {
 func TestSubscribeRunRejectsInvalidReplayCursorBeforeBinding(t *testing.T) {
 	t.Parallel()
 	called := false
-	runtime := &Runtime{runs: runBindingStub{subscribe: func(context.Context, protocol.SubscribeRunRequest, embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	runtime := &Runtime{runs: runBindingStub{subscribe: func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		called = true
 		return nil, nil, nil
 	}}, meta: requestMeta("test")}
@@ -291,10 +291,10 @@ func TestSubscribeRunRejectsInvalidReplayCursorBeforeBinding(t *testing.T) {
 
 func TestProjectedStreamClassifiesClosedRuntime(t *testing.T) {
 	stream := projectEventStream(func(yield func(protocol.RunEvent, error) bool) {
-		yield(protocol.RunEvent{}, embedded.ErrClosed)
+		yield(protocol.RunEvent{}, flameruntime.ErrClosed)
 	}, "seg_1")
 	for _, err := range stream {
-		if !errors.Is(err, agent.ErrDisconnected) || !errors.Is(err, embedded.ErrClosed) {
+		if !errors.Is(err, agent.ErrDisconnected) || !errors.Is(err, flameruntime.ErrClosed) {
 			t.Fatalf("stream error = %v", err)
 		}
 		return
@@ -318,10 +318,10 @@ func TestRunAdaptersRejectMismatchedAcknowledgements(t *testing.T) {
 	t.Parallel()
 	events := func(func(protocol.RunEvent, error) bool) {}
 	runtime := &Runtime{runs: runBindingStub{
-		resume: func(context.Context, protocol.ResumeRunRequest, embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+		resume: func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 			return &protocol.ResumeRunResponse{RunID: "run_other", SegmentID: "seg_2"}, events, nil
 		},
-		subscribe: func(context.Context, protocol.SubscribeRunRequest, embedded.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+		subscribe: func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 			return &protocol.SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_other"}, events, nil
 		},
 	}, meta: requestMeta("test")}
@@ -342,10 +342,10 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 	t.Parallel()
 	events := func(func(protocol.RunEvent, error) bool) {}
 	runtime := &Runtime{runs: runBindingStub{
-		start: func(context.Context, protocol.StartRunRequest, embedded.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+		start: func(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 			return &protocol.StartRunResponse{RunID: "run_started", SegmentID: "seg_started"}, events, nil
 		},
-		resume: func(context.Context, protocol.ResumeRunRequest, embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+		resume: func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 			return &protocol.ResumeRunResponse{RunID: "run_1", SegmentID: ""}, events, nil
 		},
 	}, meta: requestMeta("test")}
@@ -380,7 +380,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		t.Fatal(err)
 	}
 	stub := runBindingStub{}
-	stub.resume = func(_ context.Context, request protocol.ResumeRunRequest, options embedded.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	stub.resume = func(_ context.Context, request protocol.ResumeRunRequest, options flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if options.IdempotencyKey == "" || request.RunID != "run_1" || len(request.Responses) != 1 {
 			t.Fatalf("resume = (%+v, %+v)", request, options)
 		}
@@ -394,7 +394,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		}
 		return &protocol.ResumeRunResponse{RunID: request.RunID, SegmentID: "seg_2"}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}
-	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, options embedded.CommandOptions) (*protocol.CancelRunResponse, error) {
+	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, options flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
 		if request.RunID != "run_1" || request.Reason != "stop" || options.IdempotencyKey == "" {
 			t.Fatalf("cancel = (%+v, %+v)", request, options)
 		}
@@ -479,7 +479,7 @@ func TestProjectAnswerPreservesQuestionFieldOrderAndOwnsValues(t *testing.T) {
 
 func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 	stub := runBindingStub{}
-	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, _ embedded.CommandOptions) (*protocol.CancelRunResponse, error) {
+	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, _ flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
 		if request.RunID != "run_child" {
 			t.Fatalf("request = %+v", request)
 		}
@@ -542,7 +542,7 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			stub := runBindingStub{cancel: func(context.Context, protocol.CancelRunRequest, embedded.CommandOptions) (*protocol.CancelRunResponse, error) {
+			stub := runBindingStub{cancel: func(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
 				return test.response, nil
 			}}
 			runtime := &Runtime{runs: stub, meta: requestMeta("test")}
@@ -555,7 +555,7 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 
 func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 	stub := runBindingStub{}
-	stub.steer = func(_ context.Context, request protocol.SteerRunRequest, options embedded.CommandOptions) error {
+	stub.steer = func(_ context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
 		if request.RunID != "run_1" || request.ExpectedSegmentID != "seg_2" || len(request.Input) != 1 || request.Input[0].Text != "focus on the parser" {
 			t.Fatalf("steer request = %+v", request)
 		}

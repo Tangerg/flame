@@ -1,5 +1,5 @@
 // Package runtimeembedded adapts the public in-process runtime binding to the
-// CLI-owned agent ports. Protocol DTOs and embedded lifecycle details stop at
+// CLI-owned agent ports. Protocol DTOs and Runtime lifecycle details stop at
 // this package boundary.
 package runtimeembedded
 
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -57,7 +57,7 @@ func requiredRunEventTypes() []protocol.StreamEventType {
 }
 
 // Config contains the process-owned paths and build identity needed to open one
-// embedded runtime. Paths retain the semantics documented by embedded.Config.
+// in-process Runtime. Paths retain the semantics documented by flameruntime.Config.
 type Config struct {
 	DataDirectory        string
 	DefaultWorkspacePath string
@@ -67,9 +67,9 @@ type Config struct {
 }
 
 // Runtime is the anti-corruption adapter between protocol DTOs and CLI domain
-// projections. It intentionally exposes no protocol or embedded types.
+// projections. It intentionally exposes no protocol or Runtime binding types.
 type Runtime struct {
-	binding          *embedded.Runtime
+	binding          *flameruntime.Runtime
 	modelCatalog     modelCatalogBinding
 	approvals        approvalBinding
 	sessionCatalog   sessionCatalogBinding
@@ -107,10 +107,10 @@ var _ agent.Runtime = (*Runtime)(nil)
 var _ workspace.Service = (*Runtime)(nil)
 var _ changefeed.Source = (*Runtime)(nil)
 
-// Open starts and validates one embedded runtime. A runtime whose discovery
+// Open starts and validates one in-process Runtime. A Runtime whose discovery
 // contract cannot support the CLI is closed before Open returns the error.
 func Open(ctx context.Context, cfg Config) (*Runtime, error) {
-	binding, err := embedded.Open(ctx, embedded.Config{
+	binding, err := flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        cfg.DataDirectory,
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
 		UserHomePath:         cfg.UserHomePath,
@@ -176,78 +176,78 @@ func requestMeta(version string) protocol.RequestMeta {
 	}
 }
 
-func (r *Runtime) callOptions() embedded.CallOptions {
-	return embedded.CallOptions{RequestMeta: cloneRequestMeta(r.meta)}
+func (r *Runtime) callOptions() flameruntime.CallOptions {
+	return flameruntime.CallOptions{RequestMeta: cloneRequestMeta(r.meta)}
 }
 
-func (r *Runtime) commandOptions() (embedded.CommandOptions, error) {
+func (r *Runtime) commandOptions() (flameruntime.CommandOptions, error) {
 	key, err := newIdempotencyKey()
 	if err != nil {
-		return embedded.CommandOptions{}, err
+		return flameruntime.CommandOptions{}, err
 	}
-	return embedded.CommandOptions{
+	return flameruntime.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
-func (r *Runtime) commandOptionsFor(commandID agent.CommandID) (embedded.CommandOptions, error) {
+func (r *Runtime) commandOptionsFor(commandID agent.CommandID) (flameruntime.CommandOptions, error) {
 	if commandID == "" {
 		return r.commandOptions()
 	}
 	if err := commandID.Validate(); err != nil {
-		return embedded.CommandOptions{}, err
+		return flameruntime.CommandOptions{}, err
 	}
-	return embedded.CommandOptions{
+	return flameruntime.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
 		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
-func (r *Runtime) runCommandOptions() (embedded.RunCommandOptions, error) {
+func (r *Runtime) runCommandOptions() (flameruntime.RunCommandOptions, error) {
 	key, err := newIdempotencyKey()
 	if err != nil {
-		return embedded.RunCommandOptions{}, err
+		return flameruntime.RunCommandOptions{}, err
 	}
-	return embedded.RunCommandOptions{
+	return flameruntime.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
-func (r *Runtime) runCommandOptionsFor(commandID agent.CommandID) (embedded.RunCommandOptions, error) {
+func (r *Runtime) runCommandOptionsFor(commandID agent.CommandID) (flameruntime.RunCommandOptions, error) {
 	if commandID == "" {
 		return r.runCommandOptions()
 	}
 	if err := commandID.Validate(); err != nil {
-		return embedded.RunCommandOptions{}, err
+		return flameruntime.RunCommandOptions{}, err
 	}
-	return embedded.RunCommandOptions{
+	return flameruntime.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
 		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
 	}, nil
 }
 
-func (r *Runtime) subscriptionOptions(afterEventID string) (embedded.RunSubscriptionOptions, error) {
+func (r *Runtime) subscriptionOptions(afterEventID string) (flameruntime.RunSubscriptionOptions, error) {
 	if afterEventID != "" {
 		if len(afterEventID) > protocol.MaximumRunEventIDCharacters {
-			return embedded.RunSubscriptionOptions{}, fmt.Errorf(
+			return flameruntime.RunSubscriptionOptions{}, fmt.Errorf(
 				"run replay cursor exceeds the %d-character transport limit",
 				protocol.MaximumRunEventIDCharacters,
 			)
 		}
 		if !strings.HasPrefix(afterEventID, protocol.IDPrefixEvent) {
-			return embedded.RunSubscriptionOptions{}, errors.New("run replay cursor has invalid event-id framing")
+			return flameruntime.RunSubscriptionOptions{}, errors.New("run replay cursor has invalid event-id framing")
 		}
 	}
-	return embedded.RunSubscriptionOptions{
+	return flameruntime.RunSubscriptionOptions{
 		RequestMeta:  cloneRequestMeta(r.meta),
 		AfterEventID: afterEventID,
 	}, nil
 }
 
-func (r *Runtime) changeSubscriptionOptions() embedded.SubscriptionOptions {
-	return embedded.SubscriptionOptions{RequestMeta: cloneRequestMeta(r.meta)}
+func (r *Runtime) changeSubscriptionOptions() flameruntime.SubscriptionOptions {
+	return flameruntime.SubscriptionOptions{RequestMeta: cloneRequestMeta(r.meta)}
 }
 
 func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
@@ -312,8 +312,8 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	return nil
 }
 
-// Close completes the embedded runtime teardown. Call it again when it returns
-// an error; embedded.Close resumes incomplete teardown.
+// Close completes the in-process Runtime teardown. Call it again when it returns
+// an error; flameruntime.Runtime.Close resumes incomplete teardown.
 func (r *Runtime) Close() error {
 	if r == nil || r.binding == nil {
 		return nil
@@ -337,7 +337,7 @@ func NewOwner(config Config) *Owner {
 
 func (o *Owner) Runtime(ctx context.Context) (backend.Services, error) {
 	if o == nil {
-		return backend.Services{}, errors.New("embedded runtime owner is nil")
+		return backend.Services{}, errors.New("runtime owner is nil")
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()

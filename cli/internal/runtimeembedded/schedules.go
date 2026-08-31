@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/schedule"
@@ -22,11 +22,11 @@ const (
 )
 
 type scheduleBinding interface {
-	ListSchedules(context.Context, protocol.PageQuery, embedded.CallOptions) (*protocol.Page[protocol.Schedule], error)
-	CreateSchedule(context.Context, protocol.CreateScheduleRequest, embedded.CommandOptions) (*protocol.Schedule, error)
-	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, embedded.CommandOptions) (*protocol.Schedule, error)
-	DeleteSchedule(context.Context, protocol.DeleteScheduleRequest, embedded.CommandOptions) error
-	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, embedded.CommandOptions) (*protocol.RunScheduleNowResponse, error)
+	ListSchedules(context.Context, protocol.PageQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error)
+	CreateSchedule(context.Context, protocol.CreateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
+	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
+	DeleteSchedule(context.Context, protocol.DeleteScheduleRequest, flameruntime.CommandOptions) error
+	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error)
 }
 
 var _ schedule.Service = (*Runtime)(nil)

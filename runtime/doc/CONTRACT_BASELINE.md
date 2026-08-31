@@ -10,9 +10,9 @@
 
 ## 1. 基线含义
 
-Runtime 是应用后端，同时提供公共 Go binding。只有 `protocol`、`embedded` 与窄部署交接包 `localruntime` 的 exported surface 构成 Go API；`internal` exported identifiers 仍只服务模块内组合。因此本基线不冻结全部内部 `go doc`，而冻结四类真实合同：
+Runtime 是应用后端，同时从模块根提供公共 Go binding。只有模块根、`protocol` 与窄部署交接包 `localruntime` 的 exported surface 构成 Go API；`internal` exported identifiers 仍只服务模块内组合。因此本基线不冻结全部内部 `go doc`，而冻结四类真实合同：
 
-1. 外部 Runtime Protocol、公共 Go protocol/embedded/localruntime surface 和生成制品；
+1. 外部 Runtime Protocol、公共 Go root/protocol/localruntime surface 和生成制品；
 2. SQLite/artifact/checkpoint 等持久 shape；
 3. Application 与 Agent adapter 的防腐边界；
 4. Clean Architecture import DAG 和外部 SDK isolation。
@@ -67,7 +67,7 @@ P207 将 workspace file head/search/read 的四种请求单位从 scalar zero se
 
 P208 将 usage summary 的时间范围从 `sinceDays == 0` 双义数字切换为 pointer-backed optional positive integer：wire 字段缺席唯一表达 all-time，present 值唯一表达正数 recent calendar-day window。Runtime Application、CLI 与 Desktop 分别以自己的 rich period model 持有该区别；Delivery 只做 presence projection，Desktop gateway 不再用 truthiness 重建业务含义。该 breaking cutover 不改变 JSON 字段名、Protocol 日期、Artifact v26、SQLite epoch 88 或 method/topic 集合。
 
-P209 只改变 CLI 内部 consumer model：`SessionQuery` / `RunQuery` 以 `PageSize` 表达命名的 20-row 默认或显式 1–100 rows，embedded adapter 仍向既有 pointer-backed `PageQuery.limit` 发布正整数。Runtime Protocol、生成制品及其 digest、Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合均不变。
+P209 只改变 CLI 内部 consumer model：`SessionQuery` / `RunQuery` 以 `PageSize` 表达命名的 20-row 默认或显式 1–100 rows，Runtime adapter 仍向既有 pointer-backed `PageQuery.limit` 发布正整数。Runtime Protocol、生成制品及其 digest、Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合均不变。
 
 P210 只改变 CLI internal retry/reconnect construction：bounded schedule、immediate test policy、disabled reconnect 与 configured reconnect 以私有不可变字段表达，invalid zero policy 在 mutation/Run I/O 前失败。Runtime Protocol、生成制品及其 digest、Protocol 日期、Artifact v26、SQLite epoch 88 和 method/topic 集合均不变。
 
@@ -85,7 +85,7 @@ P229 将 `sessions.list` 从通用 `PageQuery` 前移为 Flame-owned `ListSessio
 
 P217 只删除 CLI consumer-local optional profile→policy projection；Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI command output 与 workbench persistence 均不变。
 
-P218 只删除 CLI embedded adapter 的 profile presence 推断；生产 embedded Runtime 本就只在 successful validated discovery 后构造，因此 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI output 与 persistence 均不变。invalid partial Runtime 现在在 Services validation 显式失败。
+P218 只删除 CLI Runtime adapter 的 profile presence 推断；生产 in-process Runtime 本就只在 successful validated discovery 后构造，因此 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI output 与 persistence 均不变。invalid partial Runtime 现在在 Services validation 显式失败。
 
 P219 只改变 CLI 内部 Workbench construction/config API：generic `Open(directory, Config)` 与 primitive capacity fields 被显式 memory/directory constructors 和 `*Capacity` 取代。公开 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI command output 及已有 Workbench JSON envelope/records 均不变；空白或相对 durable root 现在 fail closed，不提供兼容 constructor、silent fallback 或 migration shim。
 
@@ -95,7 +95,7 @@ P221 不改变 Runtime Protocol、生成制品/digest、Artifact、SQLite、Desk
 
 P222 只收紧 CLI internal `SummaryPeriod` construction：zero value 从 all-time 改为 invalid，所有真实 caller 使用 `AllTime()` 或 `RecentDays(positive)`。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI `/usage` 语法/output、wire `sinceDays` optional-positive shape 与 Workbench persistence 均不变；不保留 zero-value fallback。
 
-P223 只 breaking 收紧 CLI internal `RunLineage` Go API：公开 child identity fields 被私有 closed value 与 root/child constructors 取代，zero value 不再表示 root。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/text/JSON/NDJSON output 与 Workbench persistence 均不变；embedded adapter 继续把 wire 的全缺席 tuple 精确投影为 root、完整 tuple 投影为 child，partial tuple fail closed，不提供旧 struct literal 兼容面。
+P223 只 breaking 收紧 CLI internal `RunLineage` Go API：公开 child identity fields 被私有 closed value 与 root/child constructors 取代，zero value 不再表示 root。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、CLI flags/text/JSON/NDJSON output 与 Workbench persistence 均不变；Runtime adapter 继续把 wire 的全缺席 tuple 精确投影为 root、完整 tuple 投影为 child，partial tuple fail closed，不提供旧 struct literal 兼容面。
 
 P224 只 breaking 收紧 CLI internal `modelconfig.Role` Go API 与 TUI auxiliary-role command grammar：公开 kind/provider/model bag 被 inherited-utility、disabled-embedding、configured-role constructors 取代，zero value 非法；`/utility off` 与 `/embedding inherit` 这两个跨语义别名删除，分别只保留 `inherit` 与 `off`。Runtime Protocol、生成制品/digest、Artifact、SQLite、Desktop binding、wire role shape、CLI 持久化与既有 role output 文案均不变。
 
@@ -125,7 +125,7 @@ P242 breaking 把Schedule所有durable timestamp统一为Domain-owned UTC millis
 
 P243–P244 breaking 只改变internal Schedule construction/identity端口：显式Disabled与error-producing constructors替换partial nil wiring，private Worker不再形成公共半构造面；ManagementIdentities/OccurrenceIdentities由同一production adapter实现并在composition root注入。公共Runtime、模型Tool JSON、SQLite、Protocol/Artifact版本与四份contract digest均不变。
 
-P245–P246 breaking 只改变CLI internal Goal projection construction：公开Goal/Reason/Usage字段袋改为private immutable values，embedded adapter经technical Snapshot与Restore形成合法值，TUI改读accessor；zero/regressing durable time、status/reason错配与active exhausted budget在进入CLI状态前拒绝。公共Flame Runtime Protocol JSON、生成合同、Desktop、SQLite epoch 90与Artifact v26均不变。
+P245–P246 breaking 只改变CLI internal Goal projection construction：公开Goal/Reason/Usage字段袋改为private immutable values，Runtime adapter经technical Snapshot与Restore形成合法值，TUI改读accessor；zero/regressing durable time、status/reason错配与active exhausted budget在进入CLI状态前拒绝。公共Flame Runtime Protocol JSON、生成合同、Desktop、SQLite epoch 90与Artifact v26均不变。
 
 P247 breaking 只改变CLI internal Steer outbox construction：`PendingSteer`公开持久字段袋改为private immutable aggregate，Workbench以private record编码同一`pendingSteer` JSON字段和值，format version 1不变；canonical instruction不再通过trimmed equality冒充exact source ownership。Flame Runtime Protocol、Runtime/SQLite/Artifact与Desktop合同不变。
 
@@ -149,11 +149,11 @@ P256 breaking 只改变CLI internal Extension Registry registration identity与�
 
 P257 breaking 只改变CLI internal Conversation presentation bookkeeping：删除无消费者revision，local failure block ID改由现有block index安全派生并避让冲突。Runtime event/Session/Plan wire、Workbench、Desktop、SQLite与Artifact合同均不变。
 
-P258 breaking 只改变CLI production mock backend内部opaque identity representation：固定前缀numeric uint64改为typed namespace + arbitrary-precision sequence，既有低位ID shape保持，越过uint64后继续十进制增长。真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+P258 breaking 只改变CLI production mock backend内部opaque identity representation：固定前缀numeric uint64改为typed namespace + arbitrary-precision sequence，既有低位ID shape保持，越过uint64后继续十进制增长。真实Flame Runtime Protocol、Runtime adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
 
-P259 breaking 只改变CLI production mock backend的Session Update/Rollback失败原子性：revision exhaustion现在显式拒绝且candidate transaction零写入，成功返回shape与revision step保持。真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+P259 breaking 只改变CLI production mock backend的Session Update/Rollback失败原子性：revision exhaustion现在显式拒绝且candidate transaction零写入，成功返回shape与revision step保持。真实Flame Runtime Protocol、Runtime adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
 
-P260 breaking 只改变CLI production mock backend的Run lifecycle失败事务与Segment错误投影：Start/park/Resume/Steer/Finish/Cancel在写入前预留完整revision容量，后台失败由同一Segment向当前及重连subscriber确定发布；失败finish不再被`sync.Once`永久吞掉。成功event顺序、Session/Run/Transcript projection、CLI命令与JSON shape保持；真实Flame Runtime Protocol、embedded adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
+P260 breaking 只改变CLI production mock backend的Run lifecycle失败事务与Segment错误投影：Start/park/Resume/Steer/Finish/Cancel在写入前预留完整revision容量，后台失败由同一Segment向当前及重连subscriber确定发布；失败finish不再被`sync.Once`永久吞掉。成功event顺序、Session/Run/Transcript projection、CLI命令与JSON shape保持；真实Flame Runtime Protocol、Runtime adapter、Workbench、Desktop、SQLite与Artifact合同均不变。
 
 P261 breaking 收紧CLI consumer-owned revision domain：Session、Plan、Schedule与production mock统一接受1–`2^53-1`，new/fork/create acknowledgement必须为首revision，CAS acknowledgement必须是expected的exact successor；越界值不再仅因Go `uint64`可表示而被接受。字段Go/JSON shape不变并与既有Flame Runtime Protocol exact-integer合同对齐；Runtime、Desktop、SQLite与Artifact不变。
 
@@ -197,7 +197,9 @@ P280只收紧CLI internal Run/Segment identity admission。Distinct `runidentity
 
 P281只收紧CLI internal Item/Event identity admission。`runidentity.ItemID`/`EventID`覆盖HITL answer、Interaction、Block/delta、child lineage、RunEvent、subscribe after/head checkpoint与可选feedback target；invalid UTF-8、NUL及non-exact值在Conversation恢复、Runtime command或durable publish前失败。Runtime Protocol `2026-08-30`、generated digest、Artifact v27、SQLite epoch 92、Runtime与Desktop shape不变。
 
-P282 breaking收紧Runtime和CLI对Session/Run/Segment/Item/Event foreign identity的准入：普通资源最多256个Unicode code point，Event使用65540-character replay envelope；所有值必须是valid UTF-8、printable且不含Unicode whitespace，不trim、不repair。Runtime Domain富值贯通Application、SQLite、HTTP replay metadata和Protocol generated validation；Event wire同时要求`evt_`prefix，generator以`allOf`表达prefix与identity alphabet的合取，不再覆盖pattern。CLI rich identity持有同值Domain上限，并在runtimeembedded adapter测试中与Protocol锁定。Protocol日期保持`2026-08-30`，Artifact v27、SQLite epoch 92不变；生成制品digest按本批约束刷新。
+P282 breaking收紧Runtime和CLI对Session/Run/Segment/Item/Event foreign identity的准入：普通资源最多256个Unicode code point，Event使用65540-character replay envelope；所有值必须是valid UTF-8、printable且不含Unicode whitespace，不trim、不repair。Runtime Domain富值贯通Application、SQLite、HTTP replay metadata和Protocol generated validation；Event wire同时要求`evt_`prefix，generator以`allOf`表达prefix与identity alphabet的合取，不再覆盖pattern。CLI rich identity持有同值Domain上限，并在Runtime adapter测试中与Protocol锁定。Protocol日期保持`2026-08-30`，Artifact v27、SQLite epoch 92不变；生成制品digest按本批约束刷新。
+
+P287 breaking 将公共同进程 Go binding 从 `runtime/embedded` 移到模块根 `runtime`，并迁移 CLI 与 external-module compile fixture；旧包物理删除且无兼容层。`contract/go-api.json` 的 binding package path 与错误文本前缀随之更新；public type/method shape、Runtime Protocol、Artifact、SQLite 与 HTTP wire 不变。
 
 P283继续breaking收紧协调身份：Goal incarnation成为独立128-code-point exact富值并贯穿Goal/Run/HITL/checkpoint/SQLite；Schedule补入`sch_`framed 256-code-point公开资源合同，occurrence由Schedule identity与canonical due-millisecond cursor共同拥有，scheduled opening也解析同一occurrence而非只TrimSpace。executor instance/member/wait-request/effect严格区分并共享Agent Framework的256-byte URI-safe port合同；Executable build只接受canonical `sha256:<64 lowercase hex>`；deployment implementation/configuration分别持有最多256个exact printable non-whitespace code point，Framework digest不再读取未验证string；provider ToolCall correlation归Conversation Domain所有并在usage、working context、commit/recovery、普通/delegate Tool与Pending边界接受最多512个exact printable non-whitespace code point；top-level write-set commit统一为`run_commit_`framed、最多256-byte URI-safe技术身份，且富值从Application write-set贯穿adapter port和SQLite marker，不再在每层退化成裸string或保留双轨optional parser。Run replay cursor的process epoch、RunID和SegmentID也已作为独立富值保留在内存 authority 中，版本化JSON是唯一字符串编解码边界；分页的timestamp+Run anchor同样拒绝伪造Run identity。每个Bootstrap进程只发布canonical `runtime_<lowercase UUID>` incarnation；所有产品发射面消费唯一`productidentity.Name=flame`，不再把通用`runtime`当品牌。durable idempotency namespace由独立富值从SQLite贯穿Bootstrap，operation在业务准入前精确解析，HTTP不再trim身份；公开Go/Schema/TypeScript合同共同声明`^idp_[0-9a-f]{32}$`。process-local MCP OAuth attempt也由Application富值拥有并在lookup前解析，公开request/response共同发布`^mcpauth_[A-Z2-7]{26,64}$`。Agent Memory item同样由独立`ItemID`拥有`^mem_[0-9a-f]{32}$`，Domain、Application、SQLite strict codec与生成Go/Schema/TypeScript校验器共享精确语法；显式用户激活已有proposal时保留原身份且不再预先生成并丢弃随机ID。Protocol日期仍为`2026-08-30`，Artifact v27不变；持久准入CHECK使SQLite前移epoch 93，Go API surface未变，Manifest/OpenRPC/Schema digest按新增约束刷新。
 
@@ -236,11 +238,11 @@ Run session-change notifier以实际`sessionRunObserver` registration集合拥�
 | `contract/manifest.json` | `10dd28bfc19312bfed0dc39a58bb25ae6fc4b42b8cf82143ffd744982e22b06f` |
 | `contract/openrpc.json` | `f73da812bbe749158344e838692bc1ae2fc2bf108423fdfef16eed5b53b35401` |
 | `contract/schema.json` | `02cb972c0d9db91a523f9acd7fa71e55f8decf8488b3ecf837e25d57c99706f8` |
-| `contract/go-api.json` | `f94730147cad2b1b24cc3b30a06c5833e597eafaff457b637ff5598c48fdfec8` |
+| `contract/go-api.json` | `af15710cf99c5eaf17720c55d931200ec0a1049a48dd97a994588b777c86588f` |
 
 TypeScript generated files 是派生制品，不单独定义语义。它们必须由同一个 contract generator 产生且 diff-free；当前前端/TUI/CLI 是否已经消费最新 shape，由 P10/P12 的 consumer handoff 记录，不通过兼容字段掩盖。
 
-仓库身份迁移只让公共 Go surface 的 canonical package path 变为 `github.com/Tangerg/flame/runtime/...`，因此 `go-api.json` digest 显式重新冻结；声明集合、签名、Protocol、Artifact、SQLite 与运行时语义均未变化，也不保留旧 module path。
+P287 只把同进程 binding 的 canonical package path 从子包提升为模块根 `github.com/Tangerg/flame/runtime`，因此 `go-api.json` digest 显式重新冻结；声明集合、签名、Protocol、Artifact、SQLite 与运行时语义均未变化，也不保留旧 package path。
 
 人读语义 owner：
 
@@ -334,7 +336,7 @@ identity 后才读写，域内 symlink 的 alias 本身保持不变；跨进程 
 新 revision。
 这些 topic 是失效事实，不携带配置值。Provider/model role、approval policy 与 agent-memory review 同样在所属 Application use case 提交后发布专用失效事实；Delivery 才将中性 notice 映射为 wire topic，Desktop Workspace events Adapter 再映射到各 context 公开 query identity，Agent Framework 零感知。
 
-公共 Go surface 只有 `runtime/protocol`、`runtime/embedded` 与 `runtime/localruntime`，由生成的 `contract/go-api.json` 完整冻结。`protocol` 只公开 binding-neutral values、strict validation、版本、稳定错误 identity 与 `ProblemError`；`embedded` 只公开 concrete Runtime lifecycle、准确 options 和类型化 operation methods；`localruntime` 只公开 durable token 的 validated `Token`、`OpenToken`、`ReadToken` 与稳定 `ErrInvalidToken`，不公开 transport/server 或 host-directory discovery。同一 canonical data directory 可由另一个 embedded/HTTP Runtime 同时打开，因此旧的 `embedded.ErrDataDirectoryInUse` 已 breaking 删除；实际冲突在对应 Session operation 上投影既有 `session_busy`。服务端 method interface、request context plumbing、numeric JSON-RPC code、reflection shape walker、artifact catalogue、Host、Store、Engine 和 Router 均属于 `internal`，不构成公共 Go surface。P113 对 Assembly、operation、Interaction、Toolset、LSP、MCP 以及 Runs/Sessions/Runsegment constructor 的 breaking correction 只收紧 internal valid construction 与 lifetime ownership；P148/P149 先分离 terminal diagnostic、再按 SDK 合同纠正 MCP close，P150 删除失去生产消费者的 Retryable/settlement 双态并让 terminal Sequence 在失败 Assembly timeout 后继续完成逆序资源图，P151 让 Host 整体 shutdown generation 独立于 caller wait，P152 再让 Instance 以同一 owner 规则从 operation Endpoint 穿过 workers 加入 Host；公共/CLI Close timeout 不再遗弃下层图。P174 breaking 增加唯一 deployment handoff package 并删除 HTTP internal token owner；Protocol method/event、Artifact 与 SQLite shape 不变。
+公共 Go surface 只有模块根 `runtime`、`runtime/protocol` 与 `runtime/localruntime`，由生成的 `contract/go-api.json` 完整冻结。`protocol` 只公开 binding-neutral values、strict validation、版本、稳定错误 identity 与 `ProblemError`；模块根只公开 concrete Runtime lifecycle、准确 options 和类型化 operation methods；`localruntime` 只公开 durable token 的 validated `Token`、`OpenToken`、`ReadToken` 与稳定 `ErrInvalidToken`，不公开 transport/server 或 host-directory discovery。同一 canonical data directory 可由另一个 Go/HTTP Runtime 同时打开；实际冲突在对应 Session operation 上投影既有 `session_busy`。服务端 method interface、request context plumbing、numeric JSON-RPC code、reflection shape walker、artifact catalogue、Host、Store、Engine 和 Router 均属于 `internal`，不构成公共 Go surface。P113 对 Assembly、operation、Interaction、Toolset、LSP、MCP 以及 Runs/Sessions/Runsegment constructor 的 breaking correction 只收紧 internal valid construction 与 lifetime ownership；P148/P149 先分离 terminal diagnostic、再按 SDK 合同纠正 MCP close，P150 删除失去生产消费者的 Retryable/settlement 双态并让 terminal Sequence 在失败 Assembly timeout 后继续完成逆序资源图，P151 让 Host 整体 shutdown generation 独立于 caller wait，P152 再让 Instance 以同一 owner 规则从 operation Endpoint 穿过 workers 加入 Host；公共/CLI Close timeout 不再遗弃下层图。P174 breaking 增加唯一 deployment handoff package 并删除 HTTP internal token owner；Protocol method/event、Artifact 与 SQLite shape 不变。
 
 P286 将 `internal/delivery/operation` 与 `internal/delivery/server` 的人工阶段分包收回内聚的 `internal/delivery` 根 package。`Endpoint` 现在同时拥有唯一 binding-neutral 进入点与 Delivery shutdown admission；`Handler` 只拥有 Application/protocol 翻译，不再向 Bootstrap 提供平行 lifecycle。`dispatch` 和 `transport` 仍保留为 JSON-RPC 与 HTTP/SSE 的独立 mechanism。这是 Runtime internal API 的 breaking 替换，不保留 alias、shim 或 forwarding package；公共 Go surface、Protocol method/event、Artifact 和 SQLite shape 不变。
 
@@ -344,7 +346,7 @@ P286 将 `internal/delivery/operation` 与 `internal/delivery/server` 的人工�
 
 - 当前 `schemaEpoch = 95`；Provider credential/Base URL以NULL表达缺省且拒绝空文本，Session、Run、Goal、Schedule、Schedule occurrence及usage snapshot中的provider/model/reasoning identity都经同一bounded printable value object严格恢复，Agent Memory item identity由`mem_`加32位lowercase hex精确CHECK并经Domain codec恢复，MCP server name以1–32位canonical lowercase ASCII slug精确CHECK并经Domain codec恢复，MCP remote tool name以1–128位协议ASCII grammar恢复且策略存入规范化关系表，Session/Plan/Schedule revision受正数且JSON exact上界CHECK保护，Session catalog Unicode search material 由 Application canonicalizer 写入并严格复验，Transcript compaction 持久化 canonical 非空摘要，MCP 握手超时以 NULL/positive duration 区分 unbounded/bounded，Goal budget 与 Run limits 持久化显式 presence 语义；不允许 provider primitive sentinel、identity/effort 分裂、identity截断/normalization、search material 漂移、摘要缺失、预算哨兵或旧 epoch 迁移；
 - P183 将 Runtime 稳定领域枚举直接持久化为其命名文本，并把 `session_permission_modes.mode/restore_mode` 从 INTEGER 改为 TEXT；旧 ordinal/数字字符串与新领域值不兼容，故一次性提升 epoch，不迁移、不双读、不保留 codec 映射表；
-- P184 把 operation 注册/typed invocation 的 Go 1.27 泛型行为归还 `Registry` / `Endpoint`，让就近声明的 `operation.Name` 成为注册与 embedded binding 共用的唯一 method identity，并收紧 Hook verdict 与 Tool mutation scope 的 internal zero-value 边界；不改变 Protocol method text、Artifact 或 SQLite shape；
+- P184 把 operation 注册/typed invocation 的 Go 1.27 泛型行为归还 `Registry` / `Endpoint`，让就近声明的 `operation.Name` 成为注册与模块根 binding 共用的唯一 method identity，并收紧 Hook verdict 与 Tool mutation scope 的 internal zero-value 边界；不改变 Protocol method text、Artifact 或 SQLite shape；
 - P185 迁移到 Agent Baseline 31 的 `SchemaFor` owner并整体升级 Runtime/Desktop/Frontend 依赖图；不改变 Protocol method text、Artifact、SQLite、checkpoint 或公共 Go surface；
 - `sessions.workspace_path` 是非空列；strict codec 先重建 Domain `Workspace`，相对、非 lexical-clean 或空路径均拒绝，旧 `sessions.cwd` 不读取；
 - `sessions.provider` / `sessions.model` 是非空列；strict codec 只恢复 configured exact pair，Runtime 默认只在 Session admission 时安装，不在 reader/Run 层补写；

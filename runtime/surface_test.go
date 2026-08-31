@@ -1,4 +1,4 @@
-package embedded
+package runtime
 
 import (
 	"context"
@@ -20,10 +20,10 @@ import (
 func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 	_, source, _, _ := runtime.Caller(0)
 	directory := filepath.Dir(source)
-	operationNames := declaredOperationNames(t, filepath.Join(directory, "..", "internal", "delivery"))
+	operationNames := declaredOperationNames(t, filepath.Join(directory, "internal", "delivery"))
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		t.Fatalf("read embedded package: %v", err)
+		t.Fatalf("read Runtime package: %v", err)
 	}
 
 	bindings := make(map[string]string)
@@ -34,7 +34,7 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 		}
 		file, err := parser.ParseFile(files, filepath.Join(directory, entry.Name()), nil, 0)
 		if err != nil {
-			t.Fatalf("parse embedded source %s: %v", entry.Name(), err)
+			t.Fatalf("parse Runtime source %s: %v", entry.Name(), err)
 		}
 		for _, declaration := range file.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
@@ -80,12 +80,12 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 	for _, meta := range delivery.Contract().Metas() {
 		methodName := bindings[meta.Name.String()]
 		if methodName == "" {
-			t.Errorf("operation %q has no public embedded method", meta.Name)
+			t.Errorf("operation %q has no public Runtime method", meta.Name)
 			continue
 		}
 		method, ok := runtimeType.MethodByName(methodName)
 		if !ok {
-			t.Errorf("embedded method %s is not exported", methodName)
+			t.Errorf("Runtime method %s is not exported", methodName)
 			continue
 		}
 		if method.Type.In(1) != contextType {
@@ -132,7 +132,7 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 		}
 	}
 	if len(bindings) != len(delivery.Contract().Metas()) {
-		t.Fatalf("embedded bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
+		t.Fatalf("in-process bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
 	}
 }
 

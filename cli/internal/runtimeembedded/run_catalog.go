@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -14,8 +14,8 @@ import (
 )
 
 type runCatalogBinding interface {
-	GetRun(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error)
-	ListRuns(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error)
+	GetRun(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error)
+	ListRuns(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error)
 }
 
 func (r *Runtime) GetRun(ctx context.Context, runID string) (agent.Run, error) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -15,7 +15,7 @@ import (
 type approvalBindingRecorder struct {
 	listRequest   protocol.ListApprovalRulesRequest
 	forgetRequest protocol.ForgetApprovalRuleRequest
-	forgetOptions embedded.CommandOptions
+	forgetOptions flameruntime.CommandOptions
 	listCalls     int
 	forgetCalls   int
 	setMode       protocol.ApprovalMode
@@ -39,18 +39,18 @@ func TestModelCatalogRejectsPresentEmptyTokenLimits(t *testing.T) {
 	}
 }
 
-func (*approvalBindingRecorder) GetApprovalMode(context.Context, embedded.CallOptions) (*protocol.ApprovalModeResult, error) {
+func (*approvalBindingRecorder) GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error) {
 	return &protocol.ApprovalModeResult{Mode: protocol.ApprovalModeBalanced}, nil
 }
 
-func (a *approvalBindingRecorder) SetApprovalMode(_ context.Context, request protocol.SetApprovalModeRequest, _ embedded.CommandOptions) (*protocol.ApprovalModeResult, error) {
+func (a *approvalBindingRecorder) SetApprovalMode(_ context.Context, request protocol.SetApprovalModeRequest, _ flameruntime.CommandOptions) (*protocol.ApprovalModeResult, error) {
 	if a.setMode != "" {
 		return &protocol.ApprovalModeResult{Mode: a.setMode}, nil
 	}
 	return &protocol.ApprovalModeResult{Mode: request.Mode}, nil
 }
 
-func (a *approvalBindingRecorder) ListApprovalRules(_ context.Context, request protocol.ListApprovalRulesRequest, _ embedded.CallOptions) (*protocol.ListApprovalRulesResult, error) {
+func (a *approvalBindingRecorder) ListApprovalRules(_ context.Context, request protocol.ListApprovalRulesRequest, _ flameruntime.CallOptions) (*protocol.ListApprovalRulesResult, error) {
 	a.listCalls++
 	a.listRequest = request
 	return &protocol.ListApprovalRulesResult{Rules: []protocol.ApprovalRule{{
@@ -75,7 +75,7 @@ func TestCatalogsRejectResponsesOutsideTheRequestedIdentity(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func (a *approvalBindingRecorder) ForgetApprovalRule(_ context.Context, request protocol.ForgetApprovalRuleRequest, options embedded.CommandOptions) error {
+func (a *approvalBindingRecorder) ForgetApprovalRule(_ context.Context, request protocol.ForgetApprovalRuleRequest, options flameruntime.CommandOptions) error {
 	a.forgetCalls++
 	a.forgetRequest = request
 	a.forgetOptions = options

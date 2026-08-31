@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -19,9 +19,9 @@ import (
 )
 
 type sessionBinding interface {
-	RollbackSession(context.Context, protocol.RollbackSessionRequest, embedded.CommandOptions) (*protocol.RollbackSessionResponse, error)
-	ExportSession(context.Context, protocol.ExportSessionRequest, embedded.CallOptions) (*protocol.ExportSessionResponse, error)
-	ImportSession(context.Context, protocol.ImportSessionRequest, embedded.CommandOptions) (*protocol.ImportSessionResponse, error)
+	RollbackSession(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error)
+	ExportSession(context.Context, protocol.ExportSessionRequest, flameruntime.CallOptions) (*protocol.ExportSessionResponse, error)
+	ImportSession(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error)
 }
 
 var _ sessiontransfer.Service = (*Runtime)(nil)

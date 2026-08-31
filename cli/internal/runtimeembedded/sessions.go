@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -13,11 +13,11 @@ import (
 )
 
 type sessionCatalogBinding interface {
-	ListSessions(context.Context, protocol.ListSessionsRequest, embedded.CallOptions) (*protocol.Page[protocol.Session], error)
-	CreateSession(context.Context, protocol.CreateSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
-	UpdateSession(context.Context, protocol.UpdateSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
-	ForkSession(context.Context, protocol.ForkSessionRequest, embedded.CommandOptions) (*protocol.Session, error)
-	DeleteSession(context.Context, protocol.DeleteSessionRequest, embedded.CommandOptions) error
+	ListSessions(context.Context, protocol.ListSessionsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.Session], error)
+	CreateSession(context.Context, protocol.CreateSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+	UpdateSession(context.Context, protocol.UpdateSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+	ForkSession(context.Context, protocol.ForkSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+	DeleteSession(context.Context, protocol.DeleteSessionRequest, flameruntime.CommandOptions) error
 }
 
 func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {

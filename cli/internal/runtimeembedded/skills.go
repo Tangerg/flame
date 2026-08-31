@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/skills"
 )
 
 type skillBinding interface {
-	ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.Skill], error)
-	ListManagedSkills(context.Context, embedded.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)
-	ArchiveSkill(context.Context, protocol.SkillNameRequest, embedded.CommandOptions) error
-	RestoreSkill(context.Context, protocol.SkillNameRequest, embedded.CommandOptions) error
-	ListSkillProposals(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.SkillProposal], error)
-	ApproveSkillProposal(context.Context, protocol.SkillProposalRef, embedded.CommandOptions) error
-	RejectSkillProposal(context.Context, protocol.SkillProposalRef, embedded.CommandOptions) error
+	ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error)
+	ListManagedSkills(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)
+	ArchiveSkill(context.Context, protocol.SkillNameRequest, flameruntime.CommandOptions) error
+	RestoreSkill(context.Context, protocol.SkillNameRequest, flameruntime.CommandOptions) error
+	ListSkillProposals(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.SkillProposal], error)
+	ApproveSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
+	RejectSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
 }
 
 var _ skills.Service = (*Runtime)(nil)
@@ -109,7 +109,7 @@ func (r *Runtime) Restore(ctx context.Context, name string) error {
 func (r *Runtime) changeSkillLifecycle(
 	ctx context.Context,
 	operation, name string,
-	change func(context.Context, protocol.SkillNameRequest, embedded.CommandOptions) error,
+	change func(context.Context, protocol.SkillNameRequest, flameruntime.CommandOptions) error,
 ) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -134,7 +134,7 @@ func (r *Runtime) decideSkillProposal(
 	ctx context.Context,
 	operation string,
 	reference skills.ProposalReference,
-	decide func(context.Context, protocol.SkillProposalRef, embedded.CommandOptions) error,
+	decide func(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error,
 ) error {
 	if err := reference.Validate(); err != nil {
 		return err

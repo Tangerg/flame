@@ -9,22 +9,22 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/mcp"
 )
 
 type mcpBinding interface {
-	ListMCPServers(context.Context, embedded.CallOptions) (*protocol.Page[protocol.MCPServer], error)
-	CreateMCPServer(context.Context, protocol.MCPServerCandidate, embedded.CommandOptions) (*protocol.MCPServer, error)
-	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, embedded.CommandOptions) (*protocol.MCPServer, error)
-	DeleteMCPServer(context.Context, protocol.MCPServerRequest, embedded.CommandOptions) error
-	TestMCPServer(context.Context, protocol.MCPServerCandidate, embedded.CallOptions) (*protocol.MCPTestResult, error)
-	ListMCPTools(context.Context, protocol.MCPListToolsRequest, embedded.CallOptions) (*protocol.Page[protocol.MCPTool], error)
-	ReconnectMCPServer(context.Context, protocol.MCPServerRequest, embedded.CommandOptions) error
-	CreateMCPAuthorizationAttempt(context.Context, protocol.CreateMCPAuthorizationAttemptRequest, embedded.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)
-	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRequest, embedded.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
+	ListMCPServers(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error)
+	CreateMCPServer(context.Context, protocol.MCPServerCandidate, flameruntime.CommandOptions) (*protocol.MCPServer, error)
+	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, flameruntime.CommandOptions) (*protocol.MCPServer, error)
+	DeleteMCPServer(context.Context, protocol.MCPServerRequest, flameruntime.CommandOptions) error
+	TestMCPServer(context.Context, protocol.MCPServerCandidate, flameruntime.CallOptions) (*protocol.MCPTestResult, error)
+	ListMCPTools(context.Context, protocol.MCPListToolsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.MCPTool], error)
+	ReconnectMCPServer(context.Context, protocol.MCPServerRequest, flameruntime.CommandOptions) error
+	CreateMCPAuthorizationAttempt(context.Context, protocol.CreateMCPAuthorizationAttemptRequest, flameruntime.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)
+	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRequest, flameruntime.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
 }
 
 var _ mcp.Service = (*Runtime)(nil)
@@ -111,7 +111,7 @@ func (r *Runtime) ReconnectServer(ctx context.Context, server string) error {
 func (r *Runtime) mutateMCPServer(
 	ctx context.Context,
 	operation, server string,
-	mutate func(context.Context, protocol.MCPServerRequest, embedded.CommandOptions) error,
+	mutate func(context.Context, protocol.MCPServerRequest, flameruntime.CommandOptions) error,
 ) error {
 	server = strings.TrimSpace(server)
 	if server == "" {

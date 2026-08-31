@@ -5,15 +5,15 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/usage"
 )
 
 type usageBinding interface {
-	GetSessionUsage(context.Context, protocol.SessionUsageRequest, embedded.CallOptions) (*protocol.Usage, error)
-	GetUsageSummary(context.Context, protocol.UsageSummaryRequest, embedded.CallOptions) (*protocol.UsageSummary, error)
+	GetSessionUsage(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error)
+	GetUsageSummary(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
 var _ usage.Service = (*Runtime)(nil)

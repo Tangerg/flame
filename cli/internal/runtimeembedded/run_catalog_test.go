@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -14,15 +14,15 @@ import (
 )
 
 type runCatalogBindingStub struct {
-	get  func(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error)
-	list func(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error)
+	get  func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error)
+	list func(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error)
 }
 
-func (r runCatalogBindingStub) GetRun(ctx context.Context, request protocol.GetRunRequest, options embedded.CallOptions) (*protocol.RunRef, error) {
+func (r runCatalogBindingStub) GetRun(ctx context.Context, request protocol.GetRunRequest, options flameruntime.CallOptions) (*protocol.RunRef, error) {
 	return r.get(ctx, request, options)
 }
 
-func (r runCatalogBindingStub) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+func (r runCatalogBindingStub) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 	return r.list(ctx, request, options)
 }
 
@@ -36,13 +36,13 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
 	}
 	stub := runCatalogBindingStub{
-		get: func(_ context.Context, request protocol.GetRunRequest, options embedded.CallOptions) (*protocol.RunRef, error) {
+		get: func(_ context.Context, request protocol.GetRunRequest, options flameruntime.CallOptions) (*protocol.RunRef, error) {
 			if request.RunID != wantRun.ID || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 				t.Fatalf("get = (%+v, %+v)", request, options)
 			}
 			return &wantRun, nil
 		},
-		list: func(_ context.Context, request protocol.ListRunsRequest, options embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+		list: func(_ context.Context, request protocol.ListRunsRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			if request.SessionID != "ses_1" || len(request.Statuses) != 1 || request.Statuses[0] != protocol.RunStatusFinished ||
 				!request.IncludeDescendants || request.Cursor != "opaque" || request.Limit == nil || *request.Limit != agent.MaximumPageRows ||
 				options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
@@ -77,7 +77,7 @@ func TestRunCatalogPublishesTheCLIPageDefaultAsPositiveWireIntent(t *testing.T) 
 	runtime := &Runtime{runCatalog: runCatalogBindingStub{list: func(
 		_ context.Context,
 		request protocol.ListRunsRequest,
-		_ embedded.CallOptions,
+		_ flameruntime.CallOptions,
 	) (*protocol.Page[protocol.RunRef], error) {
 		if request.Limit == nil || *request.Limit != agent.DefaultPageRows {
 			t.Fatalf("default run page limit = %v, want %d", request.Limit, agent.DefaultPageRows)
@@ -97,7 +97,7 @@ func TestRunCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T) {
 	runtime := &Runtime{runCatalog: runCatalogBindingStub{list: func(
 		context.Context,
 		protocol.ListRunsRequest,
-		embedded.CallOptions,
+		flameruntime.CallOptions,
 	) (*protocol.Page[protocol.RunRef], error) {
 		called = true
 		return protocol.NewPage([]protocol.RunRef{}), nil
@@ -122,7 +122,7 @@ func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T
 	t.Parallel()
 	called := false
 	runtime := &Runtime{runCatalog: runCatalogBindingStub{
-		list: func(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+		list: func(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			called = true
 			return protocol.NewPage([]protocol.RunRef{}), nil
 		},
@@ -140,10 +140,10 @@ func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T
 func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 	t.Parallel()
 	stub := runCatalogBindingStub{
-		get: func(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error) {
+		get: func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error) {
 			return nil, nil
 		},
-		list: func(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+		list: func(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			return nil, nil
 		},
 	}
@@ -168,10 +168,10 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 	}
 
 	failing := runCatalogBindingStub{
-		get: func(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error) {
+		get: func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error) {
 			return nil, protocol.ErrRunNotFound
 		},
-		list: func(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+		list: func(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			return nil, protocol.ErrSessionNotFound
 		},
 	}
@@ -195,7 +195,7 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 	}
 	wrongIdentity := base
 	wrongIdentity.ID = "run_other"
-	runtime := &Runtime{runCatalog: runCatalogBindingStub{get: func(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error) {
+	runtime := &Runtime{runCatalog: runCatalogBindingStub{get: func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error) {
 		return &wrongIdentity, nil
 	}}, meta: requestMeta("test")}
 	_, err := runtime.GetRun(t.Context(), "run_1")
@@ -219,7 +219,7 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			stub := runCatalogBindingStub{list: func(context.Context, protocol.ListRunsRequest, embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+			stub := runCatalogBindingStub{list: func(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 				return protocol.NewPage([]protocol.RunRef{test.value}), nil
 			}}
 			runtime := &Runtime{runCatalog: stub, meta: requestMeta("test")}
@@ -232,10 +232,10 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 	t.Parallel()
 	stub := runCatalogBindingStub{
-		get: func(context.Context, protocol.GetRunRequest, embedded.CallOptions) (*protocol.RunRef, error) {
+		get: func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error) {
 			return nil, errors.New("unexpected get")
 		},
-		list: func(_ context.Context, request protocol.ListRunsRequest, _ embedded.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+		list: func(_ context.Context, request protocol.ListRunsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			if request.Statuses != nil {
 				t.Fatalf("statuses = %#v, want absent", request.Statuses)
 			}

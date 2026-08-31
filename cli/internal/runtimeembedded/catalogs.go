@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -15,15 +15,15 @@ import (
 )
 
 type modelCatalogBinding interface {
-	ListProviders(context.Context, embedded.CallOptions) (*protocol.Page[protocol.Provider], error)
-	ListModels(context.Context, protocol.ListModelsRequest, embedded.CallOptions) (*protocol.Page[protocol.Model], error)
+	ListProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.Provider], error)
+	ListModels(context.Context, protocol.ListModelsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.Model], error)
 }
 
 type approvalBinding interface {
-	GetApprovalMode(context.Context, embedded.CallOptions) (*protocol.ApprovalModeResult, error)
-	SetApprovalMode(context.Context, protocol.SetApprovalModeRequest, embedded.CommandOptions) (*protocol.ApprovalModeResult, error)
-	ListApprovalRules(context.Context, protocol.ListApprovalRulesRequest, embedded.CallOptions) (*protocol.ListApprovalRulesResult, error)
-	ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, embedded.CommandOptions) error
+	GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error)
+	SetApprovalMode(context.Context, protocol.SetApprovalModeRequest, flameruntime.CommandOptions) (*protocol.ApprovalModeResult, error)
+	ListApprovalRules(context.Context, protocol.ListApprovalRulesRequest, flameruntime.CallOptions) (*protocol.ListApprovalRulesResult, error)
+	ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, flameruntime.CommandOptions) error
 }
 
 func (r *Runtime) ListModels(ctx context.Context) ([]agent.Model, error) {

@@ -5,19 +5,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/goal"
 )
 
 type goalBinding interface {
-	GetGoal(context.Context, protocol.GoalRequest, embedded.CallOptions) (*protocol.Goal, error)
-	StartGoal(context.Context, protocol.StartGoalRequest, embedded.CommandOptions) (*protocol.Goal, error)
-	UpdateGoal(context.Context, protocol.UpdateGoalRequest, embedded.CommandOptions) (*protocol.Goal, error)
-	ClearGoal(context.Context, protocol.GoalRequest, embedded.CommandOptions) error
-	StopGoal(context.Context, protocol.GoalRequest, embedded.CommandOptions) (*protocol.Goal, error)
-	ResumeGoal(context.Context, protocol.GoalRequest, embedded.CommandOptions) (*protocol.Goal, error)
+	GetGoal(context.Context, protocol.GoalRequest, flameruntime.CallOptions) (*protocol.Goal, error)
+	StartGoal(context.Context, protocol.StartGoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error)
+	UpdateGoal(context.Context, protocol.UpdateGoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error)
+	ClearGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) error
+	StopGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error)
+	ResumeGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error)
 }
 
 func (r *Runtime) UpdateGoal(ctx context.Context, update goal.Update) (goal.Goal, error) {
@@ -125,7 +125,7 @@ func (r *Runtime) ResumeGoal(ctx context.Context, sessionID string) (goal.Goal, 
 func (r *Runtime) changeGoal(
 	ctx context.Context,
 	operation, sessionID string,
-	change func(context.Context, protocol.GoalRequest, embedded.CommandOptions) (*protocol.Goal, error),
+	change func(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error),
 ) (goal.Goal, error) {
 	if sessionID == "" {
 		return goal.Goal{}, fmt.Errorf("%s: session id is empty", operation)

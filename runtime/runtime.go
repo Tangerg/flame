@@ -1,4 +1,4 @@
-package embedded
+package runtime
 
 import (
 	"context"
@@ -19,10 +19,10 @@ import (
 var (
 	// ErrClosed is returned when an operation starts after Runtime shutdown has
 	// begun. An already-returned stream ends through its iterator instead.
-	ErrClosed = errors.New("embedded: runtime is closed")
+	ErrClosed = errors.New("runtime: closed")
 )
 
-// Config identifies the host paths used by one embedded Runtime.
+// Config identifies the host paths used by one in-process Runtime.
 type Config struct {
 	// DataDirectory holds Runtime durability and must be absolute. It is required
 	// and may be shared by other Runtime processes using the same storage epoch.
@@ -34,7 +34,7 @@ type Config struct {
 	// Empty takes one os.UserHomeDir snapshot during Open.
 	UserHomePath string
 	// ConfigDirectories are absolute search directories for config.yaml. Empty
-	// searches only DataDirectory; the embedded binding never reads process cwd.
+	// searches only DataDirectory; the in-process binding never reads process cwd.
 	ConfigDirectories []string
 }
 
@@ -59,7 +59,7 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 		ConfigDirectories:    resolved.ConfigDirectories,
 		ServerInfo: protocol.ServerInfo{
 			Name:    productidentity.Name,
-			Version: embeddedVersion(),
+			Version: buildVersion(),
 		},
 	})
 	if err != nil {
@@ -70,28 +70,28 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 
 func (c Config) resolve() (Config, error) {
 	if c.DataDirectory == "" {
-		return Config{}, errors.New("embedded: data directory is required")
+		return Config{}, errors.New("runtime: data directory is required")
 	}
 	if !filepath.IsAbs(c.DataDirectory) {
-		return Config{}, errors.New("embedded: data directory must be absolute")
+		return Config{}, errors.New("runtime: data directory must be absolute")
 	}
 	userHome := c.UserHomePath
 	if userHome == "" {
 		var err error
 		userHome, err = os.UserHomeDir()
 		if err != nil {
-			return Config{}, fmt.Errorf("embedded: locate user home: %w", err)
+			return Config{}, fmt.Errorf("runtime: locate user home: %w", err)
 		}
 	}
 	if userHome == "" || !filepath.IsAbs(userHome) {
-		return Config{}, errors.New("embedded: user home must be a non-empty absolute path")
+		return Config{}, errors.New("runtime: user home must be a non-empty absolute path")
 	}
 	workspace := c.DefaultWorkspacePath
 	if workspace == "" {
 		workspace = userHome
 	}
 	if !filepath.IsAbs(workspace) {
-		return Config{}, errors.New("embedded: default workspace path must be absolute")
+		return Config{}, errors.New("runtime: default workspace path must be absolute")
 	}
 	directories := slices.Clone(c.ConfigDirectories)
 	if len(directories) == 0 {
@@ -99,7 +99,7 @@ func (c Config) resolve() (Config, error) {
 	}
 	for index, directory := range directories {
 		if directory == "" || !filepath.IsAbs(directory) {
-			return Config{}, errors.New("embedded: config directories must be non-empty absolute paths")
+			return Config{}, errors.New("runtime: config directories must be non-empty absolute paths")
 		}
 		directories[index] = filepath.Clean(directory)
 	}
@@ -111,7 +111,7 @@ func (c Config) resolve() (Config, error) {
 	}, nil
 }
 
-func embeddedVersion() string {
+func buildVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
 		return "dev"

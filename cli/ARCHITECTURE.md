@@ -72,7 +72,7 @@ One-shot `run` owns its external stdin byte-stream envelope before building an a
 
 ## Runtime boundary
 
-The process lazily opens at most one embedded Runtime and fully closes it before exit. The adapter:
+The process lazily opens at most one module-root Runtime and fully closes it before exit. The Runtime boundary:
 
 - sends the exact current protocol metadata
 - preserves idempotency, replay, Run, Segment, Item, and revision identities
@@ -145,7 +145,7 @@ Use the narrowest evidence that proves the changed contract:
 
 - root-command tests for syntax, streams, and exit behavior
 - application tests for queue, replay, recovery, and interaction ownership
-- real embedded Runtime tests for Session, Run, Goal, Plan, steer, HITL, compaction, and typed errors
+- real in-process Runtime tests for Session, Run, Goal, Plan, steer, HITL, compaction, and typed errors
 - deterministic render tests for layout and state projection
 - real PTY tests for input decoding, resize, terminal mode, focus, and restoration
 - architecture tests for Runtime/Cobra/Viper/Oolong import isolation and retired package paths

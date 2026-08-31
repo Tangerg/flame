@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -18,17 +18,17 @@ type skillBindingStub struct {
 	actions []string
 }
 
-func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options embedded.CallOptions) (*protocol.Page[protocol.Skill], error) {
+func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
 	return protocol.NewPage([]protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}}), nil
 }
 
-func (s *skillBindingStub) ListManagedSkills(_ context.Context, options embedded.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+func (s *skillBindingStub) ListManagedSkills(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
 	s.assertMeta(options.RequestMeta)
 	return protocol.NewPage([]protocol.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleArchived}}), nil
 }
 
-func (s *skillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options embedded.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+func (s *skillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
 	return protocol.NewPage([]protocol.SkillProposal{{
 		Name: "release-checks", Revision: skillRevision, Scope: protocol.SkillScopeUser,
@@ -37,22 +37,22 @@ func (s *skillBindingStub) ListSkillProposals(_ context.Context, request protoco
 	}}), nil
 }
 
-func (s *skillBindingStub) ArchiveSkill(_ context.Context, request protocol.SkillNameRequest, options embedded.CommandOptions) error {
+func (s *skillBindingStub) ArchiveSkill(_ context.Context, request protocol.SkillNameRequest, options flameruntime.CommandOptions) error {
 	s.assertCommand("archive:"+request.Name, options)
 	return nil
 }
 
-func (s *skillBindingStub) RestoreSkill(_ context.Context, request protocol.SkillNameRequest, options embedded.CommandOptions) error {
+func (s *skillBindingStub) RestoreSkill(_ context.Context, request protocol.SkillNameRequest, options flameruntime.CommandOptions) error {
 	s.assertCommand("restore:"+request.Name, options)
 	return nil
 }
 
-func (s *skillBindingStub) ApproveSkillProposal(_ context.Context, request protocol.SkillProposalRef, options embedded.CommandOptions) error {
+func (s *skillBindingStub) ApproveSkillProposal(_ context.Context, request protocol.SkillProposalRef, options flameruntime.CommandOptions) error {
 	s.assertReference("approve", request, options)
 	return nil
 }
 
-func (s *skillBindingStub) RejectSkillProposal(_ context.Context, request protocol.SkillProposalRef, options embedded.CommandOptions) error {
+func (s *skillBindingStub) RejectSkillProposal(_ context.Context, request protocol.SkillProposalRef, options flameruntime.CommandOptions) error {
 	s.assertReference("reject", request, options)
 	return nil
 }
@@ -72,7 +72,7 @@ func (s *skillBindingStub) assertMeta(meta protocol.RequestMeta) {
 	}
 }
 
-func (s *skillBindingStub) assertCommand(action string, options embedded.CommandOptions) {
+func (s *skillBindingStub) assertCommand(action string, options flameruntime.CommandOptions) {
 	s.t.Helper()
 	if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 		s.t.Fatalf("skill command options = %+v", options)
@@ -80,7 +80,7 @@ func (s *skillBindingStub) assertCommand(action string, options embedded.Command
 	s.actions = append(s.actions, action)
 }
 
-func (s *skillBindingStub) assertReference(action string, request protocol.SkillProposalRef, options embedded.CommandOptions) {
+func (s *skillBindingStub) assertReference(action string, request protocol.SkillProposalRef, options flameruntime.CommandOptions) {
 	s.t.Helper()
 	s.assertCommand(action+":"+string(request.Scope)+"/"+request.Name, options)
 	if request.Workspace.Path != "/workspace" || request.Revision != skillRevision {

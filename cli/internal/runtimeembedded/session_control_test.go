@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
@@ -20,9 +20,9 @@ import (
 )
 
 type sessionBindingStub struct {
-	rollback func(context.Context, protocol.RollbackSessionRequest, embedded.CommandOptions) (*protocol.RollbackSessionResponse, error)
-	export   func(context.Context, protocol.ExportSessionRequest, embedded.CallOptions) (*protocol.ExportSessionResponse, error)
-	imported func(context.Context, protocol.ImportSessionRequest, embedded.CommandOptions) (*protocol.ImportSessionResponse, error)
+	rollback func(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error)
+	export   func(context.Context, protocol.ExportSessionRequest, flameruntime.CallOptions) (*protocol.ExportSessionResponse, error)
+	imported func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error)
 }
 
 func sessionControlProfile(features ...runtimeprofile.FeatureName) runtimeprofile.Profile {
@@ -33,15 +33,15 @@ func sessionControlProfile(features ...runtimeprofile.FeatureName) runtimeprofil
 	return profile
 }
 
-func (s sessionBindingStub) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options embedded.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+func (s sessionBindingStub) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 	return s.rollback(ctx, request, options)
 }
 
-func (s sessionBindingStub) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options embedded.CallOptions) (*protocol.ExportSessionResponse, error) {
+func (s sessionBindingStub) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options flameruntime.CallOptions) (*protocol.ExportSessionResponse, error) {
 	return s.export(ctx, request, options)
 }
 
-func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options embedded.CommandOptions) (*protocol.ImportSessionResponse, error) {
+func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
 	return s.imported(ctx, request, options)
 }
 
@@ -49,7 +49,7 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	image := []byte("image body")
 	commandID := agent.CommandID("cli_77777777777777777777777777777777")
 	stub := sessionBindingStub{}
-	stub.rollback = func(_ context.Context, request protocol.RollbackSessionRequest, options embedded.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+	stub.rollback = func(_ context.Context, request protocol.RollbackSessionRequest, options flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 		if request.SessionID != "ses_1" || request.ToRunID != "run_1" || request.RestoreType != protocol.RestoreBoth {
 			t.Fatalf("rollback request = %+v", request)
 		}
@@ -90,14 +90,14 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	t.Parallel()
 	stub := sessionBindingStub{
-		rollback: func(context.Context, protocol.RollbackSessionRequest, embedded.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+		rollback: func(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 			return &protocol.RollbackSessionResponse{Session: &protocol.Session{
 				ID: "ses_other", Status: protocol.SessionStatusIdle,
 				Provider: testSessionProvider, Model: testSessionModel,
 				Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
 			}}, nil
 		},
-		export: func(context.Context, protocol.ExportSessionRequest, embedded.CallOptions) (*protocol.ExportSessionResponse, error) {
+		export: func(context.Context, protocol.ExportSessionRequest, flameruntime.CallOptions) (*protocol.ExportSessionResponse, error) {
 			return &protocol.ExportSessionResponse{Format: protocol.ExportFormatJSON, Artifact: &protocol.SessionArtifact{
 				Version: protocol.SessionArtifactVersion,
 				Session: protocol.ArtifactSession{ID: "ses_other", Workspace: protocol.WorkspaceRef{Path: "/workspace"}, Provider: testSessionProvider, Model: testSessionModel},
@@ -116,7 +116,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 
 func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 	stub := sessionBindingStub{}
-	stub.export = func(_ context.Context, request protocol.ExportSessionRequest, _ embedded.CallOptions) (*protocol.ExportSessionResponse, error) {
+	stub.export = func(_ context.Context, request protocol.ExportSessionRequest, _ flameruntime.CallOptions) (*protocol.ExportSessionResponse, error) {
 		switch request.Format {
 		case protocol.ExportFormatMarkdown:
 			return &protocol.ExportSessionResponse{Format: request.Format, Markdown: "# Runtime transcript"}, nil
@@ -146,7 +146,7 @@ func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 
 func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T) {
 	stub := sessionBindingStub{}
-	stub.imported = func(_ context.Context, request protocol.ImportSessionRequest, options embedded.CommandOptions) (*protocol.ImportSessionResponse, error) {
+	stub.imported = func(_ context.Context, request protocol.ImportSessionRequest, options flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
 		if request.Artifact.Version != protocol.SessionArtifactVersion || options.IdempotencyKey == "" {
 			t.Fatalf("import request = %+v, options = %+v", request, options)
 		}
@@ -232,7 +232,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 			t.Parallel()
 			result := valid
 			test.mutate(&result)
-			stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, embedded.CommandOptions) (*protocol.ImportSessionResponse, error) {
+			stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
 				return &protocol.ImportSessionResponse{Session: &result}, nil
 			}}
 			runtime := &Runtime{
@@ -254,15 +254,15 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 	t.Parallel()
 	called := false
 	stub := sessionBindingStub{
-		rollback: func(context.Context, protocol.RollbackSessionRequest, embedded.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+		rollback: func(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 			called = true
 			return nil, nil
 		},
-		export: func(context.Context, protocol.ExportSessionRequest, embedded.CallOptions) (*protocol.ExportSessionResponse, error) {
+		export: func(context.Context, protocol.ExportSessionRequest, flameruntime.CallOptions) (*protocol.ExportSessionResponse, error) {
 			called = true
 			return nil, nil
 		},
-		imported: func(context.Context, protocol.ImportSessionRequest, embedded.CommandOptions) (*protocol.ImportSessionResponse, error) {
+		imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
 			called = true
 			return nil, nil
 		},

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
@@ -21,7 +21,7 @@ type agentMemoryBindingStub struct {
 	addResult    *protocol.AgentMemoryItem
 }
 
-func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request protocol.AgentMemoryListRequest, options embedded.CallOptions) (*protocol.AgentMemoryList, error) {
+func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request protocol.AgentMemoryListRequest, options flameruntime.CallOptions) (*protocol.AgentMemoryList, error) {
 	a.assertMeta(options.RequestMeta)
 	switch request.Scope {
 	case protocol.AgentMemoryScopeProject:
@@ -91,13 +91,13 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}
 }
 
-func (a *agentMemoryBindingStub) ReviewAgentMemory(_ context.Context, request protocol.AgentMemoryReviewRequest, options embedded.CommandOptions) error {
+func (a *agentMemoryBindingStub) ReviewAgentMemory(_ context.Context, request protocol.AgentMemoryReviewRequest, options flameruntime.CommandOptions) error {
 	a.assertCommand(options)
 	a.actions = append(a.actions, "review:"+request.ID+":"+string(request.Decision))
 	return nil
 }
 
-func (a *agentMemoryBindingStub) UpdateAgentMemory(_ context.Context, request protocol.AgentMemoryUpdateRequest, options embedded.CommandOptions) (*protocol.AgentMemoryItem, error) {
+func (a *agentMemoryBindingStub) UpdateAgentMemory(_ context.Context, request protocol.AgentMemoryUpdateRequest, options flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error) {
 	a.assertCommand(options)
 	if request.Content == nil || *request.Content != "edited" || request.Pinned == nil || !*request.Pinned {
 		a.t.Fatalf("update request = %+v", request)
@@ -109,13 +109,13 @@ func (a *agentMemoryBindingStub) UpdateAgentMemory(_ context.Context, request pr
 	return a.item(request.ID, protocol.AgentMemoryScopeProject, "edited", true), nil
 }
 
-func (a *agentMemoryBindingStub) DeleteAgentMemory(_ context.Context, request protocol.AgentMemoryItemRequest, options embedded.CommandOptions) error {
+func (a *agentMemoryBindingStub) DeleteAgentMemory(_ context.Context, request protocol.AgentMemoryItemRequest, options flameruntime.CommandOptions) error {
 	a.assertCommand(options)
 	a.actions = append(a.actions, "delete:"+request.ID)
 	return nil
 }
 
-func (a *agentMemoryBindingStub) AddAgentMemory(_ context.Context, request protocol.AgentMemoryAddRequest, options embedded.CommandOptions) (*protocol.AgentMemoryItem, error) {
+func (a *agentMemoryBindingStub) AddAgentMemory(_ context.Context, request protocol.AgentMemoryAddRequest, options flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error) {
 	a.assertCommand(options)
 	if request.Scope != protocol.AgentMemoryScopeUser || request.Workspace != nil || request.Content != "authored" {
 		a.t.Fatalf("add request = %+v", request)
@@ -141,7 +141,7 @@ func (a *agentMemoryBindingStub) assertMeta(meta protocol.RequestMeta) {
 	}
 }
 
-func (a *agentMemoryBindingStub) assertCommand(options embedded.CommandOptions) {
+func (a *agentMemoryBindingStub) assertCommand(options flameruntime.CommandOptions) {
 	a.t.Helper()
 	a.assertMeta(options.RequestMeta)
 	if options.IdempotencyKey == "" {

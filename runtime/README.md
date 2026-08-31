@@ -1,6 +1,6 @@
 # Flame
 
-**Flame Runtime — 产品级通用 agent 运行时后端（Go）。** 实现 Flame Runtime Protocol（JSON-RPC 2.0，MCP-inspired），通过 streamable HTTP 服务桌面/Web 客户端，并为 Go CLI/TUI/宿主程序提供公共 embedded binding。
+**Flame Runtime — 产品级通用 agent 运行时后端（Go）。** 实现 Flame Runtime Protocol（JSON-RPC 2.0，MCP-inspired），通过 streamable HTTP 服务桌面/Web 客户端，并从模块根向 Go CLI/TUI/宿主程序提供同进程 binding。
 
 > 模块级约束见 [`AGENTS.md`](./AGENTS.md)；目标架构见 [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)；当前计划、合同和全部文档入口见 [`doc/README.md`](./doc/README.md)。
 
@@ -8,7 +8,7 @@
 
 ## 这是什么
 
-以 **Run 生命周期**（而非 agent loop）为中心的 Agent 应用后端。**协议层薄、业务层厚、binding 同源**：公共 `protocol` 是唯一合同，HTTP 与公共 `embedded.Runtime` 共用 binding-neutral operation；`internal/application/*` 驱动 Run/Session/能力生命周期，`internal/adapter/agentexec` 隔离 Agent Framework，`internal/domain/*` 按限界上下文表达产品规则，`internal/infra/*` 提供技术机制。
+以 **Run 生命周期**（而非 agent loop）为中心的 Agent 应用后端。**协议层薄、业务层厚、binding 同源**：公共 `protocol` 是唯一合同，HTTP 与模块根 `runtime.Runtime` 共用 binding-neutral operation；`internal/application/*` 驱动 Run/Session/能力生命周期，`internal/adapter/agentexec` 隔离 Agent Framework，`internal/domain/*` 按限界上下文表达产品规则，`internal/infra/*` 提供技术机制。
 
 当前生产执行只消费唯一的 [`github.com/Tangerg/scope/agent`](https://pkg.go.dev/github.com/Tangerg/scope/agent) Framework Baseline 20 canonical module，并通过 `internal/adapter/agentexec` 完成防腐翻译。Runtime 不解析 Framework private state，也不复制 Process loop、tree scheduler 或 Tool loop。
 
@@ -16,13 +16,13 @@
 
 ```
 composition (internal/{bootstrap,config}, cmd)  唯一装配与 Host 生命周期 owner
-embedded    (embedded)              公共同进程 binding；只持有 concrete Runtime lifecycle
-protocol    (protocol)              公共 binding-neutral values / validation / errors
-delivery    (internal/delivery)     operation / server / dispatch / HTTP transport
-adapter     (internal/adapter/*)     应用能力与外部 SDK 的防腐/翻译
-application (internal/application/*) Run / Session / capability use cases 与 consumer ports
-infra       (internal/infra/*)       sqlite / git / lsp / mcp / a2a / exec 等技术 mechanism
-domain      (internal/domain/*)      entity / value / aggregate behavior / pure domain policy
+binding     (module root)                        公共同进程 Runtime lifecycle 与 typed operations
+protocol    (protocol)                           公共 binding-neutral values / validation / errors
+delivery    (internal/delivery)                  Endpoint / dispatch / HTTP transport
+adapter     (internal/adapter/*)                 应用能力与外部 SDK 的防腐/翻译
+application (internal/application/*)             Run / Session / capability use cases 与 consumer ports
+infra       (internal/infra/*)                   sqlite / git / lsp / mcp / a2a / exec 等技术 mechanism
+domain      (internal/domain/*)                  entity / value / aggregate behavior / pure domain policy
 ```
 
 依赖一律向内（Domain 是核心）；Application 依赖 Domain 和消费方端口，Adapter/Infra 实现外部能力，Delivery 只驱动 Application，Bootstrap 是唯一组合根。详见 [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)。
@@ -40,19 +40,19 @@ token 触发上下文压缩 · OTel trace/metric/log → slog。
 ```bash
 cd runtime                                         # 从仓库根进入 runtime 模块
 go build ./... && go vet ./... && go test ./...    # 默认套件离线且不产生模型费用
-FLAME_LIVE_DEEPSEEK=1 go test ./embedded \
+FLAME_LIVE_DEEPSEEK=1 go test . \
   -run '^TestLiveDeepSeek' -count=1 -v             # 使用 config/config.yaml 跑 Goal/Plan、Steer、长上下文压缩
 ANTHROPIC_API_KEY=xxx ./flame                       # 默认 127.0.0.1:17171（匹配前端默认 base），SQLite at $FLAME_HOME/flame.db
 ```
 
 Live E2E 默认跳过；要使用其他凭据目录，额外设置绝对路径 `FLAME_LIVE_CONFIG_DIR`。测试只通过生产配置加载凭据，不读取或打印 API key。
 
-## 嵌入 Go 程序
+## 在 Go 程序中使用
 
-外部宿主只导入公共 [`protocol`](./protocol) 与 [`embedded`](./embedded)，不经过 HTTP、JSON-RPC 或 SSE：
+外部宿主导入模块根 binding 与公共 [`protocol`](./protocol)，不经过 HTTP、JSON-RPC 或 SSE：
 
 ```go
-rt, err := embedded.Open(ctx, embedded.Config{
+rt, err := flameruntime.Open(ctx, flameruntime.Config{
     DataDirectory:        dataDirectory,
     DefaultWorkspacePath: workspace,
 })
@@ -63,7 +63,7 @@ defer rt.Close()
 
 session, err := rt.CreateSession(ctx, protocol.CreateSessionRequest{
     Workspace: &protocol.WorkspaceRef{Path: workspace},
-}, embedded.CommandOptions{IdempotencyKey: requestID + ":session"})
+}, flameruntime.CommandOptions{IdempotencyKey: requestID + ":session"})
 if err != nil {
     return err
 }
@@ -74,7 +74,7 @@ started, events, err := rt.StartRun(ctx, protocol.StartRunRequest{
         Type: protocol.ContentBlockText,
         Text: prompt,
     }},
-}, embedded.RunCommandOptions{IdempotencyKey: requestID + ":run"})
+}, flameruntime.RunCommandOptions{IdempotencyKey: requestID + ":run"})
 if err != nil {
     return err
 }
@@ -92,4 +92,4 @@ _ = started
 
 ## 不做（刻意）
 
-不复制 HTTP 与 embedded 业务入口 · 不复活 JSON-RPC channel 式伪 in-process transport · 不公开 Host/Store/Engine/Application concrete · 不做 stdio/gRPC binding · 不做用户鉴权/多租户（协议层零 user 概念）· 不向 scope 反向贡献抽象（除非沉淀过 3+ 用例）。
+不复制 HTTP 与 Go binding 的业务入口 · 不复活 JSON-RPC channel 式伪 in-process transport · 不公开 Host/Store/Engine/Application concrete · 不做 stdio/gRPC binding · 不做用户鉴权/多租户（协议层零 user 概念）· 不向 scope 反向贡献抽象（除非沉淀过 3+ 用例）。

@@ -120,9 +120,9 @@ func TestEmbeddedServicesNeverInferProfilePresenceFromServerName(t *testing.T) {
 	runtime := &Runtime{}
 	services := runtime.services()
 	if services.RuntimeProfile == nil {
-		t.Fatal("embedded Runtime omitted its construction-owned profile")
+		t.Fatal("in-process Runtime omitted its construction-owned profile")
 	}
 	if err := services.Validate(); err == nil {
-		t.Fatal("invalid embedded Runtime profile was mistaken for AgentOnly composition")
+		t.Fatal("invalid in-process Runtime profile was mistaken for AgentOnly composition")
 	}
 }

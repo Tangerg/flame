@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/embedded"
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -12,14 +12,14 @@ import (
 )
 
 type workspaceBinding interface {
-	ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, embedded.CallOptions) (*protocol.WorkspaceInfo, error)
-	ListWorkspaces(context.Context, embedded.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)
-	ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, embedded.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)
-	GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, embedded.CallOptions) (*protocol.Diff, error)
-	GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, embedded.CallOptions) (*protocol.FileHead, error)
-	SearchWorkspaceFiles(context.Context, protocol.GrepRequest, embedded.CallOptions) (*protocol.GrepResult, error)
-	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, embedded.CallOptions) (*protocol.Page[protocol.FileEntry], error)
-	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, embedded.CallOptions) (*protocol.FileContent, error)
+	ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, flameruntime.CallOptions) (*protocol.WorkspaceInfo, error)
+	ListWorkspaces(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)
+	ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)
+	GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, flameruntime.CallOptions) (*protocol.Diff, error)
+	GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, flameruntime.CallOptions) (*protocol.FileHead, error)
+	SearchWorkspaceFiles(context.Context, protocol.GrepRequest, flameruntime.CallOptions) (*protocol.GrepResult, error)
+	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, flameruntime.CallOptions) (*protocol.Page[protocol.FileEntry], error)
+	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, flameruntime.CallOptions) (*protocol.FileContent, error)
 }
 
 const (

@@ -165,7 +165,7 @@ func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
 	for _, required := range []string{
 		"protocol.MaximumRunEventIDCharacters",
 		"protocol.IDPrefixEvent",
-		"func (r *Runtime) subscriptionOptions(afterEventID string) (embedded.RunSubscriptionOptions, error)",
+		"func (r *Runtime) subscriptionOptions(afterEventID string) (flameruntime.RunSubscriptionOptions, error)",
 	} {
 		if !strings.Contains(text, required) {
 			t.Errorf("Run replay adapter lost public contract %q", required)

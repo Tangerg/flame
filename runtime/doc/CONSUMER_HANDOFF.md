@@ -17,8 +17,8 @@
   any import write.
 - Machine truth: [`../contract/`](../contract/) generated from the Go contract
   registry with `go generate ./...`; `go-api.json` freezes the complete public
-  `protocol + embedded` Go surface.
-- Go truth: the public `runtime/protocol` and `runtime/embedded` packages. The retired
+  module-root binding plus `protocol` Go surface.
+- Go truth: the public `runtime` and `runtime/protocol` packages. The retired
   `internal/delivery/protocol` path no longer exists and has no forwarding shim.
 - Product execution vocabulary is exclusively Run, Segment, Item, and
   Interrupt. Agent Framework Process/Execution/Member identity is not a wire concept.
@@ -205,12 +205,12 @@ prevents a second transcript copy.
 
 ## CLI and TUI follow-up
 
-The CLI may directly own a concrete `*embedded.Runtime`; it must open it once,
+The CLI may directly own a concrete `*runtime.Runtime`; it must open it once,
 keep it alive above individual commands, and complete `Close` before process
-exit. Its adapter should import `runtime/embedded` and `runtime/protocol`, while
+exit. Its adapter should import the `runtime` module root and `runtime/protocol`, while
 the command/terminal consumers define the narrow interfaces they need. It must
 not copy Session/Run/Item/Event/Interrupt DTOs, expose Runtime internals, or
-route an embedded call through JSON-RPC.
+route an in-process call through JSON-RPC.
 
 `CallOptions`, `CommandOptions`, `RunCommandOptions`,
 `RunSubscriptionOptions`, and `SubscriptionOptions` are deliberately distinct.
@@ -219,7 +219,7 @@ into the matching option; it does not create a generic header bag. Stable
 operation failures support `errors.Is` against protocol sentinels and
 `errors.As` to `protocol.ProblemError`.
 
-An HTTP or embedded Runtime may share one canonical private data directory with
+An HTTP or in-process Runtime may share one canonical private data directory with
 another Runtime process. A client still binds to exactly one Runtime instance;
 CLI and desktop may each embed their own instance. Concurrent writes to the same
 Session fail with `session_busy`, active Runs may share one physical working tree,
@@ -230,7 +230,7 @@ checkpoint contracts; there is no compatibility reader or global-directory
 single-instance fallback. TUI code may consume the CLI-owned narrow port and
 protocol values rather than opening an unnecessary third Runtime.
 
-The in-tree CLI consumes the current public embedded Runtime and protocol values through its sole `internal/runtimeembedded` adapter. Any later Runtime breaking change must migrate that adapter and CLI-owned values in the same authorized batch; Runtime does not retain a compatibility shim for the CLI.
+The in-tree CLI currently consumes the module-root Runtime and protocol values through its migration adapter. Any later Runtime breaking change must migrate the CLI-owned boundary in the same authorized batch; Runtime does not retain a compatibility shim for the CLI.
 
 ## Consumer acceptance
 
@@ -243,6 +243,6 @@ A consumer migration is complete only when it:
 4. imports/exports Session artifact v27 with required exact bounded provider/model identity, optional model-owned reasoning effort on Session and every Run, bounded usage-map model keys, presence-based Run limits, explicit `plan`, and a required human-readable summary on every compaction Item, including durable root-run context footprints, authored AgentMessage phases, accepted Question answers, and exact human ToolCall approval decisions, without rewriting prior documents;
 5. passes its strict fixture validation and HTTP integration suite.
 
-An embedded Go consumer additionally passes an external-module compile test,
+An in-process Go consumer additionally passes an external-module compile test,
 uses the concrete Runtime lifecycle exactly once, and verifies stream replay,
 idempotency, structured errors, cancellation, and shutdown without a listener.
