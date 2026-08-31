@@ -11,7 +11,7 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by
@@ -93,7 +93,7 @@ func (c *Connections) SetToolSink(sink func([]toolcontract.Tool)) {
 // newClient builds the shared MCP client identity used for every server's
 // session (and re-dials). No per-server handlers are needed, so one suffices.
 func newClient() *sdkmcp.Client {
-	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: productidentity.Name, Version: "v0.1.0"}, nil)
+	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: runtimeidentity.ProductName, Version: "v0.1.0"}, nil)
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.

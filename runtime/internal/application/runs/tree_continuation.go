@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // treeContinuation is the application-private execution hand-off shared by
@@ -102,7 +102,7 @@ func (t *treeContinuation) validate() error {
 	if _, _, err := goalref.ParseOptionalIncarnation(t.goalIncarnationID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
-	if _, err := executoridentity.ParseExecutor(t.executorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(t.executorID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
 	switch {

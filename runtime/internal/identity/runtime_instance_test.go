@@ -1,14 +1,14 @@
-package runtimeinstanceidentity
+package identity
 
 import "testing"
 
-func TestIdentityRoundTrip(t *testing.T) {
-	first := New()
-	second := New()
+func TestRuntimeInstanceRoundTrip(t *testing.T) {
+	first := NewRuntimeInstance()
+	second := NewRuntimeInstance()
 	if first.String() == second.String() {
 		t.Fatalf("two Runtime instances received %q", first.String())
 	}
-	parsed, err := Parse(first.String())
+	parsed, err := ParseRuntimeInstance(first.String())
 	if err != nil || parsed != first {
 		t.Fatalf("Parse(New()) = (%q, %v), want %q", parsed.String(), err, first.String())
 	}
@@ -29,7 +29,7 @@ func TestParseRejectsNonCanonicalIdentityMaterial(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := Parse(test.text); err == nil {
+			if _, err := ParseRuntimeInstance(test.text); err == nil {
 				t.Fatalf("Parse(%q) succeeded", test.text)
 			}
 		})

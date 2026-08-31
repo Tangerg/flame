@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -98,7 +98,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 
 func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	openNamespace := func() (*sql.DB, idempotencynamespace.ID) {
+	openNamespace := func() (*sql.DB, runtimeidentity.IdempotencyNamespace) {
 		db, err := sqlite.Open(t.Context(), path)
 		if err != nil {
 			t.Fatalf("open: %v", err)

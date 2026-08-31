@@ -10,12 +10,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/modelclient"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runtimeownership"
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
-	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -163,9 +161,9 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 
 	serverInfo := cfg.ServerInfo
-	serverInfo.InstanceID = runtimeinstanceidentity.New().String()
+	serverInfo.InstanceID = runtimeidentity.NewRuntimeInstance().String()
 	if serverInfo.Name == "" {
-		serverInfo.Name = productidentity.Name
+		serverInfo.Name = runtimeidentity.ProductName
 	}
 	if serverInfo.Version == "" {
 		serverInfo.Version = "dev"
@@ -233,7 +231,7 @@ func (i InstanceConfig) validate() error {
 		}
 	}
 	if i.BuildID != "" {
-		if _, err := buildidentity.Parse(i.BuildID); err != nil {
+		if _, err := runtimeidentity.ParseBuild(i.BuildID); err != nil {
 			return fmt.Errorf("runtime: BuildID: %w", err)
 		}
 	}

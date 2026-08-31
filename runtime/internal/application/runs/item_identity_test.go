@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {
-	segmentID := resourceidentity.SegmentPrefix + strings.Repeat(
+	segmentID := runtimeidentity.SegmentPrefix + strings.Repeat(
 		"s",
-		resourceidentity.MaximumCharacters-len(resourceidentity.SegmentPrefix),
+		runtimeidentity.MaximumResourceCharacters-len(runtimeidentity.SegmentPrefix),
 	)
 	if _, err := resourceid.ParseSegment(segmentID); err != nil {
 		t.Fatalf("maximum Segment fixture: %v", err)

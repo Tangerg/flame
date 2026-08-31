@@ -1,4 +1,4 @@
-package executoridentity
+package identity
 
 import (
 	"testing"

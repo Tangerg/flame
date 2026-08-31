@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
@@ -18,7 +18,7 @@ func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 		"session control": func(identity *transcript.ItemIdentity) { identity.SessionID = "session\n1" },
 		"run padding":     func(identity *transcript.ItemIdentity) { identity.RunID = " run-1" },
 		"item oversized": func(identity *transcript.ItemIdentity) {
-			identity.ItemID = strings.Repeat("i", resourceidentity.MaximumCharacters+1)
+			identity.ItemID = strings.Repeat("i", runtimeidentity.MaximumResourceCharacters+1)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

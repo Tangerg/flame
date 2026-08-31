@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestSearchHitOwnsExactResourceProvenance(t *testing.T) {
@@ -20,7 +20,7 @@ func TestSearchHitOwnsExactResourceProvenance(t *testing.T) {
 		"Session whitespace": func(hit *SearchHit) { hit.SessionID = "ses_ one" },
 		"Run non-printing":   func(hit *SearchHit) { hit.RunID = "run_\u200bhidden" },
 		"Item oversized": func(hit *SearchHit) {
-			hit.ItemID = strings.Repeat("界", resourceidentity.MaximumCharacters+1)
+			hit.ItemID = strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

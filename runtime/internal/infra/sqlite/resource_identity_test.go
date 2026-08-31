@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestResourceKeyAdmissionIsExactAndBounded(t *testing.T) {
@@ -16,7 +16,7 @@ func TestResourceKeyAdmissionIsExactAndBounded(t *testing.T) {
 		"interior space",
 		"line\nbreak",
 		"zero\u200bwidth",
-		strings.Repeat("界", resourceidentity.MaximumCharacters+1),
+		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 		string([]byte{0xff}),
 	}
 	for _, value := range invalid {

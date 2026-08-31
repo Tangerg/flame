@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -216,8 +216,8 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	if err != nil || discovery.ProtocolVersion != protocol.ProtocolVersion {
 		t.Fatalf("Discover = (%+v, %v)", discovery, err)
 	}
-	if discovery.ServerInfo.Name != productidentity.Name {
-		t.Fatalf("Discover server brand = %q, want %q", discovery.ServerInfo.Name, productidentity.Name)
+	if discovery.ServerInfo.Name != runtimeidentity.ProductName {
+		t.Fatalf("Discover server brand = %q, want %q", discovery.ServerInfo.Name, runtimeidentity.ProductName)
 	}
 	if _, discoverErr := runtime.Discover(t.Context(), CallOptions{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: "1900-01-01",

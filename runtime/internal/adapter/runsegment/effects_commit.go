@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -523,7 +523,7 @@ func (e *Effects) reconcileRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) (bool, error) {
 	reconcileCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(ctx),

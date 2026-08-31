@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // RollbackPlan is the atomic durable command for truncating a session back to a
@@ -240,7 +240,7 @@ func (t TerminalPlan) Validate() error {
 	if !slices.Equal(actualOrder, tree.Postorder()) {
 		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
 	}
-	if _, err := executoridentity.ParseMember(t.CheckpointRootID); err != nil {
+	if _, err := runtimeidentity.ParseMember(t.CheckpointRootID); err != nil {
 		return fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}
 	seenItems := make(map[string]struct{}, len(t.Items))

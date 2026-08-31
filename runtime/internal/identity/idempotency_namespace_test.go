@@ -1,4 +1,4 @@
-package idempotencynamespace
+package identity
 
 import (
 	"regexp"
@@ -7,18 +7,18 @@ import (
 
 const validNamespace = "idp_11111111111111111111111111111111"
 
-func TestIdentityRoundTrip(t *testing.T) {
-	if !regexp.MustCompile(Pattern).MatchString(validNamespace) {
+func TestIdempotencyNamespaceRoundTrip(t *testing.T) {
+	if !regexp.MustCompile(IdempotencyNamespacePattern).MatchString(validNamespace) {
 		t.Fatalf("public pattern rejects canonical namespace %q", validNamespace)
 	}
-	parsed, err := Parse(validNamespace)
+	parsed, err := ParseIdempotencyNamespace(validNamespace)
 	if err != nil || parsed.String() != validNamespace {
 		t.Fatalf("Parse(%q) = (%q, %v)", validNamespace, parsed.String(), err)
 	}
 }
 
 func TestParseRejectsNonCanonicalMaterial(t *testing.T) {
-	pattern := regexp.MustCompile(Pattern)
+	pattern := regexp.MustCompile(IdempotencyNamespacePattern)
 	tests := []struct {
 		name string
 		text string
@@ -37,7 +37,7 @@ func TestParseRejectsNonCanonicalMaterial(t *testing.T) {
 			if pattern.MatchString(test.text) {
 				t.Fatalf("public pattern accepted %q", test.text)
 			}
-			if _, err := Parse(test.text); err == nil {
+			if _, err := ParseIdempotencyNamespace(test.text); err == nil {
 				t.Fatalf("Parse(%q) succeeded", test.text)
 			}
 		})
@@ -45,10 +45,10 @@ func TestParseRejectsNonCanonicalMaterial(t *testing.T) {
 }
 
 func TestOptionalIdentityDistinguishesAbsenceFromMalformed(t *testing.T) {
-	if value, present, err := ParseOptional(""); err != nil || present || value.String() != "" {
-		t.Fatalf("ParseOptional(empty) = (%q, %t, %v)", value.String(), present, err)
+	if value, present, err := ParseOptionalIdempotencyNamespace(""); err != nil || present || value.String() != "" {
+		t.Fatalf("ParseOptionalIdempotencyNamespace(empty) = (%q, %t, %v)", value.String(), present, err)
 	}
-	if _, present, err := ParseOptional("idp_test"); err == nil || present {
-		t.Fatalf("ParseOptional(invalid) = (present:%t, err:%v)", present, err)
+	if _, present, err := ParseOptionalIdempotencyNamespace("idp_test"); err == nil || present {
+		t.Fatalf("ParseOptionalIdempotencyNamespace(invalid) = (present:%t, err:%v)", present, err)
 	}
 }

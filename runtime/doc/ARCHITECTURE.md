@@ -356,6 +356,7 @@ Bootstrap 不提供业务 API，不成为 service locator，也不存在可向�
 
 - 单一 owner 的原语移动到 owner package；
 - 多个平级消费者确实共享且无领域语义的原语，可以作为准确命名的 `internal/<capability>` package；
+- `internal/identity` 是受限 shared kernel：只容纳必须同时被 Domain、Application、Infra、Delivery 或生成器消费的 identity grammar、resource envelope 与 cross-ring technical value；每种 identity 保持独立类型和显式构造器，禁止 generic `ID`、字符串修复、领域实体或任意 helper 进入；
 - Delivery/Bootstrap 对 Application 值或机制的引用不产生新的所有权；行为在哪一环被决定，package 就归哪一环；
 - 迁移只为切断依赖或表达真实所有权，不为目录美观制造 package。
 

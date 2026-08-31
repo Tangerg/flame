@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 type value struct {
@@ -37,7 +37,7 @@ func parse(kind, text string, maximumCharacters int) (value, error) {
 type SessionID struct{ value }
 
 func ParseSession(text string) (SessionID, error) {
-	parsed, err := parse("session", text, resourceidentity.MaximumCharacters)
+	parsed, err := parse("session", text, runtimeidentity.MaximumResourceCharacters)
 	return SessionID{value: parsed}, err
 }
 
@@ -51,7 +51,7 @@ func (i SessionID) Validate() error {
 type RunID struct{ value }
 
 func ParseRun(text string) (RunID, error) {
-	parsed, err := parse("run", text, resourceidentity.MaximumCharacters)
+	parsed, err := parse("run", text, runtimeidentity.MaximumResourceCharacters)
 	return RunID{value: parsed}, err
 }
 
@@ -65,7 +65,7 @@ func (i RunID) Validate() error {
 type SegmentID struct{ value }
 
 func ParseSegment(text string) (SegmentID, error) {
-	parsed, err := parse("segment", text, resourceidentity.MaximumCharacters)
+	parsed, err := parse("segment", text, runtimeidentity.MaximumResourceCharacters)
 	return SegmentID{value: parsed}, err
 }
 
@@ -79,7 +79,7 @@ func (i SegmentID) Validate() error {
 type ItemID struct{ value }
 
 func ParseItem(text string) (ItemID, error) {
-	parsed, err := parse("item", text, resourceidentity.MaximumCharacters)
+	parsed, err := parse("item", text, runtimeidentity.MaximumResourceCharacters)
 	return ItemID{value: parsed}, err
 }
 
@@ -93,7 +93,7 @@ func (i ItemID) Validate() error {
 type ScheduleID struct{ value }
 
 func ParseSchedule(text string) (ScheduleID, error) {
-	parsed, err := parse("schedule", text, resourceidentity.MaximumCharacters)
+	parsed, err := parse("schedule", text, runtimeidentity.MaximumResourceCharacters)
 	return ScheduleID{value: parsed}, err
 }
 
@@ -108,7 +108,7 @@ func (i ScheduleID) Validate() error {
 type EventID struct{ value }
 
 func ParseEvent(text string) (EventID, error) {
-	parsed, err := parse("event", text, resourceidentity.MaximumEventCharacters)
+	parsed, err := parse("event", text, runtimeidentity.MaximumEventCharacters)
 	return EventID{value: parsed}, err
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestNewBuildsCommittedActiveGoal(t *testing.T) {
@@ -57,7 +57,7 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 		{name: "session whitespace", sessionID: " ses ", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "session interior whitespace", sessionID: "ses_ one", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "session non-printing", sessionID: "ses_\u200bhidden", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
-		{name: "session oversized", sessionID: strings.Repeat("界", resourceidentity.MaximumCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session oversized", sessionID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective missing", sessionID: "ses", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective whitespace", sessionID: "ses", objective: " obj ", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "selection missing", sessionID: "ses", objective: "obj", incarnation: "inc", createdAt: now},

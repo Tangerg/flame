@@ -20,13 +20,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	otelslog "github.com/Tangerg/scope/otel/slog"
 )
 
 const (
 	// scopeName names the slog→OTel logs bridge's instrumentation scope.
-	scopeName               = productidentity.Name
+	scopeName               = runtimeidentity.ProductName
 	logLevelEnvironment     = "FLAME_LOG_LEVEL"
 	providerShutdownTimeout = 5 * time.Second
 )

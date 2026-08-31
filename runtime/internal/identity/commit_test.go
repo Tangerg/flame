@@ -1,45 +1,43 @@
-package commitidentity
+package identity
 
 import (
 	"errors"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
 
 func TestRunCommitIdentityIsCanonicalAndBounded(t *testing.T) {
-	generated := New()
+	generated := NewCommit()
 	if generated.IsZero() {
 		t.Fatal("New returned the absent identity")
 	}
 	if err := generated.Validate(); err != nil {
 		t.Fatalf("Validate generated identity: %v", err)
 	}
-	if _, err := Parse(generated.String()); err != nil {
+	if _, err := ParseCommit(generated.String()); err != nil {
 		t.Fatalf("Parse generated identity: %v", err)
 	}
 
-	boundary := Prefix + strings.Repeat("x", resourceidentity.MaximumCharacters-len(Prefix))
-	parsed, err := Parse(boundary)
+	boundary := CommitPrefix + strings.Repeat("x", MaximumResourceCharacters-len(CommitPrefix))
+	parsed, err := ParseCommit(boundary)
 	if err != nil || parsed.String() != boundary {
 		t.Fatalf("boundary identity = %q, %v", parsed.String(), err)
 	}
 
 	invalid := []string{
 		"",
-		Prefix,
+		CommitPrefix,
 		"event_commit_1",
-		Prefix + "contains space",
-		Prefix + "contains/slash",
-		strings.Repeat("x", resourceidentity.MaximumCharacters+1),
+		CommitPrefix + "contains space",
+		CommitPrefix + "contains/slash",
+		strings.Repeat("x", MaximumResourceCharacters+1),
 	}
 	for _, value := range invalid {
-		if _, err := Parse(value); !errors.Is(err, ErrInvalid) {
-			t.Errorf("Parse(%q) error = %v, want ErrInvalid", value, err)
+		if _, err := ParseCommit(value); !errors.Is(err, ErrInvalidCommit) {
+			t.Errorf("ParseCommit(%q) error = %v, want ErrInvalidCommit", value, err)
 		}
 	}
-	if err := (ID{}).Validate(); !errors.Is(err, ErrInvalid) || !(ID{}).IsZero() {
-		t.Fatalf("zero identity validation = %v IsZero=%t, want ErrInvalid/true", err, (ID{}).IsZero())
+	if err := (CommitID{}).Validate(); !errors.Is(err, ErrInvalidCommit) || !(CommitID{}).IsZero() {
+		t.Fatalf("zero identity validation = %v IsZero=%t, want ErrInvalidCommit/true", err, (CommitID{}).IsZero())
 	}
 }

@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -28,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -1196,19 +1196,19 @@ func (stubRunState) RequireActiveSegment(context.Context, string, string, string
 }
 func (stubRunState) Suspend(context.Context, run.Run) error     { return nil }
 func (stubRunState) Terminalize(context.Context, run.Run) error { return nil }
-func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, commitidentity.ID) error {
+func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (stubRunState) RecordRunCommit(context.Context, string, string, string, commitidentity.ID) error {
+func (stubRunState) RecordRunCommit(context.Context, string, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, commitidentity.ID) error {
+func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (stubRunState) SuspendBarrier(context.Context, run.Run, string, commitidentity.ID) error {
+func (stubRunState) SuspendBarrier(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (stubRunState) RunCommitCommitted(context.Context, string, string, string, commitidentity.ID) (bool, error) {
+func (stubRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
 	return false, nil
 }
 func (stubRunState) UpdateProgress(context.Context, string, string, string, run.Metrics, int64, time.Time) error {

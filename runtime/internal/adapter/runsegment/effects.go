@@ -17,13 +17,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -158,11 +158,11 @@ type RunWriter interface {
 	Resume(ctx context.Context, sessionID string, draft run.ResumeDraft, resumedAt time.Time) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
 	Suspend(ctx context.Context, run run.Run) error
-	SuspendBarrier(ctx context.Context, run run.Run, segmentID string, commitID commitidentity.ID) error
+	SuspendBarrier(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
 	Terminalize(ctx context.Context, run run.Run) error
-	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID commitidentity.ID) error
-	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID commitidentity.ID) error
-	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID commitidentity.ID) error
+	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error
+	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runtimeidentity.CommitID) error
+	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
 }
 
 // RunStore combines lifecycle writes with the exact durable reads required to
@@ -170,7 +170,7 @@ type RunWriter interface {
 type RunStore interface {
 	RunWriter
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID commitidentity.ID) (bool, error)
+	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) (bool, error)
 }
 
 // RunProgressWriter updates cumulative consumption and latest prompt footprint

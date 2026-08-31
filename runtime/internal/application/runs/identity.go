@@ -7,16 +7,15 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // Resource identifiers are application-owned lifecycle identities. Their
 // namespace is decided here rather than by composition or persistence.
 const (
-	runIDPrefix     = resourceidentity.RunPrefix
-	segmentIDPrefix = resourceidentity.SegmentPrefix
-	itemIDPrefix    = resourceidentity.ItemPrefix
+	runIDPrefix     = runtimeidentity.RunPrefix
+	segmentIDPrefix = runtimeidentity.SegmentPrefix
+	itemIDPrefix    = runtimeidentity.ItemPrefix
 
 	segmentItemSeparator         = "_"
 	userMessageItemDiscriminator = "user"
@@ -63,4 +62,4 @@ func userMessageItemID(segmentID string) string {
 // newRunCommitID identifies one immutable top-level Run write-set. Terminal
 // identities are minted where the reducer creates the write-set and retained
 // across retries. Other command boundaries mint once before persistence.
-func newRunCommitID() commitidentity.ID { return commitidentity.New() }
+func newRunCommitID() runtimeidentity.CommitID { return runtimeidentity.NewCommit() }

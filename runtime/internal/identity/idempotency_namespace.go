@@ -1,7 +1,4 @@
-// Package idempotencynamespace owns the durable replay-store identity shared
-// by persistence, discovery, and operation admission. It is stable for the
-// lifetime of one database and intentionally unrelated to a process instance.
-package idempotencynamespace
+package identity
 
 import (
 	"errors"
@@ -9,45 +6,45 @@ import (
 )
 
 const (
-	Prefix    = "idp_"
-	HexBytes  = 32
-	TextBytes = len(Prefix) + HexBytes
+	IdempotencyNamespacePrefix    = "idp_"
+	IdempotencyNamespaceHexBytes  = 32
+	IdempotencyNamespaceTextBytes = len(IdempotencyNamespacePrefix) + IdempotencyNamespaceHexBytes
 )
 
-// Pattern is the public JSON Schema spelling of the exact opaque namespace.
-const Pattern = `^idp_[0-9a-f]{32}$`
+// IdempotencyNamespacePattern is the public JSON Schema spelling of the exact opaque namespace.
+const IdempotencyNamespacePattern = `^idp_[0-9a-f]{32}$`
 
-// ID is one exact durable replay-store namespace.
-type ID struct{ text string }
+// IdempotencyNamespace is one exact durable replay-store namespace.
+type IdempotencyNamespace struct{ text string }
 
-// Parse rejects normalization and accepts only the canonical lowercase hex
+// ParseIdempotencyNamespace rejects normalization and accepts only the canonical lowercase hex
 // spelling generated with the SQLite store.
-func Parse(text string) (ID, error) {
-	if len(text) != TextBytes || !strings.HasPrefix(text, Prefix) {
-		return ID{}, errors.New("idempotency namespace must use the canonical idp lowercase-hex form")
+func ParseIdempotencyNamespace(text string) (IdempotencyNamespace, error) {
+	if len(text) != IdempotencyNamespaceTextBytes || !strings.HasPrefix(text, IdempotencyNamespacePrefix) {
+		return IdempotencyNamespace{}, errors.New("idempotency namespace must use the canonical idp lowercase-hex form")
 	}
-	for index := len(Prefix); index < len(text); index++ {
+	for index := len(IdempotencyNamespacePrefix); index < len(text); index++ {
 		character := text[index]
 		if character >= '0' && character <= '9' || character >= 'a' && character <= 'f' {
 			continue
 		}
-		return ID{}, errors.New("idempotency namespace must use the canonical idp lowercase-hex form")
+		return IdempotencyNamespace{}, errors.New("idempotency namespace must use the canonical idp lowercase-hex form")
 	}
-	return ID{text: text}, nil
+	return IdempotencyNamespace{text: text}, nil
 }
 
-// ParseOptional keeps an absent namespace distinct from a malformed one.
-func ParseOptional(text string) (ID, bool, error) {
+// ParseOptionalIdempotencyNamespace keeps an absent namespace distinct from a malformed one.
+func ParseOptionalIdempotencyNamespace(text string) (IdempotencyNamespace, bool, error) {
 	if text == "" {
-		return ID{}, false, nil
+		return IdempotencyNamespace{}, false, nil
 	}
-	parsed, err := Parse(text)
+	parsed, err := ParseIdempotencyNamespace(text)
 	return parsed, err == nil, err
 }
 
-func (i ID) String() string { return i.text }
+func (i IdempotencyNamespace) String() string { return i.text }
 
-func (i ID) Validate() error {
-	_, err := Parse(i.text)
+func (i IdempotencyNamespace) Validate() error {
+	_, err := ParseIdempotencyNamespace(i.text)
 	return err
 }

@@ -8,9 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
-	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -170,7 +168,7 @@ func (c HandlerConfig) validate() error {
 	if c.WorkspaceAuthoredWatch == nil {
 		return errors.New("delivery: authored workspace observation is required")
 	}
-	if _, err := runtimeinstanceidentity.Parse(c.ServerInfo.InstanceID); err != nil {
+	if _, err := runtimeidentity.ParseRuntimeInstance(c.ServerInfo.InstanceID); err != nil {
 		return fmt.Errorf("delivery: ServerInfo.InstanceID: %w", err)
 	}
 	return nil
@@ -178,7 +176,7 @@ func (c HandlerConfig) validate() error {
 
 func (c HandlerConfig) withServerInfoDefaults() HandlerConfig {
 	if c.ServerInfo.Name == "" {
-		c.ServerInfo.Name = productidentity.Name
+		c.ServerInfo.Name = runtimeidentity.ProductName
 	}
 	if c.ServerInfo.Version == "" {
 		c.ServerInfo.Version = "0.0.0-dev"
@@ -220,7 +218,7 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			return contractFacts{}, fmt.Errorf("delivery: %s: %w", wireShape.label, err)
 		}
 	}
-	if _, err := idempotencynamespace.Parse(cfg.IdempotencyLimits.Namespace); err != nil {
+	if _, err := runtimeidentity.ParseIdempotencyNamespace(cfg.IdempotencyLimits.Namespace); err != nil {
 		return contractFacts{}, fmt.Errorf("delivery: IdempotencyLimits namespace: %w", err)
 	}
 	return facts, nil

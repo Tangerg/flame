@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-const executableName = productidentity.Name
+const executableName = runtimeidentity.ProductName
 
 // version is overridden at link time via -ldflags "-X main.version=...".
 // Default "dev" indicates a local / unreleased build.

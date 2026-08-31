@@ -438,12 +438,13 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 }
 
 // TestSharedCapabilitiesStayPure keeps the few genuinely cross-ring mechanisms
-// free of product and ring ownership. Each package names one proven shared
-// capability; none may become a replacement common/component umbrella.
+// free of ring ownership. Each package names one proven shared capability;
+// identity is a bounded shared kernel, not a package-per-type tree or a generic
+// common/component umbrella.
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"completion", "cursorresource", "exactint", "httporigin", "idempotency",
+		"completion", "exactint", "httporigin", "idempotency", "identity",
 	} {
 		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
 			domainPkg,

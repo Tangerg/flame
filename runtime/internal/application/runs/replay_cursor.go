@@ -7,8 +7,8 @@ import (
 	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/application/opaquetoken"
-	"github.com/Tangerg/flame/runtime/internal/cursorresource"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // replayCursorFormat changes when the token layout changes. A cursor held
@@ -29,7 +29,7 @@ var (
 
 // MaximumReplayCursorCharacters is Application's projection of the shared
 // opaque-cursor envelope. Run event framing is added outside Application.
-const MaximumReplayCursorCharacters = cursorresource.MaximumCharacters
+const MaximumReplayCursorCharacters = runtimeidentity.MaximumCursorCharacters
 
 // replayPosition is a point in one Run journal. It stays private because the
 // journal is the only authority that may mint, interpret, or compare one.

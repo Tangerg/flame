@@ -6,11 +6,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -29,7 +28,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	canceledMembers := make(map[string]struct{}, len(p.CanceledMemberIDs))
 	seenMembers := make(map[string]struct{}, len(p.CanceledMemberIDs)+len(p.PausedMemberIDs))
 	for _, memberID := range p.CanceledMemberIDs {
-		if _, err := executoridentity.ParseMember(memberID); err != nil {
+		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
@@ -39,7 +38,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		seenMembers[memberID] = struct{}{}
 	}
 	for _, memberID := range p.PausedMemberIDs {
-		if _, err := executoridentity.ParseMember(memberID); err != nil {
+		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
@@ -49,10 +48,10 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	}
 	requests := make(map[inputRequestKey]struct{}, len(p.PendingInterruptions))
 	for index, interruption := range p.PendingInterruptions {
-		if _, err := executoridentity.ParseMember(interruption.MemberID); err != nil {
+		if _, err := runtimeidentity.ParseMember(interruption.MemberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
-		if _, err := executoridentity.ParseRequest(interruption.RequestID); err != nil {
+		if _, err := runtimeidentity.ParseRequest(interruption.RequestID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
 		if _, canceled := canceledMembers[interruption.MemberID]; canceled {
@@ -535,7 +534,7 @@ func inputRequestIdentity(memberID, requestID string) inputRequestKey {
 
 func (w waitingCancellationTransformation) durableCommit(
 	expected Pending,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) WaitingSubtreeCancellationCommit {
 	return WaitingSubtreeCancellationCommit{
 		CommitID:             commitID,

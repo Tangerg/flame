@@ -1,4 +1,4 @@
-package buildidentity
+package identity
 
 import (
 	"crypto/sha256"
@@ -9,8 +9,8 @@ import (
 
 func TestBuildIdentityIsExactCanonicalSHA256(t *testing.T) {
 	digest := sha256.Sum256([]byte("flame"))
-	want := FromSHA256(digest).String()
-	parsed, err := Parse(want)
+	want := BuildFromSHA256(digest).String()
+	parsed, err := ParseBuild(want)
 	if err != nil {
 		t.Fatalf("Parse generated identity: %v", err)
 	}
@@ -28,8 +28,8 @@ func TestBuildIdentityIsExactCanonicalSHA256(t *testing.T) {
 		"sha256:" + strings.Repeat("g", hexDigestCharacters),
 	}
 	for _, raw := range invalid {
-		if _, err := Parse(raw); !errors.Is(err, ErrInvalid) {
-			t.Errorf("Parse(%q) error = %v, want ErrInvalid", raw, err)
+		if _, err := ParseBuild(raw); !errors.Is(err, ErrInvalidBuild) {
+			t.Errorf("ParseBuild(%q) error = %v, want ErrInvalidBuild", raw, err)
 		}
 	}
 }

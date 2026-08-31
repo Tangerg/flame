@@ -22,7 +22,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/opaquetoken"
-	"github.com/Tangerg/flame/runtime/internal/cursorresource"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ErrInvalidCursor reports a cursor that cannot continue this query: damaged,
@@ -54,7 +54,7 @@ const formatVersion = 2
 // MaximumCursorCharacters is Application's projection of the shared cursor
 // resource envelope. It is exported so architecture tests can prove that every
 // cursor authority uses the same limit as the public wire contract.
-const MaximumCursorCharacters = cursorresource.MaximumCharacters
+const MaximumCursorCharacters = runtimeidentity.MaximumCursorCharacters
 
 // Page is one keyset page: the rows, and the token that continues after them.
 // An empty NextCursor means the page reached the end of the collection — the

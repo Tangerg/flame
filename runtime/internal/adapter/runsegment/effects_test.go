@@ -15,7 +15,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -23,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
@@ -503,7 +503,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 			checkpoint := testRootExecutorCheckpoint()
 			mutation.mutate(&checkpoint)
 			err := effects.CommitTreeBarrier(t.Context(), runs.TreeBarrierCommit{
-				CommitID:   testCommitID(commitidentity.Prefix + "barrier_binding_" + mutation.identity),
+				CommitID:   testCommitID(runtimeidentity.CommitPrefix + "barrier_binding_" + mutation.identity),
 				Pending:    pending,
 				Checkpoint: checkpoint,
 				Runs: []runs.EventCommit{{
@@ -605,7 +605,7 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			effects := testEffects(stores, Config{State: &fakeRunState{}, Tx: tx.run})
 
 			err := effects.CommitTreeBarrier(t.Context(), runs.TreeBarrierCommit{
-				CommitID: testCommitID(commitidentity.Prefix + "barrier_fact_" + test.identity),
+				CommitID: testCommitID(runtimeidentity.CommitPrefix + "barrier_fact_" + test.identity),
 				Pending:  pending, Checkpoint: checkpoint,
 				Runs: []runs.EventCommit{{
 					RunID: run.ID(), SessionID: run.SessionID(), SegmentID: "segment_1",
@@ -939,21 +939,21 @@ func (*fakeRunState) UpdateProgress(
 	return nil
 }
 
-func (f *fakeRunState) TerminalizeEvent(_ context.Context, run run.Run, _ string, _ commitidentity.ID) error {
+func (f *fakeRunState) TerminalizeEvent(_ context.Context, run run.Run, _ string, _ runtimeidentity.CommitID) error {
 	f.terminalized = append(f.terminalized, run)
 	return nil
 }
 
-func (*fakeRunState) RecordRunCommit(context.Context, string, string, string, commitidentity.ID) error {
+func (*fakeRunState) RecordRunCommit(context.Context, string, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (*fakeRunState) RecordWaitingRunCommit(context.Context, string, string, commitidentity.ID) error {
+func (*fakeRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
-func (f *fakeRunState) SuspendBarrier(ctx context.Context, value run.Run, _ string, _ commitidentity.ID) error {
+func (f *fakeRunState) SuspendBarrier(ctx context.Context, value run.Run, _ string, _ runtimeidentity.CommitID) error {
 	return f.Suspend(ctx, value)
 }
-func (*fakeRunState) RunCommitCommitted(context.Context, string, string, string, commitidentity.ID) (bool, error) {
+func (*fakeRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
 	return false, nil
 }
 

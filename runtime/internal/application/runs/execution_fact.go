@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -32,13 +32,13 @@ func (e ExecutorMember) Child() bool { return e.ParentID != "" }
 // empty member is reserved for a root execution that failed before the executor
 // created its member.
 func (e ExecutorMember) Validate() error {
-	if _, _, err := executoridentity.ParseOptionalMember(e.MemberID); err != nil {
+	if _, _, err := runtimeidentity.ParseOptionalMember(e.MemberID); err != nil {
 		return fmt.Errorf("runs: %w", err)
 	}
-	if _, _, err := executoridentity.ParseOptionalMember(e.ParentID); err != nil {
+	if _, _, err := runtimeidentity.ParseOptionalMember(e.ParentID); err != nil {
 		return fmt.Errorf("runs: executor parent: %w", err)
 	}
-	if _, _, err := executoridentity.ParseOptionalEffect(e.SpawnCallID); err != nil {
+	if _, _, err := runtimeidentity.ParseOptionalEffect(e.SpawnCallID); err != nil {
 		return fmt.Errorf("runs: executor spawn call: %w", err)
 	}
 	if e.MemberID == "" {
@@ -132,7 +132,7 @@ func (u UnknownEffectsDetected) validate() error {
 	}
 	previous := ""
 	for index, id := range u.IDs {
-		if _, err := executoridentity.ParseEffect(id); err != nil {
+		if _, err := runtimeidentity.ParseEffect(id); err != nil {
 			return fmt.Errorf("runs: unknown Effect id[%d]: %w", index, err)
 		}
 		if index > 0 && id <= previous {
@@ -246,10 +246,10 @@ func (t TreeInterrupted) validate() error {
 	}
 	seen := make(map[inputRequestKey]struct{}, len(t.Interruptions))
 	for index, request := range t.Interruptions {
-		if _, err := executoridentity.ParseMember(request.MemberID); err != nil {
+		if _, err := runtimeidentity.ParseMember(request.MemberID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d] member: %w", index, err)
 		}
-		if _, err := executoridentity.ParseRequest(request.RequestID); err != nil {
+		if _, err := runtimeidentity.ParseRequest(request.RequestID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
 		if err := request.Interrupt.Validate(); err != nil {

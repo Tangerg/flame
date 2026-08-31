@@ -1,21 +1,17 @@
-// Package executoridentity owns Flame's implementation-neutral view of the
-// exact identities crossing the executor port. Member, wait-request, effect,
-// and executor-instance identities are intentionally distinct types even
-// though the current executor encodes them with the same bounded alphabet.
-package executoridentity
+package identity
 
 import "fmt"
 
-// MaximumBytes matches the executor port's durable URI-safe identity envelope.
-const MaximumBytes = 256
+// MaximumExecutorIdentityBytes matches the executor port's durable URI-safe identity envelope.
+const MaximumExecutorIdentityBytes = 256
 
 type value struct {
 	text string
 }
 
 func parse(kind, text string) (value, error) {
-	if len(text) == 0 || len(text) > MaximumBytes {
-		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumBytes)
+	if len(text) == 0 || len(text) > MaximumExecutorIdentityBytes {
+		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
 	}
 	for index := range len(text) {
 		character := text[index]
@@ -25,7 +21,7 @@ func parse(kind, text string) (value, error) {
 			character == '-' || character == '_' || character == '.' || character == ':' {
 			continue
 		}
-		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumBytes)
+		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
 	}
 	return value{text: text}, nil
 }

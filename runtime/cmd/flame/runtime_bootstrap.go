@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -92,7 +92,7 @@ func bootstrapRuntimeWithBuildID(
 		},
 		BuildID: buildID,
 		ServerInfo: protocol.ServerInfo{
-			Name:    productidentity.Name,
+			Name:    runtimeidentity.ProductName,
 			Version: resolvedVersion(),
 		},
 	})

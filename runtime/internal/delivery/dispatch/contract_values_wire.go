@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -832,7 +832,7 @@ func registerRuntimeValues(s *Shapes) {
 		GoType: typeOf[protocol.IdempotencyLimits](),
 		Constraints: []FieldConstraint{
 			{Field: "retentionSeconds", Kind: ConstraintPositive},
-			{Field: "namespace", Kind: ConstraintPattern, Value: idempotencynamespace.Pattern},
+			{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{

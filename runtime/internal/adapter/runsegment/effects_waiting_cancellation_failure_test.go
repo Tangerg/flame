@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
@@ -57,7 +57,7 @@ func (f failingWaitingRunWriter) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr
@@ -69,7 +69,7 @@ func (f failingWaitingRunWriter) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr

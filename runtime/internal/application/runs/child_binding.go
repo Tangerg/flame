@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ChildRunBinding is the application identity assigned to one opaque executor
@@ -20,7 +20,7 @@ type ChildRunBinding struct {
 // Validate rejects incomplete or ambiguous child identity before it reaches a
 // lifecycle observer.
 func (c ChildRunBinding) Validate() error {
-	if _, err := executoridentity.ParseMember(c.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
 		return fmt.Errorf("runs: child Run binding: %w", err)
 	}
 	if _, err := resourceid.ParseRun(c.RunID); err != nil {

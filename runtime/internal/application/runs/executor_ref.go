@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ErrInvalidExecutorRef reports an incomplete or cross-session executor
@@ -28,7 +28,7 @@ func (e ExecutorRef) ValidateFor(sessionID string) error {
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return fmt.Errorf("%w: admitted %v", ErrInvalidExecutorRef, err)
 	}
-	if _, err := executoridentity.ParseExecutor(e.ExecutorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(e.ExecutorID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
 	}
 	if e.SessionID != sessionID {

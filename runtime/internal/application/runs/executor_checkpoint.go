@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ErrExecutorCheckpointNotFound reports that no durable executor checkpoint
@@ -99,13 +98,13 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
-	if _, err := executoridentity.ParseMember(e.RootMemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if len(e.Payload) == 0 {
 		return fmt.Errorf("%w: payload is empty", ErrInvalidExecutorCheckpoint)
 	}
-	if _, err := buildidentity.Parse(e.BuildID); err != nil {
+	if _, err := runtimeidentity.ParseBuild(e.BuildID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := e.Scope.Validate(); err != nil {
@@ -134,7 +133,7 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 	if err := e.Validate(); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseMember(rootMemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {

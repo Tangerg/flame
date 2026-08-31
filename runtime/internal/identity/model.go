@@ -1,7 +1,4 @@
-// Package modelidentity owns the transport-neutral resource ceilings shared by
-// Domain admission and public wire generation. It deliberately contains no
-// model behavior and depends on no architectural ring.
-package modelidentity
+package identity
 
 const (
 	// MaximumProviderCharacters leaves substantial headroom over the bundled

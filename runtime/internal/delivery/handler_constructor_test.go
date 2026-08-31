@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	"github.com/Tangerg/flame/runtime/internal/productidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestNewReportsMissingIntegrations(t *testing.T) {
@@ -16,7 +16,7 @@ func TestNewReportsMissingIntegrations(t *testing.T) {
 
 func TestServerInfoDefaultUsesCanonicalProductIdentity(t *testing.T) {
 	got := (HandlerConfig{}).withServerInfoDefaults().ServerInfo.Name
-	if got != productidentity.Name {
-		t.Fatalf("default server brand = %q, want %q", got, productidentity.Name)
+	if got != runtimeidentity.ProductName {
+		t.Fatalf("default server brand = %q, want %q", got, runtimeidentity.ProductName)
 	}
 }

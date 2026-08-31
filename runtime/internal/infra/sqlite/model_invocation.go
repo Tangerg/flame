@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 type modelInvocationState string
@@ -180,7 +180,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 	if err := validateRunCoordinates("model invocation", sessionID, runID, segmentID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseEffect(callID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
 		return fmt.Errorf("sqlite: model invocation: %w", err)
 	}
 	return nil

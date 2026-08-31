@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
@@ -21,7 +21,7 @@ func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
 		t.Run(parse.name, func(t *testing.T) {
 			for _, invalid := range []string{
 				"", " value", "value ", "val\nue", "value\x00", string([]byte{0xff}),
-				strings.Repeat("界", resourceidentity.MaximumCharacters+1),
+				strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 			} {
 				if err := parse.call(invalid); err == nil {
 					t.Errorf("accepted %q", invalid)
@@ -30,7 +30,7 @@ func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
 		})
 	}
 
-	session, err := ParseSession(strings.Repeat("界", resourceidentity.MaximumCharacters))
+	session, err := ParseSession(strings.Repeat("界", runtimeidentity.MaximumResourceCharacters))
 	if err != nil || session.String() == "" {
 		t.Fatalf("boundary Session identity = %q, %v", session.String(), err)
 	}

@@ -13,11 +13,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // IDPrefix is the type prefix assigned when a Runtime generates a Session ID.
-const IDPrefix = resourceidentity.SessionPrefix
+const IDPrefix = runtimeidentity.SessionPrefix
 
 var (
 	// ErrNotFound reports that no Session exists for an addressed identity.

@@ -1,11 +1,11 @@
 package protocol
 
-import "github.com/Tangerg/flame/runtime/internal/cursorresource"
+import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 
 // MaximumPaginationCursorCharacters is the public resource contract for one
 // opaque pagination continuation. Cursors are URL-safe Base64, so this character
 // ceiling is also their encoded-byte ceiling.
-const MaximumPaginationCursorCharacters = cursorresource.MaximumCharacters
+const MaximumPaginationCursorCharacters = runtimeidentity.MaximumCursorCharacters
 
 // PageQuery is the input shape for cursor-paginated list methods
 // (API.md §4.11). Cursor is opaque to the client.

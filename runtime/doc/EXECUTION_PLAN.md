@@ -121,7 +121,7 @@
 
 ## 当前下一步
 
-继续 Q3/Q4：按真实 consumer 与失败反例审计 CLI/Runtime owner、重复 truth 和 provider/application 边界；没有反例时不制造改动。Q5 只处理真实 TUI flow 暴露的信息层级或交互问题，不按文件大小、参考实现或像素差异机械重写。
+继续 Q3/Q4：Runtime 已把 9 个 cross-ring identity 微包收敛为受限 `internal/identity` shared kernel，下一批继续按真实 consumer 与失败反例审计 owner、重复 truth 和 provider/application 边界；没有反例时不制造改动。Q5 只处理真实 TUI flow 暴露的信息层级或交互问题，不按文件大小、参考实现或像素差异机械重写。
 
 ## Goal 完成条件
 

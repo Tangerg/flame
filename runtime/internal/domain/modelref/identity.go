@@ -6,13 +6,13 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/modelidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 const (
-	MaximumProviderIdentityCharacters = modelidentity.MaximumProviderCharacters
-	MaximumModelIdentityCharacters    = modelidentity.MaximumModelCharacters
-	MaximumReasoningEffortCharacters  = modelidentity.MaximumReasoningEffortCharacters
+	MaximumProviderIdentityCharacters = runtimeidentity.MaximumProviderCharacters
+	MaximumModelIdentityCharacters    = runtimeidentity.MaximumModelCharacters
+	MaximumReasoningEffortCharacters  = runtimeidentity.MaximumReasoningEffortCharacters
 )
 
 var (

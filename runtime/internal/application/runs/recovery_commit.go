@@ -13,7 +13,7 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -208,7 +208,7 @@ func validateRecoveryInvocation(
 	if _, err := resourceid.ParseSegment(segmentID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseEffect(callID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
 		return err
 	}
 	if startedAt.IsZero() || finishedAt.IsZero() {
@@ -455,7 +455,7 @@ func validateRecoveryInterruptDeletions(
 
 func validateCanonicalMemberIdentities(name string, values []string) error {
 	for index, value := range values {
-		if _, err := executoridentity.ParseMember(value); err != nil {
+		if _, err := runtimeidentity.ParseMember(value); err != nil {
 			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
 		}
 		if index > 0 && values[index-1] >= value {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // InterruptFunc is the consumer-owned capability a tool uses to park the
@@ -111,7 +111,7 @@ func (i Interrupt) Validate() error {
 }
 
 func (a ApprovalPrompt) validate() error {
-	if _, err := executoridentity.ParseEffect(a.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(a.CallID); err != nil {
 		return fmt.Errorf("runs: approval: %w", err)
 	}
 	if strings.TrimSpace(a.ToolName) == "" {
@@ -130,7 +130,7 @@ func (a ApprovalPrompt) validate() error {
 }
 
 func (q QuestionPrompt) validate() error {
-	if _, _, err := executoridentity.ParseOptionalEffect(q.CallID); err != nil {
+	if _, _, err := runtimeidentity.ParseOptionalEffect(q.CallID); err != nil {
 		return fmt.Errorf("runs: question: %w", err)
 	}
 	if strings.TrimSpace(q.ToolName) == "" {

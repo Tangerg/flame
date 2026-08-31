@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
@@ -16,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -30,7 +29,7 @@ type ItemReplacement struct {
 type WaitingSubtreeCancellationCommit struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
-	CommitID             commitidentity.ID
+	CommitID             runtimeidentity.CommitID
 	RootRunID            string
 	TargetRunID          string
 	SessionID            string
@@ -56,7 +55,7 @@ type WaitingSubtreeCancellationResult struct {
 type OpeningCommit struct {
 	// CommitID identifies the complete admission/resume transaction, including
 	// every opening projection. It is not an EventCommit identity.
-	CommitID           commitidentity.ID
+	CommitID           runtimeidentity.CommitID
 	Admit              *run.Draft
 	Resume             *run.TreeResumeDraft
 	InitialSession     *session.Session
@@ -73,7 +72,7 @@ type OpeningCommit struct {
 type ResumeClaimCommit struct {
 	// CommitID identifies the complete answer-claim transaction. The checkpoint
 	// returned by a successful claim remains a one-shot in-memory hand-off.
-	CommitID  commitidentity.ID
+	CommitID  runtimeidentity.CommitID
 	Expected  Pending
 	Answers   []InterruptAnswer
 	ClaimedAt time.Time
@@ -103,7 +102,7 @@ func (t ToolApprovalResolution) Validate() error {
 	if err := t.Identity.Validate(); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseEffect(t.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: approval Tool call: %w", err)
 	}
 	if err := t.Invocation.Validate(true); err != nil {
@@ -350,7 +349,7 @@ type ToolInvocationCommit struct {
 }
 
 func (t ToolInvocationCommit) validate() error {
-	if _, err := executoridentity.ParseEffect(t.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
 	if _, err := resourceid.ParseItem(t.ItemID); err != nil {
@@ -381,7 +380,7 @@ func (t ToolInvocationCommit) validate() error {
 }
 
 func (m ModelInvocationCommit) validate() error {
-	if _, err := executoridentity.ParseEffect(m.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(m.CallID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
 	if _, err := resourceid.ParseSegment(m.SegmentID); err != nil {
@@ -447,7 +446,7 @@ type EventCommit struct {
 	// COMMIT receipt to be reconciled without treating another Segment or write
 	// attempt as success. Nested opening/barrier projections may leave it empty;
 	// the top-level CommitEvent port boundary requires it.
-	CommitID commitidentity.ID
+	CommitID runtimeidentity.CommitID
 	State    StateChange
 	Outcome  run.Outcome
 	Items    []transcript.Item
@@ -517,7 +516,7 @@ func (e EventCommit) validateEnvelope() error {
 	if _, err := resourceid.ParseSegment(e.SegmentID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if _, _, err := executoridentity.ParseOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
+	if _, _, err := runtimeidentity.ParseOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
 		return fmt.Errorf("runs: event commit checkpoint root: %w", err)
 	}
 	if !e.CommitID.IsZero() {
@@ -789,7 +788,7 @@ func (o OpeningCommit) validateEvents() error {
 // Runs contains one StateSuspend commit for every active Run in deterministic
 // postorder. No individual Run commit may write or consume the root-owned set.
 type TreeBarrierCommit struct {
-	CommitID   commitidentity.ID
+	CommitID   runtimeidentity.CommitID
 	Pending    Pending
 	Runs       []EventCommit
 	Checkpoint ExecutorCheckpoint

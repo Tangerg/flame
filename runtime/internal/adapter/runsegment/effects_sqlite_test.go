@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/goal"
@@ -21,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
@@ -2633,7 +2633,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	for _, test := range []struct {
 		label     string
 		segmentID string
-		commitID  commitidentity.ID
+		commitID  runtimeidentity.CommitID
 	}{
 		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID},
 		{label: "other terminal attempt", segmentID: draft.SegmentID, commitID: testCommitID("run_commit_terminal_other")},

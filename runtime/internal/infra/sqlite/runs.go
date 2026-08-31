@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlite3 "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"
 
@@ -250,7 +250,7 @@ func (r *RunStore) SuspendBarrier(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
 		return err
@@ -495,7 +495,7 @@ func (r *RunStore) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return err
@@ -530,7 +530,7 @@ func (r *RunStore) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 		return err
@@ -563,7 +563,7 @@ func (r *RunStore) TerminalizeEvent(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) error {
 	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
 		return err
@@ -573,7 +573,7 @@ func (r *RunStore) TerminalizeEvent(
 
 type runCommitIdentity struct {
 	segmentID string
-	commitID  commitidentity.ID
+	commitID  runtimeidentity.CommitID
 }
 
 func (r *RunStore) terminalize(
@@ -609,7 +609,7 @@ func (r *RunStore) RunCommitCommitted(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID commitidentity.ID,
+	commitID runtimeidentity.CommitID,
 ) (bool, error) {
 	if segmentID == "" {
 		if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
@@ -640,7 +640,7 @@ func (r *RunStore) RunCommitCommitted(
 	return found == 1, nil
 }
 
-func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID commitidentity.ID) error {
+func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error {
 	if err := validateRunCoordinates("verify Run commit", sessionID, runID, segmentID); err != nil {
 		return err
 	}
@@ -663,7 +663,7 @@ func validateRunCoordinates(operation, sessionID, runID, segmentID string) error
 	return nil
 }
 
-func validateWaitingRunCommitIdentity(sessionID, runID string, commitID commitidentity.ID) error {
+func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runtimeidentity.CommitID) error {
 	if err := validateSessionResource("verify waiting Run commit", sessionID); err != nil {
 		return err
 	}

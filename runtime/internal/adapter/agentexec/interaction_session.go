@@ -14,10 +14,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -39,7 +39,7 @@ type interactionSession struct {
 	mcpToolAutoApproved func(server, tool string) bool
 	maintenance         RunMaintenance
 	lifecycleHooks      InteractionLifecycleHooks
-	buildID             buildidentity.ID
+	buildID             runtimeidentity.BuildID
 	start               runs.RootExecutionStart
 	toolOutcomes        interactionToolOutcomes
 	committedReplies    interactionCommittedReplies
@@ -100,7 +100,7 @@ func newInteractionSession(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
 	config InteractionExecutorConfig,
-	buildID buildidentity.ID,
+	buildID runtimeidentity.BuildID,
 	policy interactionExecutionPolicy,
 ) *interactionSession {
 	return &interactionSession{

@@ -6,7 +6,7 @@ import (
 	"maps"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // bindExecutorMember records the immutable application-Run to opaque executor
@@ -22,7 +22,7 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 	if _, err := resourceid.ParseRun(runID); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
-	if _, err := executoridentity.ParseMember(memberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(memberID); err != nil {
 		return fmt.Errorf("runs: bind Run %q: %w", runID, err)
 	}
 

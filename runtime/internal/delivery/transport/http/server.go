@@ -32,7 +32,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
-	"github.com/Tangerg/flame/runtime/internal/runtimeinstanceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -117,7 +117,7 @@ func NewServer(cfg Config) (*Server, error) {
 	if cfg.ProtocolVersion == "" {
 		return nil, errors.New("http: ProtocolVersion is required")
 	}
-	if _, err := runtimeinstanceidentity.Parse(cfg.ServerInfo.InstanceID); err != nil {
+	if _, err := runtimeidentity.ParseRuntimeInstance(cfg.ServerInfo.InstanceID); err != nil {
 		return nil, fmt.Errorf("http: ServerInfo.InstanceID: %w", err)
 	}
 	seenProbes := make(map[string]struct{}, len(cfg.HealthProbes))

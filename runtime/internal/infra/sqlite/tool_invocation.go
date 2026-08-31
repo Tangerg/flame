@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 type toolInvocationState string
@@ -168,7 +168,7 @@ func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID 
 	if err := validateItemResource("Tool invocation", itemID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseEffect(callID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation: %w", err)
 	}
 	return nil

@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestCatalogFilterOwnsNormalizedSearchWorkspaceAndCursorIdentity(t *testing.T) {
@@ -109,7 +109,7 @@ func TestCatalogAnchorAndReadRejectPrimitiveSentinelStates(t *testing.T) {
 		{updatedAt: updatedAt, id: " ses_1"},
 		{updatedAt: updatedAt, id: "ses_ one"},
 		{updatedAt: updatedAt, id: "ses_\u200bhidden"},
-		{updatedAt: updatedAt, id: strings.Repeat("界", resourceidentity.MaximumCharacters+1)},
+		{updatedAt: updatedAt, id: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1)},
 	} {
 		if err := badAnchor.Validate(); err == nil {
 			t.Fatalf("corrupt anchor accepted: %+v", badAnchor)

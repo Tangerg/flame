@@ -10,14 +10,14 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // IDPrefix is the server-generated Schedule resource namespace.
-const IDPrefix = resourceidentity.SchedulePrefix
+const IDPrefix = runtimeidentity.SchedulePrefix
 
 // MaximumIDCharacters bounds public Schedule resource identities.
-const MaximumIDCharacters = resourceidentity.MaximumCharacters
+const MaximumIDCharacters = runtimeidentity.MaximumResourceCharacters
 
 const (
 	occurrenceIDSeparator      = ":"

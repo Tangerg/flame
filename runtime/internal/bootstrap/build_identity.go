@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.
@@ -31,5 +31,5 @@ func buildIDFromFile(path string) (string, error) {
 	}
 	var digest [sha256.Size]byte
 	copy(digest[:], hash.Sum(nil))
-	return buildidentity.FromSHA256(digest).String(), nil
+	return runtimeidentity.BuildFromSHA256(digest).String(), nil
 }

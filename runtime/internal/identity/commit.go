@@ -1,30 +1,26 @@
-// Package commitidentity owns the idempotency identity of one immutable
-// top-level Runtime write-set.
-package commitidentity
+package identity
 
 import (
 	"crypto/rand"
 	"errors"
 	"strings"
-
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
 )
 
-const Prefix = "run_commit_"
+const CommitPrefix = "run_commit_"
 
-var ErrInvalid = errors.New("run commit identity must use the run_commit_ prefix and contain bounded URI-safe ASCII")
+var ErrInvalidCommit = errors.New("run commit identity must use the run_commit_ prefix and contain bounded URI-safe ASCII")
 
-type ID struct {
+type CommitID struct {
 	value string
 }
 
-func New() ID {
-	return ID{value: Prefix + rand.Text()}
+func NewCommit() CommitID {
+	return CommitID{value: CommitPrefix + rand.Text()}
 }
 
-func Parse(raw string) (ID, error) {
-	if len(raw) <= len(Prefix) || len(raw) > resourceidentity.MaximumCharacters || !strings.HasPrefix(raw, Prefix) {
-		return ID{}, ErrInvalid
+func ParseCommit(raw string) (CommitID, error) {
+	if len(raw) <= len(CommitPrefix) || len(raw) > MaximumResourceCharacters || !strings.HasPrefix(raw, CommitPrefix) {
+		return CommitID{}, ErrInvalidCommit
 	}
 	for index := range len(raw) {
 		character := raw[index]
@@ -34,19 +30,19 @@ func Parse(raw string) (ID, error) {
 			character == '-' || character == '_' || character == '.' || character == ':' {
 			continue
 		}
-		return ID{}, ErrInvalid
+		return CommitID{}, ErrInvalidCommit
 	}
-	return ID{value: raw}, nil
+	return CommitID{value: raw}, nil
 }
 
 // Validate proves that i is a constructed, canonical commit identity. The zero
 // value is reserved for projections that do not own a top-level write-set.
-func (i ID) Validate() error {
-	_, err := Parse(i.value)
+func (i CommitID) Validate() error {
+	_, err := ParseCommit(i.value)
 	return err
 }
 
 // IsZero reports whether no commit identity is present.
-func (i ID) IsZero() bool { return i.value == "" }
+func (i CommitID) IsZero() bool { return i.value == "" }
 
-func (i ID) String() string { return i.value }
+func (i CommitID) String() string { return i.value }

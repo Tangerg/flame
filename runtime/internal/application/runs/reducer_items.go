@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -292,7 +292,7 @@ func (r *reducer) completeMessageContent(
 }
 
 func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
-	if _, err := executoridentity.ParseEffect(e.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
@@ -441,7 +441,7 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 }
 
 func (r *reducer) toolEnd(e ToolCallFinished) ([]RunEvent, []ToolInvocationCommit, []corechat.Message, error) {
-	if _, err := executoridentity.ParseEffect(e.CallID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
 		return nil, nil, nil, err
 	}
 	ref, ok := r.tools.get(e.CallID)

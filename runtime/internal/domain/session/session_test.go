@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
@@ -71,7 +71,7 @@ func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 		"missing identity":   {Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
 		"spaced identity":    {ID: " ses_1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
 		"control identity":   {ID: "ses_\n1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
-		"oversized identity": {ID: strings.Repeat("界", resourceidentity.MaximumCharacters+1), Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
+		"oversized identity": {ID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
 		"missing workspace":  {ID: valid.ID, Selection: selection, StartedAt: valid.StartedAt},
 		"missing selection":  {ID: valid.ID, Workspace: valid.Workspace, StartedAt: valid.StartedAt},
 		"missing start time": {ID: valid.ID, Workspace: valid.Workspace, Selection: selection},

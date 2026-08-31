@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is
@@ -179,7 +179,7 @@ func (p Pending) validateEnvelope() error {
 	if _, _, err := goalref.ParseOptionalIncarnation(p.GoalIncarnationID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
-	if _, err := executoridentity.ParseExecutor(p.ExecutorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(p.ExecutorID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	switch {
@@ -325,10 +325,10 @@ func (b InterruptBinding) validateIdentities() error {
 	if _, err := resourceid.ParseItem(b.InterruptItemID); err != nil {
 		return fmt.Errorf("interrupt item: %w", err)
 	}
-	if _, err := executoridentity.ParseMember(b.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(b.MemberID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseRequest(b.RequestID); err != nil {
+	if _, err := runtimeidentity.ParseRequest(b.RequestID); err != nil {
 		return err
 	}
 	return nil
@@ -364,7 +364,7 @@ func (v *pendingBindingValidator) validateInterruptTool(
 ) error {
 	switch request.Kind {
 	case interrupt.Approval:
-		if _, err := executoridentity.ParseEffect(binding.ToolCallID); err != nil {
+		if _, err := runtimeidentity.ParseEffect(binding.ToolCallID); err != nil {
 			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
 		}
 		key := memberToolCallIdentity{memberID: binding.MemberID, toolCallID: binding.ToolCallID}
@@ -468,7 +468,7 @@ func (c Continuation) validateRun() error {
 	if _, err := resourceid.ParseRun(c.RunID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseMember(c.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
 		return err
 	}
 	if c.RunCreatedAt.IsZero() {
@@ -570,7 +570,7 @@ func validateToolIdentity(itemID, callID, name, arguments string) error {
 	if _, err := resourceid.ParseItem(itemID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseEffect(callID); err != nil {
+	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
 		return err
 	}
 	if strings.TrimSpace(name) == "" || name != strings.TrimSpace(name) {

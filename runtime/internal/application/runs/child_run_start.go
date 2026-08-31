@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ChildRunStartReservation is the durable, non-public identity allocated for
@@ -57,7 +57,7 @@ func (c ChildRunStartReservation) validateIdentity() error {
 	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if _, err := executoridentity.ParseExecutor(c.ExecutorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	if _, err := resourceid.ParseSegment(c.SegmentID); err != nil {

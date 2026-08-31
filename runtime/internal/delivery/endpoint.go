@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -37,7 +37,7 @@ type Result struct {
 type Endpoint struct {
 	target               any
 	idempotency          *replayStore
-	idempotencyNamespace idempotencynamespace.ID
+	idempotencyNamespace runtimeidentity.IdempotencyNamespace
 	invocations          *invocationGroup
 }
 
@@ -57,7 +57,7 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 	if config.Lifetime == nil {
 		return nil, errors.New("delivery endpoint: lifetime is required")
 	}
-	namespace, _, err := idempotencynamespace.ParseOptional(config.IdempotencyNamespace)
+	namespace, _, err := runtimeidentity.ParseOptionalIdempotencyNamespace(config.IdempotencyNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
 	}
@@ -232,7 +232,7 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 		return NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
 	}
 	if options.IdempotencyNamespace != "" {
-		if _, err := idempotencynamespace.Parse(options.IdempotencyNamespace); err != nil {
+		if _, err := runtimeidentity.ParseIdempotencyNamespace(options.IdempotencyNamespace); err != nil {
 			return NewFailure(protocol.ErrInvalidParams, "idempotency namespace is not an exact durable store identity")
 		}
 	}

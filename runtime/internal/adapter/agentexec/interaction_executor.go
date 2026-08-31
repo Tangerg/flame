@@ -22,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -30,6 +29,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -103,7 +103,7 @@ type InteractionExecutor struct {
 	lifetime               context.Context
 	config                 InteractionExecutorConfig
 	policy                 interactionExecutionPolicy
-	buildID                buildidentity.ID
+	buildID                runtimeidentity.BuildID
 	implementationIdentity deploymentIdentity
 	configurationIdentity  deploymentIdentity
 
@@ -152,7 +152,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
-	buildID, err := buildidentity.Parse(config.BuildID)
+	buildID, err := runtimeidentity.ParseBuild(config.BuildID)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction %w", err)
 	}
@@ -179,7 +179,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 }
 
 func (i *InteractionExecutor) acceptsBuild(raw string) bool {
-	identity, err := buildidentity.Parse(raw)
+	identity, err := runtimeidentity.ParseBuild(raw)
 	return err == nil && identity == i.buildID
 }
 

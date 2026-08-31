@@ -17,9 +17,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownershiprecovery"
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/buildidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/mcp"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
@@ -318,7 +318,7 @@ func validateAssemblyConfig(c Config) error {
 	if c.ChatResolver == nil {
 		return errors.New("runtime: ChatResolver is required")
 	}
-	if _, err := buildidentity.Parse(c.BuildID); err != nil {
+	if _, err := runtimeidentity.ParseBuild(c.BuildID); err != nil {
 		return fmt.Errorf("runtime: BuildID: %w", err)
 	}
 	if c.ConversationStore == nil {

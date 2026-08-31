@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
@@ -16,7 +16,7 @@ func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 	for name, mutate := range map[string]func(*Draft){
 		"run control":       func(draft *Draft) { draft.RunID = "run_\n1" },
 		"session control":   func(draft *Draft) { draft.SessionID = "session_\t1" },
-		"segment oversized": func(draft *Draft) { draft.SegmentID = strings.Repeat("s", resourceidentity.MaximumCharacters+1) },
+		"segment oversized": func(draft *Draft) { draft.SegmentID = strings.Repeat("s", runtimeidentity.MaximumResourceCharacters+1) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			draft := valid

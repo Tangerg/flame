@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestScheduleDomainValuesOwnAllMutableState(t *testing.T) {
@@ -118,7 +118,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		" padded",
 		"interior space",
 		"hidden\u200bvalue",
-		strings.Repeat("界", resourceidentity.MaximumCharacters+1),
+		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
 		if _, err := NewClaim(scheduled, identity, "run_valid", dueAt); err == nil {
 			t.Errorf("NewClaim accepted Session identity %q", identity)

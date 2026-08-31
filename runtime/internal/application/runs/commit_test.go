@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/commitidentity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
 	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 )
@@ -47,7 +47,7 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("terminal commit awaiting transactional watermark: %v", err)
 	}
-	commit.CommitID = commitidentity.ID{}
+	commit.CommitID = runtimeidentity.CommitID{}
 	if err := commit.Validate(); err == nil {
 		t.Fatal("terminal commit without an immutable commit identity passed validation")
 	}

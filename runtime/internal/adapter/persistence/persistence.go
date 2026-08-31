@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/idempotencynamespace"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/knowledgefile"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
@@ -31,7 +31,7 @@ type Bundle struct {
 	DataDirectory string
 	// IdempotencyNamespace identifies the exact durable replay store without
 	// exposing its database path or contents.
-	IdempotencyNamespace idempotencynamespace.ID
+	IdempotencyNamespace runtimeidentity.IdempotencyNamespace
 	Transactor           func(context.Context, func(context.Context) error) error
 
 	Sessions            *sqlitestore.SessionStore

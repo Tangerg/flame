@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // InterruptStore is the SQLite-backed registry of root-owned pending interrupt
@@ -103,7 +103,7 @@ func (i InterruptRecord) validateStorageShape() error {
 	if _, _, err := goalref.ParseOptionalIncarnation(i.GoalIncarnationID); err != nil {
 		return err
 	}
-	if _, err := executoridentity.ParseExecutor(i.ExecutorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(i.ExecutorID); err != nil {
 		return err
 	}
 	switch {
@@ -120,7 +120,7 @@ func (i InterruptRecord) validateStorageShape() error {
 	if !ok {
 		return errors.New("root continuation and member ID are required")
 	}
-	if _, err := executoridentity.ParseMember(root.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(root.MemberID); err != nil {
 		return err
 	}
 	return nil
@@ -479,7 +479,7 @@ func (i *InterruptStore) DeleteResumeClaim(
 	if err := validatePendingOwner(sessionID, runID); err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
-	if _, err := executoridentity.ParseMember(rootMemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,

@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -33,7 +33,7 @@ type managedDelegateCall struct {
 	arguments          tool.Arguments
 	modelCallSequence  uint32
 	toolCallIndex      uint32
-	callID             executoridentity.EffectID
+	callID             runtimeidentity.EffectID
 	admission          agent.ProcessAdmission
 	binding            runs.ChildRunBinding
 	childProcessID     agent.ProcessID

@@ -25,7 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -782,11 +782,11 @@ const (
 	toolInvocationNamespace  = "tool"
 )
 
-func modelInvocationID(invocation interaction.ModelInvocation) (executoridentity.EffectID, error) {
+func modelInvocationID(invocation interaction.ModelInvocation) (runtimeidentity.EffectID, error) {
 	return modelInvocationIDFrom(invocation.EffectID(), invocation.ModelCallSequence())
 }
 
-func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (executoridentity.EffectID, error) {
+func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (runtimeidentity.EffectID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(effectID.String()))
 	_, _ = digest.Write([]byte{0})
@@ -794,7 +794,7 @@ func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (e
 	return parsedInvocationID(modelInvocationNamespace, digest.Sum(nil), modelCallSequence)
 }
 
-func toolInvocationID(invocation interaction.ToolInvocation) (executoridentity.EffectID, error) {
+func toolInvocationID(invocation interaction.ToolInvocation) (runtimeidentity.EffectID, error) {
 	return delegatedToolCallID(
 		invocation.Relation(), invocation.ModelCallSequence(), invocation.ToolCallIndex(), invocation.ToolCall(),
 	)
@@ -805,7 +805,7 @@ func delegatedToolCallID(
 	modelCallSequence uint32,
 	toolCallIndex uint32,
 	call corechat.ToolCall,
-) (executoridentity.EffectID, error) {
+) (runtimeidentity.EffectID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(relation.ProcessID().String()))
 	_, _ = digest.Write([]byte{0})
@@ -817,8 +817,8 @@ func delegatedToolCallID(
 	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), toolCallIndex)
 }
 
-func parsedInvocationID(namespace string, digest []byte, ordinal uint32) (executoridentity.EffectID, error) {
-	return executoridentity.ParseEffect(
+func parsedInvocationID(namespace string, digest []byte, ordinal uint32) (runtimeidentity.EffectID, error) {
+	return runtimeidentity.ParseEffect(
 		namespace + ":" + hex.EncodeToString(digest) + ":" + strconv.FormatUint(uint64(ordinal), 10),
 	)
 }

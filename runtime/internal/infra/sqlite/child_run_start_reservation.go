@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 var (
@@ -68,7 +68,7 @@ type ChildRunStartReservationRecord struct {
 }
 
 func (c ChildRunStartReservationRecord) validate() error {
-	if _, err := executoridentity.ParseMember(c.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if _, err := resourceid.ParseSession(c.SessionID); err != nil {

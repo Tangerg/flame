@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/resourceidentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
 	"github.com/Tangerg/scope/core/chat"
@@ -61,7 +61,7 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 		" ses_1",
 		"ses_ one",
 		"ses_\u200bhidden",
-		strings.Repeat("界", resourceidentity.MaximumCharacters+1),
+		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
 		if _, err := messages.Read(t.Context(), sessionID); !errors.Is(err, errSessionIDRequired) {
 			t.Errorf("Read(%q) error = %v", sessionID, err)

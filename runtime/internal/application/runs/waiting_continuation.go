@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/executoridentity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // WaitingSubtreeCancellationRequest carries the complete durable waiting tree
@@ -26,7 +26,7 @@ func (w WaitingSubtreeCancellationRequest) Validate() error {
 	if err := w.Continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
 	}
-	if _, err := executoridentity.ParseMember(w.TargetMemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(w.TargetMemberID); err != nil {
 		return fmt.Errorf("runs: waiting subtree target: %w", err)
 	}
 	if strings.TrimSpace(w.Reason) == "" || w.Reason != strings.TrimSpace(w.Reason) {
@@ -83,7 +83,7 @@ func (w WaitingMember) Validate() error {
 	if _, err := resourceid.ParseRun(w.RunID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
-	if _, err := executoridentity.ParseMember(w.MemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(w.MemberID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
 	if (w.ParentRunID == "") != (w.SpawnedByItemID == "") {
@@ -132,7 +132,7 @@ func validateWaitingContinuationEnvelope(continuation WaitingContinuation) error
 	if _, err := resourceid.ParseSession(continuation.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if _, err := executoridentity.ParseExecutor(continuation.ExecutorID); err != nil {
+	if _, err := runtimeidentity.ParseExecutor(continuation.ExecutorID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if _, err := resourceid.ParseRun(continuation.RootRunID); err != nil {
