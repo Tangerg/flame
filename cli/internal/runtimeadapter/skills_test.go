@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/skills"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 const skillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -96,7 +96,7 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 		t.Fatalf("Discover = (%+v, %v)", discovered, err)
 	}
 	managed, err := runtime.Managed(t.Context())
-	if err != nil || len(managed) != 1 || managed[0].Lifecycle != skills.Archived {
+	if err != nil || len(managed) != 1 || managed[0].Lifecycle != workspace.SkillArchived {
 		t.Fatalf("Managed = (%+v, %v)", managed, err)
 	}
 	proposals, err := runtime.Proposals(t.Context(), "/workspace")

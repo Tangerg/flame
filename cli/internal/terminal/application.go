@@ -18,13 +18,9 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/attachment"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
@@ -34,7 +30,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/sessionartifact"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
-	"github.com/Tangerg/flame/cli/internal/skills"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -76,14 +71,14 @@ type app struct {
 	usage            agent.UsageService
 	modelConfig      modelconfig.Service
 	goals            agent.GoalService
-	skills           skills.Service
+	skills           workspace.SkillService
 	mcp              mcp.Service
 	schedules        schedule.Service
 	agentMemory      agentmemory.Service
-	knowledge        knowledge.Service
-	diagnosticTools  diagnostictool.Service
-	authoringContext authoringcontext.Service
-	hooks            hookpolicy.Service
+	knowledge        workspace.KnowledgeService
+	diagnosticTools  workspace.DiagnosticToolService
+	authoringContext workspace.AuthoringContextService
+	hooks            workspace.HookService
 	feedback         agent.FeedbackService
 	runtimeProfile   *runtimeprofile.Profile
 	artifacts        sessionartifact.Store
@@ -198,14 +193,14 @@ type appConfig struct {
 	usage            agent.UsageService
 	modelConfig      modelconfig.Service
 	goals            agent.GoalService
-	skills           skills.Service
+	skills           workspace.SkillService
 	mcp              mcp.Service
 	schedules        schedule.Service
 	agentMemory      agentmemory.Service
-	knowledge        knowledge.Service
-	diagnosticTools  diagnostictool.Service
-	authoringContext authoringcontext.Service
-	hooks            hookpolicy.Service
+	knowledge        workspace.KnowledgeService
+	diagnosticTools  workspace.DiagnosticToolService
+	authoringContext workspace.AuthoringContextService
+	hooks            workspace.HookService
 	feedback         agent.FeedbackService
 	runtimeProfile   *runtimeprofile.Profile
 	clientVersion    string

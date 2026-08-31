@@ -5,10 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 )
 
 type knowledgeBinding interface {
@@ -19,16 +18,16 @@ type knowledgeBinding interface {
 
 type knowledgeAdapter struct{ runtime *Connection }
 
-var _ knowledge.Service = (*knowledgeAdapter)(nil)
+var _ workspace.KnowledgeService = (*knowledgeAdapter)(nil)
 
-func (k *knowledgeAdapter) Entries(ctx context.Context, workspace string) ([]knowledge.Entry, error) {
+func (k *knowledgeAdapter) Entries(ctx context.Context, workspacePath string) ([]workspace.KnowledgeEntry, error) {
 	r := k.runtime
-	workspace = strings.TrimSpace(workspace)
-	if workspace == "" {
+	workspacePath = strings.TrimSpace(workspacePath)
+	if workspacePath == "" {
 		return nil, errors.New("list knowledge: workspace is empty")
 	}
 	page, err := r.knowledge.ListKnowledge(ctx, protocol.WorkspaceQuery{
-		Workspace: protocol.WorkspaceRef{Path: workspace},
+		Workspace: protocol.WorkspaceRef{Path: workspacePath},
 	}, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
@@ -37,8 +36,8 @@ func (k *knowledgeAdapter) Entries(ctx context.Context, workspace string) ([]kno
 	if err != nil {
 		return nil, err
 	}
-	entries := make([]knowledge.Entry, 0, len(values))
-	seen := make(map[knowledge.Scope]struct{}, len(values))
+	entries := make([]workspace.KnowledgeEntry, 0, len(values))
+	seen := make(map[workspace.KnowledgeScope]struct{}, len(values))
 	for index, value := range values {
 		entry := projectKnowledgeEntry(value)
 		if err := entry.Validate(); err != nil {
@@ -53,74 +52,74 @@ func (k *knowledgeAdapter) Entries(ctx context.Context, workspace string) ([]kno
 	return entries, nil
 }
 
-func (k *knowledgeAdapter) Document(ctx context.Context, target knowledge.Target) (knowledge.Entry, error) {
+func (k *knowledgeAdapter) Document(ctx context.Context, target workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error) {
 	r := k.runtime
 	if err := target.Validate(); err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	request := protocol.GetKnowledgeRequest{Scope: protocol.KnowledgeScope(target.Scope)}
-	if target.Scope != knowledge.Home {
+	if target.Scope != workspace.KnowledgeHome {
 		request.Workspace = &protocol.WorkspaceRef{Path: target.Workspace}
 	}
 	result, err := r.knowledge.GetKnowledge(ctx, request, r.callOptions())
 	if err != nil {
-		return knowledge.Entry{}, classifyError(err)
+		return workspace.KnowledgeEntry{}, classifyError(err)
 	}
 	if result == nil {
-		return knowledge.Entry{}, runtimeContractViolation("get knowledge returned nil")
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("get knowledge returned nil")
 	}
 	entry := projectKnowledgeEntry(*result)
 	if err := entry.Validate(); err != nil {
-		return knowledge.Entry{}, runtimeContractViolation("get knowledge returned an invalid entry: %v", err)
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("get knowledge returned an invalid entry: %v", err)
 	}
 	if entry.Scope != target.Scope {
-		return knowledge.Entry{}, runtimeContractViolation("get knowledge returned %s scope, want %s", entry.Scope, target.Scope)
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("get knowledge returned %s scope, want %s", entry.Scope, target.Scope)
 	}
 	return entry, nil
 }
 
-func (k *knowledgeAdapter) Save(ctx context.Context, update knowledge.Update) (knowledge.Entry, error) {
+func (k *knowledgeAdapter) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
 	r := k.runtime
 	if err := update.Validate(); err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	target := update.Target
 	request := protocol.UpdateKnowledgeRequest{
 		Scope: protocol.KnowledgeScope(target.Scope), ExpectedRevision: update.ExpectedRevision, Content: update.Content,
 	}
-	if target.Scope != knowledge.Home {
+	if target.Scope != workspace.KnowledgeHome {
 		request.Workspace = &protocol.WorkspaceRef{Path: target.Workspace}
 	}
 	updated, err := r.knowledge.UpdateKnowledge(ctx, request, options)
 	if err != nil {
-		return knowledge.Entry{}, classifyError(err)
+		return workspace.KnowledgeEntry{}, classifyError(err)
 	}
 	if updated == nil {
-		return knowledge.Entry{}, runtimeContractViolation("update knowledge returned nil")
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned nil")
 	}
 	entry := projectKnowledgeEntry(*updated)
 	if validateErr := entry.Validate(); validateErr != nil {
-		return knowledge.Entry{}, runtimeContractViolation("update knowledge returned an invalid entry: %v", validateErr)
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned an invalid entry: %v", validateErr)
 	}
 	if entry.Scope != target.Scope || entry.Content != update.Content {
-		return knowledge.Entry{}, runtimeContractViolation("update knowledge returned a mismatched entry")
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned a mismatched entry")
 	}
 	authoritative, err := k.Document(ctx, target)
 	if err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	if authoritative.Content != update.Content {
-		return knowledge.Entry{}, errors.New("verify knowledge update: authoritative document did not converge")
+		return workspace.KnowledgeEntry{}, errors.New("verify knowledge update: authoritative document did not converge")
 	}
 	return authoritative, nil
 }
 
-func projectKnowledgeEntry(value protocol.KnowledgeEntry) knowledge.Entry {
-	entry := knowledge.Entry{Scope: knowledge.Scope(value.Scope), Content: value.Content, Revision: value.Revision}
+func projectKnowledgeEntry(value protocol.KnowledgeEntry) workspace.KnowledgeEntry {
+	entry := workspace.KnowledgeEntry{Scope: workspace.KnowledgeScope(value.Scope), Content: value.Content, Revision: value.Revision}
 	if !value.UpdatedAt.IsZero() {
 		entry.UpdatedAt = new(value.UpdatedAt)
 	}

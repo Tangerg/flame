@@ -5,10 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 )
 
 type knowledgeBindingStub struct {
@@ -108,19 +107,19 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 	if err != nil || len(entries) != 1 || entries[0].UpdatedAt == nil {
 		t.Fatalf("Entries = (%+v, %v)", entries, err)
 	}
-	project, err := knowledge.NewTarget(knowledge.ProjectRoot, "/workspace")
+	project, err := workspace.NewKnowledgeTarget(workspace.KnowledgeProjectRoot, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	entry, err := adapter.Document(t.Context(), project)
-	if err != nil || entry.Scope != knowledge.ProjectRoot || entry.Content != "document" {
+	if err != nil || entry.Scope != workspace.KnowledgeProjectRoot || entry.Content != "document" {
 		t.Fatalf("Document = (%+v, %v)", entry, err)
 	}
-	home, err := knowledge.NewTarget(knowledge.Home, "")
+	home, err := workspace.NewKnowledgeTarget(workspace.KnowledgeHome, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := adapter.Save(t.Context(), knowledge.Update{
+	updated, err := adapter.Save(t.Context(), workspace.KnowledgeUpdate{
 		Target: home, ExpectedRevision: "rev-home", Content: "line one\nline two\n",
 	})
 	if err != nil || updated.Revision != "rev-updated" {
@@ -135,12 +134,12 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 func TestKnowledgeAdapterDoesNotAcceptAnUpdateBeforeTheAuthoritativeReadConverges(t *testing.T) {
 	stub := &knowledgeBindingStub{t: t, updated: time.Now(), dropUpdate: true}
 	adapter := &knowledgeAdapter{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
-	target, err := knowledge.NewTarget(knowledge.ProjectRoot, "/workspace")
+	target, err := workspace.NewKnowledgeTarget(workspace.KnowledgeProjectRoot, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = adapter.Save(t.Context(), knowledge.Update{
+	_, err = adapter.Save(t.Context(), workspace.KnowledgeUpdate{
 		Target: target, ExpectedRevision: "rev-document", Content: "replacement",
 	})
 	if err == nil {

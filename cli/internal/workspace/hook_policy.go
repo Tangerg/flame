@@ -1,6 +1,4 @@
-// Package hookpolicy defines the CLI's auditable projection of runtime
-// lifecycle hooks and project trust decisions.
-package hookpolicy
+package workspace
 
 import (
 	"context"
@@ -10,55 +8,55 @@ import (
 	"strings"
 )
 
-type Event string
+type HookEvent string
 
 const (
-	PreToolUse       Event = "PreToolUse"
-	PostToolUse      Event = "PostToolUse"
-	UserPromptSubmit Event = "UserPromptSubmit"
-	SessionStart     Event = "SessionStart"
-	SubagentStart    Event = "SubagentStart"
-	SubagentStop     Event = "SubagentStop"
-	PreCompact       Event = "PreCompact"
-	Stop             Event = "Stop"
-	Notification     Event = "Notification"
+	HookPreToolUse       HookEvent = "PreToolUse"
+	HookPostToolUse      HookEvent = "PostToolUse"
+	HookUserPromptSubmit HookEvent = "UserPromptSubmit"
+	HookSessionStart     HookEvent = "SessionStart"
+	HookSubagentStart    HookEvent = "SubagentStart"
+	HookSubagentStop     HookEvent = "SubagentStop"
+	HookPreCompact       HookEvent = "PreCompact"
+	HookStop             HookEvent = "Stop"
+	HookNotification     HookEvent = "Notification"
 )
 
-func (e Event) Validate() error {
+func (e HookEvent) Validate() error {
 	switch e {
-	case PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, SubagentStart, SubagentStop, PreCompact, Stop, Notification:
+	case HookPreToolUse, HookPostToolUse, HookUserPromptSubmit, HookSessionStart, HookSubagentStart, HookSubagentStop, HookPreCompact, HookStop, HookNotification:
 		return nil
 	default:
 		return fmt.Errorf("hook event %q is invalid", e)
 	}
 }
 
-type Scope string
+type HookScope string
 
 const (
-	Global  Scope = "global"
-	Project Scope = "project"
+	HookGlobal  HookScope = "global"
+	HookProject HookScope = "project"
 )
 
-func (s Scope) Validate() error {
-	if s != Global && s != Project {
+func (s HookScope) Validate() error {
+	if s != HookGlobal && s != HookProject {
 		return fmt.Errorf("hook scope %q is invalid", s)
 	}
 	return nil
 }
 
-type Hook struct {
-	Event         Event
+type LifecycleHook struct {
+	Event         HookEvent
 	Matcher       string
 	Command       string
 	Inject        string
 	TimeoutMillis int
-	Scope         Scope
+	Scope         HookScope
 	Source        string
 	Active        bool
 }
 
-func (h Hook) Validate() error {
+func (h LifecycleHook) Validate() error {
 	if err := h.Event.Validate(); err != nil {
 		return err
 	}
@@ -77,7 +75,7 @@ func (h Hook) Validate() error {
 		return errors.New("hook timeout is invalid")
 	}
 	if h.Matcher != "" {
-		if h.Event != PreToolUse && h.Event != PostToolUse {
+		if h.Event != HookPreToolUse && h.Event != HookPostToolUse {
 			return errors.New("hook matcher is only valid for tool events")
 		}
 		if _, err := path.Match(h.Matcher, ""); err != nil {
@@ -87,22 +85,22 @@ func (h Hook) Validate() error {
 	return nil
 }
 
-type Catalog struct {
+type HookCatalog struct {
 	ProjectRoot    string
 	ProjectTrusted bool
-	Hooks          []Hook
+	Hooks          []LifecycleHook
 }
 
-func (c Catalog) Validate() error {
+func (c HookCatalog) Validate() error {
 	projectHooks := false
 	for index, hook := range c.Hooks {
 		if err := hook.Validate(); err != nil {
 			return fmt.Errorf("hook %d: %w", index+1, err)
 		}
-		if hook.Scope == Global && !hook.Active {
+		if hook.Scope == HookGlobal && !hook.Active {
 			return fmt.Errorf("global hook %d is inactive", index+1)
 		}
-		if hook.Scope == Project {
+		if hook.Scope == HookProject {
 			projectHooks = true
 			if hook.Active != c.ProjectTrusted {
 				return fmt.Errorf("project hook %d active state disagrees with trust", index+1)
@@ -117,7 +115,7 @@ func (c Catalog) Validate() error {
 
 // ValidateTrustAcknowledgement proves that an authoritative catalog read after
 // SetProjectTrust describes the exact project and trust decision requested.
-func (c Catalog) ValidateTrustAcknowledgement(projectRoot string, trusted bool) error {
+func (c HookCatalog) ValidateTrustAcknowledgement(projectRoot string, trusted bool) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -130,7 +128,7 @@ func (c Catalog) ValidateTrustAcknowledgement(projectRoot string, trusted bool) 
 	return nil
 }
 
-type Service interface {
-	Catalog(context.Context, string) (Catalog, error)
+type HookService interface {
+	Catalog(context.Context, string) (HookCatalog, error)
 	SetProjectTrust(context.Context, string, bool) error
 }

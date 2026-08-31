@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 func (a *app) ShowAgentDocuments() {
@@ -26,9 +26,9 @@ func (a *app) ShowAgentDocuments() {
 		})
 }
 
-func agentDocumentsDocument(workspace string, documents []authoringcontext.Document) readerDocument {
+func agentDocumentsDocument(workspacePath string, documents []workspace.AuthoringDocument) readerDocument {
 	if len(documents) == 0 {
-		return paragraphDocument("Agent documents", workspace, []string{"No AGENTS.md documents apply to this workspace."})
+		return paragraphDocument("Agent documents", workspacePath, []string{"No AGENTS.md documents apply to this workspace."})
 	}
 	lines := make([]string, 0, len(documents))
 	for _, document := range documents {
@@ -38,7 +38,7 @@ func agentDocumentsDocument(workspace string, documents []authoringcontext.Docum
 		}
 		lines = append(lines, label)
 	}
-	return paragraphDocument("Agent documents", fmt.Sprintf("%d applicable · %s", len(documents), workspace), lines)
+	return paragraphDocument("Agent documents", fmt.Sprintf("%d applicable · %s", len(documents), workspacePath), lines)
 }
 
 func (a *app) ShowRecipes() {
@@ -57,9 +57,9 @@ func (a *app) ShowRecipes() {
 		})
 }
 
-func recipesDocument(workspace string, recipes []authoringcontext.Recipe) readerDocument {
+func recipesDocument(workspacePath string, recipes []workspace.AuthoringRecipe) readerDocument {
 	if len(recipes) == 0 {
-		return paragraphDocument("Prompt recipes", workspace, []string{"No prompt recipes are available."})
+		return paragraphDocument("Prompt recipes", workspacePath, []string{"No prompt recipes are available."})
 	}
 	sections := make([]ToolSection, 0, len(recipes)*2)
 	for _, recipe := range recipes {
@@ -76,7 +76,7 @@ func recipesDocument(workspace string, recipes []authoringcontext.Recipe) reader
 			ToolSection{Title: recipe.Source, Style: toolSectionCode, Language: "markdown", Text: recipe.Body},
 		)
 	}
-	return readerDocument{Title: "Prompt recipes", Detail: fmt.Sprintf("%d available · %s", len(recipes), workspace), Sections: sections}
+	return readerDocument{Title: "Prompt recipes", Detail: fmt.Sprintf("%d available · %s", len(recipes), workspacePath), Sections: sections}
 }
 
 func (a *app) PrepareRecipe(argument string) error {
@@ -129,11 +129,11 @@ func (a *app) PrepareRecipe(argument string) error {
 }
 
 type expandedRecipe struct {
-	recipe authoringcontext.Recipe
+	recipe workspace.AuthoringRecipe
 	prompt string
 }
 
-func resolveRecipeInvocation(recipes []authoringcontext.Recipe, argument string) (authoringcontext.Recipe, string, error) {
+func resolveRecipeInvocation(recipes []workspace.AuthoringRecipe, argument string) (workspace.AuthoringRecipe, string, error) {
 	// Prefer the longest complete catalog name at the beginning of the argument.
 	// This keeps every runtime-valid filename addressable, including names with
 	// spaces, and gives "review code" precedence over recipe "review" + arg
@@ -157,13 +157,13 @@ func resolveRecipeInvocation(recipes []authoringcontext.Recipe, argument string)
 	return recipe, arguments, err
 }
 
-func resolveRecipe(recipes []authoringcontext.Recipe, identity string) (authoringcontext.Recipe, error) {
+func resolveRecipe(recipes []workspace.AuthoringRecipe, identity string) (workspace.AuthoringRecipe, error) {
 	for _, recipe := range recipes {
 		if recipe.Name == identity {
 			return recipe, nil
 		}
 	}
-	var matches []authoringcontext.Recipe
+	var matches []workspace.AuthoringRecipe
 	for _, recipe := range recipes {
 		if strings.HasPrefix(recipe.Name, identity) {
 			matches = append(matches, recipe)
@@ -171,10 +171,10 @@ func resolveRecipe(recipes []authoringcontext.Recipe, identity string) (authorin
 	}
 	switch len(matches) {
 	case 0:
-		return authoringcontext.Recipe{}, errors.New("recipe not found: " + identity)
+		return workspace.AuthoringRecipe{}, errors.New("recipe not found: " + identity)
 	case 1:
 		return matches[0], nil
 	default:
-		return authoringcontext.Recipe{}, errors.New("recipe name is ambiguous; use the full name")
+		return workspace.AuthoringRecipe{}, errors.New("recipe name is ambiguous; use the full name")
 	}
 }

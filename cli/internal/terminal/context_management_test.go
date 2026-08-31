@@ -13,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type agentMemoryServiceStub struct {
@@ -183,8 +183,8 @@ func (a *agentMemoryServiceStub) Add(_ context.Context, target agentmemory.Targe
 
 type knowledgeServiceStub struct {
 	mu        sync.Mutex
-	content   map[knowledge.Scope]string
-	revisions map[knowledge.Scope]string
+	content   map[workspace.KnowledgeScope]string
+	revisions map[workspace.KnowledgeScope]string
 	saved     chan string
 	failed    chan struct{}
 	failNext  bool
@@ -194,53 +194,53 @@ type knowledgeServiceStub struct {
 
 func newKnowledgeServiceStub() *knowledgeServiceStub {
 	return &knowledgeServiceStub{
-		content: map[knowledge.Scope]string{
-			knowledge.WorkingDirectory: "cwd guidance",
-			knowledge.ProjectRoot:      "project rules",
-			knowledge.Home:             "global preferences",
+		content: map[workspace.KnowledgeScope]string{
+			workspace.KnowledgeWorkingDirectory: "cwd guidance",
+			workspace.KnowledgeProjectRoot:      "project rules",
+			workspace.KnowledgeHome:             "global preferences",
 		},
-		revisions: map[knowledge.Scope]string{
-			knowledge.WorkingDirectory: "rev-cwd", knowledge.ProjectRoot: "rev-project", knowledge.Home: "rev-home",
+		revisions: map[workspace.KnowledgeScope]string{
+			workspace.KnowledgeWorkingDirectory: "rev-cwd", workspace.KnowledgeProjectRoot: "rev-project", workspace.KnowledgeHome: "rev-home",
 		},
 		saved: make(chan string, 1), failed: make(chan struct{}, 1),
 	}
 }
 
-func (k *knowledgeServiceStub) Entries(context.Context, string) ([]knowledge.Entry, error) {
+func (k *knowledgeServiceStub) Entries(context.Context, string) ([]workspace.KnowledgeEntry, error) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	now := time.Now()
-	return []knowledge.Entry{
-		{Scope: knowledge.WorkingDirectory, Content: k.content[knowledge.WorkingDirectory], Revision: k.revisions[knowledge.WorkingDirectory], UpdatedAt: &now},
-		{Scope: knowledge.ProjectRoot, Content: k.content[knowledge.ProjectRoot], Revision: k.revisions[knowledge.ProjectRoot], UpdatedAt: &now},
-		{Scope: knowledge.Home, Content: k.content[knowledge.Home], Revision: k.revisions[knowledge.Home], UpdatedAt: &now},
+	return []workspace.KnowledgeEntry{
+		{Scope: workspace.KnowledgeWorkingDirectory, Content: k.content[workspace.KnowledgeWorkingDirectory], Revision: k.revisions[workspace.KnowledgeWorkingDirectory], UpdatedAt: &now},
+		{Scope: workspace.KnowledgeProjectRoot, Content: k.content[workspace.KnowledgeProjectRoot], Revision: k.revisions[workspace.KnowledgeProjectRoot], UpdatedAt: &now},
+		{Scope: workspace.KnowledgeHome, Content: k.content[workspace.KnowledgeHome], Revision: k.revisions[workspace.KnowledgeHome], UpdatedAt: &now},
 	}, nil
 }
 
-func (k *knowledgeServiceStub) Document(_ context.Context, target knowledge.Target) (knowledge.Entry, error) {
+func (k *knowledgeServiceStub) Document(_ context.Context, target workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error) {
 	if err := target.Validate(); err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	return knowledge.Entry{Scope: target.Scope, Content: k.content[target.Scope], Revision: k.revisions[target.Scope]}, nil
+	return workspace.KnowledgeEntry{Scope: target.Scope, Content: k.content[target.Scope], Revision: k.revisions[target.Scope]}, nil
 }
 
-func (k *knowledgeServiceStub) Save(ctx context.Context, update knowledge.Update) (knowledge.Entry, error) {
+func (k *knowledgeServiceStub) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
 	if err := update.Validate(); err != nil {
-		return knowledge.Entry{}, err
+		return workspace.KnowledgeEntry{}, err
 	}
 	target, content := update.Target, update.Content
 	k.mu.Lock()
 	if k.revisions[target.Scope] != update.ExpectedRevision {
 		k.mu.Unlock()
-		return knowledge.Entry{}, errors.New("revision conflict")
+		return workspace.KnowledgeEntry{}, errors.New("revision conflict")
 	}
 	if k.failNext {
 		k.failNext = false
 		k.mu.Unlock()
 		k.failed <- struct{}{}
-		return knowledge.Entry{}, errors.New("write refused")
+		return workspace.KnowledgeEntry{}, errors.New("write refused")
 	}
 	block := k.blockNext
 	k.blockNext = nil
@@ -250,13 +250,13 @@ func (k *knowledgeServiceStub) Save(ctx context.Context, update knowledge.Update
 		select {
 		case <-block:
 		case <-ctx.Done():
-			return knowledge.Entry{}, context.Cause(ctx)
+			return workspace.KnowledgeEntry{}, context.Cause(ctx)
 		}
 	}
 	k.mu.Lock()
 	k.content[target.Scope] = content
 	k.revisions[target.Scope] += "+1"
-	entry := knowledge.Entry{Scope: target.Scope, Content: content, Revision: k.revisions[target.Scope]}
+	entry := workspace.KnowledgeEntry{Scope: target.Scope, Content: content, Revision: k.revisions[target.Scope]}
 	k.mu.Unlock()
 	k.saved <- content
 	return entry, nil
@@ -497,8 +497,8 @@ func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
 	host.Shows(t, "global preferences")
 
 	knowledgeStore.mu.Lock()
-	knowledgeStore.content[knowledge.Home] = "preferences from runtime change"
-	knowledgeStore.revisions[knowledge.Home] = "rev-home+external"
+	knowledgeStore.content[workspace.KnowledgeHome] = "preferences from runtime change"
+	knowledgeStore.revisions[workspace.KnowledgeHome] = "rev-home+external"
 	knowledgeStore.mu.Unlock()
 	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.KnowledgeChanged), Sequence: 1}
 	awaitValue(t, source.applied, "knowledge invalidation")
@@ -521,8 +521,8 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 	host.Shows(t, "global preferences")
 
 	knowledgeStore.mu.Lock()
-	knowledgeStore.content[knowledge.Home] = "preferences from scoped resync"
-	knowledgeStore.revisions[knowledge.Home] = "rev-home+resync"
+	knowledgeStore.content[workspace.KnowledgeHome] = "preferences from scoped resync"
+	knowledgeStore.revisions[workspace.KnowledgeHome] = "rev-home+resync"
 	knowledgeStore.mu.Unlock()
 	source.events <- changefeed.Event{
 		Type: changefeed.Resync, Sequence: 1, Topics: []changefeed.Topic{changefeed.KnowledgeChanged},

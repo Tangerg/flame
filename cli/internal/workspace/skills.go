@@ -1,6 +1,4 @@
-// Package skills defines the CLI-owned Skill catalog, curator lifecycle, and
-// immutable proposal review port.
-package skills
+package workspace
 
 import (
 	"context"
@@ -10,79 +8,79 @@ import (
 	"strings"
 )
 
-type Scope string
+type SkillScope string
 
 const (
-	ProjectScope Scope = "project"
-	UserScope    Scope = "user"
+	SkillProjectScope SkillScope = "project"
+	SkillUserScope    SkillScope = "user"
 )
 
-func (s Scope) Validate() error {
-	if s != ProjectScope && s != UserScope {
+func (s SkillScope) Validate() error {
+	if s != SkillProjectScope && s != SkillUserScope {
 		return fmt.Errorf("skill scope %q is invalid", s)
 	}
 	return nil
 }
 
-type Lifecycle string
+type SkillLifecycle string
 
 const (
-	Active   Lifecycle = "active"
-	Archived Lifecycle = "archived"
+	SkillActive   SkillLifecycle = "active"
+	SkillArchived SkillLifecycle = "archived"
 )
 
-func (l Lifecycle) Validate() error {
-	if l != Active && l != Archived {
+func (l SkillLifecycle) Validate() error {
+	if l != SkillActive && l != SkillArchived {
 		return fmt.Errorf("skill lifecycle %q is invalid", l)
 	}
 	return nil
 }
 
-type Origin string
+type SkillProposalOrigin string
 
 const (
-	Requested Origin = "requested"
-	Mined     Origin = "mined"
+	SkillProposalRequested SkillProposalOrigin = "requested"
+	SkillProposalMined     SkillProposalOrigin = "mined"
 )
 
-func (o Origin) Validate() error {
-	if o != "" && o != Requested && o != Mined {
+func (o SkillProposalOrigin) Validate() error {
+	if o != "" && o != SkillProposalRequested && o != SkillProposalMined {
 		return fmt.Errorf("skill proposal origin %q is invalid", o)
 	}
 	return nil
 }
 
-type Discovered struct {
+type DiscoveredSkill struct {
 	Name        string
 	Description string
-	Scope       Scope
+	Scope       SkillScope
 }
 
-func (d Discovered) Validate() error {
+func (d DiscoveredSkill) Validate() error {
 	if strings.TrimSpace(d.Name) == "" {
 		return errors.New("discovered skill name is empty")
 	}
 	return d.Scope.Validate()
 }
 
-func (d Discovered) Key() string { return string(d.Scope) + "/" + d.Name }
+func (d DiscoveredSkill) Key() string { return string(d.Scope) + "/" + d.Name }
 
-type Managed struct {
+type ManagedSkill struct {
 	Name        string
 	Description string
-	Lifecycle   Lifecycle
+	Lifecycle   SkillLifecycle
 }
 
-func (m Managed) Validate() error {
+func (m ManagedSkill) Validate() error {
 	if strings.TrimSpace(m.Name) == "" {
 		return errors.New("managed skill name is empty")
 	}
 	return m.Lifecycle.Validate()
 }
 
-// ValidateLifecycleAcknowledgement proves that an authoritative managed-skill
+// ValidateSkillLifecycleAcknowledgement proves that an authoritative managed-skill
 // catalog reflects the requested lifecycle for exactly one named skill.
-func ValidateLifecycleAcknowledgement(catalog []Managed, name string, lifecycle Lifecycle) error {
+func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, lifecycle SkillLifecycle) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("managed skill acknowledgement name is empty")
@@ -112,18 +110,18 @@ func ValidateLifecycleAcknowledgement(catalog []Managed, name string, lifecycle 
 	return nil
 }
 
-type Proposal struct {
+type SkillProposal struct {
 	Name          string
 	Revision      string
-	Scope         Scope
+	Scope         SkillScope
 	Description   string
 	Instructions  string
-	Origin        Origin
+	Origin        SkillProposalOrigin
 	SourceSession string
 	Revises       bool
 }
 
-func (p Proposal) Validate() error {
+func (p SkillProposal) Validate() error {
 	if err := validateProposalIdentity(p.Name, p.Revision, p.Scope); err != nil {
 		return err
 	}
@@ -136,9 +134,9 @@ func (p Proposal) Validate() error {
 	return p.Origin.Validate()
 }
 
-func (p Proposal) QualifiedName() string { return string(p.Scope) + "/" + p.Name }
+func (p SkillProposal) QualifiedName() string { return string(p.Scope) + "/" + p.Name }
 
-func (p Proposal) Key() string {
+func (p SkillProposal) Key() string {
 	revision := p.Revision
 	if len(revision) > 12 {
 		revision = revision[:12]
@@ -146,8 +144,8 @@ func (p Proposal) Key() string {
 	return p.QualifiedName() + "@" + revision
 }
 
-func (p Proposal) Reference(workspace string) (ProposalReference, error) {
-	reference := ProposalReference{
+func (p SkillProposal) Reference(workspace string) (SkillProposalReference, error) {
+	reference := SkillProposalReference{
 		Workspace: workspace,
 		Name:      p.Name,
 		Revision:  p.Revision,
@@ -156,14 +154,14 @@ func (p Proposal) Reference(workspace string) (ProposalReference, error) {
 	return reference, reference.Validate()
 }
 
-type ProposalReference struct {
+type SkillProposalReference struct {
 	Workspace string
 	Name      string
 	Revision  string
-	Scope     Scope
+	Scope     SkillScope
 }
 
-func (p ProposalReference) Validate() error {
+func (p SkillProposalReference) Validate() error {
 	if strings.TrimSpace(p.Workspace) == "" {
 		return errors.New("skill proposal reference workspace is empty")
 	}
@@ -176,7 +174,7 @@ func (p ProposalReference) Validate() error {
 // ValidateDecisionAcknowledgement proves that the exact immutable proposal
 // reviewed by Approve or Reject is no longer pending. Other revisions of the
 // same skill remain independent proposals.
-func (p ProposalReference) ValidateDecisionAcknowledgement(pending []Proposal) error {
+func (p SkillProposalReference) ValidateDecisionAcknowledgement(pending []SkillProposal) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
@@ -191,7 +189,7 @@ func (p ProposalReference) ValidateDecisionAcknowledgement(pending []Proposal) e
 	return nil
 }
 
-func validateProposalIdentity(name, revision string, scope Scope) error {
+func validateProposalIdentity(name, revision string, scope SkillScope) error {
 	if strings.TrimSpace(name) == "" {
 		return errors.New("skill proposal name is empty")
 	}
@@ -204,12 +202,12 @@ func validateProposalIdentity(name, revision string, scope Scope) error {
 	return scope.Validate()
 }
 
-type Service interface {
-	Discover(context.Context, string) ([]Discovered, error)
-	Managed(context.Context) ([]Managed, error)
-	Proposals(context.Context, string) ([]Proposal, error)
+type SkillService interface {
+	Discover(context.Context, string) ([]DiscoveredSkill, error)
+	Managed(context.Context) ([]ManagedSkill, error)
+	Proposals(context.Context, string) ([]SkillProposal, error)
 	Archive(context.Context, string) error
 	Restore(context.Context, string) error
-	Approve(context.Context, ProposalReference) error
-	Reject(context.Context, ProposalReference) error
+	Approve(context.Context, SkillProposalReference) error
+	Reject(context.Context, SkillProposalReference) error
 }

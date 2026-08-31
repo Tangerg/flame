@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/skills"
 )
 
 type skillBinding interface {
@@ -22,10 +21,10 @@ type skillBinding interface {
 	RejectSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
 }
 
-var _ skills.Service = (*Connection)(nil)
+var _ workspace.SkillService = (*Connection)(nil)
 
-func (r *Connection) Discover(ctx context.Context, workspace string) ([]skills.Discovered, error) {
-	query, err := skillWorkspaceQuery(workspace)
+func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]workspace.DiscoveredSkill, error) {
+	query, err := skillWorkspaceQuery(workspacePath)
 	if err != nil {
 		return nil, err
 	}
@@ -37,16 +36,16 @@ func (r *Connection) Discover(ctx context.Context, workspace string) ([]skills.D
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list discovered skills", values, func(value protocol.Skill) skills.Discovered {
-		return skills.Discovered{
-			Name: value.Name, Description: value.Description, Scope: skills.Scope(value.Scope),
+	return projectUniqueValues("list discovered skills", values, func(value protocol.Skill) workspace.DiscoveredSkill {
+		return workspace.DiscoveredSkill{
+			Name: value.Name, Description: value.Description, Scope: workspace.SkillScope(value.Scope),
 		}
-	}, func(skill skills.Discovered) string {
+	}, func(skill workspace.DiscoveredSkill) string {
 		return skill.Key()
 	})
 }
 
-func (r *Connection) Managed(ctx context.Context) ([]skills.Managed, error) {
+func (r *Connection) Managed(ctx context.Context) ([]workspace.ManagedSkill, error) {
 	page, err := r.skills.ListManagedSkills(ctx, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
@@ -55,17 +54,17 @@ func (r *Connection) Managed(ctx context.Context) ([]skills.Managed, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list managed skills", values, func(value protocol.ManagedSkill) skills.Managed {
-		return skills.Managed{
-			Name: value.Name, Description: value.Description, Lifecycle: skills.Lifecycle(value.Lifecycle),
+	return projectUniqueValues("list managed skills", values, func(value protocol.ManagedSkill) workspace.ManagedSkill {
+		return workspace.ManagedSkill{
+			Name: value.Name, Description: value.Description, Lifecycle: workspace.SkillLifecycle(value.Lifecycle),
 		}
-	}, func(skill skills.Managed) string {
+	}, func(skill workspace.ManagedSkill) string {
 		return skill.Name
 	})
 }
 
-func (r *Connection) Proposals(ctx context.Context, workspace string) ([]skills.Proposal, error) {
-	query, err := skillWorkspaceQuery(workspace)
+func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]workspace.SkillProposal, error) {
+	query, err := skillWorkspaceQuery(workspacePath)
 	if err != nil {
 		return nil, err
 	}
@@ -77,13 +76,13 @@ func (r *Connection) Proposals(ctx context.Context, workspace string) ([]skills.
 	if err != nil {
 		return nil, err
 	}
-	projected := make([]skills.Proposal, 0, len(values))
+	projected := make([]workspace.SkillProposal, 0, len(values))
 	seen := make(map[[3]string]struct{}, len(values))
 	for index, value := range values {
-		proposal := skills.Proposal{
-			Name: value.Name, Revision: value.Revision, Scope: skills.Scope(value.Scope),
+		proposal := workspace.SkillProposal{
+			Name: value.Name, Revision: value.Revision, Scope: workspace.SkillScope(value.Scope),
 			Description: value.Description, Instructions: value.Instructions,
-			Origin: skills.Origin(value.Origin), SourceSession: value.SourceSession, Revises: value.Revises,
+			Origin: workspace.SkillProposalOrigin(value.Origin), SourceSession: value.SourceSession, Revises: value.Revises,
 		}
 		if err := proposal.Validate(); err != nil {
 			return nil, runtimeContractViolation("list skill proposals item %d is invalid: %v", index+1, err)
@@ -122,18 +121,18 @@ func (r *Connection) changeSkillLifecycle(
 	return classifyError(change(ctx, protocol.SkillNameRequest{Name: name}, options))
 }
 
-func (r *Connection) Approve(ctx context.Context, reference skills.ProposalReference) error {
+func (r *Connection) Approve(ctx context.Context, reference workspace.SkillProposalReference) error {
 	return r.decideSkillProposal(ctx, "approve skill proposal", reference, r.skills.ApproveSkillProposal)
 }
 
-func (r *Connection) Reject(ctx context.Context, reference skills.ProposalReference) error {
+func (r *Connection) Reject(ctx context.Context, reference workspace.SkillProposalReference) error {
 	return r.decideSkillProposal(ctx, "reject skill proposal", reference, r.skills.RejectSkillProposal)
 }
 
 func (r *Connection) decideSkillProposal(
 	ctx context.Context,
 	operation string,
-	reference skills.ProposalReference,
+	reference workspace.SkillProposalReference,
 	decide func(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error,
 ) error {
 	if err := reference.Validate(); err != nil {

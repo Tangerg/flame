@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/skills"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 func (a *app) ShowDiscoveredSkills() {
@@ -32,7 +32,7 @@ func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func discoveredSkillsDocument(workspace string, discovered []skills.Discovered) readerDocument {
+func discoveredSkillsDocument(workspace string, discovered []workspace.DiscoveredSkill) readerDocument {
 	lines := make([]string, 0, len(discovered))
 	for _, skill := range discovered {
 		line := skill.Key()
@@ -69,7 +69,7 @@ func (a *app) managedSkillsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func managedSkillsDocument(managed []skills.Managed) readerDocument {
+func managedSkillsDocument(managed []workspace.ManagedSkill) readerDocument {
 	lines := make([]string, 0, len(managed))
 	for _, skill := range managed {
 		line := skill.Name + "  " + string(skill.Lifecycle)
@@ -107,7 +107,7 @@ func (a *app) skillProposalsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func skillProposalsDocument(proposals []skills.Proposal) readerDocument {
+func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument {
 	if len(proposals) == 0 {
 		return paragraphDocument("Skill proposals", "none pending", []string{"No Skill proposals are awaiting review."})
 	}
@@ -135,19 +135,19 @@ func (a *app) ArchiveSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("archiving skill", name, skills.Archived, a.skills.Archive)
+	return a.changeSkillLifecycle("archiving skill", name, workspace.SkillArchived, a.skills.Archive)
 }
 
 func (a *app) RestoreSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("restoring skill", name, skills.Active, a.skills.Restore)
+	return a.changeSkillLifecycle("restoring skill", name, workspace.SkillActive, a.skills.Restore)
 }
 
 func (a *app) changeSkillLifecycle(
 	status, name string,
-	lifecycle skills.Lifecycle,
+	lifecycle workspace.SkillLifecycle,
 	change func(context.Context, string) error,
 ) error {
 	if a.skills == nil {
@@ -167,7 +167,7 @@ func (a *app) changeSkillLifecycle(
 			if err != nil {
 				return "", err
 			}
-			if err := skills.ValidateLifecycleAcknowledgement(managed, name, lifecycle); err != nil {
+			if err := workspace.ValidateSkillLifecycleAcknowledgement(managed, name, lifecycle); err != nil {
 				return "", fmt.Errorf("verify skill lifecycle: %w", err)
 			}
 			return name, nil
@@ -187,8 +187,8 @@ func (a *app) changeSkillLifecycle(
 }
 
 type skillProposalDecision struct {
-	proposal  skills.Proposal
-	reference skills.ProposalReference
+	proposal  workspace.SkillProposal
+	reference workspace.SkillProposalReference
 }
 
 func (a *app) PrepareSkillProposalDecision(identity string, approve bool) error {
@@ -228,8 +228,8 @@ func (a *app) PrepareSkillProposalDecision(identity string, approve bool) error 
 	return nil
 }
 
-func resolveSkillProposal(proposals []skills.Proposal, identity string) (skills.Proposal, error) {
-	matches := make([]skills.Proposal, 0, 1)
+func resolveSkillProposal(proposals []workspace.SkillProposal, identity string) (workspace.SkillProposal, error) {
+	matches := make([]workspace.SkillProposal, 0, 1)
 	for _, proposal := range proposals {
 		if proposal.Key() == identity || proposal.QualifiedName() == identity || proposal.Name == identity {
 			matches = append(matches, proposal)
@@ -237,11 +237,11 @@ func resolveSkillProposal(proposals []skills.Proposal, identity string) (skills.
 	}
 	switch len(matches) {
 	case 0:
-		return skills.Proposal{}, errors.New("skill proposal not found: " + identity)
+		return workspace.SkillProposal{}, errors.New("skill proposal not found: " + identity)
 	case 1:
 		return matches[0], nil
 	default:
-		return skills.Proposal{}, errors.New("skill proposal name is ambiguous; use project/name or user/name")
+		return workspace.SkillProposal{}, errors.New("skill proposal name is ambiguous; use project/name or user/name")
 	}
 }
 
@@ -256,7 +256,7 @@ func (a *app) confirmSkillProposalDecision(decision skillProposalDecision, appro
 	})
 }
 
-func (a *app) decideSkillProposal(reference skills.ProposalReference, approve bool) {
+func (a *app) decideSkillProposal(reference workspace.SkillProposalReference, approve bool) {
 	verb := "rejecting"
 	decide := a.skills.Reject
 	if approve {
@@ -265,20 +265,20 @@ func (a *app) decideSkillProposal(reference skills.ProposalReference, approve bo
 	}
 	a.status.note(verb + " skill proposal " + reference.Name)
 	started := a.runAdmissionMutation(skillOperation, false,
-		func(ctx context.Context) (skills.ProposalReference, error) {
+		func(ctx context.Context) (workspace.SkillProposalReference, error) {
 			if err := decide(ctx, reference); err != nil {
-				return skills.ProposalReference{}, err
+				return workspace.SkillProposalReference{}, err
 			}
 			pending, err := a.skills.Proposals(ctx, reference.Workspace)
 			if err != nil {
-				return skills.ProposalReference{}, err
+				return workspace.SkillProposalReference{}, err
 			}
 			if err := reference.ValidateDecisionAcknowledgement(pending); err != nil {
-				return skills.ProposalReference{}, fmt.Errorf("verify skill proposal decision: %w", err)
+				return workspace.SkillProposalReference{}, fmt.Errorf("verify skill proposal decision: %w", err)
 			}
 			return reference, nil
 		},
-		func(reviewed skills.ProposalReference, err error) {
+		func(reviewed workspace.SkillProposalReference, err error) {
 			if err != nil {
 				a.message(verb + " skill proposal failed: " + err.Error())
 				return

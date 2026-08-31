@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 )
 
 type hookBinding interface {
@@ -19,46 +18,46 @@ type hookBinding interface {
 
 type hookAdapter struct{ runtime *Connection }
 
-var _ hookpolicy.Service = (*hookAdapter)(nil)
+var _ workspace.HookService = (*hookAdapter)(nil)
 
-func (h *hookAdapter) Catalog(ctx context.Context, workspace string) (hookpolicy.Catalog, error) {
+func (h *hookAdapter) Catalog(ctx context.Context, workspacePath string) (workspace.HookCatalog, error) {
 	r := h.runtime
-	workspace = strings.TrimSpace(workspace)
-	if workspace == "" {
-		return hookpolicy.Catalog{}, errors.New("list hooks: workspace is empty")
+	workspacePath = strings.TrimSpace(workspacePath)
+	if workspacePath == "" {
+		return workspace.HookCatalog{}, errors.New("list hooks: workspace is empty")
 	}
-	if !filepath.IsAbs(workspace) {
-		return hookpolicy.Catalog{}, errors.New("list hooks: workspace is not absolute")
+	if !filepath.IsAbs(workspacePath) {
+		return workspace.HookCatalog{}, errors.New("list hooks: workspace is not absolute")
 	}
 	result, err := r.hooks.ListHooks(ctx, protocol.ListHooksRequest{
-		Workspace: protocol.WorkspaceRef{Path: workspace},
+		Workspace: protocol.WorkspaceRef{Path: workspacePath},
 	}, r.callOptions())
 	if err != nil {
-		return hookpolicy.Catalog{}, classifyError(err)
+		return workspace.HookCatalog{}, classifyError(err)
 	}
 	if result == nil {
-		return hookpolicy.Catalog{}, runtimeContractViolation("list hooks returned nil")
+		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned nil")
 	}
-	if !hookProjectRootContainsWorkspace(result.ProjectRoot, workspace) {
-		return hookpolicy.Catalog{}, runtimeContractViolation(
+	if !hookProjectRootContainsWorkspace(result.ProjectRoot, workspacePath) {
+		return workspace.HookCatalog{}, runtimeContractViolation(
 			"list hooks for workspace %q returned unrelated project root %q",
-			workspace,
+			workspacePath,
 			result.ProjectRoot,
 		)
 	}
-	catalog := hookpolicy.Catalog{
+	catalog := workspace.HookCatalog{
 		ProjectRoot: result.ProjectRoot, ProjectTrusted: result.ProjectTrusted,
-		Hooks: make([]hookpolicy.Hook, 0, len(result.Hooks)),
+		Hooks: make([]workspace.LifecycleHook, 0, len(result.Hooks)),
 	}
 	for _, value := range result.Hooks {
-		catalog.Hooks = append(catalog.Hooks, hookpolicy.Hook{
-			Event: hookpolicy.Event(value.Event), Matcher: value.Matcher,
+		catalog.Hooks = append(catalog.Hooks, workspace.LifecycleHook{
+			Event: workspace.HookEvent(value.Event), Matcher: value.Matcher,
 			Command: value.Command, Inject: value.Inject, TimeoutMillis: value.TimeoutMillis,
-			Scope: hookpolicy.Scope(value.Scope), Source: value.Source, Active: value.Active,
+			Scope: workspace.HookScope(value.Scope), Source: value.Source, Active: value.Active,
 		})
 	}
 	if err := catalog.Validate(); err != nil {
-		return hookpolicy.Catalog{}, runtimeContractViolation("list hooks returned an invalid catalog: %v", err)
+		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned an invalid catalog: %v", err)
 	}
 	return catalog, nil
 }

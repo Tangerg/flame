@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/schedule"
@@ -142,7 +141,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		t.Fatalf("write external knowledge: %v", writeFileErr)
 	}
 	awaitRuntimeInvalidation(t, events, streamErrors, changefeed.KnowledgeChanged)
-	target, err := knowledge.NewTarget(knowledge.WorkingDirectory, workspace)
+	target, err := workspaceapi.NewKnowledgeTarget(workspaceapi.KnowledgeWorkingDirectory, workspace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +251,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil {
 		t.Fatalf("Entries knowledge = (%+v, %v)", entries, err)
 	}
-	target, err := knowledge.NewTarget(knowledge.WorkingDirectory, workspace)
+	target, err := workspaceapi.NewKnowledgeTarget(workspaceapi.KnowledgeWorkingDirectory, workspace)
 	if err != nil {
 		t.Fatal(err)
 	}

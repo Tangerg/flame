@@ -10,31 +10,29 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type diagnosticToolServiceStub struct {
-	invoked chan diagnostictool.Invocation
+	invoked chan workspace.DiagnosticToolInvocation
 }
 
-func (d *diagnosticToolServiceStub) Tools(context.Context) ([]diagnostictool.Descriptor, error) {
-	return []diagnostictool.Descriptor{{
-		Name: "inspect.cache", Description: "inspect cache ownership", Safety: diagnostictool.Safe,
+func (d *diagnosticToolServiceStub) Tools(context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
+	return []workspace.DiagnosticToolDescriptor{{
+		Name: "inspect.cache", Description: "inspect cache ownership", Safety: workspace.DiagnosticToolSafe,
 		Schema: json.RawMessage(`{"type":"object","properties":{"depth":{"type":"number"}}}`),
 	}}, nil
 }
 
-func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation diagnostictool.Invocation) (diagnostictool.Result, error) {
+func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error) {
 	d.invoked <- invocation
-	return diagnostictool.Result{JSON: json.RawMessage(`{"entries":2,"healthy":true}`)}, nil
+	return workspace.DiagnosticToolResult{JSON: json.RawMessage(`{"entries":2,"healthy":true}`)}, nil
 }
 
 func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) {
-	tools := &diagnosticToolServiceStub{invoked: make(chan diagnostictool.Invocation, 1)}
+	tools := &diagnosticToolServiceStub{invoked: make(chan workspace.DiagnosticToolInvocation, 1)}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), DiagnosticTools: tools, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/tools")
@@ -59,14 +57,14 @@ func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) 
 
 type authoringContextServiceStub struct{}
 
-func (authoringContextServiceStub) Documents(context.Context, string) ([]authoringcontext.Document, error) {
-	return []authoringcontext.Document{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: authoringcontext.DocumentProjectRoot}}, nil
+func (authoringContextServiceStub) Documents(context.Context, string) ([]workspace.AuthoringDocument, error) {
+	return []workspace.AuthoringDocument{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: workspace.AuthoringDocumentProjectRoot}}, nil
 }
 
-func (authoringContextServiceStub) Recipes(context.Context, string) ([]authoringcontext.Recipe, error) {
-	return []authoringcontext.Recipe{{
+func (authoringContextServiceStub) Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error) {
+	return []workspace.AuthoringRecipe{{
 		Name: "review", Description: "review a target", ArgumentHint: "<target>",
-		Body: "Review $1.\nContext: $ARGUMENTS", Scope: authoringcontext.ProjectRecipe, Source: "/workspace/.flame/recipes/review.md",
+		Body: "Review $1.\nContext: $ARGUMENTS", Scope: workspace.ProjectAuthoringRecipe, Source: "/workspace/.flame/recipes/review.md",
 	}}, nil
 }
 
@@ -103,7 +101,7 @@ func TestAuthoringDocumentsAndRecipeExpansionUseTheUnifiedPromptPath(t *testing.
 }
 
 func TestRecipeInvocationPrefersLongestCompleteNameAndSupportsUniquePrefix(t *testing.T) {
-	recipes := []authoringcontext.Recipe{{Name: "review"}, {Name: "review code"}, {Name: "summarize"}}
+	recipes := []workspace.AuthoringRecipe{{Name: "review"}, {Name: "review code"}, {Name: "summarize"}}
 	recipe, arguments, err := resolveRecipeInvocation(recipes, "review code carefully")
 	if err != nil || recipe.Name != "review code" || arguments != "carefully" {
 		t.Fatalf("multiword invocation = (%q, %q, %v)", recipe.Name, arguments, err)
@@ -122,7 +120,7 @@ type hookServiceStub struct {
 }
 
 type blockingHookTrustService struct {
-	hookpolicy.Service
+	workspace.HookService
 	started  chan bool
 	release  chan struct{}
 	canceled chan struct{}
@@ -132,18 +130,18 @@ func (b *blockingHookTrustService) SetProjectTrust(ctx context.Context, projectR
 	b.started <- trusted
 	select {
 	case <-b.release:
-		return b.Service.SetProjectTrust(ctx, projectRoot, trusted)
+		return b.HookService.SetProjectTrust(ctx, projectRoot, trusted)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
 	}
 }
 
-func (h *hookServiceStub) Catalog(context.Context, string) (hookpolicy.Catalog, error) {
+func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalog, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return hookpolicy.Catalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []hookpolicy.Hook{{
-		Event: hookpolicy.PreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: hookpolicy.Project,
+	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []workspace.LifecycleHook{{
+		Event: workspace.HookPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: workspace.HookProject,
 		Source: "/workspace/.flame/hooks.json", Active: h.trusted,
 	}}}, nil
 }
@@ -230,7 +228,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := &hookServiceStub{changed: make(chan bool, 1)}
 	hooks := &blockingHookTrustService{
-		Service: base, started: make(chan bool, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		HookService: base, started: make(chan bool, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(hooks.release) })
 	t.Cleanup(release)

@@ -1,4 +1,4 @@
-package diagnostictool
+package workspace
 
 import (
 	"encoding/json"
@@ -6,15 +6,15 @@ import (
 )
 
 func TestDescriptorRejectsUnsafeAndMalformedTools(t *testing.T) {
-	valid := Descriptor{Name: "inspect", Safety: Safe, Schema: json.RawMessage(`{"type":"object"}`)}
+	valid := DiagnosticToolDescriptor{Name: "inspect", Safety: DiagnosticToolSafe, Schema: json.RawMessage(`{"type":"object"}`)}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid descriptor: %v", err)
 	}
-	for name, descriptor := range map[string]Descriptor{
-		"empty name": {Safety: Safe, Schema: json.RawMessage(`{}`)},
+	for name, descriptor := range map[string]DiagnosticToolDescriptor{
+		"empty name": {Safety: DiagnosticToolSafe, Schema: json.RawMessage(`{}`)},
 		"unsafe":     {Name: "write", Safety: "write", Schema: json.RawMessage(`{}`)},
-		"array":      {Name: "inspect", Safety: Safe, Schema: json.RawMessage(`[]`)},
-		"malformed":  {Name: "inspect", Safety: Safe, Schema: json.RawMessage(`{`)},
+		"array":      {Name: "inspect", Safety: DiagnosticToolSafe, Schema: json.RawMessage(`[]`)},
+		"malformed":  {Name: "inspect", Safety: DiagnosticToolSafe, Schema: json.RawMessage(`{`)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := descriptor.Validate(); err == nil {
@@ -25,7 +25,7 @@ func TestDescriptorRejectsUnsafeAndMalformedTools(t *testing.T) {
 }
 
 func TestInvocationRequiresConfinedJSONObject(t *testing.T) {
-	valid := Invocation{Tool: Descriptor{Name: "inspect", Safety: Safe, Schema: json.RawMessage(`{}`)}, Workspace: "/repo", Arguments: json.RawMessage(`{}`)}
+	valid := DiagnosticToolInvocation{Tool: DiagnosticToolDescriptor{Name: "inspect", Safety: DiagnosticToolSafe, Schema: json.RawMessage(`{}`)}, Workspace: "/repo", Arguments: json.RawMessage(`{}`)}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid invocation: %v", err)
 	}
@@ -36,11 +36,11 @@ func TestInvocationRequiresConfinedJSONObject(t *testing.T) {
 }
 
 func TestParseArgumentsDefaultsAndRejectsNonObjects(t *testing.T) {
-	arguments, err := ParseArguments("")
+	arguments, err := ParseDiagnosticToolArguments("")
 	if err != nil || string(arguments) != `{}` {
 		t.Fatalf("ParseArguments empty = (%s, %v)", arguments, err)
 	}
-	if _, err := ParseArguments(`[]`); err == nil {
+	if _, err := ParseDiagnosticToolArguments(`[]`); err == nil {
 		t.Fatal("ParseArguments accepted an array")
 	}
 }

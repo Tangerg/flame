@@ -11,16 +11,16 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/skills"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T) {
-	first := skills.Proposal{Name: "shared", Scope: skills.UserScope, Revision: terminalSkillRevision}
-	second := skills.Proposal{Name: "shared", Scope: skills.UserScope, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
-	proposals := []skills.Proposal{first, second}
+	first := workspace.SkillProposal{Name: "shared", Scope: workspace.SkillUserScope, Revision: terminalSkillRevision}
+	second := workspace.SkillProposal{Name: "shared", Scope: workspace.SkillUserScope, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
+	proposals := []workspace.SkillProposal{first, second}
 	if _, err := resolveSkillProposal(proposals, "user/shared"); err == nil {
 		t.Fatal("ambiguous proposal name was accepted")
 	}
@@ -32,9 +32,9 @@ func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T)
 
 type skillServiceStub struct {
 	mu              sync.Mutex
-	discovered      []skills.Discovered
-	managed         []skills.Managed
-	proposals       []skills.Proposal
+	discovered      []workspace.DiscoveredSkill
+	managed         []workspace.ManagedSkill
+	proposals       []workspace.SkillProposal
 	reads           atomic.Int32
 	decisions       chan skillDecision
 	ignoreLifecycle bool
@@ -43,11 +43,11 @@ type skillServiceStub struct {
 
 type skillDecision struct {
 	approve   bool
-	reference skills.ProposalReference
+	reference workspace.SkillProposalReference
 }
 
 type blockingSkillArchiveService struct {
-	skills.Service
+	workspace.SkillService
 	started   chan string
 	release   chan struct{}
 	canceled  chan struct{}
@@ -58,7 +58,7 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 	b.started <- name
 	select {
 	case <-b.release:
-		err := b.Service.Archive(ctx, name)
+		err := b.SkillService.Archive(ctx, name)
 		b.committed <- err
 		return err
 	case <-ctx.Done():
@@ -69,44 +69,44 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 
 func newSkillServiceStub() *skillServiceStub {
 	return &skillServiceStub{
-		discovered: []skills.Discovered{{Name: "release-checks", Description: "Release safely", Scope: skills.ProjectScope}},
-		managed:    []skills.Managed{{Name: "review", Description: "Review code", Lifecycle: skills.Active}},
-		proposals: []skills.Proposal{
-			{Name: "release-checks", Revision: terminalSkillRevision, Scope: skills.UserScope, Description: "Release safely", Instructions: "Run every release gate.", Origin: skills.Requested},
-			{Name: "cleanup", Revision: terminalSkillRevision, Scope: skills.ProjectScope, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: skills.Mined},
+		discovered: []workspace.DiscoveredSkill{{Name: "release-checks", Description: "Release safely", Scope: workspace.SkillProjectScope}},
+		managed:    []workspace.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: workspace.SkillActive}},
+		proposals: []workspace.SkillProposal{
+			{Name: "release-checks", Revision: terminalSkillRevision, Scope: workspace.SkillUserScope, Description: "Release safely", Instructions: "Run every release gate.", Origin: workspace.SkillProposalRequested},
+			{Name: "cleanup", Revision: terminalSkillRevision, Scope: workspace.SkillProjectScope, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: workspace.SkillProposalMined},
 		},
 		decisions: make(chan skillDecision, 2),
 	}
 }
 
-func (s *skillServiceStub) Discover(context.Context, string) ([]skills.Discovered, error) {
+func (s *skillServiceStub) Discover(context.Context, string) ([]workspace.DiscoveredSkill, error) {
 	s.reads.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]skills.Discovered(nil), s.discovered...), nil
+	return append([]workspace.DiscoveredSkill(nil), s.discovered...), nil
 }
 
-func (s *skillServiceStub) Managed(context.Context) ([]skills.Managed, error) {
+func (s *skillServiceStub) Managed(context.Context) ([]workspace.ManagedSkill, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]skills.Managed(nil), s.managed...), nil
+	return append([]workspace.ManagedSkill(nil), s.managed...), nil
 }
 
-func (s *skillServiceStub) Proposals(context.Context, string) ([]skills.Proposal, error) {
+func (s *skillServiceStub) Proposals(context.Context, string) ([]workspace.SkillProposal, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]skills.Proposal(nil), s.proposals...), nil
+	return append([]workspace.SkillProposal(nil), s.proposals...), nil
 }
 
 func (s *skillServiceStub) Archive(_ context.Context, name string) error {
-	return s.setLifecycle(name, skills.Archived)
+	return s.setLifecycle(name, workspace.SkillArchived)
 }
 
 func (s *skillServiceStub) Restore(_ context.Context, name string) error {
-	return s.setLifecycle(name, skills.Active)
+	return s.setLifecycle(name, workspace.SkillActive)
 }
 
-func (s *skillServiceStub) setLifecycle(name string, lifecycle skills.Lifecycle) error {
+func (s *skillServiceStub) setLifecycle(name string, lifecycle workspace.SkillLifecycle) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for index := range s.managed {
@@ -120,15 +120,15 @@ func (s *skillServiceStub) setLifecycle(name string, lifecycle skills.Lifecycle)
 	return errors.New("skill not found")
 }
 
-func (s *skillServiceStub) Approve(_ context.Context, reference skills.ProposalReference) error {
+func (s *skillServiceStub) Approve(_ context.Context, reference workspace.SkillProposalReference) error {
 	return s.decide(reference, true)
 }
 
-func (s *skillServiceStub) Reject(_ context.Context, reference skills.ProposalReference) error {
+func (s *skillServiceStub) Reject(_ context.Context, reference workspace.SkillProposalReference) error {
 	return s.decide(reference, false)
 }
 
-func (s *skillServiceStub) decide(reference skills.ProposalReference, approve bool) error {
+func (s *skillServiceStub) decide(reference workspace.SkillProposalReference, approve bool) error {
 	if err := reference.Validate(); err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 	backend := runtimefixture.New()
 	base := newSkillServiceStub()
 	service := &blockingSkillArchiveService{
-		Service: base, started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		SkillService: base, started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 		committed: make(chan error, 1),
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
@@ -301,7 +301,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		t.Fatal(err)
 	}
 	managed, err := base.Managed(t.Context())
-	if err != nil || len(managed) != 1 || managed[0].Lifecycle != skills.Archived {
+	if err != nil || len(managed) != 1 || managed[0].Lifecycle != workspace.SkillArchived {
 		t.Fatalf("managed skills after archive = (%+v, %v)", managed, err)
 	}
 	stop()

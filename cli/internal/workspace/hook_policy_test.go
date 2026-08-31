@@ -1,16 +1,16 @@
-package hookpolicy
+package workspace
 
 import "testing"
 
 func TestCatalogEnforcesTrustProjection(t *testing.T) {
-	valid := Catalog{ProjectRoot: "/repo", ProjectTrusted: true, Hooks: []Hook{{
-		Event: PreToolUse, Matcher: "shell*", Command: "check", Scope: Project, Source: "/repo/.flame/hooks.json", Active: true,
-	}, {Event: Stop, Inject: "done", Scope: Global, Source: "/home/.flame/hooks.json", Active: true}}}
+	valid := HookCatalog{ProjectRoot: "/repo", ProjectTrusted: true, Hooks: []LifecycleHook{{
+		Event: HookPreToolUse, Matcher: "shell*", Command: "check", Scope: HookProject, Source: "/repo/.flame/hooks.json", Active: true,
+	}, {Event: HookStop, Inject: "done", Scope: HookGlobal, Source: "/home/.flame/hooks.json", Active: true}}}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid catalog: %v", err)
 	}
 	invalid := valid
-	invalid.Hooks = append([]Hook(nil), valid.Hooks...)
+	invalid.Hooks = append([]LifecycleHook(nil), valid.Hooks...)
 	invalid.Hooks[0].Active = false
 	if err := invalid.Validate(); err == nil {
 		t.Fatal("accepted project active state that disagrees with trust")
@@ -18,7 +18,7 @@ func TestCatalogEnforcesTrustProjection(t *testing.T) {
 }
 
 func TestCatalogValidatesTrustAcknowledgement(t *testing.T) {
-	catalog := Catalog{ProjectRoot: "/repo", ProjectTrusted: true}
+	catalog := HookCatalog{ProjectRoot: "/repo", ProjectTrusted: true}
 	if err := catalog.ValidateTrustAcknowledgement("/repo", true); err != nil {
 		t.Fatalf("valid trust acknowledgement: %v", err)
 	}

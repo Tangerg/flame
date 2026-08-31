@@ -8,7 +8,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type authoringContextBinding interface {
@@ -18,11 +18,11 @@ type authoringContextBinding interface {
 
 type authoringContextAdapter struct{ runtime *Connection }
 
-var _ authoringcontext.Service = (*authoringContextAdapter)(nil)
+var _ workspace.AuthoringContextService = (*authoringContextAdapter)(nil)
 
-func (a *authoringContextAdapter) Documents(ctx context.Context, workspace string) ([]authoringcontext.Document, error) {
+func (a *authoringContextAdapter) Documents(ctx context.Context, workspacePath string) ([]workspace.AuthoringDocument, error) {
 	r := a.runtime
-	query, err := authoringWorkspaceQuery(workspace)
+	query, err := authoringWorkspaceQuery(workspacePath)
 	if err != nil {
 		return nil, err
 	}
@@ -34,16 +34,16 @@ func (a *authoringContextAdapter) Documents(ctx context.Context, workspace strin
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list agent documents", values, func(value protocol.AgentDoc) authoringcontext.Document {
-		return authoringcontext.Document{Path: value.Path, Title: value.Title, Scope: authoringcontext.DocumentScope(value.Scope)}
-	}, func(document authoringcontext.Document) string {
+	return projectUniqueValues("list agent documents", values, func(value protocol.AgentDoc) workspace.AuthoringDocument {
+		return workspace.AuthoringDocument{Path: value.Path, Title: value.Title, Scope: workspace.AuthoringDocumentScope(value.Scope)}
+	}, func(document workspace.AuthoringDocument) string {
 		return document.Path
 	})
 }
 
-func (a *authoringContextAdapter) Recipes(ctx context.Context, workspace string) ([]authoringcontext.Recipe, error) {
+func (a *authoringContextAdapter) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {
 	r := a.runtime
-	query, err := authoringWorkspaceQuery(workspace)
+	query, err := authoringWorkspaceQuery(workspacePath)
 	if err != nil {
 		return nil, err
 	}
@@ -55,12 +55,12 @@ func (a *authoringContextAdapter) Recipes(ctx context.Context, workspace string)
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list recipes", values, func(value protocol.Recipe) authoringcontext.Recipe {
-		return authoringcontext.Recipe{
+	return projectUniqueValues("list recipes", values, func(value protocol.Recipe) workspace.AuthoringRecipe {
+		return workspace.AuthoringRecipe{
 			Name: value.Name, Description: value.Description, ArgumentHint: value.ArgumentHint,
-			Body: value.Body, Scope: authoringcontext.RecipeScope(value.Scope), Source: value.Source,
+			Body: value.Body, Scope: workspace.AuthoringRecipeScope(value.Scope), Source: value.Source,
 		}
-	}, func(recipe authoringcontext.Recipe) string {
+	}, func(recipe workspace.AuthoringRecipe) string {
 		return recipe.Name
 	})
 }

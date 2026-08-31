@@ -17,13 +17,9 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/attachment"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/mutation"
@@ -35,7 +31,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
-	"github.com/Tangerg/flame/cli/internal/skills"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -50,14 +45,14 @@ type Config struct {
 	Usage            agent.UsageService
 	ModelConfig      modelconfig.Service
 	Goals            agent.GoalService
-	Skills           skills.Service
+	Skills           workspace.SkillService
 	MCP              mcp.Service
 	Schedules        schedule.Service
 	AgentMemory      agentmemory.Service
-	Knowledge        knowledge.Service
-	DiagnosticTools  diagnostictool.Service
-	AuthoringContext authoringcontext.Service
-	Hooks            hookpolicy.Service
+	Knowledge        workspace.KnowledgeService
+	DiagnosticTools  workspace.DiagnosticToolService
+	AuthoringContext workspace.AuthoringContextService
+	Hooks            workspace.HookService
 	Feedback         agent.FeedbackService
 	ClientVersion    string
 	SessionID        string

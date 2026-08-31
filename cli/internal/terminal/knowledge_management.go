@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/knowledge"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 func (a *app) ShowKnowledge() {
@@ -32,7 +32,7 @@ func (a *app) knowledgeEntriesReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func knowledgeEntriesDocument(workspace string, entries []knowledge.Entry) readerDocument {
+func knowledgeEntriesDocument(workspace string, entries []workspace.KnowledgeEntry) readerDocument {
 	if len(entries) == 0 {
 		return paragraphDocument("FLAME.md knowledge", workspace, []string{"No knowledge documents exist in the cascade."})
 	}
@@ -65,11 +65,11 @@ func (a *app) ReadKnowledge(argument string) error {
 	return nil
 }
 
-func (a *app) readKnowledge(target knowledge.Target) {
+func (a *app) readKnowledge(target workspace.KnowledgeTarget) {
 	a.executeRuntimeReaderQuery(a.knowledgeDocumentReaderQuery(target))
 }
 
-func (a *app) knowledgeDocumentReaderQuery(target knowledge.Target) runtimeReaderQuery {
+func (a *app) knowledgeDocumentReaderQuery(target workspace.KnowledgeTarget) runtimeReaderQuery {
 	return runtimeReaderQuery{
 		status: "loading " + string(target.Scope) + " FLAME.md", mode: runtimeReaderKnowledge,
 		selection: runtimeReaderSelection{knowledgeTarget: target, knowledgeEntry: true},
@@ -83,7 +83,7 @@ func (a *app) knowledgeDocumentReaderQuery(target knowledge.Target) runtimeReade
 	}
 }
 
-func knowledgeDocument(target knowledge.Target, entry knowledge.Entry) readerDocument {
+func knowledgeDocument(target workspace.KnowledgeTarget, entry workspace.KnowledgeEntry) readerDocument {
 	detail := string(target.Scope)
 	if target.Workspace != "" {
 		detail += " · " + target.Workspace
@@ -111,8 +111,8 @@ func (a *app) EditKnowledge(argument string) error {
 	}
 	a.status.note("loading " + string(target.Scope) + " FLAME.md to edit")
 	if !a.runOperation(knowledgeOperation, false,
-		func(ctx context.Context) (knowledge.Entry, error) { return a.knowledge.Document(ctx, target) },
-		func(entry knowledge.Entry, err error) {
+		func(ctx context.Context) (workspace.KnowledgeEntry, error) { return a.knowledge.Document(ctx, target) },
+		func(entry workspace.KnowledgeEntry, err error) {
 			if err != nil {
 				a.message("load FLAME.md to edit failed: " + err.Error())
 				return
@@ -139,7 +139,7 @@ func (a *app) EditKnowledge(argument string) error {
 	return nil
 }
 
-func (a *app) saveKnowledge(current *knowledge.Entry, target knowledge.Target, content string, complete func(error) bool) error {
+func (a *app) saveKnowledge(current *workspace.KnowledgeEntry, target workspace.KnowledgeTarget, content string, complete func(error) bool) error {
 	if current == nil {
 		return errors.New("knowledge editor has no revision owner")
 	}
@@ -149,8 +149,8 @@ func (a *app) saveKnowledge(current *knowledge.Entry, target knowledge.Target, c
 	}
 	a.status.note("saving " + string(target.Scope) + " FLAME.md")
 	if !a.runAdmissionMutation(knowledgeOperation, false,
-		func(ctx context.Context) (knowledge.Entry, error) { return a.knowledge.Save(ctx, update) },
-		func(saved knowledge.Entry, err error) {
+		func(ctx context.Context) (workspace.KnowledgeEntry, error) { return a.knowledge.Save(ctx, update) },
+		func(saved workspace.KnowledgeEntry, err error) {
 			if err != nil {
 				a.message("save FLAME.md failed: " + err.Error())
 				if complete != nil {
@@ -174,13 +174,13 @@ func (a *app) saveKnowledge(current *knowledge.Entry, target knowledge.Target, c
 	return nil
 }
 
-func parseKnowledgeTarget(argument, workspace string) (knowledge.Target, error) {
-	scope, err := knowledge.ParseScope(strings.TrimSpace(argument))
+func parseKnowledgeTarget(argument, workspacePath string) (workspace.KnowledgeTarget, error) {
+	scope, err := workspace.ParseKnowledgeScope(strings.TrimSpace(argument))
 	if err != nil {
-		return knowledge.Target{}, errors.New("usage: <cwd|projectRoot|home>")
+		return workspace.KnowledgeTarget{}, errors.New("usage: <cwd|projectRoot|home>")
 	}
-	if scope == knowledge.Home {
-		workspace = ""
+	if scope == workspace.KnowledgeHome {
+		workspacePath = ""
 	}
-	return knowledge.NewTarget(scope, workspace)
+	return workspace.NewKnowledgeTarget(scope, workspacePath)
 }

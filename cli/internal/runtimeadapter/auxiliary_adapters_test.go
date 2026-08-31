@@ -10,8 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type diagnosticToolBindingStub struct {
@@ -43,7 +42,7 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 	if err != nil || len(tools) != 1 || tools[0].Name != "inspect" {
 		t.Fatalf("Tools = (%+v, %v)", tools, err)
 	}
-	result, err := adapter.Invoke(t.Context(), diagnostictool.Invocation{
+	result, err := adapter.Invoke(t.Context(), workspace.DiagnosticToolInvocation{
 		Tool: tools[0], Arguments: json.RawMessage(`{"depth":2}`), Workspace: "/workspace",
 	})
 	if err != nil || string(result.JSON) != `{"ok":true}` {
@@ -99,7 +98,7 @@ func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
 	}
 	adapter := &authoringContextAdapter{runtime: &Connection{authoringContext: stub, meta: requestMeta("test")}}
 	documents, err := adapter.Documents(t.Context(), "/workspace")
-	if err != nil || len(documents) != 1 || documents[0].Scope != authoringcontext.DocumentProjectRoot {
+	if err != nil || len(documents) != 1 || documents[0].Scope != workspace.AuthoringDocumentProjectRoot {
 		t.Fatalf("Documents = (%+v, %v)", documents, err)
 	}
 	recipes, err := adapter.Recipes(t.Context(), "/workspace")

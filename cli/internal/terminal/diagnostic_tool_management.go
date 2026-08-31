@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 func (a *app) ShowDiagnosticTools() {
@@ -25,7 +25,7 @@ func (a *app) ShowDiagnosticTools() {
 		})
 }
 
-func diagnosticToolsDocument(tools []diagnostictool.Descriptor) readerDocument {
+func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerDocument {
 	if len(tools) == 0 {
 		return paragraphDocument("Diagnostic tools", "none available", []string{"No direct read-only diagnostics are available."})
 	}
@@ -51,7 +51,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 	if err != nil {
 		return err
 	}
-	workspace := a.session.Workspace.Path
+	workspacePath := a.session.Workspace.Path
 	a.status.note("invoking diagnostic tool " + identity)
 	started := a.runOperation(diagnosticToolOperation, false,
 		func(ctx context.Context) (diagnosticInvocationResult, error) {
@@ -63,8 +63,8 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 			if err != nil {
 				return diagnosticInvocationResult{}, err
 			}
-			result, err := a.diagnosticTools.Invoke(ctx, diagnostictool.Invocation{
-				Tool: tool, Arguments: arguments, Workspace: workspace,
+			result, err := a.diagnosticTools.Invoke(ctx, workspace.DiagnosticToolInvocation{
+				Tool: tool, Arguments: arguments, Workspace: workspacePath,
 			})
 			return diagnosticInvocationResult{tool: tool, result: result}, err
 		},
@@ -76,7 +76,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 			a.setRuntimeReader(runtimeReaderDiagnosticTools)
 			a.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(readerDocument{
-				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspace,
+				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
 				Sections: []ToolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
 			})
 			a.status.note("diagnostic complete · " + invocation.tool.Name)
@@ -89,8 +89,8 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 }
 
 type diagnosticInvocationResult struct {
-	tool   diagnostictool.Descriptor
-	result diagnostictool.Result
+	tool   workspace.DiagnosticToolDescriptor
+	result workspace.DiagnosticToolResult
 }
 
 func parseDiagnosticToolInvocation(argument string) (string, json.RawMessage, error) {
@@ -98,20 +98,20 @@ func parseDiagnosticToolInvocation(argument string) (string, json.RawMessage, er
 	if !ok {
 		return "", nil, errors.New("usage: /tool-invoke <name> [json-object]")
 	}
-	arguments, err := diagnostictool.ParseArguments(raw)
+	arguments, err := workspace.ParseDiagnosticToolArguments(raw)
 	if err != nil {
 		return "", nil, fmt.Errorf("usage: /tool-invoke <name> [json-object]: %w", err)
 	}
 	return identity, arguments, nil
 }
 
-func resolveDiagnosticTool(tools []diagnostictool.Descriptor, identity string) (diagnostictool.Descriptor, error) {
+func resolveDiagnosticTool(tools []workspace.DiagnosticToolDescriptor, identity string) (workspace.DiagnosticToolDescriptor, error) {
 	for _, tool := range tools {
 		if tool.Name == identity {
 			return tool.Clone(), nil
 		}
 	}
-	var matches []diagnostictool.Descriptor
+	var matches []workspace.DiagnosticToolDescriptor
 	for _, tool := range tools {
 		if strings.HasPrefix(tool.Name, identity) {
 			matches = append(matches, tool)
@@ -119,10 +119,10 @@ func resolveDiagnosticTool(tools []diagnostictool.Descriptor, identity string) (
 	}
 	switch len(matches) {
 	case 0:
-		return diagnostictool.Descriptor{}, errors.New("diagnostic tool not found: " + identity)
+		return workspace.DiagnosticToolDescriptor{}, errors.New("diagnostic tool not found: " + identity)
 	case 1:
 		return matches[0].Clone(), nil
 	default:
-		return diagnostictool.Descriptor{}, errors.New("diagnostic tool name is ambiguous; use the full name")
+		return workspace.DiagnosticToolDescriptor{}, errors.New("diagnostic tool name is ambiguous; use the full name")
 	}
 }

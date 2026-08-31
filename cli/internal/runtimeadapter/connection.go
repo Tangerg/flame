@@ -19,11 +19,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
-	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/diagnostictool"
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -363,22 +359,22 @@ func (r *Connection) AgentMemoryService() agentmemory.Service {
 	return &agentMemoryAdapter{runtime: r}
 }
 
-func (r *Connection) KnowledgeService() knowledge.Service {
+func (r *Connection) KnowledgeService() workspace.KnowledgeService {
 	if !r.supportsFeature(runtimeprofile.FeatureKnowledge) {
 		return nil
 	}
 	return &knowledgeAdapter{runtime: r}
 }
 
-func (r *Connection) DiagnosticToolService() diagnostictool.Service {
+func (r *Connection) DiagnosticToolService() workspace.DiagnosticToolService {
 	return &diagnosticToolAdapter{runtime: r}
 }
 
-func (r *Connection) AuthoringContextService() authoringcontext.Service {
+func (r *Connection) AuthoringContextService() workspace.AuthoringContextService {
 	return &authoringContextAdapter{runtime: r}
 }
 
-func (r *Connection) HookService() hookpolicy.Service {
+func (r *Connection) HookService() workspace.HookService {
 	return &hookAdapter{runtime: r}
 }
 

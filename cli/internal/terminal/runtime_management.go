@@ -15,8 +15,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
-	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type runtimeReaderMode uint8
@@ -57,7 +57,7 @@ type runtimeReaderQuery struct {
 // reader after an authoritative change event. It deliberately contains no UI
 // or transport state.
 type runtimeReaderSelection struct {
-	knowledgeTarget   knowledge.Target
+	knowledgeTarget   workspace.KnowledgeTarget
 	knowledgeEntry    bool
 	agentMemoryTarget agentmemory.Target
 }

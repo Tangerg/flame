@@ -1,7 +1,4 @@
-// Package diagnostictool defines read-only runtime diagnostics that the CLI can
-// invoke outside an agent run. JSON stays opaque inside the domain so runtime
-// protocol maps cannot leak past the adapter boundary.
-package diagnostictool
+package workspace
 
 import (
 	"context"
@@ -11,27 +8,27 @@ import (
 	"strings"
 )
 
-type Safety string
+type DiagnosticToolSafety string
 
 const (
-	Safe Safety = "safe"
+	DiagnosticToolSafe DiagnosticToolSafety = "safe"
 )
 
-func (s Safety) Validate() error {
-	if s != Safe {
+func (s DiagnosticToolSafety) Validate() error {
+	if s != DiagnosticToolSafe {
 		return fmt.Errorf("direct diagnostic tool safety must be safe, got %q", s)
 	}
 	return nil
 }
 
-type Descriptor struct {
+type DiagnosticToolDescriptor struct {
 	Name        string
 	Description string
 	Schema      json.RawMessage
-	Safety      Safety
+	Safety      DiagnosticToolSafety
 }
 
-func (d Descriptor) Validate() error {
+func (d DiagnosticToolDescriptor) Validate() error {
 	if strings.TrimSpace(d.Name) == "" {
 		return errors.New("diagnostic tool name is empty")
 	}
@@ -41,18 +38,18 @@ func (d Descriptor) Validate() error {
 	return validateObject("diagnostic tool schema", d.Schema)
 }
 
-func (d Descriptor) Clone() Descriptor {
+func (d DiagnosticToolDescriptor) Clone() DiagnosticToolDescriptor {
 	d.Schema = append(json.RawMessage(nil), d.Schema...)
 	return d
 }
 
-type Invocation struct {
-	Tool      Descriptor
+type DiagnosticToolInvocation struct {
+	Tool      DiagnosticToolDescriptor
 	Arguments json.RawMessage
 	Workspace string
 }
 
-func (i Invocation) Validate() error {
+func (i DiagnosticToolInvocation) Validate() error {
 	if err := i.Tool.Validate(); err != nil {
 		return fmt.Errorf("diagnostic tool invocation: %w", err)
 	}
@@ -62,28 +59,28 @@ func (i Invocation) Validate() error {
 	return validateObject("diagnostic tool arguments", i.Arguments)
 }
 
-type Result struct{ JSON json.RawMessage }
+type DiagnosticToolResult struct{ JSON json.RawMessage }
 
-func (r Result) Validate() error {
+func (r DiagnosticToolResult) Validate() error {
 	if len(r.JSON) == 0 || !json.Valid(r.JSON) {
 		return errors.New("diagnostic tool result is not valid JSON")
 	}
 	return nil
 }
 
-func (r Result) Clone() Result {
-	return Result{JSON: append(json.RawMessage(nil), r.JSON...)}
+func (r DiagnosticToolResult) Clone() DiagnosticToolResult {
+	return DiagnosticToolResult{JSON: append(json.RawMessage(nil), r.JSON...)}
 }
 
-type Service interface {
-	Tools(context.Context) ([]Descriptor, error)
-	Invoke(context.Context, Invocation) (Result, error)
+type DiagnosticToolService interface {
+	Tools(context.Context) ([]DiagnosticToolDescriptor, error)
+	Invoke(context.Context, DiagnosticToolInvocation) (DiagnosticToolResult, error)
 }
 
-// ParseArguments owns the direct-invocation JSON-object invariant without
+// ParseDiagnosticToolArguments owns the direct-invocation JSON-object invariant without
 // requiring delivery code to manufacture a partial tool descriptor merely to
 // validate user input.
-func ParseArguments(value string) (json.RawMessage, error) {
+func ParseDiagnosticToolArguments(value string) (json.RawMessage, error) {
 	arguments := json.RawMessage(strings.TrimSpace(value))
 	if len(arguments) == 0 {
 		arguments = json.RawMessage(`{}`)

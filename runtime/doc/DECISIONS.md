@@ -939,3 +939,10 @@
 - 背景：`application/tools` 只列出可在 Run 外直接调用的只读诊断工具，并在 invoke 前委托 Workspace root resolver 准入 cwd。它没有 Agent ToolSet lifecycle、独立工具状态、外部翻译或自己的路径不变量；唯一生产构造点把现有 `workspace.Scope` 注入 `Roots`。按 `tools.list/invoke` operation 建平级包使 root admission owner 与唯一 coordinator 被物理拆开。
 - 决策：`application/workspace` 以 `DiagnosticTools`、`DiagnosticToolRegistry`、`DiagnosticToolRoots` 和 `DiagnosticToolInvocation` 语义共同拥有 Run 外诊断用例；它仍只消费专用只读 registry，不接管 Agent ToolSet、approval、execution 或 Tool Domain。Bootstrap 直接把现有 Workspace scope 与 registry 组合，Delivery 只消费窄接口。
 - 后果：物理删除 `application/tools` 及旧 import，不保留 alias、forwarder 或 compatibility package。Workspace root 继续只有一个准入路径，direct diagnostics 与 Agent tools 继续是不同能力；Protocol `tools.*` shape 和实际调用行为不变。
+
+## ADR-RT-132：CLI Workspace 投影按上下文收口，不按管理菜单拆 package
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 CLI Workspace context 批次完成；允许 CLI internal Go API breaking change，Runtime 公共 Go surface、Protocol、Artifact、SQLite 与 Desktop 不变。
+- 背景：`authoringcontext`、`knowledge`、`skills`、`hookpolicy` 与 `diagnostictool` 都只投影当前 workspace/project/home 上下文，生产消费者同为 Runtime adapter 与 Terminal，且各自只有一个生产文件。它们没有独立进程、持久生命周期或替换边界，却分别暴露含糊的 `Service`、`Scope`、`Catalog`，使同一上下文按管理菜单平铺成五个 package；架构 allowlist 还长期保留已删除 Goal/feedback/usage package，形成无效边界。
+- 决策：`cli/internal/workspace` 以职责文件共同拥有 resolved Workspace、authoring documents/recipes、Knowledge、Skills、lifecycle Hooks 与 direct diagnostic Tool 的 CLI rich projection 和 consumer-owned ports。合并词汇使用 `KnowledgeTarget`、`SkillProposal`、`HookCatalog`、`DiagnosticToolDescriptor`、`AuthoringRecipe` 等语义全名，不建立 Workspace 总 service facade；Runtime adapter 继续翻译外部合同，Terminal 继续拥有交互生命周期，独立 filesystem publication 与 plugin process 仍保留各自 package。
+- 后果：物理删除五个旧 package、全部 import、架构层与遗留空目录，不保留 alias、forwarder 或 compatibility package；同时删除架构 allowlist 中早已退役的 Goal/feedback/usage 路径。CLI package 图减少五个按 operation/menu 拆分的节点，但各 rich value 的不变量和窄接口仍保留；Runtime Protocol、持久化与用户行为不变。

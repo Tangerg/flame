@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/hookpolicy"
+	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 func (a *app) ShowHooks() {
@@ -19,26 +19,26 @@ func (a *app) ShowHooks() {
 }
 
 func (a *app) hooksReaderQuery() runtimeReaderQuery {
-	workspace := a.session.Workspace.Path
+	workspacePath := a.session.Workspace.Path
 	return runtimeReaderQuery{
 		status: "loading lifecycle hooks", mode: runtimeReaderHooks,
 		read: func(ctx context.Context) (readerDocument, error) {
-			catalog, err := a.hooks.Catalog(ctx, workspace)
+			catalog, err := a.hooks.Catalog(ctx, workspacePath)
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return hooksDocument(workspace, catalog), nil
+			return hooksDocument(workspacePath, catalog), nil
 		},
 	}
 }
 
-func hooksDocument(workspace string, catalog hookpolicy.Catalog) readerDocument {
+func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDocument {
 	detail := fmt.Sprintf("%d hooks · project trust %t", len(catalog.Hooks), catalog.ProjectTrusted)
 	if catalog.ProjectRoot != "" {
 		detail += " · " + catalog.ProjectRoot
 	}
 	if len(catalog.Hooks) == 0 {
-		return paragraphDocument("Lifecycle hooks", detail, []string{"No global or project hooks are configured for " + workspace + "."})
+		return paragraphDocument("Lifecycle hooks", detail, []string{"No global or project hooks are configured for " + workspacePath + "."})
 	}
 	sections := make([]ToolSection, 0, len(catalog.Hooks)*2)
 	for _, hook := range catalog.Hooks {
@@ -69,11 +69,11 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 	if a.hooks == nil {
 		return errors.New("this runtime composition has no hook service")
 	}
-	workspace := a.session.Workspace.Path
+	workspacePath := a.session.Workspace.Path
 	a.status.note("loading project hook trust")
 	if !a.runOperation(hookOperation, false,
-		func(ctx context.Context) (hookpolicy.Catalog, error) { return a.hooks.Catalog(ctx, workspace) },
-		func(catalog hookpolicy.Catalog, err error) {
+		func(ctx context.Context) (workspace.HookCatalog, error) { return a.hooks.Catalog(ctx, workspacePath) },
+		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
 				a.message("load project hooks failed: " + err.Error())
 				return
@@ -94,7 +94,7 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 			if trusted {
 				title, question, action = "Trust project hooks", "Allow reviewed project hooks from "+catalog.ProjectRoot+" to execute?", "Trust hooks"
 			}
-			a.confirmAction(title, question, action, func() { a.setHookTrust(workspace, catalog.ProjectRoot, trusted) })
+			a.confirmAction(title, question, action, func() { a.setHookTrust(workspacePath, catalog.ProjectRoot, trusted) })
 		},
 	) {
 		return errors.New("another hook operation is running")
@@ -102,31 +102,31 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 	return nil
 }
 
-func (a *app) setHookTrust(workspace, projectRoot string, trusted bool) {
+func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
 	presentation := a.sessionContext
 	a.status.note("updating project hook trust")
 	if !a.runAdmissionMutation(hookOperation, false,
-		func(ctx context.Context) (hookpolicy.Catalog, error) {
+		func(ctx context.Context) (workspace.HookCatalog, error) {
 			if err := a.hooks.SetProjectTrust(ctx, projectRoot, trusted); err != nil {
-				return hookpolicy.Catalog{}, err
+				return workspace.HookCatalog{}, err
 			}
-			catalog, err := a.hooks.Catalog(ctx, workspace)
+			catalog, err := a.hooks.Catalog(ctx, workspacePath)
 			if err != nil {
-				return hookpolicy.Catalog{}, err
+				return workspace.HookCatalog{}, err
 			}
 			if err := catalog.ValidateTrustAcknowledgement(projectRoot, trusted); err != nil {
-				return hookpolicy.Catalog{}, fmt.Errorf("verify project hook trust: %w", err)
+				return workspace.HookCatalog{}, fmt.Errorf("verify project hook trust: %w", err)
 			}
 			return catalog, nil
 		},
-		func(catalog hookpolicy.Catalog, err error) {
+		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
 				a.message("update project hook trust failed: " + err.Error())
 				return
 			}
 			if a.sessionContext.current(presentation) {
 				a.setRuntimeReader(runtimeReaderHooks)
-				a.openReaderDocument(hooksDocument(workspace, catalog))
+				a.openReaderDocument(hooksDocument(workspacePath, catalog))
 			}
 			a.status.note("project hook trust updated")
 		},

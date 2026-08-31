@@ -1,6 +1,4 @@
-// Package authoringcontext defines discoverable instruction documents and
-// parameterized prompt recipes available to a CLI session.
-package authoringcontext
+package workspace
 
 import (
 	"context"
@@ -9,60 +7,60 @@ import (
 	"strings"
 )
 
-type DocumentScope string
+type AuthoringDocumentScope string
 
 const (
-	DocumentWorkingDirectory DocumentScope = "cwd"
-	DocumentProjectRoot      DocumentScope = "projectRoot"
-	DocumentHome             DocumentScope = "home"
+	AuthoringDocumentWorkingDirectory AuthoringDocumentScope = "cwd"
+	AuthoringDocumentProjectRoot      AuthoringDocumentScope = "projectRoot"
+	AuthoringDocumentHome             AuthoringDocumentScope = "home"
 )
 
-func (d DocumentScope) Validate() error {
+func (d AuthoringDocumentScope) Validate() error {
 	switch d {
-	case DocumentWorkingDirectory, DocumentProjectRoot, DocumentHome:
+	case AuthoringDocumentWorkingDirectory, AuthoringDocumentProjectRoot, AuthoringDocumentHome:
 		return nil
 	default:
 		return fmt.Errorf("agent document scope %q is invalid", d)
 	}
 }
 
-type Document struct {
+type AuthoringDocument struct {
 	Path  string
 	Title string
-	Scope DocumentScope
+	Scope AuthoringDocumentScope
 }
 
-func (d Document) Validate() error {
+func (d AuthoringDocument) Validate() error {
 	if strings.TrimSpace(d.Path) == "" {
 		return errors.New("agent document path is empty")
 	}
 	return d.Scope.Validate()
 }
 
-type RecipeScope string
+type AuthoringRecipeScope string
 
 const (
-	ProjectRecipe RecipeScope = "project"
-	GlobalRecipe  RecipeScope = "global"
+	ProjectAuthoringRecipe AuthoringRecipeScope = "project"
+	GlobalAuthoringRecipe  AuthoringRecipeScope = "global"
 )
 
-func (r RecipeScope) Validate() error {
-	if r != ProjectRecipe && r != GlobalRecipe {
+func (r AuthoringRecipeScope) Validate() error {
+	if r != ProjectAuthoringRecipe && r != GlobalAuthoringRecipe {
 		return fmt.Errorf("recipe scope %q is invalid", r)
 	}
 	return nil
 }
 
-type Recipe struct {
+type AuthoringRecipe struct {
 	Name         string
 	Description  string
 	ArgumentHint string
 	Body         string
-	Scope        RecipeScope
+	Scope        AuthoringRecipeScope
 	Source       string
 }
 
-func (r Recipe) Validate() error {
+func (r AuthoringRecipe) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
 		return errors.New("recipe name is empty")
 	}
@@ -78,7 +76,7 @@ func (r Recipe) Validate() error {
 // Expand applies the runtime's documented client-side recipe substitution.
 // $ARGUMENTS receives the trimmed input and $1..$9 receive whitespace-delimited
 // arguments. A token such as $10 stays literal.
-func (r Recipe) Expand(arguments string) (string, error) {
+func (r AuthoringRecipe) Expand(arguments string) (string, error) {
 	if err := r.Validate(); err != nil {
 		return "", err
 	}
@@ -111,7 +109,7 @@ func expandRecipeTemplate(template, allArguments string, positional []string) st
 	return expanded.String()
 }
 
-type Service interface {
-	Documents(context.Context, string) ([]Document, error)
-	Recipes(context.Context, string) ([]Recipe, error)
+type AuthoringContextService interface {
+	Documents(context.Context, string) ([]AuthoringDocument, error)
+	Recipes(context.Context, string) ([]AuthoringRecipe, error)
 }

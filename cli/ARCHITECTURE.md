@@ -79,6 +79,15 @@ not earn separate packages merely because Runtime exposes separate operations;
 new packages require a different lifecycle, external boundary, or bounded
 context rather than another `Service` interface.
 
+`internal/workspace` owns the CLI projection of the selected filesystem and
+project context. Resolved workspaces, authored agent documents and recipes,
+knowledge documents, discoverable and managed Skills, lifecycle Hook policy,
+and direct read-only diagnostics all derive their scope or authority from that
+context. They use responsibility-named files and semantic type names inside one
+package; there is no aggregate service facade. Runtime translation and terminal
+workflow lifetimes stay outside this package, while independent filesystem or
+plugin-process boundaries keep their own packages.
+
 ## Command model
 
 The root command is built by a factory for every process or test. Commands:
