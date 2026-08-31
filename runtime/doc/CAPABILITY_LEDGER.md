@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P305 进行中。
+> 状态：当前能力快照；P306 已完成。
 >
 > 基线日期：2026-08-30。
 
@@ -619,6 +619,8 @@ P303把Runtime测试构造与内存fake从五个entity-shaped单文件fixture pa
 P304把Runtime `application/sessionadmission`与`application/ownershiprecovery`收敛为`application/ownership`。Session/working-tree admission、recovery election与ordered Run→Goal reconciliation现在共用唯一`Lease` owner；`AdmissionBackend`与`RecoveryBackend`只表达不同acquisition语义，同一个`adapter/runtimeownership.Manager`不再实现两套重复Lease类型。旧package、import、通用`New`构造器和空目录均删除，不保留兼容路径。
 
 P305把Runtime `adapter/providerregistry`收回`adapter/model`。stored-over-environment credential precedence、environment-only Provider materialization、identity verification与durable update隔离现在和catalog/probe/chat/embedding共处同一Provider/Model translation context；Bootstrap只组合一个model adapter，环境secret仍只存在immutable process overlay。旧package、import、错误前缀和空目录均物理删除。
+
+P306完成Runtime/CLI package graph复核。Runtime `internal/...`当前91个Go package（Adapter 21、Application 16、Domain 22、Infra 17，余量为Delivery/Bootstrap/contract/shared mechanism/test support），CLI `internal/...`当前28个Go package且与28个一级目录一一对应；计数只记录结果，不作为验收。逐包consumer/invariant/lifecycle审计未发现仍存的forwarding、alias、one-operation compatibility或空路径；保留的小package均拥有稳定value/invariant、durable aggregate、workflow lifecycle、external translation或多peer mechanism。Runtime、CLI与`runtime/localruntime`空目录/空文件扫描为零。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

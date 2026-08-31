@@ -65,6 +65,15 @@ schedule, while `ReconnectPolicy` adds classified admission and a finite
 attempt budget for Run, Runtime invalidation, workspace inspection, and MCP
 management. Do not split retry admission from the schedule it consumes.
 
+`internal/commandreplay` owns the pure, durable capability/guard/policy model
+for one Runtime replay store. `internal/mutation` consumes that model together
+with Agent error classification and retry to settle acknowledgement; combining
+them would make the persisted value owner depend on I/O behavior. Likewise,
+`internal/promptqueue` remains a CLI application aggregate rather than Terminal
+state: it owns per-Session FIFO order, stable identities, hold/edit rules,
+dispatch reservation, durable restore, and rollback. Terminal only presents
+and commands that aggregate.
+
 `internal/session` also owns the portable Session document value, export/import
 requests, and the consumer-owned Runtime transfer port. These facts share the
 Session identity and lifecycle; they are not a separate bounded context.

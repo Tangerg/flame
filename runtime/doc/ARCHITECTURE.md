@@ -340,6 +340,8 @@ Infra：
 
 `adapter/model` 以职责文件共同拥有 Provider/Model 外部翻译：stored-over-environment credential overlay、catalog facts/probe/listing、selection admission、pricing 与 chat/embedding client construction。环境凭据只形成 immutable process overlay，永不进入 inner durable registry；不得按 registry/catalog/client 阶段重新拆平级 adapter package。
 
+小型 adapter 只在拥有真实边界时保留：`planpresentation` 是 Agent prompt 与 Plan Tool 共用的纯模型投影，`utilitymodel` 是多个 maintenance/Run consumers 共用的有界辅助模型调用机制，`mcpconnection`、`isolation`、`runrecovery` 与 `scheduleidentity` 分别拥有 live external lifecycle、sandbox、atomic recovery translation 或外部 entropy。单一 Bootstrap 构造点本身既不是合并证据，也不能替代这些边界；若其 owner 或消费者消失，package 必须随之删除。
+
 ### 6.5 Protocol 与 Delivery
 
 公共 `protocol` 只包含 binding-neutral Runtime 合同：DTO、枚举、请求/响应、事件、客户端可见 problem、版本与严格验证。它不包含服务端 method-group interface、context key、Router、numeric JSON-RPC code、HTTP status、reflection registry 或生成器实现细节。
