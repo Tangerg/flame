@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/runtimeownership"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -63,7 +63,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if validateErr := cfg.validate(); validateErr != nil {
 		return nil, config.Settings{}, validateErr
 	}
-	setup, err := runtimeownership.PrepareDataDirectory(ctx, cfg.DataDirectory)
+	setup, err := ownershipadapter.PrepareDataDirectory(ctx, cfg.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -126,13 +126,13 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 
 	hookResolver := NewHookResolver(cfg.UserHome, stores.Trust)
 	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, hookResolver, buildID)
-	ownership, err := runtimeownership.New(stores.DataDirectory)
+	ownershipLeases, err := ownershipadapter.New(stores.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	assemblyConfig.SessionOwnership = ownership
-	assemblyConfig.GoalDriveOwnership = ownership
-	assemblyConfig.RecoveryOwnership = ownership
+	assemblyConfig.SessionOwnership = ownershipLeases
+	assemblyConfig.GoalDriveOwnership = ownershipLeases
+	assemblyConfig.RecoveryOwnership = ownershipLeases
 	assemblyConfig.UserHome = cfg.UserHome
 	assemblyConfig.DefaultWorkspacePath = cfg.DefaultWorkspacePath
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())

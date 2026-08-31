@@ -1,4 +1,4 @@
-package runtimeownership
+package ownership
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestManagersShareSessionAndGoalDriveOwnership(t *testing.T) {
+func TestLeaseSetsShareSessionAndGoalDriveOwnership(t *testing.T) {
 	data := t.TempDir()
 	first, err := New(data)
 	if err != nil {
@@ -26,7 +26,7 @@ func TestManagersShareSessionAndGoalDriveOwnership(t *testing.T) {
 		t.Fatal("first Session lease was refused")
 	}
 	if _, trySessionOk := second.TrySession("session-1"); trySessionOk {
-		t.Fatal("second manager acquired the same Session writer")
+		t.Fatal("second lease set acquired the same Session writer")
 	}
 	if other, trySessionOk := second.TrySession("session-2"); !trySessionOk {
 		t.Fatal("unrelated Session was blocked")
@@ -45,7 +45,7 @@ func TestManagersShareSessionAndGoalDriveOwnership(t *testing.T) {
 		t.Fatal("first Goal drive lease was refused")
 	}
 	if _, tryGoalDriveOk := second.TryGoalDrive("session-1"); tryGoalDriveOk {
-		t.Fatal("second manager acquired the same Goal drive")
+		t.Fatal("second lease set acquired the same Goal drive")
 	}
 	drive.Release()
 
@@ -54,7 +54,7 @@ func TestManagersShareSessionAndGoalDriveOwnership(t *testing.T) {
 		t.Fatal("first recovery sweep lease was refused")
 	}
 	if _, ok := second.TryRecoverySweep(); ok {
-		t.Fatal("second manager acquired the same recovery sweep")
+		t.Fatal("second lease set acquired the same recovery sweep")
 	}
 	sweep.Release()
 }
@@ -104,11 +104,11 @@ func TestWorkingTreeRunsSharePhysicalIdentityAndExcludeMutation(t *testing.T) {
 func TestSessionOwnershipTransfersAfterProcessKill(t *testing.T) {
 	const childEnvironment = "FLAME_TEST_RUNTIME_OWNERSHIP_CHILD"
 	if os.Getenv(childEnvironment) == "1" {
-		manager, err := New(os.Getenv("FLAME_TEST_RUNTIME_OWNERSHIP_DATA"))
+		leases, err := New(os.Getenv("FLAME_TEST_RUNTIME_OWNERSHIP_DATA"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		lease, ok := manager.TrySession("session-after-crash")
+		lease, ok := leases.TrySession("session-after-crash")
 		if !ok {
 			t.Fatal("child could not acquire Session ownership")
 		}
@@ -143,11 +143,11 @@ func TestSessionOwnershipTransfersAfterProcessKill(t *testing.T) {
 	t.Cleanup(func() { _ = command.Process.Kill() })
 	waitForFile(t, ready, &output)
 
-	manager, err := New(data)
+	leases, err := New(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := manager.TrySession("session-after-crash"); ok {
+	if _, ok := leases.TrySession("session-after-crash"); ok {
 		t.Fatal("parent acquired Session ownership while child was alive")
 	}
 	if err := command.Process.Kill(); err != nil {
@@ -162,7 +162,7 @@ func TestSessionOwnershipTransfersAfterProcessKill(t *testing.T) {
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
 	for {
-		if lease, ok := manager.TrySession("session-after-crash"); ok {
+		if lease, ok := leases.TrySession("session-after-crash"); ok {
 			lease.Release()
 			return
 		}
