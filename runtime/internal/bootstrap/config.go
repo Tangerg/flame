@@ -4,7 +4,6 @@
 package bootstrap
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -40,9 +39,6 @@ func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
 	apiKeyEnvironmentVariable := profile.CredentialEnvironment()
 	if apiKey := os.Getenv(apiKeyEnvironmentVariable); apiKey != "" {
 		settings.APIKey = config.EnvironmentAPIKey(apiKey)
-	}
-	if profile.RequiresAPIKey() && !settings.APIKey.Present() {
-		return config.Settings{}, errors.New("config: apiKey is empty — set it in config/config.yaml or " + apiKeyEnvironmentVariable)
 	}
 	return settings, nil
 }

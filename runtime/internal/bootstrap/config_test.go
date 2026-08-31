@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
-func TestResolveProviderConfigAllowsOptionalAPIKey(t *testing.T) {
+func TestResolveProviderConfigAllowsCredentialConfigurationAfterStartup(t *testing.T) {
 	t.Setenv("OLLAMA_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	settings, err := resolveProviderConfig(config.Settings{Provider: "ollama", Model: "local-model"})
@@ -21,8 +21,12 @@ func TestResolveProviderConfigAllowsOptionalAPIKey(t *testing.T) {
 	if settings.APIKey.Present() || settings.Provider != "ollama" || settings.Model != "local-model" {
 		t.Fatalf("settings = %+v", settings)
 	}
-	if _, err := resolveProviderConfig(config.Settings{Provider: "openai", Model: "gpt-5.6-sol"}); err == nil {
-		t.Fatal("required API key provider was accepted without a key")
+	settings, err = resolveProviderConfig(config.Settings{Provider: "openai", Model: "gpt-5.6-sol"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.APIKey.Present() || settings.Provider != "openai" || settings.Model != "gpt-5.6-sol" {
+		t.Fatalf("required-key provider settings = %+v", settings)
 	}
 }
 

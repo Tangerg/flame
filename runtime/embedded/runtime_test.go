@@ -75,6 +75,92 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	t.Fatal("anthropic provider missing after restart")
 }
 
+func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_MODEL", "")
+	t.Setenv("FLAME_APIKEY", "")
+	t.Setenv("FLAME_BASEURL", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("FLAME_MCP_SERVERS", "")
+	t.Setenv("FLAME_A2A_AGENTS", "")
+	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+
+	configDirectory := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(configDirectory, "config.yaml"),
+		[]byte("provider: anthropic\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	config := Config{
+		DataDirectory:        t.TempDir(),
+		DefaultWorkspacePath: t.TempDir(),
+		UserHomePath:         t.TempDir(),
+		ConfigDirectories:    []string{configDirectory},
+	}
+
+	runtime, err := Open(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers, err := runtime.ListProviders(t.Context(), CallOptions{})
+	if err != nil {
+		_ = runtime.Close()
+		t.Fatal(err)
+	}
+	configured := providerByID(t, providers.Data, "anthropic")
+	if configured.Configured || configured.Credential != nil {
+		_ = runtime.Close()
+		t.Fatalf("provider started configured without a credential = %+v", configured)
+	}
+
+	key := "sk-stored-after-startup"
+	configured, err = runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
+		Provider: "anthropic",
+		APIKey: &protocol.ProviderConfigChange{
+			Type:  protocol.ProviderConfigSet,
+			Value: &key,
+		},
+	}, CommandOptions{IdempotencyKey: "configure-provider-after-startup"})
+	if err != nil {
+		_ = runtime.Close()
+		t.Fatal(err)
+	}
+	if !configured.Configured || configured.Credential == nil || configured.Credential.Source != protocol.ProviderKeySourceStored {
+		_ = runtime.Close()
+		t.Fatalf("provider update did not establish stored configuration = %+v", configured)
+	}
+	if err := runtime.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := Open(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	providers, err = reopened.ListProviders(t.Context(), CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	configured = providerByID(t, providers.Data, "anthropic")
+	if !configured.Configured || configured.Credential == nil || configured.Credential.Source != protocol.ProviderKeySourceStored {
+		t.Fatalf("stored provider configuration did not survive restart = %+v", configured)
+	}
+}
+
+func providerByID(t *testing.T, providers []protocol.Provider, id string) *protocol.Provider {
+	t.Helper()
+	for index := range providers {
+		if providers[index].ID == id {
+			return &providers[index]
+		}
+	}
+	t.Fatalf("provider %q is missing", id)
+	return nil
+}
+
 func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
 	data := t.TempDir()
 	home := t.TempDir()
