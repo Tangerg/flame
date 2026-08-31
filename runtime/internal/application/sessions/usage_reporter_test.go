@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
@@ -38,8 +38,8 @@ func usd(v float64) *float64 { return &v }
 
 func finishedRun(t *testing.T, provider, model string, at time.Time, usage accounting.Usage) run.Run {
 	t.Helper()
-	return runfixture.MustRestore(run.Snapshot{ID: "run_x", ModelSelection: mustUsageSelection(t, provider, model), State: run.Completed,
-		FinishedAt: at, Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Usage: &usage})})
+	return testsupport.MustRestoreRun(run.Snapshot{ID: "run_x", ModelSelection: mustUsageSelection(t, provider, model), State: run.Completed,
+		FinishedAt: at, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &usage})})
 
 }
 
@@ -100,8 +100,8 @@ func TestFoldRunPrefersByModelSplit(t *testing.T) {
 func TestFoldRunSkipsUnfinishedAndOld(t *testing.T) {
 	total := usageAccumulator{}
 
-	foldRun(runfixture.MustRestore(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil, false)
-	noUsage := runfixture.MustRestore(run.Snapshot{State: run.Completed})
+	foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil, false)
+	noUsage := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed})
 	foldRun(noUsage, time.Time{}, &total, nil, nil, nil, false)
 	old := finishedRun(t, "anthropic", "m", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		accounting.Usage{Total: accounting.Totals{InputTokens: 99}})

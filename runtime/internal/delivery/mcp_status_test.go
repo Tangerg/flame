@@ -8,13 +8,13 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMCPAuthorizationAttemptWire(t *testing.T) {
 	finishedAt := time.Date(2026, 8, 2, 12, 1, 0, 0, time.UTC)
-	attemptID, err := mcpapp.ParseAuthorizationAttemptID(identityfixture.MCPAuthorizationAttemptID)
+	attemptID, err := mcpapp.ParseAuthorizationAttemptID(testsupport.MCPAuthorizationAttemptID)
 	if err != nil {
 		t.Fatalf("parse test authorization attempt identity: %v", err)
 	}

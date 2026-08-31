@@ -9,8 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
@@ -26,8 +25,8 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 	}{
 		{
 			name:  "run",
-			small: SegmentFinished{Run: runfixture.MustRestore(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
-			large: SegmentFinished{Run: runfixture.MustRestore(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, Detail: largeText})},
+			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
+			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, Detail: largeText})},
 		},
 		{
 			name: "item start identity",
@@ -42,16 +41,16 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 		},
 		{
 			name:  "item media",
-			small: ItemCompleted{Item: itemfixture.MustRestore(itemfixture.Input{ID: "item"})},
-			large: ItemCompleted{Item: itemfixture.MustRestore(itemfixture.Input{ID: "item", Content: []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: make([]byte, growth)}}})},
+			small: ItemCompleted{Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item"})},
+			large: ItemCompleted{Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item", Content: []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: make([]byte, growth)}}})},
 		},
 		{
 			name: "tool result",
-			small: ItemCompleted{Item: itemfixture.MustRestore(itemfixture.Input{
+			small: ItemCompleted{Item: testsupport.MustRestoreItem(testsupport.ItemInput{
 				Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 				Tool: &transcript.ToolInvocation{Name: "shell"},
 			})},
-			large: ItemCompleted{Item: itemfixture.MustRestore(itemfixture.Input{
+			large: ItemCompleted{Item: testsupport.MustRestoreItem(testsupport.ItemInput{
 				Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 				Tool: &transcript.ToolInvocation{Name: "shell", Result: &largeResult},
 			})},

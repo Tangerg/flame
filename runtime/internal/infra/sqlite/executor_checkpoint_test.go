@@ -17,8 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *persistence.ExecutorCheckpointStore) {
@@ -39,7 +38,7 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 	return runs.ExecutorCheckpoint{
 		RootMemberID: rootMemberID,
 		Payload:      []byte(payload),
-		BuildID:      identityfixture.BuildID,
+		BuildID:      testsupport.BuildID,
 		Scope: runs.ExecutionScope{
 			SessionID:         sessionID,
 			CWD:               "/workspace/" + sessionID,
@@ -47,10 +46,10 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 			GoalIncarnationID: "lease-" + sessionID,
 		},
 		ModelSelection: selection,
-		Limits: runfixture.MustLimits(run.LimitValues{
-			MaxTotalTokens: runfixture.Pointer[int64](8_192),
-			MaxBudgetUSD:   runfixture.Pointer(2.5),
-			MaxSteps:       runfixture.Pointer(16),
+		Limits: testsupport.MustRunLimits(run.LimitValues{
+			MaxTotalTokens: testsupport.Pointer[int64](8_192),
+			MaxBudgetUSD:   testsupport.Pointer(2.5),
+			MaxSteps:       testsupport.Pointer(16),
 		}),
 		Capabilities: run.Capabilities{
 			ChildRuns:      true,
@@ -104,7 +103,7 @@ func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) 
 		name   string
 		mutate func(*runs.ExecutorCheckpoint)
 	}{
-		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = identityfixture.AlternateBuildID }},
+		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = testsupport.AlternateBuildID }},
 		{name: "cwd", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.CWD = "/other" }},
 		{name: "isolation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.Isolated = false }},
 		{name: "goal incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other-lease" }},
@@ -118,7 +117,7 @@ func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) 
 			checkpoint.ModelSelection, _ = modelref.NewWithReasoningEffort("anthropic", "claude", "medium")
 		}},
 		{name: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(17)})
+			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(17)})
 		}},
 		{name: "capabilities", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = false

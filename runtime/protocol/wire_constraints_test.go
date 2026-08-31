@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func agentMemoryWireItemID(digit byte) string {
@@ -380,20 +380,20 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 }
 
 func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
-	request := MCPAuthorizationAttemptRequest{AttemptID: identityfixture.MCPAuthorizationAttemptID}
+	request := MCPAuthorizationAttemptRequest{AttemptID: testsupport.MCPAuthorizationAttemptID}
 	if err := request.ValidateWire(); err != nil {
 		t.Fatalf("canonical request identity: %v", err)
 	}
 	request.AttemptID = "mcpauth_missing"
 	assertConstraintField(t, request.ValidateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
 
-	attempt := MCPAuthorizationAttempt{ID: identityfixture.MCPAuthorizationAttemptID, Server: "github"}
+	attempt := MCPAuthorizationAttempt{ID: testsupport.MCPAuthorizationAttemptID, Server: "github"}
 	if err := attempt.ValidateWire(); err != nil {
 		t.Fatalf("canonical response identity: %v", err)
 	}
 	attempt.ID = "mcpauth_missing"
 	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "id")
-	attempt.ID = identityfixture.MCPAuthorizationAttemptID
+	attempt.ID = testsupport.MCPAuthorizationAttemptID
 	attempt.Server = "GitHub"
 	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "server")
 }
@@ -859,7 +859,7 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 	validRuntimeLimits := func(maxConcurrentRuns *int) RuntimeLimits {
 		return RuntimeLimits{
 			MaxConcurrentRuns: maxConcurrentRuns,
-			Idempotency:       IdempotencyLimits{RetentionSeconds: 1, Namespace: identityfixture.IdempotencyNamespace},
+			Idempotency:       IdempotencyLimits{RetentionSeconds: 1, Namespace: testsupport.IdempotencyNamespace},
 			RunReplay: RunReplayLimits{
 				Scope: ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
 			},

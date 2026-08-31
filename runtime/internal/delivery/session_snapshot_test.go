@@ -13,8 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -32,7 +31,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
-	if err := rt.runs.Suspend(t.Context(), runfixture.MustRestore(run.Snapshot{
+	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,
@@ -40,13 +39,13 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	question := transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
-	if err := rt.hist.AppendItem(t.Context(), itemfixture.MustRestore(itemfixture.Input{
+	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_question", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt, Question: &question,
 	})); err != nil {
 		t.Fatalf("append question Item: %v", err)
 	}
-	if err := rt.hist.AppendItem(t.Context(), itemfixture.MustRestore(itemfixture.Input{
+	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_approved_tool", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: createdAt.Add(time.Second), FinishedAt: createdAt.Add(2 * time.Second),
@@ -74,7 +73,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		t.Fatalf("save Plan: %v", saveErr)
 	}
 	standingGoal, err := goal.New(
-		"ses_1", "Finish the recovery", runfixture.Selection(), goal.UnlimitedBudget(), capabilities,
+		"ses_1", "Finish the recovery", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), capabilities,
 		"goal_snapshot", createdAt,
 	)
 	if err != nil {
@@ -128,14 +127,14 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
-	if err := rt.runs.Suspend(t.Context(), runfixture.MustRestore(run.Snapshot{
+	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,
 	})); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
-	if err := rt.hist.AppendItem(t.Context(), itemfixture.MustRestore(itemfixture.Input{
+	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "interrupt_run_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{
@@ -170,7 +169,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
-	if err := rt.runs.Suspend(t.Context(), runfixture.MustRestore(run.Snapshot{
+	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,

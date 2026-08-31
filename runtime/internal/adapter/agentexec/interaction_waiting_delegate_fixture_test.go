@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -59,8 +59,8 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	}
 
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: sessionfixture.MustRestore(session.Snapshot{
-		ID: "session_1", Title: "waiting delegate", Workspace: sessionfixture.MustWorkspace(workspace),
+	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session_1", Title: "waiting delegate", Workspace: testsupport.MustWorkspace(workspace),
 	})}
 	projection := newDelegateProjection()
 	runIDs := []string{"run_root", "run_child"}

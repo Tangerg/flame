@@ -8,13 +8,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
-	waiting := runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Waiting,
+	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Waiting,
 		CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark})
 
@@ -36,7 +35,7 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
 	outcome := run.OutcomeCanceled
-	record := runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Canceled,
+	record := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Canceled,
 		Outcome: &outcome, CreatedAt: createdAt, UpdatedAt: createdAt.Add(time.Second),
 		FinishedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark})
 
@@ -62,22 +61,22 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 func TestEventCommitToolJournalOwnsMatchingItemState(t *testing.T) {
 	startedAt := time.Date(2026, 8, 13, 2, 3, 4, 0, time.UTC)
 	finishedAt := startedAt.Add(time.Second)
-	running := itemfixture.MustRestore(itemfixture.Input{
+	running := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session", RunID: "run_1", ID: "item_1",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: startedAt,
 	})
-	completed := itemfixture.MustRestore(itemfixture.Input{
+	completed := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session", RunID: "run_1", ID: "item_1",
 		Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
 		OccurredAt: startedAt, FinishedAt: finishedAt,
 	})
-	failed := itemfixture.MustRestore(itemfixture.Input{
+	failed := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session", RunID: "run_1", ID: "item_1",
 		Status: transcript.ItemIncomplete, Kind: transcript.ToolCall,
 		OccurredAt: startedAt, FinishedAt: finishedAt,
 		Failure: &tool.Failure{Kind: tool.FailureExecution},
 	})
-	unknown := itemfixture.MustRestore(itemfixture.Input{
+	unknown := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session", RunID: "run_1", ID: "item_1",
 		Status: transcript.ItemIncomplete, Kind: transcript.ToolCall,
 		OccurredAt: startedAt, FinishedAt: finishedAt,

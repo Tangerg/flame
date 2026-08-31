@@ -24,9 +24,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -108,7 +106,7 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 		CommitID:  testCommitID("run_commit_event_1"),
 		State:     runs.StateTerminalize,
 		Outcome:   run.OutcomeCompleted,
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 		})},
 		Run: finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
@@ -147,7 +145,7 @@ func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
 
 	err := effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
 			Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
@@ -181,7 +179,7 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 
 	err := effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
 			Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
@@ -226,7 +224,7 @@ func TestCommitEventRejectsUnknownStateChange(t *testing.T) {
 	})
 	err := effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"), State: runs.StateChange("invalid"),
-		Run: runPointer(runfixture.MustRestore(run.Snapshot{SessionID: "ses_1", ID: "run_1"})),
+		Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1"})),
 	})
 	if err == nil {
 		t.Fatal("CommitEvent accepted an unknown run state change")
@@ -246,7 +244,7 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_open",
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 			})},
 		}},
@@ -354,7 +352,7 @@ func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_next",
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: now,
 			})},
 		}},
@@ -385,7 +383,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 		ItemID: "tool_1", ItemOccurredAt: barrierCreatedAt,
 		CallID: "call_1", Name: "ask_user", Arguments: "{}",
 	}}
-	pending.Continuations[0].Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2})
+	pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
 
 	err := effects.CommitTreeBarrier(context.Background(), runs.TreeBarrierCommit{
 		CommitID:   testCommitID("run_commit_barrier"),
@@ -396,16 +394,16 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 			SessionID: "ses_1",
 			SegmentID: "segment_1",
 			State:     runs.StateSuspend,
-			Run: runPointer(runfixture.MustRestore(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
+			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				ModelSelection: pending.Continuations[0].ModelSelection,
 
-				Metrics:      runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2}),
+				Metrics:      testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
 				Capabilities: pending.Capabilities,
 				CreatedAt:    runCreatedAt,
 				UpdatedAt:    barrierCreatedAt,
 				MessageMark:  run.UnknownMessageMark})),
 
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "int_1",
 				Kind:       transcript.QuestionItem,
 				OccurredAt: barrierCreatedAt, Question: pending.Interrupts[0].Question,
@@ -451,7 +449,7 @@ func TestCommitTreeBarrierRejectsIncompleteContinuation(t *testing.T) {
 		Checkpoint: testRootExecutorCheckpoint(),
 		Runs: []runs.EventCommit{{
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
-			Run: runPointer(runfixture.MustRestore(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
+			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				CreatedAt:   createdAt,
 				MessageMark: run.UnknownMessageMark})),
 		}},
@@ -486,7 +484,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 		{name: "session", identity: "session", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" }},
 		{name: "goal incarnation", identity: "goal_incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" }},
 		{name: "limits", identity: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = runfixture.MustLimits(run.LimitValues{MaxTotalTokens: runfixture.Pointer[int64](1)})
+			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
 		}},
 		{name: "provider", identity: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", checkpoint.ModelSelection.Model())
@@ -508,7 +506,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 				Checkpoint: checkpoint,
 				Runs: []runs.EventCommit{{
 					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
-					Run: runPointer(runfixture.MustRestore(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
+					Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 						CreatedAt:   createdAt,
 						MessageMark: run.UnknownMessageMark})),
 				}},
@@ -536,16 +534,16 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			name: "cumulative metrics", identity: "cumulative_metrics",
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
-				snapshot.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: snapshot.Metrics.Steps() + 1})
-				*record = runfixture.MustRestore(snapshot)
+				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
+				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 		{
 			name: "frozen limits", identity: "frozen_limits",
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
-				snapshot.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(6)})
-				*record = runfixture.MustRestore(snapshot)
+				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(6)})
+				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 		{
@@ -553,7 +551,7 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
 				snapshot.ModelSelection = mustEffectSelection(t, "openai", "gpt")
-				*record = runfixture.MustRestore(snapshot)
+				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 		{
@@ -561,7 +559,7 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
 				snapshot.Capabilities.ChildRuns = true
-				*record = runfixture.MustRestore(snapshot)
+				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 		{
@@ -569,7 +567,7 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
 				snapshot.GoalIncarnationID = "other-lease"
-				*record = runfixture.MustRestore(snapshot)
+				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 	}
@@ -582,9 +580,9 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 				createdAt, createdAt.Add(time.Second),
 			)
 			pending.GoalIncarnationID = "goal-lease"
-			pending.Continuations[0].Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2})
-			pending.Continuations[0].Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(5)})
-			run := runfixture.MustRestore(run.Snapshot{SessionID: pending.SessionID,
+			pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
+			pending.Continuations[0].Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(5)})
+			run := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
 				ID:                pending.RootRunID,
 				ModelSelection:    pending.Continuations[0].ModelSelection,
 				GoalIncarnationID: pending.GoalIncarnationID,
@@ -644,7 +642,7 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 	snapshotted := make(chan string, 1)
 	stores := &fakeStores{
 		session: &fakeSession{
-			sess:    sessionfixture.MustRestore(session.Snapshot{ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/repo")}),
+			sess:    testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo")}),
 			renamed: renamed,
 		},
 		title: "Generated title",
@@ -667,7 +665,7 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 	parkedRenamed := make(chan string, 1)
 	parked := testFinalizer(&fakeStores{
 		session: &fakeSession{
-			sess:    sessionfixture.MustRestore(session.Snapshot{ID: "ses_2", Workspace: sessionfixture.MustWorkspace("/repo")}),
+			sess:    testsupport.MustRestoreSession(session.Snapshot{ID: "ses_2", Workspace: testsupport.MustWorkspace("/repo")}),
 			renamed: parkedRenamed,
 		},
 		title: "Waiting conversation",
@@ -693,7 +691,7 @@ func TestFinishOrdersCheckpointBeforeDetachedTitleMaintenance(t *testing.T) {
 	var operations []string
 	stores := &fakeStores{
 		session: &fakeSession{
-			sess:       sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"}),
+			sess:       testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			operations: &operations,
 			renameErr:  renameErr,
 		},
@@ -754,7 +752,7 @@ func TestFinishRecordsAcceptedBackgroundFailureOnSpan(t *testing.T) {
 	provider, exporter := installRunsegmentTraceCapture(t)
 	ctx, span := provider.Tracer("test/runsegment").Start(t.Context(), "run")
 	effects := testFinalizer(&fakeStores{
-		session:  &fakeSession{sess: sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"})},
+		session:  &fakeSession{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"})},
 		titleErr: titleErr,
 	}, FinalizerConfig{})
 
@@ -780,7 +778,7 @@ func TestFinishPersistsUsableFallbackWhenTitleGenerationFails(t *testing.T) {
 	renamed := make(chan string, 1)
 	effects := testFinalizer(&fakeStores{
 		session: &fakeSession{
-			sess:    sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"}),
+			sess:    testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			renamed: renamed,
 		},
 		title:    "Diagnose provider outage",
@@ -860,7 +858,7 @@ func (f *fakeStores) Generate(context.Context, string) (string, error) {
 // resolving that is the committer's job.
 func finishedRunRecord(runID, sessionID string, outcome run.Outcome) *run.Run {
 	state, _ := run.Running.Terminate(outcome)
-	record := runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: runID, State: state, Outcome: &outcome,
+	record := testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: state, Outcome: &outcome,
 		CreatedAt:   time.Unix(1, 0).UTC(),
 		FinishedAt:  time.Unix(2, 0).UTC(),
 		MessageMark: run.UnknownMessageMark})
@@ -875,7 +873,7 @@ func runHasOutcome(record run.Run, expected run.Outcome) bool {
 func mutatedRun(record run.Run, mutate func(*run.Snapshot)) run.Run {
 	snapshot := record.Snapshot()
 	mutate(&snapshot)
-	return runfixture.MustRestore(snapshot)
+	return testsupport.MustRestoreRun(snapshot)
 }
 
 func runPointer(record run.Run) *run.Run { return &record }

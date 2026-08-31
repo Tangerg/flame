@@ -10,8 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -30,7 +29,7 @@ func (r *recordingCompactions) ApplyCompaction(_ context.Context, plan Conversat
 }
 
 func TestMessagesCoordinatesDurableHistory(t *testing.T) {
-	messages := NewConversationHistory(conversationfixture.New(), nil)
+	messages := NewConversationHistory(testsupport.NewConversationStore(), nil)
 	seed := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("one")),
 		chat.NewAssistantMessage(chat.NewTextPart("two")),
@@ -55,7 +54,7 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsMissingSession(t *testing.T) {
-	messages := NewConversationHistory(conversationfixture.New(), nil)
+	messages := NewConversationHistory(testsupport.NewConversationStore(), nil)
 	for _, sessionID := range []string{
 		"",
 		" ses_1",
@@ -75,12 +74,12 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	at := time.Unix(10, 0).UTC()
 	compactions := &recordingCompactions{runs: []run.Run{
-		runfixture.MustRestore(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: 4}),
-		runfixture.MustRestore(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: 6}),
-		runfixture.MustRestore(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: 8}),
-		runfixture.MustRestore(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: 4}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: 6}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: 8}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
 	}}
-	messages := NewConversationHistory(conversationfixture.New(), compactions)
+	messages := NewConversationHistory(testsupport.NewConversationStore(), compactions)
 	replacement := []chat.Message{
 		chat.NewSystemMessage("summary"),
 		chat.NewUserMessage(chat.NewTextPart("recent question")),

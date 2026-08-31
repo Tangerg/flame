@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -459,9 +459,9 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *deliver
 
 func protocolHandler(host *Host, cwd string) (*delivery.Handler, error) {
 	return host.application.newDeliveryHandler(protocol.ServerInfo{
-		Name: "conformance-test", Version: "0.0.0-test", InstanceID: identityfixture.RuntimeInstanceID,
+		Name: "conformance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
 		DefaultWorkspace: protocol.WorkspaceRef{Path: cwd}, Home: cwd,
-	}, identityfixture.IdempotencyNamespace)
+	}, testsupport.IdempotencyNamespace)
 }
 
 func collectRunEvents(events iter.Seq[protocol.RunEvent]) <-chan []protocol.RunEvent {

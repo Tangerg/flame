@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -19,8 +19,8 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: transcript.QuestionFieldKind("invalid")}}})
 	})
 	mustPanic(t, func() { presentDelta(nil) })
-	mustPanic(t, func() { presentRun(runfixture.MustRestore(run.Snapshot{State: run.State("invalid")})) })
-	mustPanic(t, func() { presentOutcome(runfixture.MustRestore(run.Snapshot{State: run.Running})) })
+	mustPanic(t, func() { presentRun(testsupport.MustRestoreRun(run.Snapshot{State: run.State("invalid")})) })
+	mustPanic(t, func() { presentOutcome(testsupport.MustRestoreRun(run.Snapshot{State: run.Running})) })
 	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })
 	mustPanic(t, func() { presentToolFailure(&tool.Failure{Kind: tool.FailureKind("invalid")}) })
 	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{Kind: interrupt.Kind("invalid")}}) })
@@ -43,7 +43,7 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.domain.String(), func(t *testing.T) {
 			outcome := test.domain
-			if got := presentOutcome(runfixture.MustRestore(run.Snapshot{Outcome: &outcome})); got.Type != test.wire {
+			if got := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &outcome})); got.Type != test.wire {
 				t.Fatalf("presentOutcome type = %q, want %q", got.Type, test.wire)
 			}
 			encoded, err := artifactOutcomeType(test.domain)

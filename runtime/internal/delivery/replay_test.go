@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -126,12 +126,12 @@ func (f *flakyCompletionStore) Complete(ctx context.Context, record idempotency.
 
 func TestEndpointRejectsIdempotencyStoreMismatchBeforeBusinessAdmission(t *testing.T) {
 	service := &countingCancelService{}
-	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyNamespace: identityfixture.IdempotencyNamespace})
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace})
 	request := protocol.CancelRunRequest{RunID: "run_1"}
 
 	refused := endpoint.Invoke(t.Context(), "runs.cancel", request, Options{
 		IdempotencyKey:       "cancel-once",
-		IdempotencyNamespace: identityfixture.AlternateIdempotencyNamespace,
+		IdempotencyNamespace: testsupport.AlternateIdempotencyNamespace,
 	})
 	if !errors.Is(refused.Failure, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("mismatch error = %v, want idempotency_store_mismatch", refused.Failure)
@@ -142,7 +142,7 @@ func TestEndpointRejectsIdempotencyStoreMismatchBeforeBusinessAdmission(t *testi
 
 	accepted := endpoint.Invoke(t.Context(), "runs.cancel", request, Options{
 		IdempotencyKey:       "cancel-once",
-		IdempotencyNamespace: identityfixture.IdempotencyNamespace,
+		IdempotencyNamespace: testsupport.IdempotencyNamespace,
 	})
 	if accepted.Failure != nil {
 		t.Fatalf("matching namespace error = %v", accepted.Failure)

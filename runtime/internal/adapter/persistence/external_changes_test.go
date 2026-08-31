@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testing.T) {
@@ -31,7 +31,7 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 	if err != nil {
 		t.Fatalf("start external change observer: %v", err)
 	}
-	local := sessionfixture.MustRestore(session.Snapshot{ID: "session-local", Workspace: sessionfixture.MustWorkspace(root)})
+	local := testsupport.MustRestoreSession(session.Snapshot{ID: "session-local", Workspace: testsupport.MustWorkspace(root)})
 	if err := first.Sessions.Insert(t.Context(), local); err != nil {
 		t.Fatalf("insert through observed Runtime: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 	case <-time.After(2 * externalChangePollInterval):
 	}
 
-	remote := sessionfixture.MustRestore(session.Snapshot{ID: "session-remote", Workspace: sessionfixture.MustWorkspace(root)})
+	remote := testsupport.MustRestoreSession(session.Snapshot{ID: "session-remote", Workspace: testsupport.MustWorkspace(root)})
 	if err := second.Sessions.Insert(t.Context(), remote); err != nil {
 		t.Fatalf("insert through second Runtime: %v", err)
 	}

@@ -22,9 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -105,7 +103,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	outcome := run.OutcomeCompleted
-	if restoreErr := rt.runs.Restore(ctx, runfixture.MustRestore(run.Snapshot{SessionID: ses.ID(), ID: "run_root", State: run.Completed,
+	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_root", State: run.Completed,
 		Outcome:      &outcome,
 		Capabilities: run.Capabilities{ChildRuns: true},
 		CreatedAt:    time.Unix(1, 0).UTC(),
@@ -114,7 +112,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 	); restoreErr != nil {
 		t.Fatalf("seed root run: %v", restoreErr)
 	}
-	if appendItemErr := rt.hist.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if appendItemErr := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: ses.ID(), RunID: "run_root", ID: "item_spawn",
 		OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(1, 0).UTC(),
 		Status: transcript.ItemCompleted,
@@ -123,7 +121,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 	})); appendItemErr != nil {
 		t.Fatalf("seed spawning item: %v", appendItemErr)
 	}
-	if restoreErr := rt.runs.Restore(ctx, runfixture.MustRestore(run.Snapshot{SessionID: ses.ID(), ID: "run_child",
+	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_child",
 
 		State: run.Completed, Outcome: &outcome,
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
@@ -349,7 +347,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 		t.Fatalf("seed model selection: %v", err)
 	}
 	if _, err := insertSessionSnapshot(ctx, rt.sess, session.Snapshot{
-		ID: sessionID, Title: "Everything", Workspace: sessionfixture.MustWorkspace(cwd),
+		ID: sessionID, Title: "Everything", Workspace: testsupport.MustWorkspace(cwd),
 		Selection: selection,
 		StartedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
 		Favorite: true, Revision: 1,
@@ -392,10 +390,10 @@ func seedCompletedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("run limits: %v", err)
 	}
-	if err := rt.runs.Restore(t.Context(), runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Completed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Completed,
 		ModelSelection: selection, Outcome: &outcome,
 		Limits: limits,
-		Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Usage: &accounting.Usage{
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
 				CacheWriteTokens: 3, ReasoningTokens: 7, CostUSD: &cost,
@@ -429,7 +427,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("child model selection: %v", err)
 	}
-	if err := rt.runs.Restore(t.Context(), runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: "run_child", State: run.Completed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_child", State: run.Completed,
 
 		ModelSelection: selection,
 		Outcome:        &outcome,
@@ -445,13 +443,13 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	outcome := run.OutcomeFailed
-	if err := rt.runs.Restore(t.Context(), runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Failed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Failed,
 		Outcome: &outcome,
 		Detail:  "the provider gave up", Failure: &run.Failure{
 			Kind:   run.FailureRateLimited,
 			Detail: "slow down", DocURL: "https://example.invalid/rate-limits",
 			RetryAfter: 30 * time.Second,
-		}, Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
+		}, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
@@ -475,23 +473,23 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("tool result: %v", err)
 	}
-	items := []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+	items := []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_user", RunID: "run_done", Kind: transcript.UserMessage,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(2, 0).UTC(),
 		Content: []transcript.ContentBlock{
 			{Kind: transcript.TextContent, Text: "do everything"},
 			{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("hello")},
 		},
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_agent", RunID: "run_done", Kind: transcript.AgentMessage,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(3, 0).UTC(),
 		MessagePhase: transcript.MessageCommentary,
 		Content:      []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "on it"}},
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_reasoning", RunID: "run_done", Kind: transcript.Reasoning,
 		Status: transcript.ItemIncomplete, OccurredAt: time.Unix(4, 0).UTC(),
 		Text: "thinking about it", Redacted: true,
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_question", RunID: "run_done", Kind: transcript.QuestionItem,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(6, 0).UTC(),
 		Question: &transcript.Question{
@@ -505,14 +503,14 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 				},
 			}},
 		},
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool", RunID: "run_done", Kind: transcript.ToolCall,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(7, 0).UTC(),
 		FinishedAt:       time.UnixMilli(7250).UTC(),
 		SafetyClass:      tool.SafetyClassExec,
 		ApprovalDecision: approval.Allow,
 		Tool:             &transcript.ToolInvocation{Name: "shell", Arguments: arguments, Result: &result},
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_failed", RunID: "run_failed", Kind: transcript.ToolCall,
 		Status: transcript.ItemIncomplete, OccurredAt: time.Unix(8, 0).UTC(),
 		FinishedAt: time.UnixMilli(8500).UTC(),
@@ -521,7 +519,7 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 			Detail: "exit 1", DocURL: "https://example.invalid/tools",
 		},
 		Tool: &transcript.ToolInvocation{Name: "shell", Arguments: arguments},
-	}), itemfixture.MustRestore(itemfixture.Input{
+	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_compaction", RunID: "run_failed", Kind: transcript.Compaction,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(9, 0).UTC(),
 		Summary: "folded the earlier messages", DroppedMessages: 4,
@@ -554,7 +552,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	}
 	preview := "offloaded preview " + id.String()
 	previewValue := tool.StringResult(preview)
-	if err := rt.hist.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: sessionID, RunID: "run_done", ID: "item_offload",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: time.Unix(10, 0).UTC(), FinishedAt: time.Unix(11, 0).UTC(),

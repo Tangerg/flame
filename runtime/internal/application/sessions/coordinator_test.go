@@ -13,8 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestClaimIdleSessionHoldsAndReleasesSession(t *testing.T) {
@@ -102,7 +101,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	finishedAt := time.Date(2026, 7, 13, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
-	selection := runfixture.Selection()
+	selection := testsupport.DefaultModelSelection()
 	var applied TerminalPlan
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
@@ -126,7 +125,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 		}},
 		snapshot: Snapshot{
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi"))},
-			Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
 				Capabilities: run.Capabilities{
@@ -134,7 +133,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				},
 				CreatedAt: createdAt, MessageMark: -1,
 			})},
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: "item_1", RunID: "run_1", SessionID: "ses_1",
 				Kind: transcript.QuestionItem, OccurredAt: createdAt,
 				Question: question,
@@ -176,7 +175,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	finishedAt := time.Date(2026, 8, 11, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Favorite color?", Kind: transcript.QuestionText}}}
-	selection := runfixture.Selection()
+	selection := testsupport.DefaultModelSelection()
 	var applied TerminalPlan
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
@@ -208,19 +207,19 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 					ID: "provider_call_1", Name: "ask_user", Arguments: "{}",
 				})),
 			},
-			Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
 				Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 				CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 			})},
 			Items: []transcript.Item{
-				itemfixture.MustRestore(itemfixture.Input{
+				testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: "item_tool", RunID: "run_1", SessionID: "ses_1",
 					Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
 					Tool: &transcript.ToolInvocation{Name: "ask_user"},
 				}),
-				itemfixture.MustRestore(itemfixture.Input{
+				testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: "item_question", RunID: "run_1", SessionID: "ses_1",
 					Kind: transcript.QuestionItem, OccurredAt: createdAt, Question: question,
 				}),
@@ -259,7 +258,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	createdAt := finishedAt.Add(-time.Minute)
 	costUSD := 0.75
 	approval := &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"}
-	selection := runfixture.Selection()
+	selection := testsupport.DefaultModelSelection()
 	var applied TerminalPlan
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
@@ -279,7 +278,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				Continuations: []runs.Continuation{{
 					RunID: "run_1", MemberID: "member_1", RunCreatedAt: createdAt,
 					ModelSelection: selection,
-					Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 4, Usage: &accounting.Usage{
+					Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
 						Total: accounting.Totals{CostUSD: &costUSD},
 					}}),
 				}},
@@ -288,19 +287,19 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 		}},
 		snapshot: Snapshot{
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
-			Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				GoalIncarnationID: "lease_1",
 				ModelSelection:    selection,
 				Capabilities: run.Capabilities{
 					InterruptKinds: []interrupt.Kind{interrupt.Approval},
 				},
-				Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 4, Usage: &accounting.Usage{
+				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
 					Total: accounting.Totals{CostUSD: &costUSD},
 				}}),
 				CreatedAt: createdAt, MessageMark: -1,
 			})},
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: "item_1", RunID: "run_1", SessionID: "ses_1",
 				Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
 				Tool: &transcript.ToolInvocation{Name: "shell"},
@@ -356,7 +355,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	childLineage := run.Lineage{
 		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 	}
-	selection := runfixture.Selection()
+	selection := testsupport.DefaultModelSelection()
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "turn_1",
 		Capabilities: run.Capabilities{
@@ -384,13 +383,13 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		snapshot: Snapshot{
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
 			Runs: []run.Run{
-				runfixture.MustRestore(run.Snapshot{
+				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
 					Capabilities:   pending.Capabilities,
 					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 				}),
-				runfixture.MustRestore(run.Snapshot{
+				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_child", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
 					Capabilities:   pending.Capabilities,
@@ -398,7 +397,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 				}),
 			},
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: "item_question", SessionID: "ses_1", RunID: "run_child",
 				Kind:     transcript.QuestionItem,
 				Question: question, OccurredAt: createdAt,
@@ -412,7 +411,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	corrupt.Capabilities = run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
-	corruptSnapshot.Runs[1] = runfixture.MustRestore(corrupt)
+	corruptSnapshot.Runs[1] = testsupport.MustRestoreRun(corrupt)
 	corruptApplied := TerminalPlan{}
 	corruptStores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
@@ -469,7 +468,7 @@ func TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit(t *testing
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_root", MemberID: "member_root", RunCreatedAt: createdAt,
-			ModelSelection: runfixture.Selection(), Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2}),
+			ModelSelection: testsupport.DefaultModelSelection(), Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -477,12 +476,12 @@ func TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit(t *testing
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
 		snapshot: Snapshot{
-			Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_root", SessionID: "ses_1", State: run.Waiting,
-				Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1}), Capabilities: capabilities,
+				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), Capabilities: capabilities,
 				CreatedAt: createdAt, MessageMark: run.UnknownMessageMark,
 			})},
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: pendingInterrupt.ItemID, SessionID: "ses_1", RunID: "run_root",
 				Kind:     transcript.QuestionItem,
 				Question: question, OccurredAt: createdAt,

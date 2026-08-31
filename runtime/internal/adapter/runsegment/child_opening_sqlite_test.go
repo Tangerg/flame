@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
@@ -47,7 +47,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse arguments: %v", err)
 	}
-	spawningItem := itemfixture.MustRestore(itemfixture.Input{
+	spawningItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "session_1",
 		RunID:      "run_root",
 		ID:         "item_delegate",
@@ -105,7 +105,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 			return sqlite.RunInTx(ctx, db, apply)
 		},
 	})
-	rolledBackItem := itemfixture.MustRestore(itemfixture.Input{
+	rolledBackItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session_1", RunID: "run_root", ID: "item_rollback",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: time.Unix(4, 0),
 		Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: arguments},
@@ -158,7 +158,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse arguments: %v", err)
 	}
-	spawningItem := itemfixture.MustRestore(itemfixture.Input{
+	spawningItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: root.SessionID, RunID: root.RunID, ID: "item_delegate",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: time.Unix(2, 0).UTC(),
 		Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: arguments},

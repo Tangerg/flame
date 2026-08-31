@@ -43,6 +43,16 @@ func TestRunReplayCursorResourceContractDoesNotDriftAcrossRings(t *testing.T) {
 	}
 }
 
+// TestProductionDoesNotImportTestSupport keeps builders and in-memory fakes
+// outside the production graph after their package consolidation.
+func TestProductionDoesNotImportTestSupport(t *testing.T) {
+	forbidExternalImports(
+		t,
+		filepath.Join(moduleRoot(t), "internal"),
+		[]string{"github.com/Tangerg/flame/runtime/internal/testsupport"},
+	)
+}
+
 // TestPositiveOptionalToolNumbersUseExplicitPresence prevents model-facing Tool
 // DTOs from making primitive zero mean both "omitted" and "invalid". Positive
 // optional numbers must use pointer presence at the JSON boundary and normalize
@@ -1639,7 +1649,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 		"internal/delivery/artifact_decode.go":                 {},
 		"internal/infra/sqlite/transcript.go":                  {},
 		"internal/infra/sqlite/transcript_codec.go":            {},
-		"internal/testsupport/itemfixture/item.go":             {},
+		"internal/testsupport/item.go":                         {},
 	}
 	walkErr := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

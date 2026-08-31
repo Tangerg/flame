@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newPermissionModeStores(t *testing.T) (*sqlite.PermissionModeStore, *sqlite.SessionStore) {
@@ -22,8 +22,8 @@ func newPermissionModeStores(t *testing.T) (*sqlite.PermissionModeStore, *sqlite
 
 func TestPermissionModeStoreRoundTripAndSessionLifecycle(t *testing.T) {
 	modes, sessions := newPermissionModeStores(t)
-	created := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_plan", Title: "Plan session", Workspace: sessionfixture.MustWorkspace("/repo"),
+	created := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_plan", Title: "Plan session", Workspace: testsupport.MustWorkspace("/repo"),
 	})
 	if err := sessions.Insert(t.Context(), created); err != nil {
 		t.Fatalf("create session: %v", err)
@@ -59,8 +59,8 @@ func TestPermissionModeStoreRoundTripAndSessionLifecycle(t *testing.T) {
 
 func TestPermissionModeStoreRejectsInvalidState(t *testing.T) {
 	modes, sessions := newPermissionModeStores(t)
-	created := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_invalid_plan", Title: "Plan session", Workspace: sessionfixture.MustWorkspace("/repo"),
+	created := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_invalid_plan", Title: "Plan session", Workspace: testsupport.MustWorkspace("/repo"),
 	})
 	if err := sessions.Insert(t.Context(), created); err != nil {
 		t.Fatal(err)

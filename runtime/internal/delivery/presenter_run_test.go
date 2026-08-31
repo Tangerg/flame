@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -17,7 +17,7 @@ import (
 // English no translator could see.
 func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
 	maxBudget := run.OutcomeMaxBudget
-	if outcome := presentOutcome(runfixture.MustRestore(run.Snapshot{Outcome: &maxBudget})); outcome.Detail != "" {
+	if outcome := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &maxBudget})); outcome.Detail != "" {
 		t.Fatalf("budget outcome detail = %q, want the domain's silence preserved", outcome.Detail)
 	}
 
@@ -27,7 +27,7 @@ func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
 	}
 
 	canceled := run.OutcomeCanceled
-	spoken := presentOutcome(runfixture.MustRestore(run.Snapshot{Outcome: &canceled, Detail: "user asked to stop"}))
+	spoken := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &canceled, Detail: "user asked to stop"}))
 	if spoken.Detail != "user asked to stop" {
 		t.Fatalf("canceled outcome detail = %q, want it verbatim", spoken.Detail)
 	}
@@ -43,7 +43,7 @@ func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
 }
 
 func TestPresentRunCarriesDurablePromptFootprint(t *testing.T) {
-	value := runfixture.MustRestore(run.Snapshot{ContextTokens: 87_900})
+	value := testsupport.MustRestoreRun(run.Snapshot{ContextTokens: 87_900})
 	if got := presentRun(value).ContextTokens; got != 87_900 {
 		t.Fatalf("presented contextTokens = %d, want 87900", got)
 	}

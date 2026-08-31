@@ -18,9 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/infra/teardown"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
@@ -411,8 +409,8 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	createdAt := time.Date(2026, 7, 16, 1, 0, 0, 0, time.UTC)
 	parkedAt := createdAt.Add(time.Second)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
-	value := sessionfixture.MustRestore(session.Snapshot{
-		ID: sessionID, Workspace: sessionfixture.MustWorkspace(t.TempDir()), StartedAt: createdAt, UpdatedAt: createdAt,
+	value := testsupport.MustRestoreSession(session.Snapshot{
+		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()), StartedAt: createdAt, UpdatedAt: createdAt,
 	})
 	if err := cfg.SessionStore.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)
@@ -426,13 +424,13 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := cfg.RunStore.Suspend(ctx, runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := cfg.RunStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
 		Capabilities: profile,
 		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark}),
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
-	if err := cfg.TranscriptStore.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if err := cfg.TranscriptStore.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_park", RunID: runID, SessionID: sessionID,
 		Kind:     transcript.QuestionItem,
 		Question: question, OccurredAt: parkedAt,

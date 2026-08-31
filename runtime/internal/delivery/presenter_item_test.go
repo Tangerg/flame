@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestPresentToolCallTiming(t *testing.T) {
 	startedAt := time.Date(2026, 8, 4, 10, 0, 0, 0, time.UTC)
-	running := presentItem(itemfixture.MustRestore(itemfixture.Input{
+	running := presentItem(testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_1", RunID: "run_1", Kind: transcript.ToolCall,
 		Status: transcript.ItemRunning, OccurredAt: startedAt,
 		Tool: &transcript.ToolInvocation{Name: "shell"},
@@ -23,7 +23,7 @@ func TestPresentToolCallTiming(t *testing.T) {
 
 	finishedAt := startedAt.Add(10 * time.Second)
 	executionDuration := 1250 * time.Millisecond
-	completed := presentItem(itemfixture.MustRestore(itemfixture.Input{
+	completed := presentItem(testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_1", RunID: "run_1", Kind: transcript.ToolCall,
 		Status: transcript.ItemCompleted, OccurredAt: startedAt, FinishedAt: finishedAt,
 		ExecutionDuration: &executionDuration,
@@ -41,7 +41,7 @@ func TestPresentToolCallTiming(t *testing.T) {
 		t.Fatalf("tool-call wire timing is not exclusive: %s", body)
 	}
 
-	message := presentItem(itemfixture.MustRestore(itemfixture.Input{
+	message := presentItem(testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_2", RunID: "run_1", Kind: transcript.AgentMessage,
 		Status: transcript.ItemCompleted, OccurredAt: startedAt,
 	}))

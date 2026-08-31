@@ -18,10 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -77,8 +74,8 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	ctx := t.Context()
 	createdAt := time.Date(2026, 8, 1, 2, 0, 0, 0, time.UTC)
 	sessionStore := sqlite.NewSessionStore(db)
-	if insertErr := sessionStore.Insert(ctx, sessionfixture.MustRestore(session.Snapshot{
-		ID: "session_claim", Workspace: sessionfixture.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
+	if insertErr := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session_claim", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
@@ -95,7 +92,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		RunID: "run_claim", Kind: interrupt.Question,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 	}
-	waiting := runfixture.MustRestore(run.Snapshot{ID: "run_claim", SessionID: "session_claim", State: run.Waiting,
+	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_claim", SessionID: "session_claim", State: run.Waiting,
 		Capabilities: capabilities,
 		CreatedAt:    createdAt, UpdatedAt: createdAt.Add(time.Second),
 		MessageMark: run.UnknownMessageMark})
@@ -263,7 +260,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: identityfixture.BuildID,
+		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
 		Scope: runs.ExecutionScope{SessionID: "session_abandoned"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
@@ -351,8 +348,8 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
 	runStore := sqlite.NewRunStore(db)
 	sessionStore := sqlite.NewSessionStore(db)
-	if insertErr := sessionStore.Insert(ctx, sessionfixture.MustRestore(session.Snapshot{
-		ID: "session", Workspace: sessionfixture.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
+	if insertErr := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
@@ -383,7 +380,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
 	}
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_running", SessionID: "session", RunID: "run_lost",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
@@ -391,7 +388,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if appendItemErr := transcriptStore.AppendItem(ctx, item); appendItemErr != nil {
 		t.Fatalf("AppendItem: %v", appendItemErr)
 	}
-	toolItem := itemfixture.MustRestore(itemfixture.Input{
+	toolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool_running", SessionID: "session", RunID: "run_lost",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall,
 		Tool: &transcript.ToolInvocation{Name: "long_running_tool"}, OccurredAt: createdAt.Add(time.Second),
@@ -414,7 +411,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "orphan_checkpoint",
 		Payload:      []byte(`{"opaque":true}`),
-		BuildID:      identityfixture.BuildID,
+		BuildID:      testsupport.BuildID,
 		Scope:        runs.ExecutionScope{SessionID: "session"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
@@ -567,8 +564,8 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 4, 0, 0, 0, time.UTC)
 	runStore := sqlite.NewRunStore(db)
 	sessionStore := sqlite.NewSessionStore(db)
-	if insertErr := sessionStore.Insert(ctx, sessionfixture.MustRestore(session.Snapshot{
-		ID: "session", Workspace: sessionfixture.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
+	if insertErr := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
@@ -588,7 +585,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		ItemID: "item_missing", ItemOccurredAt: createdAt.Add(time.Second),
 		RunID: "run_partial", Kind: interrupt.Question, Question: question,
 	}
-	if suspendErr := runStore.Suspend(ctx, runfixture.MustRestore(run.Snapshot{ID: "run_partial", SessionID: "session", State: run.Waiting,
+	if suspendErr := runStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{ID: "run_partial", SessionID: "session", State: run.Waiting,
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
@@ -615,7 +612,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: identityfixture.BuildID,
+		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
 		Scope: runs.ExecutionScope{SessionID: "session"},
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {

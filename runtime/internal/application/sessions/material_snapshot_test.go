@@ -12,9 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestMaterialSnapshotAcceptsOneCoherentMountedReadModel(t *testing.T) {
@@ -50,7 +48,7 @@ func TestMaterialSnapshotRejectsContradictoryPendingProjection(t *testing.T) {
 			name: "question payload differs from Item",
 			mutate: func(snapshot *MaterialSnapshot) {
 				current := snapshot.Items[0]
-				snapshot.Items[0] = itemfixture.MustRestore(itemfixture.Input{
+				snapshot.Items[0] = testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: current.ID(), SessionID: current.SessionID(), RunID: current.RunID(),
 					Kind: transcript.QuestionItem, OccurredAt: current.OccurredAt(),
 					Question: &transcript.Question{
@@ -77,7 +75,7 @@ func TestMaterialSnapshotRejectsContradictoryPendingProjection(t *testing.T) {
 		{
 			name: "waiting Run has an unclaimed running Item",
 			mutate: func(snapshot *MaterialSnapshot) {
-				snapshot.Items = append(snapshot.Items, itemfixture.MustRestore(itemfixture.Input{
+				snapshot.Items = append(snapshot.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: "item_orphan_tool", SessionID: "ses_1", RunID: "run_root",
 					Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 					OccurredAt: snapshot.Interrupts[0].CreatedAt,
@@ -106,7 +104,7 @@ func TestMaterialSnapshotRejectsResolvedApprovalThatStillClaimsPendingOwnership(
 		t.Fatalf("coherent approval Validate() error = %v", err)
 	}
 	invocation, _ := snapshot.Items[0].ToolInvocation()
-	snapshot.Items[0] = itemfixture.MustRestore(itemfixture.Input{
+	snapshot.Items[0] = testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_approval", SessionID: "ses_1", RunID: "run_root",
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: snapshot.Items[0].OccurredAt(), Tool: &invocation,
@@ -124,9 +122,9 @@ func TestMaterialSnapshotRejectsRunningItemOwnedByTerminalRun(t *testing.T) {
 	createdAt := snapshot.Runs[0].CreatedAt()
 	finishedAt := createdAt.Add(time.Minute)
 	outcome := run.OutcomeCompleted
-	snapshot.Runs[0] = runfixture.MustRestore(run.Snapshot{
+	snapshot.Runs[0] = testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_root", SessionID: "ses_1", State: run.Completed,
-		ModelSelection: runfixture.Selection(), Capabilities: snapshot.Runs[0].Capabilities(),
+		ModelSelection: testsupport.DefaultModelSelection(), Capabilities: snapshot.Runs[0].Capabilities(),
 		Outcome: &outcome, CreatedAt: createdAt, FinishedAt: finishedAt,
 		UpdatedAt: finishedAt, MessageMark: 0,
 	})
@@ -141,7 +139,7 @@ func TestMaterialSnapshotRejectsRunningItemOwnedByTerminalRun(t *testing.T) {
 func TestMaterialSnapshotRejectsGoalFromAnotherSession(t *testing.T) {
 	snapshot := validMaterialSnapshot()
 	foreign, err := goal.New(
-		"ses_other", "wrong owner", runfixture.Selection(), goal.UnlimitedBudget(), run.Capabilities{},
+		"ses_other", "wrong owner", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), run.Capabilities{},
 		"goal_other", snapshot.Runs[0].CreatedAt(),
 	)
 	if err != nil {
@@ -157,7 +155,7 @@ func TestMaterialSnapshotRejectsGoalFromAnotherSession(t *testing.T) {
 
 func validMaterialSnapshot() MaterialSnapshot {
 	createdAt := time.Date(2026, 8, 17, 1, 2, 3, 0, time.UTC)
-	selection := runfixture.Selection()
+	selection := testsupport.DefaultModelSelection()
 	capabilities := run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
@@ -165,13 +163,13 @@ func validMaterialSnapshot() MaterialSnapshot {
 		Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
 	}
 	return MaterialSnapshot{
-		Session: sessionfixture.MustRestore(session.Snapshot{ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/workspace")}),
-		Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace")}),
+		Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 			ModelSelection: selection, Capabilities: capabilities,
 			CreatedAt: createdAt, MessageMark: run.UnknownMessageMark,
 		})},
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			ID: "item_question", SessionID: "ses_1", RunID: "run_root",
 			Kind: transcript.QuestionItem, Question: question, OccurredAt: createdAt,
 		})},
@@ -203,12 +201,12 @@ func validApprovalMaterialSnapshot() MaterialSnapshot {
 	pendingApproval := &transcript.Approval{
 		Tool: invocation, Risk: "medium", Reason: "writes files", Rememberable: true,
 	}
-	snapshot.Runs[0] = runfixture.MustRestore(run.Snapshot{
+	snapshot.Runs[0] = testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_root", SessionID: "ses_1", State: run.Waiting,
-		ModelSelection: runfixture.Selection(), Capabilities: capabilities,
+		ModelSelection: testsupport.DefaultModelSelection(), Capabilities: capabilities,
 		CreatedAt: snapshot.Runs[0].CreatedAt(), MessageMark: run.UnknownMessageMark,
 	})
-	snapshot.Items[0] = itemfixture.MustRestore(itemfixture.Input{
+	snapshot.Items[0] = testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_approval", SessionID: "ses_1", RunID: "run_root",
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: snapshot.Items[0].OccurredAt(), Tool: &invocation,

@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -413,7 +413,7 @@ func (d *delegateProjection) Item(
 func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 	if opening.Admit != nil {
 		draft := opening.Admit
-		d.runs[draft.RunID] = runfixture.MustRestore(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID,
+		d.runs[draft.RunID] = testsupport.MustRestoreRun(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID,
 
 			State: run.Running, ActiveSegmentID: draft.SegmentID,
 			ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,

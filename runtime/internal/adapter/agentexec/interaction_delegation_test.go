@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -87,8 +87,8 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: sessionfixture.MustRestore(session.Snapshot{
-		ID: "session_1", Title: "delegate", Workspace: sessionfixture.MustWorkspace(workspace),
+	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session_1", Title: "delegate", Workspace: testsupport.MustWorkspace(workspace),
 	})}
 	projection := newDelegateProjection()
 	runIDs := []string{"run_root", "run_child"}
@@ -226,8 +226,8 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: sessionfixture.MustRestore(session.Snapshot{
-		ID: "session_1", Title: "running cancellation", Workspace: sessionfixture.MustWorkspace(workspace),
+	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session_1", Title: "running cancellation", Workspace: testsupport.MustWorkspace(workspace),
 	})}
 	projection := newDelegateProjection()
 	runIDs := []string{"run_root", "run_child"}
@@ -502,8 +502,8 @@ func runDelegateTree(
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: sessionfixture.MustRestore(session.Snapshot{
-		ID: "session_tree", Title: "delegate tree", Workspace: sessionfixture.MustWorkspace(workspace),
+	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session_tree", Title: "delegate tree", Workspace: testsupport.MustWorkspace(workspace),
 	})}
 	projection := newDelegateProjection()
 	var identityMu sync.Mutex

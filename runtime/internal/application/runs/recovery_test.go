@@ -17,9 +17,7 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -67,7 +65,7 @@ func (r *recoveryStoreStub) SessionByID(_ context.Context, sessionID string) (se
 	if sess, ok := r.sessions[sessionID]; ok {
 		return sess, nil
 	}
-	return sessionfixture.MustRestore(session.Snapshot{ID: sessionID, Workspace: sessionfixture.MustWorkspace("/workspace")}), nil
+	return testsupport.MustRestoreSession(session.Snapshot{ID: sessionID, Workspace: testsupport.MustWorkspace("/workspace")}), nil
 }
 
 func (r *recoveryStoreStub) ListTranscript(_ context.Context, sessionID string) ([]transcript.Item, error) {
@@ -116,7 +114,7 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		}
 		sess, found := r.sessions[pending.SessionID]
 		if !found {
-			sess = sessionfixture.MustRestore(session.Snapshot{ID: pending.SessionID, Workspace: sessionfixture.MustWorkspace("/workspace")})
+			sess = testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/workspace")})
 		}
 		return ExecutorCheckpoint{
 			RootMemberID: rootMemberID,
@@ -163,12 +161,12 @@ func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), 
 
 func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	createdAt := time.Date(2026, 8, 14, 1, 0, 0, 0, time.UTC)
-	recoverable := runfixture.MustRestore(rundomain.Snapshot{
+	recoverable := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_recoverable", SessionID: "session_recoverable", State: rundomain.Running,
 		ActiveSegmentID: "segment_recoverable", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark,
 	})
-	foreign := runfixture.MustRestore(rundomain.Snapshot{
+	foreign := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_foreign", SessionID: "session_foreign", State: rundomain.Running,
 		ActiveSegmentID: "segment_foreign", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark,
@@ -227,7 +225,7 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 
 func TestRecoveryDoesNotPublishBeforeItsCommitSucceeds(t *testing.T) {
 	createdAt := time.Date(2026, 8, 15, 1, 0, 0, 0, time.UTC)
-	abandoned := runfixture.MustRestore(rundomain.Snapshot{
+	abandoned := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_abandoned", SessionID: "session_abandoned", State: rundomain.Running,
 		ActiveSegmentID: "segment_abandoned", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark,
@@ -264,15 +262,15 @@ func TestRecoveryDoesNotPublishBeforeItsCommitSucceeds(t *testing.T) {
 func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 1, 0, 0, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
-	root := runfixture.MustRestore(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Running,
+	root := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Running,
 		ActiveSegmentID: "segment_root", CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark})
 
-	child := runfixture.MustRestore(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
+	child := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child",
 		CreatedAt:       createdAt, MessageMark: rundomain.UnknownMessageMark, Lineage: rundomain.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(),
 			SpawnedByItemID: "item_spawn"}})
 
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_running", SessionID: root.SessionID(), RunID: child.ID(),
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
@@ -361,7 +359,7 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 			if updatedAt.IsZero() {
 				updatedAt = base
 			}
-			active := runfixture.MustRestore(rundomain.Snapshot{
+			active := testsupport.MustRestoreRun(rundomain.Snapshot{
 				ID: "run", SessionID: "session", State: rundomain.Running,
 				ActiveSegmentID: "segment", CreatedAt: base, UpdatedAt: updatedAt,
 				MessageMark: rundomain.UnknownMessageMark,
@@ -372,7 +370,7 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 				messageMarks: map[string]int{"session": 0},
 			}
 			if !test.itemAt.IsZero() {
-				store.transcripts["session"] = []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+				store.transcripts["session"] = []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: "item", SessionID: "session", RunID: active.ID(),
 					Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 					OccurredAt: test.itemAt,
@@ -429,9 +427,9 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 1, 30, 0, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
 	cost := 1.25
-	run := runfixture.MustRestore(rundomain.Snapshot{ID: "run_goal", SessionID: "session", State: rundomain.Running,
+	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_goal", SessionID: "session", State: rundomain.Running,
 		ActiveSegmentID: "segment_goal", GoalIncarnationID: "lease_goal",
-		Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 3,
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3,
 			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}}),
 
 		CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark})
@@ -507,7 +505,7 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	pending.GoalIncarnationID = "goal-lease-1"
 	snapshot := run.Snapshot()
 	snapshot.GoalIncarnationID = pending.GoalIncarnationID
-	run = runfixture.MustRestore(snapshot)
+	run = testsupport.MustRestoreRun(snapshot)
 	store := &recoveryStoreStub{
 		runs:         []rundomain.Run{run},
 		pending:      []Pending{pending},
@@ -549,7 +547,7 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 
 func TestRecoveryPreservesQuestionToolWhileItsCheckpointIsResumable(t *testing.T) {
 	run, pending, questionItem := coherentRecoveryPark(t)
-	toolItem := itemfixture.MustRestore(itemfixture.Input{
+	toolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool", SessionID: run.SessionID(), RunID: run.ID(),
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: pending.CreatedAt,
@@ -593,8 +591,8 @@ func TestRecoveryMarksIsolatedParkLostWithoutProbingExecutorCheckpoint(t *testin
 		pending:     []Pending{pending},
 		transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
 		sessions: map[string]session.Session{
-			run.SessionID(): sessionfixture.MustRestore(session.Snapshot{
-				ID: run.SessionID(), Workspace: sessionfixture.MustWorkspace("/workspace"), Isolated: true,
+			run.SessionID(): testsupport.MustRestoreSession(session.Snapshot{
+				ID: run.SessionID(), Workspace: testsupport.MustWorkspace("/workspace"), Isolated: true,
 			}),
 		},
 	}
@@ -699,7 +697,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
 		{name: "limits", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Limits = runfixture.MustLimits(rundomain.LimitValues{MaxSteps: runfixture.Pointer(1)})
+			checkpoint.Limits = testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(1)})
 		}},
 		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = true
@@ -761,7 +759,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 
 func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	run, pending, questionItem := coherentRecoveryPark(t)
-	toolItem := itemfixture.MustRestore(itemfixture.Input{
+	toolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool", SessionID: run.SessionID(), RunID: run.ID(),
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: pending.CreatedAt,
@@ -900,7 +898,7 @@ func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing
 		{
 			name: "frozen limits",
 			mutate: func(_ *rundomain.Run, pending *Pending) {
-				pending.Continuations[0].Limits = runfixture.MustLimits(rundomain.LimitValues{MaxSteps: runfixture.Pointer(1)})
+				pending.Continuations[0].Limits = testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			},
 		},
 		{
@@ -908,7 +906,7 @@ func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing
 			mutate: func(run *rundomain.Run, _ *Pending) {
 				snapshot := run.Snapshot()
 				snapshot.Capabilities.ChildRuns = true
-				*run = runfixture.MustRestore(snapshot)
+				*run = testsupport.MustRestoreRun(snapshot)
 			},
 		},
 	}
@@ -948,14 +946,14 @@ func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T)
 	root, pending, item := coherentRecoveryPark(t)
 	rootSnapshot := root.Snapshot()
 	rootSnapshot.Capabilities.ChildRuns = true
-	root = runfixture.MustRestore(rootSnapshot)
+	root = testsupport.MustRestoreRun(rootSnapshot)
 	pending.Capabilities.ChildRuns = true
 	lineage := rundomain.Lineage{
 		SpawnedByItemID: "item_spawn",
 		ParentRunID:     root.ID(),
 		RootRunID:       root.ID(),
 	}
-	child := runfixture.MustRestore(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Waiting,
+	child := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Waiting,
 
 		ModelSelection: root.ModelSelection(),
 		// This is a valid capabilities in isolation but contradicts the root admission.
@@ -1009,7 +1007,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 		ItemID: "item_question", ItemOccurredAt: createdAt,
 		RunID: "run_root", Kind: interruptdomain.Question, Question: question,
 	}
-	run := runfixture.MustRestore(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
+	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
 		ModelSelection: selection,
 		Capabilities:   rundomain.Capabilities{InterruptKinds: []interruptdomain.Kind{interruptdomain.Question}},
 		CreatedAt:      createdAt, UpdatedAt: createdAt.Add(time.Second), MessageMark: rundomain.UnknownMessageMark})
@@ -1035,7 +1033,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	if err := pending.Validate(); err != nil {
 		t.Fatalf("Pending fixture: %v", err)
 	}
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: interrupt.ItemID, SessionID: run.SessionID(), RunID: run.ID(),
 		Kind:     transcript.QuestionItem,
 		Question: question, OccurredAt: interrupt.ItemOccurredAt,

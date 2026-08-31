@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type approvalStore struct {
@@ -78,8 +78,8 @@ func TestDefaultModeUsesModePorts(t *testing.T) {
 
 func TestListRulesResolvesSessionProject(t *testing.T) {
 	store := &approvalStore{}
-	c := New(store, fakeSessionLookup{sess: sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/repo"),
+	c := New(store, fakeSessionLookup{sess: testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"),
 	})})
 
 	if _, err := c.ListRules(context.Background(), "ses_1"); err != nil {

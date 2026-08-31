@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type activityRunStore struct {
@@ -32,8 +32,8 @@ func TestActivitiesPreservesDurableRunReadFailure(t *testing.T) {
 
 func TestActivitiesComeFromDurableRunLifecycle(t *testing.T) {
 	coordinator := mustNewCoordinator(Dependencies{Runs: activityRunStore{runs: []run.Run{
-		runfixture.MustRestore(run.Snapshot{ID: "run_running", SessionID: "ses_running", State: run.Running}),
-		runfixture.MustRestore(run.Snapshot{ID: "run_waiting", SessionID: "ses_waiting", State: run.Waiting}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_running", SessionID: "ses_running", State: run.Running}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_waiting", State: run.Waiting}),
 	}}})
 	activities, err := coordinator.Activities(
 		t.Context(),

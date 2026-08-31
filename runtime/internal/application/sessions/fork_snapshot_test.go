@@ -11,24 +11,22 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 	at := time.Unix(10, 0).UTC()
-	parent := sessionfixture.MustRestore(session.Snapshot{ID: "ses_parent", Workspace: sessionfixture.MustWorkspace("/repo")})
+	parent := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_parent", Workspace: testsupport.MustWorkspace("/repo")})
 	child, err := parent.Fork("ses_child", "branch", at.Add(time.Hour))
 	if err != nil {
 		t.Fatalf("fork child Session: %v", err)
 	}
-	root := runfixture.MustRestore(run.Snapshot{
+	root := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: "ses_parent", ID: "run_root", State: run.Completed,
 		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at,
 		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: 1,
 	})
-	childRun := runfixture.MustRestore(run.Snapshot{
+	childRun := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: "ses_parent", ID: "run_child", State: run.Completed,
 		Lineage: run.Lineage{
 			SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
@@ -38,7 +36,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 	})
 	preview := tool.StringResult("delegated preview")
 	duration := time.Second
-	spawningItem := itemfixture.MustRestore(itemfixture.Input{
+	spawningItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_parent", RunID: "run_root", ID: "item_spawn",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: at, FinishedAt: at.Add(duration), ExecutionDuration: &duration,

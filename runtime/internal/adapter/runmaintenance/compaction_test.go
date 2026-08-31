@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/scope/models/catalog"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
@@ -55,12 +55,12 @@ func mustNewCompactor(
 }
 
 type compactionTestStore struct {
-	*conversationfixture.Store
+	*testsupport.ConversationStore
 	rewrites int
 }
 
 func newCompactionTestStore() *compactionTestStore {
-	return &compactionTestStore{Store: conversationfixture.New()}
+	return &compactionTestStore{ConversationStore: testsupport.NewConversationStore()}
 }
 
 func testTokenLimits(

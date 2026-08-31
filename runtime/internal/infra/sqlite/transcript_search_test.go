@@ -8,11 +8,11 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func msgItem(sessionID, id string, kind transcript.ItemKind, text string) transcript.Item {
-	return itemfixture.MustRestore(itemfixture.Input{
+	return testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  sessionID,
 		ID:         id,
 		RunID:      "run-1",

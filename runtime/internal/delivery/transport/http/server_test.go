@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -129,7 +129,7 @@ func TestRPCRefusesMethodIncompatibleMetadata(t *testing.T) {
 			name:   "namespace without key",
 			body:   `{"jsonrpc":"2.0","id":"2","method":"runtime.discover","params":{}}`,
 			header: "Idempotency-Namespace",
-			value:  identityfixture.IdempotencyNamespace,
+			value:  testsupport.IdempotencyNamespace,
 		},
 		{
 			name:   "runtime subscription run cursor",
@@ -313,7 +313,7 @@ func TestIdempotencyNamespaceMismatchIsRefusedBeforeMutation(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", "cancel-once")
-	req.Header.Set("Idempotency-Namespace", identityfixture.AlternateIdempotencyNamespace)
+	req.Header.Set("Idempotency-Namespace", testsupport.AlternateIdempotencyNamespace)
 	resp, err := netHTTP.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post request: %v", err)

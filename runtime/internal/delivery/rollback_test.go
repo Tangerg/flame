@@ -12,9 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -50,7 +48,7 @@ func putTestSession(t *testing.T, rt *stubRuntime) {
 	const sessionID = "ses_1"
 
 	if _, err := insertSessionSnapshot(t.Context(), rt.sess, session.Snapshot{
-		ID: sessionID, Title: sessionID, Workspace: sessionfixture.MustWorkspace(t.TempDir()),
+		ID: sessionID, Title: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
 		StartedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
 	}); err != nil {
 		t.Fatalf("putSession %s: %v", sessionID, err)
@@ -60,7 +58,7 @@ func putTestSession(t *testing.T, rt *stubRuntime) {
 func putRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix int64, mark int) {
 	t.Helper()
 	outcome := run.OutcomeCompleted
-	if err := rt.runs.Restore(t.Context(), runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
 		Outcome:   &outcome,
 		CreatedAt: time.Unix(atUnix, 0).UTC(), FinishedAt: time.Unix(atUnix, 0).UTC(),
 		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark}),
@@ -71,7 +69,7 @@ func putRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix int64
 
 func putUserItem(t *testing.T, rt *stubRuntime, sessionID, runID, itemID, text string) {
 	t.Helper()
-	if err := rt.hist.AppendItem(t.Context(), itemfixture.MustRestore(itemfixture.Input{
+	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: sessionID, RunID: runID, ID: itemID, OccurredAt: time.Unix(1, 0).UTC(),
 		Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: text}},
@@ -233,7 +231,7 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 	}
 
 	outcome := run.OutcomeCompleted
-	terminal := runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: sess.ID(), State: run.Completed, Outcome: &outcome,
+	terminal := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: sess.ID(), State: run.Completed, Outcome: &outcome,
 		CreatedAt: started, FinishedAt: started.Add(time.Minute),
 		UpdatedAt: started.Add(time.Minute), MessageMark: run.UnknownMessageMark})
 	commit := appRuns.EventCommit{

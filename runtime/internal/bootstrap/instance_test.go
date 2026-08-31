@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -57,7 +57,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 		ConfigDirectories:    []string{t.TempDir()},
 		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ServerInfo: protocol.ServerInfo{
-			Name: "test-runtime", Version: "test-version", InstanceID: identityfixture.AlternateRuntimeInstanceID,
+			Name: "test-runtime", Version: "test-version", InstanceID: testsupport.AlternateRuntimeInstanceID,
 		},
 	}
 	instance, _, err := OpenInstance(t.Context(), cfg)

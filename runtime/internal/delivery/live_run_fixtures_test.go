@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // blockingRunRuntime is a stub whose execution never emits or finishes, so a Run
@@ -42,7 +42,7 @@ func newBlockingHandler(t *testing.T) *Handler {
 }
 
 func (*blockingRunRuntime) SessionByID(context.Context, string) (session.Session, error) {
-	return sessionfixture.MustRestore(session.Snapshot{ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/work")}), nil
+	return testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}), nil
 }
 
 func (*blockingRunRuntime) Observe(ctx context.Context, _ runs.ExecutorRef) (iter.Seq[runs.ExecutorEvent], error) {

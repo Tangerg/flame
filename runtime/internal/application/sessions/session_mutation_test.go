@@ -13,7 +13,7 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // TestDeleteSessionAppliesThenReleasesExecutors: DeleteSession reads the open
@@ -220,7 +220,7 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	_, err := newCoordinator(stores, mutationExecutions{operations: &stores.operations}).restoreSession(
 		t.Context(),
 		Snapshot{
-			Session:  sessionfixture.MustRestore(session.Snapshot{ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/workspace")}),
+			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace")}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hi"))},
 		}, false,
 	)
@@ -235,16 +235,16 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 func TestRestoreSessionPresentsTheCommittedReplacementRevision(t *testing.T) {
 	stores := newMutationStores("")
 	stores.pending = map[string][]runs.Pending{}
-	current := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
+	current := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
 		UpdatedAt: time.Unix(1, 0).UTC(), Revision: 4,
 	})
 	stores.current = &current
 	coordinator := newCoordinator(stores, mutationExecutions{operations: &stores.operations})
 
 	view, err := coordinator.restoreSession(t.Context(), Snapshot{
-		Session: sessionfixture.MustRestore(session.Snapshot{
-			ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
+		Session: testsupport.MustRestoreSession(session.Snapshot{
+			ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
 			UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
 		}),
 	}, true)
@@ -268,7 +268,7 @@ func TestRestoreSessionRejectsUnresolvableCWDBeforeMutation(t *testing.T) {
 		Paths:             testWorkspaceResolver{err: want},
 	}))
 
-	_, err := coordinator.restoreSession(t.Context(), Snapshot{Session: sessionfixture.MustRestore(session.Snapshot{ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/archive")})}, false)
+	_, err := coordinator.restoreSession(t.Context(), Snapshot{Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/archive")})}, false)
 	if !errors.Is(err, workspaceapp.ErrCWDUnavailable) || !errors.Is(err, want) {
 		t.Fatalf("RestoreSession error = %v, want cwd unavailable + cause", err)
 	}

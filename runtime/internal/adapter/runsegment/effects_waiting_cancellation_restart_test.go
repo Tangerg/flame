@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestWaitingSubtreeCancellationSurvivesSQLiteRestart(t *testing.T) {
@@ -211,7 +211,7 @@ func normalizeRunSnapshot(record run.Run) run.Snapshot {
 	snapshot.Capabilities = normalizeCapabilities(snapshot.Capabilities)
 	if usage, reported := snapshot.Metrics.Usage(); reported && len(usage.ByModel) == 0 {
 		usage.ByModel = nil
-		snapshot.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{
+		snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 			Usage: &usage, Steps: snapshot.Metrics.Steps(), ActiveDuration: snapshot.Metrics.ActiveDuration(),
 		})
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func checkpointSelection(t *testing.T, provider, model string) modelref.Selection {
@@ -33,10 +33,10 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 			GoalIncarnationID: "lease-1",
 		},
 		ModelSelection: checkpointSelection(t, "anthropic", "claude"),
-		Limits: runfixture.MustLimits(run.LimitValues{
-			MaxTotalTokens: runfixture.Pointer[int64](4_096),
-			MaxBudgetUSD:   runfixture.Pointer(1.5),
-			MaxSteps:       runfixture.Pointer(8),
+		Limits: testsupport.MustRunLimits(run.LimitValues{
+			MaxTotalTokens: testsupport.Pointer[int64](4_096),
+			MaxBudgetUSD:   testsupport.Pointer(1.5),
+			MaxSteps:       testsupport.Pointer(8),
 		}),
 		Usage: accounting.Snapshot{},
 	}
@@ -126,7 +126,7 @@ func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 			value.ModelSelection = checkpointSelection(t, "anthropic", "claude-sonnet")
 		}},
 		{name: "limits", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.Limits = runfixture.MustLimits(run.LimitValues{MaxTotalTokens: runfixture.Pointer[int64](1)})
+			value.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
 		}},
 	}
 	for _, test := range tests {

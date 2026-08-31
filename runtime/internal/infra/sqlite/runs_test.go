@@ -18,8 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newRunStores(t *testing.T) (*sqlite.RunStore, *persistence.InterruptStore) {
@@ -64,7 +63,7 @@ func TestRunLimitColumnsPreservePresenceWithoutNumericSentinels(t *testing.T) {
 		t.Fatalf("Admit unlimited: %v", err)
 	}
 	limited := runDraft("run_limited", "session_limited")
-	limited.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(12)})
+	limited.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(12)})
 	if err := store.Admit(t.Context(), limited); err != nil {
 		t.Fatalf("Admit limited: %v", err)
 	}
@@ -113,7 +112,7 @@ func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
 		panic(err)
 	}
 	finishedAt := time.Unix(9, 0).UTC()
-	value, err = value.AdvanceProgress(runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1}), 0, finishedAt)
+	value, err = value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, finishedAt)
 	if err != nil {
 		panic(err)
 	}
@@ -147,7 +146,7 @@ func parkedRunFromDraft(draft run.Draft) run.Run {
 		panic(err)
 	}
 	at := time.Unix(5, 0).UTC()
-	value, err = value.AdvanceProgress(runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1}), 0, at)
+	value, err = value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, at)
 	if err != nil {
 		panic(err)
 	}
@@ -318,7 +317,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	if admitErr := store.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	metrics := runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1})
+	metrics := testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1})
 	updatedAt := runCreatedAt.Add(time.Second)
 	if updateErr := store.UpdateProgress(
 		ctx, "ses_context", "run_context", "seg_open", metrics, 87_900, updatedAt,
@@ -865,7 +864,7 @@ func TestPageRunTreeItemsUsesDurableParentEdges(t *testing.T) {
 		}
 	}
 	for index, runID := range []string{root.ID(), child.ID(), grandchild.ID(), sibling.ID()} {
-		if err := transcripts.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+		if err := transcripts.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID:  root.SessionID(),
 			ID:         "item_" + runID,
 			RunID:      runID,
@@ -997,5 +996,5 @@ func assertRunCapabilities(t *testing.T, store *sqlite.RunStore, runID string, w
 func withRunSnapshot(record run.Run, mutate func(*run.Snapshot)) run.Run {
 	snapshot := record.Snapshot()
 	mutate(&snapshot)
-	return runfixture.MustRestore(snapshot)
+	return testsupport.MustRestoreRun(snapshot)
 }

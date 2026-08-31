@@ -15,9 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -720,7 +718,7 @@ func waitingCancellationCoordinator(
 		return prepared.value(), nil
 	}
 	sessions := &fakeRunSessions{
-		sess: sessionfixture.MustRestore(session.Snapshot{ID: plan.pending.SessionID, Workspace: sessionfixture.MustWorkspace("/work")}),
+		sess: testsupport.MustRestoreSession(session.Snapshot{ID: plan.pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			plan.pending.RootRunID: plan.pending,
 		},
@@ -764,7 +762,7 @@ func runACancellationPlan(
 	members := make(map[string]string, len(pending.Continuations))
 	for index := range pending.Continuations {
 		continuation := &pending.Continuations[index]
-		runsByID[continuation.RunID] = runfixture.MustRestore(run.Snapshot{ID: continuation.RunID,
+		runsByID[continuation.RunID] = testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
 			SessionID: pending.SessionID,
 
 			State:          run.Waiting,
@@ -824,7 +822,7 @@ func runACancellationPlan(
 	if err != nil {
 		t.Fatalf("waiting cancellation plan: %v", err)
 	}
-	plan.spawningItem = itemfixture.MustRestore(itemfixture.Input{
+	plan.spawningItem = testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID:         target.Lineage().SpawnedByItemID,
 		SessionID:  pending.SessionID,
 		RunID:      target.Lineage().ParentRunID,
@@ -845,7 +843,7 @@ func runACancellationPlan(
 		if _, targeted := targetRunIDs[pendingInterrupt.RunID]; !targeted {
 			continue
 		}
-		input := itemfixture.Input{
+		input := testsupport.ItemInput{
 			ID: pendingInterrupt.ItemID, SessionID: pending.SessionID,
 			RunID: pendingInterrupt.RunID, OccurredAt: createdAt,
 		}
@@ -861,7 +859,7 @@ func runACancellationPlan(
 		default:
 			t.Fatalf("unsupported fixture interrupt kind %s", pendingInterrupt.Kind)
 		}
-		item := itemfixture.MustRestore(input)
+		item := testsupport.MustRestoreItem(input)
 		plan.targetInterruptItems = append(plan.targetInterruptItems, item)
 	}
 	for _, continuation := range pending.Continuations {
@@ -869,7 +867,7 @@ func runACancellationPlan(
 			continue
 		}
 		for _, drained := range continuation.DrainedTools {
-			plan.targetDrainedItems = append(plan.targetDrainedItems, itemfixture.MustRestore(itemfixture.Input{
+			plan.targetDrainedItems = append(plan.targetDrainedItems, testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: drained.ItemID, SessionID: pending.SessionID, RunID: continuation.RunID,
 				Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: drained.ItemOccurredAt,
 				Tool: &transcript.ToolInvocation{Name: drained.Name},

@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // TestRunInTx_AtomicAcrossStores is the guarantee sessions.import / rollback
@@ -37,7 +37,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 	// A multi-store write-set that fails mid-way must leave NO partial state.
 	boom := errors.New("boom")
 	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
-		value := sessionfixture.MustRestore(session.Snapshot{ID: "s1", Title: "t"})
+		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}
@@ -58,7 +58,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 
 	// A successful write-set commits both stores.
 	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
-		value := sessionfixture.MustRestore(session.Snapshot{ID: "s2", Title: "t"})
+		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}

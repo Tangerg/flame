@@ -15,8 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -55,7 +54,7 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tool result: %v", err)
 	}
-	if appendItemErr := rt.hist.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if appendItemErr := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: ses.ID(), RunID: "run1", ID: "item2",
 		OccurredAt: time.Unix(2, 0).UTC(),
 		FinishedAt: time.Unix(3, 0).UTC(),
@@ -153,7 +152,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	preview := "offloaded preview " + id.String()
 	ref := &resultoffload.Ref{ID: id}
 	previewValue := tool.StringResult(preview)
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: ses.ID(), RunID: "run_offload", ID: "item_offload",
 		OccurredAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),
 		Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
@@ -378,14 +377,14 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	}); admitErr != nil {
 		t.Fatalf("admit parked run: %v", admitErr)
 	}
-	if suspendErr := rt.runs.Suspend(ctx, runfixture.MustRestore(run.Snapshot{SessionID: ses.ID(), ID: "run_parked", State: run.Waiting,
+	if suspendErr := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_parked", State: run.Waiting,
 		Capabilities: capabilities,
 
 		CreatedAt: parkedAt, MessageMark: run.UnknownMessageMark}),
 	); suspendErr != nil {
 		t.Fatalf("suspend parked run: %v", suspendErr)
 	}
-	if appendItemErr := rt.hist.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if appendItemErr := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_question", RunID: "run_parked", SessionID: ses.ID(),
 		Kind:       transcript.QuestionItem,
 		OccurredAt: parkedAt,

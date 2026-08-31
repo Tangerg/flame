@@ -11,7 +11,7 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type crudSessionStore struct {
@@ -37,7 +37,7 @@ func (c *crudSessionStore) Get(_ context.Context, id string) (session.Session, e
 		return session.Session{}, c.getErr
 	}
 	if c.current.ID() == "" {
-		c.current = sessionfixture.MustRestore(session.Snapshot{ID: id, Workspace: sessionfixture.MustWorkspace("/repo")})
+		c.current = testsupport.MustRestoreSession(session.Snapshot{ID: id, Workspace: testsupport.MustWorkspace("/repo")})
 	}
 	return c.current, nil
 }
@@ -111,7 +111,7 @@ func (*crudStores) ApplyTerminal(context.Context, TerminalPlan) error { return n
 
 func TestCoordinatorSessionCRUD(t *testing.T) {
 	store := &crudSessionStore{sessions: []session.Session{
-		sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 	}}
 	stores := &crudStores{session: store}
 	c := mustNewCoordinator(testDependencies(stores, Dependencies{
@@ -176,8 +176,8 @@ func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 }
 
 func TestPrepareScheduledReusesCommittedAggregateWithoutWorkspaceAdmission(t *testing.T) {
-	existing := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_scheduled", Title: "Existing", Workspace: sessionfixture.MustWorkspace("/existing"),
+	existing := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_scheduled", Title: "Existing", Workspace: testsupport.MustWorkspace("/existing"),
 		Selection: mustTestSelection(t, "provider", "existing-model"),
 	})
 	store := &crudSessionStore{current: existing}
@@ -198,8 +198,8 @@ func TestPrepareScheduledReusesCommittedAggregateWithoutWorkspaceAdmission(t *te
 }
 
 func TestGeneratedTitleLosesToConcurrentUserTitle(t *testing.T) {
-	current := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/repo"), StartedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+	current := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"), StartedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
 	})
 	store := &generatedTitleRaceStore{crudSessionStore: &crudSessionStore{current: current}}
 	coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
@@ -226,8 +226,8 @@ func TestViewPresentsExactSessionSelectionAndWorkspace(t *testing.T) {
 		Paths: testWorkspaceResolver{missing: true}, DefaultModelSelection: selection,
 	})
 
-	view, err := c.view(sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_1", Workspace: sessionfixture.MustWorkspace("/repo"), Selection: selection,
+	view, err := c.view(testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"), Selection: selection,
 	}), ActivityIdle)
 	if err != nil {
 		t.Fatalf("view: %v", err)
@@ -416,8 +416,8 @@ func sessionRows(ids ...string) []session.Session {
 	out := make([]session.Session, 0, len(ids))
 	for i, id := range ids {
 		updatedAt := time.Unix(0, int64(len(ids)-i)).UTC()
-		out = append(out, sessionfixture.MustRestore(session.Snapshot{
-			ID: id, Workspace: sessionfixture.MustWorkspace("/repo"), StartedAt: updatedAt, UpdatedAt: updatedAt,
+		out = append(out, testsupport.MustRestoreSession(session.Snapshot{
+			ID: id, Workspace: testsupport.MustWorkspace("/repo"), StartedAt: updatedAt, UpdatedAt: updatedAt,
 		}))
 	}
 	return out

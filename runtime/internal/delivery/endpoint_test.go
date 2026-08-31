@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -90,14 +90,14 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			name:       "namespace without key",
 			method:     RuntimeDiscover,
 			parameters: struct{}{},
-			options:    Options{IdempotencyNamespace: identityfixture.IdempotencyNamespace},
+			options:    Options{IdempotencyNamespace: testsupport.IdempotencyNamespace},
 		},
 		{
 			name:       "non-canonical namespace",
 			method:     RunsCancel,
 			parameters: protocol.CancelRunRequest{},
 			options: Options{
-				IdempotencyKey: "cancel-once", IdempotencyNamespace: " " + identityfixture.IdempotencyNamespace,
+				IdempotencyKey: "cancel-once", IdempotencyNamespace: " " + testsupport.IdempotencyNamespace,
 			},
 		},
 		{

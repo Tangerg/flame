@@ -15,8 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type failingWaitingCheckpointStore struct {
@@ -159,7 +158,7 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
 		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
 		"limits": func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = runfixture.MustLimits(run.LimitValues{MaxTotalTokens: runfixture.Pointer[int64](1)})
+			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
 		},
 		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
@@ -187,12 +186,12 @@ func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutM
 	for name, mutate := range map[string]func(*runs.WaitingSubtreeCancellationCommit){
 		"cumulative metrics": func(commit *runs.WaitingSubtreeCancellationCommit) {
 			commit.TerminalRuns[0] = mutatedRun(commit.TerminalRuns[0], func(snapshot *run.Snapshot) {
-				snapshot.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: snapshot.Metrics.Steps() + 1})
+				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
 			})
 		},
 		"frozen limits": func(commit *runs.WaitingSubtreeCancellationCommit) {
 			commit.TerminalRuns[0] = mutatedRun(commit.TerminalRuns[0], func(snapshot *run.Snapshot) {
-				snapshot.Limits = runfixture.MustLimits(run.LimitValues{MaxSteps: runfixture.Pointer(1)})
+				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			})
 		},
 		"root run capabilities": func(commit *runs.WaitingSubtreeCancellationCommit) {
@@ -289,7 +288,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 					RunID:     fixture.rootRun.ID(),
 					SessionID: fixture.rootRun.SessionID(),
 					SegmentID: fixture.commit.Resume.Runs[0].SegmentID,
-					Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+					Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 						ID:         "item_root_continuation",
 						SessionID:  fixture.rootRun.SessionID(),
 						RunID:      fixture.rootRun.ID(),

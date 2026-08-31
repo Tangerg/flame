@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type blockingGoalProjection struct {
@@ -48,8 +48,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	createdAt := time.Date(2026, 8, 14, 1, 0, 0, 0, time.UTC)
 	readerSessionStore := sqlite.NewSessionStore(readerDB)
 	writerSessionStore := sqlite.NewSessionStore(writerDB)
-	original := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_snapshot", Workspace: sessionfixture.MustWorkspace("/workspace"), Title: "before",
+	original := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_snapshot", Workspace: testsupport.MustWorkspace("/workspace"), Title: "before",
 		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	if insertErr := writerSessionStore.Insert(ctx, original); insertErr != nil {

@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P302 进行中。
+> 状态：当前能力快照；P303 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -613,6 +613,8 @@ P300把Runtime Skill proposal library translation从`adapter/skillproposal`收�
 P301把Runtime Workspace path resolution从`adapter/workspacepath`收回`adapter/workspace`。`Resolver`直接实现Workspace Application的cwd/path ports并服务Scope、Files、Knowledge、watch与Schedule consumers；通用canonical/resolve/contains仍由`infra/pathidentity`唯一拥有。Bootstrap与Delivery测试不再组合同一bounded context的两个adapter package，旧路径、import、架构例外和空目录均物理删除。
 
 P302把Runtime `adapter/modelcatalog`与`adapter/modelclient`收敛为`adapter/model`。catalog facts/probe/listing、selection admission、pricing、Run chat、utility role与embedding现在共用唯一`providerClientInputs`；只有该owner可把Domain Provider的credential/custom endpoint与exact model投影为`llm.ClientSpec`，architecture guard阻止第二构造路径。旧package、import、错误前缀和空目录均物理删除，client lifetime仍由每次真实消费者拥有而不新增cache。
+
+P303把Runtime测试构造与内存fake从五个entity-shaped单文件fixture package收回唯一`internal/testsupport`。Conversation store、deterministic identity、Item/Run/Session builders继续按职责分文件，并以`ConversationStore`、`MustRestoreItem`、`MustRestoreRun`、`MustRestoreSession`等语义全名消除同package冲突；生产Domain构造路径、测试行为与可见合同不变。五个旧子package、import和空目录均物理删除，不保留测试兼容别名。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

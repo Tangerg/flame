@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type staticAgentDocFinder struct{ files []AgentDocFile }
@@ -19,9 +19,9 @@ func (s staticAgentDocFinder) Find(context.Context, string, string) ([]AgentDocF
 func TestWorkspacesFromSessions(t *testing.T) {
 	t0 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	workspaces := workspacesFromSessions([]session.Session{
-		sessionfixture.MustRestore(session.Snapshot{ID: "s1", Workspace: sessionfixture.MustWorkspace("/a/proj"), UpdatedAt: t0}),
-		sessionfixture.MustRestore(session.Snapshot{ID: "s2", Workspace: sessionfixture.MustWorkspace("/a/proj"), UpdatedAt: t0.Add(2 * time.Hour)}),
-		sessionfixture.MustRestore(session.Snapshot{ID: "s3", Workspace: sessionfixture.MustWorkspace("/b/other"), UpdatedAt: t0.Add(time.Hour)}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/a/proj"), UpdatedAt: t0}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Workspace: testsupport.MustWorkspace("/a/proj"), UpdatedAt: t0.Add(2 * time.Hour)}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s3", Workspace: testsupport.MustWorkspace("/b/other"), UpdatedAt: t0.Add(time.Hour)}),
 	})
 	if len(workspaces) != 2 {
 		t.Fatalf("workspaces = %d, want 2", len(workspaces))

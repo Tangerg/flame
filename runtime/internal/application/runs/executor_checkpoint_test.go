@@ -6,10 +6,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-const testExecutorBuildID = identityfixture.BuildID
+const testExecutorBuildID = testsupport.BuildID
 
 func mustCheckpointSelection(provider, model string) modelref.Selection {
 	selection, err := modelref.New(provider, model)

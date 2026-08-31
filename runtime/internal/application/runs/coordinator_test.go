@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -742,7 +742,7 @@ func testSegment() segmentSpec {
 }
 
 func runForSegment(spec segmentSpec) run.Run {
-	return runfixture.MustRestore(run.Snapshot{ID: spec.RunID, SessionID: spec.SessionID, State: run.Running,
+	return testsupport.MustRestoreRun(run.Snapshot{ID: spec.RunID, SessionID: spec.SessionID, State: run.Running,
 		ActiveSegmentID: spec.SegmentID, ModelSelection: spec.ModelSelection,
 		GoalIncarnationID: spec.GoalIncarnationID, Limits: spec.Limits,
 		Capabilities: spec.Capabilities,
@@ -1655,8 +1655,8 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 	coordinator.newRunID = func() string { return "run_child" }
 	coordinator.newSegmentID = func() string { return "seg_child" }
 	spec := testSegment()
-	spec.Limits = runfixture.MustLimits(run.LimitValues{
-		MaxSteps: runfixture.Pointer(20), MaxBudgetUSD: runfixture.Pointer(float64(3)),
+	spec.Limits = testsupport.MustRunLimits(run.LimitValues{
+		MaxSteps: testsupport.Pointer(20), MaxBudgetUSD: testsupport.Pointer(float64(3)),
 	})
 	spec.Capabilities = run.Capabilities{
 		ChildRuns: true,

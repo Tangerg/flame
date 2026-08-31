@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRunLimitsStoredShapeDistinguishesUnlimitedAndPresentCaps(t *testing.T) {
@@ -16,7 +16,7 @@ func TestRunLimitsStoredShapeDistinguishesUnlimitedAndPresentCaps(t *testing.T) 
 		t.Fatalf("decode unlimited = %+v, %v", decoded, err)
 	}
 
-	limited := runfixture.MustLimits(rundomain.LimitValues{MaxSteps: runfixture.Pointer(7)})
+	limited := testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(7)})
 	row := runLimitsRowOf(limited)
 	if row.Type != runLimitsLimited || row.MaxTotalTokens != nil || row.MaxSteps == nil || *row.MaxSteps != 7 || row.MaxBudgetUSD != nil {
 		t.Fatalf("limited row = %+v", row)

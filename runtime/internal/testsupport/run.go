@@ -1,6 +1,4 @@
-// Package runfixture provides test-only construction helpers for valid Run
-// aggregates. Production code must use the domain constructors directly.
-package runfixture
+package testsupport
 
 import (
 	"time"
@@ -10,23 +8,23 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// MetricsInput names the values accepted by MustMetrics.
-type MetricsInput struct {
+// RunMetricsInput names the values accepted by MustRunMetrics.
+type RunMetricsInput struct {
 	Usage          *accounting.Usage
 	Steps          int
 	ActiveDuration time.Duration
 }
 
-// Selection returns the deterministic model identity MustRestore supplies when
+// DefaultModelSelection returns the deterministic model identity MustRestoreRun supplies when
 // a fixture omits one.
-func Selection() modelref.Selection {
+func DefaultModelSelection() modelref.Selection {
 	selection, _ := modelref.New("fixture", "fixture")
 	return selection
 }
 
-// MustMetrics constructs valid metrics or panics. It is intended only for
+// MustRunMetrics constructs valid metrics or panics. It is intended only for
 // fixtures whose validity is not the behavior under test.
-func MustMetrics(input MetricsInput) run.Metrics {
+func MustRunMetrics(input RunMetricsInput) run.Metrics {
 	metrics, err := run.NewMetrics(input.Usage, input.Steps, input.ActiveDuration)
 	if err != nil {
 		panic(err)
@@ -37,9 +35,9 @@ func MustMetrics(input MetricsInput) run.Metrics {
 // Pointer returns an owned pointer for explicit optional fixture values.
 func Pointer[T any](value T) *T { return &value }
 
-// MustLimits constructs a valid limited execution policy or panics. Use
+// MustRunLimits constructs a valid limited execution policy or panics. Use
 // run.UnlimitedLimits when a fixture intentionally has no execution cap.
-func MustLimits(values run.LimitValues) run.Limits {
+func MustRunLimits(values run.LimitValues) run.Limits {
 	limits, err := run.NewLimits(values)
 	if err != nil {
 		panic(err)
@@ -47,9 +45,9 @@ func MustLimits(values run.LimitValues) run.Limits {
 	return limits
 }
 
-// MustRestore constructs a valid Run or panics. Tests exercising invalid
+// MustRestoreRun constructs a valid Run or panics. Tests exercising invalid
 // snapshots must call run.Restore themselves and assert the returned error.
-func MustRestore(snapshot run.Snapshot) run.Run {
+func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	if snapshot.ID == "" {
 		snapshot.ID = "run_fixture"
 	}

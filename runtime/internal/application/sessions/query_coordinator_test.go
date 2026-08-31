@@ -14,8 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type fakeTranscript struct {
@@ -208,7 +207,7 @@ func sequencedItems(count int) []transcript.SequencedItem {
 	for i := 1; i <= count; i++ {
 		out = append(out, transcript.SequencedItem{
 			Sequence: int64(i),
-			Item:     itemfixture.MustRestore(itemfixture.Input{ID: "it_" + strconv.Itoa(i), RunID: "run_1"}),
+			Item:     testsupport.MustRestoreItem(testsupport.ItemInput{ID: "it_" + strconv.Itoa(i), RunID: "run_1"}),
 		})
 	}
 	return out
@@ -223,7 +222,7 @@ func queryRunIDs(runs []run.Run) []string {
 }
 
 func queryRun(id string) run.Run {
-	return runfixture.MustRestore(run.Snapshot{ID: id})
+	return testsupport.MustRestoreRun(run.Snapshot{ID: id})
 }
 
 func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
@@ -368,7 +367,7 @@ func TestListItemPageScopedToARunReadsOnlyThatRun(t *testing.T) {
 	items := sequencedItems(3)
 	snapshot := items[2].Item.Snapshot()
 	snapshot.Identity.RunID = "run_2"
-	items[2].Item = itemfixture.MustRestore(itemfixture.Input{
+	items[2].Item = testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: snapshot.Identity.SessionID, RunID: snapshot.Identity.RunID,
 		ID: snapshot.Identity.ItemID, OccurredAt: snapshot.Identity.OccurredAt,
 		Status: snapshot.Status, Kind: snapshot.Kind, Content: snapshot.Content,
@@ -397,22 +396,22 @@ func TestListItemPageScopedToARunReadsOnlyThatRun(t *testing.T) {
 }
 
 func TestListItemPageScopesASubtreeAndIncludesAncestors(t *testing.T) {
-	root := runfixture.MustRestore(run.Snapshot{ID: "run_root"})
-	child := runfixture.MustRestore(run.Snapshot{ID: "run_child", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_child",
+	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root"})
+	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_child",
 		ParentRunID: root.ID(), RootRunID: root.ID()}})
 
-	grandchild := runfixture.MustRestore(run.Snapshot{ID: "run_grandchild", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_grandchild",
+	grandchild := testsupport.MustRestoreRun(run.Snapshot{ID: "run_grandchild", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_grandchild",
 		ParentRunID: child.ID(), RootRunID: root.ID()}})
 
-	sibling := runfixture.MustRestore(run.Snapshot{ID: "run_sibling", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_sibling",
+	sibling := testsupport.MustRestoreRun(run.Snapshot{ID: "run_sibling", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_sibling",
 		ParentRunID: root.ID(), RootRunID: root.ID()}})
 
 	tx := &fakeTranscript{
 		items: []transcript.SequencedItem{
-			{Sequence: 1, Item: itemfixture.MustRestore(itemfixture.Input{ID: "item_root", RunID: root.ID()})},
-			{Sequence: 2, Item: itemfixture.MustRestore(itemfixture.Input{ID: "item_child", RunID: child.ID()})},
-			{Sequence: 3, Item: itemfixture.MustRestore(itemfixture.Input{ID: "item_grandchild", RunID: grandchild.ID()})},
-			{Sequence: 4, Item: itemfixture.MustRestore(itemfixture.Input{ID: "item_sibling", RunID: sibling.ID()})},
+			{Sequence: 1, Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_root", RunID: root.ID()})},
+			{Sequence: 2, Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_child", RunID: child.ID()})},
+			{Sequence: 3, Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_grandchild", RunID: grandchild.ID()})},
+			{Sequence: 4, Item: testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_sibling", RunID: sibling.ID()})},
 		},
 		trees: map[string][]string{child.ID(): {grandchild.ID()}},
 	}
@@ -523,7 +522,7 @@ func testSessionRunHistory(ids ...string) []run.Run {
 			value := run.OutcomeCompleted
 			outcome = &value
 		}
-		record := runfixture.MustRestore(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
+		record := testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
 			Outcome: outcome, CreatedAt: time.Unix(0, int64(len(ids)-i)).UTC()})
 		out = append(out, record)
 	}
@@ -588,7 +587,7 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 		Transcript: &fakeTranscript{},
 		Runs: &fakeRuns{history: []run.Run{
 			queryRun("run_1"),
-			runfixture.MustRestore(run.Snapshot{ID: "run_child", Lineage: run.Lineage{
+			testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: run.Lineage{
 				SpawnedByItemID: "it_spawn", ParentRunID: "run_1", RootRunID: "run_1",
 			}}),
 		}},
@@ -690,12 +689,12 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 }
 
 func TestListRunPageIncludesDescendantsAndBindsTheCursor(t *testing.T) {
-	root := runfixture.MustRestore(run.Snapshot{ID: "run_root", CreatedAt: time.Unix(0, 1).UTC()})
-	child := runfixture.MustRestore(run.Snapshot{ID: "run_child",
+	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", CreatedAt: time.Unix(0, 1).UTC()})
+	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child",
 		CreatedAt: time.Unix(0, 2).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn_child",
 			ParentRunID: root.ID(), RootRunID: root.ID()}})
 
-	grandchild := runfixture.MustRestore(run.Snapshot{ID: "run_grandchild",
+	grandchild := testsupport.MustRestoreRun(run.Snapshot{ID: "run_grandchild",
 		CreatedAt: time.Unix(0, 3).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn_grandchild",
 			ParentRunID: child.ID(), RootRunID: root.ID()}})
 

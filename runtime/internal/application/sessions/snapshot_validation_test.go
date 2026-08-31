@@ -12,8 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestSnapshotNormalizeForRestoreProjectsPreviewWithoutMutatingSource(t *testing.T) {
@@ -104,8 +103,8 @@ func offloadedSnapshot(result string) Snapshot {
 	ref := &toolresult.Ref{ID: "BLOB234"}
 	value := tool.StringResult(result)
 	return Snapshot{
-		Session: sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"}),
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", ID: "item_1", Kind: transcript.ToolCall,
 			Status: transcript.ItemCompleted,
 			Tool:   &transcript.ToolInvocation{Name: "shell", Result: &value, Offload: ref},
@@ -183,7 +182,7 @@ func TestPortableSnapshotChildInheritsRootCapabilities(t *testing.T) {
 		// The spawning item has to exist: a child run is spawned BY something, and an
 		// archive naming an item it does not contain is a tree that cannot be walked.
 		// The spawning item is a TOOL CALL: a child run is the execution of one.
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_root", ID: "item_1", OccurredAt: at,
 			FinishedAt: at,
 			Status:     transcript.ItemCompleted, Kind: transcript.ToolCall,

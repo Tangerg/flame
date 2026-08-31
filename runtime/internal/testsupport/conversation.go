@@ -1,7 +1,6 @@
-// Package conversationfixture provides app-port-compatible conversation
-// storage for tests without coupling Application production code to the
-// reusable history contract.
-package conversationfixture
+// Package testsupport provides shared Runtime test builders and in-memory
+// fakes. Production code must use semantic Domain and Application paths.
+package testsupport
 
 import (
 	"context"
@@ -12,20 +11,20 @@ import (
 	"github.com/Tangerg/scope/core/history"
 )
 
-// Store is Runtime's test-only in-memory implementation of its session-ID
+// ConversationStore is Runtime's test-only in-memory implementation of its session-ID
 // conversation ports. Production uses the SQLite MessageStore directly.
-type Store struct {
+type ConversationStore struct {
 	mu       sync.RWMutex
 	messages map[history.ConversationID][]chat.Message
 }
 
-// New returns an empty app-port-compatible conversation store.
-func New() *Store {
-	return &Store{messages: make(map[history.ConversationID][]chat.Message)}
+// NewConversationStore returns an empty app-port-compatible conversation store.
+func NewConversationStore() *ConversationStore {
+	return &ConversationStore{messages: make(map[history.ConversationID][]chat.Message)}
 }
 
 // Read returns the messages stored for sessionID.
-func (s *Store) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
+func (s *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
 	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -36,7 +35,7 @@ func (s *Store) Read(ctx context.Context, sessionID string) ([]chat.Message, err
 }
 
 // Write appends messages to sessionID.
-func (s *Store) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
+func (s *ConversationStore) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
 	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return err
@@ -52,7 +51,7 @@ func (s *Store) Write(ctx context.Context, sessionID string, messages ...chat.Me
 }
 
 // Clear removes sessionID's messages.
-func (s *Store) Clear(ctx context.Context, sessionID string) error {
+func (s *ConversationStore) Clear(ctx context.Context, sessionID string) error {
 	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return err
@@ -64,7 +63,7 @@ func (s *Store) Clear(ctx context.Context, sessionID string) error {
 }
 
 // Replace atomically sets sessionID's messages.
-func (s *Store) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
+func (s *ConversationStore) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
 	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return err
@@ -84,7 +83,7 @@ func (s *Store) Replace(ctx context.Context, sessionID string, messages ...chat.
 }
 
 // Count returns sessionID's message count.
-func (s *Store) Count(ctx context.Context, sessionID string) (int, error) {
+func (s *ConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
 	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return 0, err

@@ -11,11 +11,11 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const testRuntimeInstanceID = identityfixture.RuntimeInstanceID
+const testRuntimeInstanceID = testsupport.RuntimeInstanceID
 
 // fakeRuntime implements only the operations exercised by transport tests.
 type fakeRuntime struct {
@@ -54,7 +54,7 @@ func validTestCapabilities() protocol.ServerCapabilities {
 		StreamingMethods: []string{},
 		Features:         map[string]protocol.FeatureCapability{},
 		Limits: protocol.RuntimeLimits{
-			Idempotency: protocol.IdempotencyLimits{RetentionSeconds: 1, Namespace: identityfixture.IdempotencyNamespace},
+			Idempotency: protocol.IdempotencyLimits{RetentionSeconds: 1, Namespace: testsupport.IdempotencyNamespace},
 			RunReplay: protocol.RunReplayLimits{
 				Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
 			},
@@ -85,7 +85,7 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 func newTestServerFor(t *testing.T, api any) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: identityfixture.IdempotencyNamespace}),
+		Endpoint:        newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
 		Addr:            ":0",
 		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 		ProtocolVersion: testProtocolVersion,

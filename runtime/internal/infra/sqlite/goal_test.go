@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newGoalStore(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore) {
@@ -140,7 +140,7 @@ func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
 
 func seedSession(t *testing.T, store *sqlite.SessionStore, id string) {
 	t.Helper()
-	value := sessionfixture.MustRestore(session.Snapshot{ID: id, Workspace: sessionfixture.MustWorkspace("/work")})
+	value := testsupport.MustRestoreSession(session.Snapshot{ID: id, Workspace: testsupport.MustWorkspace("/work")})
 	if err := store.Insert(t.Context(), value); err != nil {
 		t.Fatalf("seed session %q: %v", id, err)
 	}

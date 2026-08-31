@@ -13,8 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -35,7 +34,7 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.
 		},
 	)
 	service := runsapp.NewConversationHistory(messages, compactions)
-	ses := sessionfixture.MustRestore(session.Snapshot{ID: "ses_long", Title: "long", Workspace: sessionfixture.MustWorkspace("/work")})
+	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
 	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +51,7 @@ func seedCompactionHistory(t *testing.T, messages *sqlite.MessageStore, runs *sq
 		)
 		mark := len(history)
 		at := time.Unix(int64(index+1), 0).UTC()
-		terminal := runfixture.MustRestore(run.Snapshot{
+		terminal := testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_" + string(rune('a'+index)), SessionID: "ses_long",
 			State: run.Completed, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 			MessageMark: mark,
@@ -108,7 +107,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 		}
 	}
 	at := time.Unix(10, 0).UTC()
-	latest := runfixture.MustRestore(run.Snapshot{
+	latest := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_e", SessionID: "ses_long", State: run.Completed,
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 8,
 	})

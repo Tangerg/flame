@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -153,7 +153,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	if err := runStore.Admit(ctx, run.Draft{SegmentID: "seg_open", RunID: "run_1", SessionID: id, CreatedAt: now}); err != nil {
 		t.Fatalf("seed run: %v", err)
 	}
-	if err := hist.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{SessionID: id, RunID: "run_1", ID: "item_1", OccurredAt: now})); err != nil {
+	if err := hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{SessionID: id, RunID: "run_1", ID: "item_1", OccurredAt: now})); err != nil {
 		t.Fatalf("seed item: %v", err)
 	}
 	if err := ints.Open(ctx, serverPending("run_1", id, "", "", nil, now)); err != nil {

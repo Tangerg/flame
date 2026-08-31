@@ -1,6 +1,4 @@
-// Package sessionfixture constructs valid Session aggregates for tests outside
-// the session package. Production code must use real Application/Domain paths.
-package sessionfixture
+package testsupport
 
 import (
 	"time"
@@ -9,9 +7,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// MustRestore fills irrelevant lifecycle defaults, restores snapshot, and
+// MustRestoreSession fills irrelevant lifecycle defaults, restores snapshot, and
 // panics when the requested fixture is invalid.
-func MustRestore(snapshot session.Snapshot) session.Session {
+func MustRestoreSession(snapshot session.Snapshot) session.Session {
 	if snapshot.Workspace.Path() == "" {
 		snapshot.Workspace = MustWorkspace("/fixture")
 	}

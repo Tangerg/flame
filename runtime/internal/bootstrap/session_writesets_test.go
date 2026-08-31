@@ -23,16 +23,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-const bootstrapCheckpointBuildID = identityfixture.BuildID
+const bootstrapCheckpointBuildID = testsupport.BuildID
 
 func bootstrapSession(id, title, cwd string) session.Session {
-	return sessionfixture.MustRestore(session.Snapshot{ID: id, Title: title, Workspace: sessionfixture.MustWorkspace(cwd)})
+	return testsupport.MustRestoreSession(session.Snapshot{ID: id, Title: title, Workspace: testsupport.MustWorkspace(cwd)})
 }
 
 func insertBootstrapSession(t *testing.T, store *sqlite.SessionStore, value session.Session) {
@@ -192,7 +189,7 @@ var parkCreatedAt = time.Unix(1, 0).UTC()
 // session from the outside.
 func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	outcome := run.OutcomeCompleted
-	return runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
+	return testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
 		Outcome:   &outcome,
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 0})
 
@@ -219,8 +216,8 @@ func parkWithGoalLease(
 	t.Helper()
 	ctx := context.Background()
 	startedAt := time.Unix(0, 0).UTC()
-	value := sessionfixture.MustRestore(session.Snapshot{
-		ID: sessionID, Workspace: sessionfixture.MustWorkspace("/work"), StartedAt: startedAt, UpdatedAt: startedAt,
+	value := testsupport.MustRestoreSession(session.Snapshot{
+		ID: sessionID, Workspace: testsupport.MustWorkspace("/work"), StartedAt: startedAt, UpdatedAt: startedAt,
 	})
 	if err := sessions.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)
@@ -241,7 +238,7 @@ func parkWithGoalLease(
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := runs.Suspend(ctx, runfixture.MustRestore(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
 		GoalIncarnationID: goalIncarnationID,
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
@@ -415,7 +412,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	goalValue, err := goal.New(
 		"ses_A",
 		"finish the parked run",
-		runfixture.Selection(),
+		testsupport.DefaultModelSelection(),
 		goal.UnlimitedBudget(),
 		run.Capabilities{},
 		incarnationID,
@@ -435,7 +432,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Goal Run: found=%t err=%v", found, err)
 	}
-	parked, err = parked.AdvanceProgress(runfixture.MustMetrics(runfixture.MetricsInput{Steps: 4,
+	parked, err = parked.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4,
 		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}}}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)
@@ -613,17 +610,17 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		t.Fatalf("prepare child Plan: %v", err)
 	}
 	forkedAt := time.Now().UTC()
-	forkedRun := runfixture.MustRestore(run.Snapshot{
+	forkedRun := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: childState.ID(), ID: "run_child_history", State: run.Completed,
 		CreatedAt: forkedAt, FinishedAt: forkedAt, UpdatedAt: forkedAt, MessageMark: 1,
 	})
-	forkedItem := itemfixture.MustRestore(itemfixture.Input{
+	forkedItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: childState.ID(), RunID: forkedRun.ID(), ID: "item_child_history",
 		Kind: transcript.UserMessage, OccurredAt: forkedAt,
 		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
 	preview := tool.StringResult("bounded preview")
-	forkedToolItem := itemfixture.MustRestore(itemfixture.Input{
+	forkedToolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: childState.ID(), RunID: forkedRun.ID(), ID: "item_child_tool",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted, OccurredAt: forkedAt,
 		Tool: &transcript.ToolInvocation{
@@ -842,7 +839,7 @@ func TestApplyRestoreRollsBackOnRunIdentityConflict(t *testing.T) {
 	if err := ss.runs.Restore(ctx, restoredRun("ses_A", "run_shared", now)); err != nil {
 		t.Fatalf("seed source run: %v", err)
 	}
-	if err := ss.transcript.AppendItem(ctx, itemfixture.MustRestore(itemfixture.Input{
+	if err := ss.transcript.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_A", RunID: "run_shared", ID: "item_shared", OccurredAt: now,
 	})); err != nil {
 		t.Fatalf("seed source item: %v", err)
@@ -896,7 +893,7 @@ func seedGoal(t *testing.T, ss sessionStores, sessionID string) {
 	} else if err != nil {
 		t.Fatalf("get goal session %q: %v", sessionID, err)
 	}
-	g, _ := goal.New(sessionID, "obj", runfixture.Selection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
+	g, _ := goal.New(sessionID, "obj", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
 	if _, applied, err := ss.goals.Save(context.Background(), g, bootstrapUnwrittenGoalVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed goal %q: applied=%v err=%v", sessionID, applied, err)
 	}

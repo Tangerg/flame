@@ -1,6 +1,4 @@
-// Package identityfixture provides named, deterministic identities for tests
-// that exercise boundaries shared by several Runtime packages.
-package identityfixture
+package testsupport
 
 const (
 	BuildID                       = "sha256:1111111111111111111111111111111111111111111111111111111111111111"

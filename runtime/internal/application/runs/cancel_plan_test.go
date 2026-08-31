@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type cancellationDriftProjection struct {
@@ -75,7 +75,7 @@ func TestCancellationPlanRejectsInconsistentTreeFacts(t *testing.T) {
 			mutate: func(runs []run.Run, _ map[string]string) {
 				snapshot := runs[0].Snapshot()
 				snapshot.SessionID = "ses_other"
-				runs[0] = runfixture.MustRestore(snapshot)
+				runs[0] = testsupport.MustRestoreRun(snapshot)
 			},
 			want: "belongs to session",
 		},
@@ -171,7 +171,7 @@ func TestCancellationClassifiesResumeBetweenDurableReadsAsBusy(t *testing.T) {
 	runningSnapshot := waiting.Snapshot()
 	runningSnapshot.State = run.Running
 	runningSnapshot.ActiveSegmentID = "segment_resumed"
-	running := runfixture.MustRestore(runningSnapshot)
+	running := testsupport.MustRestoreRun(runningSnapshot)
 
 	coordinator := mustNewCoordinator(Dependencies{
 		Runs: cancellationDriftProjection{
@@ -218,7 +218,7 @@ func cancellationTree(state run.State) []run.Run {
 		if parent != "" {
 			lineage = run.Lineage{SpawnedByItemID: "item_" + id, ParentRunID: parent, RootRunID: "run_root"}
 		}
-		return runfixture.MustRestore(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
+		return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
 			ActiveSegmentID: "segment_" + id, CreatedAt: createdAt,
 			UpdatedAt: createdAt, MessageMark: run.UnknownMessageMark, Lineage: lineage})
 	}

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -15,7 +15,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	caps := capabilitiesFor(featureAvailability{
 		knowledge: true, git: true, fileWatch: true, plan: true,
 		goals: true, agentMemory: true, schedules: true,
-	}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: identityfixture.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
+	}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
 	want := []protocol.StreamEventType{
 		protocol.StreamSegmentStarted,
 		protocol.StreamSegmentProgress,
@@ -56,8 +56,8 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	if got := caps.Limits.Idempotency.RetentionSeconds; got != 86_400 {
 		t.Fatalf("idempotency retention = %d, want 86400", got)
 	}
-	if got := caps.Limits.Idempotency.Namespace; got != identityfixture.IdempotencyNamespace {
-		t.Fatalf("idempotency namespace = %q, want %q", got, identityfixture.IdempotencyNamespace)
+	if got := caps.Limits.Idempotency.Namespace; got != testsupport.IdempotencyNamespace {
+		t.Fatalf("idempotency namespace = %q, want %q", got, testsupport.IdempotencyNamespace)
 	}
 }
 
@@ -75,7 +75,7 @@ func TestCapabilitiesAdvertiseThePublishedVocabulary(t *testing.T) {
 	caps := capabilitiesFor(
 		featureAvailability{},
 		replayLimitsFrom(runs.DefaultRetention()),
-		protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: identityfixture.IdempotencyNamespace},
+		protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace},
 		protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73},
 	)
 	for _, feature := range protocol.FeatureKeys() {

@@ -13,8 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // recordedBoundaries answers for the runs it knows and reports "never recorded"
@@ -134,10 +133,10 @@ func TestForkSeedsTheBoundaryPlanList(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{}},
 		snapshot: Snapshot{
-			Session:  sessionfixture.MustRestore(session.Snapshot{ID: "ses_A"}),
+			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_A"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("one"))},
 			Runs: []run.Run{
-				runfixture.MustRestore(run.Snapshot{ID: "run_1", SessionID: "ses_A", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: 1}),
+				testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_A", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: 1}),
 			},
 			Plan: []plan.Step{{Description: "work after the boundary", Status: plan.StatusInProgress}},
 		},

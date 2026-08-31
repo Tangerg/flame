@@ -10,8 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type blockingWaitingCancellationEffects struct {
@@ -355,7 +354,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 		}
 		owner.recordTerminalRun(canceled)
 		owner.recordChildCancellationItem(
-			plan.target.run.Lineage().ParentRunID, itemfixture.MustRestore(itemfixture.Input{
+			plan.target.run.Lineage().ParentRunID, testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID:   plan.target.run.Lineage().SpawnedByItemID,
 				Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
 				Failure: &tool.Failure{
@@ -409,7 +408,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 }
 
 func runningChildCancellationPlan() cancellationPlan {
-	child := runfixture.MustRestore(run.Snapshot{ID: "run_child",
+	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child",
 		SessionID: "session",
 
 		State: run.Running, Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
@@ -417,7 +416,7 @@ func runningChildCancellationPlan() cancellationPlan {
 			RootRunID:   "run_root"}})
 
 	return cancellationPlan{
-		root: cancellationRun{run: runfixture.MustRestore(run.Snapshot{ID: "run_root",
+		root: cancellationRun{run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_root",
 			SessionID: "session",
 			State:     run.Running}),
 		},

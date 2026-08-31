@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // fakeRunProjection is the durable answer to "what is this run", which is what a
@@ -64,7 +64,7 @@ func runRecord(state run.State, activeSegmentID, spawnedBy string) run.Run {
 		lineage.ParentRunID = "run_parent"
 		lineage.RootRunID = "run_root"
 	}
-	return runfixture.MustRestore(run.Snapshot{
+	return testsupport.MustRestoreRun(run.Snapshot{
 		ID: testRunID, SessionID: "ses_1", State: state,
 		ActiveSegmentID: activeSegmentID, Lineage: lineage,
 	})
@@ -285,7 +285,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 	}
 
 	outcome := run.OutcomeLost
-	recovered := runfixture.MustRestore(run.Snapshot{
+	recovered := testsupport.MustRestoreRun(run.Snapshot{
 		ID: testRunID, SessionID: "ses_1", State: run.Failed,
 		Outcome: &outcome, Failure: &run.Failure{Kind: run.FailureLost},
 	})

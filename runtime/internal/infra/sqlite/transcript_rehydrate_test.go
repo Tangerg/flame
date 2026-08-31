@@ -10,7 +10,7 @@ import (
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func openTranscriptAndBlobs(t *testing.T) (*sqlite.TranscriptStore, *sqlite.ToolResultStore) {
@@ -27,7 +27,7 @@ func toolItem(sessionID, id, result string, ref *resultoffload.Ref) transcript.I
 	value := tool.StringResult(result)
 	at := time.Unix(1, 0).UTC()
 	executionDuration := 500 * time.Millisecond
-	return itemfixture.MustRestore(itemfixture.Input{
+	return testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  sessionID,
 		ID:         id,
 		RunID:      "run-1",

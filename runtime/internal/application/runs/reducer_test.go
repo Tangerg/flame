@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -480,7 +480,7 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 
 func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 	config := testReducerConfig()
-	config.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
+	config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
 		InputTokens: 10,
 	}},
 		Steps:          2,
@@ -512,7 +512,7 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 	t.Run("step regression", func(t *testing.T) {
 		config := testReducerConfig()
-		config.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2})
+		config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
 		_, err := newReducer(config).reduce(UsageReported{Steps: 1})
 		if !errors.Is(err, errExecutorContract) {
 			t.Fatalf("error = %v, want executor protocol violation", err)
@@ -521,7 +521,7 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 
 	t.Run("usage regression", func(t *testing.T) {
 		config := testReducerConfig()
-		config.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{InputTokens: 10}},
+		config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{InputTokens: 10}},
 			Steps: 1})
 
 		_, err := newReducer(config).reduce(UsageReported{
@@ -1609,7 +1609,7 @@ func TestReducerRejectsReexecutionOrSuccessForHostCommittedTool(t *testing.T) {
 }
 
 func TestReducerRejectsInvalidInterruptProjection(t *testing.T) {
-	waiting := SegmentFinished{Run: runfixture.MustRestore(run.Snapshot{State: run.Waiting})}
+	waiting := SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{State: run.Waiting})}
 	tests := []struct {
 		name   string
 		events []RunEvent
@@ -1621,7 +1621,7 @@ func TestReducerRejectsInvalidInterruptProjection(t *testing.T) {
 		{
 			name: "additional lifecycle transition",
 			events: []RunEvent{
-				SegmentStarted{Run: runfixture.MustRestore(run.Snapshot{State: run.Running})},
+				SegmentStarted{Run: testsupport.MustRestoreRun(run.Snapshot{State: run.Running})},
 				waiting,
 			},
 		},
@@ -1639,7 +1639,7 @@ func TestReducerRejectsInvalidInterruptProjection(t *testing.T) {
 
 func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 	parkCommit := func() *EventCommit {
-		run := runfixture.MustRestore(run.Snapshot{State: run.Waiting})
+		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Waiting})
 		return &EventCommit{SegmentID: "segment_1",
 			State: StateSuspend,
 			Run:   &run,
@@ -1647,7 +1647,7 @@ func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 	}
 	terminalCommit := func() *EventCommit {
 		outcome := run.OutcomeCompleted
-		run := runfixture.MustRestore(run.Snapshot{State: run.Completed, Outcome: &outcome})
+		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed, Outcome: &outcome})
 		return &EventCommit{SegmentID: "segment_1", State: StateTerminalize, Outcome: outcome, Run: &run}
 	}
 	invalidTerminalCommit := terminalCommit()

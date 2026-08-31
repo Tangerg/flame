@@ -5,25 +5,25 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestSessionCatalogStoreAppliesLiteralSearchWorkspaceAndKeysetTogether(t *testing.T) {
 	store := newTempDB(t)
 	fixtures := []session.Snapshot{
-		{ID: "ses_percent", Title: "Alpha % milestone", Workspace: sessionfixture.MustWorkspace("/repo/one"), Favorite: true},
-		{ID: "ses_plain", Title: "ALPHA release", Workspace: sessionfixture.MustWorkspace("/repo/two")},
-		{ID: "ses_workspace", Title: "Other", Workspace: sessionfixture.MustWorkspace("/repo/alpha")},
-		{ID: "ses_underscore", Title: "literal_name", Workspace: sessionfixture.MustWorkspace("/repo/four")},
-		{ID: "ses_unmatched", Title: "Other", Workspace: sessionfixture.MustWorkspace("/repo/five")},
-		{ID: "ses_unicode", Title: "ÄRGER review", Workspace: sessionfixture.MustWorkspace("/repo/six")},
+		{ID: "ses_percent", Title: "Alpha % milestone", Workspace: testsupport.MustWorkspace("/repo/one"), Favorite: true},
+		{ID: "ses_plain", Title: "ALPHA release", Workspace: testsupport.MustWorkspace("/repo/two")},
+		{ID: "ses_workspace", Title: "Other", Workspace: testsupport.MustWorkspace("/repo/alpha")},
+		{ID: "ses_underscore", Title: "literal_name", Workspace: testsupport.MustWorkspace("/repo/four")},
+		{ID: "ses_unmatched", Title: "Other", Workspace: testsupport.MustWorkspace("/repo/five")},
+		{ID: "ses_unicode", Title: "ÄRGER review", Workspace: testsupport.MustWorkspace("/repo/six")},
 	}
 	for index := range fixtures {
 		createdAt := time.Unix(int64(index+1), 0).UTC()
 		fixtures[index].StartedAt = createdAt
 		fixtures[index].UpdatedAt = createdAt
 		fixtures[index].Revision = 1
-		if err := store.Insert(t.Context(), sessionfixture.MustRestore(fixtures[index])); err != nil {
+		if err := store.Insert(t.Context(), testsupport.MustRestoreSession(fixtures[index])); err != nil {
 			t.Fatalf("insert fixture %d: %v", index, err)
 		}
 	}
@@ -74,7 +74,7 @@ func TestSessionCatalogStoreAppliesLiteralSearchWorkspaceAndKeysetTogether(t *te
 		t.Run(test.name, func(t *testing.T) {
 			var workspace *session.Workspace
 			if test.workspace != "" {
-				value := sessionfixture.MustWorkspace(test.workspace)
+				value := testsupport.MustWorkspace(test.workspace)
 				workspace = &value
 			}
 			filter, err := session.NewCatalogFilter(test.search, workspace)

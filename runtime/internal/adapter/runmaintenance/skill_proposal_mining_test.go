@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	skillspec "github.com/Tangerg/scope/skills"
@@ -45,7 +45,7 @@ func (f *fakeProposalSubmitter) SubmitProposal(_ context.Context, cwd string, pr
 
 func skillProposalMinerFixture(t *testing.T, reply string, config SkillMiningPolicyValues) (*SkillProposalMiner, *fakeProposalSubmitter, *textStubModel) {
 	t.Helper()
-	messages := conversationfixture.New()
+	messages := testsupport.NewConversationStore()
 	if err := messages.Write(t.Context(), "ses_1",
 		chat.NewUserMessage(chat.NewTextPart("add a test target")),
 		chat.NewAssistantMessage(chat.NewTextPart("done")),
@@ -72,7 +72,7 @@ func skillProposalMinerFixture(t *testing.T, reply string, config SkillMiningPol
 // real current skill bodies for the read-before-write guard.
 func skillRevisionMinerFixture(t *testing.T, source skillSource, replies ...scriptedReply) (*SkillProposalMiner, *fakeProposalSubmitter) {
 	t.Helper()
-	messages := conversationfixture.New()
+	messages := testsupport.NewConversationStore()
 	if err := messages.Write(t.Context(), "ses_1",
 		chat.NewUserMessage(chat.NewTextPart("that skill's command is wrong")),
 		chat.NewAssistantMessage(chat.NewTextPart("fixing")),

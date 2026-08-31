@@ -1,6 +1,4 @@
-// Package itemfixture provides test-only construction helpers for valid
-// transcript Items. Production code must use the semantic Domain constructors.
-package itemfixture
+package testsupport
 
 import (
 	"time"
@@ -10,10 +8,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 )
 
-// Input mirrors the facts old fixtures commonly spell out while keeping the
+// ItemInput mirrors the facts old fixtures commonly spell out while keeping the
 // Domain Item itself private. It is intentionally test-only and is not a second
 // production representation.
-type Input struct {
+type ItemInput struct {
 	SessionID         string
 	RunID             string
 	ID                string
@@ -35,9 +33,9 @@ type Input struct {
 	DroppedMessages   int
 }
 
-// MustRestore returns one valid Item or panics. Tests exercising invalid
+// MustRestoreItem returns one valid Item or panics. Tests exercising invalid
 // snapshots must call transcript.RestoreItem directly and assert the error.
-func MustRestore(input Input) transcript.Item {
+func MustRestoreItem(input ItemInput) transcript.Item {
 	if input.SessionID == "" {
 		input.SessionID = "session_fixture"
 	}

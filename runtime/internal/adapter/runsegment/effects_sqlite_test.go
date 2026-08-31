@@ -22,14 +22,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/identityfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-const checkpointBuildID = identityfixture.BuildID
+const checkpointBuildID = testsupport.BuildID
 
 func claimResumeForTest(
 	t *testing.T,
@@ -148,7 +145,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_next",
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_resumed", OccurredAt: created,
 				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
@@ -209,7 +206,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 		Admit:    &draft,
 		Events: []runs.EventCommit{{
 			RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
 				OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
@@ -295,7 +292,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		t.Fatalf("commit start: %v", commitEventErr)
 	}
 
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_model", RunID: "run_model", ID: "item_final",
 		OccurredAt: finishedAt, Status: transcript.ItemCompleted, Kind: transcript.AgentMessage,
 		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "answer"}},
@@ -306,7 +303,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
 	wrongSegment := runs.RunProgressCommit{
-		SegmentID: "seg_wrong", Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
+		SegmentID: "seg_wrong", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
 	}
 	err = effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_wrong"),
@@ -453,7 +450,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
-	item := itemfixture.MustRestore(itemfixture.Input{
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_stale",
 		Status: transcript.ItemCompleted, Kind: transcript.AgentMessage,
 		OccurredAt: startedAt.Add(3 * time.Second),
@@ -510,7 +507,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	}
 	for index, start := range starts {
 		name := []string{"first", "second"}[index]
-		running := itemfixture.MustRestore(itemfixture.Input{
+		running := testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_tools", RunID: "run_tools", ID: start.ItemID,
 			OccurredAt: startedAt, Status: transcript.ItemRunning, Kind: transcript.ToolCall,
 			Tool:        &transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}},
@@ -530,7 +527,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	for index, start := range starts {
 		name := []string{"first", "second"}[index]
 		result := tool.StringResult(name + "-result")
-		items = append(items, itemfixture.MustRestore(itemfixture.Input{
+		items = append(items, testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_tools", RunID: "run_tools", ID: start.ItemID,
 			OccurredAt: startedAt, FinishedAt: finishedAt,
 			Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
@@ -750,7 +747,7 @@ func waitingTestSessionRun(
 	createdAt time.Time,
 	open []transcript.Interrupt,
 ) run.Run {
-	return runfixture.MustRestore(run.Snapshot{ID: runID,
+	return testsupport.MustRestoreRun(run.Snapshot{ID: runID,
 		SessionID: "session_1",
 
 		State: run.Waiting,
@@ -795,8 +792,8 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 	})
 	created := time.Now().UTC()
 	draft := run.Draft{RunID: "run_scheduled", SessionID: "ses_scheduled", SegmentID: "seg_open", CreatedAt: created}
-	scheduled := sessionfixture.MustRestore(session.Snapshot{
-		ID: draft.SessionID, Title: "scheduled", Workspace: sessionfixture.MustWorkspace("/work"),
+	scheduled := testsupport.MustRestoreSession(session.Snapshot{
+		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
 		StartedAt: created, UpdatedAt: created, Revision: 1,
 	})
 	err = effects.CommitOpening(ctx, runs.OpeningCommit{
@@ -808,7 +805,7 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 		ScheduleFiring: "sch_missing:1000",
 		Events: []runs.EventCommit{{
 			RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-			Run: runPointer(runfixture.MustRestore(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID, UpdatedAt: created})),
+			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID, UpdatedAt: created})),
 		}},
 	})
 	if err == nil {
@@ -835,8 +832,8 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	created := time.Now().UTC()
 	goals := sqlite.NewGoalStore(db)
 	sessions := sqlite.NewSessionStore(db)
-	goalSession := sessionfixture.MustRestore(session.Snapshot{
-		ID: "ses_goal", Workspace: sessionfixture.MustWorkspace("/work"), StartedAt: created, UpdatedAt: created, Revision: 1,
+	goalSession := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_goal", Workspace: testsupport.MustWorkspace("/work"), StartedAt: created, UpdatedAt: created, Revision: 1,
 	})
 	if insertErr := sessions.Insert(ctx, goalSession); insertErr != nil {
 		t.Fatalf("seed goal session: %v", insertErr)
@@ -878,7 +875,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		t.Fatalf("build admitted Run: %v", err)
 	}
 	finishedAt := created.Add(time.Second)
-	updated, err = updated.AdvanceProgress(runfixture.MustMetrics(runfixture.MetricsInput{Steps: 2,
+	updated, err = updated.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2,
 		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}}}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance Run metrics: %v", err)
@@ -992,12 +989,12 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		Runs: []runs.EventCommit{{
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", State: runs.StateSuspend,
 			Items: []transcript.Item{
-				itemfixture.MustRestore(itemfixture.Input{
+				testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_tool", RunID: "run_1",
 					Status: transcript.ItemRunning, Kind: transcript.ToolCall,
 					Tool: &transcript.ToolInvocation{Name: "ask_user"}, OccurredAt: toolStartedAt,
 				}),
-				itemfixture.MustRestore(itemfixture.Input{
+				testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_question", RunID: "run_1",
 					Status: transcript.ItemCompleted, Kind: transcript.QuestionItem,
 					Question: question, OccurredAt: parkedAt,
@@ -1007,7 +1004,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 				CallID: "tool_ask", ItemID: "item_tool", SegmentID: "seg_open",
 				State: runs.ToolInvocationIncomplete, StartedAt: toolStartedAt, FinishedAt: parkedAt,
 			}},
-			Run: runPointer(runfixture.MustRestore(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
+			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				ModelSelection: pending.Continuations[0].ModelSelection,
 				Capabilities:   pending.Capabilities,
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
@@ -2081,7 +2078,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		t.Fatalf("admit root: %v", admitErr)
 	}
 	transcriptStore := sqlite.NewTranscriptStore(db)
-	parentItem := itemfixture.MustRestore(itemfixture.Input{
+	parentItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "session_1",
 		ID:         childLineage.SpawnedByItemID,
 		RunID:      childLineage.ParentRunID,
@@ -2175,7 +2172,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		snapshot.Capabilities = capabilities
 		snapshot.UpdatedAt = finishedAt
 	})
-	grandchildQuestionItem := itemfixture.MustRestore(itemfixture.Input{
+	grandchildQuestionItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  rootRun.SessionID(),
 		ID:         grandchildQuestion.ItemID,
 		RunID:      grandchildQuestion.RunID,
@@ -2184,7 +2181,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Kind:       transcript.QuestionItem,
 		Question:   grandchildQuestion.Question,
 	})
-	childQuestionItem := itemfixture.MustRestore(itemfixture.Input{
+	childQuestionItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  rootRun.SessionID(),
 		ID:         childQuestion.ItemID,
 		RunID:      childQuestion.RunID,
@@ -2199,7 +2196,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		childQuestionItem,
 	}
 	if survivingBoundary {
-		originalItems = append(originalItems, itemfixture.MustRestore(itemfixture.Input{
+		originalItems = append(originalItems, testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID:  rootRun.SessionID(),
 			ID:         siblingQuestion.ItemID,
 			RunID:      siblingQuestion.RunID,
@@ -2301,7 +2298,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	const rootMemberID = "member_root"
 	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
-		BuildID: identityfixture.AlternateBuildID,
+		BuildID: testsupport.AlternateBuildID,
 		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
@@ -2367,7 +2364,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		}
 	}
 	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
-		BuildID: identityfixture.AlternateBuildID,
+		BuildID: testsupport.AlternateBuildID,
 		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
@@ -2493,7 +2490,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 			ConversationMessages: []chat.Message{
 				chat.NewUserMessage(chat.NewTextPart("me too")),
 			},
-			Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_2", ID: "item_second", OccurredAt: created,
 				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "me too"}},
@@ -2779,7 +2776,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		}},
 		Progress: &runs.RunProgressCommit{
 			SegmentID: draft.SegmentID,
-			Metrics: runfixture.MustMetrics(runfixture.MetricsInput{
+			Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 				Steps: 1, Usage: usage,
 			}),
 			UpdatedAt: finishedAt,
@@ -2960,7 +2957,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeFailed)
 	updated := mutatedRun(*finished, func(snapshot *run.Snapshot) {
 		snapshot.Detail = "the provider rejected the request"
-		snapshot.Metrics = runfixture.MustMetrics(runfixture.MetricsInput{Steps: 3})
+		snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3})
 		snapshot.Failure = &run.Failure{Kind: run.FailureProviderRejected, Detail: "rejected"}
 	})
 	updated = mustResolveMessageMark(t, updated, 0)

@@ -21,7 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	runfixture "github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // memStore is an in-memory goals.Store.
@@ -470,11 +470,11 @@ func (f *fakeRuns) emitScriptedRun(
 			if script.waiting {
 				boundaryState = run.Waiting
 			}
-			finishedRun := runfixture.MustRestore(run.Snapshot{SessionID: cmd.SessionID,
+			finishedRun := testsupport.MustRestoreRun(run.Snapshot{SessionID: cmd.SessionID,
 				ID:      boundaryRunID,
 				State:   boundaryState,
 				Outcome: outcome,
-				Metrics: runfixture.MustMetrics(runfixture.MetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}})})
+				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}})})
 
 			if outcome != nil && cmd.GoalIncarnationID != "" {
 				if err := f.store.RecordRun(context.WithoutCancel(ctx), goal.RunRecord{
@@ -544,7 +544,7 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 		return runs.CancelResult{}, err
 	}
 	outcome := run.OutcomeCanceled
-	return runs.CancelResult{Run: runfixture.MustRestore(run.Snapshot{ID: cmd.RunID, State: run.Canceled, Outcome: &outcome})}, nil
+	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Canceled, Outcome: &outcome})}, nil
 }
 
 // fakeSessions is the driver's session-existence check; sessions exist unless

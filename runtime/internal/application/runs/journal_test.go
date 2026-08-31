@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 const (
@@ -93,7 +93,7 @@ func ev(replayable bool) Event {
 func sized(n int) Event {
 	return Event{
 		RunID: testRunID, SegmentID: testSegmentID,
-		Payload: ItemCompleted{Item: itemfixture.MustRestore(itemfixture.Input{
+		Payload: ItemCompleted{Item: testsupport.MustRestoreItem(testsupport.ItemInput{
 			ID:      "item_1",
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: strings.Repeat("x", n)}},
 		})},

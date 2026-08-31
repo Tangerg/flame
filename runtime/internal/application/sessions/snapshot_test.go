@@ -8,20 +8,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/itemfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/runfixture"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/sessionfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func portableSnapshot() Snapshot {
 	return Snapshot{
-		Session: sessionfixture.MustRestore(session.Snapshot{ID: "ses_1"}),
-		Runs: []run.Run{runfixture.MustRestore(run.Snapshot{
+		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
+		Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 			SessionID: "ses_1", ID: "run_1", State: run.Completed,
 			Capabilities: run.Capabilities{ChildRuns: true},
 			CreatedAt:    time.Unix(1, 0), FinishedAt: time.Unix(2, 0), MessageMark: 0,
 		})},
-		Items: []transcript.Item{itemfixture.MustRestore(itemfixture.Input{
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", ID: "item_1", RunID: "run_1",
 			Status: transcript.ItemCompleted, Kind: transcript.UserMessage, OccurredAt: time.Unix(1, 0),
 		})},
@@ -53,10 +51,10 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 		{"run tree cycle", func(s *Snapshot) {
 			appendRootedSnapshotRun(s, "run_2", "run_3", "item_2")
 			appendRootedSnapshotRun(s, "run_3", "run_2", "item_3")
-			s.Items = append(s.Items, itemfixture.MustRestore(itemfixture.Input{
+			s.Items = append(s.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", ID: "item_2", RunID: "run_3",
 				Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
-			}), itemfixture.MustRestore(itemfixture.Input{
+			}), testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", ID: "item_3", RunID: "run_2",
 				Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
 			}),
@@ -78,7 +76,7 @@ func appendRootedSnapshotRun(snapshot *Snapshot, runID, parentRunID, spawningIte
 	child := snapshot.Runs[0].Snapshot()
 	child.ID = runID
 	child.Lineage = run.Lineage{SpawnedByItemID: spawningItemID, ParentRunID: parentRunID, RootRunID: "run_1"}
-	snapshot.Runs = append(snapshot.Runs, runfixture.MustRestore(child))
+	snapshot.Runs = append(snapshot.Runs, testsupport.MustRestoreRun(child))
 }
 
 func TestValidateSnapshotAcceptsCanonicalTerminalState(t *testing.T) {
@@ -91,15 +89,15 @@ func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	snapshot := portableSnapshot()
 	rootSnapshot := snapshot.Runs[0].Snapshot()
 	rootSnapshot.ID = "run_root"
-	root := runfixture.MustRestore(rootSnapshot)
+	root := testsupport.MustRestoreRun(rootSnapshot)
 	childSnapshot := rootSnapshot
 	childSnapshot.ID = "run_child"
 	childSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_root_task", ParentRunID: "run_root", RootRunID: "run_root"}
-	child := runfixture.MustRestore(childSnapshot)
+	child := testsupport.MustRestoreRun(childSnapshot)
 	grandchildSnapshot := rootSnapshot
 	grandchildSnapshot.ID = "run_grandchild"
 	grandchildSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_child_task", ParentRunID: "run_child", RootRunID: "run_root"}
-	grandchild := runfixture.MustRestore(grandchildSnapshot)
+	grandchild := testsupport.MustRestoreRun(grandchildSnapshot)
 	snapshot.Runs = []run.Run{grandchild, child, root}
 
 	replacement, err := InitialSessionReplacement(snapshot.Session)

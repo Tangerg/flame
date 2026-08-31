@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport/conversationfixture"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
@@ -65,7 +65,7 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	t.Cleanup(func() { _ = db.Close() })
 	memory := sqlite.NewAgentMemoryStore(db)
 	memoryCuration := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{Store: memory})
-	messages := conversationfixture.New()
+	messages := testsupport.NewConversationStore()
 	if writeErr := messages.Write(t.Context(), "ses_1",
 		chat.NewUserMessage(chat.NewTextPart("first")),
 		chat.NewAssistantMessage(chat.NewTextPart("reply")),
