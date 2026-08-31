@@ -21,12 +21,12 @@ The interactive command opens the Oolong TUI. `run` supports human-readable text
 
 CLI preferences and embedded Runtime configuration have separate owners.
 
-CLI preferences select the provider/model pair for new runs and configure run limits, approvals, UI, plugins, and key bindings:
+CLI preferences configure optional provider/model overrides, run limits, approvals, UI, plugins, and key bindings. With no override, new Runs inherit the active Session's Runtime-owned durable selection:
 
 - `./.flame.yaml` is the project-local CLI preferences file
 - without it, Flame reads `flame/config.yaml` below the OS user config directory
 - `--config` selects an explicit CLI preferences file
-- `FLAME_*` variables and CLI flags override file values
+- `FLAME_CLI_*` variables and CLI flags override file values
 - `flame config path` and `flame config show` report the selected file and merged result
 
 [`config/config.example.yaml`](config/config.example.yaml) is a valid strict-schema example. Provider credentials, custom endpoints, utility/embedding roles, server settings, sandboxing, MCP, and LSP remain Runtime-owned:
@@ -38,7 +38,7 @@ CLI preferences select the provider/model pair for new runs and configure run li
 
 The worktree development file contains a live DeepSeek credential. Production code may load it for an explicitly requested live test. Commands, tests, logs, errors, snapshots, and documentation must never print or copy the credential.
 
-Provider and model identity is exact. Configuration and output preserve the provider/model pair and model-owned options; the CLI never infers a provider from a model name.
+Provider and model identity is exact. An override is either a complete provider/model pair or absent; absence is not a DeepSeek default and does not overwrite a Session. Configuration and output preserve the pair and model-owned options, and the CLI never infers a provider from a model name. Runtime deployment variables keep the `FLAME_*` namespace; CLI consumer preferences use `FLAME_CLI_*`, so one process cannot interpret the same environment variable as two owners' settings.
 
 ## Runtime ownership
 
