@@ -800,3 +800,66 @@ async function assertVisibleKeyboardFocus(target: ReturnType<Page["locator"]>): 
       style.backgroundColor !== "rgba(0, 0, 0, 0)",
   ).toBe(true);
 }
+
+// The audit above visits every declared state, but only as first rendered. A menu, a picker
+// or a dialog is not in the document until someone opens it, so its subtree was never
+// audited — and both defects this found were in one: 12px metadata at 3.7:1 because an
+// opacity was stacked on a token that already carries the faint step, and a 16px-tall target
+// that passed the size rule only while nothing was near enough to fail the spacing exception.
+const OVERLAYS: ReadonlyArray<{
+  readonly label: string;
+  readonly route: FixtureRoute;
+  readonly open: string;
+}> = [
+  {
+    label: "approval mode menu",
+    route: { fixture: "agent", state: "idle" },
+    open: "Approval mode",
+  },
+  { label: "model picker", route: { fixture: "agent", state: "idle" }, open: "Switch model" },
+  {
+    label: "reasoning effort menu",
+    route: { fixture: "agent", state: "idle" },
+    open: "Switch reasoning effort",
+  },
+];
+
+for (const overlay of OVERLAYS) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`WCAG audit ${overlay.label} ${theme}`, async ({ page }) => {
+      await openFixture(page, { ...overlay.route, theme });
+      const trigger = page.getByRole("button", { name: overlay.open }).first();
+      await trigger.click();
+      // The popup is portalled, so wait for it rather than for the trigger's own state.
+      await expect(
+        page.locator('[role="menu"], [role="dialog"], [role="listbox"]').first(),
+      ).toBeVisible();
+
+      const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
+      expect(
+        results.violations,
+        results.violations
+          .map(
+            (violation) =>
+              `${violation.id}: ${violation.help}\n${violation.nodes
+                .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
+                .join("\n")}`,
+          )
+          .join("\n\n"),
+      ).toEqual([]);
+    });
+  }
+}
+
+// WCAG 2.2 target size, asserted on the geometry rather than through a popup that happens to
+// land nearby: the spacing exception made a 16px-tall control pass until something moved next
+// to it. A control carrying text is the one that must meet the floor on its own — an
+// icon-only button sits in a row that spaces it.
+test("a text-bearing control meets the minimum target size", async ({ page }) => {
+  await openFixture(page, { fixture: "workspace", state: "dock-light" });
+  const summary = page.locator('[data-goal="summary"]');
+  await expect(summary).toBeVisible();
+  expect(
+    await summary.evaluate((el) => Math.round(el.getBoundingClientRect().height)),
+  ).toBeGreaterThanOrEqual(24);
+});

@@ -90,9 +90,7 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
       aria-label={title}
     >
       {primary.length > 0 && <span className="block truncate">{primary.join(" · ")}</span>}
-      {secondary.length > 0 && (
-        <span className="block truncate opacity-80">{secondary.join(" · ")}</span>
-      )}
+      {secondary.length > 0 && <span className="block truncate">{secondary.join(" · ")}</span>}
     </span>
   );
 }
