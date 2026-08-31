@@ -15,9 +15,9 @@ import (
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 
-	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"

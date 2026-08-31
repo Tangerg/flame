@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
 
-	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 )
 
 func (q *queueDrawer) Place(space image.Point) layout.Placement {

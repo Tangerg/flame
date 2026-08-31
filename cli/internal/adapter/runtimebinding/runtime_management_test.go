@@ -8,7 +8,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -178,14 +178,14 @@ func TestModelConfigurationRejectsMutationIdentityDrift(t *testing.T) {
 		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
 	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
-	role, err := modelconfig.NewConfiguredRole(modelconfig.UtilityRole, "deepseek", "chat")
+	role, err := models.NewConfiguredRole(models.UtilityRole, "deepseek", "chat")
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = runtime.SetRole(t.Context(), role)
 	requireRuntimeContractViolation(t, err)
-	change := modelconfig.ValueChange{Kind: modelconfig.ClearValue}
-	_, err = runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{Provider: "deepseek", APIKey: &change})
+	change := models.ValueChange{Kind: models.ClearValue}
+	_, err = runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -202,9 +202,9 @@ func TestModelConfigurationRejectsPartialRoleProjection(t *testing.T) {
 
 func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
-	setBaseURL := modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: "https://new.example"}
-	setAPIKey := modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: "stored-secret"}
-	update := modelconfig.UpdateProvider{Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey}
+	setBaseURL := models.ValueChange{Kind: models.SetValue, Value: "https://new.example"}
+	setAPIKey := models.ValueChange{Kind: models.SetValue, Value: "stored-secret"}
+	update := models.UpdateProvider{Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey}
 	valid := func() protocol.Provider {
 		baseURL := setBaseURL.Value
 		return protocol.Provider{
@@ -247,7 +247,7 @@ func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
 
 func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 	t.Parallel()
-	clear := modelconfig.ValueChange{Kind: modelconfig.ClearValue}
+	clear := models.ValueChange{Kind: models.ClearValue}
 	result := protocol.Provider{
 		ID: "deepseek", Credential: &protocol.ProviderCredential{Masked: "en****ey", Source: protocol.ProviderKeySourceEnv},
 		Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
@@ -257,7 +257,7 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
 	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
-	if _, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
 	}); err != nil {
 		t.Fatalf("UpdateProvider clear with environment fallback: %v", err)
@@ -265,7 +265,7 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 
 	stillConfigured := "https://still-configured.example"
 	result.BaseURL = &stillConfigured
-	if _, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &clear,
 	}); err == nil {
 		t.Fatal("UpdateProvider accepted a base URL after clear")
@@ -275,7 +275,7 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 
 	result.BaseURL = nil
 	result.Credential = &protocol.ProviderCredential{Masked: "st****ed", Source: protocol.ProviderKeySourceStored}
-	if _, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", APIKey: &clear,
 	}); err == nil {
 		t.Fatal("UpdateProvider accepted a stored key after clear")
@@ -351,23 +351,23 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 	if labelErr != nil || utilityLabel != "deepseek/chat" || roles.Embedding.Configured() {
 		t.Fatalf("Roles = (%+v, %v)", roles, err)
 	}
-	utilityRole, roleErr := modelconfig.NewConfiguredRole(modelconfig.UtilityRole, "openai", "utility")
+	utilityRole, roleErr := models.NewConfiguredRole(models.UtilityRole, "openai", "utility")
 	if roleErr != nil {
 		t.Fatal(roleErr)
 	}
 	if _, setRoleErr := runtime.SetRole(t.Context(), utilityRole); setRoleErr != nil {
 		t.Fatal(setRoleErr)
 	}
-	if _, setRoleErr := runtime.SetRole(t.Context(), modelconfig.DisabledEmbeddingRole()); setRoleErr != nil {
+	if _, setRoleErr := runtime.SetRole(t.Context(), models.DisabledEmbeddingRole()); setRoleErr != nil {
 		t.Fatal(setRoleErr)
 	}
 	providers, err := runtime.Providers(t.Context())
 	if err != nil || len(providers) != 1 || !providers[0].Configured() {
 		t.Fatalf("Providers = (%+v, %v)", providers, err)
 	}
-	secret := modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: "secret"}
-	clear := modelconfig.ValueChange{Kind: modelconfig.ClearValue}
-	if _, updateProviderErr := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{Provider: "deepseek", BaseURL: &clear, APIKey: &secret}); updateProviderErr != nil {
+	secret := models.ValueChange{Kind: models.SetValue, Value: "secret"}
+	clear := models.ValueChange{Kind: models.ClearValue}
+	if _, updateProviderErr := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", BaseURL: &clear, APIKey: &secret}); updateProviderErr != nil {
 		t.Fatal(updateProviderErr)
 	}
 	tested, err := runtime.TestProvider(t.Context(), "deepseek")

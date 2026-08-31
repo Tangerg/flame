@@ -9,8 +9,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
-	"github.com/Tangerg/flame/cli/internal/delivery/sideload"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
+	"github.com/Tangerg/flame/cli/internal/delivery/terminal/sideload"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )

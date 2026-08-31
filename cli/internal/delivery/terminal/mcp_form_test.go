@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
 
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {

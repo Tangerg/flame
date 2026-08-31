@@ -278,7 +278,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 		{public: "Changes", private: "changes", typeName: "changefeed.Source"},
 		{public: "Transfers", private: "transfers", typeName: "session.TransferService"},
 		{public: "Usage", private: "usage", typeName: "agent.UsageService"},
-		{public: "ModelConfig", private: "modelConfig", typeName: "modelconfig.Service"},
+		{public: "ModelConfig", private: "modelConfig", typeName: "models.Service"},
 		{public: "Goals", private: "goals", typeName: "agent.GoalService"},
 		{public: "Skills", private: "skills", typeName: "workspace.SkillService"},
 		{public: "MCP", private: "mcp", typeName: "mcp.Service"},
@@ -328,7 +328,7 @@ func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.
 
 func TestWorkbenchOwnsExplicitPersistenceAndCapacitySemantics(t *testing.T) {
 	root := moduleRoot(t)
-	storePath := filepath.Join(root, "internal", "application", "workbench", "store.go")
+	storePath := filepath.Join(root, "internal", "application", "agent", "workbench", "store.go")
 	config := cliStructFieldTypes(t, storePath, "Config")
 	for _, field := range []string{"HistoryCapacity", "StashCapacity", "WorkspaceCapacity"} {
 		if got := config[field]; got != "*Capacity" {
@@ -366,11 +366,11 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 		structure string
 		fields    []string
 	}{
-		{path: filepath.Join(root, "internal", "application", "workbench", "pending_run.go"), structure: "PendingRun", fields: []string{"Replay", "CancelReplay"}},
-		{path: filepath.Join(root, "internal", "application", "workbench", "pending_run.go"), structure: "PendingResume", fields: []string{"Replay"}},
-		{path: filepath.Join(root, "internal", "application", "workbench", "steer.go"), structure: "PendingSteer", fields: []string{"replay"}},
-		{path: filepath.Join(root, "internal", "application", "workbench", "session_deletion.go"), structure: "PendingSessionDeletion", fields: []string{"Replay"}},
-		{path: filepath.Join(root, "internal", "application", "workbench", "session_rollback.go"), structure: "PendingSessionRollback", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "agent", "workbench", "pending_run.go"), structure: "PendingRun", fields: []string{"Replay", "CancelReplay"}},
+		{path: filepath.Join(root, "internal", "application", "agent", "workbench", "pending_run.go"), structure: "PendingResume", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "agent", "workbench", "steer.go"), structure: "PendingSteer", fields: []string{"replay"}},
+		{path: filepath.Join(root, "internal", "application", "agent", "workbench", "session_deletion.go"), structure: "PendingSessionDeletion", fields: []string{"Replay"}},
+		{path: filepath.Join(root, "internal", "application", "agent", "workbench", "session_rollback.go"), structure: "PendingSessionRollback", fields: []string{"Replay"}},
 	}
 	for _, check := range checks {
 		fields := cliStructFieldTypes(t, check.path, check.structure)
@@ -385,7 +385,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 			}
 		}
 	}
-	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "application", "run", "execution.go"), "Invocation")
+	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "application", "agent", "run", "execution.go"), "Invocation")
 	if got := invocation["ReplayPolicy"]; got != "commandreplay.Policy" {
 		t.Fatalf("run.Invocation.ReplayPolicy type = %q, want commandreplay.Policy", got)
 	}
@@ -393,9 +393,9 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 		t.Fatal("run.Invocation restored primitive ReplayRetention")
 	}
 	for _, path := range []string{
-		filepath.Join(root, "internal", "application", "run", "steering.go"),
-		filepath.Join(root, "internal", "application", "session", "deletion.go"),
-		filepath.Join(root, "internal", "application", "session", "rollback.go"),
+		filepath.Join(root, "internal", "application", "agent", "run", "steering.go"),
+		filepath.Join(root, "internal", "application", "agent", "session", "deletion.go"),
+		filepath.Join(root, "internal", "application", "agent", "session", "rollback.go"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
@@ -405,7 +405,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 			t.Errorf("%s restored a consumer-local ReplayWindow", path)
 		}
 	}
-	mutationPath := filepath.Join(root, "internal", "application", "mutation", "confirmation.go")
+	mutationPath := filepath.Join(root, "internal", "application", "agent", "mutation", "confirmation.go")
 	contents, err := os.ReadFile(mutationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -419,7 +419,7 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 
 func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "application", "workbench", "steer.go")
+	path := filepath.Join(root, "internal", "application", "agent", "workbench", "steer.go")
 	want := map[string]string{
 		"sessionID": "string", "command": "agent.SteerRun", "stagedAt": "time.Time",
 		"replay": "commandreplay.Guard",
@@ -437,7 +437,7 @@ func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing
 		}
 	}
 
-	applicationPath := filepath.Join(root, "internal", "application", "run", "steering.go")
+	applicationPath := filepath.Join(root, "internal", "application", "agent", "run", "steering.go")
 	contents, err := os.ReadFile(applicationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -830,7 +830,7 @@ func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 		path string
 		want string
 	}{
-		{path: filepath.Join(root, "internal", "application", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
+		{path: filepath.Join(root, "internal", "application", "agent", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
 		{path: filepath.Join(root, "internal", "adapter", "runtimebinding", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
 	} {
 		contents, err := os.ReadFile(consumer.path)
@@ -880,13 +880,13 @@ func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 
 func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "application", "modelconfig", "modelconfig.go")
+	path := filepath.Join(root, "internal", "application", "integration", "models", "configuration.go")
 	fields := cliStructFieldTypes(t, path, "Role")
 	want := map[string]string{
 		"kind": "RoleKind", "mode": "roleMode", "provider": "string", "model": "string",
 	}
 	if !maps.Equal(fields, want) {
-		t.Fatalf("modelconfig.Role fields = %v, want private closed role %v", fields, want)
+		t.Fatalf("models.Role fields = %v, want private closed role %v", fields, want)
 	}
 	contents, err := os.ReadFile(path)
 	if err != nil {
@@ -897,10 +897,10 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 		"func InheritedUtilityRole()", "func DisabledEmbeddingRole()", "func NewConfiguredRole(",
 	} {
 		if !strings.Contains(text, constructor) {
-			t.Errorf("modelconfig.Role lacks constructor %q", constructor)
+			t.Errorf("models.Role lacks constructor %q", constructor)
 		}
 	}
-	projectionPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "modelconfig.go")
+	projectionPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "models.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
@@ -914,14 +914,14 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(contents), "modelconfig.Role{Kind:") {
+	if strings.Contains(string(contents), "models.Role{Kind:") {
 		t.Fatal("terminal restored caller-shaped model role construction")
 	}
 }
 
 func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.T) {
 	root := moduleRoot(t)
-	queuePath := filepath.Join(root, "internal", "application", "promptqueue", "queue.go")
+	queuePath := filepath.Join(root, "internal", "application", "agent", "promptqueue", "queue.go")
 	entry := cliStructFieldTypes(t, queuePath, "Entry")
 	if got := entry["ID"]; got != "EntryID" {
 		t.Fatalf("promptqueue.Entry.ID type = %q, want EntryID", got)
@@ -939,7 +939,7 @@ func TestPromptQueueIdentityAndDispatchPresenceHaveNoNumericSentinel(t *testing.
 	if _, exists := cliStructFieldTypes(t, queuePath, "Queue")["revision"]; exists {
 		t.Fatal("promptqueue.Queue restored an unowned revision counter")
 	}
-	idPath := filepath.Join(root, "internal", "application", "promptqueue", "entry_id.go")
+	idPath := filepath.Join(root, "internal", "application", "agent", "promptqueue", "entry_id.go")
 	id := cliStructFieldTypes(t, idPath, "EntryID")
 	if !maps.Equal(id, map[string]string{"value": "uint64"}) {
 		t.Fatalf("promptqueue.EntryID fields = %v, want private uint64 value", id)
@@ -1014,7 +1014,7 @@ func TestRetrySchedulesRequireNamedConstructionAndOneTerminalOwner(t *testing.T)
 
 func TestAttachmentCompletionOwnsItsFiniteResultBudget(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "adapter", "attachment", "resolver.go")
+	path := filepath.Join(root, "internal", "adapter", "filesystem", "attachment", "resolver.go")
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
 		t.Fatalf("parse attachment resolver: %v", err)
@@ -1056,7 +1056,7 @@ func TestPromptHistoryOwnsOneNamedRetentionCapacity(t *testing.T) {
 
 func TestSideloadCommandTimeoutKeepsJSONPresenceInARichDeclaration(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "delivery", "sideload", "directory_source.go")
+	path := filepath.Join(root, "internal", "delivery", "terminal", "sideload", "directory_source.go")
 	manifest := cliStructFieldTypes(t, path, "commandManifest")
 	if got := manifest["Timeout"]; got != "commandTimeoutDeclaration" {
 		t.Fatalf("sideload.commandManifest.Timeout type = %q, want commandTimeoutDeclaration", got)
@@ -1146,24 +1146,24 @@ var layers = []struct {
 	{"internal/domain/failure/", "failure"},
 	{"internal/application/changefeed/", "changefeed"},
 	{"internal/domain/workspace/", "workspace"},
-	{"internal/application/modelconfig/", "modelconfig"},
-	{"internal/application/mcp/", "mcp"},
+	{"internal/application/integration/models/", "models"},
+	{"internal/application/integration/mcp/", "mcp"},
 	{"internal/domain/schedule/", "schedule"},
-	{"internal/delivery/sideload/", "sideload"},
+	{"internal/delivery/terminal/sideload/", "sideload"},
 	{"internal/delivery/terminal/", "terminal"},
-	{"internal/adapter/attachment/", "attachment"},
-	{"internal/application/promptqueue/", "promptqueue"},
-	{"internal/application/mutation/", "mutation"},
+	{"internal/adapter/filesystem/attachment/", "attachment"},
+	{"internal/application/agent/promptqueue/", "promptqueue"},
+	{"internal/application/agent/mutation/", "mutation"},
 	{"internal/application/retry/", "retry"},
-	{"internal/application/run/", "run"},
+	{"internal/application/agent/run/", "run"},
 	{"internal/domain/commandreplay/", "commandreplay"},
-	{"internal/application/session/", "session"},
-	{"internal/adapter/sessionartifact/", "sessionartifact"},
-	{"internal/application/workbench/", "workbench"},
+	{"internal/application/agent/session/", "session"},
+	{"internal/adapter/filesystem/sessionartifact/", "sessionartifact"},
+	{"internal/application/agent/workbench/", "workbench"},
 	{"internal/domain/agent/", "agent"},
 	{"internal/application/settings/", "settings"},
 	{"internal/application/extensions/", "extensions"},
-	{"internal/delivery/render/", "render"},
+	{"internal/delivery/cmd/render/", "render"},
 	{"internal/delivery/cmd/", "cmd"},
 	{"internal/arch/", "arch"},
 }
@@ -1179,7 +1179,7 @@ var allowed = map[string][]string{
 	"agent":           {"exactint", "failure", "identity", "workspace"},
 	"changefeed":      nil,
 	"workspace":       nil,
-	"modelconfig":     {"failure", "identity"},
+	"models":          {"failure", "identity"},
 	"mcp":             {"failure"},
 	"schedule":        {"exactint", "identity"},
 	"settings":        {"agent"},
@@ -1195,12 +1195,12 @@ var allowed = map[string][]string{
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
-	"runtimebinding": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "schedule", "session", "workspace"},
+	"runtimebinding": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "models", "schedule", "session", "workspace"},
 	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimebinding", "schedule", "session", "sessionartifact", "settings", "workbench", "workspace"},
+	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "models", "mutation", "promptqueue", "retry", "run", "runtimebinding", "schedule", "session", "sessionartifact", "settings", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimebinding", "session", "settings", "workbench"},
 	"arch":     nil,
@@ -1260,6 +1260,69 @@ func TestEveryInternalPackageBelongsToALayer(t *testing.T) {
 	}
 }
 
+// TestRingPackagesUseContextHierarchy keeps a ring from regressing into a flat
+// catalog. Direct packages must be ring-wide mechanisms or context-root
+// aggregates; related capability families use one non-package namespace.
+func TestRingPackagesUseContextHierarchy(t *testing.T) {
+	topologies := []struct {
+		ring     string
+		direct   []string
+		contexts []string
+	}{
+		{
+			ring:   "domain",
+			direct: []string{"agent", "commandreplay", "failure", "identity", "schedule", "workspace"},
+		},
+		{
+			ring:     "application",
+			direct:   []string{"changefeed", "extensions", "retry", "settings"},
+			contexts: []string{"agent", "integration"},
+		},
+		{
+			ring:     "adapter",
+			direct:   []string{"runtimebinding"},
+			contexts: []string{"filesystem"},
+		},
+		{
+			ring:     "delivery",
+			direct:   []string{"cmd", "terminal"},
+			contexts: []string{"cmd", "terminal"},
+		},
+	}
+
+	root := moduleRoot(t)
+	packages := make(map[string]struct{})
+	walk(t, root, func(dir, _ string) {
+		if strings.HasPrefix(dir, "internal/") {
+			packages[dir] = struct{}{}
+		}
+	})
+	for _, topology := range topologies {
+		t.Run(topology.ring, func(t *testing.T) {
+			prefix := "internal/" + topology.ring + "/"
+			for dir := range packages {
+				if !strings.HasPrefix(dir, prefix) {
+					continue
+				}
+				relative := strings.TrimPrefix(dir, prefix)
+				parts := strings.Split(relative, "/")
+				switch len(parts) {
+				case 1:
+					if !slices.Contains(topology.direct, relative) {
+						t.Errorf("%s is a flat package without ring-wide ownership; place it under a proven context namespace", relative)
+					}
+				case 2:
+					if !slices.Contains(topology.contexts, parts[0]) {
+						t.Errorf("%s uses unreviewed context namespace %s", relative, parts[0])
+					}
+				default:
+					t.Errorf("%s nests beyond ring/context/package", relative)
+				}
+			}
+		})
+	}
+}
+
 func TestPackagePathsDoNotRepeatTheirOwners(t *testing.T) {
 	root := moduleRoot(t)
 	packages := make(map[string]struct{})
@@ -1291,7 +1354,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimebinding", "schedule", "workspace", "settings", "runtimefixture", "attachment", "promptqueue", "run", "session", "sessionartifact", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "models", "mutation", "retry", "runtimebinding", "schedule", "workspace", "settings", "runtimefixture", "attachment", "promptqueue", "run", "session", "sessionartifact", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1363,38 +1426,38 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/domain/agent", "internal/delivery/terminal", true},
 		{"internal/domain/agent", "internal/adapter/runtimebinding", true},
 		{"internal/application/extensions", "internal/domain/agent", true},
-		{"internal/testsupport/runtimefixture", "internal/delivery/render", true},
-		{"internal/adapter/attachment", "internal/delivery/terminal", true},
+		{"internal/testsupport/runtimefixture", "internal/delivery/cmd/render", true},
+		{"internal/adapter/filesystem/attachment", "internal/delivery/terminal", true},
 		{"internal/application/retry", "internal/delivery/cmd", true},
-		{"internal/application/run", "internal/delivery/cmd", true},
-		{"internal/application/session", "internal/delivery/terminal", true},
-		{"internal/adapter/sessionartifact", "internal/delivery/terminal", true},
-		{"internal/application/workbench", "internal/delivery/terminal", true},
+		{"internal/application/agent/run", "internal/delivery/cmd", true},
+		{"internal/application/agent/session", "internal/delivery/terminal", true},
+		{"internal/adapter/filesystem/sessionartifact", "internal/delivery/terminal", true},
+		{"internal/application/agent/workbench", "internal/delivery/terminal", true},
 		{"internal/application/settings", "internal/delivery/terminal", true},
-		{"internal/application/promptqueue", "internal/delivery/terminal", true},
-		{"internal/delivery/render", "internal/delivery/terminal", true},
+		{"internal/application/agent/promptqueue", "internal/delivery/terminal", true},
+		{"internal/delivery/cmd/render", "internal/delivery/terminal", true},
 		{"internal/delivery/terminal", "internal/delivery/cmd", true},
-		{"internal/delivery/sideload", "internal/delivery/cmd", true},
+		{"internal/delivery/terminal/sideload", "internal/delivery/cmd", true},
 
 		{"internal/testsupport/runtimefixture", "internal/domain/agent", false},
 		{"internal/adapter/runtimebinding", "internal/domain/agent", false},
 		{"internal/adapter/runtimebinding", "internal/delivery/terminal", true},
 		{"internal/delivery/terminal", "internal/domain/agent", false},
-		{"internal/delivery/terminal", "internal/adapter/sessionartifact", false},
-		{"internal/delivery/terminal", "internal/application/session", false},
-		{"internal/delivery/terminal", "internal/application/workbench", false},
+		{"internal/delivery/terminal", "internal/adapter/filesystem/sessionartifact", false},
+		{"internal/delivery/terminal", "internal/application/agent/session", false},
+		{"internal/delivery/terminal", "internal/application/agent/workbench", false},
 		{"internal/delivery/terminal", "internal/application/extensions", false},
 		{"internal/delivery/cmd", "internal/delivery/terminal", true},
-		{"internal/delivery/sideload", "internal/application/extensions", false},
-		{"internal/delivery/render", "internal/domain/agent", false},
-		{"internal/adapter/attachment", "internal/domain/agent", false},
+		{"internal/delivery/terminal/sideload", "internal/application/extensions", false},
+		{"internal/delivery/cmd/render", "internal/domain/agent", false},
+		{"internal/adapter/filesystem/attachment", "internal/domain/agent", false},
 		{"internal/application/retry", "internal/domain/agent", false},
-		{"internal/application/run", "internal/domain/agent", false},
-		{"internal/delivery/cmd", "internal/application/session", false},
-		{"internal/delivery/cmd", "internal/application/run", false},
+		{"internal/application/agent/run", "internal/domain/agent", false},
+		{"internal/delivery/cmd", "internal/application/agent/session", false},
+		{"internal/delivery/cmd", "internal/application/agent/run", false},
 		{"internal/application/settings", "internal/domain/agent", false},
-		{"internal/application/session", "internal/domain/agent", false},
-		{"internal/application/promptqueue", "internal/domain/agent", false},
+		{"internal/application/agent/session", "internal/domain/agent", false},
+		{"internal/application/agent/promptqueue", "internal/domain/agent", false},
 	} {
 		from, to := layerOf(tc.from), layerOf(tc.to)
 		if from == "" {

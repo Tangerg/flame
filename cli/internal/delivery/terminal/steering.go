@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/application/mutation"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

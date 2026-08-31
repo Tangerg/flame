@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"

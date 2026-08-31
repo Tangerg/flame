@@ -12,10 +12,10 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"

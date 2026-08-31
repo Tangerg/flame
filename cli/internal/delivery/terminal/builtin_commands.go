@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -68,8 +68,8 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: CommandDescriptor{Name: "models", Title: "inspect runtime model capabilities and pricing"}, Run: func(a *app, _ string) error { a.ShowModels(); return nil }},
 			localCommand{Descriptor: CommandDescriptor{Name: "usage", Title: "inspect session and runtime usage", Arguments: OptionalArguments}, Available: availableWithUsage, Run: func(a *app, days string) error { return a.ShowUsage(days) }},
 			localCommand{Descriptor: CommandDescriptor{Name: "roles", Title: "inspect utility and embedding model roles"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.ShowModelRoles(); return nil }},
-			localCommand{Descriptor: CommandDescriptor{Name: "utility", Title: "set the utility model role", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.SetModelRole(modelconfig.UtilityRole, target) }},
-			localCommand{Descriptor: CommandDescriptor{Name: "embedding", Title: "set the embedding model role", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.SetModelRole(modelconfig.EmbeddingRole, target) }},
+			localCommand{Descriptor: CommandDescriptor{Name: "utility", Title: "set the utility model role", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.SetModelRole(models.UtilityRole, target) }},
+			localCommand{Descriptor: CommandDescriptor{Name: "embedding", Title: "set the embedding model role", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.SetModelRole(models.EmbeddingRole, target) }},
 			localCommand{Descriptor: CommandDescriptor{Name: "providers", Title: "inspect configured model providers"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.ShowProviders(); return nil }},
 			localCommand{Descriptor: CommandDescriptor{Name: "provider-test", Title: "test a configured provider", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.TestConfiguredProvider(provider) }},
 			localCommand{Descriptor: CommandDescriptor{Name: "provider-config", Title: "configure provider endpoint and credentials", Arguments: RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.ConfigureProvider(provider) }},

@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 type mcpFormMode uint8

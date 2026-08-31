@@ -15,18 +15,18 @@ import (
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/highlight"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/adapter/sessionartifact"
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
@@ -68,7 +68,7 @@ type app struct {
 	changes          changefeed.Source
 	transfers        session.TransferService
 	usage            agent.UsageService
-	modelConfig      modelconfig.Service
+	modelConfig      models.Service
 	goals            agent.GoalService
 	skills           workspace.SkillService
 	mcp              mcp.Service
@@ -190,7 +190,7 @@ type appConfig struct {
 	changes          changefeed.Source
 	transfers        session.TransferService
 	usage            agent.UsageService
-	modelConfig      modelconfig.Service
+	modelConfig      models.Service
 	goals            agent.GoalService
 	skills           workspace.SkillService
 	mcp              mcp.Service

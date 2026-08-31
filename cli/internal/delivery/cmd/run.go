@@ -12,11 +12,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
-	"github.com/Tangerg/flame/cli/internal/application/session"
-	"github.com/Tangerg/flame/cli/internal/delivery/render"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

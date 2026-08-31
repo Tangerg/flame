@@ -1,6 +1,6 @@
-// Package modelconfig defines provider and auxiliary-model configuration as
+// Package models defines provider and auxiliary-model configuration as
 // consumer-owned values. Secrets remain write-only and never enter Provider.
-package modelconfig
+package models
 
 import (
 	"context"

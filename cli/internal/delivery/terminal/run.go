@@ -14,19 +14,19 @@ import (
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/term"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
-	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
@@ -41,7 +41,7 @@ type Config struct {
 	Changes          changefeed.Source
 	Transfers        session.TransferService
 	Usage            agent.UsageService
-	ModelConfig      modelconfig.Service
+	ModelConfig      models.Service
 	Goals            agent.GoalService
 	Skills           workspace.SkillService
 	MCP              mcp.Service

@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/cli/internal/delivery/render"
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

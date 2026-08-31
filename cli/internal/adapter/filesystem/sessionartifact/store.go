@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
-	"github.com/Tangerg/flame/cli/internal/application/session"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
 
 // Store owns the filesystem boundary for session documents. Its zero value is

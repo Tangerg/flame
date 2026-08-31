@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )

@@ -14,10 +14,10 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -233,23 +233,23 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	})
 
 	t.Run("model roles", func(t *testing.T) {
-		models := newModelConfigServiceStub()
+		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: models, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/roles")
 		host.Press(input.Enter)
 		host.Shows(t, "inherit the run model")
 
-		models.mu.Lock()
-		updated, err := modelconfig.NewConfiguredRole(modelconfig.UtilityRole, "deepseek", "chat")
+		service.mu.Lock()
+		updated, err := models.NewConfiguredRole(models.UtilityRole, "deepseek", "chat")
 		if err != nil {
-			models.mu.Unlock()
+			service.mu.Unlock()
 			t.Fatal(err)
 		}
-		models.roles.Utility = updated
-		models.mu.Unlock()
+		service.roles.Utility = updated
+		service.mu.Unlock()
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed role delivery")
 		host.Shows(t, "deepseek/chat")
@@ -258,20 +258,20 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	})
 
 	t.Run("providers", func(t *testing.T) {
-		models := newModelConfigServiceStub()
+		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: models, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/providers")
 		host.Press(input.Enter)
 		host.Shows(t, "api.deepseek.example")
 
-		models.mu.Lock()
-		models.providers[0] = terminalTestProvider(
-			"deepseek", "https://new.deepseek.example", "sk****42", modelconfig.KeyStored,
+		service.mu.Lock()
+		service.providers[0] = terminalTestProvider(
+			"deepseek", "https://new.deepseek.example", "sk****42", models.KeyStored,
 		)
-		models.mu.Unlock()
+		service.mu.Unlock()
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed provider delivery")
 		host.Shows(t, "new.deepseek.example")

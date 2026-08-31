@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/oolong/components/kit"
 
-	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

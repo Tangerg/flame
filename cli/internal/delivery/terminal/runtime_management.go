@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -193,7 +193,7 @@ func (a *app) modelRolesReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func modelRolesDocument(roles modelconfig.Roles) (readerDocument, error) {
+func modelRolesDocument(roles models.Roles) (readerDocument, error) {
 	if err := roles.Validate(); err != nil {
 		return readerDocument{}, fmt.Errorf("model roles document: %w", err)
 	}
@@ -211,7 +211,7 @@ func modelRolesDocument(roles modelconfig.Roles) (readerDocument, error) {
 	}), nil
 }
 
-func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
+func (a *app) SetModelRole(kind models.RoleKind, argument string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
@@ -221,8 +221,8 @@ func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
 	}
 	a.status.note("updating " + string(kind) + " model role")
 	started := a.runAdmissionMutation(modelConfigOperation, false,
-		func(ctx context.Context) (modelconfig.Role, error) { return a.modelConfig.SetRole(ctx, role) },
-		func(updated modelconfig.Role, err error) {
+		func(ctx context.Context) (models.Role, error) { return a.modelConfig.SetRole(ctx, role) },
+		func(updated models.Role, err error) {
 			if err != nil {
 				a.message("update " + string(kind) + " role failed: " + err.Error())
 				return
@@ -241,23 +241,23 @@ func (a *app) SetModelRole(kind modelconfig.RoleKind, argument string) error {
 	return nil
 }
 
-func parseModelRole(kind modelconfig.RoleKind, argument string) (modelconfig.Role, error) {
+func parseModelRole(kind models.RoleKind, argument string) (models.Role, error) {
 	if err := kind.Validate(); err != nil {
-		return modelconfig.Role{}, err
+		return models.Role{}, err
 	}
 	switch {
-	case kind == modelconfig.UtilityRole && strings.EqualFold(argument, utilityRoleInheritedArgument):
-		return modelconfig.InheritedUtilityRole(), nil
-	case kind == modelconfig.EmbeddingRole && strings.EqualFold(argument, embeddingRoleDisabledArgument):
-		return modelconfig.DisabledEmbeddingRole(), nil
+	case kind == models.UtilityRole && strings.EqualFold(argument, utilityRoleInheritedArgument):
+		return models.InheritedUtilityRole(), nil
+	case kind == models.EmbeddingRole && strings.EqualFold(argument, embeddingRoleDisabledArgument):
+		return models.DisabledEmbeddingRole(), nil
 	}
 	provider, model, found := strings.Cut(argument, "/")
 	if !found {
-		return modelconfig.Role{}, modelRoleUsage(kind)
+		return models.Role{}, modelRoleUsage(kind)
 	}
-	role, err := modelconfig.NewConfiguredRole(kind, provider, model)
+	role, err := models.NewConfiguredRole(kind, provider, model)
 	if err != nil {
-		return modelconfig.Role{}, modelRoleUsage(kind)
+		return models.Role{}, modelRoleUsage(kind)
 	}
 	return role, nil
 }
@@ -267,8 +267,8 @@ const (
 	embeddingRoleDisabledArgument = "off"
 )
 
-func modelRoleUsage(kind modelconfig.RoleKind) error {
-	if kind == modelconfig.UtilityRole {
+func modelRoleUsage(kind models.RoleKind) error {
+	if kind == models.UtilityRole {
 		return errors.New("usage: /utility <provider/model|inherit>")
 	}
 	return errors.New("usage: /embedding <provider/model|off>")
@@ -295,7 +295,7 @@ func (a *app) providersReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func providersDocument(providers []modelconfig.Provider) readerDocument {
+func providersDocument(providers []models.Provider) readerDocument {
 	lines := make([]string, 0, len(providers))
 	for _, provider := range providers {
 		status := "not configured"
@@ -332,10 +332,10 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	}
 	a.status.note("testing provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
-		func(ctx context.Context) (modelconfig.TestResult, error) {
+		func(ctx context.Context) (models.TestResult, error) {
 			return a.modelConfig.TestProvider(ctx, providerID)
 		},
-		func(result modelconfig.TestResult, err error) {
+		func(result models.TestResult, err error) {
 			if err != nil {
 				a.message("provider test failed: " + err.Error())
 				return
@@ -363,19 +363,19 @@ func (a *app) ConfigureProvider(providerID string) error {
 	presentation := a.sessionContext
 	a.status.note("loading provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
-		func(ctx context.Context) (modelconfig.Provider, error) {
+		func(ctx context.Context) (models.Provider, error) {
 			providers, err := a.modelConfig.Providers(ctx)
 			if err != nil {
-				return modelconfig.Provider{}, err
+				return models.Provider{}, err
 			}
 			for _, provider := range providers {
 				if provider.ID() == providerID {
 					return provider, nil
 				}
 			}
-			return modelconfig.Provider{}, errors.New("provider not found: " + providerID)
+			return models.Provider{}, errors.New("provider not found: " + providerID)
 		},
-		func(provider modelconfig.Provider, err error) {
+		func(provider models.Provider, err error) {
 			if err != nil {
 				a.message("configure provider failed: " + err.Error())
 				return
@@ -393,7 +393,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	return nil
 }
 
-func (a *app) openProviderConfig(provider modelconfig.Provider) {
+func (a *app) openProviderConfig(provider models.Provider) {
 	baseURL, endpointConfigured := provider.BaseURL()
 	baseMode := formChangeKeep
 	if provider.RequiresBaseURL() && !endpointConfigured {
@@ -486,30 +486,30 @@ func (a *app) openProviderConfig(provider modelconfig.Provider) {
 	dialog.Controller().Show()
 }
 
-func providerUpdate(providerID string, baseMode formChange, baseURL string, keyMode formChange, apiKey string) (modelconfig.UpdateProvider, error) {
-	update := modelconfig.UpdateProvider{Provider: providerID}
+func providerUpdate(providerID string, baseMode formChange, baseURL string, keyMode formChange, apiKey string) (models.UpdateProvider, error) {
+	update := models.UpdateProvider{Provider: providerID}
 	baseChange, err := valueChange(baseMode, strings.TrimSpace(baseURL))
 	if err != nil {
-		return modelconfig.UpdateProvider{}, err
+		return models.UpdateProvider{}, err
 	}
 	keyChange, err := valueChange(keyMode, apiKey)
 	if err != nil {
-		return modelconfig.UpdateProvider{}, err
+		return models.UpdateProvider{}, err
 	}
 	update.BaseURL, update.APIKey = baseChange, keyChange
 	return update, nil
 }
 
-func valueChange(mode formChange, value string) (*modelconfig.ValueChange, error) {
+func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 	if err := mode.Validate(); err != nil {
 		return nil, err
 	}
 	switch mode {
 	case formChangeSet:
-		change := &modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: value}
+		change := &models.ValueChange{Kind: models.SetValue, Value: value}
 		return change, change.Validate()
 	case formChangeClear:
-		change := &modelconfig.ValueChange{Kind: modelconfig.ClearValue}
+		change := &models.ValueChange{Kind: models.ClearValue}
 		return change, change.Validate()
 	case formChangeKeep:
 		return nil, nil
@@ -517,13 +517,13 @@ func valueChange(mode formChange, value string) (*modelconfig.ValueChange, error
 	panic("validated form change became unreachable")
 }
 
-func (a *app) updateProvider(update modelconfig.UpdateProvider) {
+func (a *app) updateProvider(update models.UpdateProvider) {
 	a.status.note("updating provider " + update.Provider)
 	started := a.runAdmissionMutation(modelConfigOperation, false,
-		func(ctx context.Context) (modelconfig.Provider, error) {
+		func(ctx context.Context) (models.Provider, error) {
 			return a.modelConfig.UpdateProvider(ctx, update)
 		},
-		func(provider modelconfig.Provider, err error) {
+		func(provider models.Provider, err error) {
 			if err != nil {
 				a.message("update provider failed: " + err.Error())
 				return

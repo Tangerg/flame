@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/session"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
 
 type sessionOutputResult struct {

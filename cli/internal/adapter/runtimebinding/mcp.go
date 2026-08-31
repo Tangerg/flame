@@ -12,7 +12,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 type mcpBinding interface {

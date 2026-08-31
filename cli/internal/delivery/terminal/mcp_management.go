@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )

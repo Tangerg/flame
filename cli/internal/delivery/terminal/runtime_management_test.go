@@ -15,7 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -90,27 +90,27 @@ func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 
 func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
 	t.Parallel()
-	utility, err := parseModelRole(modelconfig.UtilityRole, utilityRoleInheritedArgument)
+	utility, err := parseModelRole(models.UtilityRole, utilityRoleInheritedArgument)
 	if err != nil || utility.Configured() {
 		t.Fatalf("utility inherit = (%+v, %v)", utility, err)
 	}
-	embedding, err := parseModelRole(modelconfig.EmbeddingRole, embeddingRoleDisabledArgument)
+	embedding, err := parseModelRole(models.EmbeddingRole, embeddingRoleDisabledArgument)
 	if err != nil || embedding.Configured() {
 		t.Fatalf("embedding off = (%+v, %v)", embedding, err)
 	}
-	if _, err := parseModelRole(modelconfig.UtilityRole, embeddingRoleDisabledArgument); err == nil {
+	if _, err := parseModelRole(models.UtilityRole, embeddingRoleDisabledArgument); err == nil {
 		t.Fatal("utility accepted embedding's disabled command")
 	}
-	if _, err := parseModelRole(modelconfig.EmbeddingRole, utilityRoleInheritedArgument); err == nil {
+	if _, err := parseModelRole(models.EmbeddingRole, utilityRoleInheritedArgument); err == nil {
 		t.Fatal("embedding accepted utility's inherited command")
 	}
-	configured, err := parseModelRole(modelconfig.UtilityRole, "deepseek/maintenance")
+	configured, err := parseModelRole(models.UtilityRole, "deepseek/maintenance")
 	provider, model, present := configured.ProviderModel()
 	if err != nil || !present || provider != "deepseek" || model != "maintenance" {
 		t.Fatalf("configured role = (%+v, %v)", configured, err)
 	}
 	for _, argument := range []string{" deepseek/maintenance", "deepseek /maintenance", "deepseek/ maintenance"} {
-		if _, err := parseModelRole(modelconfig.UtilityRole, argument); err == nil {
+		if _, err := parseModelRole(models.UtilityRole, argument); err == nil {
 			t.Fatalf("configured role normalized identity input %q", argument)
 		}
 	}
@@ -191,22 +191,22 @@ func TestSessionReplacementCancelsAnOutstandingSideQuery(t *testing.T) {
 
 type modelConfigServiceStub struct {
 	mu        sync.Mutex
-	roles     modelconfig.Roles
-	providers []modelconfig.Provider
-	updates   chan modelconfig.UpdateProvider
+	roles     models.Roles
+	providers []models.Provider
+	updates   chan models.UpdateProvider
 }
 
 type blockingProviderUpdateService struct {
 	*modelConfigServiceStub
-	started  chan modelconfig.UpdateProvider
+	started  chan models.UpdateProvider
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 func (b *blockingProviderUpdateService) UpdateProvider(
 	ctx context.Context,
-	update modelconfig.UpdateProvider,
-) (modelconfig.Provider, error) {
+	update models.UpdateProvider,
+) (models.Provider, error) {
 	select {
 	case b.started <- update:
 	default:
@@ -219,31 +219,31 @@ func (b *blockingProviderUpdateService) UpdateProvider(
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return modelconfig.Provider{}, context.Cause(ctx)
+		return models.Provider{}, context.Cause(ctx)
 	}
 }
 
 func newModelConfigServiceStub() *modelConfigServiceStub {
 	return &modelConfigServiceStub{
-		roles: modelconfig.Roles{
-			Utility:   modelconfig.InheritedUtilityRole(),
-			Embedding: modelconfig.DisabledEmbeddingRole(),
+		roles: models.Roles{
+			Utility:   models.InheritedUtilityRole(),
+			Embedding: models.DisabledEmbeddingRole(),
 		},
-		providers: []modelconfig.Provider{terminalTestProvider(
-			"deepseek", "https://api.deepseek.example", "sk****42", modelconfig.KeyStored,
+		providers: []models.Provider{terminalTestProvider(
+			"deepseek", "https://api.deepseek.example", "sk****42", models.KeyStored,
 		)},
-		updates: make(chan modelconfig.UpdateProvider, 1),
+		updates: make(chan models.UpdateProvider, 1),
 	}
 }
 
-func terminalTestProvider(id, rawBaseURL, masked string, source modelconfig.KeySource) modelconfig.Provider {
-	credential, err := modelconfig.NewCredential(masked, source)
+func terminalTestProvider(id, rawBaseURL, masked string, source models.KeySource) models.Provider {
+	credential, err := models.NewCredential(masked, source)
 	if err != nil {
 		panic(err)
 	}
-	provider, err := modelconfig.NewProvider(modelconfig.ProviderSpec{
+	provider, err := models.NewProvider(models.ProviderSpec{
 		ID: id, BaseURL: &rawBaseURL, Credential: &credential, Configured: true,
-		CredentialRequirement: modelconfig.APIKeyRequired,
+		CredentialRequirement: models.APIKeyRequired,
 	})
 	if err != nil {
 		panic(err)
@@ -251,19 +251,19 @@ func terminalTestProvider(id, rawBaseURL, masked string, source modelconfig.KeyS
 	return provider
 }
 
-func (m *modelConfigServiceStub) Roles(context.Context) (modelconfig.Roles, error) {
+func (m *modelConfigServiceStub) Roles(context.Context) (models.Roles, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.roles, nil
 }
 
-func (m *modelConfigServiceStub) SetRole(_ context.Context, role modelconfig.Role) (modelconfig.Role, error) {
+func (m *modelConfigServiceStub) SetRole(_ context.Context, role models.Role) (models.Role, error) {
 	if err := role.Validate(); err != nil {
-		return modelconfig.Role{}, err
+		return models.Role{}, err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if role.Kind() == modelconfig.UtilityRole {
+	if role.Kind() == models.UtilityRole {
 		m.roles.Utility = role
 	} else {
 		m.roles.Embedding = role
@@ -271,15 +271,15 @@ func (m *modelConfigServiceStub) SetRole(_ context.Context, role modelconfig.Rol
 	return role, nil
 }
 
-func (m *modelConfigServiceStub) Providers(context.Context) ([]modelconfig.Provider, error) {
+func (m *modelConfigServiceStub) Providers(context.Context) ([]models.Provider, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return append([]modelconfig.Provider(nil), m.providers...), nil
+	return append([]models.Provider(nil), m.providers...), nil
 }
 
-func (m *modelConfigServiceStub) UpdateProvider(_ context.Context, update modelconfig.UpdateProvider) (modelconfig.Provider, error) {
+func (m *modelConfigServiceStub) UpdateProvider(_ context.Context, update models.UpdateProvider) (models.Provider, error) {
 	if err := update.Validate(); err != nil {
-		return modelconfig.Provider{}, err
+		return models.Provider{}, err
 	}
 	cloned := update
 	if update.BaseURL != nil {
@@ -296,16 +296,16 @@ func (m *modelConfigServiceStub) UpdateProvider(_ context.Context, update modelc
 	return m.providers[0], nil
 }
 
-func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string) (modelconfig.TestResult, error) {
+func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string) (models.TestResult, error) {
 	if providerID == "deepseek" {
-		return modelconfig.TestResult{OK: true}, nil
+		return models.TestResult{OK: true}, nil
 	}
-	return modelconfig.TestResult{}, errors.New("unknown provider")
+	return models.TestResult{}, errors.New("unknown provider")
 }
 
 func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing.T) {
-	models := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: models})
+	service := newModelConfigServiceStub()
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/providers")
 	host.Press(input.Enter)
@@ -334,20 +334,20 @@ func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing
 	}
 	host.Press(input.Enter)
 	host.Shows(t, "provider updated · deepseek")
-	update := <-models.updates
-	if update.BaseURL != nil || update.APIKey == nil || update.APIKey.Kind != modelconfig.SetValue || update.APIKey.Value != secret {
+	update := <-service.updates
+	if update.BaseURL != nil || update.APIKey == nil || update.APIKey.Kind != models.SetValue || update.APIKey.Value != secret {
 		t.Fatalf("provider update = %+v", update)
 	}
 	stop()
 }
 
 func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
-	models := newModelConfigServiceStub()
-	models.providers[0] = terminalTestProvider(
-		"deepseek", "https://api.deepseek.example", "sk****env", modelconfig.KeyEnvironment,
+	service := newModelConfigServiceStub()
+	service.providers[0] = terminalTestProvider(
+		"deepseek", "https://api.deepseek.example", "sk****env", models.KeyEnvironment,
 	)
 	host, stop := runUIWithRuntimeServices(t, Config{
-		Runtime: runtimefixture.New(), ModelConfig: models,
+		Runtime: runtimefixture.New(), ModelConfig: service,
 	})
 	host.Shows(t, "Ask flame")
 	host.Type("/provider-config deepseek")
@@ -361,8 +361,8 @@ func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
 	host.Type("STORED_PROVIDER_OVERRIDE")
 	host.Press(input.Enter)
 	host.Shows(t, "provider updated · deepseek")
-	update := awaitValue(t, models.updates, "environment provider override")
-	if update.APIKey == nil || update.APIKey.Kind != modelconfig.SetValue || update.APIKey.Value != "STORED_PROVIDER_OVERRIDE" {
+	update := awaitValue(t, service.updates, "environment provider override")
+	if update.APIKey == nil || update.APIKey.Kind != models.SetValue || update.APIKey.Value != "STORED_PROVIDER_OVERRIDE" {
 		t.Fatalf("provider update = %+v", update)
 	}
 	stop()
@@ -372,7 +372,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	baseService := newModelConfigServiceStub()
 	service := &blockingProviderUpdateService{
 		modelConfigServiceStub: baseService,
-		started:                make(chan modelconfig.UpdateProvider, 1),
+		started:                make(chan models.UpdateProvider, 1),
 		release:                make(chan struct{}),
 		canceled:               make(chan struct{}, 1),
 	}
@@ -397,7 +397,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	host.Type("ROTATED_PROVIDER_KEY")
 	host.Press(input.Enter)
 	update := awaitValue(t, service.started, "provider update mutation")
-	if update.Provider != "deepseek" || update.APIKey == nil || update.APIKey.Kind != modelconfig.SetValue {
+	if update.Provider != "deepseek" || update.APIKey == nil || update.APIKey.Kind != models.SetValue {
 		t.Fatalf("provider update = %+v", update)
 	}
 

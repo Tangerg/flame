@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
 
-	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 

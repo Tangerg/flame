@@ -55,22 +55,32 @@ service locator.
 
 ## Package shape
 
-The physical tree makes the four dependency rings visible without adding
-umbrella Go packages:
+The physical tree makes the four dependency rings and their proven context
+families visible without adding umbrella Go packages:
 
 ```text
 internal/
-├── domain/       CLI-owned values, aggregates, and invariants
-├── application/  use cases, local workflows, and durable Workbench state
-├── adapter/      Runtime and filesystem translation
-├── delivery/     Cobra, terminal interaction, rendering, and plugin delivery
-├── exactint/     cross-ring exact integer mechanism
-├── testsupport/  test-only runtime fixture
-└── arch/         dependency fitness tests
+├── domain/
+│   ├── agent  commandreplay  failure  identity  schedule  workspace
+├── application/
+│   ├── agent/{mutation,promptqueue,run,session,workbench}
+│   ├── integration/{mcp,models}
+│   └── changefeed  extensions  retry  settings
+├── adapter/
+│   ├── filesystem/{attachment,sessionartifact}
+│   └── runtimebinding
+├── delivery/
+│   ├── cmd/{render}
+│   └── terminal/{sideload}
+├── exactint/       cross-ring exact integer mechanism
+├── testsupport/    test-only runtime fixture
+└── arch/           dependency fitness tests
 ```
 
-The ring directories are navigation and import boundaries, not facades. A leaf
-package earns independence by owning at least one of these concerns:
+Ring and context directories are navigation and import boundaries, not
+facades. `cmd` and `terminal` are context-root packages that also own one child
+boundary; namespace-only directories contain no Go facade. A leaf package earns
+independence by owning at least one of these concerns:
 
 - a stable consumer vocabulary or invariant
 - a durable CLI-local aggregate
@@ -82,8 +92,16 @@ Single-concept packages that only rename a value, expose one forwarding function
 
 Do not collapse the tree into a broad `service` or `backend` layer. Prefer cohesive packages with several responsibility-named files.
 
-`internal/application/run` owns the CLI application workflow for unattended execution,
-segment reattachment, and durable steering settlement. `internal/application/session` owns
+The Agent application context groups Run, Session, Workbench, prompt queue, and
+mutation-settlement owners without merging their distinct lifecycles. Runtime
+integration management groups MCP and provider/model configuration. Shared
+retry, invalidation, settings, and plugin mechanisms remain direct Application
+packages because multiple contexts consume them. Filesystem adapters group
+dynamic attachments and Session artifact publication; command renderers and
+terminal sideloading sit beneath the delivery owner they extend.
+
+`internal/application/agent/run` owns the CLI application workflow for unattended execution,
+segment reattachment, and durable steering settlement. `internal/application/agent/session` owns
 Session opening, updates, deletion, rollback, and their local settlement. These
 packages orchestrate Runtime commands and CLI-local records; they do not own a
 second Run or Session state machine. `internal/application/retry` owns the shared retry
@@ -93,18 +111,18 @@ attempt budget for Run, Runtime invalidation, workspace inspection, and MCP
 management. Do not split retry admission from the schedule it consumes.
 
 `internal/domain/commandreplay` owns the pure, durable capability/guard/policy model
-for one Runtime replay store. `internal/application/mutation` consumes that model together
+for one Runtime replay store. `internal/application/agent/mutation` consumes that model together
 with Agent error classification and retry to settle acknowledgement; combining
 them would make the persisted value owner depend on I/O behavior. Likewise,
-`internal/application/promptqueue` remains a CLI application aggregate rather than Terminal
+`internal/application/agent/promptqueue` remains a CLI application aggregate rather than Terminal
 state: it owns per-Session FIFO order, stable identities, hold/edit rules,
 dispatch reservation, durable restore, and rollback. Terminal only presents
 and commands that aggregate.
 
-`internal/application/session` also owns the portable Session document value, export/import
+`internal/application/agent/session` also owns the portable Session document value, export/import
 requests, and the consumer-owned Runtime transfer port. These facts share the
 Session identity and lifecycle; they are not a separate bounded context.
-`internal/adapter/sessionartifact` remains a distinct outbound filesystem adapter: it
+`internal/adapter/filesystem/sessionartifact` remains a distinct outbound filesystem adapter: it
 owns path resolution, bounded reads, conflict-safe publication, and exact-byte
 transfer without owning the document semantics.
 

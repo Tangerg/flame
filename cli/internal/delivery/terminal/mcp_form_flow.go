@@ -3,7 +3,7 @@ package terminal
 import (
 	"github.com/Tangerg/oolong/components/headless"
 
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 type mcpFormStep uint8

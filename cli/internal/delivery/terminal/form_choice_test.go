@@ -3,7 +3,7 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 )
 
 func TestFormChangeRejectsAnUninitializedSelection(t *testing.T) {
@@ -19,11 +19,11 @@ func TestFormChangeRejectsAnUninitializedSelection(t *testing.T) {
 
 func TestFormChangeBuildsValidatedProviderChanges(t *testing.T) {
 	set, err := valueChange(formChangeSet, "https://models.example")
-	if err != nil || set == nil || set.Kind != modelconfig.SetValue || set.Value != "https://models.example" {
+	if err != nil || set == nil || set.Kind != models.SetValue || set.Value != "https://models.example" {
 		t.Fatalf("set change = (%+v, %v)", set, err)
 	}
 	clear, err := valueChange(formChangeClear, "")
-	if err != nil || clear == nil || clear.Kind != modelconfig.ClearValue {
+	if err != nil || clear == nil || clear.Kind != models.ClearValue {
 		t.Fatalf("clear change = (%+v, %v)", clear, err)
 	}
 	keep, err := valueChange(formChangeKeep, "")

@@ -10,10 +10,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/mcp"
-	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/application/session"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -357,9 +357,9 @@ func configureIntegrationRuntime(t *testing.T) {
 
 func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 	t.Helper()
-	setBaseURL := modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: "https://provider.integration.test"}
-	setAPIKey := modelconfig.ValueChange{Kind: modelconfig.SetValue, Value: "integration-stored-key"}
-	configured, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
+	setBaseURL := models.ValueChange{Kind: models.SetValue, Value: "https://provider.integration.test"}
+	setAPIKey := models.ValueChange{Kind: models.SetValue, Value: "integration-stored-key"}
+	configured, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey,
 	})
 	if err != nil {
@@ -371,8 +371,8 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 		t.Fatalf("configured provider = %+v", configured)
 	}
 
-	clear := modelconfig.ValueChange{Kind: modelconfig.ClearValue}
-	fallback, err := runtime.UpdateProvider(t.Context(), modelconfig.UpdateProvider{
+	clear := models.ValueChange{Kind: models.ClearValue}
+	fallback, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
 	})
 	if err != nil {

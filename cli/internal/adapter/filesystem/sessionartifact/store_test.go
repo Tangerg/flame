@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/application/session"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
 
 func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
