@@ -837,6 +837,8 @@ provider 的 key，读取面自然回落到 `credential:{source:"env",masked}`�
 清空 optional credential 不会把拥有完整 endpoint policy 的 provider 误判为未配置。声明 `requiresBaseUrl:true` 的 provider
 在更新后的最终状态中必须保有 endpoint，不能靠 credential presence 掩盖 endpoint 缺失，也不能清空已有 URL。
 `providers.test` 是只读探测，失败 verdict 走 `ProviderTestResult.error`，不改变配置。
+探测由 Runtime 以 10 秒 deadline 有界结算；caller cancel 仍终止 command，Runtime-owned timeout 则返回稳定的 failed verdict，
+不会让一个不响应的 endpoint 永久占住客户端配置操作。
 
 `models.*` 提供模型目录与 utility / embedding 角色；`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
 
