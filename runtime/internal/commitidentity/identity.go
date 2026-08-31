@@ -12,7 +12,7 @@ import (
 
 const Prefix = "run_commit_"
 
-var ErrInvalid = errors.New("Run commit identity must use the run_commit_ prefix and contain bounded URI-safe ASCII")
+var ErrInvalid = errors.New("run commit identity must use the run_commit_ prefix and contain bounded URI-safe ASCII")
 
 type ID struct {
 	value string

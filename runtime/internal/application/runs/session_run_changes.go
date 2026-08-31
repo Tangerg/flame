@@ -15,7 +15,9 @@ type sessionRunObservation struct {
 	observers map[*sessionRunObserver]struct{}
 }
 
-type sessionRunObserver struct{ registration byte }
+// sessionRunObserver must have non-zero size: distinct pointers to zero-sized
+// values are permitted to compare equal, but each observer is one exact map key.
+type sessionRunObserver byte
 
 func (s *sessionRunChanges) observe(sessionID string) (<-chan struct{}, func()) {
 	s.mu.Lock()

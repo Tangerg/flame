@@ -404,13 +404,6 @@ func identityItems[Identity ~string](field string, values []Identity) FieldError
 	return FieldError{}
 }
 
-func optionalIdentityItems[Identity ~string](field string, values *[]Identity) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return identityItems(field, *values)
-}
-
 func textPrefixItems[Identity ~string](field string, values []Identity, prefix string) FieldError {
 	for index, value := range values {
 		if !strings.HasPrefix(string(value), prefix) {
@@ -421,13 +414,6 @@ func textPrefixItems[Identity ~string](field string, values []Identity, prefix s
 		}
 	}
 	return FieldError{}
-}
-
-func optionalTextPrefixItems[Identity ~string](field string, values *[]Identity, prefix string) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return textPrefixItems(field, *values, prefix)
 }
 
 func textPatternItems[Identity ~string](field string, values []Identity, pattern string) FieldError {
@@ -475,20 +461,6 @@ func requiredTextPrefix(field, value, prefix string) FieldError {
 	return FieldError{}
 }
 
-func optionalTextPrefix(field, value, prefix string) FieldError {
-	if value == "" {
-		return FieldError{}
-	}
-	return requiredTextPrefix(field, value, prefix)
-}
-
-func requiredTextPointerPrefix(field string, value *string, prefix string) FieldError {
-	if value == nil {
-		return FieldError{Field: field, Detail: "is required"}
-	}
-	return requiredTextPrefix(field, *value, prefix)
-}
-
 func optionalTextPointerPrefix(field string, value *string, prefix string) FieldError {
 	if value == nil {
 		return FieldError{}
@@ -509,20 +481,6 @@ func optionalTextPattern(field, value, pattern string) FieldError {
 		return FieldError{}
 	}
 	return requiredTextPattern(field, value, pattern)
-}
-
-func requiredTextPointerPattern(field string, value *string, pattern string) FieldError {
-	if value == nil {
-		return FieldError{Field: field, Detail: "is required"}
-	}
-	return requiredTextPattern(field, *value, pattern)
-}
-
-func optionalTextPointerPattern(field string, value *string, pattern string) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return requiredTextPattern(field, *value, pattern)
 }
 
 // nonEmptyProperties rejects an empty object map. nil remains a valid omission;

@@ -767,7 +767,7 @@ func TestDriverResumeRequiresTheFrozenGoalCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g = replaceStoredGoal(t, store, g, expected)
+	_ = replaceStoredGoal(t, store, g, expected)
 	runUseCases := &fakeRuns{
 		t: t, store: store,
 		script: []scriptedRun{{setStatus: goal.StatusComplete, outcome: run.OutcomeCompleted}},
@@ -1596,13 +1596,13 @@ func TestReconcileDegradesActiveAndClearsComplete(t *testing.T) {
 	active, _ := goal.New("live", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-live", now)
 	done, _ := goal.New("done", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-done", now)
 	paused, _ := goal.New("held", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-held", now)
-	active = seedStoredGoal(t, store, active)
+	_ = seedStoredGoal(t, store, active)
 	done = seedStoredGoal(t, store, done)
 	doneReplacement, _ := done.Complete(now)
-	done = replaceStoredGoal(t, store, doneReplacement, done.Version())
-	paused = seedStoredGoal(t, store, paused)
+	_ = replaceStoredGoal(t, store, doneReplacement, done.Version())
+	_ = seedStoredGoal(t, store, paused)
 	pausedReplacement, _ := paused.Pause(goal.ReasonAwaitingInput, "", now)
-	paused = replaceStoredGoal(t, store, pausedReplacement, paused.Version())
+	_ = replaceStoredGoal(t, store, pausedReplacement, paused.Version())
 
 	d := newDriver(t, store)
 	if err := d.Reconcile(context.Background()); err != nil {
@@ -1746,7 +1746,7 @@ func TestReconcileSweepsOrphanGoal(t *testing.T) {
 	kept = seedStoredGoal(t, store, kept)
 	expected := kept.Version()
 	kept, _ = kept.Pause(goal.ReasonAwaitingInput, "", now)
-	kept = replaceStoredGoal(t, store, kept, expected)
+	_ = replaceStoredGoal(t, store, kept, expected)
 
 	d := goals.NewDriver(store, &fakeRuns{t: t, store: store}, &fakeSessions{deleted: map[string]bool{"gone": true}}, goals.NewSessionMutations(), nil, testPrompt)
 	cleanupDriver(t, d)
@@ -1815,7 +1815,7 @@ func TestStopResumeRaceNeverWedgesActive(t *testing.T) {
 		g = seedStoredGoal(t, store, g)
 		expected := g.Version()
 		g, _ = g.Pause(goal.ReasonAwaitingInput, "", time.Unix(0, 0))
-		g = replaceStoredGoal(t, store, g, expected)
+		_ = replaceStoredGoal(t, store, g, expected)
 		fake := &fakeRuns{t: t, store: store, script: []scriptedRun{{outcome: run.OutcomeCompleted}}}
 		d := goals.NewDriver(store, fake, &fakeSessions{}, goals.NewSessionMutations(), nil, testPrompt)
 

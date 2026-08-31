@@ -241,11 +241,10 @@ func constraintCheck(
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
 	case dispatch.ConstraintIdentityItems:
-		validatorName := "identityItems"
 		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalIdentityItems"
+			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer identity items", shape, selector))
 		}
-		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
+		return fmt.Sprintf("identityItems(%s, %s)", field, ref)
 	case dispatch.ConstraintMaxPropertyNameLength:
 		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintIdentityPropertyNames:
@@ -253,12 +252,12 @@ func constraintCheck(
 	case dispatch.ConstraintPrefix:
 		validatorName := "requiredTextPrefix"
 		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "requiredTextPointerPrefix"
-			if leaf.Optional {
-				validatorName = "optionalTextPointerPrefix"
+			if !leaf.Optional {
+				panic(fmt.Sprintf("contractgen: %s.%s uses unsupported required pointer prefix", shape, selector))
 			}
+			validatorName = "optionalTextPointerPrefix"
 		} else if leaf.Optional {
-			validatorName = "optionalTextPrefix"
+			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported optional value prefix", shape, selector))
 		}
 		return fmt.Sprintf(
 			"%s(%s, %s, %s)",
@@ -268,13 +267,11 @@ func constraintCheck(
 			strconv.Quote(constraint.Value),
 		)
 	case dispatch.ConstraintPrefixItems:
-		validatorName := "textPrefixItems"
 		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalTextPrefixItems"
+			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer prefix items", shape, selector))
 		}
 		return fmt.Sprintf(
-			"%s(%s, %s, %s)",
-			validatorName,
+			"textPrefixItems(%s, %s, %s)",
 			field,
 			ref,
 			strconv.Quote(constraint.Value),
@@ -294,10 +291,7 @@ func constraintCheck(
 	case dispatch.ConstraintPattern:
 		validatorName := "requiredTextPattern"
 		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "requiredTextPointerPattern"
-			if leaf.Optional {
-				validatorName = "optionalTextPointerPattern"
-			}
+			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer pattern", shape, selector))
 		} else if leaf.Optional {
 			validatorName = "optionalTextPattern"
 		}
