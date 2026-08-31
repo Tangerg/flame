@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { type MCPServerSettings, useMCPServers } from "./mcpServerQueries";
+import { type MCPServerSettings } from "./mcpServerQueries";
 import type { MCPServerInput } from "./mcpServerInput";
 import type { MCPServerTestOutcome } from "./ports/mcpServerGateway";
 import { MCPServerMutationOwner, mcpServerMutationWasRetired } from "./mcpServerMutationOwner";
@@ -9,10 +9,6 @@ export type { MCPTransport } from "./mcpServerQueries";
 export type { MCPServerTestOutcome } from "./ports/mcpServerGateway";
 export type { MCPServerSettings };
 export { mcpServerMutationWasRetired };
-
-export function useMCPServerConfigs() {
-  return useMCPServers();
-}
 
 export function useMCPServerMutationMaterialGeneration(): bigint {
   return useSyncExternalStore(

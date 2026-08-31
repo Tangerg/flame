@@ -2,7 +2,6 @@ import type { Translate } from "@/lib/i18n";
 import type { Tone } from "@/lib/tone";
 import { TOOL_FAMILIES, TOOL_ICON_BY_NAME, toolFamilyId } from "@/lib/toolFamilies";
 import {
-  useMCPServers,
   useMCPTools,
   type MCPServerSettings,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
@@ -51,10 +50,6 @@ const TONE_BY_SAFETY: Record<string, Tone> = {
 
 export function useBuiltinToolConfigs() {
   return useWorkspaceBuiltinTools();
-}
-
-export function useMCPServerConfigs() {
-  return useMCPServers();
 }
 
 export function useMCPServerToolConfigs(server: string) {

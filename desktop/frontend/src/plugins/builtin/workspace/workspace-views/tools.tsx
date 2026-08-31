@@ -1,4 +1,5 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
+import { useMCPServers } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
 import {
   Badge,
@@ -35,7 +36,6 @@ import {
   toolCatalogSubtext,
   toolCatalogViewModel,
   useBuiltinToolConfigs,
-  useMCPServerConfigs,
 } from "@/plugins/builtin/workspace/application/toolCatalog";
 
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
@@ -286,7 +286,7 @@ function openMcpSettings(): void {
 
 function ToolsTab() {
   const t = useT();
-  const { data, isLoading, isError } = useMCPServerConfigs();
+  const { data, isLoading, isError } = useMCPServers();
   const view = toolCatalogViewModel(data ?? []);
 
   return (
