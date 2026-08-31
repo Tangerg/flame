@@ -47,8 +47,8 @@ func (a *app) buildShortcutDialog(theme kit.Theme, glyphs kit.Glyphs, applicatio
 	viewport := headless.NewViewport(headless.Static{Of: table})
 	viewport.Keys = guideKeys
 	viewport.Scroll().Wheel(a.loop.Environment().Wheel())
-	a.shortcutViewport = viewport
-	a.shortcutDialog = newPresentationDialog(kit.DialogConfig{
+	a.dialogs.shortcutViewport = viewport
+	a.dialogs.shortcutDialog = newPresentationDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport,
 		Where: layout.Placement{Width: 88, Height: 24}, Keys: guideKeys,
 		Hints: []keymap.Action{headless.ScrollUp, headless.ScrollDown, headless.Close},
@@ -56,8 +56,8 @@ func (a *app) buildShortcutDialog(theme kit.Theme, glyphs kit.Glyphs, applicatio
 }
 
 func (a *app) showShortcutDialog() {
-	a.shortcutViewport.Scroll().ToTop()
-	a.shortcutDialog.Show()
+	a.dialogs.shortcutViewport.Scroll().ToTop()
+	a.dialogs.shortcutDialog.Show()
 	a.status.note("keyboard shortcuts")
 }
 

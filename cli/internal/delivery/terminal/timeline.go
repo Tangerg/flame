@@ -126,12 +126,12 @@ func (t *timelinePane) Handle(event input.Event) bool {
 func (t *timelinePane) Focus(has bool) { t.picker.Focus(has) }
 
 func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
-	a.timeline = newTimelinePane(theme, glyphs,
+	a.dialogs.timeline = newTimelinePane(theme, glyphs,
 		func(entry timelineEntry) {
-			if !a.timelineDialog.Open() {
+			if !a.dialogs.timelineDialog.Open() {
 				return
 			}
-			a.timelineDialog.Dismiss()
+			a.dialogs.timelineDialog.Dismiss()
 			if !a.transcript.JumpToRun(entry.Run.ID) {
 				a.message("that run no longer has retained transcript output")
 				return
@@ -139,41 +139,41 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 			a.shell.focus(transcriptPaneKey)
 		},
 		func(entry timelineEntry) {
-			if !a.timelineDialog.Open() {
+			if !a.dialogs.timelineDialog.Open() {
 				return
 			}
-			if a.conversation.Busy() || a.following || a.pendingCancel != nil {
+			if a.execution.blocksAdmission() {
 				a.message("finish or cancel the current run before forking")
 				return
 			}
-			a.timelineDialog.Dismiss()
+			a.dialogs.timelineDialog.Dismiss()
 			a.forkSessionFromRun(entry.Run.ID)
 		},
 	)
-	a.timelineDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: a.timeline,
+	a.dialogs.timelineDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: a.dialogs.timeline,
 		Where: layout.Placement{Width: 88, Height: 20},
 	})
-	a.timeline.picker.cancel = a.timelineDialog.Dismiss
+	a.dialogs.timeline.picker.cancel = a.dialogs.timelineDialog.Dismiss
 }
 
 func (a *app) ShowTimeline() {
-	runs := a.conversation.Runs()
+	runs := a.execution.conversation.Runs()
 	if len(runs) == 0 {
 		a.message("the current session has no runs")
 		return
 	}
-	a.timeline.SetLive(a.conversation.Busy() || a.following || a.pendingCancel != nil)
-	a.timeline.SetRuns(runs)
-	a.timelineDialog.Show()
+	a.dialogs.timeline.SetLive(a.execution.blocksAdmission())
+	a.dialogs.timeline.SetRuns(runs)
+	a.dialogs.timelineDialog.Show()
 }
 
 func (a *app) refreshOpenTimeline() {
-	if !a.timelineDialog.Open() {
+	if !a.dialogs.timelineDialog.Open() {
 		return
 	}
-	a.timeline.SetLive(a.conversation.Busy() || a.following || a.pendingCancel != nil)
-	a.timeline.RefreshRuns(a.conversation.Runs())
+	a.dialogs.timeline.SetLive(a.execution.blocksAdmission())
+	a.dialogs.timeline.RefreshRuns(a.execution.conversation.Runs())
 }
 
 func shortIdentity(identity string) string {

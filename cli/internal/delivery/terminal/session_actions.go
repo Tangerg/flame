@@ -30,7 +30,7 @@ func (a *app) prepareSessionImport(path string) error {
 	if err := a.requireRuntimeFeature(runtimebinding.FeatureSessionExport); err != nil {
 		return err
 	}
-	workspace := a.session.Workspace.Path
+	workspace := a.session.current.Workspace.Path
 	a.message("reading session artifact")
 	started := a.runOperation(sessionOutputOperation, false,
 		func(context.Context) (sessionImport, error) {
@@ -76,7 +76,7 @@ func (a *app) importSession(artifact session.Document) {
 }
 
 func (a *app) prepareSessionRollback(argument string) error {
-	request, err := parseRollbackArgument(a.session.ID, argument)
+	request, err := parseRollbackArgument(a.session.current.ID, argument)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, e
 
 func (a *app) confirmAction(title, question, action string, confirm func()) {
 	a.dismissConfirmation()
-	generation := a.sessionContext
+	generation := a.session.context
 	confirmed := false
 	choice := &headless.Select[bool]{Label: question, Value: headless.Bind(&confirmed), Rows: 2}
 	choice.SetOptions([]headless.Option[bool]{
@@ -279,15 +279,15 @@ func (a *app) confirmAction(title, question, action string, confirm func()) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	dismiss := func() {
-		if a.confirmationDialog == dialog {
+		if a.dialogs.confirmationDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.confirmationDialog = nil
+			a.dialogs.confirmationDialog = nil
 		}
 	}
 	form.Done = func() {
-		current := a.confirmationDialog == dialog
+		current := a.dialogs.confirmationDialog == dialog
 		dismiss()
-		if current && confirmed && a.sessionContext.current(generation) {
+		if current && confirmed && a.session.context.current(generation) {
 			confirm()
 		}
 	}
@@ -300,13 +300,13 @@ func (a *app) confirmAction(title, question, action string, confirm func()) {
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
 		Title: title, Body: body, Where: layout.Placement{Width: 78, Height: 9},
 	})
-	a.confirmationDialog = dialog
+	a.dialogs.confirmationDialog = dialog
 	dialog.Controller().Show()
 }
 
 func (a *app) dismissConfirmation() {
-	if a.confirmationDialog != nil {
-		a.confirmationDialog.Controller().Dismiss()
-		a.confirmationDialog = nil
+	if a.dialogs.confirmationDialog != nil {
+		a.dialogs.confirmationDialog.Controller().Dismiss()
+		a.dialogs.confirmationDialog = nil
 	}
 }

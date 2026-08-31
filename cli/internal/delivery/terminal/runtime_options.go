@@ -17,7 +17,7 @@ import (
 )
 
 func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
-	a.modelPicker = newPicker(theme, glyphs, "search models",
+	a.dialogs.modelPicker = newPicker(theme, glyphs, "search models",
 		func(model agent.Model) string {
 			label := model.DisplayName
 			if label == "" {
@@ -30,40 +30,40 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 		},
 		func(model agent.Model) string { return model.Provider + "/" + model.ID },
 		func(model agent.Model) {
-			if !a.modelDialog.Open() {
+			if !a.dialogs.modelDialog.Open() {
 				return
 			}
-			a.modelDialog.Dismiss()
+			a.dialogs.modelDialog.Dismiss()
 			a.selectSessionModel(model)
 		},
 	)
-	a.modelDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Models", Body: a.modelPicker,
+	a.dialogs.modelDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Models", Body: a.dialogs.modelPicker,
 		Where: layout.Placement{Width: 76, Height: 14},
 	})
-	a.modelPicker.cancel = a.modelDialog.Dismiss
+	a.dialogs.modelPicker.cancel = a.dialogs.modelDialog.Dismiss
 
-	a.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
+	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
 		approvalModeTitle,
 		approvalModeDetail,
 		func(mode agent.ApprovalMode) {
-			if !a.approvalModeDialog.Open() {
+			if !a.dialogs.approvalModeDialog.Open() {
 				return
 			}
-			a.approvalModeDialog.Dismiss()
+			a.dialogs.approvalModeDialog.Dismiss()
 			a.setApprovalMode(mode)
 		},
 	)
-	a.approvalModePicker.SetItems([]agent.ApprovalMode{agent.ApprovalModeSafe, agent.ApprovalModeBalanced, agent.ApprovalModeYolo})
-	a.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.approvalModePicker,
+	a.dialogs.approvalModePicker.SetItems([]agent.ApprovalMode{agent.ApprovalModeSafe, agent.ApprovalModeBalanced, agent.ApprovalModeYolo})
+	a.dialogs.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.dialogs.approvalModePicker,
 		Where: layout.Placement{Width: 88, Height: 9},
 	})
-	a.approvalModePicker.cancel = a.approvalModeDialog.Dismiss
+	a.dialogs.approvalModePicker.cancel = a.dialogs.approvalModeDialog.Dismiss
 }
 
 func (a *app) selectSessionModel(model agent.Model) {
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	a.runSessionChange("selecting model",
 		func(ctx context.Context) (agent.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
@@ -86,7 +86,7 @@ func (a *app) selectSessionModel(model agent.Model) {
 }
 
 func (a *app) ChooseModel() {
-	if a.conversation.Busy() || a.following {
+	if a.execution.observing() {
 		a.message("model changes apply between runs")
 		return
 	}
@@ -107,22 +107,22 @@ func (a *app) loadModelPicker(reset bool) {
 				return
 			}
 			if reset {
-				a.modelPicker.Reset()
+				a.dialogs.modelPicker.Reset()
 			}
-			a.modelPicker.SetItems(models)
-			a.modelDialog.Show()
+			a.dialogs.modelPicker.SetItems(models)
+			a.dialogs.modelDialog.Show()
 			a.status.note("choose a provider-qualified model")
 		},
 	)
 }
 
 func (a *app) ChooseApprovalMode() {
-	if a.conversation.Busy() || a.following {
+	if a.execution.observing() {
 		a.message("approval mode changes apply between runs")
 		return
 	}
-	a.approvalModePicker.Reset()
-	a.approvalModeDialog.Show()
+	a.dialogs.approvalModePicker.Reset()
+	a.dialogs.approvalModeDialog.Show()
 	a.status.note("choose the runtime approval mode")
 }
 
@@ -219,7 +219,7 @@ func (a *app) ShowApprovalRules() {
 }
 
 func (a *app) approvalRulesReaderQuery() runtimeReaderQuery {
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	return runtimeReaderQuery{
 		status: "loading approval rules", mode: runtimeReaderApprovalRules,
 		read: func(ctx context.Context) (readerDocument, error) {
@@ -255,7 +255,7 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 	if identity == "" {
 		return errors.New("usage: /rule-delete <rule-id>")
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	a.status.note("loading approval rule to forget")
 	if !a.runOperation(approvalRuleOperation, false,
 		func(ctx context.Context) (agent.ApprovalRule, error) {
@@ -339,7 +339,7 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 				return
 			}
 			a.status.note("approval rule forgotten · " + deleted.id)
-			if a.session.ID == sessionID {
+			if a.session.current.ID == sessionID {
 				a.setRuntimeReader(runtimeReaderApprovalRules)
 				a.openReaderDocument(approvalRulesDocument(deleted.rules))
 			}

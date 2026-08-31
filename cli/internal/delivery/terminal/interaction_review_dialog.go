@@ -55,7 +55,7 @@ func (i *interactionSummaryPane) Handle(event input.Event) bool {
 func (i *interactionSummaryPane) Focus(has bool) { i.form.Focus(has) }
 
 func (a *app) openInteractionSummary() {
-	review := a.interactionReview
+	review := a.dialogs.interactionReview
 	if review == nil || !review.Reviewing() {
 		return
 	}
@@ -77,7 +77,7 @@ func (a *app) openInteractionSummary() {
 	var dialog *kit.Dialog
 	settled := false
 	form.Done = func() {
-		if settled || a.interactionReview != review || a.reviewDialog != dialog {
+		if settled || a.dialogs.interactionReview != review || a.dialogs.reviewDialog != dialog {
 			return
 		}
 		if err := decision.Validate(); err != nil {
@@ -86,7 +86,7 @@ func (a *app) openInteractionSummary() {
 		}
 		settled = true
 		dialog.Controller().Dismiss()
-		a.reviewDialog = nil
+		a.dialogs.reviewDialog = nil
 		switch decision {
 		case interactionReviewSubmit:
 			a.resumeInteractions()
@@ -97,12 +97,12 @@ func (a *app) openInteractionSummary() {
 		}
 	}
 	form.GaveUp = func() {
-		if settled || a.interactionReview != review || a.reviewDialog != dialog {
+		if settled || a.dialogs.interactionReview != review || a.dialogs.reviewDialog != dialog {
 			return
 		}
 		settled = true
 		dialog.Controller().Dismiss()
-		a.reviewDialog = nil
+		a.dialogs.reviewDialog = nil
 		if !a.backInteraction() {
 			a.abortInteractions(interactionReviewCancellationReason)
 		}
@@ -120,7 +120,7 @@ func (a *app) openInteractionSummary() {
 		Title: "Review interactions", Body: pane,
 		Where: layout.Placement{Width: 88, Height: 22},
 	})
-	a.reviewDialog = dialog
+	a.dialogs.reviewDialog = dialog
 	dialog.Controller().Show()
 }
 

@@ -51,7 +51,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 	if err != nil {
 		return err
 	}
-	workspacePath := a.session.Workspace.Path
+	workspacePath := a.session.current.Workspace.Path
 	a.status.note("invoking diagnostic tool " + identity)
 	started := a.runOperation(diagnosticToolOperation, false,
 		func(ctx context.Context) (diagnosticInvocationResult, error) {
@@ -74,7 +74,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 				return
 			}
 			a.setRuntimeReader(runtimeReaderDiagnosticTools)
-			a.workspaceReader = workspaceReaderNone
+			a.dialogs.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(readerDocument{
 				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
 				Sections: []ToolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},

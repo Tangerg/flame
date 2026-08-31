@@ -91,12 +91,12 @@ func (s scheduleFormDraft) patch(original schedule.Schedule) (schedule.Patch, bo
 }
 
 func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedule) {
-	if a.scheduleDialog != nil {
-		a.scheduleDialog.Controller().Dismiss()
-		a.scheduleDialog = nil
+	if a.dialogs.scheduleDialog != nil {
+		a.dialogs.scheduleDialog.Controller().Dismiss()
+		a.dialogs.scheduleDialog = nil
 	}
-	generation := a.sessionContext
-	draft := newScheduleFormDraft(mode, scheduled, a.session.Workspace.Path)
+	generation := a.session.context
+	draft := newScheduleFormDraft(mode, scheduled, a.session.current.Workspace.Path)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
 		field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
 		field.Editor().Clipboard = a.loop.Clipboard()
@@ -121,13 +121,13 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	dismiss := func() {
-		if a.scheduleDialog == dialog {
+		if a.dialogs.scheduleDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.scheduleDialog = nil
+			a.dialogs.scheduleDialog = nil
 		}
 	}
 	form.Done = func() {
-		if a.scheduleDialog != dialog || !a.sessionContext.current(generation) {
+		if a.dialogs.scheduleDialog != dialog || !a.session.context.current(generation) {
 			return
 		}
 		switch mode {
@@ -167,7 +167,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 		Title: title, Body: body,
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.Measure(84), len(fields), 24)},
 	})
-	a.scheduleDialog = dialog
+	a.dialogs.scheduleDialog = dialog
 	dialog.Controller().Show()
 }
 

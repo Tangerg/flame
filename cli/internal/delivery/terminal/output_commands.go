@@ -15,7 +15,7 @@ type sessionOutputResult struct {
 }
 
 func (a *app) copyLastAssistant() error {
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	started := a.runOperation(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionOutputResult, error) {
 			snapshot, err := a.runtime.GetSession(ctx, sessionID)
@@ -30,7 +30,7 @@ func (a *app) copyLastAssistant() error {
 				a.message("copy last response failed: " + err.Error())
 				return
 			}
-			if a.session.ID != result.sessionID {
+			if a.session.current.ID != result.sessionID {
 				a.message("copy canceled because the active session changed")
 				return
 			}
@@ -55,8 +55,8 @@ func (a *app) exportSession(argument string) error {
 	if err != nil {
 		return err
 	}
-	sessionID, workspace := a.session.ID, a.session.Workspace.Path
-	title := a.session.Title
+	sessionID, workspace := a.session.current.ID, a.session.current.Workspace.Path
+	title := a.session.current.Title
 	started := a.runApplicationOperation(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionOutputResult, error) {
 			document, err := a.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})

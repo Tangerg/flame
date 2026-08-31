@@ -9,13 +9,13 @@ import (
 )
 
 func (a *app) openApprovalArgumentEditor() {
-	if a.approval == nil {
+	if a.dialogs.approval == nil {
 		return
 	}
-	a.approvalEditor = a.openContextEditor(contextEditorRequest{
+	a.dialogs.approvalEditor = a.openContextEditor(contextEditorRequest{
 		Title:       "Edit tool arguments",
 		Description: "The replacement applies once and is validated as one non-empty JSON object.",
-		Content:     a.approvalArguments,
+		Content:     a.dialogs.approvalArguments,
 		Placeholder: "{\n  \"argument\": \"replacement\"\n}",
 		Save: func(value string, complete func(error) bool) error {
 			override, err := agent.ParseToolArgumentOverride([]byte(value))
@@ -24,37 +24,37 @@ func (a *app) openApprovalArgumentEditor() {
 				return nil
 			}
 			if complete(nil) {
-				a.approvalEditor = nil
-				a.approvalOverride = override
-				a.approvalArguments = formatToolArguments(override.JSON())
+				a.dialogs.approvalEditor = nil
+				a.dialogs.approvalOverride = override
+				a.dialogs.approvalArguments = formatToolArguments(override.JSON())
 				a.setApprovalPreview(a.approvalPreviewSections())
 				a.setApprovalForm(approvalAllowOnce)
-				a.approvalPane.Focus(true)
-				a.approvalDialog.Controller().SetDescription("Arguments edited · choose how to proceed")
+				a.dialogs.approvalPane.Focus(true)
+				a.dialogs.approvalDialog.Controller().SetDescription("Arguments edited · choose how to proceed")
 			}
 			return nil
 		},
-		Dismissed: func() { a.approvalEditor = nil },
+		Dismissed: func() { a.dialogs.approvalEditor = nil },
 	})
 }
 
 func (a *app) approvalPreviewSections() []ToolSection {
-	sections := slices.Clone(a.approvalSections)
-	if a.approvalOverride == nil {
+	sections := slices.Clone(a.dialogs.approvalSections)
+	if a.dialogs.approvalOverride == nil {
 		return sections
 	}
 	return append(sections, ToolSection{
 		Title: "Edited arguments · one-shot", Style: toolSectionCode,
-		Language: "json", Text: a.approvalArguments,
+		Language: "json", Text: a.dialogs.approvalArguments,
 	})
 }
 
 func (a *app) dismissApprovalEditor() {
-	if a.approvalEditor == nil {
+	if a.dialogs.approvalEditor == nil {
 		return
 	}
-	a.approvalEditor.Dismiss()
-	a.approvalEditor = nil
+	a.dialogs.approvalEditor.Dismiss()
+	a.dialogs.approvalEditor = nil
 }
 
 func editableApprovalArguments(call *agent.ToolCall) string {

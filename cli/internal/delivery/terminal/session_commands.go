@@ -21,20 +21,20 @@ import (
 )
 
 func (a *app) ShowSessions() {
-	if a.conversation.Busy() || a.following {
+	if a.execution.observing() {
 		a.message("finish or cancel the current run before switching sessions")
 		return
 	}
-	a.sessionCenter.Reset()
+	a.dialogs.sessionCenter.Reset()
 	a.loadSessionPage("", false)
 }
 
 func (a *app) loadMoreSessions() {
-	if !a.sessionCenter.HasMore() {
+	if !a.dialogs.sessionCenter.HasMore() {
 		a.message("all sessions are already loaded")
 		return
 	}
-	a.loadSessionPage(a.sessionCenter.Cursor(), true)
+	a.loadSessionPage(a.dialogs.sessionCenter.Cursor(), true)
 }
 
 func (a *app) loadSessionPage(cursor string, appendPage bool) {
@@ -51,19 +51,19 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 			return page, nil
 		},
 		func(page agent.SessionPage, err error) {
-			if appendPage && !a.sessionDialog.Open() {
+			if appendPage && !a.dialogs.sessionDialog.Open() {
 				return
 			}
 			if err != nil {
 				a.message("could not load sessions: " + err.Error())
 				return
 			}
-			if err := a.sessionCenter.SetPage(page, appendPage); err != nil {
+			if err := a.dialogs.sessionCenter.SetPage(page, appendPage); err != nil {
 				a.message("could not load sessions: " + err.Error())
 				return
 			}
 			if !appendPage {
-				a.sessionDialog.Show()
+				a.dialogs.sessionDialog.Show()
 			}
 			a.status.note("choose a session")
 		},
@@ -85,20 +85,20 @@ func (a *app) openSessionRename(session agent.Session) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.sessionRenameDialog != dialog {
+		if a.dialogs.sessionRenameDialog != dialog {
 			return
 		}
 		dialog.Controller().Dismiss()
-		a.sessionRenameDialog = nil
+		a.dialogs.sessionRenameDialog = nil
 		trimmed := strings.TrimSpace(title)
 		a.updateSessionFromCenter(session.ID, "renaming session", func(latest agent.Session) agent.UpdateSession {
 			return agent.UpdateSession{SessionID: latest.ID, Title: &trimmed, ExpectedRevision: latest.Revision}
 		})
 	}
 	form.GaveUp = func() {
-		if a.sessionRenameDialog == dialog {
+		if a.dialogs.sessionRenameDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.sessionRenameDialog = nil
+			a.dialogs.sessionRenameDialog = nil
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
@@ -110,12 +110,12 @@ func (a *app) openSessionRename(session agent.Session) {
 		Title: "Rename session", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
-	a.sessionRenameDialog = dialog
+	a.dialogs.sessionRenameDialog = dialog
 	dialog.Controller().Show()
 }
 
 func (a *app) openSessionDelete(session agent.Session) {
-	if session.ID == a.session.ID {
+	if session.ID == a.session.current.ID {
 		a.message("switch away before deleting the current session")
 		return
 	}
@@ -126,19 +126,19 @@ func (a *app) openSessionDelete(session agent.Session) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.sessionDeleteDialog != dialog {
+		if a.dialogs.sessionDeleteDialog != dialog {
 			return
 		}
 		dialog.Controller().Dismiss()
-		a.sessionDeleteDialog = nil
+		a.dialogs.sessionDeleteDialog = nil
 		if confirmed {
 			a.deleteSessionFromCenter(session.ID)
 		}
 	}
 	form.GaveUp = func() {
-		if a.sessionDeleteDialog == dialog {
+		if a.dialogs.sessionDeleteDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.sessionDeleteDialog = nil
+			a.dialogs.sessionDeleteDialog = nil
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
@@ -150,7 +150,7 @@ func (a *app) openSessionDelete(session agent.Session) {
 		Title: "Delete session", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 8},
 	})
-	a.sessionDeleteDialog = dialog
+	a.dialogs.sessionDeleteDialog = dialog
 	dialog.Controller().Show()
 }
 
@@ -168,8 +168,8 @@ func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session
 				a.message(label + " failed: " + err.Error())
 				return
 			}
-			a.sessionCenter.Upsert(updated)
-			if updated.ID == a.session.ID {
+			a.dialogs.sessionCenter.Upsert(updated)
+			if updated.ID == a.session.current.ID {
 				a.setActiveSession(updated)
 			}
 			a.message(label + " complete")
@@ -215,7 +215,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 			if a.queue != nil {
 				a.queue.Clear(result.Request.SessionID)
 			}
-			a.sessionCenter.Remove(id)
+			a.dialogs.sessionCenter.Remove(id)
 			a.message("deleted session")
 		},
 	)
@@ -225,11 +225,11 @@ func (a *app) deleteSessionFromCenter(id string) {
 }
 
 func (a *app) NewSession() {
-	a.startSessionInWorkspace(a.session.Workspace.Path)
+	a.startSessionInWorkspace(a.session.current.Workspace.Path)
 }
 
 func (a *app) RenameSession(title string) {
-	if a.conversation.Busy() || a.following {
+	if a.execution.observing() {
 		a.message("finish or cancel the current run before renaming the session")
 		return
 	}
@@ -238,7 +238,7 @@ func (a *app) RenameSession(title string) {
 		a.message("/rename needs a non-empty title")
 		return
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	a.runSessionChange("renaming session",
 		func(ctx context.Context) (agent.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
@@ -258,7 +258,7 @@ func (a *app) RenameSession(title string) {
 }
 
 func (a *app) ForkSession(title string) {
-	source := a.session.ID
+	source := a.session.current.ID
 	a.runSessionChange("forking session",
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
 			forked, err := a.runtime.ForkSession(ctx, agent.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
@@ -272,7 +272,7 @@ func (a *app) ForkSession(title string) {
 }
 
 func (a *app) forkSessionFromRun(runID string) {
-	source := a.session.ID
+	source := a.session.current.ID
 	short := shortIdentity(runID)
 	a.runSessionChange("forking session from "+short,
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
@@ -289,8 +289,8 @@ func (a *app) forkSessionFromRun(runID string) {
 }
 
 func (a *app) switchSession(id string) {
-	if id == a.session.ID {
-		a.message("already in " + displayTitle(a.session))
+	if id == a.session.current.ID {
+		a.message("already in " + displayTitle(a.session.current))
 		return
 	}
 	a.runSessionChange("loading session",
@@ -309,11 +309,11 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 	work func(context.Context) (T, error),
 	apply func(T) error,
 ) {
-	if a.conversation.Busy() || a.following {
+	if a.execution.observing() {
 		a.message("finish or cancel the current run before changing sessions")
 		return
 	}
-	if a.pendingCancel != nil {
+	if a.execution.pendingCancel != nil {
 		a.message("wait for runtime cancellation to finish")
 		return
 	}
@@ -326,7 +326,7 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 		return
 	}
 	a.operations.Cancel(pickerCatalogOperation)
-	a.sessionDialog.Dismiss()
+	a.dialogs.sessionDialog.Dismiss()
 	baseline, _, err := a.currentDraft()
 	if err != nil {
 		a.message(label + " failed: " + err.Error())
@@ -338,8 +338,8 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 		return
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
-	a.sessionDraftTransition = &sessionDraftTransition{
-		sourceSessionID: a.session.ID,
+	a.session.draftTransition = &sessionDraftTransition{
+		sourceSessionID: a.session.current.ID,
 		baseline:        baseline,
 		disposition:     disposition,
 	}
@@ -376,9 +376,9 @@ func (a *app) cancelSessionChange() bool {
 // settleSessionChange closes the terminal-side draft transaction and resumes
 // any authoritative refresh that runtime notifications deferred behind it.
 func (a *app) settleSessionChange() {
-	a.sessionDraftTransition = nil
-	if a.sessionInvalidated && a.conversation.Phase() != agent.ConversationRunning &&
-		!a.following && a.pendingCancel == nil {
+	a.session.draftTransition = nil
+	if a.session.invalidated && a.execution.conversation.Phase() != agent.ConversationRunning &&
+		!a.execution.following && a.execution.pendingCancel == nil {
 		a.refreshInvalidatedSession(false)
 	}
 }
@@ -492,7 +492,7 @@ func (a *app) prepareDestinationDraft(
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	transition := a.sessionDraftTransition
+	transition := a.session.draftTransition
 	if transition != nil {
 		draft, err = transition.resolve(a.workbench, session.ID, draft, current)
 		if err != nil {
@@ -547,8 +547,8 @@ func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (a
 }
 
 func (s sessionInstallation) apply(a *app) {
-	previousSessionID := a.session.ID
-	previousWorkspace := a.session.Workspace
+	previousSessionID := a.session.current.ID
+	previousWorkspace := a.session.current.Workspace
 	a.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
 	a.cancelPluginCommands()
 	a.operations.CancelScope(sessionOperationScope)
@@ -557,13 +557,13 @@ func (s sessionInstallation) apply(a *app) {
 	previousTranscript := a.transcript
 	a.setActiveSession(s.snapshot.Session)
 	a.queue.ReleaseDispatch(previousSessionID)
-	a.openingRunID = ""
-	a.conversation = s.projection.conversation
+	a.execution.openingRunID = ""
+	a.execution.conversation = s.projection.conversation
 	a.attachments = s.attachments
 	a.transcript = s.projection.transcript
 	a.wireTranscript(s.projection.transcript)
 	a.restoreComposer(s.draft)
-	a.draftState.Reset(a.session.ID, s.draft)
+	a.draftState.Reset(a.session.current.ID, s.draft)
 	a.activity.Reset()
 	a.status.Reset()
 	a.workbenchHealth.enterSession()
@@ -578,12 +578,12 @@ func (s sessionInstallation) apply(a *app) {
 	a.setWindowTitle()
 	a.restoreActivity(s.snapshot)
 	a.restoreSessionOutbox()
-	if a.session.Workspace != previousWorkspace {
+	if a.session.current.Workspace != previousWorkspace {
 		a.followRuntimeChanges()
 	}
-	if a.conversation.Phase() == agent.ConversationIdle {
+	if a.execution.conversation.Phase() == agent.ConversationIdle {
 		a.message("session · " + displayTitle(s.snapshot.Session))
-		if a.sessionInvalidated {
+		if a.session.invalidated {
 			a.refreshInvalidatedSession(false)
 		}
 	}

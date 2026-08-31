@@ -17,9 +17,9 @@ func (a *app) RecordFeedback(argument string) error {
 	if err != nil {
 		return errors.New("usage: /feedback <positive|negative> [note]")
 	}
-	runID, itemID := latestAssistantTarget(a.conversation.Blocks())
+	runID, itemID := latestAssistantTarget(a.execution.conversation.Blocks())
 	signal := agent.FeedbackSignal{
-		SessionID: a.session.ID, RunID: runID, ItemID: itemID,
+		SessionID: a.session.current.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),
 	}
 	if err := signal.Validate(); err != nil {

@@ -125,7 +125,7 @@ func (a *app) ShowMCPTools(server string) {
 		return
 	}
 	server = strings.TrimSpace(server)
-	a.mcpToolServer = server
+	a.dialogs.mcpToolServer = server
 	a.executeRuntimeReaderQuery(a.mcpToolsReaderQuery(server))
 }
 
@@ -194,7 +194,7 @@ func (a *app) EditMCPServer(serverName string) error {
 	if serverName == "" {
 		return errors.New("usage: /mcp-edit <server>")
 	}
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("loading MCP server " + serverName)
 	started := a.runApplicationOperation(mcpOperation, false,
 		func(ctx context.Context) (mcp.Server, error) {
@@ -214,7 +214,7 @@ func (a *app) EditMCPServer(serverName string) error {
 				a.message("load MCP server failed: " + err.Error())
 				return
 			}
-			if !a.sessionContext.current(presentation) {
+			if !a.session.context.current(presentation) {
 				a.message("MCP server loaded after the active session changed; reopen the editor to continue")
 				return
 			}
@@ -238,7 +238,7 @@ func (a *app) updateMCPServer(update mcp.ServerUpdate) {
 }
 
 func (a *app) runMCPServerOperation(label string, change func(context.Context) (mcp.Server, error)) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note(label)
 	started := a.runAdmissionMutation(mcpOperation, false, change, func(server mcp.Server, err error) {
 		if err != nil {
@@ -246,11 +246,11 @@ func (a *app) runMCPServerOperation(label string, change func(context.Context) (
 			return
 		}
 		a.message(label + " complete")
-		if !a.sessionContext.current(presentation) {
+		if !a.session.context.current(presentation) {
 			return
 		}
 		a.setRuntimeReader(runtimeReaderMCPServers)
-		a.workspaceReader = workspaceReaderNone
+		a.dialogs.workspaceReader = workspaceReaderNone
 		a.openReaderDocument(mcpServersDocument([]mcp.Server{server}))
 		a.status.note("MCP server · " + server.Name)
 	})
@@ -336,7 +336,7 @@ func (a *app) AuthorizeMCPServer(server string) error {
 	if server == "" {
 		return errors.New("usage: /mcp-auth <server>")
 	}
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("starting MCP authorization " + server)
 	started := a.runAdmissionMutation(mcpAuthorizationOperation, false,
 		func(ctx context.Context) (mcp.AuthorizationAttempt, error) {
@@ -347,10 +347,10 @@ func (a *app) AuthorizeMCPServer(server string) error {
 				a.message("start MCP authorization failed: " + err.Error())
 				return
 			}
-			if a.sessionContext.current(presentation) {
-				a.mcpAuthorizationID = attempt.ID
+			if a.session.context.current(presentation) {
+				a.dialogs.mcpAuthorizationID = attempt.ID
 				a.setRuntimeReader(runtimeReaderMCPAuthorization)
-				a.workspaceReader = workspaceReaderNone
+				a.dialogs.workspaceReader = workspaceReaderNone
 				a.openReaderDocument(mcpAuthorizationDocument(attempt))
 			}
 			if attempt.Pending() {
@@ -377,8 +377,8 @@ func (a *app) pollMCPAuthorization(initial mcp.AuthorizationAttempt) {
 				a.message("observe MCP authorization failed: " + err.Error())
 				return
 			}
-			if a.runtimeReader == runtimeReaderMCPAuthorization && a.mcpAuthorizationID == attempt.ID && a.readerDialog.Open() {
-				a.reader.replace(mcpAuthorizationDocument(attempt), true, false)
+			if a.dialogs.runtimeReader == runtimeReaderMCPAuthorization && a.dialogs.mcpAuthorizationID == attempt.ID && a.dialogs.readerDialog.Open() {
+				a.dialogs.reader.replace(mcpAuthorizationDocument(attempt), true, false)
 			}
 			a.message("MCP authorization " + string(attempt.Status) + " · " + attempt.Server)
 		},

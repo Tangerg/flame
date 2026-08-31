@@ -584,7 +584,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 
 func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	application := &app{transcript: transcript, sessionContext: newSessionContextLease()}
+	application := &app{transcript: transcript, session: sessionState{context: newSessionContextLease()}}
 	application.stack.SetBase(transcript)
 	oldCalls, currentCalls := 0, 0
 	application.confirmAction("Old confirmation", "Run the old action?", "Run old", func() { oldCalls++ })
@@ -596,7 +596,7 @@ func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	if oldCalls != 0 || currentCalls != 0 {
 		t.Fatalf("stale presented confirmation executed callbacks: old=%d current=%d", oldCalls, currentCalls)
 	}
-	if application.confirmationDialog == nil || !application.confirmationDialog.Controller().Open() {
+	if application.dialogs.confirmationDialog == nil || !application.dialogs.confirmationDialog.Controller().Open() {
 		t.Fatal("stale presented confirmation dismissed its replacement")
 	}
 
@@ -613,7 +613,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
 	application := &app{
-		transcript: transcript, operations: operations, sessionContext: newSessionContextLease(),
+		transcript: transcript, operations: operations, session: sessionState{context: newSessionContextLease()},
 	}
 	application.stack.SetBase(transcript)
 	calls := 0
@@ -626,7 +626,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	if calls != 0 {
 		t.Fatalf("retired projection confirmation executed %d callbacks", calls)
 	}
-	if application.confirmationDialog != nil || application.stack.Depth() > 0 {
+	if application.dialogs.confirmationDialog != nil || application.stack.Depth() > 0 {
 		t.Fatal("retired projection left its confirmation open")
 	}
 }

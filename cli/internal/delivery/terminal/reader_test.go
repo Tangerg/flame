@@ -174,10 +174,10 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
 	application := &app{
-		operations:   operations,
-		session:      agent.Session{ID: "session"},
-		conversation: agent.NewConversation(),
-		reader:       reader,
+		operations: operations,
+		session:    sessionState{current: agent.Session{ID: "session"}},
+		execution:  executionState{conversation: agent.NewConversation()},
+		dialogs:    dialogState{reader: reader},
 	}
 	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
 
@@ -192,14 +192,13 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
 	application := &app{
-		session:       agent.Session{ID: "session"},
-		conversation:  agent.NewConversation(),
-		reader:        reader,
-		runtimeReader: runtimeReaderGoal,
+		session:   sessionState{current: agent.Session{ID: "session"}},
+		execution: executionState{conversation: agent.NewConversation()},
+		dialogs:   dialogState{reader: reader, runtimeReader: runtimeReaderGoal},
 	}
 	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
 
-	if application.runtimeReader != runtimeReaderGoal {
-		t.Fatalf("runtime reader mode = %d, want the static reader preserved", application.runtimeReader)
+	if application.dialogs.runtimeReader != runtimeReaderGoal {
+		t.Fatalf("runtime reader mode = %d, want the static reader preserved", application.dialogs.runtimeReader)
 	}
 }

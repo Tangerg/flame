@@ -569,7 +569,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	application := &app{queue: queue, workbench: store, session: agent.Session{ID: "session"}}
+	application := &app{queue: queue, workbench: store, session: sessionState{current: agent.Session{ID: "session"}}}
 	if err := application.persistQueuedRuns(); err != nil {
 		t.Fatal(err)
 	}
@@ -648,7 +648,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	queueView := newQueueView(kit.Dark(), kit.Unicode())
 	prompt := &promptView{}
 	application := &app{
-		queue: queue, workbench: store, session: agent.Session{ID: "session"},
+		queue: queue, workbench: store, session: sessionState{current: agent.Session{ID: "session"}},
 		queueView: queueView, prompt: prompt,
 	}
 	promotedID := before.Entries[2].ID
@@ -703,7 +703,7 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			queue := promptqueue.New()
 			application := &app{
-				queue: queue, session: agent.Session{ID: "session"},
+				queue: queue, session: sessionState{current: agent.Session{ID: "session"}},
 				queueView: newQueueView(kit.Dark(), kit.Unicode()), prompt: &promptView{},
 			}
 			pending := []workbench.PendingRun{

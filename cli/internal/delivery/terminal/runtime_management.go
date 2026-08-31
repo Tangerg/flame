@@ -67,13 +67,13 @@ type usageReport struct {
 }
 
 func (a *app) setRuntimeReader(mode runtimeReaderMode) {
-	a.runtimeReader = mode
-	a.runtimeSelection = runtimeReaderSelection{}
+	a.dialogs.runtimeReader = mode
+	a.dialogs.runtimeSelection = runtimeReaderSelection{}
 	if mode != runtimeReaderMCPTools {
-		a.mcpToolServer = ""
+		a.dialogs.mcpToolServer = ""
 	}
 	if mode != runtimeReaderMCPAuthorization {
-		a.mcpAuthorizationID = ""
+		a.dialogs.mcpAuthorizationID = ""
 	}
 }
 
@@ -85,7 +85,7 @@ func (a *app) ShowUsage(argument string) error {
 	if err != nil {
 		return err
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	a.runRuntimeReaderQuery("loading runtime usage", runtimeReaderNone,
 		func(ctx context.Context) (readerDocument, error) {
 			session, err := a.usage.SessionUsage(ctx, sessionID)
@@ -360,7 +360,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	if err := cliidentity.ValidateProvider(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("loading provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
 		func(ctx context.Context) (models.Provider, error) {
@@ -380,7 +380,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 				a.message("configure provider failed: " + err.Error())
 				return
 			}
-			if !a.sessionContext.current(presentation) {
+			if !a.session.context.current(presentation) {
 				a.message("provider loaded after the active session changed; reopen configuration to continue")
 				return
 			}
@@ -450,13 +450,13 @@ func (a *app) openProviderConfig(provider models.Provider) {
 	}
 	dismiss := func() {
 		clearKey()
-		if a.providerDialog == dialog {
+		if a.dialogs.providerDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.providerDialog = nil
+			a.dialogs.providerDialog = nil
 		}
 	}
 	form.Done = func() {
-		if a.providerDialog != dialog {
+		if a.dialogs.providerDialog != dialog {
 			clearKey()
 			return
 		}
@@ -482,7 +482,7 @@ func (a *app) openProviderConfig(provider models.Provider) {
 		Title: "Configure provider · " + provider.ID(), Body: dressed,
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
-	a.providerDialog = dialog
+	a.dialogs.providerDialog = dialog
 	dialog.Controller().Show()
 }
 
@@ -545,7 +545,7 @@ func (a *app) ShowGoal() {
 }
 
 func (a *app) goalReaderQuery() runtimeReaderQuery {
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	return runtimeReaderQuery{
 		status: "loading session goal",
 		mode:   runtimeReaderGoal,
@@ -602,7 +602,7 @@ func (a *app) StartGoal(objective string) error {
 		return errors.New("this runtime composition has no goal service")
 	}
 	start := agent.StartGoal{
-		SessionID: a.session.ID, Objective: strings.TrimSpace(objective),
+		SessionID: a.session.current.ID, Objective: strings.TrimSpace(objective),
 		Provider: a.options.Provider, Model: a.options.Model,
 		Budget: agent.UnlimitedGoalBudget(),
 	}
@@ -618,7 +618,7 @@ func (a *app) UpdateGoal(objective string) error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	update := agent.UpdateGoal{SessionID: a.session.ID, Objective: strings.TrimSpace(objective)}
+	update := agent.UpdateGoal{SessionID: a.session.current.ID, Objective: strings.TrimSpace(objective)}
 	if err := update.Validate(); err != nil {
 		return err
 	}
@@ -631,8 +631,8 @@ func (a *app) ClearGoal() error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	presentation := a.sessionContext
-	sessionID := a.session.ID
+	presentation := a.session.context
+	sessionID := a.session.current.ID
 	label := "clearing session goal"
 	a.status.note(label)
 	started := a.runAdmissionMutation(goalOperation, false,
@@ -644,10 +644,10 @@ func (a *app) ClearGoal() error {
 				a.message(label + " failed: " + err.Error())
 				return
 			}
-			if a.sessionContext.current(presentation) {
+			if a.session.context.current(presentation) {
 				a.header.SetGoal(nil)
 				a.setRuntimeReader(runtimeReaderGoal)
-				a.workspaceReader = workspaceReaderNone
+				a.dialogs.workspaceReader = workspaceReaderNone
 				a.openReaderDocument(goalDocument(agent.Goal{}, false))
 			}
 			a.status.note("goal · cleared")
@@ -663,7 +663,7 @@ func (a *app) StopGoal() error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	return a.changeGoal("stopping session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.StopGoal(ctx, sessionID)
 	})
@@ -673,16 +673,16 @@ func (a *app) ResumeGoal() error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	return a.changeGoal("resuming session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.ResumeGoal(ctx, sessionID)
 	})
 }
 
 func (a *app) changeGoal(label string, change func(context.Context) (agent.Goal, error)) error {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note(label)
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	work := func(ctx context.Context) (agent.Goal, error) {
 		current, exists, err := a.goals.GetGoal(ctx, sessionID)
 		if err != nil {
@@ -698,10 +698,10 @@ func (a *app) changeGoal(label string, change func(context.Context) (agent.Goal,
 			a.message(label + " failed: " + err.Error())
 			return
 		}
-		if a.sessionContext.current(presentation) {
+		if a.session.context.current(presentation) {
 			a.header.SetGoal(&current)
 			a.setRuntimeReader(runtimeReaderGoal)
-			a.workspaceReader = workspaceReaderNone
+			a.dialogs.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(goalDocument(current, true))
 		}
 		a.status.note("goal · " + string(current.Status()))
@@ -728,8 +728,8 @@ func (a *app) executeRuntimeReaderQuery(query runtimeReaderQuery) {
 			return
 		}
 		a.setRuntimeReader(query.mode)
-		a.runtimeSelection = query.selection
-		a.workspaceReader = workspaceReaderNone
+		a.dialogs.runtimeSelection = query.selection
+		a.dialogs.workspaceReader = workspaceReaderNone
 		a.openReaderDocument(document)
 		a.status.note(strings.ToLower(document.Title))
 	})

@@ -88,30 +88,30 @@ func (a *approvalPane) Focus(has bool) {
 }
 
 func (a *app) buildApprovalDialog(theme kit.Theme, glyphs kit.Glyphs) {
-	a.approvalPane = approvalPane{
+	a.dialogs.approvalPane = approvalPane{
 		theme: theme, glyphs: glyphs, detail: kit.NewParagraph("", theme.Text),
 	}
-	a.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
-	a.approvalPane.view = kit.Transcript{
-		Content: &a.approvalPane.preview, Scroll: &a.approvalPane.scroll,
+	a.dialogs.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
+	a.dialogs.approvalPane.view = kit.Transcript{
+		Content: &a.dialogs.approvalPane.preview, Scroll: &a.dialogs.approvalPane.scroll,
 		Theme: theme, Glyphs: glyphs,
 	}
 	a.setApprovalForm(approvalAllowOnce)
-	a.approvalDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Tool approval", Body: &a.approvalPane,
+	a.dialogs.approvalDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Tool approval", Body: &a.dialogs.approvalPane,
 		Where: layout.Placement{Width: 88, Height: 24},
 	})
 }
 
 func (a *app) setApprovalForm(initial approvalAction) {
-	review := a.interactionReview
-	approval := a.approval
-	draft := a.approvalDraft
+	review := a.dialogs.interactionReview
+	approval := a.dialogs.approval
+	draft := a.dialogs.approvalDraft
 	if draft == nil {
 		draft = &approvalDecisionDraft{}
-		a.approvalDraft = draft
+		a.dialogs.approvalDraft = draft
 	}
-	rememberable := a.approval == nil || a.approval.Rememberable
+	rememberable := a.dialogs.approval == nil || a.dialogs.approval.Rememberable
 	draft.choice = initial.Normalize(rememberable)
 	choice := &headless.Select[approvalAction]{
 		Label: "How should flame proceed?", Value: headless.Bind(&draft.choice), Rows: 3,
@@ -123,42 +123,42 @@ func (a *app) setApprovalForm(initial approvalAction) {
 	}
 	reason.Editor().Clipboard = a.loop.Clipboard()
 	keys := headless.DefaultFormKeys()
-	a.approvalForm = headless.NewForm(choice, reason)
-	a.approvalForm.Keys = keys
-	a.approvalForm.Done = func() {
-		if a.interactionReview == review && a.approval == approval && a.approvalDraft == draft {
+	a.dialogs.approvalForm = headless.NewForm(choice, reason)
+	a.dialogs.approvalForm.Keys = keys
+	a.dialogs.approvalForm.Done = func() {
+		if a.dialogs.interactionReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
 			a.answerApproval(draft.choice)
 		}
 	}
-	a.approvalForm.GaveUp = func() {
-		if a.interactionReview == review && a.approval == approval && a.approvalDraft == draft {
+	a.dialogs.approvalForm.GaveUp = func() {
+		if a.dialogs.interactionReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
 			a.backOrCancelApproval()
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.approvalPane.theme, Glyphs: a.approvalPane.glyphs, Controller: a.approvalForm,
+		Theme: a.dialogs.approvalPane.theme, Glyphs: a.dialogs.approvalPane.glyphs, Controller: a.dialogs.approvalForm,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	a.approvalPane.form = dressed
+	a.dialogs.approvalPane.form = dressed
 }
 
 func (a *app) openApproval(approval agent.Approval) {
 	cloned := approval.Clone()
-	a.approval = &cloned
-	a.approvalDraft = &approvalDecisionDraft{}
-	a.approvalArguments = editableApprovalArguments(approval.Tool)
-	a.approvalOverride = nil
+	a.dialogs.approval = &cloned
+	a.dialogs.approvalDraft = &approvalDecisionDraft{}
+	a.dialogs.approvalArguments = editableApprovalArguments(approval.Tool)
+	a.dialogs.approvalOverride = nil
 	initial := defaultApprovalAction(a.settings.Approval.Remember.Scope())
-	if answer, ok := a.interactionReview.CurrentAnswer().(agent.ApprovalAnswer); ok {
+	if answer, ok := a.dialogs.interactionReview.CurrentAnswer().(agent.ApprovalAnswer); ok {
 		initial = approvalActionFromAnswer(answer)
-		a.approvalDraft.reason = answer.Reason
+		a.dialogs.approvalDraft.reason = answer.Reason
 		if answer.ArgumentOverride != nil {
-			a.approvalOverride = answer.ArgumentOverride.Clone()
-			a.approvalArguments = formatToolArguments(a.approvalOverride.JSON())
+			a.dialogs.approvalOverride = answer.ArgumentOverride.Clone()
+			a.dialogs.approvalArguments = formatToolArguments(a.dialogs.approvalOverride.JSON())
 		}
 	}
 	a.setApprovalForm(initial)
-	a.approvalPane.title = approval.Title
+	a.dialogs.approvalPane.title = approval.Title
 	call := approval.Tool.Clone()
 	if strings.TrimSpace(call.Diff) == "" {
 		call.Diff = approval.Diff
@@ -170,46 +170,46 @@ func (a *app) openApproval(approval agent.Approval) {
 			Sections: []ToolSection{{Title: "Presentation error", Style: toolSectionParagraph, Text: err.Error()}},
 		}
 	}
-	a.approvalSections = slices.Clone(presentation.Sections)
-	details := []string{a.interactionReview.SubmissionFailure(), approval.Detail, presentation.Label}
+	a.dialogs.approvalSections = slices.Clone(presentation.Sections)
+	details := []string{a.dialogs.interactionReview.SubmissionFailure(), approval.Detail, presentation.Label}
 	if approval.Risk != "" {
 		details = append(details, "risk: "+string(approval.Risk))
 	}
 	if approval.RuleHint != "" {
 		details = append(details, "rule: "+approval.RuleHint)
 	}
-	a.approvalPane.detail.SetText([]text.Line{text.Of(strings.Join(nonEmptyStrings(details), "\n"), a.approvalPane.theme.Text)})
+	a.dialogs.approvalPane.detail.SetText([]text.Line{text.Of(strings.Join(nonEmptyStrings(details), "\n"), a.dialogs.approvalPane.theme.Text)})
 	a.setApprovalPreview(a.approvalPreviewSections())
-	a.approvalDialog.Controller().SetDescription(approval.Title)
-	a.approvalDialog.Show()
+	a.dialogs.approvalDialog.Controller().SetDescription(approval.Title)
+	a.dialogs.approvalDialog.Show()
 }
 
 func (a *app) setApprovalPreview(sections []ToolSection) {
-	a.approvalPane.preview = headless.Transcript{}
-	a.approvalPane.view.Content = &a.approvalPane.preview
+	a.dialogs.approvalPane.preview = headless.Transcript{}
+	a.dialogs.approvalPane.view.Content = &a.dialogs.approvalPane.preview
 	presentation := BlockPresentation{
-		Theme: a.approvalPane.theme, Glyphs: a.approvalPane.glyphs, Syntax: a.syntax,
+		Theme: a.dialogs.approvalPane.theme, Glyphs: a.dialogs.approvalPane.glyphs, Syntax: a.syntax,
 	}
 	blockCount := 0
 	for _, section := range sections {
 		for _, block := range renderToolSections(presentation, []ToolSection{section}, false) {
-			id := a.approvalPane.preview.Append(newReaderSectionBlock(a.approvalPane.theme, section.Title, block))
-			a.approvalPane.preview.Finish(id)
+			id := a.dialogs.approvalPane.preview.Append(newReaderSectionBlock(a.dialogs.approvalPane.theme, section.Title, block))
+			a.dialogs.approvalPane.preview.Finish(id)
 			blockCount++
 		}
 	}
 	if blockCount == 0 {
-		id := a.approvalPane.preview.Append(&kit.Entry{Theme: a.approvalPane.theme, Body: "This request has no additional preview."})
-		a.approvalPane.preview.Finish(id)
+		id := a.dialogs.approvalPane.preview.Append(&kit.Entry{Theme: a.dialogs.approvalPane.theme, Body: "This request has no additional preview."})
+		a.dialogs.approvalPane.preview.Finish(id)
 	}
-	a.approvalPane.scroll = headless.Scroll{}
-	a.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
-	a.approvalPane.scroll.ToTop()
-	a.approvalPane.view.Scroll = &a.approvalPane.scroll
+	a.dialogs.approvalPane.scroll = headless.Scroll{}
+	a.dialogs.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
+	a.dialogs.approvalPane.scroll.ToTop()
+	a.dialogs.approvalPane.view.Scroll = &a.dialogs.approvalPane.scroll
 }
 
 func (a *app) openInteractions(interactions []agent.Interaction) {
-	if a.interactionReview != nil {
+	if a.dialogs.interactionReview != nil {
 		a.fail(errors.New("runtime opened interactions while another set is active"))
 		return
 	}
@@ -218,20 +218,20 @@ func (a *app) openInteractions(interactions []agent.Interaction) {
 		a.fail(fmt.Errorf("runtime interactions: %w", err))
 		return
 	}
-	a.interactionReview = review
+	a.dialogs.interactionReview = review
 	a.openCurrentInteraction()
 	a.raiseAttention(interactionAttention(interactions))
 }
 
 func (a *app) openCurrentInteraction() {
-	if a.interactionReview == nil {
+	if a.dialogs.interactionReview == nil {
 		return
 	}
-	if a.interactionReview.Reviewing() {
+	if a.dialogs.interactionReview.Reviewing() {
 		a.openInteractionSummary()
 		return
 	}
-	interaction, ok := a.interactionReview.Current()
+	interaction, ok := a.dialogs.interactionReview.Current()
 	if !ok {
 		a.fail(errors.New("interaction review has no current item"))
 		return
@@ -247,8 +247,8 @@ func (a *app) openCurrentInteraction() {
 }
 
 func (a *app) answerApproval(action approvalAction) {
-	approval := a.approval
-	draft := a.approvalDraft
+	approval := a.dialogs.approval
+	draft := a.dialogs.approvalDraft
 	if approval == nil || draft == nil {
 		return
 	}
@@ -256,7 +256,7 @@ func (a *app) answerApproval(action approvalAction) {
 		a.openApprovalArgumentEditor()
 		return
 	}
-	decision, ok := draft.answer(action, a.approvalOverride)
+	decision, ok := draft.answer(action, a.dialogs.approvalOverride)
 	if !ok {
 		a.fail(fmt.Errorf("approval action %q is unsupported", action))
 		return
@@ -265,15 +265,15 @@ func (a *app) answerApproval(action approvalAction) {
 }
 
 func (a *app) submitApproval(decision agent.ApprovalAnswer) {
-	if a.interactionReview == nil {
+	if a.dialogs.interactionReview == nil {
 		return
 	}
-	if err := a.interactionReview.Record(decision); err != nil {
+	if err := a.dialogs.interactionReview.Record(decision); err != nil {
 		a.fail(fmt.Errorf("record approval: %w", err))
 		return
 	}
 	a.clearApprovalProjection()
-	a.approvalDialog.Dismiss()
+	a.dialogs.approvalDialog.Dismiss()
 	a.advanceInteractionReview()
 }
 
@@ -285,10 +285,10 @@ func (a *app) backOrCancelApproval() {
 }
 
 func (a *app) advanceInteractionReview() {
-	if a.interactionReview == nil {
+	if a.dialogs.interactionReview == nil {
 		return
 	}
-	if a.interactionReview.Advance() || a.interactionReview.Reviewing() {
+	if a.dialogs.interactionReview.Advance() || a.dialogs.interactionReview.Reviewing() {
 		a.openCurrentInteraction()
 		return
 	}
@@ -296,37 +296,37 @@ func (a *app) advanceInteractionReview() {
 }
 
 func (a *app) backInteraction() bool {
-	if a.interactionReview == nil || !a.interactionReview.Back() {
+	if a.dialogs.interactionReview == nil || !a.dialogs.interactionReview.Back() {
 		return false
 	}
-	if a.approval != nil {
+	if a.dialogs.approval != nil {
 		a.clearApprovalProjection()
-		a.approvalDialog.Dismiss()
+		a.dialogs.approvalDialog.Dismiss()
 	}
-	if a.questionnaire != nil {
-		a.questionnaire = nil
-		a.questionDialog.Controller().Dismiss()
-		a.questionDialog = nil
+	if a.dialogs.questionnaire != nil {
+		a.dialogs.questionnaire = nil
+		a.dialogs.questionDialog.Controller().Dismiss()
+		a.dialogs.questionDialog = nil
 	}
-	if a.reviewDialog != nil {
-		a.reviewDialog.Controller().Dismiss()
-		a.reviewDialog = nil
+	if a.dialogs.reviewDialog != nil {
+		a.dialogs.reviewDialog.Controller().Dismiss()
+		a.dialogs.reviewDialog = nil
 	}
 	a.openCurrentInteraction()
 	return true
 }
 
 func (a *app) resumeInteractions() {
-	if a.interactionReview == nil {
+	if a.dialogs.interactionReview == nil {
 		return
 	}
-	answers, err := a.interactionReview.Responses()
+	answers, err := a.dialogs.interactionReview.Responses()
 	if err != nil {
 		a.fail(fmt.Errorf("commit interaction review: %w", err))
 		return
 	}
-	runID := a.conversation.RunID()
-	review := a.interactionReview
+	runID := a.execution.conversation.RunID()
+	review := a.dialogs.interactionReview
 	commandID, err := agent.NewCommandID()
 	if err != nil {
 		a.fail(err)
@@ -338,7 +338,7 @@ func (a *app) resumeInteractions() {
 		pending := workbench.PendingResume{
 			Command: command.Clone(), Interactions: review.Items(), Replay: replay,
 		}
-		if err := a.workbench.StagePendingResume(a.session.ID, pending); err != nil {
+		if err := a.workbench.StagePendingResume(a.session.current.ID, pending); err != nil {
 			failure := fmt.Errorf("resume blocked: save interaction decisions: %w", err)
 			review.ReportSubmissionFailure(failure)
 			a.message(failure.Error())
@@ -358,7 +358,7 @@ func (a *app) resumeInteractions() {
 // single-item draft returns to the answered interaction so the user can retry
 // or revise it.
 func (a *app) reopenCompletedInteractionReview(review *interactionReview) error {
-	if review == nil || a.interactionReview != review {
+	if review == nil || a.dialogs.interactionReview != review {
 		return errors.New("completed interaction review is no longer active")
 	}
 	if !review.completed() {
@@ -400,9 +400,9 @@ func (a *app) deliverInteractionResume(
 	}, streamOpeningObserver{
 		persistent: true,
 		accepted: func(agent.SegmentStream) streamOpeningDisposition {
-			a.interactionReview = nil
+			a.dialogs.interactionReview = nil
 			a.settleAcknowledgedResume(command.CommandID)
-			acceptedQuestions, err := a.conversation.RecordAcceptedInteractionAnswers(command.Answers)
+			acceptedQuestions, err := a.execution.conversation.RecordAcceptedInteractionAnswers(command.Answers)
 			if err == nil {
 				err = a.transcript.acceptQuestions(acceptedQuestions)
 			}
@@ -418,7 +418,7 @@ func (a *app) deliverInteractionResume(
 		},
 		rejected: func(failure error) error {
 			if _, accepted := agent.AcceptedMutationReceipt(failure); accepted {
-				a.interactionReview = nil
+				a.dialogs.interactionReview = nil
 				a.cancelRuntimePreservingFailure(agent.CancelRun{
 					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
 				})
@@ -447,14 +447,14 @@ func (a *app) retireAcknowledgedResume(commandID agent.CommandID) error {
 	if a.workbench == nil {
 		return nil
 	}
-	pending, ok := a.workbench.PendingResume(a.session.ID)
+	pending, ok := a.workbench.PendingResume(a.session.current.ID)
 	if !ok {
 		return nil
 	}
 	if pending.Command.CommandID != commandID {
 		return errors.New("pending resume command identity changed")
 	}
-	return a.workbench.AcknowledgePendingResume(a.session.ID, commandID)
+	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
 }
 
 func (a *app) restoreRejectedInteractionReview(review *interactionReview, command agent.ResumeRun, failure error) error {
@@ -463,17 +463,17 @@ func (a *app) restoreRejectedInteractionReview(review *interactionReview, comman
 		a.reconcileExpiredResume(command)
 		return nil
 	}
-	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.interactionReview != review ||
-		a.conversation.Phase() != agent.ConversationWaiting || a.conversation.RunID() != command.RunID {
+	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interactionReview != review ||
+		a.execution.conversation.Phase() != agent.ConversationWaiting || a.execution.conversation.RunID() != command.RunID {
 		return failure
 	}
 	if a.workbench != nil {
-		if err := a.workbench.RejectPendingResume(a.session.ID, command.CommandID); err != nil {
+		if err := a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID); err != nil {
 			return errors.Join(failure, fmt.Errorf("release refused interaction decisions: %w", err))
 		}
 	}
-	a.following = false
-	if a.sessionInvalidated {
+	a.execution.following = false
+	if a.session.invalidated {
 		a.status.note("resume refused · refreshing session")
 		a.refreshInvalidatedSession(false)
 		return nil
@@ -487,10 +487,10 @@ func (a *app) restoreRejectedInteractionReview(review *interactionReview, comman
 }
 
 func (a *app) reconcileExpiredResume(command agent.ResumeRun) {
-	a.following = false
+	a.execution.following = false
 	a.status.note("resume replay expired · checking runtime state")
 	a.syncAnimation()
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	started := a.runSessionSettlement(resumeRecoveryOperation, false,
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
 			return a.readInvalidatedSession(ctx, sessionID)
@@ -519,26 +519,26 @@ func (a *app) reconcileExpiredResume(command agent.ResumeRun) {
 
 func (a *app) abortInteractions(reason string) {
 	a.clearApprovalProjection()
-	a.questionnaire = nil
-	a.interactionReview = nil
-	if a.reviewDialog != nil {
-		a.reviewDialog.Controller().Dismiss()
-		a.reviewDialog = nil
+	a.dialogs.questionnaire = nil
+	a.dialogs.interactionReview = nil
+	if a.dialogs.reviewDialog != nil {
+		a.dialogs.reviewDialog.Controller().Dismiss()
+		a.dialogs.reviewDialog = nil
 	}
-	if runID := a.conversation.RunID(); runID != "" {
+	if runID := a.execution.conversation.RunID(); runID != "" {
 		a.cancelRuntime(agent.CancelRun{RunID: runID, Reason: reason})
 	}
 }
 
 func (a *app) clearApprovalProjection() {
-	a.approval = nil
-	a.approvalDraft = nil
-	a.approvalArguments = ""
-	a.approvalOverride = nil
-	a.approvalSections = nil
+	a.dialogs.approval = nil
+	a.dialogs.approvalDraft = nil
+	a.dialogs.approvalArguments = ""
+	a.dialogs.approvalOverride = nil
+	a.dialogs.approvalSections = nil
 	a.dismissApprovalEditor()
-	a.approvalForm = nil
-	a.approvalPane.form = nil
+	a.dialogs.approvalForm = nil
+	a.dialogs.approvalPane.form = nil
 }
 
 func nonEmptyStrings(values []string) []string {

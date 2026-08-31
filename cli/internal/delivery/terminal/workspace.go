@@ -28,7 +28,7 @@ type workspaceChoice struct {
 }
 
 func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.workspacePicker = newPicker(theme, glyphs, "search recent workspaces",
+	a.dialogs.workspacePicker = newPicker(theme, glyphs, "search recent workspaces",
 		func(choice workspaceChoice) string { return choice.workspace.Path },
 		func(choice workspaceChoice) string {
 			if choice.current {
@@ -40,10 +40,10 @@ func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 			return compactRelativeAge(choice.workspace.LastOpened)
 		},
 		func(choice workspaceChoice) {
-			if !a.workspaceDialog.Open() {
+			if !a.dialogs.workspaceDialog.Open() {
 				return
 			}
-			a.workspaceDialog.Dismiss()
+			a.dialogs.workspaceDialog.Dismiss()
 			if !choice.available {
 				a.message("workspace is no longer available · " + choice.workspace.Path)
 				return
@@ -57,11 +57,11 @@ func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 		},
 	)
-	a.workspaceDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Workspaces", Body: a.workspacePicker,
+	a.dialogs.workspaceDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Workspaces", Body: a.dialogs.workspacePicker,
 		Where: layout.Placement{Width: 92, Height: 20},
 	})
-	a.workspacePicker.cancel = a.workspaceDialog.Dismiss
+	a.dialogs.workspacePicker.cancel = a.dialogs.workspaceDialog.Dismiss
 }
 
 func (a *app) chooseWorkspace(argument string) error {
@@ -88,13 +88,13 @@ func (a *app) showLocalWorkspaceChoices() error {
 	for _, workspace := range workspaces {
 		choices = append(choices, workspaceChoice{
 			workspace: workspace,
-			current:   samePath(workspace.Path, a.session.Workspace.Path),
+			current:   samePath(workspace.Path, a.session.current.Workspace.Path),
 			available: true,
 		})
 	}
-	a.workspacePicker.Reset()
-	a.workspacePicker.SetItems(choices)
-	a.workspaceDialog.Show()
+	a.dialogs.workspacePicker.Reset()
+	a.dialogs.workspacePicker.SetItems(choices)
+	a.dialogs.workspaceDialog.Show()
 	a.status.note("choose a workspace")
 	return nil
 }
@@ -119,7 +119,7 @@ func (a *app) loadWorkspaceChoices() {
 				}
 				byPath[summary.Workspace.Path] = workspaceChoice{
 					workspace: workbench.Workspace{Path: summary.Workspace.Path, LastOpened: lastOpened},
-					current:   samePath(summary.Workspace.Path, a.session.Workspace.Path),
+					current:   samePath(summary.Workspace.Path, a.session.current.Workspace.Path),
 					available: summary.Workspace.IsAvailable(), detail: detail,
 				}
 			}
@@ -128,7 +128,7 @@ func (a *app) loadWorkspaceChoices() {
 					continue
 				}
 				byPath[recent.Path] = workspaceChoice{
-					workspace: recent, current: samePath(recent.Path, a.session.Workspace.Path), available: true,
+					workspace: recent, current: samePath(recent.Path, a.session.current.Workspace.Path), available: true,
 				}
 			}
 			choices := make([]workspaceChoice, 0, len(byPath))
@@ -152,16 +152,16 @@ func (a *app) loadWorkspaceChoices() {
 				a.message("there are no known workspaces")
 				return
 			}
-			a.workspacePicker.Reset()
-			a.workspacePicker.SetItems(choices)
-			a.workspaceDialog.Show()
+			a.dialogs.workspacePicker.Reset()
+			a.dialogs.workspacePicker.SetItems(choices)
+			a.dialogs.workspaceDialog.Show()
 			a.status.note("choose a workspace")
 		},
 	)
 }
 
 func (a *app) resolveAndStartWorkspace(requested string) {
-	path, err := resolveWorkspace(a.session.Workspace.Path, requested)
+	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		a.message(err.Error())
 		return
@@ -186,7 +186,7 @@ func (a *app) resolveAndStartWorkspace(requested string) {
 }
 
 func (a *app) createSessionInWorkspace(requested string) error {
-	workspace, err := resolveWorkspace(a.session.Workspace.Path, requested)
+	workspace, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (a *app) RelocateSession(requested string) error {
 	if err := a.requireRuntimeFeature(runtimebinding.FeatureRelocate); err != nil {
 		return err
 	}
-	path, err := resolveWorkspace(a.session.Workspace.Path, requested)
+	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		return err
 	}
@@ -227,11 +227,11 @@ func (a *app) RelocateSession(requested string) error {
 }
 
 func (a *app) relocateSession(path string) {
-	if samePath(path, a.session.Workspace.Path) {
+	if samePath(path, a.session.current.Workspace.Path) {
 		a.message("session already uses " + path)
 		return
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	a.runSessionChange("relocating session",
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
@@ -266,7 +266,7 @@ func (a *app) startSessionInWorkspace(workspace string) {
 // current draft moves to the replacement because its source identity is gone;
 // queued follow-ups remain session-scoped and are retired after installation.
 func (a *app) replaceDeletedSessionInWorkspace(workspace string) {
-	retiredSessionID := a.session.ID
+	retiredSessionID := a.session.current.ID
 	a.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
 			created, err := a.runtime.CreateSession(ctx, agent.CreateSession{Workspace: workspace})

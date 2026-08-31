@@ -113,15 +113,15 @@ func (c *contextEditor) Handle(event input.Event) bool {
 func (c *contextEditor) Focus(has bool) { c.composer.Focus(has) }
 
 func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSession {
-	if a.activeContextEditor != nil {
-		a.activeContextEditor.Dismiss()
+	if a.dialogs.activeContextEditor != nil {
+		a.dialogs.activeContextEditor.Dismiss()
 	}
 	editor := newContextEditor(a.transcript.theme, a.loop.Clipboard(), request.Content, request.Placeholder)
 	var dialog *kit.Dialog
 	session := &contextEditorSession{editor: editor}
 	session.dismissed = func() {
-		if a.activeContextEditor == session {
-			a.activeContextEditor = nil
+		if a.dialogs.activeContextEditor == session {
+			a.dialogs.activeContextEditor = nil
 		}
 		if request.Dismissed != nil {
 			request.Dismissed()
@@ -129,7 +129,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 	}
 	editor.cancel = session.Dismiss
 	editor.save = func(value string) error {
-		if editor.saving || session.closed || a.activeContextEditor != session {
+		if editor.saving || session.closed || a.dialogs.activeContextEditor != session {
 			return nil
 		}
 		editor.saving = true
@@ -138,7 +138,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 			dialog.Controller().SetDescription("Saving…")
 		}
 		complete := func(err error) bool {
-			if session.closed || a.activeContextEditor != session {
+			if session.closed || a.dialogs.activeContextEditor != session {
 				return false
 			}
 			editor.saving = false
@@ -173,14 +173,14 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 		Hints: []keymap.Action{saveContextDocument, cancelContextDocument},
 	})
 	session.dialog = dialog
-	a.activeContextEditor = session
+	a.dialogs.activeContextEditor = session
 	dialog.Controller().Show()
 	return session
 }
 
 func (a *app) dismissContextEditor() {
-	if a.activeContextEditor != nil {
-		a.activeContextEditor.Dismiss()
+	if a.dialogs.activeContextEditor != nil {
+		a.dialogs.activeContextEditor.Dismiss()
 	}
 }
 

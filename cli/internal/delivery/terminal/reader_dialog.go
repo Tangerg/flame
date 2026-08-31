@@ -10,35 +10,35 @@ import (
 )
 
 func (a *app) buildReader(theme kit.Theme, glyphs kit.Glyphs) {
-	a.reader = newReaderPane(theme, glyphs, a.syntax, a.loop.Environment().Wheel(), a.loop.Clipboard())
-	a.readerDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Reader", Body: a.reader,
+	a.dialogs.reader = newReaderPane(theme, glyphs, a.syntax, a.loop.Environment().Wheel(), a.loop.Clipboard())
+	a.dialogs.readerDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Reader", Body: a.dialogs.reader,
 		Where: layout.Placement{},
 	})
-	a.reader.dismiss = a.dismissReader
-	a.reader.openSearch = func() {
-		if a.readerDialog.Open() {
+	a.dialogs.reader.dismiss = a.dismissReader
+	a.dialogs.reader.openSearch = func() {
+		if a.dialogs.readerDialog.Open() {
 			a.showReaderSearchDialog()
 		}
 	}
-	a.reader.onCopied = func() { a.status.note("copied reader text") }
+	a.dialogs.reader.onCopied = func() { a.status.note("copied reader text") }
 
-	field := &headless.Text{Label: "Find in the reader", Placeholder: "text", Value: headless.Bind(&a.readerSearchQuery), Check: requiredText}
+	field := &headless.Text{Label: "Find in the reader", Placeholder: "text", Value: headless.Bind(&a.dialogs.readerSearchQuery), Check: requiredText}
 	form := headless.NewForm(field)
 	form.Keys = headless.DefaultFormKeys()
 	form.Done = func() {
-		if !a.readerDialog.Open() || !a.readerSearchDialog.Open() {
+		if !a.dialogs.readerDialog.Open() || !a.dialogs.readerSearchDialog.Open() {
 			return
 		}
-		a.readerSearchDialog.Dismiss()
-		a.reader.Find(a.readerSearchQuery)
+		a.dialogs.readerSearchDialog.Dismiss()
+		a.dialogs.reader.Find(a.dialogs.readerSearchQuery)
 	}
-	form.GaveUp = func() { a.readerSearchDialog.Dismiss() }
+	form.GaveUp = func() { a.dialogs.readerSearchDialog.Dismiss() }
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: theme, Glyphs: glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	a.readerSearchDialog = newPresentationDialog(kit.DialogConfig{
+	a.dialogs.readerSearchDialog = newPresentationDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Search reader", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
@@ -47,16 +47,16 @@ func (a *app) buildReader(theme kit.Theme, glyphs kit.Glyphs) {
 
 func (a *app) dismissReader() {
 	a.operations.Cancel(readerDocumentOperation)
-	a.workspaceReader = workspaceReaderNone
+	a.dialogs.workspaceReader = workspaceReaderNone
 	a.setRuntimeReader(runtimeReaderNone)
-	if a.reader != nil {
-		a.reader.CloseDocument()
+	if a.dialogs.reader != nil {
+		a.dialogs.reader.CloseDocument()
 	}
-	if a.readerSearchDialog != nil {
-		a.readerSearchDialog.Dismiss()
+	if a.dialogs.readerSearchDialog != nil {
+		a.dialogs.readerSearchDialog.Dismiss()
 	}
-	if a.readerDialog != nil {
-		a.readerDialog.Dismiss()
+	if a.dialogs.readerDialog != nil {
+		a.dialogs.readerDialog.Dismiss()
 	}
 }
 
@@ -66,7 +66,7 @@ func (a *app) OpenReader() {
 		a.status.note("select a readable transcript entry")
 		return
 	}
-	a.workspaceReader = workspaceReaderNone
+	a.dialogs.workspaceReader = workspaceReaderNone
 	a.setRuntimeReader(runtimeReaderNone)
 	a.openReaderTarget(target)
 }
@@ -77,18 +77,18 @@ func (a *app) openReaderDocument(document readerDocument) {
 
 func (a *app) openReaderTarget(target readerTarget) {
 	a.operations.Cancel(readerDocumentOperation)
-	a.reader.Open(target)
-	a.readerDialog.Controller().SetDescription(target.document.Title)
-	a.readerDialog.Show()
+	a.dialogs.reader.Open(target)
+	a.dialogs.readerDialog.Controller().SetDescription(target.document.Title)
+	a.dialogs.readerDialog.Show()
 }
 
 func (a *app) showReaderSearchDialog() {
-	a.readerSearchQuery = ""
-	a.readerSearchDialog.Show()
+	a.dialogs.readerSearchQuery = ""
+	a.dialogs.readerSearchDialog.Show()
 }
 
 func (a *app) listenForReaderSearch() {
-	results := a.reader.SearchResults()
+	results := a.dialogs.reader.SearchResults()
 	dispatcher := a.loop.Dispatcher()
 	a.operations.Go(readerSearchOperation, true, func(ctx context.Context, lease operationLease) {
 		for {
@@ -99,7 +99,7 @@ func (a *app) listenForReaderSearch() {
 				}
 				if err := post(ctx, dispatcher, func() {
 					if a.operations.Current(lease) && !a.closed {
-						a.reader.AcceptSearch(result)
+						a.dialogs.reader.AcceptSearch(result)
 					}
 				}); err != nil {
 					return

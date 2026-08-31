@@ -355,7 +355,7 @@ func (a *app) persistDraft() error {
 // message is captured only after the input burst settles, so editing a long
 // prompt does not rebuild and clone its entire value after every key.
 func (a *app) scheduleDraftPersistence() {
-	if a.drafts == nil || a.session.ID == "" || a.closed {
+	if a.drafts == nil || a.session.current.ID == "" || a.closed {
 		return
 	}
 	a.cancelScheduledDraftSave()
@@ -366,8 +366,8 @@ func (a *app) scheduleDraftPersistence() {
 			a.reportWorkbenchIssue(workbenchDraft, err)
 			return
 		}
-		if a.draftState.Observe(a.session.ID, message) {
-			a.reportWorkbenchIssue(workbenchDraft, a.drafts.Schedule(a.session.ID, message))
+		if a.draftState.Observe(a.session.current.ID, message) {
+			a.reportWorkbenchIssue(workbenchDraft, a.drafts.Schedule(a.session.current.ID, message))
 		}
 	})
 }
@@ -381,14 +381,14 @@ func (a *app) cancelScheduledDraftSave() {
 }
 
 func (a *app) saveDraft(message agent.Message) error {
-	if a.drafts == nil || a.session.ID == "" {
+	if a.drafts == nil || a.session.current.ID == "" {
 		return nil
 	}
 	a.cancelScheduledDraftSave()
-	if err := a.drafts.Flush(a.session.ID, message); err != nil {
+	if err := a.drafts.Flush(a.session.current.ID, message); err != nil {
 		return err
 	}
-	a.draftState.Reset(a.session.ID, message)
+	a.draftState.Reset(a.session.current.ID, message)
 	return nil
 }
 

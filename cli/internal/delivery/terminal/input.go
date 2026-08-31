@@ -56,11 +56,11 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	// into covered content. Blocking runtime interactions are the exception at
 	// the product-policy layer: their cancel action must resolve the interaction,
 	// not disappear into the modal boundary.
-	if action == cancelRun && (a.approval != nil || a.questionnaire != nil) {
+	if action == cancelRun && (a.dialogs.approval != nil || a.dialogs.questionnaire != nil) {
 		a.handleCancelGesture()
 		return true
 	}
-	if action == cancelRun && a.queueDialog != nil && a.queueDialog.Open() && !a.queueDrawer.Editing() {
+	if action == cancelRun && a.dialogs.queueDialog != nil && a.dialogs.queueDialog.Open() && !a.queueDrawer.Editing() {
 		a.cancel()
 		return true
 	}
@@ -168,7 +168,7 @@ func isEscapeEvent(event input.Event) bool {
 }
 
 func (a *app) handleEscape() bool {
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil {
+	if a.execution.blocksAdmission() {
 		a.confirmation.Reset()
 		a.cancel()
 		return true
@@ -237,7 +237,7 @@ func (a *app) handleGlobalAction(action keymap.Action) bool {
 }
 
 func (a *app) handleCancelGesture() {
-	if a.approval != nil || a.questionnaire != nil {
+	if a.dialogs.approval != nil || a.dialogs.questionnaire != nil {
 		a.cancel()
 		return
 	}

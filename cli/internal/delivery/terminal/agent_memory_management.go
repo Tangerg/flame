@@ -14,7 +14,7 @@ func (a *app) ShowAgentMemory(argument string) error {
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
-	target, err := parseAgentMemoryTarget(argument, a.session.Workspace.Path)
+	target, err := parseAgentMemoryTarget(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (a *app) AddAgentMemory(argument string) error {
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
-	target, err := parseAgentMemoryTarget(argument, a.session.Workspace.Path)
+	target, err := parseAgentMemoryTarget(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.Memor
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
-	target, identity, err := parseAgentMemoryIdentity(argument, a.session.Workspace.Path)
+	target, identity, err := parseAgentMemoryIdentity(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func parseAgentMemoryIdentity(argument, workspace string) (agent.MemoryTarget, s
 }
 
 func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete func(error) bool) error {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("adding agent memory")
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
 		func(ctx context.Context) (agent.MemoryItem, error) { return a.agentMemory.Add(ctx, target, content) },
@@ -279,7 +279,7 @@ func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete
 				closed = complete(nil)
 			}
 			a.message("agent memory added · " + item.ID)
-			if closed && a.sessionContext.current(presentation) {
+			if closed && a.session.context.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -290,7 +290,7 @@ func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete
 }
 
 func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPatch, label string, complete func(error) bool) error {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note(label)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
 		func(ctx context.Context) (agent.MemoryItem, error) { return a.agentMemory.Update(ctx, patch) },
@@ -307,7 +307,7 @@ func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPat
 				closed = complete(nil)
 			}
 			a.message("agent memory updated · " + item.ID)
-			if closed && a.sessionContext.current(presentation) {
+			if closed && a.session.context.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -318,7 +318,7 @@ func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPat
 }
 
 func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision agent.MemoryReviewDecision) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
@@ -333,7 +333,7 @@ func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision a
 				outcome = "approved"
 			}
 			a.message("agent memory " + outcome + " · " + reviewed)
-			if a.sessionContext.current(presentation) {
+			if a.session.context.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},
@@ -343,7 +343,7 @@ func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision a
 }
 
 func (a *app) deleteAgentMemory(target agent.MemoryTarget, id string) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("deleting agent memory " + id)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
 		func(ctx context.Context) (string, error) { return id, a.agentMemory.Delete(ctx, id) },
@@ -353,7 +353,7 @@ func (a *app) deleteAgentMemory(target agent.MemoryTarget, id string) {
 				return
 			}
 			a.message("agent memory deleted · " + deleted)
-			if a.sessionContext.current(presentation) {
+			if a.session.context.current(presentation) {
 				a.showAgentMemory(target)
 			}
 		},

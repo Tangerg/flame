@@ -79,12 +79,13 @@ type app struct {
 	feedback         Feedback
 	runtimeProfile   *runtimebinding.Profile
 	artifacts        sessionartifact.Store
-	session          agent.Session
 	registry         *extensions.Registry
 	pluginHost       *extensions.Host
 	pluginIssues     []extensions.SourceIssue
-	conversation     *agent.Conversation
 	operations       *operationOwner
+	session          sessionState
+	execution        executionState
+	dialogs          dialogState
 
 	transcript      *transcriptView
 	brand           *brandBanner
@@ -110,75 +111,21 @@ type app struct {
 	stopDraftSave   func()
 	editor          promptEditor
 
-	approval            *agent.Approval
-	approvalDraft       *approvalDecisionDraft
-	approvalArguments   string
-	approvalOverride    *agent.ToolArgumentOverride
-	approvalSections    []ToolSection
-	approvalEditor      *contextEditorSession
-	approvalForm        *headless.Form
-	approvalPane        approvalPane
-	approvalDialog      *presentationDialog
-	sessionCenter       *sessionCenterPane
-	sessionDialog       *presentationDialog
-	sessionRenameDialog *kit.Dialog
-	sessionDeleteDialog *kit.Dialog
-	confirmationDialog  *kit.Dialog
-	workspacePicker     *picker[workspaceChoice]
-	workspaceDialog     *presentationDialog
-	timeline            *timelinePane
-	timelineDialog      *presentationDialog
-	modelPicker         *picker[agent.Model]
-	modelDialog         *presentationDialog
-	approvalModePicker  *picker[agent.ApprovalMode]
-	approvalModeDialog  *presentationDialog
-	providerDialog      *kit.Dialog
-	mcpDialog           *kit.Dialog
-	scheduleDialog      *kit.Dialog
-	activeContextEditor *contextEditorSession
-	questionnaire       *questionnaire
-	questionDialog      *kit.Dialog
-	interactionReview   *interactionReview
-	reviewDialog        *kit.Dialog
-	commandPicker       *picker[commandPaletteItem]
-	commandDialog       *presentationDialog
-	shortcutDialog      *presentationDialog
-	shortcutViewport    *headless.Viewport
-	searchDialog        *presentationDialog
-	reader              *readerPane
-	readerDialog        *presentationDialog
-	readerSearchDialog  *presentationDialog
-	readerSearchQuery   string
-	workspaceReader     workspaceReaderMode
-	runtimeReader       runtimeReaderMode
-	runtimeSelection    runtimeReaderSelection
-	mcpToolServer       string
-	mcpAuthorizationID  string
-	queueDialog         *headless.Dialog
-	searchQuery         string
-	attachments         *attachment.Resolver
-	attachmentElements  map[uint64]agent.Attachment
-	history             promptHistory
-	workbenchHealth     workbenchHealth
-	sessionContext      *sessionContextLease
-	sessionInvalidated  bool
-	commandOperations   commandOperationRegistry
-	confirmation        pressConfirmation
-	applicationKeys     *keymap.Map
-	globalKeys          *keymap.Map
-	applicationMatcher  keymap.Matcher
-	globalMatcher       keymap.Matcher
-	attention           attentionCenter
+	attachments        *attachment.Resolver
+	attachmentElements map[uint64]agent.Attachment
+	history            promptHistory
+	workbenchHealth    workbenchHealth
+	commandOperations  commandOperationRegistry
+	confirmation       pressConfirmation
+	applicationKeys    *keymap.Map
+	globalKeys         *keymap.Map
+	applicationMatcher keymap.Matcher
+	globalMatcher      keymap.Matcher
+	attention          attentionCenter
 
-	openingRunID           string
-	pendingCancel          *pendingCancellation
-	sessionDraftTransition *sessionDraftTransition
-	following              bool
-	stopClock              func()
-	executionClock         activeDurationClock
-	closed                 bool
-	closeErr               error
-	syntax                 highlight.Renderer
+	closed   bool
+	closeErr error
+	syntax   highlight.Renderer
 }
 
 type appConfig struct {
@@ -253,9 +200,10 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		agentMemory: cfg.agentMemory, knowledge: cfg.knowledge,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
-		session: cfg.snapshot.Session, registry: cfg.registry,
+		session:    sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
+		registry:   cfg.registry,
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
-		conversation:       agent.NewConversation(),
+		execution:          executionState{conversation: agent.NewConversation()},
 		operations:         newOperationOwner(cfg.context),
 		transcript:         transcript,
 		brand:              brand,
@@ -275,7 +223,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		commandOperations:  newCommandOperationRegistry(),
 		commands:           newCommandCatalog(),
 		attention:          newAttentionCenter(),
-		sessionContext:     newSessionContextLease(),
 		applicationKeys:    cfg.keyBindings.application,
 		globalKeys:         cfg.keyBindings.global,
 	}
@@ -312,7 +259,7 @@ func (a *app) restorePendingRuns() {
 	if a.workbench == nil {
 		return
 	}
-	pending := a.workbench.PendingRuns(a.session.ID)
+	pending := a.workbench.PendingRuns(a.session.current.ID)
 	if len(pending) == 0 {
 		return
 	}
@@ -336,14 +283,14 @@ func (a *app) restorePendingRuns() {
 		return
 	}
 	if pending[0].State == workbench.PendingRunDispatching {
-		if a.conversation.Busy() {
+		if a.execution.conversation.Busy() {
 			a.reconcilePendingRun(pending[0])
 			return
 		}
 		a.replayPendingRun(pending[0])
 		return
 	}
-	if !a.conversation.Busy() {
+	if !a.execution.conversation.Busy() {
 		a.drainQueue()
 	}
 }
@@ -352,7 +299,7 @@ func (a *app) restorePendingResume() {
 	if a.workbench == nil {
 		return
 	}
-	pending, ok := a.workbench.PendingResume(a.session.ID)
+	pending, ok := a.workbench.PendingResume(a.session.current.ID)
 	if !ok {
 		return
 	}
@@ -360,19 +307,19 @@ func (a *app) restorePendingResume() {
 		a.fail(errors.New("recover interaction decisions: command belongs to another runtime"))
 		return
 	}
-	if a.conversation.Phase() != agent.ConversationWaiting || a.conversation.RunID() != pending.Command.RunID ||
-		!sameInteractions(a.conversation.Interactions(), pending.Interactions) {
+	if a.execution.conversation.Phase() != agent.ConversationWaiting || a.execution.conversation.RunID() != pending.Command.RunID ||
+		!sameInteractions(a.execution.conversation.Interactions(), pending.Interactions) {
 		// The authoritative snapshot has advanced beyond this decision. Its exact
 		// runtime outcome is therefore already visible and the local outbox can be
 		// retired without replaying an obsolete command.
-		if err := a.workbench.AcknowledgePendingResume(a.session.ID, pending.Command.CommandID); err != nil {
+		if err := a.workbench.AcknowledgePendingResume(a.session.current.ID, pending.Command.CommandID); err != nil {
 			a.fail(fmt.Errorf("retire settled interaction decisions: %w", err))
 		}
 		return
 	}
 	if !commandReplaySafe(pending.Replay, a.runtimeProfile) {
 		requeued, err := a.workbench.RequeuePendingResume(
-			a.session.ID, pending.Command.CommandID, commandReplayGuard(a.runtimeProfile),
+			a.session.current.ID, pending.Command.CommandID, commandReplayGuard(a.runtimeProfile),
 		)
 		if err != nil {
 			a.fail(fmt.Errorf("recover interaction decisions: replace expired command: %w", err))
@@ -387,7 +334,7 @@ func (a *app) restorePendingResume() {
 		return
 	}
 	a.dismissInteractionProjection()
-	a.interactionReview = review
+	a.dialogs.interactionReview = review
 	a.deliverInteractionResume(review, pending.Command.Clone(), pending.Replay)
 }
 
@@ -423,7 +370,7 @@ func (a *app) restorePendingQueue(pending []workbench.PendingRun) error {
 	if len(pending) > 0 && pending[0].State != workbench.PendingRunQueued {
 		dispatching = pending[0].Command.CommandID
 	}
-	if err := a.queue.Restore(a.session.ID, commands, dispatching); err != nil {
+	if err := a.queue.Restore(a.session.current.ID, commands, dispatching); err != nil {
 		return fmt.Errorf("restore pending runs: %w", err)
 	}
 	a.syncQueue()
@@ -441,7 +388,7 @@ func (a *app) replayPendingRun(pending workbench.PendingRun) {
 
 func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 	command := pending.Command
-	activeRunID := a.conversation.RunID()
+	activeRunID := a.execution.conversation.RunID()
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
@@ -451,7 +398,7 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 			return
 		}
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed || a.session.ID != command.SessionID ||
+			if !a.operations.Current(lease) || a.closed || a.session.current.ID != command.SessionID ||
 				!a.operations.Release(lease) {
 				return
 			}
@@ -538,33 +485,33 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 	transcript.OnFocusChange(a.prompt.SetTranscriptFocused)
 	transcript.OnSelection(a.prompt.SetTranscriptSelection)
 	transcript.OnCopy(func(string) {
-		if !a.conversation.Busy() && !a.following {
+		if !a.execution.conversation.Busy() && !a.execution.following {
 			a.status.note("copied selected transcript text")
 		}
 	})
 }
 
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.sessionCenter = newSessionCenterPane(theme, glyphs, func(session agent.Session) {
-		a.sessionDialog.Dismiss()
+	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session agent.Session) {
+		a.dialogs.sessionDialog.Dismiss()
 		a.switchSession(session.ID)
 	})
-	a.sessionCenter.loadMore = a.loadMoreSessions
-	a.sessionCenter.toggleFavorite = a.toggleSessionFavorite
-	a.sessionCenter.rename = a.openSessionRename
-	a.sessionCenter.delete = a.openSessionDelete
-	a.sessionDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Sessions · Center", Body: a.sessionCenter,
+	a.dialogs.sessionCenter.loadMore = a.loadMoreSessions
+	a.dialogs.sessionCenter.toggleFavorite = a.toggleSessionFavorite
+	a.dialogs.sessionCenter.rename = a.openSessionRename
+	a.dialogs.sessionCenter.delete = a.openSessionDelete
+	a.dialogs.sessionDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Sessions · Center", Body: a.dialogs.sessionCenter,
 		Where: layout.Placement{Width: 96, Height: 24},
 	})
-	a.sessionCenter.picker.cancel = func() {
+	a.dialogs.sessionCenter.picker.cancel = func() {
 		a.operations.Cancel(pickerCatalogOperation)
-		a.sessionDialog.Dismiss()
+		a.dialogs.sessionDialog.Dismiss()
 	}
 }
 
 func (a *app) restore(snapshot agent.SessionSnapshot) {
-	if err := a.conversation.RestoreSnapshot(snapshot); err != nil {
+	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
 		a.fail(err)
 		return
 	}
@@ -640,8 +587,8 @@ func (a *app) newTranscript() *transcriptView {
 // operation alive: run recovery already attached the replacement stream before
 // taking this snapshot, so canceling that operation here would reopen a gap.
 func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.SegmentStream) error {
-	if snapshot.Session.ID != a.session.ID {
-		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, a.session.ID)
+	if snapshot.Session.ID != a.session.current.ID {
+		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, a.session.current.ID)
 	}
 	projection, err := a.projectSession(snapshot, &stream)
 	if err != nil {
@@ -651,7 +598,7 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	a.prepareSessionProjectionReplacement(snapshot.Session, projection.conversation)
 	previousTranscript := a.transcript
 	a.setActiveSession(snapshot.Session)
-	a.conversation = projection.conversation
+	a.execution.conversation = projection.conversation
 	a.transcript = projection.transcript
 	a.wireTranscript(projection.transcript)
 	a.shell.SetTranscript(projection.transcript)
@@ -665,17 +612,17 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 
 	switch projection.conversation.Phase() {
 	case agent.ConversationRunning:
-		a.following = true
-		a.executionClock.start(projection.conversation.Usage().Duration, time.Now())
+		a.execution.following = true
+		a.execution.clock.start(projection.conversation.Usage().Duration, time.Now())
 		a.status.active("reconnected")
 	case agent.ConversationWaiting:
-		a.following = false
-		if a.interactionReview == nil {
+		a.execution.following = false
+		if a.dialogs.interactionReview == nil {
 			a.openInteractions(projection.conversation.Interactions())
 		}
 		a.status.note("waiting for your answers")
 	case agent.ConversationIdle:
-		a.following = false
+		a.execution.following = false
 		if projection.conversation.Outcome().Status != "" {
 			a.status.settled(projection.conversation.Outcome(), projection.conversation.Usage())
 		}
@@ -693,15 +640,15 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 }
 
 func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
-	a.activity.Set(a.conversation.PlanItems())
-	a.header.SetUsage(a.conversation.Usage())
+	a.activity.Set(a.execution.conversation.PlanItems())
+	a.header.SetUsage(a.execution.conversation.Usage())
 	a.header.SetGoal(snapshot.Goal)
-	a.status.setRunningDescendants(a.conversation.RunningDescendants())
-	a.prompt.SetBusy(a.conversation.Busy())
-	switch a.conversation.Phase() {
+	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
+	a.prompt.SetBusy(a.execution.conversation.Busy())
+	switch a.execution.conversation.Phase() {
 	case agent.ConversationWaiting:
-		if a.interactionReview == nil {
-			a.openInteractions(a.conversation.Interactions())
+		if a.dialogs.interactionReview == nil {
+			a.openInteractions(a.execution.conversation.Interactions())
 		}
 		a.status.note("waiting for your answers")
 	case agent.ConversationRunning:
@@ -709,12 +656,12 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 			a.fail(errors.New("session snapshot has a running conversation without an active run"))
 			return
 		}
-		a.executionClock.start(a.conversation.Usage().Duration, time.Now())
+		a.execution.clock.start(a.execution.conversation.Usage().Duration, time.Now())
 		a.status.active("reconnecting")
 		a.followRecoveredSession()
 	case agent.ConversationIdle:
-		if a.conversation.Outcome().Status != "" {
-			a.status.settled(a.conversation.Outcome(), a.conversation.Usage())
+		if a.execution.conversation.Outcome().Status != "" {
+			a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
 		}
 	default:
 		a.fail(errors.New("session snapshot has an unknown conversation phase"))
@@ -729,7 +676,7 @@ func displayTitle(session agent.Session) string {
 }
 
 func (a *app) setActiveSession(session agent.Session) {
-	a.session = session
+	a.session.current = session
 	a.header.SetSession(session)
 	a.brand.SetSession(session)
 	a.brand.SetOptions(a.displayOptions())
@@ -740,7 +687,7 @@ func (a *app) setActiveSession(session agent.Session) {
 }
 
 func (a *app) displayOptions() agent.RunOptions {
-	return displayRunOptions(a.options, a.session)
+	return displayRunOptions(a.options, a.session.current)
 }
 
 func (a *app) Draw(frame headless.Frame) {
@@ -755,11 +702,11 @@ func (a *app) Close(ctx context.Context) error {
 		return a.closeErr
 	}
 	var closeErr error
-	if !a.conversation.Busy() && !a.following && a.pendingCancel == nil && a.openingRunID != "" {
+	if !a.execution.blocksAdmission() && a.execution.openingRunID != "" {
 		if err := a.attemptQueuedDispatchSettlement(); err != nil {
 			closeErr = errors.Join(closeErr, fmt.Errorf("settle acknowledged run start: %w", err))
 		} else {
-			a.openingRunID = ""
+			a.execution.openingRunID = ""
 		}
 	}
 	a.closed = true
@@ -769,9 +716,9 @@ func (a *app) Close(ctx context.Context) error {
 		cancelRuntime    bool
 		cancelReplay     commandreplay.Guard
 	)
-	if a.pendingCancel != nil {
-		target, openingCommandID, cancelRuntime = a.pendingCancel.request, a.pendingCancel.openingCommandID, true
-		cancelReplay = a.pendingCancel.replay
+	if a.execution.pendingCancel != nil {
+		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
+		cancelReplay = a.execution.pendingCancel.replay
 	} else {
 		target, cancelRuntime = a.activeCancellation()
 		openingCommandID = a.openingCommandForRun(target.RunID)
@@ -804,12 +751,12 @@ func (a *app) Close(ctx context.Context) error {
 		closeErr = errors.Join(closeErr, a.cancelOpeningRunNow(ctx, pendingStart))
 	}
 	a.transcript.Close()
-	if a.reader != nil {
-		a.reader.Shutdown()
+	if a.dialogs.reader != nil {
+		a.dialogs.reader.Shutdown()
 	}
-	if a.stopClock != nil {
-		a.stopClock()
-		a.stopClock = nil
+	if a.execution.stopClock != nil {
+		a.execution.stopClock()
+		a.execution.stopClock = nil
 	}
 	a.closeErr = closeErr
 	return closeErr
@@ -861,18 +808,18 @@ func (a *app) dispatchPrompt(message agent.Message) {
 		return
 	}
 	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil || a.operations.BlocksRunAdmission() {
+	if a.execution.blocksAdmission() || a.operations.BlocksRunAdmission() {
 		a.enqueueDeferredPrompt(commandID, message)
 		return
 	}
-	_, err = a.queue.EnqueueCommand(commandID, a.session.ID, message, a.options)
+	_, err = a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options)
 	if err != nil {
 		a.message(err.Error())
 		return
 	}
 	a.operations.Cancel(pickerCatalogOperation)
-	a.sessionDialog.Dismiss()
-	a.modelDialog.Dismiss()
+	a.dialogs.sessionDialog.Dismiss()
+	a.dialogs.modelDialog.Dismiss()
 	a.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()
@@ -893,7 +840,7 @@ func (a *app) commitPromptSubmission(commandID agent.CommandID, message agent.Me
 			State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
 			CancelReplay: commandreplay.UnprotectedGuard(),
 			Command: agent.StartRun{
-				CommandID: commandID, SessionID: a.session.ID, Message: message.Clone(), Options: a.options.Clone(),
+				CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: a.options.Clone(),
 			},
 		}
 		if err := a.workbench.StagePendingRun(pending); err != nil {
@@ -904,10 +851,10 @@ func (a *app) commitPromptSubmission(commandID agent.CommandID, message agent.Me
 }
 
 func (a *app) sendNextQueuedIfBusy() {
-	if !a.conversation.Busy() && !a.following && a.pendingCancel == nil {
+	if !a.execution.blocksAdmission() {
 		return
 	}
-	state := a.queue.State(a.session.ID)
+	state := a.queue.State(a.session.current.ID)
 	if len(state.Entries) == 0 {
 		return
 	}
@@ -924,7 +871,7 @@ func (a *app) sendNextQueuedIfBusy() {
 }
 
 func (a *app) message(label string) {
-	if a.conversation.Phase() == agent.ConversationRunning {
+	if a.execution.conversation.Phase() == agent.ConversationRunning {
 		a.status.active(label)
 		return
 	}

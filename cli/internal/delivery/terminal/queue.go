@@ -108,7 +108,7 @@ func countedNoun(count int, noun string) string {
 }
 
 func (a *app) enqueueDeferredPrompt(commandID agent.CommandID, message agent.Message) {
-	_, err := a.queue.EnqueueCommand(commandID, a.session.ID, message, a.options)
+	_, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options)
 	if err != nil {
 		a.message(err.Error())
 		return
@@ -118,7 +118,7 @@ func (a *app) enqueueDeferredPrompt(commandID agent.CommandID, message agent.Mes
 	a.completion.Dismiss()
 	snapshot := a.syncQueue()
 	label := "queued follow-up"
-	if !a.conversation.Busy() && !a.following && a.pendingCancel == nil && a.operations.BlocksRunAdmission() {
+	if !a.execution.blocksAdmission() && a.operations.BlocksRunAdmission() {
 		label = "queued behind runtime change"
 	}
 	a.message(fmt.Sprintf("%s · %d waiting", label, len(snapshot.Entries)))
@@ -128,8 +128,8 @@ func (a *app) drainQueue() bool {
 	if a.closed {
 		return false
 	}
-	if _, dispatching := a.queue.Dispatching(a.session.ID); dispatching {
-		if a.conversation.Busy() || a.following || a.pendingCancel != nil || a.openingRunID == "" ||
+	if _, dispatching := a.queue.Dispatching(a.session.current.ID); dispatching {
+		if a.execution.blocksAdmission() || a.execution.openingRunID == "" ||
 			a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) ||
 			a.operations.BlocksRunAdmission() {
 			return false
@@ -138,20 +138,20 @@ func (a *app) drainQueue() bool {
 			a.reportQueuedDispatchSettlementFailure(err)
 			return false
 		}
-		a.openingRunID = ""
+		a.execution.openingRunID = ""
 	}
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil ||
+	if a.execution.blocksAdmission() ||
 		a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) ||
 		a.operations.BlocksRunAdmission() {
 		return false
 	}
-	entry, ok := a.queue.BeginDispatch(a.session.ID)
+	entry, ok := a.queue.BeginDispatch(a.session.current.ID)
 	if !ok {
 		return false
 	}
 	a.syncQueue()
 	if !a.startRun(entry.CommandID, entry.Message, entry.Options, "starting queued follow-up") {
-		a.queue.ReleaseDispatch(a.session.ID)
+		a.queue.ReleaseDispatch(a.session.current.ID)
 		a.syncQueue()
 		return false
 	}
@@ -163,18 +163,18 @@ func (a *app) drainQueue() bool {
 // remains intact when persistence fails so later events or user activity can
 // retry the same settlement without crossing the FIFO boundary.
 func (a *app) attemptQueuedDispatchSettlement() error {
-	entry, ok := a.queue.Dispatching(a.session.ID)
+	entry, ok := a.queue.Dispatching(a.session.current.ID)
 	if !ok {
 		return nil
 	}
 	if a.workbench != nil {
-		if pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.ID), entry.CommandID); found {
+		if pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID); found {
 			if pending.State == workbench.PendingRunCanceling {
 				return errQueuedPromptCanceling
 			}
 		}
 	}
-	return a.retireQueuedCommand(a.session.ID, entry.CommandID)
+	return a.retireQueuedCommand(a.session.current.ID, entry.CommandID)
 }
 
 // retireQueuedCommand settles one exact StartRun command in both durable and
@@ -229,11 +229,11 @@ func (a *app) queuedDispatchCanceling() bool {
 	if a.workbench == nil {
 		return false
 	}
-	entry, ok := a.queue.Dispatching(a.session.ID)
+	entry, ok := a.queue.Dispatching(a.session.current.ID)
 	if !ok {
 		return false
 	}
-	pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.ID), entry.CommandID)
+	pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
 	return found && pending.State == workbench.PendingRunCanceling
 }
 
@@ -250,7 +250,7 @@ func (a *app) retryQueuedDispatchSettlement() {
 	if a.workbench == nil {
 		return
 	}
-	runID := a.openingRunID
+	runID := a.execution.openingRunID
 	a.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
 		a.attemptQueuedDispatchSettlement,
@@ -277,7 +277,7 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 	if settle == nil || a.operations.Active(slot) {
 		return
 	}
-	sessionID := a.session.ID
+	sessionID := a.session.current.ID
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
 		for failures := 1; ; failures++ {
@@ -286,7 +286,7 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 			}
 			completed := false
 			if err := post(ctx, dispatcher, func() {
-				if !a.operations.Current(lease) || a.closed || a.session.ID != sessionID {
+				if !a.operations.Current(lease) || a.closed || a.session.current.ID != sessionID {
 					return
 				}
 				if settle() != nil || !a.operations.Release(lease) {
@@ -304,8 +304,8 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 }
 
 func (a *app) finishQueuedSettlementRecovery(runID string) {
-	if a.openingRunID == runID {
-		a.openingRunID = ""
+	if a.execution.openingRunID == runID {
+		a.execution.openingRunID = ""
 	}
 	a.finishAuthoringSettlementRecovery()
 }
@@ -314,35 +314,35 @@ func (a *app) finishQueuedSettlementRecovery(runID string) {
 // run. It must only clear the opening identity it originally owned; otherwise
 // a late local disk recovery could detach the successor's lifecycle.
 func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string) {
-	if a.openingRunID == runID {
-		a.openingRunID = ""
+	if a.execution.openingRunID == runID {
+		a.execution.openingRunID = ""
 	}
 	a.reportWorkbenchIssue(workbenchCancellationOwnership, nil)
 	a.finishAuthoringSettlementRecovery()
 }
 
 func (a *app) finishAuthoringSettlementRecovery() {
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil || a.drainQueue() {
+	if a.execution.blocksAdmission() || a.drainQueue() {
 		return
 	}
-	if a.conversation.Outcome().Status != "" {
-		a.status.settled(a.conversation.Outcome(), a.conversation.Usage())
+	if a.execution.conversation.Outcome().Status != "" {
+		a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
 		a.syncAnimation()
 	}
 }
 
 func (a *app) syncQueue() promptqueue.Snapshot {
-	snapshot := a.queue.Snapshot(a.session.ID)
+	snapshot := a.queue.Snapshot(a.session.current.ID)
 	a.queueView.Set(snapshot)
 	a.prompt.SetQueued(len(snapshot.Entries))
 	if a.queueDrawer != nil {
 		a.queueDrawer.Set(snapshot)
 	}
-	if a.queueDialog != nil {
-		a.queueDialog.SetTitle("Queue · " + countedNoun(len(snapshot.Entries), "prompt"))
-		a.queueDialog.SetDescription(fmt.Sprintf("Manage %s waiting behind the current turn", countedNoun(len(snapshot.Entries), "prompt")))
-		if len(snapshot.Entries) == 0 && a.queueDialog.Open() {
-			a.queueDialog.Dismiss()
+	if a.dialogs.queueDialog != nil {
+		a.dialogs.queueDialog.SetTitle("Queue · " + countedNoun(len(snapshot.Entries), "prompt"))
+		a.dialogs.queueDialog.SetDescription(fmt.Sprintf("Manage %s waiting behind the current turn", countedNoun(len(snapshot.Entries), "prompt")))
+		if len(snapshot.Entries) == 0 && a.dialogs.queueDialog.Open() {
+			a.dialogs.queueDialog.Dismiss()
 		}
 	}
 	return snapshot
@@ -352,9 +352,9 @@ func (a *app) persistQueuedRuns() error {
 	if a.workbench == nil {
 		return nil
 	}
-	state := a.queue.State(a.session.ID)
+	state := a.queue.State(a.session.current.ID)
 	entries := state.Entries
-	persisted := a.workbench.PendingRuns(a.session.ID)
+	persisted := a.workbench.PendingRuns(a.session.current.ID)
 	commands := make([]workbench.PendingRun, 0, len(entries))
 	dispatchingID, hasDispatch := state.DispatchingID()
 	for _, entry := range entries {
@@ -389,7 +389,7 @@ func (a *app) persistQueuedRuns() error {
 		})
 		commands[len(commands)-1].State = pendingState
 	}
-	return a.workbench.SavePendingRuns(a.session.ID, commands)
+	return a.workbench.SavePendingRuns(a.session.current.ID, commands)
 }
 
 // commitQueueMutation keeps the in-memory queue and durable authoring outbox
@@ -397,7 +397,7 @@ func (a *app) persistQueuedRuns() error {
 // transaction succeeds, so a failed disk write cannot silently change FIFO
 // order, content, or command identity for the live process alone.
 func (a *app) commitQueueMutation(mutate func() error) error {
-	before := a.queue.State(a.session.ID)
+	before := a.queue.State(a.session.current.ID)
 	if err := mutate(); err != nil {
 		return a.rollbackQueueMutation(before, err)
 	}
@@ -409,7 +409,7 @@ func (a *app) commitQueueMutation(mutate func() error) error {
 }
 
 func (a *app) rollbackQueueMutation(before promptqueue.State, cause error) error {
-	if err := a.queue.RestoreState(a.session.ID, before); err != nil {
+	if err := a.queue.RestoreState(a.session.current.ID, before); err != nil {
 		return errors.Join(cause, fmt.Errorf("restore prompt queue: %w", err))
 	}
 	a.syncQueue()
@@ -433,7 +433,7 @@ func (a *app) ShowQueue() {
 	}
 	a.queueDrawer.ResetNotice()
 	a.queueDrawer.lifecycle.renew()
-	a.queueDialog.Show()
+	a.dialogs.queueDialog.Show()
 	a.message(fmt.Sprintf("queue · %d waiting", len(snapshot.Entries)))
 }
 
@@ -451,11 +451,11 @@ func (a *app) buildQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.
 	})
 	drawer.lifecycle.bind(dialog.Open)
 	a.queueDrawer = drawer
-	a.queueDialog = dialog
+	a.dialogs.queueDialog = dialog
 }
 
 func (a *app) holdQueuedPrompt(entry promptqueue.Entry) error {
-	if entry.SessionID != a.session.ID {
+	if entry.SessionID != a.session.current.ID {
 		return errors.New("queued prompt belongs to another session")
 	}
 	if dispatching, ok := a.queue.Dispatching(entry.SessionID); ok && dispatching.ID == entry.ID {
@@ -469,7 +469,7 @@ func (a *app) holdQueuedPrompt(entry promptqueue.Entry) error {
 }
 
 func (a *app) saveQueuedPrompt(entry promptqueue.Entry, message agent.Message, sendNow bool) error {
-	if entry.SessionID != a.session.ID {
+	if entry.SessionID != a.session.current.ID {
 		return errors.New("queued prompt belongs to another session")
 	}
 	if dispatching, ok := a.queue.Dispatching(entry.SessionID); ok && dispatching.ID == entry.ID {
@@ -494,7 +494,7 @@ func (a *app) releaseQueuedPrompt(entry promptqueue.Entry) error {
 	if err := a.queue.Release(entry.SessionID, entry.ID); err != nil {
 		return err
 	}
-	if entry.SessionID != a.session.ID {
+	if entry.SessionID != a.session.current.ID {
 		return nil
 	}
 	a.syncQueue()
@@ -503,16 +503,16 @@ func (a *app) releaseQueuedPrompt(entry promptqueue.Entry) error {
 }
 
 func (a *app) removeQueuedPrompt(id promptqueue.EntryID) error {
-	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
+	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
 	if err := a.commitQueueMutation(func() error {
-		_, err := a.queue.Remove(a.session.ID, id)
+		_, err := a.queue.Remove(a.session.current.ID, id)
 		return err
 	}); err != nil {
 		return err
 	}
-	snapshot := a.queue.Snapshot(a.session.ID)
+	snapshot := a.queue.Snapshot(a.session.current.ID)
 	if len(snapshot.Entries) == 0 {
 		a.message("queue is empty")
 	}
@@ -520,11 +520,11 @@ func (a *app) removeQueuedPrompt(id promptqueue.EntryID) error {
 }
 
 func (a *app) moveQueuedPrompt(id promptqueue.EntryID, offset int) error {
-	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
+	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
 	if err := a.commitQueueMutation(func() error {
-		return a.queue.Move(a.session.ID, id, offset)
+		return a.queue.Move(a.session.current.ID, id, offset)
 	}); err != nil {
 		return err
 	}
@@ -535,21 +535,21 @@ func (a *app) moveQueuedPrompt(id promptqueue.EntryID, offset int) error {
 // Cancellation and dispatch therefore remain resumable if either runtime control
 // call is delayed or fails: the promoted entry is still the next FIFO item.
 func (a *app) sendQueuedNow(id promptqueue.EntryID) error {
-	if entry, ok := a.queue.Dispatching(a.session.ID); ok && id == entry.ID {
+	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
 	if a.operations.Active(sessionChangeOperation) {
 		return errors.New("wait for the current session change to finish")
 	}
-	if !a.conversation.Busy() && !a.following && a.pendingCancel == nil && a.operations.BlocksRunAdmission() {
+	if !a.execution.blocksAdmission() && a.operations.BlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
 	}
 	if err := a.commitQueueMutation(func() error {
-		return a.queue.Promote(a.session.ID, id)
+		return a.queue.Promote(a.session.current.ID, id)
 	}); err != nil {
 		return err
 	}
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil {
+	if a.execution.blocksAdmission() {
 		a.cancel()
 		return nil
 	}

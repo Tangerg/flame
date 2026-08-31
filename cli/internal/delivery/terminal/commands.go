@@ -142,7 +142,7 @@ func (a *app) registerCommands() {
 		var evaluate func(*app) CommandAvailability
 		if command.Available != nil {
 			evaluate = func(host *app) CommandAvailability {
-				request := CommandRequest{Workspace: host.session.Workspace.Path, SessionID: host.session.ID}
+				request := CommandRequest{Workspace: host.session.current.Workspace.Path, SessionID: host.session.current.ID}
 				return command.Available(request)
 			}
 		}
@@ -227,7 +227,7 @@ func (r *commandOperationRegistry) take(pluginIDs ...string) []commandOperation 
 func (a *app) executeCommand(pluginID string, command SlashCommand, argument string) {
 	name := command.Descriptor.Name
 	a.status.note("running /" + name)
-	request := CommandRequest{Argument: argument, Workspace: a.session.Workspace.Path, SessionID: a.session.ID}
+	request := CommandRequest{Argument: argument, Workspace: a.session.current.Workspace.Path, SessionID: a.session.current.ID}
 	dispatcher := a.loop.Dispatcher()
 	operation, err := a.commandOperations.reserve(pluginID)
 	if err != nil {

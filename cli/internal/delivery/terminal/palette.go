@@ -17,7 +17,7 @@ type commandPaletteItem struct {
 }
 
 func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
-	a.commandPicker = newPicker(theme, glyphs, "search commands",
+	a.dialogs.commandPicker = newPicker(theme, glyphs, "search commands",
 		func(item commandPaletteItem) string { return "/" + item.command.Name },
 		func(item commandPaletteItem) string {
 			detail := item.category + " · " + item.command.Title
@@ -27,11 +27,11 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 			return detail
 		},
 		func(item commandPaletteItem) {
-			if !a.commandDialog.Open() {
+			if !a.dialogs.commandDialog.Open() {
 				return
 			}
 			command := item.command
-			a.commandDialog.Dismiss()
+			a.dialogs.commandDialog.Dismiss()
 			if !item.availability.Enabled {
 				a.message("/" + command.Name + " unavailable: " + item.availability.Reason)
 				return
@@ -45,11 +45,11 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 			a.runCommand(command.Name, "")
 		},
 	)
-	a.commandDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Commands", Body: a.commandPicker,
+	a.dialogs.commandDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Commands", Body: a.dialogs.commandPicker,
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
-	a.commandPicker.cancel = a.commandDialog.Dismiss
+	a.dialogs.commandPicker.cancel = a.dialogs.commandDialog.Dismiss
 }
 
 func (a *app) showCommandPalette() {
@@ -67,9 +67,9 @@ func (a *app) showCommandPalette() {
 		}
 		return strings.Compare(left.command.Name, right.command.Name)
 	})
-	a.commandPicker.Reset()
-	a.commandPicker.SetItems(commands)
-	a.commandDialog.Show()
+	a.dialogs.commandPicker.Reset()
+	a.dialogs.commandPicker.SetItems(commands)
+	a.dialogs.commandDialog.Show()
 	a.status.note("choose a command")
 }
 
@@ -97,29 +97,29 @@ func commandCategoryRank(category string) int {
 }
 
 func (a *app) buildSearchDialog(theme kit.Theme, glyphs kit.Glyphs) {
-	field := &headless.Text{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&a.searchQuery), Check: requiredText}
+	field := &headless.Text{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&a.dialogs.searchQuery), Check: requiredText}
 	keys := headless.DefaultFormKeys()
 	form := headless.NewForm(field)
 	form.Keys = keys
 	form.Done = func() {
-		if !a.searchDialog.Open() {
+		if !a.dialogs.searchDialog.Open() {
 			return
 		}
-		a.searchDialog.Dismiss()
-		a.Find(a.searchQuery)
+		a.dialogs.searchDialog.Dismiss()
+		a.Find(a.dialogs.searchQuery)
 	}
-	form.GaveUp = func() { a.searchDialog.Dismiss() }
+	form.GaveUp = func() { a.dialogs.searchDialog.Dismiss() }
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: theme, Glyphs: glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	a.searchDialog = newPresentationDialog(kit.DialogConfig{
+	a.dialogs.searchDialog = newPresentationDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Search", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
 }
 
 func (a *app) showSearchDialog() {
-	a.searchQuery = ""
-	a.searchDialog.Show()
+	a.dialogs.searchQuery = ""
+	a.dialogs.searchDialog.Show()
 }

@@ -189,9 +189,9 @@ func (a *app) openMCPServerForm(mode mcpFormMode, server mcp.Server) {
 }
 
 func (a *app) showMCPFormStep(flow *mcpFormFlow) {
-	if a.mcpDialog != nil {
-		a.mcpDialog.Controller().Dismiss()
-		a.mcpDialog = nil
+	if a.dialogs.mcpDialog != nil {
+		a.dialogs.mcpDialog.Controller().Dismiss()
+		a.dialogs.mcpDialog = nil
 	}
 	fields, secretFields := a.mcpFormFields(flow)
 	flow.secretFields = append(flow.secretFields, secretFields...)
@@ -199,7 +199,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.mcpDialog != dialog {
+		if a.dialogs.mcpDialog != dialog {
 			return
 		}
 		if flow.advance() {
@@ -209,7 +209,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 		a.submitMCPForm(flow)
 	}
 	form.GaveUp = func() {
-		if a.mcpDialog != dialog {
+		if a.dialogs.mcpDialog != dialog {
 			return
 		}
 		if flow.back() {
@@ -237,7 +237,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.Measure(88), len(fields), 24)},
 	})
 	dialog.Controller().SetDescription(label)
-	a.mcpDialog = dialog
+	a.dialogs.mcpDialog = dialog
 	dialog.Controller().Show()
 }
 
@@ -272,9 +272,9 @@ func (a *app) submitMCPForm(flow *mcpFormFlow) {
 
 func (a *app) closeMCPForm(flow *mcpFormFlow) {
 	flow.clearSecrets()
-	if a.mcpDialog != nil {
-		a.mcpDialog.Controller().Dismiss()
-		a.mcpDialog = nil
+	if a.dialogs.mcpDialog != nil {
+		a.dialogs.mcpDialog.Controller().Dismiss()
+		a.dialogs.mcpDialog = nil
 	}
 }
 

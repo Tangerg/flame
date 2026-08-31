@@ -66,7 +66,7 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 }
 
 func (a *app) startRun(commandID agent.CommandID, message agent.Message, options agent.RunOptions, status string) bool {
-	input := agent.StartRun{CommandID: commandID, SessionID: a.session.ID, Message: message.Clone(), Options: options.Clone()}
+	input := agent.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
 	replay, ready := a.prepareRunStart(input)
 	if !ready {
 		return false
@@ -97,7 +97,7 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 				if identityErr := cliidentity.ValidateRun(receipt.RunID); identityErr != nil {
 					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
 				}
-				a.openingRunID = receipt.RunID
+				a.execution.openingRunID = receipt.RunID
 				a.cancelRuntimePreservingFailure(agent.CancelRun{
 					RunID: receipt.RunID, Reason: "runtime returned an invalid start receipt",
 				})
@@ -109,7 +109,7 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 }
 
 func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) {
-	if err := a.conversation.Starting(); err != nil {
+	if err := a.execution.conversation.Starting(); err != nil {
 		a.fail(err)
 		return commandreplay.Guard{}, false
 	}
@@ -118,7 +118,7 @@ func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) 
 		return replay, true
 	}
 	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replay); err != nil {
-		rollbackErr := a.conversation.CancelStarting()
+		rollbackErr := a.execution.conversation.CancelStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())
 		if rollbackErr != nil {
 			a.fail(errors.Join(err, rollbackErr))
@@ -139,12 +139,12 @@ func (a *app) presentRunStart(status string) {
 	a.header.SetUsage(agent.Usage{})
 	a.prompt.SetBusy(true)
 	a.status.active(status)
-	a.executionClock.start(0, time.Now())
+	a.execution.clock.start(0, time.Now())
 	a.syncAnimation()
 }
 
 func (a *app) acceptStartedRun(input agent.StartRun, opened agent.SegmentStream) {
-	a.openingRunID = opened.RunID
+	a.execution.openingRunID = opened.RunID
 	if a.workbench == nil {
 		return
 	}
@@ -266,7 +266,7 @@ func (a *app) followRecoveredSession() {
 			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease,
 			applyEvent: a.apply, policy: a.reconnectPolicy,
 		}
-		recovered, ok := follower.restoreAttachedSession(a.session.ID)
+		recovered, ok := follower.restoreAttachedSession(a.session.current.ID)
 		if !ok {
 			return
 		}
@@ -444,7 +444,7 @@ func (s *streamFollower) apply(event agent.RunEvent) (bool, error) {
 			return
 		}
 		applyErr = s.applyEvent(event)
-		s.checkpoint = s.app.conversation.Checkpoint()
+		s.checkpoint = s.app.execution.conversation.Checkpoint()
 	})
 	if applyErr != nil {
 		applyErr = &eventApplicationError{err: applyErr}
@@ -479,8 +479,8 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 			snapshot.active = false
 			return
 		}
-		snapshot.checkpoint = s.app.conversation.Checkpoint()
-		snapshot.phase = s.app.conversation.Phase()
+		snapshot.checkpoint = s.app.execution.conversation.Checkpoint()
+		snapshot.phase = s.app.execution.conversation.Phase()
 	})
 	return snapshot, err
 }
@@ -553,7 +553,7 @@ func (s *streamFollower) acceptRebound(runID, segmentID string, rebound agent.Se
 }
 
 func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
-	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.app.session.ID, runID)
+	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.app.session.current.ID, runID)
 	if err != nil {
 		if runworkflow.RecoveryRequired(err) {
 			return recoveryAttempt{disposition: recoveryRetry, cause: cause}
@@ -648,7 +648,7 @@ func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
 }
 
 func (a *app) apply(event agent.RunEvent) error {
-	result, err := a.conversation.ApplyRunEvent(event)
+	result, err := a.execution.conversation.ApplyRunEvent(event)
 	if err != nil {
 		return fmt.Errorf("apply runtime event %s: %w", event.EventID, err)
 	}
@@ -659,7 +659,7 @@ func (a *app) apply(event agent.RunEvent) error {
 		return err
 	}
 	a.applyPresentationEvent(event)
-	a.status.setRunningDescendants(a.conversation.RunningDescendants())
+	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
 	case agent.SegmentStarted, agent.RunProgress, agent.RunInterrupted, agent.RunSuspended, agent.RunFinished:
 		a.refreshOpenTimeline()
@@ -674,14 +674,14 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 	case agent.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
 			if settled := a.settleQueuedDispatch(); settled {
-				a.openingRunID = ""
+				a.execution.openingRunID = ""
 				a.status.active("working")
 			} else if a.queuedDispatchCanceling() {
 				a.status.active("canceling")
 			} else {
 				a.status.note("working · retrying local settlement")
 			}
-			a.executionClock.start(event.Run.Usage.Duration, time.Now())
+			a.execution.clock.start(event.Run.Usage.Duration, time.Now())
 		}
 	case agent.BlockStarted:
 		a.noteBlockStarted(event.Block)
@@ -690,28 +690,28 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 			a.status.active("working")
 		}
 	case agent.PlanChanged:
-		a.activity.Set(a.conversation.PlanItems())
+		a.activity.Set(a.execution.conversation.PlanItems())
 	case agent.RunProgress:
-		if envelope.RunID == a.conversation.RunID() {
-			a.header.SetUsage(a.conversation.Usage())
+		if envelope.RunID == a.execution.conversation.RunID() {
+			a.header.SetUsage(a.execution.conversation.Usage())
 			a.status.progress(event)
 		} else if strings.TrimSpace(event.Activity) != "" {
 			a.status.active("subagent · " + event.Activity)
 		}
 	case agent.RunInterrupted:
-		if a.conversation.Phase() == agent.ConversationWaiting {
-			a.openInteractions(a.conversation.Interactions())
-			a.header.SetUsage(a.conversation.Usage())
+		if a.execution.conversation.Phase() == agent.ConversationWaiting {
+			a.openInteractions(a.execution.conversation.Interactions())
+			a.header.SetUsage(a.execution.conversation.Usage())
 			a.status.note("waiting for your answers")
 		}
 	case agent.RunSuspended:
-		if a.conversation.Phase() == agent.ConversationWaiting {
-			a.openInteractions(a.conversation.Interactions())
-			a.header.SetUsage(a.conversation.Usage())
+		if a.execution.conversation.Phase() == agent.ConversationWaiting {
+			a.openInteractions(a.execution.conversation.Interactions())
+			a.header.SetUsage(a.execution.conversation.Usage())
 			a.status.note("waiting for your answers")
 		}
 	case agent.RunFinished:
-		if envelope.RunID == a.conversation.RunID() {
+		if envelope.RunID == a.execution.conversation.RunID() {
 			a.noteRunFinished()
 		}
 	case agent.BlockDelta, agent.ToolArgumentsDelta, agent.CustomEvent:
@@ -731,25 +731,25 @@ func (a *app) noteBlockStarted(block agent.Block) {
 
 func (a *app) noteRunFinished() {
 	a.status.note("finishing run")
-	a.header.SetUsage(a.conversation.Usage())
+	a.header.SetUsage(a.execution.conversation.Usage())
 }
 
 func (a *app) finishFollowing() {
-	a.following = false
+	a.execution.following = false
 	a.refreshOpenTimeline()
-	if a.sessionInvalidated {
+	if a.session.invalidated {
 		a.refreshInvalidatedSession(true)
 		return
 	}
-	if a.conversation.Phase() != agent.ConversationIdle || a.conversation.Outcome().Status == "" {
+	if a.execution.conversation.Phase() != agent.ConversationIdle || a.execution.conversation.Outcome().Status == "" {
 		return
 	}
-	a.status.settled(a.conversation.Outcome(), a.conversation.Usage())
+	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
 	a.prompt.SetBusy(false)
 	settled := a.settleQueuedDispatch()
 	if settled {
-		a.openingRunID = ""
-	} else if a.queuedDispatchCanceling() || a.pendingCancel != nil {
+		a.execution.openingRunID = ""
+	} else if a.queuedDispatchCanceling() || a.execution.pendingCancel != nil {
 		a.status.note("canceling")
 	} else {
 		a.status.note("run complete · retrying local settlement")
@@ -757,7 +757,7 @@ func (a *app) finishFollowing() {
 	if settled && a.drainQueue() {
 		return
 	}
-	a.raiseAttention(outcomeAttention(a.conversation.Outcome()))
+	a.raiseAttention(outcomeAttention(a.execution.conversation.Outcome()))
 }
 
 func outcomeNotification(outcome agent.Outcome) string {
@@ -779,37 +779,37 @@ func (a *app) fail(err error) {
 	if err == nil || errors.Is(err, context.Canceled) {
 		return
 	}
-	a.following = false
+	a.execution.following = false
 	a.dismissInteractionProjection()
-	a.conversation.Failed(err)
-	a.transcript.settleLive(a.conversation.Outcome())
+	a.execution.conversation.Failed(err)
+	a.transcript.settleLive(a.execution.conversation.Outcome())
 	a.transcript.Append(presentError(a.transcript.theme, err.Error()))
-	a.status.settled(a.conversation.Outcome(), a.conversation.Usage())
-	a.header.SetUsage(a.conversation.Usage())
+	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
+	a.header.SetUsage(a.execution.conversation.Usage())
 	a.prompt.SetBusy(false)
 	a.syncAnimation()
 	a.raiseAttention(failureAttention())
 }
 
 func (a *app) cancel() {
-	if a.approval != nil {
+	if a.dialogs.approval != nil {
 		a.answerApproval(approvalDenyOnce)
 		return
 	}
-	if a.questionnaire != nil {
+	if a.dialogs.questionnaire != nil {
 		a.finishQuestionnaire(true)
 		return
 	}
-	if a.pendingCancel != nil {
+	if a.execution.pendingCancel != nil {
 		a.status.doing = "retrying cancellation"
-		a.requestRuntimeCancellation(a.pendingCancel.request, a.pendingCancel.policy)
+		a.requestRuntimeCancellation(a.execution.pendingCancel.request, a.execution.pendingCancel.policy)
 		return
 	}
-	if !a.conversation.Busy() && !a.following {
+	if !a.execution.conversation.Busy() && !a.execution.following {
 		return
 	}
 	a.status.doing = "canceling"
-	runID := a.conversation.RunID()
+	runID := a.execution.conversation.RunID()
 	if runID == "" {
 		pending, staged, err := a.stageOpeningCancellation()
 		if err != nil {
@@ -820,7 +820,7 @@ func (a *app) cancel() {
 			return
 		}
 		a.dropStream()
-		if err := a.conversation.CancelStarting(); err != nil {
+		if err := a.execution.conversation.CancelStarting(); err != nil {
 			a.fail(err)
 			return
 		}
@@ -834,7 +834,7 @@ func (a *app) cancel() {
 }
 
 func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
-	entry, ok := a.queue.Dispatching(a.session.ID)
+	entry, ok := a.queue.Dispatching(a.session.current.ID)
 	if !ok {
 		return workbench.PendingRun{}, false, nil
 	}
@@ -845,11 +845,11 @@ func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 		return workbench.PendingRun{}, false, errors.New("CLI workbench is unavailable")
 	}
 	if _, err := a.workbench.MarkPendingRunCanceling(
-		a.session.ID, entry.CommandID, commandReplayGuard(a.runtimeProfile),
+		a.session.current.ID, entry.CommandID, commandReplayGuard(a.runtimeProfile),
 	); err != nil {
 		return workbench.PendingRun{}, false, err
 	}
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(a.session.ID), entry.CommandID)
+	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
 	if !ok {
 		return workbench.PendingRun{}, false, errors.New("canceling run start disappeared from the durable outbox")
 	}
@@ -866,7 +866,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 			return
 		}
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed || a.session.ID != pending.Command.SessionID ||
+			if !a.operations.Current(lease) || a.closed || a.session.current.ID != pending.Command.SessionID ||
 				!a.operations.Release(lease) {
 				return
 			}
@@ -936,11 +936,11 @@ func (a *app) retireCanceledStart(pending workbench.PendingRun) error {
 }
 
 func (a *app) activeCancellation() (agent.CancelRun, bool) {
-	if runID := a.conversation.RunID(); runID != "" && a.conversation.Busy() {
+	if runID := a.execution.conversation.RunID(); runID != "" && a.execution.conversation.Busy() {
 		return agent.CancelRun{RunID: runID, Reason: "terminal closed"}, true
 	}
-	if a.openingRunID != "" && a.conversation.Busy() {
-		return agent.CancelRun{RunID: a.openingRunID, Reason: "terminal closed"}, true
+	if a.execution.openingRunID != "" && a.execution.conversation.Busy() {
+		return agent.CancelRun{RunID: a.execution.openingRunID, Reason: "terminal closed"}, true
 	}
 	return agent.CancelRun{}, false
 }
@@ -981,24 +981,24 @@ func (a *app) requestRuntimeCancellation(target agent.CancelRun, policy cancella
 		target.CommandID = commandID
 	}
 	replay := commandReplayGuard(a.runtimeProfile)
-	if current := a.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
+	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
 		replay = current.replay
 	}
 	pending := pendingCancellation{
 		request: target, openingCommandID: a.openingCommandForRun(target.RunID), policy: policy, replay: replay,
 	}
-	if pending.openingCommandID == "" && a.pendingCancel != nil && a.pendingCancel.request.RunID == target.RunID {
-		pending.openingCommandID = a.pendingCancel.openingCommandID
+	if pending.openingCommandID == "" && a.execution.pendingCancel != nil && a.execution.pendingCancel.request.RunID == target.RunID {
+		pending.openingCommandID = a.execution.pendingCancel.openingCommandID
 	}
 	if pending.openingCommandID == "" && a.workbench != nil {
-		outbox := a.workbench.PendingRuns(a.session.ID)
+		outbox := a.workbench.PendingRuns(a.session.current.ID)
 		if len(outbox) > 0 && outbox[0].State == workbench.PendingRunCanceling &&
 			outbox[0].CancelCommandID == target.CommandID {
 			pending.openingCommandID = outbox[0].Command.CommandID
 			pending.replay = outbox[0].CancelReplay
 		}
 	}
-	a.pendingCancel = &pending
+	a.execution.pendingCancel = &pending
 	dispatcher := a.loop.Dispatcher()
 	a.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
 		settled, err := a.cancelRootRun(ownerCtx, target, pending.replay)
@@ -1070,10 +1070,10 @@ func (a *app) handleRuntimeCancellation(
 	} else {
 		a.reportWorkbenchIssue(workbenchCancellationOwnership, nil)
 	}
-	if current := a.pendingCancel; current != nil && current.request.CommandID == pending.request.CommandID {
-		a.pendingCancel = nil
+	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == pending.request.CommandID {
+		a.execution.pendingCancel = nil
 	}
-	a.openingRunID = ""
+	a.execution.openingRunID = ""
 	a.dropStream()
 	if pending.policy == preserveProjectionFailure {
 		a.prompt.SetBusy(false)
@@ -1088,7 +1088,7 @@ func (a *app) handleRuntimeCancellation(
 		a.drainQueue()
 		return
 	}
-	if err := a.conversation.SettleRun(settled); err != nil {
+	if err := a.execution.conversation.SettleRun(settled); err != nil {
 		a.fail(err)
 		return
 	}
@@ -1097,7 +1097,7 @@ func (a *app) handleRuntimeCancellation(
 	a.header.SetUsage(settled.Usage)
 	a.prompt.SetBusy(false)
 	a.syncAnimation()
-	if a.sessionInvalidated {
+	if a.session.invalidated {
 		a.refreshInvalidatedSession(true)
 		return
 	}
@@ -1105,10 +1105,10 @@ func (a *app) handleRuntimeCancellation(
 }
 
 func (a *app) openingCommandForRun(runID string) agent.CommandID {
-	if runID == "" || runID != a.openingRunID {
+	if runID == "" || runID != a.execution.openingRunID {
 		return ""
 	}
-	entry, ok := a.queue.Dispatching(a.session.ID)
+	entry, ok := a.queue.Dispatching(a.session.current.ID)
 	if !ok {
 		return ""
 	}
@@ -1118,12 +1118,12 @@ func (a *app) openingCommandForRun(runID string) agent.CommandID {
 func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID agent.CommandID) error {
 	var err error
 	if a.workbench != nil {
-		if pending, ok := a.workbench.PendingResume(a.session.ID); ok && pending.Command.RunID == runID {
-			err = errors.Join(err, a.workbench.AcknowledgePendingResume(a.session.ID, pending.Command.CommandID))
+		if pending, ok := a.workbench.PendingResume(a.session.current.ID); ok && pending.Command.RunID == runID {
+			err = errors.Join(err, a.workbench.AcknowledgePendingResume(a.session.current.ID, pending.Command.CommandID))
 		}
 	}
 	if openingCommandID != "" {
-		err = errors.Join(err, a.retireQueuedCommand(a.session.ID, openingCommandID))
+		err = errors.Join(err, a.retireQueuedCommand(a.session.current.ID, openingCommandID))
 	}
 	return err
 }
@@ -1195,29 +1195,29 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 
 func (a *app) dropStream() {
 	a.operations.Cancel(streamOperation)
-	a.following = false
+	a.execution.following = false
 }
 
 func (a *app) startFollowing(work func(context.Context, operationLease)) {
 	a.dropStream()
-	a.following = true
+	a.execution.following = true
 	if a.operations.Go(streamOperation, false, work) {
 		return
 	}
-	a.following = false
+	a.execution.following = false
 	a.fail(errStreamFollowerUnavailable)
 }
 
 func (a *app) syncAnimation() {
-	running := a.conversation.Phase() == agent.ConversationRunning
+	running := a.execution.conversation.Phase() == agent.ConversationRunning
 	switch {
-	case running && a.stopClock == nil:
-		a.stopClock = a.loop.Every(animationInterval, func() {
-			a.status.tick(a.executionClock.elapsed(time.Now()))
+	case running && a.execution.stopClock == nil:
+		a.execution.stopClock = a.loop.Every(animationInterval, func() {
+			a.status.tick(a.execution.clock.elapsed(time.Now()))
 		})
-	case !running && a.stopClock != nil:
-		a.stopClock()
-		a.stopClock = nil
+	case !running && a.execution.stopClock != nil:
+		a.execution.stopClock()
+		a.execution.stopClock = nil
 	}
 	state := term.Progress{}
 	if running {

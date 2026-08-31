@@ -19,7 +19,7 @@ func (a *app) ShowHooks() {
 }
 
 func (a *app) hooksReaderQuery() runtimeReaderQuery {
-	workspacePath := a.session.Workspace.Path
+	workspacePath := a.session.current.Workspace.Path
 	return runtimeReaderQuery{
 		status: "loading lifecycle hooks", mode: runtimeReaderHooks,
 		read: func(ctx context.Context) (readerDocument, error) {
@@ -69,7 +69,7 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 	if a.hooks == nil {
 		return errors.New("this runtime composition has no hook service")
 	}
-	workspacePath := a.session.Workspace.Path
+	workspacePath := a.session.current.Workspace.Path
 	a.status.note("loading project hook trust")
 	if !a.runOperation(hookOperation, false,
 		func(ctx context.Context) (workspace.HookCatalog, error) { return a.hooks.Catalog(ctx, workspacePath) },
@@ -103,7 +103,7 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 }
 
 func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("updating project hook trust")
 	if !a.runAdmissionMutation(hookOperation, false,
 		func(ctx context.Context) (workspace.HookCatalog, error) {
@@ -124,7 +124,7 @@ func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
 				a.message("update project hook trust failed: " + err.Error())
 				return
 			}
-			if a.sessionContext.current(presentation) {
+			if a.session.context.current(presentation) {
 				a.setRuntimeReader(runtimeReaderHooks)
 				a.openReaderDocument(hooksDocument(workspacePath, catalog))
 			}

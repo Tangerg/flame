@@ -92,14 +92,14 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 }
 
 func (a *app) editPromptExternally() error {
-	if a.conversation.Busy() || a.following || a.pendingCancel != nil {
+	if a.execution.blocksAdmission() {
 		return errors.New("finish or cancel the active run before opening an external editor")
 	}
 	message, err := a.composerMessage()
 	if err != nil {
 		return err
 	}
-	edited, err := a.editor.Edit(a.ctx, a.loop.Session(), a.session.Workspace.Path, message.Text)
+	edited, err := a.editor.Edit(a.ctx, a.loop.Session(), a.session.current.Workspace.Path, message.Text)
 	if err != nil {
 		return err
 	}

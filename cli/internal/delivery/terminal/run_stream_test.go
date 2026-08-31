@@ -31,7 +31,7 @@ func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
 	}) {
 		t.Fatal("could not establish stream ownership")
 	}
-	application := &app{operations: owner, following: true}
+	application := &app{operations: owner, execution: executionState{following: true}}
 	retired := streamFollower{app: application, lease: <-leaseReady}
 	if !retired.current() {
 		t.Fatal("new stream follower did not own its operation")
@@ -42,7 +42,7 @@ func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
 	if retired.current() {
 		t.Fatal("dropping the stream left its follower authorized to commit")
 	}
-	if application.following {
+	if application.execution.following {
 		t.Fatal("dropping a stream left the application in following state")
 	}
 }

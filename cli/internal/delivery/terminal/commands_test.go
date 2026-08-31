@@ -139,7 +139,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	}}
 	application := &app{
 		runtimeProfile: &profile,
-		conversation:   agent.NewConversation(),
+		execution:      executionState{conversation: agent.NewConversation()},
 		workspaces:     &workspaceServiceStub{},
 		transfers:      outputTransferStub{},
 	}

@@ -24,7 +24,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 		a.applyRuntimeResync(event.Topics)
 		return
 	}
-	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.ID))
+	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.current.ID))
 	a.refreshSkillReader(changefeed.Topic(event.Type) == changefeed.SkillsChanged)
 	a.refreshMCPReader(changefeed.Topic(event.Type) == changefeed.MCPChanged)
 	a.refreshScheduleReader(changefeed.Topic(event.Type) == changefeed.SchedulesChanged)
@@ -35,7 +35,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.refreshAgentMemoryReader(changefeed.Topic(event.Type) == changefeed.AgentMemoryChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
-		invalidationAffectsSession(event, a.session.ID, a.conversation.RunID()),
+		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
 	)
 }
 
@@ -56,45 +56,45 @@ func (a *app) applyRuntimeResync(topics []changefeed.Topic) {
 }
 
 func (a *app) refreshKnowledgeReader(affected bool) {
-	if !affected || a.knowledge == nil || a.runtimeReader != runtimeReaderKnowledge || !a.readerDialog.Open() {
+	if !affected || a.knowledge == nil || a.dialogs.runtimeReader != runtimeReaderKnowledge || !a.dialogs.readerDialog.Open() {
 		return
 	}
-	if a.runtimeSelection.knowledgeEntry {
-		a.refreshRuntimeReader(a.knowledgeDocumentReaderQuery(a.runtimeSelection.knowledgeTarget))
+	if a.dialogs.runtimeSelection.knowledgeEntry {
+		a.refreshRuntimeReader(a.knowledgeDocumentReaderQuery(a.dialogs.runtimeSelection.knowledgeTarget))
 		return
 	}
 	a.refreshRuntimeReader(a.knowledgeEntriesReaderQuery())
 }
 
 func (a *app) refreshHooksReader(affected bool) {
-	if affected && a.hooks != nil && a.runtimeReader == runtimeReaderHooks && a.readerDialog.Open() {
+	if affected && a.hooks != nil && a.dialogs.runtimeReader == runtimeReaderHooks && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.hooksReaderQuery())
 	}
 }
 
 func (a *app) refreshScheduleReader(affected bool) {
-	if affected && a.schedules != nil && a.runtimeReader == runtimeReaderSchedules && a.readerDialog.Open() {
+	if affected && a.schedules != nil && a.dialogs.runtimeReader == runtimeReaderSchedules && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.schedulesReaderQuery())
 	}
 }
 
 func (a *app) refreshMCPReader(affected bool) {
-	if !affected || a.mcp == nil || !a.readerDialog.Open() {
+	if !affected || a.mcp == nil || !a.dialogs.readerDialog.Open() {
 		return
 	}
-	switch a.runtimeReader {
+	switch a.dialogs.runtimeReader {
 	case runtimeReaderMCPServers:
 		a.refreshRuntimeReader(a.mcpServersReaderQuery())
 	case runtimeReaderMCPTools:
-		a.refreshRuntimeReader(a.mcpToolsReaderQuery(a.mcpToolServer))
+		a.refreshRuntimeReader(a.mcpToolsReaderQuery(a.dialogs.mcpToolServer))
 	}
 }
 
 func (a *app) refreshSkillReader(affected bool) {
-	if !affected || a.skills == nil || !a.readerDialog.Open() {
+	if !affected || a.skills == nil || !a.dialogs.readerDialog.Open() {
 		return
 	}
-	switch a.runtimeReader {
+	switch a.dialogs.runtimeReader {
 	case runtimeReaderDiscoveredSkills:
 		a.refreshRuntimeReader(a.discoveredSkillsReaderQuery())
 	case runtimeReaderManagedSkills:
@@ -105,7 +105,7 @@ func (a *app) refreshSkillReader(affected bool) {
 }
 
 func (a *app) refreshGoalReader(affected bool) {
-	if affected && a.goals != nil && a.runtimeReader == runtimeReaderGoal && a.readerDialog.Open() {
+	if affected && a.goals != nil && a.dialogs.runtimeReader == runtimeReaderGoal && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.goalReaderQuery())
 	}
 }
@@ -114,13 +114,13 @@ func (a *app) refreshModelReader(affected bool) {
 	if !affected {
 		return
 	}
-	if a.modelDialog.Open() {
+	if a.dialogs.modelDialog.Open() {
 		a.loadModelPicker(false)
 	}
-	if !a.readerDialog.Open() {
+	if !a.dialogs.readerDialog.Open() {
 		return
 	}
-	switch a.runtimeReader {
+	switch a.dialogs.runtimeReader {
 	case runtimeReaderModels:
 		a.refreshRuntimeReader(a.modelsReaderQuery())
 	case runtimeReaderModelRoles:
@@ -135,14 +135,14 @@ func (a *app) refreshModelReader(affected bool) {
 }
 
 func (a *app) refreshApprovalReader(affected bool) {
-	if affected && a.runtimeReader == runtimeReaderApprovalRules && a.readerDialog.Open() {
+	if affected && a.dialogs.runtimeReader == runtimeReaderApprovalRules && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.approvalRulesReaderQuery())
 	}
 }
 
 func (a *app) refreshAgentMemoryReader(affected bool) {
-	if affected && a.agentMemory != nil && a.runtimeReader == runtimeReaderAgentMemory && a.readerDialog.Open() {
-		a.refreshRuntimeReader(a.agentMemoryReaderQuery(a.runtimeSelection.agentMemoryTarget))
+	if affected && a.agentMemory != nil && a.dialogs.runtimeReader == runtimeReaderAgentMemory && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.agentMemoryReaderQuery(a.dialogs.runtimeSelection.agentMemoryTarget))
 	}
 }
 
@@ -173,15 +173,15 @@ func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bo
 }
 
 func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged bool) {
-	if catalogChanged && a.sessionDialog.Open() {
-		a.sessionCenter.Reset()
+	if catalogChanged && a.dialogs.sessionDialog.Open() {
+		a.dialogs.sessionCenter.Reset()
 		a.loadSessionPage("", false)
 	}
 	if !currentSessionChanged {
 		return
 	}
-	a.sessionInvalidated = true
-	if a.conversation.Phase() == agent.ConversationRunning || a.following || a.pendingCancel != nil ||
+	a.session.invalidated = true
+	if a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following || a.execution.pendingCancel != nil ||
 		a.operations.Active(sessionChangeOperation) {
 		return
 	}
@@ -225,37 +225,37 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 }
 
 func (a *app) refreshInvalidatedSession(settleAfter bool) {
-	sessionID := a.session.ID
-	a.sessionInvalidated = false
+	sessionID := a.session.current.ID
+	a.session.invalidated = false
 	started := a.runOperation(sessionInvalidationOperation, false,
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
 			return a.readInvalidatedSession(ctx, sessionID)
 		},
 		func(snapshot agent.SessionSnapshot, err error) {
-			if a.session.ID != sessionID {
+			if a.session.current.ID != sessionID {
 				return
 			}
-			if a.sessionInvalidated {
+			if a.session.invalidated {
 				a.refreshInvalidatedSession(settleAfter)
 				return
 			}
 			if err != nil {
-				a.sessionInvalidated = true
-				if errors.Is(err, agent.ErrSessionNotFound) && a.conversation.Phase() == agent.ConversationIdle && !a.following {
+				a.session.invalidated = true
+				if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
 					a.message("the active session was deleted; creating a replacement")
-					a.replaceDeletedSessionInWorkspace(a.session.Workspace.Path)
+					a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
 					return
 				}
 				a.message("refresh session after runtime change failed: " + err.Error())
 				return
 			}
-			if a.conversation.Phase() == agent.ConversationRunning || a.following {
-				a.sessionInvalidated = true
+			if a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following {
+				a.session.invalidated = true
 				return
 			}
-			conversationMatches := a.conversation.MatchesSnapshot(snapshot)
-			sessionMatches := a.session.Equal(snapshot.Session)
-			if conversationMatches && a.session.Workspace == snapshot.Session.Workspace {
+			conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
+			sessionMatches := a.session.current.Equal(snapshot.Session)
+			if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
 				if !sessionMatches {
 					a.installSessionMetadata(snapshot.Session)
 				}
@@ -265,7 +265,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 					return
 				}
 			}
-			if settleAfter && a.conversation.Phase() == agent.ConversationIdle {
+			if settleAfter && a.execution.conversation.Phase() == agent.ConversationIdle {
 				a.finishFollowing()
 				return
 			}
@@ -275,7 +275,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 		},
 	)
 	if !started {
-		a.sessionInvalidated = true
+		a.session.invalidated = true
 	}
 }
 
@@ -295,24 +295,24 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (age
 
 func (a *app) installSessionMetadata(session agent.Session) {
 	a.setActiveSession(session)
-	a.sessionCenter.Upsert(session)
+	a.dialogs.sessionCenter.Upsert(session)
 }
 
 // dismissInteractionProjection drops only the obsolete terminal-side answer
 // draft. It never answers or cancels the runtime interaction.
 func (a *app) dismissInteractionProjection() {
 	a.clearApprovalProjection()
-	a.questionnaire = nil
-	a.interactionReview = nil
-	if a.approvalDialog != nil {
-		a.approvalDialog.Dismiss()
+	a.dialogs.questionnaire = nil
+	a.dialogs.interactionReview = nil
+	if a.dialogs.approvalDialog != nil {
+		a.dialogs.approvalDialog.Dismiss()
 	}
-	if a.questionDialog != nil {
-		a.questionDialog.Controller().Dismiss()
-		a.questionDialog = nil
+	if a.dialogs.questionDialog != nil {
+		a.dialogs.questionDialog.Controller().Dismiss()
+		a.dialogs.questionDialog = nil
 	}
-	if a.reviewDialog != nil {
-		a.reviewDialog.Controller().Dismiss()
-		a.reviewDialog = nil
+	if a.dialogs.reviewDialog != nil {
+		a.dialogs.reviewDialog.Controller().Dismiss()
+		a.dialogs.reviewDialog = nil
 	}
 }

@@ -21,13 +21,13 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	application.showMCPFormStep(flow)
 	drawRoot(t, &application.stack, 96, 28)
 
-	oldDialog := application.mcpDialog
+	oldDialog := application.dialogs.mcpDialog
 	application.showMCPFormStep(flow)
 	application.stack.Handle(input.Key{Code: input.Enter})
 	if flow.step != mcpFormGeneral {
 		t.Fatalf("stale form advanced to step %d", flow.step)
 	}
-	if application.mcpDialog == oldDialog || !application.mcpDialog.Controller().Open() {
+	if application.dialogs.mcpDialog == oldDialog || !application.dialogs.mcpDialog.Controller().Open() {
 		t.Fatal("stale form replaced or dismissed the current dialog")
 	}
 

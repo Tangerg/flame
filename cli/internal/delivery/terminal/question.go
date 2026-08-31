@@ -209,17 +209,17 @@ func (q *questionResponse) multipleValues() ([]string, error) {
 }
 
 func (a *app) openQuestion(question agent.Question) {
-	review, err := newQuestionnaire(question, a.interactionReview.CurrentAnswer())
+	review, err := newQuestionnaire(question, a.dialogs.interactionReview.CurrentAnswer())
 	if err != nil {
 		a.fail(err)
 		return
 	}
-	a.questionnaire = review
+	a.dialogs.questionnaire = review
 	a.openQuestionField()
 }
 
 func (a *app) openQuestionField() {
-	review := a.questionnaire
+	review := a.dialogs.questionnaire
 	index, _, ok := review.Current()
 	if !ok {
 		a.fail(errors.New("questionnaire has no current field"))
@@ -322,19 +322,19 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 	form := headless.NewForm(fields...)
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.questionnaire == review && a.questionDialog == dialog {
+		if a.dialogs.questionnaire == review && a.dialogs.questionDialog == dialog {
 			a.advanceQuestionnaire()
 		}
 	}
 	form.GaveUp = func() {
-		if a.questionnaire == review && a.questionDialog == dialog {
+		if a.dialogs.questionnaire == review && a.dialogs.questionDialog == dialog {
 			a.backOrCancelQuestionnaire()
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
 		Title: strings.Join(nonEmptyStrings([]string{
-			a.interactionReview.SubmissionFailure(), review.question.Detail,
+			a.dialogs.interactionReview.SubmissionFailure(), review.question.Detail,
 		}), "\n"),
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
@@ -343,17 +343,17 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 		Title: review.Title(), Body: dressed,
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.Measure(80), len(fields), 18)},
 	})
-	a.questionDialog = dialog
+	a.dialogs.questionDialog = dialog
 	dialog.Controller().Show()
 }
 
 func (a *app) advanceQuestionnaire() {
-	review := a.questionnaire
+	review := a.dialogs.questionnaire
 	if review == nil {
 		return
 	}
-	a.questionDialog.Controller().Dismiss()
-	a.questionDialog = nil
+	a.dialogs.questionDialog.Controller().Dismiss()
+	a.dialogs.questionDialog = nil
 	if review.Advance() {
 		a.openQuestionField()
 		return
@@ -362,12 +362,12 @@ func (a *app) advanceQuestionnaire() {
 }
 
 func (a *app) backOrCancelQuestionnaire() {
-	review := a.questionnaire
+	review := a.dialogs.questionnaire
 	if review == nil {
 		return
 	}
-	a.questionDialog.Controller().Dismiss()
-	a.questionDialog = nil
+	a.dialogs.questionDialog.Controller().Dismiss()
+	a.dialogs.questionDialog = nil
 	if review.Back() {
 		a.openQuestionField()
 		return
@@ -376,16 +376,16 @@ func (a *app) backOrCancelQuestionnaire() {
 }
 
 func (a *app) finishQuestionnaire(canceled bool) {
-	review := a.questionnaire
+	review := a.dialogs.questionnaire
 	if review == nil {
 		return
 	}
-	if a.questionDialog != nil {
-		a.questionDialog.Controller().Dismiss()
-		a.questionDialog = nil
+	if a.dialogs.questionDialog != nil {
+		a.dialogs.questionDialog.Controller().Dismiss()
+		a.dialogs.questionDialog = nil
 	}
 	if canceled {
-		a.questionnaire = nil
+		a.dialogs.questionnaire = nil
 		if a.backInteraction() {
 			return
 		}
@@ -397,11 +397,11 @@ func (a *app) finishQuestionnaire(canceled bool) {
 		a.fail(err)
 		return
 	}
-	if err := a.interactionReview.Record(answer); err != nil {
+	if err := a.dialogs.interactionReview.Record(answer); err != nil {
 		a.fail(fmt.Errorf("record question: %w", err))
 		return
 	}
-	a.questionnaire = nil
+	a.dialogs.questionnaire = nil
 	a.advanceInteractionReview()
 }
 

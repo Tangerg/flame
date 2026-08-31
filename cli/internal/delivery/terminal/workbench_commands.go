@@ -29,12 +29,12 @@ func (a *app) stashPrompt() error {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("save session draft before stashing: %w", saveDraftErr)
 	}
-	stash, err := a.workbench.StashDraft(a.session.ID, message)
+	stash, err := a.workbench.StashDraft(a.session.current.ID, message)
 	a.reportWorkbenchIssue(workbenchDraft, err)
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	a.draftState.Reset(a.session.ID, agent.Message{})
+	a.draftState.Reset(a.session.current.ID, agent.Message{})
 	a.restoreComposer(agent.Message{})
 	a.message("stashed prompt · " + stash.ID)
 	return nil

@@ -19,7 +19,7 @@ func (a *app) ShowKnowledge() {
 }
 
 func (a *app) knowledgeEntriesReaderQuery() runtimeReaderQuery {
-	workspace := a.session.Workspace.Path
+	workspace := a.session.current.Workspace.Path
 	return runtimeReaderQuery{
 		status: "loading FLAME.md knowledge", mode: runtimeReaderKnowledge,
 		read: func(ctx context.Context) (readerDocument, error) {
@@ -57,7 +57,7 @@ func (a *app) ReadKnowledge(argument string) error {
 	if a.knowledge == nil {
 		return errors.New("this runtime composition has no knowledge service")
 	}
-	target, err := parseKnowledgeTarget(argument, a.session.Workspace.Path)
+	target, err := parseKnowledgeTarget(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (a *app) EditKnowledge(argument string) error {
 	if a.knowledge == nil {
 		return errors.New("this runtime composition has no knowledge service")
 	}
-	target, err := parseKnowledgeTarget(argument, a.session.Workspace.Path)
+	target, err := parseKnowledgeTarget(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
 	}

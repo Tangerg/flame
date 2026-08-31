@@ -191,7 +191,7 @@ func resolveSchedule(schedules []schedule.Schedule, identity string) (schedule.S
 }
 
 func (a *app) createSchedule(candidate schedule.Candidate) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("creating schedule")
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (schedule.Schedule, error) { return a.schedules.Create(ctx, candidate) },
@@ -209,7 +209,7 @@ func (a *app) createSchedule(candidate schedule.Candidate) {
 }
 
 func (a *app) updateSchedule(patch schedule.Patch, label string) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note(label)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (schedule.Schedule, error) { return a.schedules.Update(ctx, patch) },
@@ -227,7 +227,7 @@ func (a *app) updateSchedule(patch schedule.Patch, label string) {
 }
 
 func (a *app) deleteSchedule(id string) {
-	presentation := a.sessionContext
+	presentation := a.session.context
 	a.status.note("deleting schedule " + id)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (string, error) { return id, a.schedules.Delete(ctx, id) },
@@ -246,7 +246,7 @@ func (a *app) deleteSchedule(id string) {
 
 func (a *app) reportScheduleMutation(message string, presentation *sessionContextLease) {
 	a.message(message)
-	if a.sessionContext.current(presentation) {
+	if a.session.context.current(presentation) {
 		a.ShowSchedules()
 	}
 }

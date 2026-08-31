@@ -18,8 +18,8 @@ func (a *app) steerRun(instruction string) error {
 	if instruction == "" {
 		return errors.New("/steer needs a non-empty instruction")
 	}
-	runID, segmentID := a.conversation.RunID(), a.conversation.SegmentID()
-	if runID == "" || segmentID == "" || a.conversation.Phase() != agent.ConversationRunning {
+	runID, segmentID := a.execution.conversation.RunID(), a.execution.conversation.SegmentID()
+	if runID == "" || segmentID == "" || a.execution.conversation.Phase() != agent.ConversationRunning {
 		return errors.New("no observed run segment is available to steer")
 	}
 	draft, _, err := a.currentDraft()
@@ -50,17 +50,17 @@ func (a *app) steerRun(instruction string) error {
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	pending, err := runworkflow.StageSteer(
-		a.workbench, a.session.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile),
+		a.workbench, a.session.current.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile),
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("save steer command journal: %w", err))
 		a.restoreComposer(sourceDraft)
-		a.draftState.Reset(a.session.ID, sourceDraft)
+		a.draftState.Reset(a.session.current.ID, sourceDraft)
 		return err
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	a.restoreComposer(agent.Message{})
-	a.draftState.Reset(a.session.ID, agent.Message{})
+	a.draftState.Reset(a.session.current.ID, agent.Message{})
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
@@ -78,7 +78,7 @@ func (a *app) steerRun(instruction string) error {
 			return fmt.Errorf("another steer operation is already running; restore attachments: %w", err)
 		}
 		a.restoreComposer(recovered)
-		a.draftState.Reset(a.session.ID, recovered)
+		a.draftState.Reset(a.session.current.ID, recovered)
 		return errors.New("another steer operation is already running")
 	}
 	return nil
@@ -100,7 +100,7 @@ func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error, run
 			return
 		}
 		a.restoreComposer(recovered)
-		a.draftState.Reset(a.session.ID, recovered)
+		a.draftState.Reset(a.session.current.ID, recovered)
 		a.message("steer run failed: " + deliveryErr.Error())
 	case mutation.Unknown:
 		a.message("steer outcome is unknown; it will be reconciled on restart: " + deliveryErr.Error())
@@ -119,7 +119,7 @@ func (a *app) acknowledgeSteer(pending workbench.PendingSteer) error {
 		return fmt.Errorf("save current session draft: %w", err)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
-	if err := a.workbench.AcknowledgePendingSteer(a.session.ID, pending.CommandID()); err != nil {
+	if err := a.workbench.AcknowledgePendingSteer(a.session.current.ID, pending.CommandID()); err != nil {
 		a.history.Load(a.workbench.History())
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle accepted steer command: %w", err))
 		return fmt.Errorf("retire accepted steer command: %w", err)
@@ -141,7 +141,7 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (agent.Message, error)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	recovered, err := a.workbench.RejectPendingSteer(
-		a.session.ID, pending.CommandID(), current,
+		a.session.current.ID, pending.CommandID(), current,
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle rejected steer command: %w", err))

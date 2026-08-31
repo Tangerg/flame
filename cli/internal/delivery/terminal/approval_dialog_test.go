@@ -54,32 +54,32 @@ func TestApprovalPaneRoutesInputToTheLastPresentedForm(t *testing.T) {
 func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	transcript := testTranscriptView(t)
 	application := &app{loop: &program.Runtime{}, transcript: transcript}
-	application.approvalPane = approvalPane{
+	application.dialogs.approvalPane = approvalPane{
 		theme: transcript.theme, glyphs: transcript.glyphs,
 		detail: kit.NewParagraph("", transcript.theme.Text),
 	}
-	application.approvalPane.view = kit.Transcript{
-		Content: &application.approvalPane.preview, Scroll: &application.approvalPane.scroll,
+	application.dialogs.approvalPane.view = kit.Transcript{
+		Content: &application.dialogs.approvalPane.preview, Scroll: &application.dialogs.approvalPane.scroll,
 		Theme: transcript.theme, Glyphs: transcript.glyphs,
 	}
-	application.interactionReview = &interactionReview{}
-	application.approval = &agent.Approval{}
+	application.dialogs.interactionReview = &interactionReview{}
+	application.dialogs.approval = &agent.Approval{}
 	application.setApprovalForm(approvalAllowOnce)
-	retired := application.approvalDraft
-	application.approvalPane.Focus(true)
-	root := headless.NewRoot(&application.approvalPane)
+	retired := application.dialogs.approvalDraft
+	application.dialogs.approvalPane.Focus(true)
+	root := headless.NewRoot(&application.dialogs.approvalPane)
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
 
-	application.interactionReview = &interactionReview{}
-	application.approval = &agent.Approval{}
-	application.approvalDraft = &approvalDecisionDraft{}
+	application.dialogs.interactionReview = &interactionReview{}
+	application.dialogs.approval = &agent.Approval{}
+	application.dialogs.approvalDraft = &approvalDecisionDraft{}
 	application.setApprovalForm(approvalAllowOnce)
 	root.Handle(input.Key{Code: input.Down})
 	if retired.choice != approvalDenyOnce {
 		t.Fatalf("retired draft choice = %q, want deny once", retired.choice)
 	}
-	if current := application.approvalDraft.choice; current != approvalAllowOnce {
+	if current := application.dialogs.approvalDraft.choice; current != approvalAllowOnce {
 		t.Fatalf("current draft choice = %q after stale input, want allow once", current)
 	}
 }
