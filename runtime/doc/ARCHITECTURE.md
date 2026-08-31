@@ -333,6 +333,8 @@ Infra：
 
 `adapter` 与 `infra` 不整体合并。每个包按以上规则裁决；纯转发包装删除，真实的技术 mechanism 保留。
 
+`adapter/workspace` 以职责文件共同拥有 admitted workspace 的 filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`，Application 仍通过自己的窄端口消费领域 Proposal；不得再按 Skill proposal operation 建平级 adapter package。
+
 ### 6.5 Protocol 与 Delivery
 
 公共 `protocol` 只包含 binding-neutral Runtime 合同：DTO、枚举、请求/响应、事件、客户端可见 problem、版本与严格验证。它不包含服务端 method-group interface、context key、Router、numeric JSON-RPC code、HTTP status、reflection registry 或生成器实现细节。

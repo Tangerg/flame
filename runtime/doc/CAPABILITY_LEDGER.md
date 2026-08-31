@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P299 进行中。
+> 状态：当前能力快照；P300 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -607,6 +607,8 @@ P297把CLI Agent Memory管理投影收回`internal/agent`。它与Session、Run�
 P298把CLI的transport reconnect budget收回`internal/retry`。原`retry.Backoff`与`reconnect.Policy`重复持有base/doubling/maximum指数算法，Run与Terminal还必须同时组合两个package；现在`ReconnectPolicy`组合唯一`Backoff`，只增加classified admission、finite attempt budget与command-in-progress floor。旧`internal/reconnect`、import、架构层和空目录均物理删除，没有alias、forwarder或兼容路径。
 
 P299把CLI portable Session document、format与Runtime transfer port从operation-shaped `internal/sessiontransfer`收回`internal/session`。`Document`继续唯一拥有immutable bytes、UTF-8/JSON与64 MiB完整包络，`TransferService`是Session context的consumer-owned port；`sessionartifact`因拥有path resolution、bounded read、staging和conflict-safe filesystem publication继续作为独立outbound adapter。旧package、import、架构层和空目录均物理删除。
+
+P300把Runtime Skill proposal library translation从`adapter/skillproposal`收回`adapter/workspace`。`SkillLibraries`与authored-resource observation、filesystem/VCS/checkpoint translation共同消费admitted workspace及user/project路径，Application仍通过`SkillProposals`窄端口消费，Domain Proposal与`infra/skillauthoring.Store`仍各自拥有语义和存储机制。旧package、import、空目录及Bootstrap过时的`checkpointstore`别名均删除。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

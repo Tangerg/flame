@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -222,7 +222,7 @@ func buildAssemblyCore(
 		Paths:                 workspacepath.Resolver{},
 		Models:                modelCapabilities,
 		DefaultModelSelection: defaultRunModel,
-		Checkpoints:           checkpointstore.NewSessionCheckpoints(workspaceServices.checkpoints),
+		Checkpoints:           workspaceadapter.NewSessionCheckpoints(workspaceServices.checkpoints),
 		Admissions:            admissionGate,
 		Invalidations:         policy.invalidations.Publish,
 		Now:                   time.Now,
@@ -451,8 +451,8 @@ func buildAssemblyCore(
 	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}
-	workspaceFiles := workspace.NewFiles(workspaceServices.scope, checkpointstore.FileBrowser{})
-	workspaceVCS := workspace.NewVCS(workspaceServices.scope, checkpointstore.VCS{})
+	workspaceFiles := workspace.NewFiles(workspaceServices.scope, workspaceadapter.FileBrowser{})
+	workspaceVCS := workspace.NewVCS(workspaceServices.scope, workspaceadapter.VCS{})
 	workspaceDiscovery := workspace.NewDiscovery(
 		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
 	)
@@ -461,7 +461,7 @@ func buildAssemblyCore(
 	)
 	workspaceWatch := workspace.NewGitWatch(
 		workspaceServices.scope,
-		checkpointstore.NewGitWatcher(lifetime.context),
+		workspaceadapter.NewGitWatcher(lifetime.context),
 	)
 	host := &Host{
 		application: &hostApplication{
@@ -497,7 +497,7 @@ func buildAssemblyCore(
 				ScheduleFiring:         scheduleFiring,
 				Goals:                  goalDriver,
 				AgentMemory:            workspaceServices.agentMemory,
-				GitAvailable:           checkpointstore.GitAvailable(),
+				GitAvailable:           workspaceadapter.GitAvailable(),
 				PlanEnabled:            cfg.PlanStore != nil,
 			},
 			sessions: sessionCoordinator,

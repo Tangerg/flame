@@ -1,6 +1,4 @@
-// Package skillproposal routes Skill proposal operations to the user or
-// project library while keeping filesystem layout outside Application.
-package skillproposal
+package workspace
 
 import (
 	"context"
@@ -13,18 +11,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
 )
 
-// Libraries routes proposal operations to the user library or the current
+// SkillLibraries routes proposal operations to the user library or the current
 // project's library without exposing filesystem layout to Application.
-type Libraries struct {
+type SkillLibraries struct {
 	user     *skillauthoring.Store
 	projects sync.Map
 }
 
-func NewLibraries(user *skillauthoring.Store) *Libraries {
-	return &Libraries{user: user}
+func NewSkillLibraries(user *skillauthoring.Store) *SkillLibraries {
+	return &SkillLibraries{user: user}
 }
 
-func (l *Libraries) SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
+func (l *SkillLibraries) SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
 	store, err := l.store(proposal.Scope, projectRoot)
 	if err != nil {
 		return skills.ProposalRef{}, nil, err
@@ -32,7 +30,7 @@ func (l *Libraries) SubmitProposal(ctx context.Context, projectRoot string, prop
 	return store.SubmitProposal(ctx, proposal)
 }
 
-func (l *Libraries) ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error) {
+func (l *SkillLibraries) ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error) {
 	project, err := l.store(skills.ScopeProject, projectRoot)
 	if err != nil {
 		return nil, err
@@ -51,7 +49,7 @@ func (l *Libraries) ListProposals(ctx context.Context, projectRoot string) ([]sk
 	return append(projectProposals, userProposals...), nil
 }
 
-func (l *Libraries) ApproveProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
+func (l *SkillLibraries) ApproveProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
 	store, err := l.store(ref.Scope, projectRoot)
 	if err != nil {
 		return nil, err
@@ -59,7 +57,7 @@ func (l *Libraries) ApproveProposal(ctx context.Context, projectRoot string, ref
 	return store.ApproveProposal(ctx, ref)
 }
 
-func (l *Libraries) RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
+func (l *SkillLibraries) RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
 	store, err := l.store(ref.Scope, projectRoot)
 	if err != nil {
 		return nil, err
@@ -67,21 +65,21 @@ func (l *Libraries) RejectProposal(ctx context.Context, projectRoot string, ref 
 	return store.RejectProposal(ctx, ref)
 }
 
-func (l *Libraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
+func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
 	switch scope {
 	case skills.ScopeUser:
 		if l.user == nil || !l.user.Enabled() {
-			return nil, errors.New("skillproposal: user Skill library is unavailable")
+			return nil, errors.New("workspace Skill libraries: user library is unavailable")
 		}
 		return l.user, nil
 	case skills.ScopeProject:
 		if strings.TrimSpace(projectRoot) == "" {
-			return nil, errors.New("skillproposal: project root is required")
+			return nil, errors.New("workspace Skill libraries: project root is required")
 		}
 		if loaded, ok := l.projects.Load(projectRoot); ok {
 			store, ok := loaded.(*skillauthoring.Store)
 			if !ok {
-				return nil, errors.New("skillproposal: project Skill cache contains an invalid entry")
+				return nil, errors.New("workspace Skill libraries: project cache contains an invalid entry")
 			}
 			return store, nil
 		}
@@ -89,10 +87,10 @@ func (l *Libraries) store(scope skills.Scope, projectRoot string) (*skillauthori
 		loaded, _ := l.projects.LoadOrStore(projectRoot, created)
 		store, ok := loaded.(*skillauthoring.Store)
 		if !ok {
-			return nil, errors.New("skillproposal: project Skill cache contains an invalid entry")
+			return nil, errors.New("workspace Skill libraries: project cache contains an invalid entry")
 		}
 		return store, nil
 	default:
-		return nil, errors.New("skillproposal: invalid Skill scope")
+		return nil, errors.New("workspace Skill libraries: invalid Skill scope")
 	}
 }

@@ -1,4 +1,4 @@
-package skillproposal_test
+package workspace_test
 
 import (
 	"os"
@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/adapter/skillproposal"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/skillauthoring"
 )
 
-func TestLibrariesRouteProposalsByScope(t *testing.T) {
+func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
 	userRoot := filepath.Join(t.TempDir(), "user-skills")
 	projectRoot := filepath.Join(t.TempDir(), "project")
-	libraries := skillproposal.NewLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
+	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
 
 	projectProposal := proposal(skills.ScopeProject, "project-check")
 	projectRef, _, err := libraries.SubmitProposal(t.Context(), projectRoot, projectProposal)
@@ -45,10 +45,10 @@ func TestLibrariesRouteProposalsByScope(t *testing.T) {
 	assertFile(t, filepath.Join(userRoot, userRef.Name, "SKILL.md"))
 }
 
-func TestLibrariesRejectProposalFromItsScopedStore(t *testing.T) {
+func TestSkillLibrariesRejectProposalFromItsScopedStore(t *testing.T) {
 	userRoot := filepath.Join(t.TempDir(), "user-skills")
 	projectRoot := filepath.Join(t.TempDir(), "project")
-	libraries := skillproposal.NewLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
+	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
 	ref, _, err := libraries.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "throwaway"))
 	if err != nil {
 		t.Fatal(err)

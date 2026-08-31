@@ -12,9 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
-	"github.com/Tangerg/flame/runtime/internal/adapter/skillproposal"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	checkpointstore "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
@@ -99,7 +98,7 @@ type workspaceComposition struct {
 	skills           *workspace.Skills
 	skillMaintenance *workspace.SkillMaintenance
 	skillStore       *skillauthoring.Store
-	checkpoints      *checkpointstore.Checkpoints
+	checkpoints      *workspaceadapter.Checkpoints
 }
 
 func buildWorkspaceComposition(
@@ -107,7 +106,7 @@ func buildWorkspaceComposition(
 	publish invalidation.Publish,
 ) (workspaceComposition, error) {
 	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspacepath.Resolver{})
-	authoredWatcher, err := checkpointstore.NewAuthoredWatcher(
+	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(
 		cfg.KnowledgeDirectory,
 		cfg.UserHome,
 		cfg.SkillsUserDir,
@@ -134,7 +133,7 @@ func buildWorkspaceComposition(
 		scope,
 		promptsource.NewWorkspaceSkills(cfg.SkillsUserDir),
 		skillCurator,
-		skillproposal.NewLibraries(skillStore),
+		workspaceadapter.NewSkillLibraries(skillStore),
 		authoredWatch,
 		publish,
 	)
@@ -155,7 +154,7 @@ func buildWorkspaceComposition(
 			publish,
 		),
 		skillStore:  skillStore,
-		checkpoints: checkpointstore.NewCheckpoints(cfg.CheckpointDir),
+		checkpoints: workspaceadapter.NewCheckpoints(cfg.CheckpointDir),
 	}, nil
 }
 

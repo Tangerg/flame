@@ -478,7 +478,7 @@
 
 - 将 Skill authoring 的规范词汇统一为 `Proposal / Submit / Approve / Reject / project / user`，完整删除 `Draft / SaveDraft / Promote / Discard / global` 及其 store、application、wire 和 RPC 名称，不保留兼容别名；
 - `skills.ProposalRef{scope,name,revision}` 绑定 scope、name 与完整渲染内容的 SHA-256，project/user store 都在 `_proposals` 保存不可变内容；评审 list 返回完整指令和 provenance，不再让用户只凭摘要审批；
-- 新增 adapter-owned `skillproposal.Libraries`，以 workspace root 路由 project library、以配置 root 路由 user library。Application 只接收已解析 root 和领域 Proposal，不认识 `.flame/skills` 文件布局；
+- `adapter/workspace.SkillLibraries` 以 workspace root 路由 project library、以配置 root 路由 user library。Application 只接收已解析 root 和领域 Proposal，不认识 `.flame/skills` 文件布局；
 - 服务端评审协议改为 `skills.proposals.list / approve / reject`，请求显式携带 workspace 和 scope，旧 `skills.drafts.*` 直接消失；本轮只生成 Go contract 和 validator，桌面 TypeScript 与 canonical samples 按约定留给前端专项；
 - SkillMiner 改为消费应用层单方法 `SubmitProposal`，固定提交 `scope=user, origin=mined`，不再直连 `skillauthoring.Store`。前台与后台共享持久化不变量，但不共享触发策略。
 
