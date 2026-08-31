@@ -34,8 +34,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/session"
-	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
-	"github.com/Tangerg/flame/cli/internal/sessionrollback"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/skills"
@@ -209,7 +207,7 @@ func recoverSessionCommands(
 	authoring *workbench.Store,
 	profile *runtimeprofile.Profile,
 ) error {
-	if err := sessiondeletion.Recover(
+	if err := session.RecoverDeletions(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
 		return fmt.Errorf("recover session deletions: %w", err)
@@ -219,7 +217,7 @@ func recoverSessionCommands(
 	); err != nil {
 		return fmt.Errorf("recover steer commands: %w", err)
 	}
-	if err := sessionrollback.Recover(
+	if err := session.RecoverRollbacks(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
 		return fmt.Errorf("recover session rollbacks: %w", err)

@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/render"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/session"
-	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -301,14 +300,14 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
-			result, err := sessiondeletion.Execute(
+			result, err := session.Delete(
 				cmd.Context(), runtime, authoring, args[0],
 				replayPolicy,
 				mutation.AcknowledgementBackoff(),
 			)
 			switch result.Outcome {
 			case mutation.Rejected:
-				if rejectErr := sessiondeletion.Reject(authoring, result); rejectErr != nil {
+				if rejectErr := session.RejectDeletion(authoring, result); rejectErr != nil {
 					return errors.Join(err, rejectErr)
 				}
 				return err
@@ -321,7 +320,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			default:
 				return errors.New("delete session returned an invalid settlement outcome")
 			}
-			if confirmErr := sessiondeletion.Confirm(authoring, result); confirmErr != nil {
+			if confirmErr := session.ConfirmDeletion(authoring, result); confirmErr != nil {
 				return fmt.Errorf("retire deleted session state: %w", confirmErr)
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), args[0])

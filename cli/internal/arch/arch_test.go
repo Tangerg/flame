@@ -394,8 +394,8 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 	}
 	for _, path := range []string{
 		filepath.Join(root, "internal", "steering", "steering.go"),
-		filepath.Join(root, "internal", "sessiondeletion", "deletion.go"),
-		filepath.Join(root, "internal", "sessionrollback", "rollback.go"),
+		filepath.Join(root, "internal", "session", "deletion.go"),
+		filepath.Join(root, "internal", "session", "rollback.go"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
@@ -1173,8 +1173,6 @@ var layers = []struct {
 	{"internal/session/", "session"},
 	{"internal/sessionartifact/", "sessionartifact"},
 	{"internal/sessiontransfer/", "sessiontransfer"},
-	{"internal/sessiondeletion/", "sessiondeletion"},
-	{"internal/sessionrollback/", "sessionrollback"},
 	{"internal/steering/", "steering"},
 	{"internal/workbench/", "workbench"},
 	{"internal/oneshot/", "oneshot"},
@@ -1213,9 +1211,7 @@ var allowed = map[string][]string{
 	"mcp":              {"failure"},
 	"schedule":         {"exactint", "modelidentity", "runidentity", "sessionidentity"},
 	"settings":         {"agent"},
-	"session":          {"agent"},
-	"sessiondeletion":  {"agent", "commandreplay", "mutation", "retry", "sessionidentity", "workbench"},
-	"sessionrollback":  {"agent", "commandreplay", "mutation", "retry", "workbench"},
+	"session":          {"agent", "commandreplay", "mutation", "retry", "sessionidentity", "workbench"},
 	"steering":         {"agent", "commandreplay", "mutation", "retry", "workbench"},
 	"mutation":         {"agent", "commandreplay", "retry"},
 	"retry":            nil,
@@ -1236,9 +1232,9 @@ var allowed = map[string][]string{
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
+	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
-	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "oneshot", "render", "runtimeprofile", "session", "sessiondeletion", "settings", "workbench"},
+	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "oneshot", "render", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
 }
 
@@ -1307,7 +1303,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
+	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {

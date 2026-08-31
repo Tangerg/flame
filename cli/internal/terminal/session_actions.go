@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sessionrollback"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
@@ -116,11 +116,11 @@ func (a *app) prepareSessionRollback(argument string) error {
 
 type rollbackPreview struct {
 	request    agent.RollbackSession
-	settlement sessionrollback.Preview
+	settlement session.RollbackPreview
 }
 
 func previewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSession) (rollbackPreview, error) {
-	settlement, err := sessionrollback.PreviewSession(snapshot, request)
+	settlement, err := session.PreviewRollback(snapshot, request)
 	return rollbackPreview{request: request, settlement: settlement}, err
 }
 
@@ -147,14 +147,14 @@ func (r rollbackPreview) Description() string {
 }
 
 type rollbackSettlement struct {
-	result sessionrollback.Result
+	result session.RollbackResult
 	err    error
 }
 
 func (a *app) rollbackSession(preview rollbackPreview) {
 	a.runSessionChange("rolling back session",
 		func(ctx context.Context) (rollbackSettlement, error) {
-			result, err := sessionrollback.Execute(
+			result, err := session.Rollback(
 				ctx, a.runtime, a.workbench, preview.settlement,
 				commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
@@ -173,7 +173,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 	result := settlement.result
 	switch result.Outcome {
 	case mutation.Rejected:
-		if err := sessionrollback.Reject(a.workbench, result); err != nil {
+		if err := session.RejectRollback(a.workbench, result); err != nil {
 			a.message("rollback session failed; local intent cleanup failed: " + errors.Join(settlement.err, err).Error())
 			return nil
 		}
@@ -187,7 +187,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 		return errors.New("rollback settlement returned an invalid outcome")
 	}
 
-	confirmationErr := sessionrollback.Confirm(a.workbench, result)
+	confirmationErr := session.ConfirmRollback(a.workbench, result)
 	installation, err := a.prepareSessionInstallation(result.Snapshot)
 	if err != nil {
 		return errors.Join(confirmationErr, err)

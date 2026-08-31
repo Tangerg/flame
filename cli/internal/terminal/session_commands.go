@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/session"
-	"github.com/Tangerg/flame/cli/internal/sessiondeletion"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -183,15 +182,15 @@ func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session
 
 func (a *app) deleteSessionFromCenter(id string) {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
-		func(ctx context.Context) (sessiondeletion.Result, error) {
-			return sessiondeletion.Execute(
+		func(ctx context.Context) (session.DeletionResult, error) {
+			return session.Delete(
 				ctx, a.runtime, a.workbench, id, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
 		},
-		func(result sessiondeletion.Result, err error) {
+		func(result session.DeletionResult, err error) {
 			switch result.Outcome {
 			case mutation.Rejected:
-				if rejectErr := sessiondeletion.Reject(a.workbench, result); rejectErr != nil {
+				if rejectErr := session.RejectDeletion(a.workbench, result); rejectErr != nil {
 					a.message("delete session failed; local intent cleanup failed: " + errors.Join(err, rejectErr).Error())
 					return
 				}
@@ -209,7 +208,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 				a.message("delete session returned an invalid settlement outcome")
 				return
 			}
-			if err := sessiondeletion.Confirm(a.workbench, result); err != nil {
+			if err := session.ConfirmDeletion(a.workbench, result); err != nil {
 				a.message("deleted session; local state cleanup failed: " + err.Error())
 				return
 			}

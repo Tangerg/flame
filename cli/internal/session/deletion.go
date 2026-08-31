@@ -1,6 +1,4 @@
-// Package sessiondeletion owns crash-safe settlement of runtime session
-// deletion and the corresponding CLI-local authoring state.
-package sessiondeletion
+package session
 
 import (
 	"context"
@@ -15,89 +13,79 @@ import (
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
-type runtime interface {
+type deletionRuntime interface {
 	DeleteSession(context.Context, agent.DeleteSession) error
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
 }
 
-// Result binds settlement to the exact durable runtime command.
-type Result struct {
+// DeletionResult binds settlement to the exact durable runtime command.
+type DeletionResult struct {
 	Request agent.DeleteSession
 	Outcome mutation.Outcome
 }
 
-// Execute stages or resumes one deletion intent, then converges its runtime
-// outcome without modifying local authoring state. Callers apply Confirm or
-// Reject only after receiving the result on their own presentation boundary.
-func Execute(
+// Delete stages or resumes one deletion intent, then converges its runtime
+// outcome without modifying local authoring state. The caller must apply the
+// returned result at its presentation boundary with ConfirmDeletion or
+// RejectDeletion.
+func Delete(
 	ctx context.Context,
-	runtime runtime,
+	runtime deletionRuntime,
 	authoring *workbench.Store,
 	sessionID string,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
-) (Result, error) {
+) (DeletionResult, error) {
 	if authoring == nil {
-		return Result{}, errors.New("CLI workbench is unavailable")
+		return DeletionResult{}, errors.New("CLI workbench is unavailable")
 	}
 	identity, err := sessionidentity.Parse(sessionID)
 	if err != nil {
-		return Result{}, err
+		return DeletionResult{}, err
 	}
 	sessionID = identity.String()
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
 	fresh := !exists
 	if exists && pending.Phase == workbench.SessionDeletionConfirmed {
-		return Result{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
+		return DeletionResult{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
 	}
 	request := pending.Request()
 	if !exists {
 		commandID, err := agent.NewCommandID()
 		if err != nil {
-			return Result{}, fmt.Errorf("create session deletion identity: %w", err)
+			return DeletionResult{}, fmt.Errorf("create session deletion identity: %w", err)
 		}
 		request = agent.DeleteSession{CommandID: commandID, SessionID: sessionID}
 		replay, err := policy.NewGuard()
 		if err != nil {
-			return Result{}, err
+			return DeletionResult{}, err
 		}
 		if err := authoring.StageSessionDeletion(request, replay); err != nil {
-			return Result{}, fmt.Errorf("stage session deletion: %w", err)
+			return DeletionResult{}, fmt.Errorf("stage session deletion: %w", err)
 		}
 		pending, exists = authoring.PendingSessionDeletion(sessionID)
 		if !exists {
-			return Result{}, errors.New("staged session deletion is absent")
+			return DeletionResult{}, errors.New("staged session deletion is absent")
 		}
 	}
 	if fresh {
-		outcome, err := settle(ctx, runtime, request, pending.Replay, policy, backoff, true)
-		return Result{Request: request, Outcome: outcome}, err
+		outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff, true)
+		return DeletionResult{Request: request, Outcome: outcome}, err
 	}
 	if !policy.Replayable(pending.Replay) {
 		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
-		return Result{Request: request, Outcome: outcome}, err
+		return DeletionResult{Request: request, Outcome: outcome}, err
 	}
-	outcome, err := Settle(ctx, runtime, request, pending.Replay, policy, backoff)
-	return Result{Request: request, Outcome: outcome}, err
+	outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff, false)
+	return DeletionResult{Request: request, Outcome: outcome}, err
 }
 
-// Settle observes the authoritative runtime outcome. A successful delete may
-// still return a post-commit cleanup error, so an authoritative not-found read
-// is the confirmation when no acknowledgement was delivered.
-func Settle(
+// settleDeletion observes the authoritative runtime outcome. A successful
+// delete may still return a post-commit cleanup error, so an authoritative
+// not-found read confirms a missing acknowledgement.
+func settleDeletion(
 	ctx context.Context,
-	runtime runtime,
-	request agent.DeleteSession,
-	replay commandreplay.Guard,
-	policy commandreplay.Policy,
-	backoff retry.Backoff,
-) (mutation.Outcome, error) {
-	return settle(ctx, runtime, request, replay, policy, backoff, false)
-}
-
-func settle(
-	ctx context.Context,
-	runtime runtime,
+	runtime deletionRuntime,
 	request agent.DeleteSession,
 	replay commandreplay.Guard,
 	policy commandreplay.Policy,
@@ -139,9 +127,9 @@ func settle(
 	return mutation.Rejected, err
 }
 
-// Confirm upgrades a prepared command to a durable tombstone and retires all
+// ConfirmDeletion upgrades a prepared command to a durable tombstone and retires all
 // local state. It is idempotent for an already-confirmed cleanup record.
-func Confirm(authoring *workbench.Store, result Result) error {
+func ConfirmDeletion(authoring *workbench.Store, result DeletionResult) error {
 	pending, exists := authoring.PendingSessionDeletion(result.Request.SessionID)
 	if exists && pending.Phase == workbench.SessionDeletionPrepared {
 		return authoring.ConfirmSessionDeletion(result.Request.SessionID, result.Request.CommandID)
@@ -149,15 +137,15 @@ func Confirm(authoring *workbench.Store, result Result) error {
 	return authoring.RetireSessionState(result.Request.SessionID)
 }
 
-// Reject removes only the exact prepared intent after a definitive refusal.
-func Reject(authoring *workbench.Store, result Result) error {
+// RejectDeletion removes only the exact prepared intent after a definitive refusal.
+func RejectDeletion(authoring *workbench.Store, result DeletionResult) error {
 	return authoring.RejectSessionDeletion(result.Request.SessionID, result.Request.CommandID)
 }
 
-// Recover settles every journal before any session draft is made visible.
-func Recover(
+// RecoverDeletions settles every journal before any session draft is made visible.
+func RecoverDeletions(
 	ctx context.Context,
-	runtime runtime,
+	runtime deletionRuntime,
 	authoring *workbench.Store,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
@@ -169,17 +157,17 @@ func Recover(
 			}
 			continue
 		}
-		result := Result{Request: pending.Request()}
+		result := DeletionResult{Request: pending.Request()}
 		if !policy.Replayable(pending.Replay) {
 			outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
 			result.Outcome = outcome
 			switch outcome {
 			case mutation.Confirmed:
-				if confirmErr := Confirm(authoring, result); confirmErr != nil {
+				if confirmErr := ConfirmDeletion(authoring, result); confirmErr != nil {
 					return confirmErr
 				}
 			case mutation.Rejected:
-				if rejectErr := Reject(authoring, result); rejectErr != nil {
+				if rejectErr := RejectDeletion(authoring, result); rejectErr != nil {
 					return rejectErr
 				}
 			case mutation.Unknown:
@@ -187,15 +175,15 @@ func Recover(
 			}
 			continue
 		}
-		outcome, err := Settle(ctx, runtime, result.Request, pending.Replay, policy, backoff)
+		outcome, err := settleDeletion(ctx, runtime, result.Request, pending.Replay, policy, backoff, false)
 		result.Outcome = outcome
 		switch outcome {
 		case mutation.Confirmed:
-			if confirmErr := Confirm(authoring, result); confirmErr != nil {
+			if confirmErr := ConfirmDeletion(authoring, result); confirmErr != nil {
 				return confirmErr
 			}
 		case mutation.Rejected:
-			if rejectErr := Reject(authoring, result); rejectErr != nil {
+			if rejectErr := RejectDeletion(authoring, result); rejectErr != nil {
 				return errors.Join(err, rejectErr)
 			}
 		case mutation.Unknown:
@@ -207,7 +195,7 @@ func Recover(
 
 func resolveExpired(
 	ctx context.Context,
-	runtime runtime,
+	runtime deletionRuntime,
 	sessionID string,
 	replay commandreplay.Guard,
 	policy commandreplay.Policy,
