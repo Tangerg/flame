@@ -262,11 +262,12 @@ var providers = mustProviderCatalog(
 	// the model id is a deployment name. Both are user-supplied.
 	endpointProvider(ProviderAzureOpenAI, configuredEndpoint(), "AZURE_OPENAI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
 		return azureopenai.NewChat(azureopenai.ChatConfig{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), DefaultOptions: o})
-	}).withEmbedding(endpointModels(), buildAzureOpenAIEmbeddingModel),
+	}).withEmbedding(openAIEndpointModels(), buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(ProviderOpenAICompatible, configuredEndpoint(), "OPENAI_COMPATIBLE_API_KEY", buildOpenAICompatibleModel),
-	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicCompatibleModel),
+	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicCompatibleModel).
+		withChatModels(anthropicEndpointModels()),
 )
 
 type anthropicCountingModel struct {

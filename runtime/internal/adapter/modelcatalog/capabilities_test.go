@@ -47,6 +47,31 @@ func TestProbeUsesRemoteModelsForProviderWithoutCatalogDefault(t *testing.T) {
 	}
 }
 
+func TestProbeUsesAnthropicProtocolForCompatibleProvider(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/v1/models" {
+			t.Errorf("request = %s %s, want GET /v1/models", request.Method, request.URL.Path)
+		}
+		if got := request.Header.Get("x-api-key"); got != "test-key" {
+			t.Errorf("x-api-key = %q, want configured key", got)
+		}
+		if got := request.Header.Get("anthropic-version"); got != "2023-06-01" {
+			t.Errorf("anthropic-version = %q, want 2023-06-01", got)
+		}
+		if got := request.Header.Get("Authorization"); got != "" {
+			t.Errorf("authorization = %q, want absent", got)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"data":[{"id":"claude-compatible"}]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
+	if err != nil {
+		t.Fatalf("Probe: %v", err)
+	}
+}
+
 func TestProbeRejectsProviderWithoutCatalogOrAdvertisedModels(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.Header().Set("Content-Type", "application/json")

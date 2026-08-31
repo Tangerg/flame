@@ -133,7 +133,7 @@ func remoteModelIDs(ctx context.Context, entry provider.Provider) ([]string, err
 	} else if profile.RequiresAPIKey() {
 		return nil, fmt.Errorf("modelcatalog: provider %q is not configured", entry.ID())
 	}
-	return llm.ListRemoteModels(ctx, baseURL, apiKey)
+	return profile.ListModels(ctx, baseURL, apiKey)
 }
 
 func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {

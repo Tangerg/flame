@@ -82,7 +82,7 @@ func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
 		{name: "required endpoint carrying default", profiles: []providerProfile{{
 			id: "broken", credential: requiredCredential("BROKEN_API_KEY"),
 			endpoint:   endpointPolicy{kind: endpointMustBeConfigured, defaultURL: "https://example.test"},
-			chatModels: endpointModels(), chatBuilder: buildOpenAIResponsesModel,
+			chatModels: openAIEndpointModels(), chatBuilder: buildOpenAIResponsesModel,
 		}}, want: "cannot carry a default URL"},
 		{name: "embedding without model policy", profiles: []providerProfile{valid.withEmbedding(modelPolicy{}, buildOpenAIEmbeddingModel)}, want: "embedding"},
 	}

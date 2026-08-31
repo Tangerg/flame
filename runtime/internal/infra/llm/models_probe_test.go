@@ -22,7 +22,7 @@ func TestListRemoteModels(t *testing.T) {
 	defer srv.Close()
 
 	// A trailing slash on the base URL must not double up before /models.
-	ids, err := ListRemoteModels(t.Context(), srv.URL+"/v1/", "sk-test")
+	ids, err := listRemoteModels(t.Context(), srv.URL+"/v1/", "sk-test", modelListProtocolOpenAI)
 	if err != nil {
 		t.Fatalf("ListRemoteModels: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestListRemoteModelsRejectsInvalidAdvertisedIdentity(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+			if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 				t.Fatalf("ListRemoteModels accepted invalid model identity %q", tt.id)
 			}
 		})
@@ -73,7 +73,7 @@ func TestListRemoteModelsRejectsOversizedCompleteDocument(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatal("ListRemoteModels accepted a document larger than its response envelope")
 	}
 }
@@ -84,7 +84,7 @@ func TestListRemoteModelsRejectsTrailingJSONValue(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatal("ListRemoteModels accepted a second JSON document")
 	}
 }
@@ -97,7 +97,7 @@ func TestListRemoteModelsRejectsInvalidUTF8Document(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatal("ListRemoteModels normalized an invalid UTF-8 response")
 	}
 }
@@ -116,7 +116,7 @@ func TestListRemoteModelsRejectsOverfullCatalog(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatalf("ListRemoteModels accepted more than %d advertised models", maximumRemoteModelCount)
 	}
 }
@@ -135,7 +135,7 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	models, err := ListRemoteModels(t.Context(), srv.URL, "")
+	models, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI)
 	if err != nil {
 		t.Fatalf("ListRemoteModels rejected the catalog boundary: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 		_, _ = w.Write([]byte(exactBody))
 	}))
 	defer exactServer.Close()
-	if _, err := ListRemoteModels(t.Context(), exactServer.URL, ""); err != nil {
+	if _, err := listRemoteModels(t.Context(), exactServer.URL, "", modelListProtocolOpenAI); err != nil {
 		t.Fatalf("ListRemoteModels rejected the exact byte boundary: %v", err)
 	}
 }
@@ -165,7 +165,7 @@ func TestListRemoteModelsNoKeyOmitsAuth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err != nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err != nil {
 		t.Fatalf("ListRemoteModels: %v", err)
 	}
 	if gotAuth != "" {
@@ -179,7 +179,7 @@ func TestListRemoteModelsNon200IsError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := ListRemoteModels(t.Context(), srv.URL, ""); err == nil {
+	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatal("expected an error on a non-200 probe, got nil")
 	}
 }

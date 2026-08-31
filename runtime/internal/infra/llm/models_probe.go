@@ -20,6 +20,7 @@ const (
 	probeTimeout                   = 4 * time.Second
 	maximumModelProbeResponseBytes = 1 << 20
 	maximumRemoteModelCount        = 4096
+	anthropicProtocolVersion       = "2023-06-01"
 )
 
 // remoteModelList is the OpenAI GET /v1/models response shape, which Ollama /
@@ -85,16 +86,16 @@ func (d modelProbeDocument) identities() ([]string, error) {
 	return slices.Compact(ids), nil
 }
 
-// ListRemoteModels probes a compatible provider endpoint for its models
-// (GET {baseURL}/models) and returns the advertised model ids, sorted and
-// de-duplicated. It backs live model discovery for local / bring-your-own-
-// endpoint providers whose model set is user-defined rather than in the static
-// catalog (Ollama and the compatible endpoint providers). apiKey rides as a bearer token when
-// non-empty (a local daemon needs none). The call is bounded (timeout + response
-// cap); a non-200 or unparseable body is returned as an error the caller treats
-// as "no discovery" and falls back to the static catalog.
-func ListRemoteModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
-	endpoint := strings.TrimRight(baseURL, "/") + "/models"
+// listRemoteModels probes a compatible provider endpoint with the listing
+// protocol owned by its provider profile. OpenAI-family endpoints expose
+// {baseURL}/models with bearer authentication; Anthropic-family endpoints
+// expose {baseURL}/v1/models with native headers. The response remains bounded
+// regardless of protocol.
+func listRemoteModels(ctx context.Context, baseURL, apiKey string, protocol modelListProtocol) ([]string, error) {
+	endpoint, err := protocol.modelListEndpoint(baseURL)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 
@@ -102,9 +103,7 @@ func ListRemoteModels(ctx context.Context, baseURL, apiKey string) ([]string, er
 	if err != nil {
 		return nil, err
 	}
-	if apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+apiKey)
-	}
+	protocol.authorize(req, apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -124,4 +123,28 @@ func ListRemoteModels(ctx context.Context, baseURL, apiKey string) ([]string, er
 		return nil, fmt.Errorf("llm: model probe %s: %w", endpoint, err)
 	}
 	return ids, nil
+}
+
+func (p modelListProtocol) modelListEndpoint(baseURL string) (string, error) {
+	baseURL = strings.TrimRight(baseURL, "/")
+	switch p {
+	case modelListProtocolOpenAI:
+		return baseURL + "/models", nil
+	case modelListProtocolAnthropic:
+		return baseURL + "/v1/models", nil
+	default:
+		return "", fmt.Errorf("llm: unsupported model listing protocol %d", p)
+	}
+}
+
+func (p modelListProtocol) authorize(request *http.Request, apiKey string) {
+	switch p {
+	case modelListProtocolOpenAI:
+		if apiKey != "" {
+			request.Header.Set("Authorization", "Bearer "+apiKey)
+		}
+	case modelListProtocolAnthropic:
+		request.Header.Set("x-api-key", apiKey)
+		request.Header.Set("anthropic-version", anthropicProtocolVersion)
+	}
 }

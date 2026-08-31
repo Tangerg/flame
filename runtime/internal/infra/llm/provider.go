@@ -8,6 +8,7 @@
 package llm
 
 import (
+	"context"
 	"os"
 )
 
@@ -97,6 +98,13 @@ func (p ProviderProfile) DefaultEndpoint() (string, bool) {
 
 func (p ProviderProfile) DiscoversModelsAtEndpoint() bool {
 	return p.value.chatModels.discoveredAtEndpoint()
+}
+
+// ListModels discovers the model identities exposed by this provider using
+// the same wire protocol as its chat adapter. The profile owns this distinction
+// so application adapters never have to branch on provider identities.
+func (p ProviderProfile) ListModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
+	return p.value.chatModels.list(ctx, baseURL, apiKey)
 }
 
 func (p ProviderProfile) SupportsEmbeddings() bool { return p.value.embedding != nil }
