@@ -1,6 +1,6 @@
 # Flame runtime configuration (viper).
 #
-# Copy this file to config.yaml and fill in your API key:
+# Copy this file to config.yaml and choose a provider:
 #   cp config/config.example.yaml config/config.yaml
 #
 # config.yaml is gitignored (it holds your key). Precedence, later wins:
@@ -23,10 +23,12 @@ model: ""
 # background summarize/extract/title calls run on an inexpensive one.
 utilityModel: ""
 
-# Provider API key. The selected provider's native environment variable (for
-# example ANTHROPIC_API_KEY or DEEPSEEK_API_KEY) overrides this value. Runtime
-# owns the complete provider-to-environment mapping and providers.list reports
-# the effective credential provenance without exposing the secret.
+# Optional first-run provider API key. Runtime may start with a required-key
+# provider still unconfigured so the interactive CLI can save one through
+# providers.update. A stored Runtime value wins on later starts. The selected
+# provider's native environment variable (for example ANTHROPIC_API_KEY or
+# DEEPSEEK_API_KEY) is a process-only override. providers.list reports the
+# effective credential provenance without exposing the secret.
 apiKey: ""
 
 # Optional API endpoint override. Empty = the adapter's built-in default.

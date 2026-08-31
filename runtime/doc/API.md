@@ -822,7 +822,9 @@ Run 创建时把这份声明冻进 `RunProtocolProfile.interruptTypes`（§3.2�
 `providers.list` 返回固定受支持集合与当前有效配置。每项的 `configured` 是 Runtime 按该 provider 的完整认证与 endpoint
 策略计算出的权威可用事实；它不能由客户端从 `credential` 是否存在反推。`credentialRequirement` 是闭合枚举：
 `apiKeyRequired` 要求有效 credential，`apiKeyOptional`（例如默认本地 endpoint 的 Ollama）即使没有 credential 也可配置完成，
-但仍允许用户显式保存 key。`credential` 只表示实际凭据的脱敏来源，不兼任可用状态。
+但仍允许用户显式保存 key。`credential` 只表示实际凭据的脱敏来源，不兼任可用状态。required-key provider 可以在尚未配置时
+启动 Runtime；此时客户端仍可调用 `providers.update` 建立 stored credential，`providers.test` 返回 `not_configured`，真正 Run
+则在模型解析边界返回 `invalid_credentials`。YAML/env key 是可选 first-run/process input，不是打开 durable registry 前的启动门槛。
 
 `providers.update` 对已持久化配置做**原子字段变更**：
 
