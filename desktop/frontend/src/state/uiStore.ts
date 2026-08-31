@@ -1,10 +1,3 @@
-// Persisted UI preferences — colour theme + visual style + accent + fonts +
-// sidebar collapse state. Single Zustand store + single persistence key
-// since every field is "what the user's UI should look like across
-// launches". The side-effects at the bottom of this file mirror the
-// active appearance specs + font preferences to :root (inline CSS vars +
-// theme-{scheme} class on <html>).
-
 import { z } from "zod";
 import { ACCENT_TINTS, DEFAULT_ACCENT_TINT, type AccentTint } from "@/lib/appearance";
 import { create } from "zustand";
@@ -13,23 +6,15 @@ import { DEFAULT_UI_DENSITY, UI_DENSITY_MODES, type UiDensity } from "@/lib/dens
 import type { ColorThemeId, VisualStyleId } from "@/lib/appearance";
 import { discardOlderVersions } from "@/lib/persistedStore";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
-// Direct registry import — going through the SDK barrel pulls in
-// host.ts which imports this file, creating a TDZ cycle under Vitest.
-// Same reason the extension-point reads below import from the deep
-// `selectors/extensions` + `kernelPoints` paths (neither pulls host).
+// Direct registry import: the SDK barrel pulls in host.ts, which imports this file, and the
+// cycle is a TDZ error under Vitest. Same reason for the deep extension-point paths below.
 import type { CustomTheme, UiState } from "./uiPreferences";
 
 export type { CustomTheme, UiState } from "./uiPreferences";
 
-// localStorage payload schema. Validated on rehydrate so a corrupted
-// `flame.ui` entry (manual edit, downgrade leaving a future-shape blob,
-// browser extension tampering) falls back to defaults instead of
-// crashing the boot.
-// These are read back as colours, not as opaque strings: the accent is decomposed
-// into OKLCH to derive the neutral family. `parseInt(hex, 16)` does not reject a
-// non-hex value, it reads whatever prefix parses — "blue" comes back as a finite
-// garbage colour and every derived surface paints black. Rejecting it here is what
-// makes a corrupted payload fall back to the defaults instead of to a black UI.
+// Read back as COLOURS, not opaque strings. `parseInt(hex, 16)` does not reject a non-hex
+// value, it reads whatever prefix parses — "blue" returns a finite garbage colour and every
+// derived surface paints black. Rejecting here is what makes a corrupt payload boot clean.
 const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 const uiPersistSchema = z.object({
@@ -56,14 +41,9 @@ const uiPersistSchema = z.object({
 interface UiActions {
   setTheme: (theme: ColorThemeId) => void;
   setVisualStyle: (visualStyle: VisualStyleId) => void;
-  /**
-   * Flip to the opposite SCHEME (not just "dark"/"light" id) so custom
-   * theme plugins still toggle sensibly. Picks the first registered
-   * theme whose scheme is the opposite of the current one; no-op if
-   * none exists (e.g. only dark themes registered).
-   */
+  /** Flips to the opposite SCHEME, not the "dark"/"light" id, so custom themes still
+   *  toggle. No-op when no theme of the opposite scheme is registered. */
   setAccent: (accent: string) => void;
-  /** Patch one or more of the custom theme's base colors. */
   setCustomTheme: (patch: Partial<CustomTheme>) => void;
   setContrast: (contrast: number) => void;
   setAccentTint: (accentTint: AccentTint) => void;
@@ -131,7 +111,6 @@ export const useUiStore = create<UiState & UiActions>()(
         if (persisted === undefined) return current;
         const parsed = uiPersistSchema.safeParse(persisted);
         if (!parsed.success) {
-          // Reset on schema mismatch — defaults are always a safe boot.
           console.warn("[uiStore] discarding corrupted flame.ui:", parsed.error.issues);
           return current;
         }

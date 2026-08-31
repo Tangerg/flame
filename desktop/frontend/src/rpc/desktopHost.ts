@@ -10,27 +10,17 @@ export interface DesktopBootstrap {
   localRuntime: LocalRuntimeConnection;
 }
 
-/**
- * Where the platform put the window's own controls, in CSS pixels from the window's
- * top-left. `null` means there was nothing to ask — a browser tab, a fixture, a platform
- * whose controls sit outside the content — so the stylesheet's own header height stands. A
- * measured `controlsInlineEnd` of 0 is a real answer: fullscreen, marks gone.
- */
+/** CSS pixels from the window's top-left. `null` means there was nothing to ask, so the
+ *  stylesheet's own header height stands; a measured 0 is a real answer (fullscreen). */
 export interface WindowChrome {
-  /** Distance down from the window's top to the marks' centre line — what a control
-   *  beside them centres on. */
+  /** What a control beside the marks centres on. */
   controlsCentreY: number;
   /** Where the cluster ends, and so where the header's first control may begin. */
   controlsInlineEnd: number;
 }
 
-/**
- * The four Go methods this app can reach, by the name the runtime knows them by.
- *
- * `package.Type.Method` — the full name Go's reflection reports for a `main` package. v3
- * can generate typed wrappers instead; calling by name is deliberate, because a wrapper
- * returns `any` and validates nothing while everything here is Zod-checked below.
- */
+/** `package.Type.Method`, the name Go's reflection reports. Calling by name rather than a
+ *  generated wrapper is deliberate: a wrapper returns `any` and validates nothing. */
 const HOST_METHOD = {
   bootstrap: "main.DesktopHost.Bootstrap",
   chooseWorkingDirectory: "main.DesktopHost.ChooseWorkingDirectory",
@@ -46,11 +36,9 @@ export interface DesktopHostBinding {
 export interface DesktopHostClient {
   /** Returns null in a plain browser where the Wails host is intentionally absent. */
   bootstrap(): Promise<DesktopBootstrap | null>;
-  /** Opens the native directory chooser. `null` means the user cancelled or the
-   *  packaged host is absent (for example, a browser visual fixture). */
+  /** `null` means the user cancelled, or the packaged host is absent. */
   chooseWorkingDirectory(): Promise<string | null>;
-  /** Opens the native save dialog for a rendered inline image. `false` means the
-   *  user cancelled or the packaged host is absent; failures reject. */
+  /** `false` means cancelled or no packaged host; failures reject. */
   saveImage(source: string): Promise<boolean>;
   /** `null` where there is no window to measure. Re-read per layout: the titlebar is
    *  rebuilt entering and leaving fullscreen, and the marks go away with it. */

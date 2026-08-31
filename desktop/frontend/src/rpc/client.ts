@@ -1,6 +1,4 @@
-// Owns id allocation, response correlation and notification dispatch (API.md §1). Each
-// Request creates a pending entry with resolve/reject handles; the recv() loop pops it by
-// id. Notifications go through subscribe() — no id, no waiter.
+// Id allocation, response correlation and notification dispatch (API.md §1).
 
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import {
@@ -39,8 +37,8 @@ import { ExactSequence } from "@/foundation/exactSequence";
 
 export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
   next(params: WireNotificationParams[M], requestRpcId: RpcId): void;
-  /** A notification-local protocol error names its response stream; a connection
-   *  failure has no request owner and terminates every observer. */
+  /** A protocol error names its response stream; a connection failure has no request owner
+   *  and terminates every observer. */
   error(error: RpcProtocolError | RpcTransportError, requestRpcId?: RpcId): void;
 }
 
@@ -60,16 +58,13 @@ export interface RpcClientOptions {
 export interface RpcCallOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
-  /** The runtime refuses the key BEFORE business admission when this no longer matches
-   *  discovery. */
+  /** Refused BEFORE business admission when it no longer matches discovery. */
   idempotencyNamespace?: string;
-  /** The last event this client FOLDED (§5.5). The runtime replays from just after it, or
-   *  refuses when the cursor is not addressable — the caller's signal to cold-read. */
+  /** The last event this client FOLDED (§5.5). Replayed from just after it, or refused when
+   *  not addressable — the caller's signal to cold-read. */
   lastEventId?: string;
-  /**
-   * A SNAPSHOT, so capability preflight and the emitted request stay on the same client
-   * declaration even when the configured metadata provider is dynamic.
-   */
+  /** A SNAPSHOT, so preflight and the emitted request stay on one client declaration even
+   *  when the metadata provider is dynamic. */
   requestMeta?: RequestMeta | null;
   /** Bind a stream owner before Transport.send can deliver its first frame. */
   onRequestRpcId?: (id: RpcId) => void;
@@ -97,8 +92,7 @@ interface Pending {
 }
 
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
-  // Arbitrary precision keeps the id unique for the full client lifetime instead of
-  // repeating at JavaScript's safe-integer boundary.
+  // Arbitrary precision: an integer id would repeat at the safe-integer boundary.
   const requestIds = new ExactSequence();
   const pending = new Map<RpcId, Pending>();
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
@@ -121,9 +115,8 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     streamEndHandlers.clear();
   }
 
-  // When the stream ends — whether it throws OR closes cleanly — no further Responses can
-  // arrive, so every in-flight request must be settled. Handling only the throw path leaves
-  // pending calls hung forever on a clean EOS.
+  // Whether the stream throws OR closes cleanly, no further Responses arrive, so every
+  // in-flight request must settle. Handling only the throw path hangs them on a clean EOS.
   const receiveLoop = (async () => {
     try {
       for await (const event of transport.recv()) {
@@ -149,7 +142,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     }
     if (isResponse(event.message) && event.message.id !== event.requestRpcId) {
       // The SOURCE request is authoritative, not the envelope id: a transport merges many
-      // concurrent response bodies into one channel, so a malformed frame from request A
+      // response bodies into one channel, so a malformed frame from request A
       // could otherwise settle request B and strand A.
       const entry = pending.get(event.requestRpcId);
       if (entry) {

@@ -1,7 +1,5 @@
-// Typed exception thrown when a JSON-RPC Response carries an `error` — or when the
-// SDK's capability preflight refuses a call the negotiation already ruled out, which
-// is the same refusal with the round-trip removed. Wraps the raw payload so callers
-// branch on the problem TYPE rather than parsing the message string.
+// Thrown for a JSON-RPC `error`, or for the capability preflight refusing a call the
+// negotiation already ruled out. Callers branch on the problem TYPE, never the message.
 
 import type { ProblemData } from "@flame/runtime-contract/wire";
 import type { WireViolation } from "@flame/runtime-contract/wire-check";
@@ -15,10 +13,7 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** True when `error` is a JSON-RPC business error of the given ProblemData
- *  `type` (API.md §8: judge errors by type, never by code or message). The
- *  one idiom every "this failure is an expected state" branch needs —
- *  capability gating, vcs_unavailable, session_busy. */
+/** API.md §8: judge errors by type, never by code or message. */
 export function isErrorType<Type extends ProblemData["type"]>(
   error: unknown,
   type: Type,
@@ -27,15 +22,11 @@ export function isErrorType<Type extends ProblemData["type"]>(
 }
 
 export class RpcError extends Error {
-  /** The wire's coarse numeric class, absent when the refusal never crossed the wire
-   *  (the capability preflight below). Only the five standard JSON-RPC codes are
-   *  named by this client — a business failure is identified by `data.type`, which is
-   *  the stable name, and this number is a classification the protocol is free to
-   *  renumber. */
+  /** Absent when the refusal never crossed the wire. A business failure is identified by
+   *  `data.type`; this number is a classification the protocol may renumber. */
   readonly code?: number;
   readonly data?: ProblemData;
-  /** Runtime-generated transport correlation id. It deliberately stays outside
-   * ProblemData so business errors remain transport-agnostic. */
+  /** Outside ProblemData so business errors stay transport-agnostic. */
   readonly requestId?: string;
 
   constructor(payload: BusinessErrorPayload, requestId?: string) {
@@ -47,9 +38,8 @@ export class RpcError extends Error {
   }
 }
 
-/** A validated runtime error or a refusal this client produced itself. Local
- * refusals omit code because no server answered them; both carry the same typed
- * ProblemData contract. */
+/** Local refusals omit `code` because no server answered them; both carry the same typed
+ *  ProblemData contract. */
 interface BusinessErrorPayload {
   code?: number;
   message: string;

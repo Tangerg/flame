@@ -1,5 +1,4 @@
-// The session projection consumed by the Agent UI and plugin extensions. The Runtime owns
-// Session → Run → Item facts; this model keeps one session-scoped narrative while
+// The Runtime owns Session → Run → Item; this keeps one session-scoped narrative while
 // preserving each source Run independently.
 
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
@@ -33,12 +32,11 @@ export type ToolDiffRow =
 export interface ToolCall {
   id: string;
   runId: string;
-  /** Wire identity (ToolInvocation.name), which drives icon/preview routing. The DISPLAY
-   *  label is `fn`. */
+  /** Wire identity, which drives icon/preview routing. The DISPLAY label is `fn`. */
   name: string;
   fn: string;
-  /** Set when `fn` is a PATH: the row truncates a path from the other end, and only the
-   *  projection that chose what to put in `fn` knows which case this is. */
+  /** Set when `fn` is a PATH: the row truncates one from the other end, and only the
+   *  projection that filled `fn` knows which case this is. */
   fnKind?: "path";
   /** Accumulated `toolArguments` delta text, pre-parse. */
   args: string;
@@ -54,15 +52,14 @@ export interface ToolCall {
    *  "no match"). Real failures set the Item's `error`. */
   exitCode?: number;
   result?: string;
-  /** Its own field because `fn` carries the human `description`, and this is the line a
-   *  reader actually verifies. */
+  /** Separate from `fn`, which carries the human `description`. */
   command?: string;
   error?: string;
   /** Read from the call's ARGUMENTS, not from `args`, which is empty whenever the label
    *  already names the target. */
   operation?: string;
-  /** Absent for a tool the runtime has no class for, and treated as "not a read" — the
-   *  same fail-conservative default the approval gate applies. */
+  /** Absent for a tool the runtime has no class for, and read as "not a read" — the same
+   *  fail-conservative default the approval gate applies. */
   safetyClass?: AgentSafetyClass;
   /** From the RESULT, not the request: the runtime clamps. Absent for a whole file, where
    *  the span would only restate `lines`. */
@@ -70,8 +67,8 @@ export interface ToolCall {
   step?: string;
   /** Not a formatted ratio: the reader's language decides how "3 of 7" is worded. */
   progress?: { done: number; total: number };
-  /** Measured by the runtime, excluding approval and other pre-execution waits. Absent when
-   *  unknown — a client stopwatch would be timing its own render loop. */
+  /** Runtime-measured, excluding approval waits. Absent when unknown: a client stopwatch
+   *  would be timing its own render loop. */
   durationMillis?: number;
   /** Absent means the call never crossed a human approval boundary. MUST NOT be inferred
    *  from the current policy or terminal status. */
@@ -83,12 +80,9 @@ export interface Message {
   role: MessageRole;
   /** Absent for user/system messages. */
   phase?: AgentMessagePhase;
-  /** RAW ISO-8601 from the wire; formatting belongs to the caller at render, so a locale
-   *  change reaches messages already on screen.
-   *
-   *  Optional because a synthesized turn has no Item of its own, and the fold does NOT
-   *  reach for the clock to fill the gap: a client-stamped turn in a runtime-stamped stream
-   *  makes the date separator disagree with the messages beside it on a skewed machine. */
+  /** RAW ISO-8601; formatting belongs to render so a locale change reaches messages already
+   *  on screen. Optional because a synthesized turn has no Item, and the fold does NOT reach
+   *  for the clock: a client stamp in a runtime-stamped stream skews the date separator. */
   createdAt?: string;
   /** Prevents interleaved child Items from joining a different Run's assistant turn.
    *  `null` on optimistic local bubbles until the real Item reconciles. */

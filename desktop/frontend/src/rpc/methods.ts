@@ -1,6 +1,5 @@
-// Typed wrappers for every method in runtime/doc/API.md §7. Streaming methods return
-// `{ result, events }`; a run stream carries the whole run tree and ends on the ROOT
-// segment's `segment.finished` (see ./stream).
+// Typed wrappers for runtime/doc/API.md §7. Streaming methods return `{ result, events }`;
+// a run stream carries the whole run tree and ends on the ROOT segment's `segment.finished`.
 
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
@@ -122,8 +121,8 @@ export interface StreamingResult<R, E> {
   events: AsyncIterable<E>;
 }
 
-// Composed from the GENERATED table, so a method renamed in the Registry is a compile
-// error rather than a runtime `method_not_found`.
+// From the GENERATED table, so a rename in the Registry is a compile error rather than a
+// runtime `method_not_found`.
 type WirePerform = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
@@ -155,9 +154,8 @@ type WireCall = <M extends WireMethodName>(
   options?: RpcCallOptions,
 ) => WireCallResult<M>;
 
-// Every streaming method opens its subscription BEFORE the call (head-drop race), so a
-// REJECTED call must dispose explicitly: nobody will iterate `events`, its self-cleaning
-// iterator never runs, and the subscription plus its pre-bind buffer leak forever.
+// Streaming methods subscribe BEFORE the call (head-drop race), so a REJECTED call must
+// dispose explicitly: nobody iterates `events`, so its self-cleaning iterator never runs.
 async function callOrDispose<R>(
   stream: { dispose: () => void },
   call: () => Promise<R>,
@@ -193,9 +191,8 @@ export interface WorkspaceMethods {
   hooks: {
     list: () => Promise<HooksListResult>;
   };
-  // `SkillProposalRef` carries a workspace of its own; taking it from the BINDING rather
-  // than the caller stops a decision naming one workspace while its source list named
-  // another.
+  // Taken from the BINDING, not the caller: otherwise a decision can name one workspace
+  // while its source list named another.
   skills: {
     listDiscovered: () => Promise<Page<Skill>>;
     listProposals: () => Promise<Page<SkillProposal>>;
@@ -231,9 +228,8 @@ export interface Methods {
   sessions: {
     list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Session>;
-    // ONE transactionally coherent read, deliberately distinct from the independently
-    // pageable resource methods: a recovery fold must not combine facts from different
-    // database snapshots.
+    // ONE transactionally coherent read: a recovery fold must not combine facts from
+    // different database snapshots.
     snapshot: (
       sessionId: SessionId,
       includeDescendants?: boolean,
@@ -243,8 +239,8 @@ export interface Methods {
     update: (params: UpdateSessionRequest) => MutationPromise<Session>;
     delete: (sessionId: SessionId) => MutationPromise<void>;
     fork: (params: ForkSessionRequest) => MutationPromise<Session>;
-    // Rejected with `session_busy` while a run is in flight. `restoreType` files|both also
-    // restores the working tree (gated `features.checkpoints`).
+    // `session_busy` while a run is in flight. `restoreType` files|both also restores the
+    // working tree, gated on `features.checkpoints`.
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
     export: (sessionId: SessionId, format?: "md" | "json") => Promise<ExportSessionResponse>;
     // Rebuilds under the artifact's ORIGINAL id, so it is idempotent.
@@ -259,20 +255,18 @@ export interface Methods {
       params: ResumeRunRequest,
       signal?: AbortSignal,
     ) => MutationPromise<StreamingResult<ResumeRunResponse, RunEvent>>;
-    // BOTH ids are required: naming only the run attaches to whatever segment happens to
-    // be executing, and a client folding an earlier one would continue into a different
-    // execution without being able to tell. A mismatch is `stale_segment`.
+    // BOTH ids required: naming only the run attaches to whatever segment is executing, so
+    // a client folding an earlier one continues into a different execution. Mismatch is
+    // `stale_segment`.
     subscribe: (
       params: SubscribeRunRequest,
       signal?: AbortSignal,
-      // The last event the caller FOLDED. Omitted means tail-only: history belongs to
-      // items.list, not to a stream that would deliver it twice.
+      // The last event the caller FOLDED. Omitted means tail-only.
       options?: { lastEventId?: string },
     ) => Promise<StreamingResult<SubscribeRunResponse, RunEvent>>;
     cancel: (runId: RunId, reason?: string) => MutationPromise<CancelRunResponse>;
-    // The segment is named so a run that parked and resumed between typing and sending
-    // REFUSES (`stale_segment`) rather than delivering the instruction to work the person
-    // never saw.
+    // Naming the segment makes a run that parked and resumed between typing and sending
+    // REFUSE with `stale_segment` rather than answer work the person never saw.
     steer: (
       runId: RunId,
       expectedSegmentId: SegmentId,
@@ -291,8 +285,8 @@ export interface Methods {
     ) => AutoPagingPromise<Page<RunRef>>;
   };
   plan: {
-    // An UNWRITTEN session omits `state`; an explicit clear returns a committed state with
-    // a positive revision and no steps.
+    // An UNWRITTEN session omits `state`; an explicit clear returns a committed state with a
+    // positive revision and no steps.
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Plan>;
   };
   interrupts: {
@@ -303,8 +297,7 @@ export interface Methods {
     ) => AutoPagingPromise<Page<PendingInterruptSet>>;
   };
   items: {
-    // `order` defaults to "asc": the order the runtime produced, which is the one a fold
-    // can replay.
+    // `order` defaults to "asc" — the order a fold can replay.
     list: (
       params: {
         scope: ItemListScope;
@@ -323,40 +316,38 @@ export interface Methods {
   };
   /** Bind ONCE; every resource operation inherits the identity. */
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
-  // Lossy "this moved → read it again" signals with NO replay. One stream per app;
-  // resubscribing IS the resync. `topics` is required — a subscription says what it folds.
+  // Lossy "this moved, read it again" signals with NO replay; resubscribing IS the resync.
   runtimeEvents: {
     subscribe: (
       params: RuntimeSubscribeRequest,
       signal?: AbortSignal,
     ) => Promise<StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>>;
   };
-  // Targets the CANONICAL root returned by `workspace(ref).hooks.list()`; discovery itself
-  // stays workspace-scoped.
+  // Targets the CANONICAL root from `workspace(ref).hooks.list()`.
   hooks: {
     setTrust: (projectRoot: string, trusted: boolean) => MutationPromise<void>;
   };
-  // Workspace-INDEPENDENT because a managed skill is addressed by name alone; archive and
-  // restore never delete. Discovery and the proposal queue live on the bound client.
+  // Workspace-INDEPENDENT: a managed skill is addressed by name alone, and archive and
+  // restore never delete.
   skills: {
     listLibrary: () => Promise<Page<ManagedSkill>>;
     archive: (name: string) => MutationPromise<void>;
     restore: (name: string) => MutationPromise<void>;
   };
   mcp: {
-    // ONE resource carries both durable configuration and live state. `update` uses exact
-    // omission=preserve semantics, which is why it is distinct from `create`.
+    // One resource carries durable configuration AND live state. `update` is
+    // omission=preserve, which is why it is distinct from `create`.
     list: () => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
     delete: (server: string) => MutationPromise<void>;
-    // NOT persisted, and a failed probe is `{ ok:false, error }` rather than an RPC error.
+    // NOT persisted; a failed probe is `{ ok:false, error }`, not an RPC error.
     test: (params: MCPServerCandidate) => Promise<MCPTestResult>;
     listTools: (server?: string) => Promise<Page<MCPTool>>;
     reconnect: (server: string) => MutationPromise<void>;
     authorizationAttempts: {
-      // An asynchronous RESOURCE, not a command ack: `get` observes the terminal outcome
-      // across reconnects.
+      // An asynchronous RESOURCE, not a command ack: `get` observes the outcome across
+      // reconnects.
       create: (server: string, signal?: AbortSignal) => MutationPromise<MCPAuthorizationAttempt>;
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };

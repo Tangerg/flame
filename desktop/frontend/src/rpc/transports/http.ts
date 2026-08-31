@@ -1,8 +1,6 @@
-// Streamable HTTP (TRANSPORT.md §6): a streaming method's POST response body IS its event
-// stream — no separate notification connection, no GET stream — so `send()` returns once
-// headers are in, not at stream end. Reconnection is a per-run concern handled ABOVE the
-// transport (§9.2), and 200 is the only success: 204/202 are reserved for client
-// notifications this SDK never sends, so either is a protocol mismatch (§6.3).
+// Streamable HTTP (TRANSPORT.md §6): a streaming method's POST body IS its event stream, so
+// `send()` returns once headers are in, not at stream end. 200 is the only success —
+// 204/202 are reserved for client notifications this SDK never sends (§6.3).
 
 import {
   context,
@@ -35,13 +33,10 @@ import {
   type WireStreamingMethodName,
 } from "@flame/runtime-contract/methods";
 
-/** A transport-safety ceiling ONLY: it stops a malformed or non-Flame peer growing an
- * unterminated parser frame forever before discovery can exist. Callers embedding a
- * differently
- * provisioned compatible Runtime may lower or raise it explicitly. */
+/** A transport-safety ceiling ONLY: it stops a malformed peer growing an unterminated
+ *  parser frame forever before discovery can exist. */
 export const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
 
-// Resolves to the global provider once observability is installed, no-op spans before then.
 // The injected `traceparent` rides HEADERS, never the JSON-RPC body (TRANSPORT.md §2).
 const tracer = trace.getTracer("flame-frontend");
 
@@ -56,12 +51,8 @@ function endSpan(span: Span, err?: unknown): void {
 }
 
 export interface HttpTransportConfig {
-  /** No trailing slash. */
   baseUrl: string;
-  /**
-   * The local-loopback gate token, sent as `Authorization: Bearer`. NOT a user-auth
-   * credential (TRANSPORT.md §11).
-   */
+  /** The local-loopback gate token. NOT a user-auth credential (TRANSPORT.md §11). */
   localToken?: string;
   fetch?: typeof fetch;
   maximumEventStreamFrameCharacters?: number;
@@ -71,8 +62,8 @@ interface EventStreamTextParser {
   feed(chunk: string): void;
 }
 
-/** eventsource-parser stays the framing authority; this splitter only gives each completed
- * frame an async boundary where delivery can apply backpressure. */
+/** eventsource-parser stays the framing authority; this only gives each completed frame an
+ *  async boundary where delivery can apply backpressure. */
 async function feedEventStreamText(
   parser: EventStreamTextParser,
   text: string,
@@ -110,9 +101,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     throw new RangeError("event-stream frame capacity must be a positive safe integer");
   }
 
-  // Capacity 0 on purpose: a rendezvous channel makes the single consumer's acceptance the
-  // permit for every body reader, so it cannot become a second queue with its own loss
-  // semantics.
+  // Capacity 0 on purpose: a rendezvous channel cannot become a second queue with its own
+  // loss semantics.
   const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
   const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>();
