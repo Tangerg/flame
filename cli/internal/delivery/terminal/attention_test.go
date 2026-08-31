@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {

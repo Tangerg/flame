@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T) {

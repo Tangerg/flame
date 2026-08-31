@@ -26,7 +26,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type terminalModeCase struct {

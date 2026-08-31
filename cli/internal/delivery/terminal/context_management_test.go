@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type agentMemoryServiceStub struct {

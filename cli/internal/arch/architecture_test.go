@@ -124,7 +124,7 @@ func TestNamespacesHaveMoreThanOneChild(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(filepath.ToSlash(relative), "testsupport") || hasDirectProductionGo(path) {
+		if hasDirectProductionGo(path) {
 			return nil
 		}
 		children, err := os.ReadDir(path)
@@ -164,7 +164,7 @@ func ringOf(relative string) ring {
 		return ringAdapter
 	case packageWithin(relative, "internal/delivery"):
 		return ringDelivery
-	case packageWithin(relative, "internal/testsupport"):
+	case packageWithin(relative, "internal/runtimefixture"):
 		return ringTestSupport
 	default:
 		return ringUnknown

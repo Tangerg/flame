@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestOpenCreatesOrRestoresAValidatedSnapshot(t *testing.T) {

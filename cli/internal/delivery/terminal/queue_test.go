@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func testQueueEntryID(t *testing.T, value uint64) promptqueue.EntryID {
