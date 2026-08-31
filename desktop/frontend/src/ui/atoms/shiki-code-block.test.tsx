@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { setCodeWrapPreference } from "@/lib/codeWrapPreference";
+import { setCodeWrapPreference } from "./codeWrapPreference";
 import { ShikiCodeBlock } from "./shiki-code-block";
 
 const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).join("\n");

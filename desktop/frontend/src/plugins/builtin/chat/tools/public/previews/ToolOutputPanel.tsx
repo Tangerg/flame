@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { type AnsiSpan, type AnsiTone, hasAnsi, parseAnsi } from "@/lib/ansi";
+import {
+  type AnsiSpan,
+  type AnsiTone,
+  hasAnsi,
+  parseAnsi,
+} from "@/plugins/builtin/chat/tools/domain/ansi";
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { useT } from "@/lib/i18n";

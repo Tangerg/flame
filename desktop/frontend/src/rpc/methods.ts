@@ -1,11 +1,9 @@
 // Typed wrappers for runtime/doc/API.md §7. Streaming methods return `{ result, events }`;
 // a run stream carries the whole run tree and ends on the ROOT segment's `segment.finished`.
 
-import type { RpcCallOptions, RpcClient } from "./client";
-import { RpcError } from "./errors";
-import { createMutationPromise, type MutationPromise } from "./mutation";
-import type { MutationJournal } from "./mutationJournal";
-import { unnegotiated } from "./preflight";
+import type { RpcClient } from "./client";
+import type { MutationPromise } from "./mutation";
+import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
 import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
   AgentDoc,
@@ -67,7 +65,6 @@ import type {
   Schedule,
   CreateScheduleRequest,
   UpdateScheduleRequest,
-  ServerCapabilities,
   Plan,
   Session,
   SessionArtifact,
@@ -92,67 +89,21 @@ import type {
   UsageSummaryRequest,
   UtilityRole,
   RuntimeEvent,
-  RequestMeta,
   WorkspaceFileChange,
   WorkspaceInfo,
   WorkspaceRef,
   WorkspaceSummary,
 } from "@flame/runtime-contract/wire";
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
-import {
-  createAutoPagingPromise,
-  SDK_PAGINATION_POLICY,
-  type AutoPagingPromise,
-  type CursorPage,
-} from "./pagination";
-import {
-  wireMethodIsPaginated,
-  wireMethodRequiresIdempotency,
-  type WireMethodName,
-  type WireMutationMethodName,
-  type WirePaginatedMethodName,
-  type WireParams,
-  type WireResult,
-} from "@flame/runtime-contract/methods";
+import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
+
+export type { MethodsOptions } from "./wireCallPath";
 
 export interface StreamingResult<R, E> {
   result: R;
   events: AsyncIterable<E>;
 }
-
-// From the GENERATED table, so a rename in the Registry is a compile error rather than a
-// runtime `method_not_found`.
-type WirePerform = <M extends WireMethodName>(
-  method: M,
-  params: WireParams<M>,
-  options?: RpcCallOptions,
-) => Promise<WireResult<M>>;
-
-type WireInvokeResult<M extends WireMethodName> = M extends WireMutationMethodName
-  ? MutationPromise<WireResult<M>>
-  : Promise<WireResult<M>>;
-
-type WireInvoke = <M extends WireMethodName>(
-  method: M,
-  params: WireParams<M>,
-  options?: RpcCallOptions,
-) => WireInvokeResult<M>;
-
-type PaginatedWireCall<M extends WirePaginatedMethodName> =
-  WireResult<M> extends CursorPage ? AutoPagingPromise<WireResult<M>> : never;
-
-type WireCallResult<M extends WireMethodName> = M extends WirePaginatedMethodName
-  ? PaginatedWireCall<M>
-  : M extends WireMutationMethodName
-    ? MutationPromise<WireResult<M>>
-    : Promise<WireResult<M>>;
-
-type WireCall = <M extends WireMethodName>(
-  method: M,
-  params: WireParams<M>,
-  options?: RpcCallOptions,
-) => WireCallResult<M>;
 
 // Streaming methods subscribe BEFORE the call (head-drop race), so a REJECTED call must
 // dispose explicitly: nobody iterates `events`, so its self-cleaning iterator never runs.
@@ -433,23 +384,6 @@ export interface Methods {
   };
 }
 
-export interface MethodsOptions {
-  /**
-   * What the server said it can do, or null before discovery — the capability
-   * preflight reads it before each call. Omit it and every call goes out, leaving
-   * the runtime to refuse what it cannot do.
-   */
-  capabilities?: () => ServerCapabilities | null | undefined;
-  /**
-   * Metadata attached to the next request. The factory reads it once per call,
-   * using the same snapshot for capability preflight and emission.
-   */
-  requestMeta?: () => RequestMeta | undefined;
-  /** Optional durable owner for unresolved command identities. The RPC SDK
-   * remains storage-agnostic; Desktop supplies the adapter at composition. */
-  mutationJournal?: MutationJournal;
-}
-
 function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
   // Copy and freeze the identity so a caller cannot silently retarget an
   // already-created resource client by mutating the original object.
@@ -504,132 +438,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     replayLimits: options.capabilities?.()?.limits.runReplay,
   });
 
-  // Every outbound call passes the preflight, because the alternative is a
-  // round-trip whose only possible answer is the refusal we already hold.
-  const refuse = <M extends WireMethodName>(
-    method: M,
-    params: WireParams<M>,
-    requestMeta?: RequestMeta | null,
-  ): void => {
-    const missing = unnegotiated(
-      method,
-      params,
-      options.capabilities?.(),
-      requestMeta?.clientCapabilities,
-    );
-    if (missing.length === 0) return;
-    throw new RpcError({
-      message: `${method} requires ${missing.join(", ")}`,
-      // This is the same typed refusal the runtime would return, with every gap in
-      // one frame. Manufacturing a detail here would put runtime words in a local
-      // refusal, so the UI still owns the prose.
-      data: {
-        type: "capability_not_negotiated",
-        requiredCapabilities: missing.map((name) => ({ type: "feature", name })),
-      },
-    });
-  };
-
-  const perform: WirePerform = async (method, params, callOptions) => {
-    const ownsRequestMeta = options.requestMeta !== undefined;
-    const requestMeta = ownsRequestMeta ? options.requestMeta?.() : callOptions?.requestMeta;
-    refuse(method, params, requestMeta);
-    const effectiveOptions = ownsRequestMeta
-      ? { ...callOptions, requestMeta: requestMeta ?? null }
-      : callOptions;
-    return client.call(method, params, effectiveOptions);
-  };
-
-  const openMutation = <M extends WireMethodName, Result>(
-    method: M,
-    params: WireParams<M>,
-    execute: (
-      idempotencyKey: string,
-      attempt: { signal?: AbortSignal; idempotencyNamespace?: string },
-    ) => Promise<Result>,
-    signal?: AbortSignal,
-    requestedKey?: string,
-    journalKey?: string,
-  ): MutationPromise<Result> => {
-    const preferredJournalKey = journalKey ?? crypto.randomUUID();
-    let reservation: ReturnType<MutationJournal["reserve"]>;
-    try {
-      reservation =
-        requestedKey !== undefined
-          ? undefined
-          : options.mutationJournal?.reserve(method, params, preferredJournalKey);
-    } catch (error) {
-      const failedKey = requestedKey ?? preferredJournalKey;
-      const retry = (retryOptions?: { signal?: AbortSignal }): MutationPromise<Result> =>
-        openMutation(
-          method,
-          params,
-          execute,
-          retryOptions === undefined ? signal : retryOptions.signal,
-          requestedKey,
-          preferredJournalKey,
-        );
-      return Object.defineProperties(Promise.reject(error), {
-        idempotencyKey: { enumerable: true, value: failedKey },
-        retry: { enumerable: true, value: retry },
-      }) as MutationPromise<Result>;
-    }
-    const mutation = createMutationPromise(
-      (idempotencyKey, attempt) => {
-        const idempotencyNamespace = reservation?.authorizeAttempt();
-        return execute(idempotencyKey, { ...attempt, idempotencyNamespace });
-      },
-      requestedKey ?? reservation?.idempotencyKey,
-      { signal },
-    );
-    return reservation?.track(mutation) ?? mutation;
-  };
-
-  const invoke = (<M extends WireMethodName>(
-    method: M,
-    params: WireParams<M>,
-    callOptions?: RpcCallOptions,
-  ): WireInvokeResult<M> => {
-    if (!wireMethodRequiresIdempotency(method)) {
-      return perform(method, params, callOptions) as WireInvokeResult<M>;
-    }
-    const { signal, idempotencyKey, ...stableCallOptions } = callOptions ?? {};
-    return openMutation(
-      method,
-      params,
-      (idempotencyKey, attempt) =>
-        perform(method, params, {
-          ...stableCallOptions,
-          ...(attempt.signal ? { signal: attempt.signal } : {}),
-          idempotencyKey,
-          ...(attempt.idempotencyNamespace
-            ? { idempotencyNamespace: attempt.idempotencyNamespace }
-            : {}),
-        }),
-      signal,
-      idempotencyKey,
-    ) as WireInvokeResult<M>;
-  }) as WireInvoke;
-
-  const call = (<M extends WireMethodName>(
-    method: M,
-    params: WireParams<M>,
-    callOptions?: RpcCallOptions,
-  ): WireCallResult<M> => {
-    if (wireMethodIsPaginated(method)) {
-      const initialCursor = (params as { cursor?: string }).cursor;
-      return createAutoPagingPromise<CursorPage>(
-        (cursor) => {
-          const continuation = { ...params, cursor } as WireParams<M> & { cursor?: string };
-          if (cursor === undefined) delete continuation.cursor;
-          return invoke<M>(method, continuation, callOptions) as unknown as Promise<CursorPage>;
-        },
-        SDK_PAGINATION_POLICY,
-        initialCursor,
-      ) as unknown as WireCallResult<M>;
-    }
-    return invoke(method, params, callOptions) as WireCallResult<M>;
-  }) as WireCall;
+  const { call, perform, openMutation } = createWireCallPath(client, options);
 
   let defaultWorkspaceRef: Promise<WorkspaceRef> | undefined;
   const openWorkspace = async (ref?: WorkspaceRef): Promise<WorkspaceMethods> => {

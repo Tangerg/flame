@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Pressable } from "@/ui";
-import { imageSizeFromBase64 } from "@/lib/imageHeader";
+import { imageSizeFromBase64 } from "@/plugins/builtin/chat/message/domain/imageHeader";
 import { useT } from "@/lib/i18n";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
 

@@ -6,7 +6,7 @@ import { getHighlighter, resolveLang } from "@/lib/highlight/shiki";
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
-import { toggleCodeWrapPreference, useCodeWrapPreference } from "@/lib/codeWrapPreference";
+import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
 import { IconButton } from "./icon-button";
 
