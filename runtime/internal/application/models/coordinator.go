@@ -9,11 +9,14 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
+
+const defaultProviderProbeTimeout = 10 * time.Second
 
 // ProviderCatalog supplies static provider and model reference data. The
 // coordinator owns the use-case policy that consumes the projection.
@@ -83,6 +86,10 @@ type Coordinator struct {
 	catalog   ProviderCatalog
 	prober    ProviderProber
 	lister    ProviderModelLister
+	// probeTimeout bounds the user-facing provider test independently of the
+	// terminal or transport lifetime. ProviderProber implementations must honor
+	// context cancellation like every other network port.
+	probeTimeout time.Duration
 
 	// utility / embedding model roles: the live state shared with runtime
 	// consumers, the resolver that validates a new role, and the saver
@@ -105,6 +112,9 @@ type Config struct {
 	Catalog   ProviderCatalog
 	Prober    ProviderProber
 	Lister    ProviderModelLister
+	// ProbeTimeout overrides the product deadline for focused compositions and
+	// tests. Zero or a negative value selects the product default.
+	ProbeTimeout time.Duration
 
 	UtilityRoleState *RoleState
 	UtilityValidator ChatModelValidator
@@ -125,11 +135,15 @@ func New(cfg Config) *Coordinator {
 	if cfg.EmbeddingRoleState == nil {
 		cfg.EmbeddingRoleState = NewRoleState(modelref.Selection{})
 	}
+	if cfg.ProbeTimeout <= 0 {
+		cfg.ProbeTimeout = defaultProviderProbeTimeout
+	}
 	return &Coordinator{
 		providers:          cfg.Providers,
 		catalog:            cfg.Catalog,
 		prober:             cfg.Prober,
 		lister:             cfg.Lister,
+		probeTimeout:       cfg.ProbeTimeout,
 		utilityRoleState:   cfg.UtilityRoleState,
 		utilityValidator:   cfg.UtilityValidator,
 		utilityStore:       cfg.UtilityStore,

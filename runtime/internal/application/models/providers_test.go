@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
@@ -158,6 +159,13 @@ type fakeProber struct {
 	onProbe func()
 }
 
+type waitingProber struct{}
+
+func (waitingProber) Probe(ctx context.Context, _ provider.Provider) error {
+	<-ctx.Done()
+	return context.Cause(ctx)
+}
+
 func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
 	prober := &fakeProber{}
 	c := New(Config{
@@ -199,6 +207,30 @@ func TestProviderProbePreservesCallerCancellation(t *testing.T) {
 	}
 	if outcome != "" {
 		t.Fatalf("TestProvider outcome = %q, want no operational outcome after cancellation", outcome)
+	}
+}
+
+func TestProviderProbeOwnsASettlementDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	c := New(Config{
+		Providers: &testProviderRegistry{},
+		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
+			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+		)}},
+		Prober:       waitingProber{},
+		ProbeTimeout: 10 * time.Millisecond,
+	})
+
+	outcome, err := c.TestProvider(ctx, "ollama")
+	if err != nil {
+		t.Fatalf("TestProvider returned deadline as a command error: %v", err)
+	}
+	if outcome != ProviderTestFailed {
+		t.Fatalf("TestProvider outcome = %q, want %q", outcome, ProviderTestFailed)
+	}
+	if ctx.Err() != nil {
+		t.Fatal("provider probe consumed the caller's safety deadline")
 	}
 }
 

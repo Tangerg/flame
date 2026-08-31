@@ -137,7 +137,9 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 		trace.SpanFromContext(ctx).RecordError(errors.New("models: provider probe is unavailable"))
 		return ProviderTestFailed, nil
 	}
-	probeErr := c.prober.Probe(ctx, entry)
+	probeContext, cancelProbe := context.WithTimeout(ctx, c.probeTimeout)
+	defer cancelProbe()
+	probeErr := c.prober.Probe(probeContext, entry)
 	if contextErr := ctx.Err(); contextErr != nil {
 		return "", contextErr
 	}
