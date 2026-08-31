@@ -1,6 +1,6 @@
 # Flame refactoring guide
 
-This guide turns [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) into a repeatable workflow for `cli` and `runtime` changes.
+This guide turns [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) into a repeatable structural method for `cli` and `runtime` changes. Repository execution and verification details live in [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Establish the contract
 

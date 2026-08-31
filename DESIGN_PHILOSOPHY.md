@@ -1,6 +1,6 @@
 # Flame design philosophy
 
-This document explains the design choices shared by the Flame Runtime and CLI. [`AGENTS.md`](AGENTS.md) contains short rules. [`REFACTORING.md`](REFACTORING.md) turns those rules into an editing method. Module architecture documents own module-specific boundaries.
+This document explains the design choices shared by the Flame Runtime and CLI. [`AGENTS.md`](AGENTS.md) contains short rules, [`REFACTORING.md`](REFACTORING.md) defines the structural method, and [`DEVELOPMENT.md`](DEVELOPMENT.md) owns execution details. Module architecture documents own module-specific boundaries.
 
 ## Build one product model
 

@@ -5,7 +5,7 @@ and a Go runtime. Its Runtime Protocol models durable sessions, runs, goals, pla
 interrupts, recovery, and threshold-gated context compaction as one coherent product
 lifecycle.
 
-Repository rules live in [`AGENTS.md`](AGENTS.md). [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) explains the shared Runtime and CLI design, and [`REFACTORING.md`](REFACTORING.md) defines the evidence and verification workflow.
+Repository rules live in [`AGENTS.md`](AGENTS.md). [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) explains the shared Runtime and CLI design, [`REFACTORING.md`](REFACTORING.md) defines the structural method, and [`DEVELOPMENT.md`](DEVELOPMENT.md) owns execution and verification details.
 
 ## Repository layout
 
