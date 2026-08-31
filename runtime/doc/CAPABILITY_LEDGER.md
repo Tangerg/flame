@@ -578,6 +578,8 @@ P283已将Goal incarnation收敛为独立128-code-point富值，并贯穿Goal/Ru
 
 P284回收Runtime合同校验面的无消费者原语：6个当前生成合同从未引用的pointer/optional prefix、pattern与identity-items helper已删除，contract generator对这些尚未实现、尚无真实schema消费者的组合在生成期明确拒绝，不再以死代码制造“未来已支持”的假象。Session Run change observer改用非零大小的标量registration类型，直接表达pointer map key不能依赖zero-size地址唯一性的Go语义；Goal测试只丢弃store helper返回值，不再把不会读取的值赋回局部变量。Runtime workspace/standalone test、vet、build、Staticcheck与合同生成零漂移，CLI workspace test、vet、build、Staticcheck全绿；Protocol生成结果、Artifact与SQLite shape均不改变。
 
+P285关闭Run journal测试中的虚假成功通道：所有普通append与close现在都必须证明sequence/cursor分配和terminal publication成功，只有sequence exhaustion反例显式消费失败；并发append/close/cancel用例在goroutine汇合后检查各自错误，benchmark也不再丢弃失败。Catalog filter、MCP row decode、child binding、shell ID解析与Tool测试同时删除无效赋值或单分支形式噪声，没有新增package、接口或生产行为。Runtime与CLI的workspace/standalone test、vet、build、Staticcheck和GolangCI全绿，真实DeepSeek Question跨Runtime重启恢复再次通过。
+
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
 MCP server registry identity现由独立`ServerName`拥有1–32位canonical lowercase ASCII spelling，并贯穿registry/live supersession/OAuth/tool policy/tool namespace；公开Go/Schema/TypeScript与fresh SQLite CHECK使用同一规则。SQLite当前epoch因此为94，Artifact仍为v27。
