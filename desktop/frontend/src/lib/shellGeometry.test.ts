@@ -10,7 +10,6 @@ import {
   dockWidthFromRatio,
   maxDockWidth,
   maxSidebarWidth,
-  minDockWidth,
   SIDEBAR_DEFAULT_WIDTH_PX,
   SIDEBAR_MIN_WIDTH_PX,
 } from "./shellGeometry";
@@ -38,9 +37,14 @@ describe("dock geometry", () => {
     expect(clampDockWidth(100, 1120)).toBe(DOCK_MIN_WIDTH_PX);
   });
 
-  it("collapses the range onto the floor rather than inverting it", () => {
+  // The floor has ONE owner — this `Math.max`. Assert it there rather than through a
+  // second clamp on the narrow end: that clamp existed, read as the guarantee, and
+  // could never fire, because a max built from `Math.max(floor, …)` cannot go under it.
+  it("never lets the widest measure fall under the floor, at any row width", () => {
+    for (let rowWidth = 0; rowWidth <= 4000; rowWidth += 1) {
+      expect(maxDockWidth(rowWidth)).toBeGreaterThanOrEqual(DOCK_MIN_WIDTH_PX);
+    }
     expect(maxDockWidth(400)).toBe(DOCK_MIN_WIDTH_PX);
-    expect(minDockWidth(400)).toBe(DOCK_MIN_WIDTH_PX);
     expect(clampDockWidth(1000, 400)).toBe(DOCK_MIN_WIDTH_PX);
   });
 
@@ -54,7 +58,7 @@ describe("dock geometry", () => {
     for (const width of [320, 500, 768, 1088]) {
       expect(dockWidthFromRatio(dockRatioFromWidth(width, rowWidth), rowWidth)).toBe(width);
     }
-    expect(dockWidthFromRatio(0, rowWidth)).toBe(minDockWidth(rowWidth));
+    expect(dockWidthFromRatio(0, rowWidth)).toBe(DOCK_MIN_WIDTH_PX);
     expect(dockWidthFromRatio(1, rowWidth)).toBe(maxDockWidth(rowWidth));
   });
 

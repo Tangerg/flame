@@ -1,14 +1,17 @@
 import {
   clampDockWidth,
+  DOCK_MIN_WIDTH_PX,
   dockRatioFromWidth,
   dockWidthFromRatio,
   maxDockWidth,
-  minDockWidth,
 } from "@/lib/shellGeometry";
 import { useT } from "@/lib/i18n";
 import { ResizeHandle } from "@/ui";
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { DOCK_RATIO_PROPERTY } from "./dockWidth";
+
+// The floor does not vary with the row: `maxDockWidth` already refuses to fall below it.
+const dockFloor = () => DOCK_MIN_WIDTH_PX;
 
 export function DockResizer() {
   const t = useT();
@@ -23,7 +26,7 @@ export function DockResizer() {
       container={(rail) => rail.parentElement}
       property={DOCK_RATIO_PROPERTY}
       read={readDockWidth}
-      minWidth={minDockWidth}
+      minWidth={dockFloor}
       maxWidth={maxDockWidth}
       formatProperty={(width, rowWidth) => String(dockRatioFromWidth(width, rowWidth))}
       onCommit={(width, rowWidth) => setRatio(dockRatioFromWidth(width, rowWidth))}

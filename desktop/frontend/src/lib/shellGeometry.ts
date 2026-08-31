@@ -47,22 +47,21 @@ export function maxSidebarWidth(shellWidth: number): number {
  * Widest the flank may be drawn at this row width.
  *
  * The conversation's safe area is subtracted first, and the floor wins when the
- * row cannot even grant that — a row too narrow for both is already folded, and
- * a max below the floor would otherwise invert the range.
+ * row cannot even grant that — a row too narrow for both is already folded.
+ *
+ * This `Math.max` is also the SOLE owner of the floor, which is why the narrow end
+ * of the range is the constant and not a function: a max that can never fall below
+ * the floor cannot invert the range, so a second clamp on the other end would have
+ * nothing left to do. There was one, and it did nothing — it read as a guard while
+ * the guarantee lived entirely here.
  */
 export function maxDockWidth(rowWidth: number): number {
   return Math.max(DOCK_MIN_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX);
 }
 
-/** Narrowest the flank may be drawn at this row width. Collapses onto the max
- *  when the row cannot grant the floor, so the range never inverts. */
-export function minDockWidth(rowWidth: number): number {
-  return Math.min(DOCK_MIN_WIDTH_PX, maxDockWidth(rowWidth));
-}
-
 export function clampDockWidth(width: number, rowWidth: number): number {
   const max = maxDockWidth(rowWidth);
-  return Math.round(Math.max(minDockWidth(rowWidth), Math.min(width, max)));
+  return Math.round(Math.max(DOCK_MIN_WIDTH_PX, Math.min(width, max)));
 }
 
 function clamp01(ratio: number): number {
@@ -79,16 +78,16 @@ function clamp01(ratio: number): number {
  * resize with no React render at all.
  */
 export function dockWidthFromRatio(ratio: number, rowWidth: number): number {
-  const min = minDockWidth(rowWidth);
   const max = maxDockWidth(rowWidth);
-  return Math.round(min + clamp01(ratio) * (max - min));
+  return Math.round(DOCK_MIN_WIDTH_PX + clamp01(ratio) * (max - DOCK_MIN_WIDTH_PX));
 }
 
 export function dockRatioFromWidth(width: number, rowWidth: number): number {
-  const min = minDockWidth(rowWidth);
   const max = maxDockWidth(rowWidth);
-  if (max <= min) return 1;
-  return clamp01((clampDockWidth(width, rowWidth) - min) / (max - min));
+  // A row narrower than floor + safe area has no range to sit in — every width in it
+  // is the floor, and the position within a zero-width range is a division by zero.
+  if (max <= DOCK_MIN_WIDTH_PX) return 1;
+  return clamp01((clampDockWidth(width, rowWidth) - DOCK_MIN_WIDTH_PX) / (max - DOCK_MIN_WIDTH_PX));
 }
 
 /**

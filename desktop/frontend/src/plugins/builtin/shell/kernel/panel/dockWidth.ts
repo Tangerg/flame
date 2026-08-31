@@ -18,9 +18,12 @@ export const DOCK_RATIO_PROPERTY = "--dock-ratio";
  * it out.
  */
 const DOCK_MEASURE_PROPERTY = "--dock-measure";
+// The `max()` carries the floor, so the narrow end is the floor itself — the same
+// single ownership `shellGeometry` states, spelled in the other language. These two
+// must agree exactly and neither can read the other, so `dockGeometry.visual.spec`
+// resolves this in a browser and compares it against the drag arithmetic.
 const DOCK_USABLE_MAX = `max(${DOCK_MIN_WIDTH_PX}px, calc(100% - ${DOCK_SAFE_AREA_PX}px))`;
-const DOCK_USABLE_MIN = `min(${DOCK_MIN_WIDTH_PX}px, ${DOCK_USABLE_MAX})`;
-const DOCK_MEASURE = `calc(${DOCK_USABLE_MIN} + var(${DOCK_RATIO_PROPERTY}) * (${DOCK_USABLE_MAX} - ${DOCK_USABLE_MIN}))`;
+const DOCK_MEASURE = `calc(${DOCK_MIN_WIDTH_PX}px + var(${DOCK_RATIO_PROPERTY}) * (${DOCK_USABLE_MAX} - ${DOCK_MIN_WIDTH_PX}px))`;
 
 /** Row style carrying the dock's geometry: where in its range the person put the flank,
  *  and the measure it keeps whether it is showing or gone. */
