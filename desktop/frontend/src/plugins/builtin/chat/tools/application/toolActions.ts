@@ -1,5 +1,5 @@
 import type { ToolActionSpec } from "@/plugins/sdk";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 export interface CopyToolArgsActionOptions {
   title: string;

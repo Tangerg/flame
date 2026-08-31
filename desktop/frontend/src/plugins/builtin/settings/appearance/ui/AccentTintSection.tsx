@@ -3,7 +3,7 @@ import { Segmented } from "@/ui";
 import { ACCENT_TINTS, type AccentTint } from "@/plugins/builtin/theme/public/appearance";
 import { useT } from "@/lib/i18n";
 import { useAccentTintPreference } from "../application/appearancePreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 
 export function AccentTintSection() {
   const t = useT();

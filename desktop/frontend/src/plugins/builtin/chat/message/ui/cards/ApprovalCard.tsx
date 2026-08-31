@@ -1,4 +1,5 @@
-import { toolCategory, type BlockStatus } from "@/plugins/builtin/agent/public/viewState";
+import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
+import { toolCategory } from "@/plugins/builtin/agent/public/viewState";
 import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";

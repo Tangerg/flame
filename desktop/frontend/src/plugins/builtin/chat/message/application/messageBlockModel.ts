@@ -1,9 +1,5 @@
-import type {
-  ContentBlock,
-  Message,
-  MessageRole,
-  ToolCall,
-} from "@/plugins/builtin/agent/public/viewState";
+import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
+import type { Message, MessageRole, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { MessageActionMaterialization } from "@/plugins/builtin/chat/message-actions/public/messageActions";
 import {

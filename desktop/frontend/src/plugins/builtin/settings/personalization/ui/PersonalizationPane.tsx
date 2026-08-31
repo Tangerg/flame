@@ -1,5 +1,5 @@
 import { CompletionSoundSection, StreamRevealSection } from "./PrefSections";
-import { SettingsGroup } from "../../public";
+import { SettingsGroup } from "../../kit";
 
 export function PersonalizationPane() {
   return (

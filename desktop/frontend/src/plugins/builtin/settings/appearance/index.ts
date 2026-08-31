@@ -5,8 +5,8 @@
 
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { APPEARANCE_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { APPEARANCE_PANE } from "../kit/panes";
 import { installBrowserFontAvailability } from "./adapters/browserFontAvailability";
 import { installAppearancePreferencesPort } from "./adapters/uiAppearancePreferences";
 

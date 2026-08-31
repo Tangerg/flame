@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";

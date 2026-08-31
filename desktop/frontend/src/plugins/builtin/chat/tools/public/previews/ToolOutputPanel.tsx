@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n";
 import { Badge, Icon, IconButton, TextButton } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 const COLLAPSED_LINES = 9;
 

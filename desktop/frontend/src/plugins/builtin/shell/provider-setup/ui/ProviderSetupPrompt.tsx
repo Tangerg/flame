@@ -1,4 +1,4 @@
-import { PROVIDERS_PANE } from "@/plugins/builtin/settings/public/panes";
+import { PROVIDERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { Icon, PillButton, Surface } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { copyToolArgsAction, hasCopyableToolArgs } from "./toolActions";
 
 const tool = (args: string): ToolCall => ({

@@ -1,4 +1,4 @@
-import type { BlockStatus } from "@/plugins/builtin/agent/public/viewState";
+import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
 import { Icon, Loader } from "@/ui";

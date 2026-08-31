@@ -4,7 +4,7 @@ import type { ColorThemeSpec } from "@/plugins/sdk";
 import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { COLOR_THEME, useExtensionPoint } from "@/plugins/sdk";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 import { useThemePreference } from "../application/appearancePreferences";
 
 const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string; accent: string }> = {

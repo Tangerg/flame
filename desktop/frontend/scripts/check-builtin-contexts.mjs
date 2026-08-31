@@ -124,6 +124,29 @@ for (const [file, deps] of Object.entries(graph)) {
   }
 }
 
+// A context must not CONTAIN a context. When it does, the two share a directory prefix and
+// read as one place, while every guard here treats them as strangers: `workspace` could not
+// touch `workspace/events`, and `workspace/session-navigation`'s own test could not reach
+// the dock store it existed to drive. Either the outer folder is a context or it is a
+// namespace of them — `chat` and `settings` show the namespace shape, `agent` and
+// `workspace` the context shape.
+const nested = [];
+for (const outer of contextRoots) {
+  for (const inner of contextRoots) {
+    if (inner !== outer && inner.startsWith(`${outer}/`)) nested.push([outer, inner]);
+  }
+}
+if (nested.length > 0) {
+  console.error(`[check-builtin-contexts] Found ${nested.length} nested context(s):`);
+  for (const [outer, inner] of nested) {
+    console.error(`  ${contextName(outer)} contains ${contextName(inner)}`);
+  }
+  console.error("");
+  console.error("Flatten the inner context into the outer one's rings, or move the outer's");
+  console.error("own rings into a named sub-context so the folder is a namespace only.");
+  process.exit(1);
+}
+
 const cycles = findCycles(edges);
 if (cycles.length > 0) {
   console.error(`[check-builtin-contexts] Found ${cycles.length} public context cycle(s):`);

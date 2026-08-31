@@ -21,7 +21,7 @@ import {
   openTimelineView,
 } from "@/plugins/builtin/workspace/public/deeplinks";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import type { AgentProblem } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 
 function findLastUserText(): string {
   const { messages } = getActiveConversationSnapshot();

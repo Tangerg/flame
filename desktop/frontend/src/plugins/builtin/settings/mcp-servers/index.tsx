@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { MCP_SERVERS_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { MCP_SERVERS_PANE } from "../kit/panes";
 import { installMCPServerGateway } from "./adapters/runtimeMcpServerGateway";
 import { registerMCPDataProviders } from "./adapters/runtimeMcpDataProviders";
 import {

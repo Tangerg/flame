@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { QuestionItem } from "@/plugins/builtin/agent/public/viewState";
+import type { QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import {
   createQuestionDraft,

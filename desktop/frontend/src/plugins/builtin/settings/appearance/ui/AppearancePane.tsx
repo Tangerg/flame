@@ -1,4 +1,4 @@
-import { SettingsGroup } from "../../public";
+import { SettingsGroup } from "../../kit";
 import { AccentSection } from "./AccentSection";
 import { AccentTintSection } from "./AccentTintSection";
 import { ContrastSection } from "./ContrastSection";

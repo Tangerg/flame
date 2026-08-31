@@ -1,6 +1,6 @@
 import { useT } from "@/lib/i18n";
 import { useCustomThemePreference } from "../application/appearancePreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 import { ColorPickerInput } from "@/ui";
 
 function ColorRow({

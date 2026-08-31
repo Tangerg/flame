@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AgentRunView, Message, ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import { MessageContext } from "@/plugins/sdk/messageContext";
 import type { BlockCtx } from "./BlockRenderer";

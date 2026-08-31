@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type {
   DelegatedRunNarrative,
   TranscriptRow,

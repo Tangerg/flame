@@ -15,7 +15,7 @@ import {
   RuntimeConnectionGeneration,
   RUNTIME_STREAM_PORTS,
 } from "@/plugins/builtin/runtime/public/ports";
-import rpcAgent from "./index";
+import rpcAgent from "./rpcAgent";
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
   getActiveSessionId: () => "ses_1",

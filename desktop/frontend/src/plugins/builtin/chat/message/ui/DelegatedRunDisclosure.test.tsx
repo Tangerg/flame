@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AgentRunView } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { DelegatedRunDisclosure } from "./DelegatedRunDisclosure";
 
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({

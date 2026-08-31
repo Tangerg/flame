@@ -1,4 +1,4 @@
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
 import { ContextMenu, Icon } from "@/ui";
 import {

@@ -9,7 +9,7 @@ import {
   RUNTIME_STREAM_PORTS,
   followRuntimeGeneration,
 } from "@/plugins/builtin/runtime/public/ports";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { MessageFeedbackRating } from "./domain/feedback";
 import { canRateMessage } from "./application/messageActionAvailability";
 import { messageFeedbackWasRetired, useMessageFeedback } from "./public/feedback";

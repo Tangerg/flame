@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 import { useSystemFonts } from "../application/systemFonts";
 import { cn } from "@/lib/classNames";
 import { useFontPreferences } from "../application/appearancePreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 
 interface FontPickerProps {
   label: string;

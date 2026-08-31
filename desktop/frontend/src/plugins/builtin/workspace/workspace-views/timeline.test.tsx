@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { AgentRunView } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";

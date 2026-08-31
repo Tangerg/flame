@@ -1,5 +1,5 @@
 import type { IconName } from "@/ui";
-import type { TimelineEntry, TimelineEntryKind } from "@/plugins/builtin/agent/public/viewState";
+import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";

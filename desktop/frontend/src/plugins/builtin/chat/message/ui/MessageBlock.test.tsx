@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
-import type { AgentMessagePhase } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentMessagePhase } from "@/plugins/sdk/types/agentSessionView";
 import type { BlockCtx } from "./BlockRenderer";
 import { MessageBlock } from "./MessageBlock";
 import { MessageVisibleMaterialOwner } from "./messageVisibleMaterial";

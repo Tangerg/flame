@@ -1,5 +1,5 @@
 import { comboGlyph } from "@/lib/combo";
-import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/public/panes";
+import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { openSessionSearch } from "@/plugins/builtin/command/session-search/public/actions";
 import { AgentRow } from "@/ui/agent";
 import { Kbd } from "@/ui";

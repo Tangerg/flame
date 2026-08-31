@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { APPROVALS_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { APPROVALS_PANE } from "../kit/panes";
 
 const ApprovalsPane = lazy(() =>
   import("./ui/ApprovalsPane").then(({ ApprovalsPane }) => ({ default: ApprovalsPane })),

@@ -1,4 +1,4 @@
-import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
+import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { useId, useRef, useState } from "react";
 import { Icon, IconButton, Pressable, TextButton, knownIconName } from "@/ui";
 import { useT } from "@/lib/i18n";

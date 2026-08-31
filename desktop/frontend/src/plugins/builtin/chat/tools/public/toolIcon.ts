@@ -1,6 +1,6 @@
 import { knownIconName } from "@/ui/icons";
 import type { IconName } from "@/ui/icons";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
 import { defaultToolIconFor } from "../application/toolIconContributions";
 

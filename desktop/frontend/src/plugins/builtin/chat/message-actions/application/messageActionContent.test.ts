@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import {
   messageDraftContent,
   messageHasDraftContent,

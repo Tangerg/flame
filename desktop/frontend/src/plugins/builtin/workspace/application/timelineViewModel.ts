@@ -1,6 +1,6 @@
 import type { Translate } from "@/lib/i18n";
 import type { Tone } from "@/lib/tone";
-import type { AgentRunView, TimelineEntry } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView, TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentRunTreeNode } from "@/plugins/builtin/agent/public/run";
 import {
   agentRunDetail,

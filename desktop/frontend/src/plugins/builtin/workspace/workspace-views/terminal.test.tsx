@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 const projection = vi.hoisted(() => ({
   toolCalls: {} as Record<string, ToolCall>,

@@ -1,4 +1,4 @@
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { useWorkspaceFileHead, useWorkspaceGrep } from "@/plugins/builtin/workspace/public/queries";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { parseJsonResult } from "./toolResultParsing";

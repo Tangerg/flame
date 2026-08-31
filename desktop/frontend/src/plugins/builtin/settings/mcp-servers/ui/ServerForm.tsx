@@ -25,7 +25,7 @@ import {
   setRetainedValueCleared,
 } from "../application/mcpServerDraft";
 import { ToolControls } from "./ToolControls";
-import { useAsyncFeedback } from "../../public";
+import { useAsyncFeedback } from "../../kit";
 
 interface Props {
   server?: MCPServerSettings;

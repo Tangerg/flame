@@ -1,5 +1,5 @@
 import type { Translate } from "@/lib/i18n";
-import type { AgentRunView } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import {
   agentRunDetail,
   agentRunPresentationState,

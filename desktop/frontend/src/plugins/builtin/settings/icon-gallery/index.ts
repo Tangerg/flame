@@ -6,8 +6,8 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
-import { registerSettingsPane } from "../public";
-import { BRAND_ICONS_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { BRAND_ICONS_PANE } from "../kit/panes";
 
 const IconGallery = lazy(() =>
   import("./ui/IconGallery").then(({ IconGallery }) => ({ default: IconGallery })),

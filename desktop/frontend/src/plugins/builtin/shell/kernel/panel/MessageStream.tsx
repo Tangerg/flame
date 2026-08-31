@@ -1,7 +1,7 @@
 import { publishStreamFollow } from "./streamFollow";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from "react";
 import {

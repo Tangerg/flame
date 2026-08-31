@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { BlockStatus, QuestionItem } from "@/plugins/builtin/agent/public/viewState";
+import type { BlockStatus, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import { useQuestionAnswer } from "@/plugins/builtin/agent/public/hitl";
 import {

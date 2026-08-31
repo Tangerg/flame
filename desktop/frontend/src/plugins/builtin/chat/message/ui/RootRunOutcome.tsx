@@ -1,5 +1,6 @@
 import type { IconName } from "@/ui";
-import { isAgentRunFailure, type AgentRunOutcome } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunOutcome } from "@/plugins/sdk/types/agentSessionView";
+import { isAgentRunFailure } from "@/plugins/builtin/agent/public/viewState";
 import { Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";

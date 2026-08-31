@@ -1,4 +1,4 @@
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { messageHasDraftContent } from "./messageActionContent";
 
 export function canCopyMessage(copy: { canCopy: boolean }): boolean {

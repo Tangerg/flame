@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { PERSONALIZATION_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { PERSONALIZATION_PANE } from "../kit/panes";
 import { installPersonalizationPreferencesPort } from "./adapters/uiPersonalizationPreferences";
 
 const PersonalizationPane = lazy(() =>

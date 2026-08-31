@@ -2,7 +2,7 @@ import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
 import { useLocale, useT } from "@/lib/i18n";
 import { LOCALE, useExtensionPoint } from "@/plugins/sdk";
 import { selectLocale } from "../application/localeSelection";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 
 export function LanguageSection() {
   const t = useT();

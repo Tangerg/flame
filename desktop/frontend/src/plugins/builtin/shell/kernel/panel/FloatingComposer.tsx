@@ -4,7 +4,7 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { disclosureTransition } from "@/lib/motion";
 import { useRuntimeServiceStatus } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { CONNECTION_PANE } from "@/plugins/builtin/settings/public/panes";
+import { CONNECTION_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { Slot } from "@/plugins/host/Slot";
 import { SystemMessage } from "@/ui";

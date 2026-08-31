@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolGroupModel } from "./toolGroupModel";
 
 const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => ({

@@ -1,4 +1,4 @@
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { InputImage } from "@/plugins/builtin/chat/composer/public/input";
 import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
 

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
-import type { AgentRunView } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { RootRunOutcome } from "./RootRunOutcome";
 
 function completedRun(): AgentRunView {

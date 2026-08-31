@@ -555,6 +555,25 @@ for (const file of files(SRC)) {
       reason: "builtin public surfaces must expose published ports, not adapter implementations",
     });
   }
+
+  // A public surface publishes what its context OWNS. Re-exporting someone else's fact
+  // gives that fact a second path, and the second path lies about who depends on whom:
+  // `agent/public/viewState` forwarded thirteen `plugins/sdk/types` shapes, so sixty-one
+  // files read as depending on the agent context while depending on a contract below it.
+  // Consumers can reach the real owner themselves — that is what makes it the owner.
+  const publicAt = rel.indexOf("/public/");
+  if (!isTest && /^plugins\/builtin\/.+\/public\/.+\.(ts|tsx)$/.test(rel)) {
+    const contextRoot = rel.slice(0, publicAt);
+    for (const match of text.matchAll(/export\s[^;]*?\sfrom\s+["'](@\/[^"']+)["']/g)) {
+      const target = match[1].replace(/^@\//, "");
+      if (target.startsWith(`${contextRoot}/`)) continue;
+      violations.push({
+        file: rel,
+        reason: `public surface re-exports "${match[1]}", which this context does not own`,
+      });
+      break;
+    }
+  }
 }
 
 reportDuplicateVocabulary();

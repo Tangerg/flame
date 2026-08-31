@@ -10,11 +10,11 @@ const SIDECAR_PATH = resolve(ROOT, "src/rpc/sidecar.ts");
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(
   ROOT,
-  "src/plugins/builtin/workspace/events/domain/eventInvalidation.ts",
+  "src/plugins/builtin/workspace/domain/eventInvalidation.ts",
 );
 const EVENT_ADAPTER_PATH = resolve(
   ROOT,
-  "src/plugins/builtin/workspace/events/adapters/runtimeWorkspaceEvents.ts",
+  "src/plugins/builtin/workspace/adapters/runtimeWorkspaceEvents.ts",
 );
 const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
 

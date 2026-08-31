@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AgentRunView,
-  ContentBlock,
-  ToolCall,
-} from "@/plugins/builtin/agent/public/viewState";
+import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
+import type { AgentRunView, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import {
   finalAnswerFollows,

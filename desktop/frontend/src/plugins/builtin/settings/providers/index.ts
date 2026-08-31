@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { PROVIDERS_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { PROVIDERS_PANE } from "../kit/panes";
 import { installProviderGateway } from "./adapters/runtimeProviderGateway";
 import {
   RUNTIME_STREAM_PORTS,

@@ -1,4 +1,4 @@
-import type { BlockStatus, QuestionItem } from "@/plugins/builtin/agent/public/viewState";
+import type { BlockStatus, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import {
   useId,
   useLayoutEffect,

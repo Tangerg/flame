@@ -9,7 +9,7 @@ import {
 } from "../application/providerConfig";
 import { ProviderCredentialsDraft } from "../application/providerDraft";
 import { useT } from "@/lib/i18n";
-import { useAsyncFeedback } from "../../public";
+import { useAsyncFeedback } from "../../kit";
 import { cn } from "@/lib/classNames";
 
 export function ProviderRow({ p }: { p: ProviderConfiguration }) {

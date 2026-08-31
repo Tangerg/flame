@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import type { BlockStatus } from "@/plugins/builtin/agent/public/viewState";
+import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import {
   useApprovalSubmit,
   type ApprovalDecision,

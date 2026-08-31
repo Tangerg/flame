@@ -1,6 +1,6 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useMCPServers } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
-import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/public/panes";
+import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import {
   Badge,
   Collapsible,

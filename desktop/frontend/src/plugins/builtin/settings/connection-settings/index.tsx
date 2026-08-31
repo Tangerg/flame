@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { CONNECTION_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { CONNECTION_PANE } from "../kit/panes";
 
 const ConnectionPane = lazy(() =>
   import("./ui/ConnectionPane").then(({ ConnectionPane }) => ({ default: ConnectionPane })),

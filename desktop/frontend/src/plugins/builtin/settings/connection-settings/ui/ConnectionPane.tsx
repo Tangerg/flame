@@ -13,7 +13,7 @@ import {
   useRuntimeServiceStatus,
   type RuntimeServicePhase,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { SettingRow, SettingsGroup } from "../../public";
+import { SettingRow, SettingsGroup } from "../../kit";
 
 const STATUS_TONE: Record<RuntimeServicePhase, "ok" | "running" | "waiting" | "err"> = {
   checking: "running",

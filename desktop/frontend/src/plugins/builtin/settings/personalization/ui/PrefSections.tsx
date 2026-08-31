@@ -4,7 +4,7 @@ import {
   useCompletionSoundPreference,
   useStreamRevealPreference,
 } from "../application/personalizationPreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 
 export function CompletionSoundSection() {
   const t = useT();

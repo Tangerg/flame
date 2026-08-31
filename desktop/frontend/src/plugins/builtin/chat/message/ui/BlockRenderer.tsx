@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@/plugins/builtin/agent/public/viewState";
+import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow, TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 import type { BlockCtx } from "./blockContext";

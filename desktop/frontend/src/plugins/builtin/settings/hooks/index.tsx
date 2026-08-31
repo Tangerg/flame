@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { HOOKS_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { HOOKS_PANE } from "../kit/panes";
 import { installHookTrustGateway } from "./adapters/runtimeHookTrustGateway";
 import {
   RUNTIME_STREAM_PORTS,

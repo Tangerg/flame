@@ -3,7 +3,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { ACCENT, useExtensionPoint } from "@/plugins/sdk";
 import { useAccentPreference } from "../application/appearancePreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 import { ColorPickerInput, Icon, Pressable } from "@/ui";
 
 const RAINBOW_HINT =

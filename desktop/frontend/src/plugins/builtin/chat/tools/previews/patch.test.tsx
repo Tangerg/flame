@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { ApplyPatchPreview } from "./patch";
 
 function patchTool(result: string | undefined, status: ToolCall["status"] = "ok"): ToolCall {

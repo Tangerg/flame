@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 
 const model = vi.hoisted(() => ({
   conversation: null as { sessionId: string; messages: Message[] } | null,

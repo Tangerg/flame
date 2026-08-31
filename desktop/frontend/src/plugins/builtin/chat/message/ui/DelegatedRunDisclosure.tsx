@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import type { AgentRunView } from "@/plugins/builtin/agent/public/viewState";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { IconButton, StatusDot } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";

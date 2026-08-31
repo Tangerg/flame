@@ -1,7 +1,7 @@
 // Store reads stay inside handlers via getState() so per-message UI does not subscribe
 // (CLAUDE.md §5).
 
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { t } from "@/lib/i18n";
 import { notifyError, notifyInfo } from "@/plugins/sdk";
 import { buildInput } from "@/plugins/builtin/chat/composer/public/input";

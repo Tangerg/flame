@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
-import { registerSettingsPane } from "../public";
-import { SCHEDULES_PANE } from "../public/panes";
+import { registerSettingsPane } from "../kit";
+import { SCHEDULES_PANE } from "../kit/panes";
 import { installScheduleGateway } from "./adapters/runtimeScheduleGateway";
 import {
   RUNTIME_STREAM_PORTS,

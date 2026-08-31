@@ -13,7 +13,7 @@ import {
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { lookupExtensionByKey, notifyError } from "@/plugins/sdk";
 import { MESSAGE_ROLE } from "@/plugins/sdk/kernelPoints";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { toast } from "sonner";
 import { z } from "zod";
 import type {

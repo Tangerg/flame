@@ -10,7 +10,7 @@ import {
   useUtilityModelConfig,
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
-import { useAsyncFeedback } from "../../public";
+import { useAsyncFeedback } from "../../kit";
 
 const triggerClass =
   "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-field bg-canvas pl-2 pr-2.5 text-ui-md font-medium text-fg whitespace-nowrap transition-colors hover:bg-hover data-[popup-open]:bg-selected";

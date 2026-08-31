@@ -4,7 +4,7 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
-import type { Message } from "@/plugins/builtin/agent/public/viewState";
+import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { Pressable, RichTooltip } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
 

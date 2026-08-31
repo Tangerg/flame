@@ -2,7 +2,7 @@ import { UI_DENSITY_MODES, type UiDensity } from "@/plugins/builtin/theme/public
 import { Segmented, type SegmentedOption } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useShapeMotionPreferences } from "../application/appearancePreferences";
-import { SettingRow } from "../../public";
+import { SettingRow } from "../../kit";
 
 const DENSITY_OPTIONS: SegmentedOption<UiDensity>[] = UI_DENSITY_MODES.map((mode) => ({
   value: mode,

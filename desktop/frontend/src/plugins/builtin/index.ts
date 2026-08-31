@@ -20,7 +20,7 @@ import connectionSettings from "./settings/connection-settings";
 import agentBootstrap from "./agent/bootstrap";
 import observability from "./observability";
 import runtime from "./runtime";
-import conversationExport from "./workspace/conversation-export";
+import conversationExport from "./workspace/conversationExport";
 import contextDockDestinations from "./workspace/context-dock";
 import agentFold from "./agent/bootstrap/foldPlugin";
 import {
@@ -41,7 +41,7 @@ import hooksPane from "./settings/hooks";
 import schedulesPane from "./settings/schedules";
 import iconGallery from "./settings/icon-gallery";
 import mcpServersPane from "./settings/mcp-servers";
-import rpcAgent from "./agent/rpc-agent";
+import rpcAgent from "./agent/rpcAgent";
 import { kernelChat, kernelSettings, kernelSidebar } from "./shell/kernel";
 import nativeShell from "./shell/native-shell";
 import providerSetup from "./shell/provider-setup";
@@ -69,7 +69,7 @@ import { completionNotify, statusNotifications, windowTitle } from "./shell/stat
 import { tasksPill } from "./workspace/tasks";
 import { appearancePlugins } from "./theme";
 import toaster from "./shell/toaster";
-import { toolActions, toolIcons } from "./chat/tools/meta";
+import { toolActions, toolIcons } from "./chat/tools/toolMeta";
 import toolViewOpener from "./workspace/tool-view-opener";
 import {
   askUserPreview,
