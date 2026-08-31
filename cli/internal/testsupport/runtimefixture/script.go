@@ -4,7 +4,7 @@
 // Everything it returns is obviously synthetic. That is a rule, not an accident:
 // a fixture that looks like real output invites someone to trust it. Paths,
 // diffs and numbers here are made up and should stay that way.
-package mock
+package runtimefixture
 
 import (
 	"errors"

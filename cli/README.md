@@ -34,7 +34,6 @@ CLI preferences configure optional provider/model overrides, run limits, approva
 - `$FLAME_HOME/runtime/config.yaml` is the user configuration
 - `runtime/config/config.yaml` is the worktree development fallback
 - `FLAME_RUNTIME_CONFIG_DIR` selects an explicit absolute configuration directory
-- `FLAME_RUNTIME=mock` selects the scripted adapter for deterministic tests and demos
 
 The worktree development file contains a live DeepSeek credential. Production code may load it for an explicitly requested live test. Commands, tests, logs, errors, snapshots, and documentation must never print or copy the credential.
 
@@ -42,7 +41,7 @@ Provider and model identity is exact. An override is either a complete provider/
 
 ## Runtime ownership
 
-The process lazily opens one module-root `runtime.Runtime` and closes it before exit. The Runtime boundary imports public contracts; CLI application and terminal packages consume CLI-owned narrow interfaces and values.
+The production process has one Runtime path: it lazily opens one module-root `runtime.Runtime` and closes it before exit. There is no environment-selected fake or alternate product implementation. Scripted Runtime behavior lives under `internal/testsupport` and is composed only by test code, including the re-executed Go test binary used for PTY coverage. The Runtime boundary imports public contracts; CLI application and terminal packages consume CLI-owned narrow interfaces and values.
 
 Runtime remains authoritative for:
 

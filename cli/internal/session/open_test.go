@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestOpenCreatesOrRestoresAValidatedSnapshot(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 
 	created, err := Open(t.Context(), runtime, "", t.TempDir())
 	if err != nil {
@@ -29,7 +29,7 @@ func TestOpenCreatesOrRestoresAValidatedSnapshot(t *testing.T) {
 }
 
 func TestOpenPreservesRuntimeErrorIdentity(t *testing.T) {
-	_, err := Open(t.Context(), mock.New(), "missing", "")
+	_, err := Open(t.Context(), runtimefixture.New(), "missing", "")
 	if !errors.Is(err, agent.ErrSessionNotFound) {
 		t.Fatalf("open error = %v, want session-not-found identity", err)
 	}

@@ -18,10 +18,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -45,24 +45,20 @@ func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string
 	t.Helper()
 	services := backend.AgentOnly(rt)
 	if rt == nil {
-		services = backend.AgentOnly(mock.New())
+		services = backend.AgentOnly(runtimefixture.New())
 	}
-	return executeCommandWithServices(t, services, rt == nil, stdin, args...)
+	return executeCommandWithServices(t, services, stdin, args...)
 }
 
 func executeCommandWithServices(
 	t *testing.T,
 	services backend.Services,
-	announceRuntime bool,
 	stdin string,
 	args ...string,
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
 	dependencies := Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) { return services, nil }}
-	if announceRuntime {
-		dependencies.RuntimeNotice = testRuntimeNotice
-	}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
@@ -72,8 +68,8 @@ func executeCommandWithServices(
 	return out.String(), errb.String(), err
 }
 
-func instantRuntime() *mock.Runtime {
-	rt := mock.New()
+func instantRuntime() *runtimefixture.Runtime {
+	rt := runtimefixture.New()
 	rt.Instant = true
 	return rt
 }
@@ -222,11 +218,11 @@ func decodeRunFrame(t *testing.T, line string) runFrame {
 }
 
 func TestRunRecoversTransportFaultsWithoutRenderingDuplicates(t *testing.T) {
-	for _, fault := range []mock.FaultKind{mock.FaultDisconnect, mock.FaultDuplicate} {
+	for _, fault := range []runtimefixture.FaultKind{runtimefixture.FaultDisconnect, runtimefixture.FaultDuplicate} {
 		t.Run(string(fault), func(t *testing.T) {
 			rt := instantRuntime()
 			rt.Script = shortCompletedScript
-			rt.Faults = []mock.SubscriptionFault{{Kind: fault, After: 1}}
+			rt.Faults = []runtimefixture.SubscriptionFault{{Kind: fault, After: 1}}
 			out, _, err := executeCommand(t, rt, "", "run", "--output-format", "streaming-json", "-s", firstSession(t, rt), "recover")
 			if err != nil {
 				t.Fatalf("run: %v\n%s", err, out)
@@ -258,7 +254,7 @@ func TestRunRecoversTransportFaultsWithoutRenderingDuplicates(t *testing.T) {
 }
 
 type ambiguousControls struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu           sync.Mutex
 	starts       int
@@ -339,7 +335,7 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 	t.Run("start", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseStart: true}
 		profile := commandRuntimeProfile(t)
-		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "run", "-s", firstSession(t, runtime), "start once")
+		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "run", "-s", firstSession(t, runtime), "start once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -352,7 +348,7 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 	t.Run("resume", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseResume: true}
 		profile := commandRuntimeProfile(t)
-		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
+		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -366,7 +362,7 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 func TestRunRejectsConflictingReplay(t *testing.T) {
 	rt := instantRuntime()
 	rt.Script = shortCompletedScript
-	rt.Faults = []mock.SubscriptionFault{{Kind: mock.FaultConflict, After: 1}}
+	rt.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultConflict, After: 1}}
 	_, _, err := executeCommand(t, rt, "", "run", "--output-format", "streaming-json", "-s", firstSession(t, rt), "conflict")
 	if !errors.Is(err, agent.ErrEventConflict) {
 		t.Fatalf("run error = %v, want ErrEventConflict", err)
@@ -375,8 +371,8 @@ func TestRunRejectsConflictingReplay(t *testing.T) {
 
 func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 	rt := instantRuntime()
-	rt.Script = func(string) mock.Script {
-		return mock.Script{Interactions: []agent.Interaction{agent.Question{
+	rt.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Interactions: []agent.Interaction{agent.Question{
 			ItemID: "question_1", Title: "Choose a strategy",
 			Fields: []agent.QuestionField{{Prompt: "Strategy", Kind: agent.QuestionText}},
 		}}}
@@ -414,8 +410,8 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := instantRuntime()
-			runtime.Script = func(string) mock.Script {
-				return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: test.outcome}}}}
+			runtime.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: test.outcome}}}}
 			}
 			id := firstSession(t, runtime)
 			out, _, err := executeCommand(t, runtime, "", "run", "--json", "-s", id, "finish this way")
@@ -500,8 +496,8 @@ func TestRunStopsAfterReconnectBudgetIsExhausted(t *testing.T) {
 	}
 }
 
-func shortCompletedScript(string) mock.Script {
-	return mock.Script{Prelude: []mock.Step{
+func shortCompletedScript(string) runtimefixture.Script {
+	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
 		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 	}}
@@ -510,9 +506,9 @@ func shortCompletedScript(string) mock.Script {
 func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	var captured string
 	rt := instantRuntime()
-	rt.Script = func(prompt string) mock.Script {
+	rt.Script = func(prompt string) runtimefixture.Script {
 		captured = prompt
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -1084,24 +1080,7 @@ func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	}
 }
 
-const testRuntimeNotice = "flame: scripted mock runtime — no backend is wired in yet"
-
-func TestRuntimeNoticeGoesToStderrNotStdout(t *testing.T) {
-	// A nil runtime is what a real build gets, and the notice must not land in a
-	// pipe that is being parsed.
-	out, errb, err := executeCommand(t, nil, "", "sessions", "ls")
-	if err != nil {
-		t.Fatalf("sessions ls: %v", err)
-	}
-	if strings.Contains(out, "mock") {
-		t.Fatalf("the mock notice leaked into stdout:\n%s", out)
-	}
-	if !strings.Contains(errb, testRuntimeNotice) {
-		t.Fatalf("stderr = %q, want the mock notice", errb)
-	}
-}
-
-func TestCompletionDoesNotPrintRuntimeNotice(t *testing.T) {
+func TestCompletionWritesOnlyCobraDirective(t *testing.T) {
 	out, errb, err := executeCommand(t, nil, "", "__complete", "sessions", "show", "")
 	if err != nil {
 		t.Fatalf("complete sessions: %v", err)
@@ -1109,7 +1088,8 @@ func TestCompletionDoesNotPrintRuntimeNotice(t *testing.T) {
 	if !strings.Contains(out, "ses_demo_") {
 		t.Fatalf("completion output has no session ids:\n%s", out)
 	}
-	if strings.Contains(errb, testRuntimeNotice) {
-		t.Fatalf("completion stderr contains runtime notice: %q", errb)
+	want := "Completion ended with directive: ShellCompDirectiveNoFileComp\n"
+	if errb != want {
+		t.Fatalf("completion stderr = %q, want %q", errb, want)
 	}
 }

@@ -40,15 +40,13 @@ const configIndependentAnnotation = "flame/config-independent"
 // databases, or other process-owned resources.
 type Dependencies struct {
 	OpenRuntime    func(context.Context) (backend.Services, error)
-	RuntimeNotice  string
 	StateDirectory string
 }
 
 // runtimeProvider delays construction until a command needs the runtime. It
 // owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
-	open   func(context.Context) (backend.Services, error)
-	notice string
+	open func(context.Context) (backend.Services, error)
 }
 
 func (r runtimeProvider) Open(cmd *cobra.Command) (agent.Runtime, error) {
@@ -63,11 +61,6 @@ func (r runtimeProvider) OpenServices(cmd *cobra.Command) (backend.Services, err
 	services, err := r.resolve(cmd.Context())
 	if err != nil {
 		return backend.Services{}, err
-	}
-	if r.notice != "" {
-		if _, err := fmt.Fprintln(cmd.ErrOrStderr(), r.notice); err != nil {
-			return backend.Services{}, fmt.Errorf("announce runtime: %w", err)
-		}
 	}
 	return services, nil
 }
@@ -93,10 +86,7 @@ func (r runtimeProvider) resolve(ctx context.Context) (backend.Services, error) 
 
 // NewRoot builds an isolated command tree from process-owned dependencies.
 func NewRoot(dependencies Dependencies) *cobra.Command {
-	provider := runtimeProvider{
-		open:   dependencies.OpenRuntime,
-		notice: dependencies.RuntimeNotice,
-	}
+	provider := runtimeProvider{open: dependencies.OpenRuntime}
 	v := viper.New()
 	root := newRootCommand(v, provider, dependencies.StateDirectory)
 	configureRoot(v, root)

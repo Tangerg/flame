@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T) {
@@ -171,8 +171,8 @@ func TestRunsShowUsesDirectRunRead(t *testing.T) {
 func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	runtime := instantRuntime()
 	runtime.Instant = false
-	runtime.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	runtime.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour,
 			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
@@ -278,8 +278,8 @@ func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
 func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	base := instantRuntime()
 	base.Instant = false
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -292,7 +292,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	}
 	runtime := &uncertainRunCancellationRuntime{Runtime: base}
 	profile := commandRuntimeProfile(t)
-	if _, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, false, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
+	if _, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
 		t.Fatal(err)
 	}
 	attempts := runtime.cancelAttempts()

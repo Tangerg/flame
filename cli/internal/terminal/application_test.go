@@ -20,18 +20,18 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/extensions"
 	"github.com/Tangerg/flame/cli/internal/failure"
 	"github.com/Tangerg/flame/cli/internal/settings"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
 func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	return runUIWith(t, backend, plugins...)
 }
@@ -212,13 +212,13 @@ func blockSessionStateWrites(t *testing.T, stateDirectory, sessionID string) fun
 }
 
 type delayedFirstRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	starts atomic.Int32
 }
 
 type replayingResumeRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu       sync.Mutex
 	attempts []agent.ResumeRun
@@ -227,7 +227,7 @@ type replayingResumeRuntime struct {
 }
 
 type refusingFirstResumeRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu       sync.Mutex
 	attempts []agent.ResumeRun
@@ -268,7 +268,7 @@ type corruptingAcceptedResumeRuntime struct {
 }
 
 type recordingRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu     sync.Mutex
 	last   agent.StartRun
@@ -277,7 +277,7 @@ type recordingRuntime struct {
 }
 
 type expiringUncommittedResumeRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu       sync.Mutex
 	attempts []agent.ResumeRun
@@ -325,7 +325,7 @@ type blockingSessionChangeRuntime struct {
 }
 
 type transientForkProjectionRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	forks     atomic.Int32
 	remaining atomic.Int32
@@ -764,7 +764,7 @@ func TestMockConversationStreamsApprovalAndCompletes(t *testing.T) {
 }
 
 func TestApprovalResumeRetriesTheSameMutationIdentity(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &replayingResumeRuntime{Runtime: base}
 	host, stop := runUIWith(t, runtime)
@@ -783,7 +783,7 @@ func TestApprovalResumeRetriesTheSameMutationIdentity(t *testing.T) {
 }
 
 func TestApprovalResumeTreatsCancellationAsAnUnknownAcknowledgement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &replayingResumeRuntime{Runtime: base, failure: context.Canceled}
 	host, stop := runUIWith(t, runtime)
@@ -803,7 +803,7 @@ func TestApprovalResumeTreatsCancellationAsAnUnknownAcknowledgement(t *testing.T
 }
 
 func TestRejectedApprovalResumePreservesTheReviewAndUsesANewIdentity(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &refusingFirstResumeRuntime{Runtime: base}
 	host, stop := runUIWith(t, runtime)
@@ -837,7 +837,7 @@ func TestRejectedApprovalResumePreservesTheReviewAndUsesANewIdentity(t *testing.
 }
 
 func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	stateDirectory := t.TempDir()
 	runtime := &blockingRefusingResumeRuntime{
@@ -914,9 +914,9 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 }
 
 func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "question", Title: "Persist settlement",
 				Fields: []agent.QuestionField{{
@@ -924,8 +924,8 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 					Options: []agent.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
 				}},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 				}}}
 			},
@@ -991,17 +991,17 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 }
 
 func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval", Title: "Close during resume",
 				Tool: &agent.ToolCall{
 					Kind: agent.ToolShell, Name: "shell", Command: "true", Status: agent.ToolRunning,
 				},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 				}}}
 			},
@@ -1040,7 +1040,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 }
 
 func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &invalidAcceptedResumeRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
@@ -1080,10 +1080,10 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 }
 
 func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "question", Title: "Corrupt accepted projection",
 				Fields: []agent.QuestionField{{
@@ -1091,8 +1091,8 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 					Options: []agent.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
 				}},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{
 					{Event: agent.BlockCompleted{Block: agent.Block{
 						ID: "untrusted-tail", Kind: agent.BlockNotice, Text: "UNTRUSTED_CONTINUATION_TAIL",
 					}}},
@@ -1136,10 +1136,10 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 }
 
 func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{
 				agent.Approval{
 					ItemID: "approval", Title: "Run checks", Rememberable: true,
@@ -1157,8 +1157,8 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 					},
 				},
 			},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1262,16 +1262,16 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 }
 
 func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval", Title: "Already accepted",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{
 					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 				}}}
 			},
@@ -1339,16 +1339,16 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 }
 
 func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval", Title: "Retry safely",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{
 					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 				}}}
 			},
@@ -1409,16 +1409,16 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 }
 
 func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval", Title: "Expire during delivery",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{
 					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 				}}}
 			},
@@ -1458,7 +1458,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 }
 
 func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = stableCompletedScript
 	backend := &recordingRuntime{Runtime: base}
@@ -1505,16 +1505,16 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 }
 
 func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "destination-approval", Title: "Approve destination run",
 				Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1579,10 +1579,10 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 }
 
 func TestShiftEnterInsertsANewlineWithoutSubmitting(t *testing.T) {
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
@@ -1602,14 +1602,14 @@ func TestShiftEnterInsertsANewlineWithoutSubmitting(t *testing.T) {
 }
 
 func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	lines := make([]string, maxToolDetailLines+60)
 	for i := range lines {
 		lines[i] = fmt.Sprintf("reader contract line %03d", i+1)
 	}
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "long_tool", Kind: agent.BlockTool,
 				Tool: &agent.ToolCall{
@@ -1661,10 +1661,10 @@ func TestConfiguredKeySequencesDriveApplicationActions(t *testing.T) {
 	configured := settings.Default()
 	configured.Keys[settings.ActionSessions] = []string{"g s"}
 	configured.Keys[settings.ActionSend] = []string{"g g"}
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithSettings(t, backend, configured)
 	host.Shows(t, "Ask flame")
@@ -1690,7 +1690,7 @@ func TestConfiguredPrefixesRespectModalOwnershipAndResolveAfterTimeout(t *testin
 	configured := settings.Default()
 	configured.Keys[settings.ActionSessions] = []string{"g"}
 	configured.Keys[settings.ActionShortcuts] = []string{"g s"}
-	host, stop := runUIWithSettings(t, mock.New(), configured)
+	host, stop := runUIWithSettings(t, runtimefixture.New(), configured)
 	host.Shows(t, "Ask flame")
 
 	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Ctrl})
@@ -1711,11 +1711,11 @@ func TestConfiguredPrefixesRespectModalOwnershipAndResolveAfterTimeout(t *testin
 }
 
 func TestTranscriptFocusDoesNotSubmitAndTypingReturnsToPrompt(t *testing.T) {
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	var answerSequence atomic.Uint64
-	backend.Script = func(prompt string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	backend.Script = func(prompt string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: fmt.Sprintf("answer-%d", answerSequence.Add(1)), Kind: agent.BlockAssistant, Text: "focused answer · " + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1761,9 +1761,9 @@ func TestTranscriptFocusDoesNotSubmitAndTypingReturnsToPrompt(t *testing.T) {
 }
 
 func TestCtrlCClearsTheDraftBeforeCancelingAnActiveRun(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1795,7 +1795,7 @@ func TestCtrlCClearsTheDraftBeforeCancelingAnActiveRun(t *testing.T) {
 
 func TestDraftClearWaitsForDurableRetirement(t *testing.T) {
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, mock.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("clear only after commit")
 	awaitStoredDraft(t, stateDirectory, "ses_demo_1", agent.Message{Text: "clear only after commit"})
@@ -1818,9 +1818,9 @@ func TestDraftClearWaitsForDurableRetirement(t *testing.T) {
 }
 
 func TestCancellationFailureLeavesTheRunRetryable(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1854,9 +1854,9 @@ func TestCancellationFailureLeavesTheRunRetryable(t *testing.T) {
 }
 
 func TestCancellationConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -1878,9 +1878,9 @@ func TestCancellationConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.
 }
 
 func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -1912,9 +1912,9 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 }
 
 func TestEscapeCancelsAnActiveRunWithoutDiscardingTheDraft(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1945,7 +1945,7 @@ func TestDoubleEscapeClearsAnIdleDraftAndKeepsItInHistory(t *testing.T) {
 }
 
 func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
@@ -1979,12 +1979,12 @@ func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 }
 
 func TestInteractiveRunRecoversTransportFaultsWithoutDuplicatingTranscript(t *testing.T) {
-	for _, fault := range []mock.FaultKind{mock.FaultDisconnect, mock.FaultDuplicate} {
+	for _, fault := range []runtimefixture.FaultKind{runtimefixture.FaultDisconnect, runtimefixture.FaultDuplicate} {
 		t.Run(string(fault), func(t *testing.T) {
-			backend := mock.New()
-			backend.Instant = fault == mock.FaultDuplicate
+			backend := runtimefixture.New()
+			backend.Instant = fault == runtimefixture.FaultDuplicate
 			backend.Script = stableCompletedScript
-			backend.Faults = []mock.SubscriptionFault{{Kind: fault, After: 1}}
+			backend.Faults = []runtimefixture.SubscriptionFault{{Kind: fault, After: 1}}
 			host, stop := runUIWith(t, backend)
 			host.Shows(t, "Ask flame")
 			host.Type("recover the stream")
@@ -1997,10 +1997,10 @@ func TestInteractiveRunRecoversTransportFaultsWithoutDuplicatingTranscript(t *te
 }
 
 func TestInteractiveRunColdRecoversWhenTheDroppedSegmentAlreadyFinished(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	backend.Faults = []mock.SubscriptionFault{{Kind: mock.FaultDisconnect, After: 1}}
+	backend.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultDisconnect, After: 1}}
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("recover from cold state")
@@ -2021,9 +2021,9 @@ func assertStableCompletedTranscript(t *testing.T, host *programtest.Host) {
 }
 
 func TestClosingTheTerminalCancelsTheOwnedRuntimeRun(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -2052,9 +2052,9 @@ func TestClosingTheTerminalCancelsTheOwnedRuntimeRun(t *testing.T) {
 }
 
 func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -2096,9 +2096,9 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 }
 
 func TestClosingTheTerminalConfirmsCancellationWithOneIdentity(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -2118,9 +2118,9 @@ func TestClosingTheTerminalConfirmsCancellationWithOneIdentity(t *testing.T) {
 }
 
 func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -2167,9 +2167,9 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 }
 
 func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -2208,9 +2208,9 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 }
 
 func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -2247,7 +2247,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	if err := os.MkdirAll(sessionsPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
@@ -2284,10 +2284,10 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 }
 
 func TestInteractiveRunRejectsConflictingReplay(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	backend.Faults = []mock.SubscriptionFault{{Kind: mock.FaultConflict, After: 1}}
+	backend.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultConflict, After: 1}}
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("detect a conflict")
@@ -2298,8 +2298,8 @@ func TestInteractiveRunRejectsConflictingReplay(t *testing.T) {
 	stop()
 }
 
-func stableCompletedScript(string) mock.Script {
-	return mock.Script{Prelude: []mock.Step{
+func stableCompletedScript(string) runtimefixture.Script {
+	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Delay: 30 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "stable answer"}}},
 		{Delay: 100 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 	}}
@@ -2413,7 +2413,7 @@ func TestAPluginSourceCanAddACommand(t *testing.T) {
 			return err
 		},
 	}
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: "/tmp/flame-cli-test",
 		PluginSources: []extensions.Source{extensions.StaticSource{Name: "test", Plugins: []extensions.Plugin{plugin}}},
@@ -2614,7 +2614,7 @@ func TestSessionPickerRestoresHistoryAndLifecycleCommandsSwitchCleanly(t *testin
 }
 
 func TestForkRetriesTheAuthoritativeReadWithoutRepeatingTheMutation(t *testing.T) {
-	backend := &transientForkProjectionRuntime{Runtime: mock.New()}
+	backend := &transientForkProjectionRuntime{Runtime: runtimefixture.New()}
 	backend.remaining.Store(2)
 	host, stop := runUIForSession(t, backend, "ses_demo_1")
 	host.Shows(t, "Ask flame")
@@ -2628,7 +2628,7 @@ func TestForkRetriesTheAuthoritativeReadWithoutRepeatingTheMutation(t *testing.T
 }
 
 func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	workspace := t.TempDir()
 	var target agent.Session
@@ -2680,7 +2680,7 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 }
 
 func TestSessionCenterRejectsAMismatchedUpdateProjection(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	workspace := t.TempDir()
 	target, err := base.CreateSession(t.Context(), agent.CreateSession{Title: "Update target", Workspace: workspace})
 	if err != nil {
@@ -2706,7 +2706,7 @@ func TestSessionCenterRejectsAMismatchedUpdateProjection(t *testing.T) {
 }
 
 func TestCurrentSessionTimelineJumpsAndForksFromARootRun(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = stableCompletedScript
 	host, stop := runUIWith(t, backend)
@@ -2740,7 +2740,7 @@ func TestCurrentSessionTimelineJumpsAndForksFromARootRun(t *testing.T) {
 }
 
 func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = stableCompletedScript
 	backend := &blockingSessionChangeRuntime{
@@ -2801,7 +2801,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 }
 
 func TestCtrlCCancelsSessionChangeWithoutDiscardingTheDraft(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = stableCompletedScript
 	backend := &blockingSessionChangeRuntime{
@@ -2837,7 +2837,7 @@ func TestCtrlCCancelsSessionChangeWithoutDiscardingTheDraft(t *testing.T) {
 }
 
 func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	backend := &blockingSessionChangeRuntime{
 		Runtime:       base,
 		blockCreateAt: 1,
@@ -2921,7 +2921,7 @@ func TestSessionSwitchRebindsWorkspaceAttachmentsAndDropsOldChips(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(secondWorkspace, "special.txt"), []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	if _, err := backend.CreateSession(t.Context(), agent.CreateSession{Title: "Workspace B", Workspace: secondWorkspace}); err != nil {
 		t.Fatal(err)
@@ -2961,7 +2961,7 @@ func firstRuntimeSession(t *testing.T, runtime agent.SessionCatalog) string {
 }
 
 func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	configured := settings.Default()
 	configured.Run.MaxSteps = new(42)
@@ -3003,7 +3003,7 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 }
 
 func TestDefaultRunInheritsTheSessionModel(t *testing.T) {
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	host, stop := runUIWithSettings(t, backend, settings.Default())
 	host.Shows(t, "mock/balanced")
@@ -3022,7 +3022,7 @@ func TestDefaultRunInheritsTheSessionModel(t *testing.T) {
 }
 
 func TestRelocateMovesTheCurrentSessionAndRebindsWorkspaceState(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	source, destination := t.TempDir(), t.TempDir()
 	host, stop := runUIWithWorkspace(t, backend, source)
@@ -3055,7 +3055,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	if err := os.Symlink(workspace, workspace); err != nil {
 		t.Fatal(err)
 	}
-	err := Run(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: workspace,
+	err := Run(t.Context(), Config{Services: backendcontract.Services{Agent: runtimefixture.New()}, Workspace: workspace,
 		Host:     programtest.New(t, programtest.Config{Width: 80, Height: 24}),
 		Settings: new(settings.Default()),
 	})
@@ -3067,7 +3067,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T) {
 	configured := settings.Default()
 	configured.UI.Mouse = false
-	prepared, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: t.TempDir(), Settings: new(configured)})
+	prepared, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: runtimefixture.New()}, Workspace: t.TempDir(), Settings: new(configured)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3075,7 +3075,7 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 		t.Fatal("explicit mouse=false was replaced by the default")
 	}
 
-	defaults, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: mock.New()}, Workspace: t.TempDir()})
+	defaults, err := prepareSession(t.Context(), Config{Services: backendcontract.Services{Agent: runtimefixture.New()}, Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3091,11 +3091,11 @@ func TestFormatThousandsHandlesMinimumInt64(t *testing.T) {
 }
 
 func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.QuestionAnswer, 2)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "question_1", Title: "Choose a strategy", Detail: "One short decision",
 				Fields: []agent.QuestionField{{
@@ -3103,9 +3103,9 @@ func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 					Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			}},
-			Continue: func(answerSet []agent.InterruptAnswer) []mock.Step {
+			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3133,11 +3133,11 @@ func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 }
 
 func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.QuestionAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "deployment-plan", Title: "Plan deployment", Detail: "Complete every field",
 				Fields: []agent.QuestionField{
@@ -3146,9 +3146,9 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 					{Header: "Checks", Prompt: "Select validation", Kind: agent.QuestionMulti, Options: []agent.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
 				},
 			}},
-			Continue: func(answerSet []agent.InterruptAnswer) []mock.Step {
+			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3205,11 +3205,11 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 }
 
 func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.QuestionAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "targets", Title: "Choose targets",
 				Fields: []agent.QuestionField{{
@@ -3217,9 +3217,9 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 					Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 				}},
 			}},
-			Continue: func(answerSet []agent.InterruptAnswer) []mock.Step {
+			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3257,11 +3257,11 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 }
 
 func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.QuestionAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "platform", Title: "Choose platform", Detail: "Select a supported platform or provide another one",
 				Fields: []agent.QuestionField{{
@@ -3272,9 +3272,9 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 					},
 				}},
 			}},
-			Continue: func(answerSet []agent.InterruptAnswer) []mock.Step {
+			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3309,7 +3309,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 }
 
 func TestWorkbenchRestoresHistoryAndSessionDraftAcrossLaunches(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = stableCompletedScript
 	workspace, stateDirectory := t.TempDir(), t.TempDir()
@@ -3345,7 +3345,7 @@ func TestWorkbenchRestoresHistoryAndSessionDraftAcrossLaunches(t *testing.T) {
 }
 
 func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
@@ -3374,7 +3374,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 }
 
 func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	stateDirectory := t.TempDir()
 	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
 	if err != nil {
@@ -3433,7 +3433,7 @@ func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *test
 }
 
 func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
 	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
@@ -3483,7 +3483,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 }
 
 func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
@@ -3550,7 +3550,7 @@ func TestPromptStashCanBeListedAppliedAndDeleted(t *testing.T) {
 
 func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, mock.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("draft remains visible")
 	awaitStoredDraft(t, stateDirectory, "ses_demo_1", agent.Message{Text: "draft remains visible"})
@@ -3601,7 +3601,7 @@ func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIWithState(t, mock.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop := runUIWithState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	restoreWrites := blockSessionStateWrites(t, stateDirectory, "ses_demo_1")
 
@@ -3623,7 +3623,7 @@ func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 func TestExternalEditorRoundTripReplacesOnlyAfterSuccess(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Setenv("FLAME_EDITOR", `sh -c 'printf "\nrevised externally" >> "$0"'`)
-		host, stop := runUIWithWorkspace(t, mock.New(), t.TempDir())
+		host, stop := runUIWithWorkspace(t, runtimefixture.New(), t.TempDir())
 		host.Shows(t, "Ask flame")
 		host.Type("original draft")
 		host.Send(input.Key{Code: input.Character, Rune: 'e', Mods: input.Ctrl})
@@ -3636,7 +3636,7 @@ func TestExternalEditorRoundTripReplacesOnlyAfterSuccess(t *testing.T) {
 
 	t.Run("failure preserves draft", func(t *testing.T) {
 		t.Setenv("FLAME_EDITOR", `sh -c 'exit 9'`)
-		host, stop := runUIWithWorkspace(t, mock.New(), t.TempDir())
+		host, stop := runUIWithWorkspace(t, runtimefixture.New(), t.TempDir())
 		host.Shows(t, "Ask flame")
 		host.Type("do not lose this")
 		host.Send(input.Key{Code: input.Character, Rune: 'e', Mods: input.Ctrl})
@@ -3650,7 +3650,7 @@ func TestExternalEditorRoundTripReplacesOnlyAfterSuccess(t *testing.T) {
 func TestExternalEditorKeepsEditedTextWhenDraftPersistenceFails(t *testing.T) {
 	t.Setenv("FLAME_EDITOR", `sh -c 'printf "\nrevised but not durable" >> "$0"'`)
 	stateDirectory := t.TempDir()
-	backend := mock.New()
+	backend := runtimefixture.New()
 	host, stop := runUIWithState(t, backend, t.TempDir(), "", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("original draft")
@@ -3671,11 +3671,11 @@ func TestExternalEditorKeepsEditedTextWhenDraftPersistenceFails(t *testing.T) {
 }
 
 func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []agent.InterruptAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval-feedback", Title: "Run destructive command", Detail: "Review this request carefully",
 				Tool: &agent.ToolCall{
@@ -3683,9 +3683,9 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 					ArgumentsJSON: []byte(`{"command":"rm generated.txt","generatedFixture":"cache_test.go"}`),
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3712,11 +3712,11 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 }
 
 func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "remember-denial", Title: "Delete generated fixtures", Rememberable: true,
 				RuleHint: "shell:rm generated/*",
@@ -3724,9 +3724,9 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 					Kind: agent.ToolShell, Name: "shell", Command: "rm generated/*", Status: agent.ToolRunning,
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3775,11 +3775,11 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			backend := mock.New()
+			backend := runtimefixture.New()
 			backend.Instant = true
 			answers := make(chan agent.ApprovalAnswer, 1)
-			backend.Script = func(string) mock.Script {
-				return mock.Script{
+			backend.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{
 					Interactions: []agent.Interaction{agent.Approval{
 						ItemID: "approval-matrix", Title: "Review generated command", Rememberable: true,
 						RuleHint: "shell:go test ./...",
@@ -3787,9 +3787,9 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 							Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
 						},
 					}},
-					Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+					Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 						answers <- provided[0].Answer.(agent.ApprovalAnswer)
-						return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 					},
 				}
 			}
@@ -3846,11 +3846,11 @@ func approvalRuleDecision(decision agent.ApprovalDecision) agent.ApprovalRuleDec
 }
 
 func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "edit-approval", Title: "Run generated command",
 				Rememberable: true,
@@ -3859,9 +3859,9 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 					ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3913,11 +3913,11 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 }
 
 func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "cancel-edit-approval", Title: "Run generated command",
 				Tool: &agent.ToolCall{
@@ -3925,9 +3925,9 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 					ArgumentsJSON: []byte(`{"command":"echo original"}`),
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3957,18 +3957,18 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 }
 
 func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "resize-approval", Title: "Run generated command",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "rm generated.txt", Status: agent.ToolRunning},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4000,18 +4000,18 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 }
 
 func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "one-shot-approval", Title: "Read generated report",
 				Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "report.txt", Status: agent.ToolRunning},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4036,10 +4036,10 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 }
 
 func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []agent.InterruptAnswer, 2)
-	backend.Script = func(string) mock.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("test the project")
@@ -4098,10 +4098,10 @@ func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 }
 
 func TestCancelingInteractionReviewDoesNotResumeTheRuntime(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []agent.InterruptAnswer, 1)
-	backend.Script = func(string) mock.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("review then cancel")
@@ -4128,8 +4128,8 @@ func TestCancelingInteractionReviewDoesNotResumeTheRuntime(t *testing.T) {
 	stop()
 }
 
-func multiInteractionReviewScript(answers chan<- []agent.InterruptAnswer) mock.Script {
-	return mock.Script{
+func multiInteractionReviewScript(answers chan<- []agent.InterruptAnswer) runtimefixture.Script {
+	return runtimefixture.Script{
 		Interactions: []agent.Interaction{
 			agent.Approval{
 				ItemID: "approval", Title: "Run tests", Rememberable: true,
@@ -4140,15 +4140,15 @@ func multiInteractionReviewScript(answers chan<- []agent.InterruptAnswer) mock.S
 				Fields: []agent.QuestionField{{Prompt: "Platform", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}}}},
 			},
 		},
-		Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+		Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 			answers <- provided
-			return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 		},
 	}
 }
 
 func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
@@ -4180,7 +4180,7 @@ func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
 }
 
 func TestApprovalModeSelectionRoundTripsThroughTheRuntime(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("/approval")
@@ -4269,7 +4269,7 @@ func TestCommandPaletteSharesContextAvailabilityWithExecution(t *testing.T) {
 func TestPendingConfiguredChordShowsItsContinuationsUntilResolved(t *testing.T) {
 	configured := settings.Default()
 	configured.Keys[settings.ActionCommandPalette] = []string{"ctrl+k ctrl+p"}
-	host, stop := runUIWithSettings(t, mock.New(), configured)
+	host, stop := runUIWithSettings(t, runtimefixture.New(), configured)
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'k', Mods: input.Ctrl})
 	host.Shows(t, "ctrl+k → ctrl+p command-palette")
@@ -4311,10 +4311,10 @@ func TestWorkspaceFileCompletionCreatesAtomicAttachments(t *testing.T) {
 	if err := os.WriteFile(path, []byte("package cache\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4361,7 +4361,7 @@ func TestRejectedWorkspaceFileCompletionPreservesTheDraftToken(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "archive.bin"), []byte{0, 1, 2, 3}, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIWithWorkspace(t, mock.New(), workspace)
+	host, stop := runUIWithWorkspace(t, runtimefixture.New(), workspace)
 	host.Shows(t, "Ask flame")
 	host.Type("inspect @archive")
 	host.Shows(t, "workspace files")
@@ -4380,10 +4380,10 @@ func TestUndoAfterDetachRestoresTheAttachmentValue(t *testing.T) {
 	if err := os.WriteFile(path, []byte("restorable context"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4423,10 +4423,10 @@ func TestDetachRejectsAnAmbiguousAttachmentBasename(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	backend := &recordingRuntime{Runtime: mock.New()}
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4454,11 +4454,11 @@ func TestDetachRejectsAnAmbiguousAttachmentBasename(t *testing.T) {
 }
 
 func TestToolKindsRenderLiveAndDetailToggleChangesTheTranscript(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
-	backend.Script = func(string) mock.Script {
+	backend.Script = func(string) runtimefixture.Script {
 		zero := 0
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "shell", Kind: agent.BlockTool, Tool: &agent.ToolCall{
 				Kind: agent.ToolShell, Name: "provider.exec", Command: "go test ./...", Summary: "run tests", Status: agent.ToolRunning,
 			}}}},
@@ -4504,10 +4504,10 @@ func TestToolKindsRenderLiveAndDetailToggleChangesTheTranscript(t *testing.T) {
 }
 
 func TestRunningToolOutputStreamsIntoAnExpandedTranscript(t *testing.T) {
-	backend := mock.New()
-	backend.Script = func(string) mock.Script {
+	backend := runtimefixture.New()
+	backend.Script = func(string) runtimefixture.Script {
 		zero := 0
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "shell", Kind: agent.BlockTool, Tool: &agent.ToolCall{
 				Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolRunning,
 			}}}},
@@ -4535,9 +4535,9 @@ func TestRunningToolOutputStreamsIntoAnExpandedTranscript(t *testing.T) {
 }
 
 func TestCancelingARunSettlesItsLiveToolProjection(t *testing.T) {
-	backend := mock.New()
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	backend := runtimefixture.New()
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "shell", Kind: agent.BlockTool, Tool: &agent.ToolCall{
 				Kind: agent.ToolShell, Command: "long command", Status: agent.ToolRunning,
 			}}}},
@@ -4564,7 +4564,7 @@ func TestCancelingARunSettlesItsLiveToolProjection(t *testing.T) {
 }
 
 func TestCancelBeforeRunIdentityDoesNotBlockTheNextRun(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	runtime := &delayedFirstRuntime{Runtime: backend}
 	host, stop := runUIWith(t, runtime)
@@ -4597,7 +4597,7 @@ func TestApprovalRemainsUsableAtRepresentativeWidths(t *testing.T) {
 		{name: "wide", width: 120, height: 32},
 	} {
 		t.Run(size.name, func(t *testing.T) {
-			backend := mock.New()
+			backend := runtimefixture.New()
 			backend.Instant = true
 			backend.Script = approvalWidthScript
 			host, stop := runUIWith(t, backend)
@@ -4619,8 +4619,8 @@ func TestApprovalRemainsUsableAtRepresentativeWidths(t *testing.T) {
 	}
 }
 
-func approvalWidthScript(string) mock.Script {
-	return mock.Script{
+func approvalWidthScript(string) runtimefixture.Script {
+	return runtimefixture.Script{
 		Interactions: []agent.Interaction{agent.Approval{
 			ItemID: "responsive-approval",
 			Title:  "Review the proposed change",
@@ -4629,7 +4629,7 @@ func approvalWidthScript(string) mock.Script {
 				Kind: agent.ToolShell, Name: "responsive-check", Command: "go test ./...", Status: agent.ToolRunning,
 			},
 		}},
-		Continue: func(answers []agent.InterruptAnswer) []mock.Step {
+		Continue: func(answers []agent.InterruptAnswer) []runtimefixture.Step {
 			message := "Approval was not denied at current width"
 			if len(answers) == 1 {
 				answer, ok := answers[0].Answer.(agent.ApprovalAnswer)
@@ -4637,7 +4637,7 @@ func approvalWidthScript(string) mock.Script {
 					message = "Approval denied at current width"
 				}
 			}
-			return []mock.Step{
+			return []runtimefixture.Step{
 				{Event: agent.BlockCompleted{Block: agent.Block{ID: "responsive-result", Kind: agent.BlockAssistant, Text: message}}},
 				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}
@@ -4701,24 +4701,24 @@ func TestCatalogDialogsRestoreAfterMinimalViewport(t *testing.T) {
 }
 
 func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
-	runtime := mock.New()
-	runtime.Script = func(string) mock.Script {
-		steps := []mock.Step{{Event: agent.BlockStarted{Block: agent.Block{
+	runtime := runtimefixture.New()
+	runtime.Script = func(string) runtimefixture.Script {
+		steps := []runtimefixture.Step{{Event: agent.BlockStarted{Block: agent.Block{
 			ID: "stream", Kind: agent.BlockAssistant,
 		}}}}
 		for range 64 {
-			steps = append(steps, mock.Step{
+			steps = append(steps, runtimefixture.Step{
 				Delay: 2 * time.Millisecond,
 				Event: agent.BlockDelta{BlockID: "stream", Text: "x"},
 			})
 		}
 		steps = append(steps,
-			mock.Step{Event: agent.BlockCompleted{Block: agent.Block{
+			runtimefixture.Step{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "stream", Kind: agent.BlockAssistant, Text: "RESIZE_STREAM_COMPLETE",
 			}}},
-			mock.Step{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			runtimefixture.Step{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		)
-		return mock.Script{Prelude: steps}
+		return runtimefixture.Script{Prelude: steps}
 	}
 	host, stop := runUIWith(t, runtime)
 	host.Shows(t, "Ask flame")
@@ -4747,9 +4747,9 @@ func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
 }
 
 func TestOpeningAnActiveSessionRecoversAStreamWhoseTransientStartPredatesAttachment(t *testing.T) {
-	backend := mock.New()
-	backend.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	backend := runtimefixture.New()
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}},
 			{Event: agent.BlockDelta{BlockID: "answer", Text: "provisional"}},
 			{Delay: 200 * time.Millisecond, Event: agent.BlockDelta{BlockID: "answer", Text: " preview"}},

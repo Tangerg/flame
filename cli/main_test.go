@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
+	"fmt"
 	"io"
 	"maps"
 	"os"
@@ -21,9 +23,9 @@ import (
 	"github.com/Tangerg/oolong/ptytest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/terminal"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 type terminalModeCase struct {
@@ -69,7 +71,7 @@ func requireTerminalModeLifecycle(t *testing.T, binary string, test terminalMode
 	t.Helper()
 	session, err := ptytest.Start(t.Context(), ptytest.Config{
 		Size: ptytest.Size{Cols: 80, Rows: 24}, Env: terminalTestEnvironment(t, test.environment),
-	}, binary, test.args...)
+	}, binary, testProcessArguments(test.args...)...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -173,7 +175,7 @@ func requireSubmittedInputSequence(t *testing.T, binary string, size ptytest.Siz
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -212,7 +214,7 @@ func TestInteractiveBinaryConsumesTheStartupBrandOnce(t *testing.T) {
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -265,7 +267,7 @@ func TestInteractiveBinaryKeepsSlashCompletionAboveComposer(t *testing.T) {
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -313,7 +315,7 @@ func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -417,9 +419,9 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != mixedInteractionPTYScenario {
 		return
 	}
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
-	backend.Script = func(string) mock.Script { return mixedInteractionPTYScript() }
+	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
 		Services: backendcontract.AgentOnly(backend), Workspace: t.TempDir(),
 	}); err != nil {
@@ -474,15 +476,15 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != cancelReentryPTYScenario {
 		return
 	}
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	runs := 0
-	backend.Script = func(string) mock.Script {
+	backend.Script = func(string) runtimefixture.Script {
 		runs++
 		if runs == 1 {
 			return cancelReentryPTYScript()
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "reentry", Kind: agent.BlockNotice, Text: "PTY cancellation reentry accepted",
 			}}},
@@ -496,11 +498,11 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 	}
 }
 
-func cancelReentryPTYScript() mock.Script {
-	return mock.Script{
+func cancelReentryPTYScript() runtimefixture.Script {
+	return runtimefixture.Script{
 		Interactions: mixedInteractionPTYInteractions(),
-		Continue: func([]agent.InterruptAnswer) []mock.Step {
-			return []mock.Step{
+		Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+			return []runtimefixture.Step{
 				{Event: agent.BlockCompleted{Block: agent.Block{
 					ID: "violation", Kind: agent.BlockError, Text: "PTY cancellation contract violated",
 				}}},
@@ -510,15 +512,15 @@ func cancelReentryPTYScript() mock.Script {
 	}
 }
 
-func mixedInteractionPTYScript() mock.Script {
-	return mock.Script{
+func mixedInteractionPTYScript() runtimefixture.Script {
+	return runtimefixture.Script{
 		Interactions: mixedInteractionPTYInteractions(),
-		Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+		Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 			result := "PTY HITL contract rejected"
 			if mixedInteractionPTYAnswersMatch(provided) {
 				result = "PTY HITL contract accepted"
 			}
-			return []mock.Step{
+			return []runtimefixture.Step{
 				{Event: agent.BlockCompleted{Block: agent.Block{ID: "result", Kind: agent.BlockNotice, Text: result}}},
 				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}
@@ -613,7 +615,7 @@ func TestInteractiveBinaryExpandsCompletedToolFromTranscript(t *testing.T) {
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -660,7 +662,7 @@ func TestInteractiveBinaryKeepsScrolledTranscriptStableWhileStreaming(t *testing
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
 		}),
-	}, binary, "--mouse=false", "--notifications=false")
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -787,6 +789,43 @@ func waitForInteractiveExit(t *testing.T, session *ptytest.Session) {
 
 func buildTestBinary(t *testing.T) string {
 	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatalf("resolve test executable: %v", err)
+	}
+	return executable
+}
+
+func TestFlameProcess(t *testing.T) {
+	if os.Getenv("FLAME_TEST_PROCESS") != "1" {
+		return
+	}
+	flameHome, err := flameHomeDirectory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Args = append([]string{os.Args[0]}, flag.Args()...)
+	owner := &testProcessRuntimeOwner{services: backendcontract.AgentOnly(runtimefixture.New())}
+	os.Exit(runWithRuntimeOwner(owner, filepath.Join(flameHome, "cli")))
+}
+
+type testProcessRuntimeOwner struct {
+	services  backendcontract.Services
+	announced bool
+}
+
+func (o *testProcessRuntimeOwner) Runtime(context.Context) (backendcontract.Services, error) {
+	if !o.announced {
+		_, _ = fmt.Fprintln(os.Stderr, testRuntimeReadyMarkerForTest)
+		o.announced = true
+	}
+	return o.services, nil
+}
+
+func (*testProcessRuntimeOwner) Close() error { return nil }
+
+func buildProductionBinary(t *testing.T) string {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "flame")
 	if os.PathSeparator == '\\' {
 		binary += ".exe"
@@ -798,11 +837,15 @@ func buildTestBinary(t *testing.T) string {
 	return binary
 }
 
-func TestEmbeddedBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T) {
-	binary := buildTestBinary(t)
+func testProcessArguments(arguments ...string) []string {
+	return append([]string{"-test.run=^TestFlameProcess$", "--"}, arguments...)
+}
+
+func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T) {
+	binary := buildProductionBinary(t)
 	flameHome := t.TempDir()
 	environment := terminalTestEnvironment(t, map[string]string{
-		"FLAME_HOME": flameHome, "FLAME_RUNTIME": "embedded",
+		"FLAME_HOME":     flameHome,
 		"FLAME_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-key",
 		"FLAME_MCP_SERVERS": "", "FLAME_A2A_AGENTS": "", "FLAME_A2A_RPC_ORIGINS": "",
 	})
@@ -818,26 +861,26 @@ func TestEmbeddedBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T) {
 		RuntimeTopics []string `json:"runtimeTopics"`
 	}
 	if err := json.Unmarshal(profileOutput, &profile); err != nil {
-		t.Fatalf("decode embedded runtime profile: %v\n%s", err, profileOutput)
+		t.Fatalf("decode in-process runtime profile: %v\n%s", err, profileOutput)
 	}
 	if profile.Protocol.Version == "" || profile.Server.Name == "" || len(profile.RuntimeTopics) == 0 {
-		t.Fatalf("incomplete embedded runtime profile: %+v", profile)
+		t.Fatalf("incomplete in-process runtime profile: %+v", profile)
 	}
 	if info, err := os.Stat(filepath.Join(flameHome, "runtime", "flame.db")); err != nil || !info.Mode().IsRegular() {
-		t.Fatalf("embedded runtime database = (%v, %v), want regular file", info, err)
+		t.Fatalf("runtime database = (%v, %v), want regular file", info, err)
 	}
 
 	// A second process opening the same store proves the first process completed
-	// owner teardown and released the embedded runtime's exclusive lease.
+	// owner teardown and released the Runtime's store resources.
 	sessionsOutput := runTestBinary(t, binary, environment, "sessions", "ls", "--json")
 	var sessions struct {
 		Items []json.RawMessage `json:"items"`
 	}
 	if err := json.Unmarshal(sessionsOutput, &sessions); err != nil {
-		t.Fatalf("decode embedded session page: %v\n%s", err, sessionsOutput)
+		t.Fatalf("decode in-process session page: %v\n%s", err, sessionsOutput)
 	}
 	if len(sessions.Items) != 0 {
-		t.Fatalf("fresh embedded runtime sessions = %d, want 0", len(sessions.Items))
+		t.Fatalf("fresh in-process runtime sessions = %d, want 0", len(sessions.Items))
 	}
 }
 
@@ -871,7 +914,7 @@ func TestHeadlessBinaryReturnsConventionalSignalExitCodes(t *testing.T) {
 
 func requireHeadlessSignalExit(t *testing.T, binary string, signal os.Signal, want int) {
 	t.Helper()
-	command := exec.CommandContext(t.Context(), binary, "run", "--json", "--approve-all", "wait for signal")
+	command := exec.CommandContext(t.Context(), binary, testProcessArguments("run", "--json", "--approve-all", "wait for signal")...)
 	command.Env = terminalTestEnvironment(t, nil)
 	command.Stdout = io.Discard
 	stderr, err := command.StderrPipe()
@@ -892,7 +935,7 @@ func requireHeadlessSignalExit(t *testing.T, binary string, signal os.Signal, wa
 	})
 
 	var diagnostics bytes.Buffer
-	ready, scanned := scanRuntimeNotice(stderr, &diagnostics)
+	ready, scanned := scanRuntimeReady(stderr, &diagnostics)
 	select {
 	case err := <-ready:
 		if err != nil {
@@ -922,7 +965,7 @@ func requireHeadlessSignalExit(t *testing.T, binary string, signal os.Signal, wa
 	}
 }
 
-func scanRuntimeNotice(stderr io.Reader, diagnostics *bytes.Buffer) (<-chan error, <-chan error) {
+func scanRuntimeReady(stderr io.Reader, diagnostics *bytes.Buffer) (<-chan error, <-chan error) {
 	ready := make(chan error, 1)
 	done := make(chan error, 1)
 	go func() {
@@ -932,7 +975,7 @@ func scanRuntimeNotice(stderr io.Reader, diagnostics *bytes.Buffer) (<-chan erro
 			line := scanner.Text()
 			diagnostics.WriteString(line)
 			diagnostics.WriteByte('\n')
-			if !notified && strings.Contains(line, mockNoticeForTest) {
+			if !notified && strings.Contains(line, testRuntimeReadyMarkerForTest) {
 				ready <- nil
 				notified = true
 			}
@@ -945,31 +988,19 @@ func scanRuntimeNotice(stderr io.Reader, diagnostics *bytes.Buffer) (<-chan erro
 			return
 		}
 		if !notified {
-			ready <- errors.New("process exited before opening the mock runtime")
+			ready <- errors.New("process exited before opening the test runtime")
 		}
 		done <- nil
 	}()
 	return ready, done
 }
 
-const mockNoticeForTest = "scripted mock runtime"
+const testRuntimeReadyMarkerForTest = "flame: test runtime ready"
 
-func TestRuntimeOwnerSelectionRejectsAmbiguousConfiguration(t *testing.T) {
-	t.Setenv("FLAME_RUNTIME", "typo")
-	if _, _, err := newRuntimeOwner(); err == nil {
-		t.Fatal("newRuntimeOwner accepted an unknown mode")
-	}
-
-	t.Setenv("FLAME_RUNTIME", "embedded")
+func TestFlameHomeRejectsRelativePath(t *testing.T) {
 	t.Setenv("FLAME_HOME", "relative")
-	if _, _, err := newRuntimeOwner(); err == nil {
-		t.Fatal("newRuntimeOwner accepted a relative FLAME_HOME")
-	}
-
-	t.Setenv("FLAME_RUNTIME", "mock")
-	owner, notice, err := newRuntimeOwner()
-	if err != nil || owner == nil || !strings.Contains(notice, mockNoticeForTest) {
-		t.Fatalf("mock owner = (%T, %q, %v)", owner, notice, err)
+	if _, err := flameHomeDirectory(); err == nil {
+		t.Fatal("flameHomeDirectory accepted a relative FLAME_HOME")
 	}
 }
 
@@ -1049,7 +1080,7 @@ func terminalTestEnvironment(t *testing.T, overrides map[string]string) []string
 	values := map[string]string{
 		"COLORTERM": "", "LANG": "", "LC_ALL": "", "TERM_PROGRAM": "",
 		"VSCODE_INJECTION": "", "WSL_INTEROP": "", "WSL_DISTRO_NAME": "",
-		"FLAME_RUNTIME": "mock", "FLAME_RUNTIME_CONFIG_DIR": "",
+		"FLAME_RUNTIME_CONFIG_DIR": "", "FLAME_TEST_PROCESS": "1",
 	}
 	maps.Copy(values, overrides)
 	values["HOME"], values["USERPROFILE"] = t.TempDir(), t.TempDir()

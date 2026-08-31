@@ -7,8 +7,8 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
@@ -55,7 +55,7 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 }
 
 func TestModelsCommandOpensTheRuntimeCatalog(t *testing.T) {
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New()}})
+	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New()}})
 	host.Shows(t, "Ask flame")
 	host.Type("/models")
 	host.Press(input.Enter)

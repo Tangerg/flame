@@ -15,10 +15,10 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -49,13 +49,13 @@ func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
 }
 
 type sessionReadFailureRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 	reads     atomic.Int32
 	failureAt int32
 }
 
 type replayingStartRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu         sync.Mutex
 	attempts   int
@@ -66,7 +66,7 @@ type replayingStartRuntime struct {
 }
 
 type idempotentStartRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu       sync.Mutex
 	receipts map[agent.CommandID]agent.SegmentStream
@@ -103,7 +103,7 @@ type activeConflictRuntime struct {
 }
 
 type refusingFirstCommandRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu      sync.Mutex
 	refused agent.CommandID
@@ -264,9 +264,9 @@ func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID st
 }
 
 func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -284,7 +284,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 }
 
 func TestStartHandshakeRetriesTheSameMutationIdentity(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Script = stableCompletedScript
 	runtime := &replayingStartRuntime{Runtime: base}
 	host, stop := runUIWith(t, runtime)
@@ -308,7 +308,7 @@ func TestStartHandshakeRetriesTheSameMutationIdentity(t *testing.T) {
 }
 
 func TestStartHandshakeTreatsDeadlineAsAnUnknownAcknowledgement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Script = stableCompletedScript
 	runtime := &replayingStartRuntime{Runtime: base, failure: context.DeadlineExceeded}
 	host, stop := runUIWith(t, runtime)
@@ -327,7 +327,7 @@ func TestStartHandshakeTreatsDeadlineAsAnUnknownAcknowledgement(t *testing.T) {
 }
 
 func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
@@ -361,9 +361,9 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 }
 
 func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -409,9 +409,9 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 }
 
 func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -430,9 +430,9 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 }
 
 func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -463,7 +463,7 @@ func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t 
 }
 
 func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = stableCompletedScript
 	stateDirectory := t.TempDir()
@@ -495,9 +495,9 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 }
 
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
@@ -532,9 +532,9 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 }
 
 func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -582,9 +582,9 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 }
 
 func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -637,9 +637,9 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 }
 
 func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -711,9 +711,9 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 }
 
 func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
 			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		}}}}
 	}
@@ -778,7 +778,7 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 }
 
 func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	profile.Limits.CommandReplay = testCommandReplay(t, "runtime-a", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
@@ -859,7 +859,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 				t.Fatal(err)
 			}
 			test.stage(t, store)
-			base := mock.New()
+			base := runtimefixture.New()
 			runtime := &recordingRuntime{Runtime: base}
 			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 			profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute)

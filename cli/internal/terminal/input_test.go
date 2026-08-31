@@ -8,13 +8,13 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
 func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
@@ -50,7 +50,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 }
 
 func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
@@ -90,7 +90,7 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			backend := mock.New()
+			backend := runtimefixture.New()
 			backend.Instant = true
 			stateDirectory := t.TempDir()
 			host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})

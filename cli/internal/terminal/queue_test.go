@@ -16,10 +16,10 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/settings"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -745,14 +745,14 @@ func assertQueueStateEqual(t *testing.T, got, want promptqueue.State) {
 }
 
 func TestRunningTurnQueuesFollowUpsAndDrainsThemInFIFOOrder(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_RUN" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: 500 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -786,13 +786,13 @@ func TestRunningTurnQueuesFollowUpsAndDrainsThemInFIFOOrder(t *testing.T) {
 }
 
 func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		finishDelay := time.Duration(0)
 		if prompt == "FIRST_SETTLEMENT" {
 			finishDelay = time.Second
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: prompt + "_RAN",
 			}}},
@@ -879,9 +879,9 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 }
 
 func TestAcceptedStartSettlementRecoveryRestoresTheTerminalStatusWithoutAFollowUp(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "ONLY_SETTLEMENT_RAN"}}},
 			{Delay: time.Second, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -931,14 +931,14 @@ func TestAcceptedStartSettlementRecoveryRestoresTheTerminalStatusWithoutAFollowU
 }
 
 func TestCancelingARunDrainsItsQueuedFollowUpAfterCancellationSettles(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "CANCEL_PRIMARY" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "after-cancel", Kind: agent.BlockAssistant, Text: "QUEUED_AFTER_CANCEL_RAN"}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -964,14 +964,14 @@ func TestCancelingARunDrainsItsQueuedFollowUpAfterCancellationSettles(t *testing
 }
 
 func TestQueueDrawerSendsTheSelectedFollowUpBeforeTheRestAndPreservesTheDraft(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "INTERRUPTED_PRIMARY" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1010,14 +1010,14 @@ func TestQueueDrawerSendsTheSelectedFollowUpBeforeTheRestAndPreservesTheDraft(t 
 }
 
 func TestQueueDrawerReordersAndRemovesFollowUpsBeforeDispatch(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_FOR_QUEUE_MUTATION" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1061,14 +1061,14 @@ func TestQueueDrawerReordersAndRemovesFollowUpsBeforeDispatch(t *testing.T) {
 }
 
 func TestEmptyEnterPromotesTheNextQueuedFollowUp(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_FOR_EMPTY_ENTER" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "empty-enter-answer", Kind: agent.BlockAssistant, Text: "EMPTY_ENTER_SENT_NEXT"}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1093,9 +1093,9 @@ func TestEmptyEnterPromotesTheNextQueuedFollowUp(t *testing.T) {
 }
 
 func TestQueueDrawerRemainsUsableOnAConstrainedTerminal(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1121,15 +1121,15 @@ func TestQueueDrawerRemainsUsableOnAConstrainedTerminal(t *testing.T) {
 }
 
 func TestEditingTheFrontPromptHoldsAutomaticDispatchUntilSave(t *testing.T) {
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_BEFORE_QUEUE_EDIT" {
-			return mock.Script{Prelude: []mock.Step{
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: 2 * time.Second, Event: agent.BlockCompleted{Block: agent.Block{ID: "primary-finished-marker", Kind: agent.BlockAssistant, Text: "PRIMARY_FINISHED_WHILE_EDITING"}}},
 				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 			}}
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "edited-queue-answer", Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1183,13 +1183,13 @@ func TestQueuedFollowUpKeepsItsAttachmentIdentityUntilDispatch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "context.txt"), []byte("queue context"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	base := mock.New()
-	base.Script = func(prompt string) mock.Script {
+	base := runtimefixture.New()
+	base.Script = func(prompt string) runtimefixture.Script {
 		delay := time.Duration(0)
 		if prompt == "ATTACHMENT_PRIMARY" {
 			delay = 800 * time.Millisecond
 		}
-		return mock.Script{Prelude: []mock.Step{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: delay, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}

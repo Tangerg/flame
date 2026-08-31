@@ -15,11 +15,11 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/retry"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -196,7 +196,7 @@ func (m *mutableRuntimeCatalog) setRules(rules ...agent.ApprovalRule) {
 
 func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model picker", func(t *testing.T) {
-		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
+		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
@@ -215,7 +215,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	})
 
 	t.Run("model reader", func(t *testing.T) {
-		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
+		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(agent.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
@@ -236,7 +236,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model roles", func(t *testing.T) {
 		models := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models, Changes: source}})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), ModelConfig: models, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/roles")
@@ -261,7 +261,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("providers", func(t *testing.T) {
 		models := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), ModelConfig: models, Changes: source}})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), ModelConfig: models, Changes: source}})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
 		host.Type("/providers")
@@ -281,7 +281,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	})
 
 	t.Run("approval rules", func(t *testing.T) {
-		catalog := &mutableRuntimeCatalog{Runtime: mock.New()}
+		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		source := runtimeResourceChangeSource(changefeed.ApprovalsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: catalog, Changes: source}})
 		host.Shows(t, "Ask flame")
@@ -304,7 +304,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
 		source := runtimeResourceChangeSource(changefeed.AgentMemoryChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: mock.New(), AgentMemory: memory, Changes: source}, Workspace: "/workspace"})
+		host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), AgentMemory: memory, Changes: source}, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, changefeed.AgentMemoryChanged)
 		host.Type("/memory project")
@@ -325,7 +325,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 }
 
 func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T) {
-	catalog := &mutableRuntimeCatalog{Runtime: mock.New(), deleted: make(chan string, 1)}
+	catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New(), deleted: make(chan string, 1)}
 	catalog.setRules(agent.ApprovalRule{
 		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
 		Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
@@ -355,7 +355,7 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 
 func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 	catalog := &mutableRuntimeCatalog{
-		Runtime: mock.New(), deleted: make(chan string, 1), ignoreRuleDeletion: true,
+		Runtime: runtimefixture.New(), deleted: make(chan string, 1), ignoreRuleDeletion: true,
 	}
 	catalog.setRules(agent.ApprovalRule{
 		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
@@ -377,7 +377,7 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 }
 
 func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	runtime := &blockingApprovalModeRuntime{
 		Runtime: base, started: make(chan agent.ApprovalMode, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}, 1),
@@ -437,7 +437,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 }
 
 func TestRunAdmissionWaitsForApprovalModeMutationSettlement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	recorder := &recordingRuntime{Runtime: base}
 	runtime := &blockingApprovalModeRuntime{
 		Runtime: recorder, started: make(chan agent.ApprovalMode, 1),
@@ -474,7 +474,7 @@ func TestRunAdmissionWaitsForApprovalModeMutationSettlement(t *testing.T) {
 }
 
 func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	current, err := base.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
 		t.Fatal(err)
@@ -551,7 +551,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 }
 
 func TestDismissingSessionCenterCancelsCatalogRefresh(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	runtime := &blockingSessionCatalogRuntime{
 		Runtime: base, refreshStarted: make(chan struct{}), releaseRefresh: make(chan struct{}),
 		refreshCanceled: make(chan struct{}),
@@ -1106,9 +1106,9 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 }
 
 func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -1174,7 +1174,7 @@ func TestSessionChangeSettlementReconcilesItsDeferredInvalidation(t *testing.T) 
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			base := mock.New()
+			base := runtimefixture.New()
 			counting := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 16)}
 			backend := &blockingSessionChangeRuntime{
 				Runtime:       counting,
@@ -1228,7 +1228,7 @@ func TestSessionChangeSettlementReconcilesItsDeferredInvalidation(t *testing.T) 
 }
 
 type snapshotCountingRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 	reads      atomic.Int32
 	failures   atomic.Int32
 	failure    error
@@ -1299,7 +1299,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime agent.Runtime, workspa
 }
 
 func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	backend := &snapshotCountingRuntime{
 		Runtime:    base,
 		failure:    fmt.Errorf("temporary session projection failure: %w", agent.ErrDisconnected),
@@ -1340,7 +1340,7 @@ func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t 
 
 func TestInvalidatedSessionReadDoesNotRetryAPermanentFailure(t *testing.T) {
 	permanent := errors.New("invalid session projection")
-	backend := &snapshotCountingRuntime{Runtime: mock.New(), failure: permanent}
+	backend := &snapshotCountingRuntime{Runtime: runtimefixture.New(), failure: permanent}
 	backend.failures.Store(2)
 
 	_, err := (&app{runtime: backend}).readInvalidatedSession(t.Context(), "ses_demo_1")
@@ -1353,7 +1353,7 @@ func TestInvalidatedSessionReadDoesNotRetryAPermanentFailure(t *testing.T) {
 }
 
 func TestExternalWorkspaceChangeRebindsTheRuntimeWatch(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	service := &workspacePathRecordingService{workspaceServiceStub: newWorkspaceServiceStub(), paths: make(chan string, 4)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 4),
@@ -1433,7 +1433,7 @@ func awaitWorkspacePath(t *testing.T, paths <-chan string, what string) string {
 }
 
 func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T) {
-	backend := &snapshotCountingRuntime{Runtime: mock.New(), readSignal: make(chan struct{}, 16)}
+	backend := &snapshotCountingRuntime{Runtime: runtimefixture.New(), readSignal: make(chan struct{}, 16)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 8), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 8),
@@ -1501,7 +1501,7 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 }
 
 func TestDeletedActiveSessionIsReplacedFromItsWorkspace(t *testing.T) {
-	backend := &snapshotCountingRuntime{Runtime: mock.New(), readSignal: make(chan struct{}, 8)}
+	backend := &snapshotCountingRuntime{Runtime: runtimefixture.New(), readSignal: make(chan struct{}, 8)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
@@ -1525,7 +1525,7 @@ func TestDeletedActiveSessionIsReplacedFromItsWorkspace(t *testing.T) {
 }
 
 func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
@@ -1566,9 +1566,9 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 }
 
 func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
@@ -1624,18 +1624,18 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 }
 
 func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	answers := make(chan []agent.InterruptAnswer, 1)
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval_invalidation", Title: "Run generated command",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1676,10 +1676,10 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 }
 
 func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval_editor_invalidation", Title: "Run generated command",
 				Tool: &agent.ToolCall{
@@ -1687,8 +1687,8 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 					ArgumentsJSON: []byte(`{"command":"go test ./..."}`),
 				},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1733,16 +1733,16 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 }
 
 func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
-	base.Script = func(string) mock.Script {
-		return mock.Script{
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval_resume_race", Title: "Run generated command",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}

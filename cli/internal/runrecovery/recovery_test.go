@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/runrecovery"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	runtime.Instant = true
 	runtime.Script = completedScript
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -42,9 +42,9 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 }
 
 func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
-	runtime := mock.New()
-	runtime.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	runtime := runtimefixture.New()
+	runtime.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -74,9 +74,9 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 }
 
 func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *testing.T) {
-	runtime := mock.New()
-	runtime.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	runtime := runtimefixture.New()
+	runtime.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -104,10 +104,10 @@ func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *tes
 
 func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing.T) {
 	t.Run("waiting", func(t *testing.T) {
-		runtime := mock.New()
+		runtime := runtimefixture.New()
 		runtime.Instant = true
-		runtime.Script = func(string) mock.Script {
-			return mock.Script{Interactions: []agent.Interaction{agent.Approval{
+		runtime.Script = func(string) runtimefixture.Script {
+			return runtimefixture.Script{Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval_1", Title: "Run checks",
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
 			}}}
@@ -136,7 +136,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 	})
 
 	t.Run("finished", func(t *testing.T) {
-		runtime := mock.New()
+		runtime := runtimefixture.New()
 		runtime.Instant = true
 		runtime.Script = completedScript
 		session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -162,7 +162,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		runtime := mock.New()
+		runtime := runtimefixture.New()
 		session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
@@ -207,8 +207,8 @@ func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 	}
 }
 
-func completedScript(string) mock.Script {
-	return mock.Script{Prelude: []mock.Step{
+func completedScript(string) runtimefixture.Script {
+	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
 		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 	}}

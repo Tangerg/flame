@@ -10,8 +10,8 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 type invalidEventAfterInterruptRuntime struct {
@@ -87,13 +87,13 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			backend := mock.New()
+			backend := runtimefixture.New()
 			backend.Instant = true
-			backend.Script = func(string) mock.Script {
-				return mock.Script{
+			backend.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{
 					Interactions: []agent.Interaction{test.interaction},
-					Continue: func([]agent.InterruptAnswer) []mock.Step {
-						return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+					Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 					},
 				}
 			}
@@ -122,20 +122,20 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 }
 
 func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.ApprovalAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Approval{
 				ItemID: "approval_resume_persistence", Title: "Persist before resuming",
 				Tool: &agent.ToolCall{
 					Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -166,11 +166,11 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 }
 
 func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan agent.QuestionAnswer, 1)
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "question_resume_persistence", Title: "Persist question before resuming",
 				Fields: []agent.QuestionField{{
@@ -178,9 +178,9 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 					Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []mock.Step {
+			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.QuestionAnswer)
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -213,10 +213,10 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 }
 
 func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []agent.InterruptAnswer, 1)
-	backend.Script = func(string) mock.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")

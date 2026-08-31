@@ -1,4 +1,4 @@
-package mock
+package runtimefixture
 
 import "github.com/Tangerg/flame/cli/internal/agent"
 

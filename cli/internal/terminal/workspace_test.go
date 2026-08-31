@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -40,7 +40,7 @@ func TestResolveWorkspaceUsesTheCurrentRootForRelativePathsAndRejectsFiles(t *te
 }
 
 type workspaceRecordingRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 	created chan string
 }
 
@@ -66,7 +66,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	if err := store.RememberWorkspace(recent); err != nil {
 		t.Fatal(err)
 	}
-	backend := &workspaceRecordingRuntime{Runtime: mock.New(), created: make(chan string, 4)}
+	backend := &workspaceRecordingRuntime{Runtime: runtimefixture.New(), created: make(chan string, 4)}
 	backend.Instant = true
 	host, stop := runUIWithState(t, backend, current, "", state)
 	host.Shows(t, "Ask flame")

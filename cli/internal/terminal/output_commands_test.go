@@ -14,10 +14,10 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestParseExportArgumentSeparatesTheFormatFromAnOptionalSpacedFilename(t *testing.T) {
@@ -103,7 +103,7 @@ func runUIWithCopyHost(t *testing.T, backend agent.Runtime, workspace string) (*
 
 func TestCopyLastAndExportCommandsUseTheDurableSessionSnapshot(t *testing.T) {
 	workspace := t.TempDir()
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = stableCompletedScript
 	host, stop := runUIWithCopyHost(t, backend, workspace)
@@ -140,7 +140,7 @@ func TestCopyLastAndExportCommandsUseTheDurableSessionSnapshot(t *testing.T) {
 
 func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	workspace := t.TempDir()
-	backend := mock.New()
+	backend := runtimefixture.New()
 	session, err := backend.CreateSession(t.Context(), agent.CreateSession{
 		Title: "Export ownership", Workspace: workspace,
 	})

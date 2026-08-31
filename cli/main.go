@@ -11,13 +11,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/cmd"
-	"github.com/Tangerg/flame/cli/internal/runtimeembedded"
 )
-
-const mockRuntimeNotice = "flame: scripted mock runtime (explicit test/demo mode)"
 
 const runtimeCloseAttempts = 3
 
@@ -26,28 +22,31 @@ func main() {
 }
 
 func run() int {
-	ctx, stop := processSignalContext(context.Background())
-	defer stop()
-
 	flameHome, err := flameHomeDirectory()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 		return exitCode(err)
 	}
-	owner, notice, err := newRuntimeOwnerAt(flameHome)
+	owner, err := newRuntimeOwnerAt(flameHome)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 		return exitCode(err)
 	}
+	return runWithRuntimeOwner(owner, filepath.Join(flameHome, "cli"))
+}
+
+func runWithRuntimeOwner(owner runtimeOwner, stateDirectory string) int {
+	ctx, stop := processSignalContext(context.Background())
+	defer stop()
+
 	root := cmd.NewRoot(cmd.Dependencies{
 		OpenRuntime:    owner.Runtime,
-		RuntimeNotice:  notice,
-		StateDirectory: filepath.Join(flameHome, "cli"),
+		StateDirectory: stateDirectory,
 	})
 	root.SetIn(os.Stdin)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
-	err = root.ExecuteContext(ctx)
+	err := root.ExecuteContext(ctx)
 	err = errors.Join(err, closeRuntimeOwner(owner))
 	if cause := context.Cause(ctx); cause != nil {
 		err = errors.Join(cause, err)
@@ -64,11 +63,6 @@ type runtimeOwner interface {
 	Close() error
 }
 
-type mockOwner struct{ services backend.Services }
-
-func (m *mockOwner) Runtime(context.Context) (backend.Services, error) { return m.services, nil }
-func (*mockOwner) Close() error                                        { return nil }
-
 func closeRuntimeOwner(owner runtimeOwner) error {
 	if owner == nil {
 		return nil
@@ -82,40 +76,6 @@ func closeRuntimeOwner(owner runtimeOwner) error {
 		errorsByAttempt = append(errorsByAttempt, err)
 	}
 	return fmt.Errorf("close runtime after %d attempts: %w", runtimeCloseAttempts, errors.Join(errorsByAttempt...))
-}
-
-func newRuntimeOwner() (runtimeOwner, string, error) {
-	if os.Getenv("FLAME_RUNTIME") == "mock" {
-		return newRuntimeOwnerAt("")
-	}
-	flameHome, err := flameHomeDirectory()
-	if err != nil {
-		return nil, "", err
-	}
-	return newRuntimeOwnerAt(flameHome)
-}
-
-func newRuntimeOwnerAt(flameHome string) (runtimeOwner, string, error) {
-	switch mode := os.Getenv("FLAME_RUNTIME"); mode {
-	case "mock":
-		return &mockOwner{services: backend.AgentOnly(mock.New())}, mockRuntimeNotice, nil
-	case "", "embedded":
-	default:
-		return nil, "", fmt.Errorf("unsupported FLAME_RUNTIME %q (want embedded or mock)", mode)
-	}
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return nil, "", fmt.Errorf("resolve runtime home: %w", err)
-	}
-	runtimeDirectory := filepath.Join(filepath.Clean(flameHome), "runtime")
-	configDirectories, err := runtimeConfigDirectories(runtimeDirectory)
-	if err != nil {
-		return nil, "", err
-	}
-	return runtimeembedded.NewOwner(runtimeembedded.Config{
-		DataDirectory: runtimeDirectory, UserHomePath: userHome,
-		ConfigDirectories: configDirectories, ClientVersion: cmd.Version(),
-	}), "", nil
 }
 
 func flameHomeDirectory() (string, error) {

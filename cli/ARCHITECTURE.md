@@ -82,6 +82,8 @@ The process lazily opens at most one module-root Runtime and fully closes it bef
 - re-reads authoritative state after a gap, reconnect, or cold recovery
 - preserves exact provider/model identity and model-owned options
 
+The production binary has no Runtime implementation selector. Scripted Runtime behavior is test support, not a product capability; PTY coverage re-executes the Go test binary and composes the fixture from test code. Ordinary unit tests inject narrow consumer interfaces directly.
+
 The CLI can share a compatible Runtime data directory with another process because Runtime already owns that storage contract. CLI code does not add a second global lock, heartbeat, leader election, or compatibility reader.
 
 CLI run settings hold an optional exact provider/model override, not a product default. The zero pair means “use the active Session selection”; one-shot and TUI commands preserve that omission on the wire. Presentation may combine the omitted override with the current Session projection to show the exact effective model, but that derived label never becomes command state. Explicit configuration or `--provider` + `--model` still sends an override. CLI preference environment variables use `FLAME_CLI_*`; Runtime deployment/configuration keeps `FLAME_*`. Root persistent preference flags are bound from the root flag set, so a subcommand-local flag such as `sessions update --model` cannot mutate unrelated Run settings.

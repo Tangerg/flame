@@ -11,10 +11,10 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -172,7 +172,7 @@ func (c *changeSourceStub) Subscribe(ctx context.Context, _ changefeed.Subscript
 
 func runUIWithWorkspaceBackend(t *testing.T, service workspace.Service, source changefeed.Source) (*programtest.Host, func()) {
 	t.Helper()
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Instant = true
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())

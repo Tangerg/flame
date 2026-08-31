@@ -716,70 +716,6 @@ func TestConversationDoesNotMaintainAnUnconsumedRevision(t *testing.T) {
 	}
 }
 
-func TestProductionMockRuntimeUsesUnboundedOpaqueIdentity(t *testing.T) {
-	root := moduleRoot(t)
-	runtimePath := filepath.Join(root, "internal", "agent", "mock", "runtime.go")
-	if got := cliStructFieldTypes(t, runtimePath, "Runtime")["identities"]; got != "mockIdentitySequence" {
-		t.Fatalf("agent/mock.Runtime.identities type = %q, want mockIdentitySequence", got)
-	}
-	identityPath := filepath.Join(root, "internal", "agent", "mock", "identity.go")
-	if got := cliStructFieldTypes(t, identityPath, "mockIdentitySequence")["value"]; got != "big.Int" {
-		t.Fatalf("agent/mock.mockIdentitySequence.value type = %q, want big.Int", got)
-	}
-	contents, err := os.ReadFile(identityPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(contents)
-	for _, required := range []string{
-		"func (s *mockIdentitySequence) next(namespace identityNamespace) string",
-		"sessionIdentity identityNamespace = \"ses_mock_\"",
-		"runIdentity     identityNamespace = \"run_mock_\"",
-		"segmentIdentity identityNamespace = \"seg_mock_\"",
-		"itemIdentity    identityNamespace = \"item_mock_\"",
-		"eventIdentity   identityNamespace = \"evt_mock_\"",
-		"ruleIdentity    identityNamespace = \"rule_mock_\"",
-	} {
-		if !strings.Contains(text, required) {
-			t.Errorf("production mock identity owner lost %q", required)
-		}
-	}
-	walk(t, filepath.Join(root, "internal", "agent", "mock"), func(_, path string) {
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(string(contents), "r.next++") {
-			t.Errorf("%s restored unchecked shared mock identity", path)
-		}
-	})
-}
-
-func TestMockSessionMutationsReserveRevisionBeforeCommit(t *testing.T) {
-	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "agent", "mock", "sessions.go")
-	contents, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(contents)
-	for _, required := range []string{
-		"exactint.Restore(s.meta.Revision)",
-		"current.Advance(uint64(changes))",
-		"func (s *sessionState) commitMeta(candidate agent.Session) error",
-		"func nextSessionMeta(current, candidate agent.Session) (agent.Session, error)",
-		"planAtRun := maps.Clone(state.planAtRun)",
-		"items := slices.DeleteFunc(slices.Clone(state.items)",
-	} {
-		if !strings.Contains(text, required) {
-			t.Errorf("mock Session mutation lost atomic revision boundary %q", required)
-		}
-	}
-	if strings.Contains(text, "state.meta.Revision++") {
-		t.Fatal("mock Session command restored post-mutation revision wrap")
-	}
-}
-
 func TestRevisionedCLIProjectionsShareOneExactIntegerEnvelope(t *testing.T) {
 	root := moduleRoot(t)
 	counterPath := filepath.Join(root, "internal", "exactint", "counter.go")
@@ -802,7 +738,6 @@ func TestRevisionedCLIProjectionsShareOneExactIntegerEnvelope(t *testing.T) {
 		filepath.Join(root, "internal", "agent", "session.go"),
 		filepath.Join(root, "internal", "agent", "plan.go"),
 		filepath.Join(root, "internal", "schedule", "schedule.go"),
-		filepath.Join(root, "internal", "agent", "mock", "sessions.go"),
 	} {
 		contents, err := os.ReadFile(consumer)
 		if err != nil {
@@ -812,64 +747,6 @@ func TestRevisionedCLIProjectionsShareOneExactIntegerEnvelope(t *testing.T) {
 			t.Errorf("%s does not consume the exact revision owner", consumer)
 		}
 	}
-}
-
-func TestMockRunLifecycleOwnsRevisionCapacityAndTerminalStreamFailure(t *testing.T) {
-	root := moduleRoot(t)
-	for _, check := range []struct {
-		path     string
-		required []string
-	}{
-		{
-			path: filepath.Join(root, "internal", "agent", "mock", "sessions.go"),
-			required: []string{
-				"type sessionRevisionChanges uint64",
-				"func (s *sessionState) requireRevisionCapacity(changes sessionRevisionChanges) error",
-			},
-		},
-		{
-			path: filepath.Join(root, "internal", "agent", "mock", "run_control.go"),
-			required: []string{
-				"func startRunRevisionChanges(session *sessionState) sessionRevisionChanges",
-				"func resumeRunRevisionChanges(session *sessionState, message *agent.Message, approvalEvents int) sessionRevisionChanges",
-			},
-		},
-		{
-			path: filepath.Join(root, "internal", "agent", "mock", "playback.go"),
-			required: []string{
-				"func (r *Runtime) failSegmentLocked(run *runState, err error)",
-				"func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error",
-				"func (r *Runtime) setSessionStatusLocked(session *sessionState, status agent.SessionStatus) error",
-			},
-		},
-	} {
-		contents, err := os.ReadFile(check.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		text := string(contents)
-		for _, required := range check.required {
-			if !strings.Contains(text, required) {
-				t.Errorf("mock lifecycle lost revision/terminal boundary %q", required)
-			}
-		}
-	}
-	if got := cliStructFieldTypes(t, filepath.Join(root, "internal", "agent", "mock", "runtime.go"), "segmentState")["terminalErr"]; got != "error" {
-		t.Fatalf("mock segmentState.terminalErr type = %q, want error", got)
-	}
-	walk(t, filepath.Join(root, "internal", "agent", "mock"), func(_, path string) {
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		text := string(contents)
-		if strings.Contains(text, "Revision++") {
-			t.Errorf("%s restored unchecked Session revision increment", path)
-		}
-		if strings.Contains(text, "finishOnce") {
-			t.Errorf("%s restored one-shot finish ownership that consumes retry after failed commit", path)
-		}
-	})
 }
 
 func TestDraftPersistenceRevisionIdentityCannotWrap(t *testing.T) {
@@ -1254,7 +1131,7 @@ var layers = []struct {
 	prefix string
 	name   string
 }{
-	{"internal/agent/mock/", "mock"},
+	{"internal/testsupport/runtimefixture/", "runtimefixture"},
 	{"internal/exactint/", "exactint"},
 	{"internal/runtimeembedded/", "runtimeembedded"},
 	{"internal/authoringcontext/", "authoringcontext"},
@@ -1347,7 +1224,7 @@ var allowed = map[string][]string{
 	"attachment":      {"agent"},
 	"reconnect":       {"agent"},
 	"runrecovery":     {"agent"},
-	"mock":            {"agent", "exactint", "failure", "sessionidentity", "workspace"},
+	"runtimefixture":  {"agent", "exactint", "failure", "sessionidentity", "workspace"},
 	"runtimeembedded": {"agent", "agentmemory", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "runidentity", "runtimeprofile", "schedule", "sessionidentity", "sessiontransfer", "skills", "usage", "workspace"},
 	"render":          {"agent", "failure", "runidentity"},
 
@@ -1424,7 +1301,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "mock", "runtimeembedded", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
+	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeembedded", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1492,11 +1369,11 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		from, to string
 		refused  bool
 	}{
-		{"internal/agent", "internal/agent/mock", true},
+		{"internal/agent", "internal/testsupport/runtimefixture", true},
 		{"internal/agent", "internal/terminal", true},
 		{"internal/agent", "internal/runtimeembedded", true},
 		{"internal/extensions", "internal/agent", true},
-		{"internal/agent/mock", "internal/render", true},
+		{"internal/testsupport/runtimefixture", "internal/render", true},
 		{"internal/attachment", "internal/terminal", true},
 		{"internal/reconnect", "internal/cmd", true},
 		{"internal/runrecovery", "internal/cmd", true},
@@ -1511,7 +1388,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/terminal", "internal/cmd", true},
 		{"internal/sideload", "internal/cmd", true},
 
-		{"internal/agent/mock", "internal/agent", false},
+		{"internal/testsupport/runtimefixture", "internal/agent", false},
 		{"internal/runtimeembedded", "internal/agent", false},
 		{"internal/runtimeembedded", "internal/terminal", true},
 		{"internal/terminal", "internal/agent", false},

@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {
@@ -87,7 +87,7 @@ func runUIWithAttentionHost(t *testing.T, backend agent.Runtime) (*attentionTest
 }
 
 func TestUnfocusedRunCompletionNotifiesAndMarksTheTitleUntilInput(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	backend.Script = stableCompletedScript
 	host, stop := runUIWithAttentionHost(t, backend)
 	host.Shows(t, "Ask flame")
@@ -106,10 +106,10 @@ func TestUnfocusedRunCompletionNotifiesAndMarksTheTitleUntilInput(t *testing.T) 
 }
 
 func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
-	backend := mock.New()
-	backend.Script = func(string) mock.Script {
-		return mock.Script{
-			Prelude: []mock.Step{{Delay: 50 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
+	backend := runtimefixture.New()
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
+			Prelude: []runtimefixture.Step{{Delay: 50 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "thinking", Kind: agent.BlockReasoning, Text: "checking permissions",
 			}}}},
 			Interactions: []agent.Interaction{agent.Approval{
@@ -117,8 +117,8 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 					Kind: agent.ToolEdit, Name: "edit", Path: "config.json", Status: agent.ToolRunning,
 				},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}

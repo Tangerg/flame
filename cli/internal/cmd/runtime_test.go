@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
 func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
 			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) {
-				return backend.Services{Agent: mock.New(), RuntimeProfile: new(profile.Clone())}, nil
+				return backend.Services{Agent: runtimefixture.New(), RuntimeProfile: new(profile.Clone())}, nil
 			}})
 			root.SetOut(&output)
 			root.SetErr(&output)

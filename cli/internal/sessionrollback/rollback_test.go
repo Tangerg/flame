@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
 type recordingRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	calls     int
 	request   agent.RollbackSession
@@ -78,7 +78,7 @@ func (r *recordingRuntime) RollbackSession(
 }
 
 func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
-	underlying := mock.New()
+	underlying := runtimefixture.New()
 	snapshot, err := underlying.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
 		t.Fatal(err)
@@ -110,9 +110,9 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 	}
 }
 
-func rollbackFixture(t *testing.T, request agent.RollbackSession) (*mock.Runtime, Preview) {
+func rollbackFixture(t *testing.T, request agent.RollbackSession) (*runtimefixture.Runtime, Preview) {
 	t.Helper()
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	snapshot, err := runtime.GetSession(t.Context(), request.SessionID)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 }
 
 func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			underlying := mock.New()
+			underlying := runtimefixture.New()
 			snapshot, err := underlying.GetSession(t.Context(), "ses_demo_1")
 			if err != nil {
 				t.Fatal(err)

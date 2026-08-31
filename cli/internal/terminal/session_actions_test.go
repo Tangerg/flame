@@ -15,12 +15,12 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -167,7 +167,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 }
 
 func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	workspace := t.TempDir()
 	target, err := base.CreateSession(t.Context(), agent.CreateSession{Title: "Post-commit delete target", Workspace: workspace})
 	if err != nil {
@@ -218,7 +218,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 }
 
 func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	workspace := t.TempDir()
 	target, err := backend.CreateSession(t.Context(), agent.CreateSession{Title: "Interrupted delete target", Workspace: workspace})
 	if err != nil {
@@ -278,7 +278,7 @@ func TestParseRollbackArgumentPreservesTheInclusiveBoundaryAndScope(t *testing.T
 }
 
 func TestRollbackPreviewRejectsEverySessionRevisionChange(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	snapshot, err := backend.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +300,7 @@ func TestRollbackPreviewRejectsEverySessionRevisionChange(t *testing.T) {
 }
 
 func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	before, err := backend.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
 		t.Fatal(err)
@@ -341,7 +341,7 @@ func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
 }
 
 func TestRollbackConfirmationSurvivesExtremeResizeAndRestoresOpeningInput(t *testing.T) {
-	backend := mock.New()
+	backend := runtimefixture.New()
 	host, stop := runUIForSession(t, backend, "ses_demo_1")
 	host.Shows(t, "Ask flame")
 	host.Type("/rollback all history")
@@ -362,14 +362,14 @@ func TestRollbackConfirmationSurvivesExtremeResizeAndRestoresOpeningInput(t *tes
 }
 
 type blockedRollbackRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	entered chan struct{}
 	release chan struct{}
 }
 
 type committedThenCanceledRollbackRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	committed chan struct{}
 	once      sync.Once
@@ -388,7 +388,7 @@ func (c *committedThenCanceledRollbackRuntime) RollbackSession(
 }
 
 type postCommitRollbackRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu      sync.Mutex
 	request agent.RollbackSession
@@ -415,7 +415,7 @@ func (p *postCommitRollbackRuntime) rollbackRequest() agent.RollbackSession {
 }
 
 func TestRollbackConvergesPostCommitFailureAndRestoresOpeningInput(t *testing.T) {
-	backend := &postCommitRollbackRuntime{Runtime: mock.New()}
+	backend := &postCommitRollbackRuntime{Runtime: runtimefixture.New()}
 	host, stop := runUIForSession(t, backend, "ses_demo_1")
 	host.Shows(t, "Ask flame")
 	host.Type("/rollback all history")
@@ -435,7 +435,7 @@ func TestRollbackConvergesPostCommitFailureAndRestoresOpeningInput(t *testing.T)
 
 func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 	backend := &blockedRollbackRuntime{
-		Runtime: mock.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
+		Runtime: runtimefixture.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
@@ -460,7 +460,7 @@ func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 
 func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	stateDirectory := t.TempDir()
-	underlying := mock.New()
+	underlying := runtimefixture.New()
 	backend := &committedThenCanceledRollbackRuntime{
 		Runtime: underlying, committed: make(chan struct{}),
 	}
@@ -504,7 +504,7 @@ func (b *blockedRollbackRuntime) RollbackSession(ctx context.Context, request ag
 
 func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T) {
 	backend := &blockedRollbackRuntime{
-		Runtime: mock.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
+		Runtime: runtimefixture.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
@@ -532,7 +532,7 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 	stop()
 }
 
-type importingTransfer struct{ runtime *mock.Runtime }
+type importingTransfer struct{ runtime *runtimefixture.Runtime }
 
 func (i importingTransfer) ExportSession(context.Context, sessiontransfer.ExportRequest) (sessiontransfer.Document, error) {
 	return sessiontransfer.Document{}, errors.New("unexpected export")
@@ -551,7 +551,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	if err := os.WriteFile(artifact, []byte(`{"version":17}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := mock.New()
+	backend := runtimefixture.New()
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
@@ -633,7 +633,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 }
 
 type steeringRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu      sync.Mutex
 	request agent.SteerRun
@@ -641,7 +641,7 @@ type steeringRuntime struct {
 }
 
 type blockedSteeringRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	entered chan agent.SteerRun
 	release chan struct{}
@@ -678,14 +678,14 @@ func (s *steeringRuntime) lastSteer() agent.SteerRun {
 }
 
 type uncertainSteeringRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu       sync.Mutex
 	requests []agent.SteerRun
 }
 
 type committedThenCanceledSteeringRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	committed chan agent.SteerRun
 }
@@ -706,7 +706,7 @@ func (c *committedThenCanceledSteeringRuntime) SteerRun(
 }
 
 type cachedSteeringRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	accepted agent.SteerRun
 	attempts []agent.SteerRun
@@ -741,9 +741,9 @@ func (u *uncertainSteeringRuntime) steerAttempts() []agent.SteerRun {
 }
 
 func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -777,9 +777,9 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 }
 
 func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -837,9 +837,9 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 }
 
 func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -863,9 +863,9 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 }
 
 func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}

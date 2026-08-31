@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/agent/mock"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
+	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
-type invalidOpeningRuntime struct{ *mock.Runtime }
+type invalidOpeningRuntime struct{ *runtimefixture.Runtime }
 
 type treeReconnectRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 	initial       agent.SegmentStream
 	rebound       agent.SegmentStream
 	subscriptions []agent.SubscribeRun
@@ -36,17 +36,17 @@ func (t *treeReconnectRuntime) SubscribeRun(_ context.Context, input agent.Subsc
 }
 
 type refusingCancellationRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	failure  error
 	mu       sync.Mutex
 	attempts []agent.CancelRun
 }
 
-type misdirectedCancellationRuntime struct{ *mock.Runtime }
+type misdirectedCancellationRuntime struct{ *runtimefixture.Runtime }
 
 type uncertainAcknowledgementRuntime struct {
-	*mock.Runtime
+	*runtimefixture.Runtime
 
 	mu             sync.Mutex
 	startAttempts  []agent.StartRun
@@ -222,7 +222,7 @@ func unlimitedStart(sessionID, text string) agent.StartRun {
 
 func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
 	t.Parallel()
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer), ReconnectAttempts: -1,
 		ReplayPolicy: commandreplay.UnavailablePolicy(),
@@ -240,7 +240,7 @@ func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
 }
 
 func TestOpenRunChecksReplayAdmissionBeforeEveryAttempt(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
 	admissions := 0
 	_, err := openRun(t.Context(), runtime, agent.StartRun{
@@ -263,7 +263,7 @@ func TestOpenRunChecksReplayAdmissionBeforeEveryAttempt(t *testing.T) {
 }
 
 func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	runtime.Instant = true
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	renderer := new(recordingRenderer)
@@ -286,7 +286,7 @@ func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
 }
 
 func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -314,7 +314,7 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 }
 
 func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -336,16 +336,16 @@ func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *test
 }
 
 func TestExecuteLeavesQuestionsParked(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	runtime.Instant = true
-	runtime.Script = func(string) mock.Script {
-		return mock.Script{
+	runtime.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "q_1", Title: "Target",
 				Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
-			Continue: func([]agent.InterruptAnswer) []mock.Step {
-				return []mock.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -366,10 +366,10 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 }
 
 func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
-	runtime := mock.New()
-	runtime.Faults = []mock.SubscriptionFault{{Kind: mock.FaultDisconnect, After: 1}}
-	runtime.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{
+	runtime := runtimefixture.New()
+	runtime.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultDisconnect, After: 1}}
+	runtime.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: 30 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
 			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
@@ -387,7 +387,7 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 }
 
 func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testing.T) {
-	base := mock.New()
+	base := runtimefixture.New()
 	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
@@ -464,7 +464,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 }
 
 func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
-	runtime := mock.New()
+	runtime := runtimefixture.New()
 	runtime.Instant = true
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	want := errors.New("write failed")
@@ -479,9 +479,9 @@ func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
 }
 
 func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -517,9 +517,9 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 }
 
 func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -545,9 +545,9 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 }
 
 func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
@@ -568,9 +568,9 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 }
 
 func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
-	base := mock.New()
-	base.Script = func(string) mock.Script {
-		return mock.Script{Prelude: []mock.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
 	}
 	session, _ := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
