@@ -1,12 +1,11 @@
 import { DataView } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useT } from "@/lib/i18n";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useWorkspaceAgentDocs } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { workspaceAgentDocsViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 
-function AgentDocsTab() {
+export function AgentDocsTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const { data, isLoading, isError } = useWorkspaceAgentDocs(
@@ -55,12 +54,3 @@ function AgentDocsTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const agentDocsView = defineWorkspaceView({
-  id: "agent-docs",
-  title: "workspace.view.title.agentDocs",
-  icon: "book",
-  order: 110,
-  splittable: true,
-  component: AgentDocsTab,
-});

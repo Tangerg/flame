@@ -4,10 +4,9 @@ import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/pu
 import { Badge, DataView, Icon, Pressable } from "@/ui";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 
-function InboxTab() {
+export function InboxTab() {
   const t = useT();
   const query = usePendingWork();
   const sessions = useAgentSessions();
@@ -86,20 +85,3 @@ function PendingRow({
     </Pressable>
   );
 }
-
-function InboxBadge() {
-  const { data } = usePendingWork();
-  const count = data?.length ?? 0;
-  if (count === 0) return null;
-  return <>{count}</>;
-}
-
-export const inboxView = defineWorkspaceView({
-  id: "inbox",
-  title: "workspace.view.title.inbox",
-  icon: "bell",
-  badge: InboxBadge,
-  order: 15,
-  splittable: true,
-  component: InboxTab,
-});

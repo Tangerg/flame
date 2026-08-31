@@ -10,10 +10,9 @@ import {
   workspaceSearchSubtext,
   workspaceSearchViewModel,
 } from "@/plugins/builtin/workspace/application/searchViewModel";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { openWorkspaceFile } from "@/plugins/builtin/workspace/public/navigation";
 
-function SearchTab() {
+export function SearchTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const [input, setInput] = useState("");
@@ -94,12 +93,3 @@ function SearchTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const searchView = defineWorkspaceView({
-  id: "search",
-  title: "workspace.view.title.search",
-  icon: "search",
-  order: 10,
-  splittable: true,
-  component: SearchTab,
-});

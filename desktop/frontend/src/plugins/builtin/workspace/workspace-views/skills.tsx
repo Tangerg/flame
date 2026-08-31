@@ -1,13 +1,12 @@
 import { DataView } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useWorkspaceSkills } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useWorkspaceCapability } from "@/plugins/builtin/workspace/application/workspaceCapabilities";
 import { workspaceSkillsViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 
-function SkillsTab() {
+export function SkillsTab() {
   const t = useT();
   const skillsEnabled = useWorkspaceCapability("skills");
   const workspace = useActiveSessionWorkspace();
@@ -68,12 +67,3 @@ function SkillsTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const skillsView = defineWorkspaceView({
-  id: "skills",
-  title: "workspace.view.title.skills",
-  icon: "sparkle",
-  order: 80,
-  splittable: true,
-  component: SkillsTab,
-});

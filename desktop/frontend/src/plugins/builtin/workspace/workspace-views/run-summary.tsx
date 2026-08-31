@@ -4,7 +4,6 @@ import { Badge, DiffStat, EmptyState, FilePath, Icon, IconButton } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { buildPlaintext } from "@/plugins/builtin/agent/public/runDigest";
 import { useT } from "@/lib/i18n";
 import { useLatestRunDigest } from "@/plugins/builtin/workspace/presentation/runSummaryView";
@@ -45,7 +44,7 @@ function Section({
   );
 }
 
-function RunSummaryTab() {
+export function RunSummaryTab() {
   const t = useT();
   const digest = useLatestRunDigest();
   const copyMaterial = digest ? buildPlaintext(t, digest) : "";
@@ -157,12 +156,3 @@ function RunSummaryTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const runSummaryView = defineWorkspaceView({
-  id: "run-summary",
-  title: "workspace.view.title.runSummary",
-  icon: "check",
-  order: 130,
-  splittable: true,
-  component: RunSummaryTab,
-});

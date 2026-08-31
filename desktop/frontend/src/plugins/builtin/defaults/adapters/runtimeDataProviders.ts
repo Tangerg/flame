@@ -5,7 +5,10 @@ import {
   APPROVAL_RULES_KEY,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { AGENT_SESSIONS_KEY } from "@/plugins/builtin/agent/public/session";
-import { RECIPES_KEY, type RecipesQuery } from "@/plugins/builtin/chat/recipes/public/queries";
+import {
+  WORKSPACE_RECIPES_KEY,
+  type WorkspaceRecipesQuery,
+} from "@/plugins/builtin/workspace/public/queries";
 import { HOOKS_KEY, type HooksQuery } from "@/plugins/builtin/settings/hooks/public/queries";
 import {
   EMBEDDING_ROLE_KEY,
@@ -340,9 +343,9 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     },
   });
   contribute({
-    key: RECIPES_KEY,
+    key: WORKSPACE_RECIPES_KEY,
     fetcher: async (read, params) => {
-      const resources = await read.workspace(optionalParams<RecipesQuery>(params)?.cwd);
+      const resources = await read.workspace(optionalParams<WorkspaceRecipesQuery>(params)?.cwd);
       return pageData(resources.recipes.list()).catch(emptyListIfUngated);
     },
   });

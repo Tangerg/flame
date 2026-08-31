@@ -5,13 +5,12 @@ import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { useWorkspaceListFiles } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { FileTree } from "./views/FileTree";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   openWorkspaceFile,
   useWorkspaceFileViewer,
 } from "@/plugins/builtin/workspace/public/navigation";
 
-function ExplorerView() {
+export function ExplorerView() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
@@ -53,12 +52,3 @@ function ExplorerView() {
     </WorkspaceViewLayout>
   );
 }
-
-export const fileTreeView = defineWorkspaceView({
-  id: "explorer",
-  title: "workspace.view.title.filetree",
-  icon: "folder",
-  order: 20,
-  splittable: true,
-  component: ExplorerView,
-});

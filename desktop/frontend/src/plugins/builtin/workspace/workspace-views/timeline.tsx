@@ -4,7 +4,6 @@ import { Badge, EmptyState, Icon, IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { cn } from "@/lib/classNames";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   cancelSessionRun,
   useActiveSessionRunTree,
@@ -160,7 +159,7 @@ function TimelineRunHeader({
   );
 }
 
-function TimelineTab() {
+export function TimelineTab() {
   const t = useT();
   const timeline = useActiveSessionTimeline();
   const runTree = useActiveSessionRunTree();
@@ -213,12 +212,3 @@ function TimelineTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const timelineView = defineWorkspaceView({
-  id: "timeline",
-  title: "workspace.view.title.timeline",
-  icon: "history",
-  order: 140,
-  splittable: true,
-  component: TimelineTab,
-});

@@ -13,10 +13,9 @@ import {
   useWorkspaceFileFocus,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { gitOffEmpty, isVcsUnavailable, notARepoEmpty } from "./views/vcsGate";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useWorkspaceCapability } from "@/plugins/builtin/workspace/application/workspaceCapabilities";
 
-function FilesView() {
+export function FilesView() {
   const t = useT();
   const gitEnabled = useWorkspaceCapability("git");
   const workspace = useActiveSessionWorkspace();
@@ -67,12 +66,3 @@ function FilesView() {
     </WorkspaceViewLayout>
   );
 }
-
-export const filesView = defineWorkspaceView({
-  id: "files",
-  title: "workspace.view.title.files",
-  icon: "filetext",
-  order: 30,
-  splittable: true,
-  component: FilesView,
-});

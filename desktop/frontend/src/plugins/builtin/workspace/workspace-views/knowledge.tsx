@@ -5,7 +5,6 @@ import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { notifyError } from "@/plugins/sdk";
 import { cn } from "@/lib/classNames";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   KnowledgeDraft,
   loadWorkspaceKnowledge,
@@ -136,7 +135,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
   );
 }
 
-function KnowledgeTab() {
+export function KnowledgeTab() {
   const t = useT();
   const knowledgeEnabled = useWorkspaceCapability("knowledge");
   const workspace = useActiveSessionWorkspace();
@@ -184,12 +183,3 @@ function KnowledgeTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const knowledgeView = defineWorkspaceView({
-  id: "knowledge",
-  title: "workspace.view.title.knowledge",
-  icon: "filetext",
-  order: 100,
-  splittable: true,
-  component: KnowledgeTab,
-});

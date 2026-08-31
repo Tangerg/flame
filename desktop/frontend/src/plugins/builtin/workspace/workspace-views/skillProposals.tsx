@@ -3,7 +3,6 @@ import { Badge, Collapsible, DataView, PillButton, TextButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   useSkillProposals,
   type SkillProposal,
@@ -15,7 +14,7 @@ import {
 } from "@/plugins/builtin/workspace/application/skillCuration";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 
-function SkillProposalsTab() {
+export function SkillProposalsTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const { data, isLoading, isError } = useSkillProposals(
@@ -151,12 +150,3 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
     </div>
   );
 }
-
-export const skillProposalsView = defineWorkspaceView({
-  id: "skill-proposals",
-  title: "workspace.view.title.skillProposals",
-  icon: "sparkle",
-  order: 85,
-  splittable: true,
-  component: SkillProposalsTab,
-});

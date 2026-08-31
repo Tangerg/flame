@@ -9,6 +9,7 @@ export {
   WORKSPACE_KNOWLEDGE_KEY,
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_READ_FILE_KEY,
+  WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
@@ -34,6 +35,7 @@ export {
   type WorkspaceProjectSummary,
   type WorkspaceReadFileQuery,
   type AgentMemoryQuery,
+  type WorkspaceRecipesQuery,
 } from "../application/workspaceQueries";
 
 // Capability gating is part of the cross-context surface; consumers must not

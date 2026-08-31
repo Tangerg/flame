@@ -9,7 +9,10 @@ import {
   subscribeAgentSessionProjection,
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
-import { RECIPES_KEY, type RecipesQuery } from "./recipeQueries";
+import {
+  WORKSPACE_RECIPES_KEY,
+  type WorkspaceRecipesQuery,
+} from "@/plugins/builtin/workspace/public/queries";
 
 interface Recipe {
   name: string;
@@ -29,7 +32,7 @@ function expandRecipe(body: string, argStr: string): string {
 export function recipeWorkspaceQuery(
   activeSessionId: string,
   sessions: readonly AgentSessionSummary[] | undefined,
-): RecipesQuery | undefined {
+): WorkspaceRecipesQuery | undefined {
   const selection = activeSessionWorkspaceSelection(activeSessionId, sessions);
   return selection.status === "ready" ? { cwd: selection.cwd } : undefined;
 }
@@ -38,12 +41,12 @@ function sessionWorkspaceRevision(sessions: readonly AgentSessionSummary[] | und
   return JSON.stringify(sessions?.map(({ id, workspace }) => [id, workspace.path]) ?? null);
 }
 
-function fetchRecipes(query: RecipesQuery): Promise<Recipe[]> {
+function fetchRecipes(query: WorkspaceRecipesQuery): Promise<Recipe[]> {
   return queryClient.fetchQuery({
-    queryKey: [RECIPES_KEY, query],
+    queryKey: [WORKSPACE_RECIPES_KEY, query],
     staleTime: 60_000,
     queryFn: () => {
-      const provider = lookupDataProvider<Recipe[], RecipesQuery>(RECIPES_KEY);
+      const provider = lookupDataProvider<Recipe[], WorkspaceRecipesQuery>(WORKSPACE_RECIPES_KEY);
       return provider ? provider(query) : Promise.resolve<Recipe[]>([]);
     },
   });
@@ -109,6 +112,6 @@ export function installRecipeSlashCommands(
     unsubscribeQuery();
     for (const disposable of dynamic) disposable.dispose();
     dynamic = [];
-    queryClient.removeQueries({ queryKey: [RECIPES_KEY], type: "inactive" });
+    queryClient.removeQueries({ queryKey: [WORKSPACE_RECIPES_KEY], type: "inactive" });
   };
 }

@@ -49,8 +49,10 @@ const INDEX_HTML = join(DIST, "index.html");
 // 2026-08-30: lowered from 3_000_000 after splitting OpenTelemetry per package
 // took 110 KB of SDKs and exporters off the startup path. A ceiling left at the
 // old value would have let that space refill without anyone noticing.
+// 2026-08-31: lowered again by the 63 KB that lazy workspace-view bodies took
+// off the entry, holding the same ~6% headroom.
 const BUDGETS = {
-  js: 2_850_000,
+  js: 2_785_000,
   css: 135_000,
 };
 
@@ -76,6 +78,37 @@ const LAZY_FEATURES = [
       "UsagePane-",
     ],
     ceiling: 200_000,
+  },
+  // Every built-in workspace view. Named one by one rather than matched by a
+  // pattern: the list IS the coverage proof, so adding a view and forgetting to
+  // register it here fails as "missing chunk" instead of passing on a shorter
+  // list nobody notices. The bodies are small individually — what this guards is
+  // the barrel, which used to pull all twenty onto the startup path at once.
+  {
+    label: "workspace views",
+    prefixes: [
+      "agent-docs-",
+      "agentMemory-",
+      "diff-",
+      "file-",
+      "files-",
+      "filetree-",
+      "inbox-",
+      "knowledge-",
+      "notifications-",
+      "plan-",
+      "recipes-",
+      "run-summary-",
+      "search-",
+      "skillLibrary-",
+      "skillProposals-",
+      "skills-",
+      "terminal-",
+      "timeline-",
+      "toolStats-",
+      "tools-",
+    ],
+    ceiling: 250_000,
   },
   { label: "syntax highlighting", prefix: "shiki-", ceiling: 3_000_000 },
   { label: "diagram rendering", prefix: "mermaid-", ceiling: 3_000_000 },

@@ -20,7 +20,6 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   type DiagnosticArgumentsParseResult,
   diagnosticToolInvocationWasRetired,
@@ -284,7 +283,7 @@ function openMcpSettings(): void {
   openWorkspaceSettingsPane(MCP_SERVERS_PANE);
 }
 
-function ToolsTab() {
+export function ToolsTab() {
   const t = useT();
   const { data, isLoading, isError } = useMCPServers();
   const view = toolCatalogViewModel(data ?? []);
@@ -318,12 +317,3 @@ function ToolsTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const toolsView = defineWorkspaceView({
-  id: "tools",
-  title: "workspace.view.title.tools",
-  icon: "tool",
-  order: 70,
-  splittable: true,
-  component: ToolsTab,
-});

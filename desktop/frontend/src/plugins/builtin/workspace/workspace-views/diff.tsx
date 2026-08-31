@@ -8,7 +8,6 @@ import { ReviewFileTree } from "./views/ReviewFileTree";
 import { ViewHeader } from "./views/ViewHeader";
 import { cn } from "@/lib/classNames";
 import { gitOffEmpty, notARepoEmpty } from "./views/vcsGate";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { focusWorkspaceFile } from "@/plugins/builtin/workspace/application/navigation";
 import {
   type WorkspaceDiffMode,
@@ -16,12 +15,6 @@ import {
   workspaceDiffFileHeader,
   useWorkspaceDiffView,
 } from "@/plugins/builtin/workspace/application/diffViewModel";
-import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import {
-  useWorkspaceCapability,
-  useWorkspaceFileChanges,
-} from "@/plugins/builtin/workspace/public/queries";
-
 const FILE_ANCHOR = "data-diff-file";
 
 function FileCard({
@@ -221,23 +214,3 @@ export function DiffWorkspaceSurface() {
     </AgentWorkspaceView>
   );
 }
-
-function DiffTabBadge() {
-  const gitEnabled = useWorkspaceCapability("git");
-  const workspace = useActiveSessionWorkspace();
-  const { data: files } = useWorkspaceFileChanges(
-    gitEnabled && workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
-  );
-  if (!files || files.length === 0) return null;
-  return String(files.length);
-}
-
-export const diffView = defineWorkspaceView({
-  id: "diff",
-  title: "workspace.view.title.diff",
-  icon: "diff",
-  badge: DiffTabBadge,
-  order: 40,
-  splittable: true,
-  component: DiffWorkspaceSurface,
-});

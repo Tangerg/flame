@@ -4,14 +4,13 @@ import { formatRelative } from "@/lib/i18n/relativeTime";
 import { cn } from "@/lib/classNames";
 import { useNotificationStore } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   notificationDotTone,
   notificationsSubtext,
   notificationsViewModel,
 } from "@/plugins/builtin/workspace/application/notificationsViewModel";
 
-function NotificationsTab() {
+export function NotificationsTab() {
   const t = useT();
   const log = useNotificationStore((s) => s.log);
   const dismiss = useNotificationStore((s) => s.dismiss);
@@ -77,12 +76,3 @@ function NotificationRow({ level, message, plugin, timestamp, dismissed, onDismi
     </div>
   );
 }
-
-export const notificationsView = defineWorkspaceView({
-  id: "notifications",
-  title: "workspace.view.title.notifications",
-  icon: "bell",
-  order: 145,
-  splittable: true,
-  component: NotificationsTab,
-});

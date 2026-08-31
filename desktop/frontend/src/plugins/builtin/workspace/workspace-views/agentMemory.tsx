@@ -6,7 +6,6 @@ import { notifyError } from "@/plugins/sdk";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   addAgentMemory,
   agentMemoryMutationWasRetired,
@@ -260,7 +259,7 @@ function ScopeToggle({ scope, onChange }: { scope: Scope; onChange: (s: Scope) =
   );
 }
 
-function AgentMemoryTab() {
+export function AgentMemoryTab() {
   const t = useT();
   const [scope, setScope] = useState<Scope>("project");
   const workspace = useActiveSessionWorkspace();
@@ -338,12 +337,3 @@ function AgentMemoryTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const agentMemoryView = defineWorkspaceView({
-  id: "agent-memory",
-  title: "workspace.view.title.agentMemory",
-  icon: "book",
-  order: 105,
-  splittable: true,
-  component: AgentMemoryTab,
-});

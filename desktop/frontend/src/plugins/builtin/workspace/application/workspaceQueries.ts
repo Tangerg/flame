@@ -1,5 +1,4 @@
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
-import { useRecipes } from "@/plugins/builtin/chat/recipes/public/queries";
 
 export interface WorkspaceProjectSummary {
   id: string;
@@ -196,6 +195,19 @@ export interface WorkspaceFileContent {
   truncated?: boolean;
 }
 
+export interface WorkspaceRecipesQuery {
+  cwd?: string;
+}
+
+export interface WorkspaceRecipe {
+  name: string;
+  description?: string;
+  argumentHint?: string;
+  body: string;
+  scope: "project" | "global";
+  source: string;
+}
+
 export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
 export const WORKSPACE_DIFF_KEY = "diff";
@@ -210,6 +222,7 @@ export const WORKSPACE_FILE_HEAD_KEY = "file-head";
 export const WORKSPACE_AGENT_DOCS_KEY = "agent-docs";
 export const WORKSPACE_LIST_FILES_KEY = "list-files";
 export const WORKSPACE_READ_FILE_KEY = "read-file";
+export const WORKSPACE_RECIPES_KEY = "recipes";
 
 export const useWorkspaceProjects =
   createDataQuery<WorkspaceProjectSummary[]>(WORKSPACE_PROJECTS_KEY);
@@ -259,4 +272,7 @@ export const useWorkspaceReadFile = createParameterizedDataQuery<
   WorkspaceReadFileQuery,
   WorkspaceFileContent
 >(WORKSPACE_READ_FILE_KEY);
-export const useWorkspaceRecipes = useRecipes;
+export const useWorkspaceRecipes = createParameterizedDataQuery<
+  WorkspaceRecipesQuery,
+  WorkspaceRecipe[]
+>(WORKSPACE_RECIPES_KEY);

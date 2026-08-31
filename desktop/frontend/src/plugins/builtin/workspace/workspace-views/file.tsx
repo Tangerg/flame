@@ -5,11 +5,10 @@ import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useWorkspaceReadFile } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useWorkspaceFileViewer } from "@/plugins/builtin/workspace/public/navigation";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 
 const targetWindowRadius = 200;
 
-function FileViewTab() {
+export function FileViewTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
@@ -64,12 +63,3 @@ function FileViewTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const fileView = defineWorkspaceView({
-  id: "file",
-  title: "workspace.view.title.file",
-  icon: "filetext",
-  order: 25,
-  splittable: true,
-  component: FileViewTab,
-});

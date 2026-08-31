@@ -2,11 +2,10 @@ import { DataView } from "@/ui";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useWorkspaceRecipes } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { workspaceRecipesViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
 
-function RecipesTab() {
+export function RecipesTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const { data, isLoading, isError } = useWorkspaceRecipes(
@@ -59,12 +58,3 @@ function RecipesTab() {
     </WorkspaceViewLayout>
   );
 }
-
-export const recipesView = defineWorkspaceView({
-  id: "recipes",
-  title: "workspace.view.title.recipes",
-  icon: "command",
-  order: 95,
-  splittable: true,
-  component: RecipesTab,
-});

@@ -3,7 +3,6 @@ import { DataView, PillButton, SectionLabel } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import {
   useManagedSkills,
   type ManagedSkill,
@@ -14,7 +13,7 @@ import {
   skillCurationWasRetired,
 } from "@/plugins/builtin/workspace/application/skillCuration";
 
-function SkillLibraryTab() {
+export function SkillLibraryTab() {
   const t = useT();
   const { data, isLoading, isError } = useManagedSkills();
   const skills = data ?? [];
@@ -113,12 +112,3 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
     </div>
   );
 }
-
-export const skillLibraryView = defineWorkspaceView({
-  id: "skill-library",
-  title: "workspace.view.title.skillLibrary",
-  icon: "sparkle",
-  order: 90,
-  splittable: true,
-  component: SkillLibraryTab,
-});

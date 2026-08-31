@@ -5,10 +5,9 @@ import { Badge, EmptyState, Icon, ProgressBar, Sparkline, knownIconName } from "
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 
-function ToolStatsTab() {
+export function ToolStatsTab() {
   const t = useT();
   const summary = toolStats(useActiveSessionToolCalls());
 
@@ -79,12 +78,3 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
     </div>
   );
 }
-
-export const toolStatsView = defineWorkspaceView({
-  id: "tool-stats",
-  title: "workspace.view.title.toolStats",
-  icon: "chart",
-  order: 150,
-  splittable: true,
-  component: ToolStatsTab,
-});

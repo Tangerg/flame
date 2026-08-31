@@ -6,7 +6,6 @@ import { workspaceCommandActivitiesFromAgentTools } from "../application/toolAct
 import { TerminalViewModel, terminalSubtext } from "../application/terminalViewModel";
 import { CommandLog } from "./views/CommandLog";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 import { useSelectedWorkspaceToolId } from "@/plugins/builtin/workspace/public/navigation";
 
 export function TerminalWorkspaceSurface() {
@@ -65,12 +64,3 @@ export function TerminalWorkspaceSurface() {
     </WorkspaceViewLayout>
   );
 }
-
-export const terminalView = defineWorkspaceView({
-  id: "terminal",
-  title: "workspace.view.title.terminal",
-  icon: "terminal",
-  order: 60,
-  splittable: true,
-  component: TerminalWorkspaceSurface,
-});

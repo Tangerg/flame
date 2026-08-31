@@ -49,16 +49,15 @@ vi.mock("./views/WorkspaceViewLayout", () => ({
   WorkspaceViewLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-import { timelineView } from "./timeline";
+import { timelineView } from "./index";
+import { TimelineTab } from "./timeline";
 
 describe("Timeline runtime actions", () => {
   it("does not offer an active cancel command while the Runtime is unavailable", async () => {
     await loadPluginsForTest(timelineView);
-    const View = lookupExtensionPoint(WORKSPACE_VIEW).find(
-      (view) => view.id === "timeline",
-    )!.component;
+    expect(lookupExtensionPoint(WORKSPACE_VIEW).some((view) => view.id === "timeline")).toBe(true);
 
-    render(<View />);
+    render(<TimelineTab />);
 
     const cancel = screen.getByRole("button", { name: "Cancel this run" });
     expect((cancel as HTMLButtonElement).disabled).toBe(true);

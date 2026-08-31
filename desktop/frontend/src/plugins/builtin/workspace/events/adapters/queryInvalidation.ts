@@ -9,7 +9,6 @@ import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
-import { RECIPES_KEY } from "@/plugins/builtin/chat/recipes/public/queries";
 import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/public/queries";
 import { USAGE_SUMMARY_KEY } from "@/plugins/builtin/settings/usage/public/queries";
@@ -34,6 +33,7 @@ import {
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_READ_FILE_KEY,
+  WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
 } from "@/plugins/builtin/workspace/public/queries";
@@ -64,7 +64,7 @@ const QUERY_KEYS: Record<
   mcpTools: MCP_TOOLS_KEY,
   pendingWork: PENDING_WORK_KEY,
   providers: PROVIDERS_KEY,
-  recipes: RECIPES_KEY,
+  recipes: WORKSPACE_RECIPES_KEY,
   schedules: SCHEDULES_KEY,
   sessions: AGENT_SESSIONS_KEY,
   sessionUsage: AGENT_SESSION_USAGE_KEY,

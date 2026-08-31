@@ -3,9 +3,8 @@ import { useT } from "@/lib/i18n";
 import { planSubtext, usePlanView } from "@/plugins/builtin/workspace/application/planViewModel";
 import { PlanList } from "./views/PlanList";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { defineWorkspaceView } from "./defineWorkspaceView";
 
-function PlanTab() {
+export function PlanTab() {
   const t = useT();
   const view = usePlanView();
 
@@ -25,19 +24,3 @@ function PlanTab() {
     </WorkspaceViewLayout>
   );
 }
-
-function PlanTabBadge() {
-  const view = usePlanView();
-  if (view.total === 0) return null;
-  return `${view.done}/${view.total}`;
-}
-
-export const planView = defineWorkspaceView({
-  id: "plan",
-  title: "workspace.view.title.plan",
-  icon: "list",
-  badge: PlanTabBadge,
-  order: 120,
-  splittable: true,
-  component: PlanTab,
-});
