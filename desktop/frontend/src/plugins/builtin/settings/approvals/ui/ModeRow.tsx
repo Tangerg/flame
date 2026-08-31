@@ -1,8 +1,8 @@
 import { Icon, Pressable } from "@/ui";
+import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
   agentCommandWasRetired,
   APPROVAL_MODES,
-  saveApprovalMode,
   type ApprovalMode,
 } from "../application/approvalConfig";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -26,7 +26,7 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
     if (activeIntent !== null || next === mode) return;
     setIntent({ mode: next, settlement: "pending" });
     try {
-      const accepted = await saveApprovalMode(next);
+      const accepted = await setApprovalMode(next);
       setIntent((current) =>
         current?.mode === next
           ? { mode: accepted, settlement: "accepted-awaiting-projection" }

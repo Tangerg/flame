@@ -2,13 +2,19 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApprovalMode } from "../application/approvalConfig";
 
+// The row calls the Agent context's published action directly; the settings pane no longer
+// keeps a second name for it, so this stands in for the real seam rather than a local alias.
 const model = vi.hoisted(() => ({
-  saveApprovalMode: vi.fn(),
+  setApprovalMode: vi.fn(),
+}));
+
+vi.mock("@/plugins/builtin/agent/public/approvalPolicy", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/approvalPolicy")>()),
+  setApprovalMode: model.setApprovalMode,
 }));
 
 vi.mock("../application/approvalConfig", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../application/approvalConfig")>()),
-  saveApprovalMode: model.saveApprovalMode,
   agentCommandWasRetired: () => false,
 }));
 
@@ -25,13 +31,13 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
-  model.saveApprovalMode.mockReset();
+  model.setApprovalMode.mockReset();
 });
 
 describe("ModeRow", () => {
   it("owns the visible selection and duplicate admission while a save is pending", async () => {
     const saving = deferred<ApprovalMode>();
-    model.saveApprovalMode.mockReturnValue(saving.promise);
+    model.setApprovalMode.mockReturnValue(saving.promise);
     const view = render(<ModeRow mode="balanced" />);
 
     const safe = screen.getByRole("button", { name: "Safe" });
@@ -46,7 +52,7 @@ describe("ModeRow", () => {
       disabled: [safe, balanced, auto].every((button) => button.hasAttribute("disabled")),
     };
     fireEvent.click(safe);
-    const callsWhileSaving = model.saveApprovalMode.mock.calls.length;
+    const callsWhileSaving = model.setApprovalMode.mock.calls.length;
 
     await act(async () => {
       saving.resolve("yolo");
@@ -78,7 +84,7 @@ describe("ModeRow", () => {
 
   it("retires a rejected intent and admits a corrected choice", async () => {
     const rejected = deferred<ApprovalMode>();
-    model.saveApprovalMode.mockReturnValueOnce(rejected.promise).mockResolvedValueOnce("safe");
+    model.setApprovalMode.mockReturnValueOnce(rejected.promise).mockResolvedValueOnce("safe");
     render(<ModeRow mode="balanced" />);
 
     const safe = screen.getByRole("button", { name: "Safe" });
@@ -94,6 +100,6 @@ describe("ModeRow", () => {
     expect(balanced.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(safe);
 
-    expect(model.saveApprovalMode.mock.calls.map(([mode]) => mode)).toEqual(["yolo", "safe"]);
+    expect(model.setApprovalMode.mock.calls.map(([mode]) => mode)).toEqual(["yolo", "safe"]);
   });
 });

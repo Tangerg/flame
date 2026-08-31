@@ -3,7 +3,6 @@ import {
   agentCommandWasRetired,
   forgetRule,
   forgetRules,
-  setApprovalMode,
   type ApprovalMode,
   type ApprovalRuleSummary,
   useApprovalMode,
@@ -19,10 +18,6 @@ export function useApprovalModeConfig() {
 
 export function useApprovalRuleConfigs(sessionId: string | undefined) {
   return useApprovalRules(sessionId ? { sessionId } : undefined);
-}
-
-export function saveApprovalMode(mode: ApprovalMode): Promise<ApprovalMode> {
-  return setApprovalMode(mode);
 }
 
 export async function forgetApprovalRule(id: string): Promise<void> {
