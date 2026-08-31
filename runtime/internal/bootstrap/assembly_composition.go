@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -64,7 +63,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if cfg.ScheduleStore != nil {
 		scheduleCoordinator, err = schedules.New(schedules.Dependencies{
 			Store:         cfg.ScheduleStore,
-			Paths:         workspacepath.Resolver{},
+			Paths:         workspaceadapter.Resolver{},
 			Models:        modelcatalog.Capabilities{},
 			Identities:    scheduleidentity.Source{},
 			Invalidations: invalidations.Publish,
@@ -105,7 +104,7 @@ func buildWorkspaceComposition(
 	cfg Config,
 	publish invalidation.Publish,
 ) (workspaceComposition, error) {
-	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspacepath.Resolver{})
+	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
 	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(
 		cfg.KnowledgeDirectory,
 		cfg.UserHome,
@@ -114,10 +113,10 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
-	authoredWatch := workspace.NewAuthoredWatch(scope, workspacepath.Resolver{}, authoredWatcher)
+	authoredWatch := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
 	knowledge := workspace.NewKnowledge(
 		scope,
-		workspacepath.Resolver{},
+		workspaceadapter.Resolver{},
 		cfg.KnowledgeStore,
 		authoredWatch,
 		publish,

@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P300 进行中。
+> 状态：当前能力快照；P301 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -609,6 +609,8 @@ P298把CLI的transport reconnect budget收回`internal/retry`。原`retry.Backof
 P299把CLI portable Session document、format与Runtime transfer port从operation-shaped `internal/sessiontransfer`收回`internal/session`。`Document`继续唯一拥有immutable bytes、UTF-8/JSON与64 MiB完整包络，`TransferService`是Session context的consumer-owned port；`sessionartifact`因拥有path resolution、bounded read、staging和conflict-safe filesystem publication继续作为独立outbound adapter。旧package、import、架构层和空目录均物理删除。
 
 P300把Runtime Skill proposal library translation从`adapter/skillproposal`收回`adapter/workspace`。`SkillLibraries`与authored-resource observation、filesystem/VCS/checkpoint translation共同消费admitted workspace及user/project路径，Application仍通过`SkillProposals`窄端口消费，Domain Proposal与`infra/skillauthoring.Store`仍各自拥有语义和存储机制。旧package、import、空目录及Bootstrap过时的`checkpointstore`别名均删除。
+
+P301把Runtime Workspace path resolution从`adapter/workspacepath`收回`adapter/workspace`。`Resolver`直接实现Workspace Application的cwd/path ports并服务Scope、Files、Knowledge、watch与Schedule consumers；通用canonical/resolve/contains仍由`infra/pathidentity`唯一拥有。Bootstrap与Delivery测试不再组合同一bounded context的两个adapter package，旧路径、import、架构例外和空目录均物理删除。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

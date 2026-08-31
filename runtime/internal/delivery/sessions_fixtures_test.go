@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
@@ -906,7 +906,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		Writes:                stores,
 		Forgetter:             s,
 		ExecutionReleaser:     stubExecutionReleaser{rt: s},
-		Paths:                 workspacepath.Resolver{},
+		Paths:                 workspaceadapter.Resolver{},
 		Models:                allowModelSelections{},
 		DefaultModelSelection: fixtureDefaultModelSelection(),
 		Checkpoints:           checkpoints,

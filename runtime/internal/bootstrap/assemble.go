@@ -18,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/scheduleidentity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	"github.com/Tangerg/flame/runtime/internal/application/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/mcp"
@@ -219,7 +218,7 @@ func buildAssemblyCore(
 		Writes:                sessionStores,
 		Forgetter:             execution.workingContexts,
 		ExecutionReleaser:     execution.executor,
-		Paths:                 workspacepath.Resolver{},
+		Paths:                 workspaceadapter.Resolver{},
 		Models:                modelCapabilities,
 		DefaultModelSelection: defaultRunModel,
 		Checkpoints:           workspaceadapter.NewSessionCheckpoints(workspaceServices.checkpoints),

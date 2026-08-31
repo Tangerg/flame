@@ -1,7 +1,4 @@
-// Package workspacepath resolves filesystem paths at the adapter boundary.
-// Canonical working-directory identity is an external fact (absolute path,
-// symlink target, existence), not a domain rule.
-package workspacepath
+package workspace
 
 import (
 	"errors"
@@ -14,11 +11,11 @@ import (
 )
 
 // ErrNotDirectory reports that a path exists but is not a directory.
-var ErrNotDirectory = errors.New("workspacepath: not a directory")
+var ErrNotDirectory = errors.New("workspace: not a directory")
 
 // ErrAbsolutePathRequired reports an attempt to let an adapter rediscover the
 // process cwd. Workspace roots are resolved once at process/session boundaries.
-var ErrAbsolutePathRequired = errors.New("workspacepath: absolute path required")
+var ErrAbsolutePathRequired = errors.New("workspace: absolute path required")
 
 // Canonical returns the stable identity used for working-tree locks,
 // checkpoints, and per-cwd indexes. Missing paths are still normalized to an

@@ -667,7 +667,6 @@ func TestDeliveryDoesNotBypassWorkspaceUseCases(t *testing.T) {
 	root := moduleRoot(t)
 	forbidExternalImports(t, filepath.Join(root, "internal", "delivery"), []string{
 		"github.com/Tangerg/flame/runtime/internal/adapter/workspace",
-		"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath",
 		"github.com/Tangerg/flame/runtime/internal/adapter/promptsource",
 		"github.com/fsnotify/fsnotify",
 	})

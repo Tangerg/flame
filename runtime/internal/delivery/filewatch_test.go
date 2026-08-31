@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/runsegment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -199,7 +198,7 @@ func TestWorkspaceSubscribe_KnowledgeUpdateDoesNotDoublePublishFromFileObservati
 	applyWorkspaceSurfaces(s, surfaces)
 	s.workspaceHub = newWorkspaceHub()
 	s.workspaceKnowledge = workspaceapp.NewKnowledge(
-		surfaces.roots, workspacepath.Resolver{}, store, surfaces.authoredWatch,
+		surfaces.roots, workspaceadapter.Resolver{}, store, surfaces.authoredWatch,
 		func(notice invalidation.Notice) {
 			if event, ok := runtimeEventFor(notice); ok {
 				s.workspaceHub.publish(event)

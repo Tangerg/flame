@@ -333,7 +333,7 @@ Infra：
 
 `adapter` 与 `infra` 不整体合并。每个包按以上规则裁决；纯转发包装删除，真实的技术 mechanism 保留。
 
-`adapter/workspace` 以职责文件共同拥有 admitted workspace 的 filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`，Application 仍通过自己的窄端口消费领域 Proposal；不得再按 Skill proposal operation 建平级 adapter package。
+`adapter/workspace` 以职责文件共同拥有 admitted workspace 的 canonical path/confinement、filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`Resolver` 把 `infra/pathidentity` 的通用机制投影为 Workspace Application 的路径事实和错误；`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`。Application 仍通过自己的窄端口消费，不能再按 path 或 Skill proposal operation 建平级 adapter package。
 
 ### 6.5 Protocol 与 Delivery
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/schedule"
@@ -78,7 +78,7 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	s := newTestHandler(&stubRuntime{})
 	coordinator, err := schedules.New(schedules.Dependencies{
 		Store:      reg,
-		Paths:      workspacepath.Resolver{},
+		Paths:      workspaceadapter.Resolver{},
 		Models:     allowModelSelections{},
 		Identities: serverScheduleIdentities{},
 	})

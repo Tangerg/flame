@@ -14,7 +14,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
+	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/schedules"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -164,7 +164,7 @@ func newMemoryScheduleRegistry() *memoryScheduleRegistry {
 func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Coordinator {
 	value, err := scheduleapp.New(scheduleapp.Dependencies{
 		Store:      reg,
-		Paths:      workspacepath.Resolver{},
+		Paths:      workspaceadapter.Resolver{},
 		Models:     scheduleModelAdmitter{},
 		Identities: scheduleTestIdentities{},
 	})

@@ -974,3 +974,10 @@
 - 背景：`adapter/skillproposal` 只有 Bootstrap 一个装配消费者，实际职责是把 Application 已解析的 project root 或配置的 user root 映射到 `skillauthoring.Store`，并缓存 per-project store。它没有独立协议、进程或 lifecycle；`adapter/workspace` 已经拥有 Knowledge/Hooks/Skills authored-resource layout、文件观察、VCS、checkpoint 与 filesystem translation。Bootstrap 仍把后者别名为 `checkpointstore`，进一步暴露出目录职责早已扩张而词汇没有随 owner 收敛。
 - 决策：`adapter/workspace.SkillLibraries` 共同拥有 user/project Skill library routing、per-project store cache 与 `.flame/skills` layout translation；`application/workspace.SkillProposals` 继续是 consumer-owned port，Domain `skills.Proposal` 继续拥有语义，`infra/skillauthoring.Store` 继续拥有文件存储机制。Bootstrap 统一以 `workspaceadapter` 命名该 package，并从同一 owner 装配 checkpoint、file/VCS、watcher 与 Skill libraries。
 - 后果：物理删除 `adapter/skillproposal`、全部旧 import、旧 `checkpointstore` alias 和空目录，不保留 alias、forwarder 或 compatibility package。Workspace adapter 增加职责文件而不是总 facade；Application、Domain、Infra 的边界保持独立，Skill proposal 行为、文件布局、缓存生命周期及公共合同不变。
+
+## ADR-RT-137：Workspace path resolution 是 Workspace adapter 的职责文件
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Runtime Workspace Adapter 第二批完成；允许 Runtime internal Go API breaking change，公共 Go surface、Protocol、Artifact、SQLite、Desktop 与 CLI 不变。
+- 背景：`adapter/workspacepath.Resolver` 直接实现 `application/workspace` 的 cwd/path ports，返回 `workspace.Resolved`，复用 Workspace 的 `ErrPathRequired/ErrPathOutsideRoot`，并只服务 Scope、Files、Knowledge、watch 和 Schedule 等 Workspace consumers。通用 filesystem canonical/resolve/contains 机制已经由 `infra/pathidentity` 独立拥有；旧 package 因 path 这一处理阶段另建目录，使 Bootstrap 同时组合 `workspace` 与 `workspacepath`，并让 Delivery 测试重复 import 同一 bounded context 的两半。
+- 决策：把 `Resolver`、`Canonical`、absolute/existing-directory admission、root confinement、symlink containment 与 nearest-project discovery收回 `adapter/workspace/path_resolver.go`。`adapter/workspace` 负责把外部 filesystem facts 翻译为 Workspace Application vocabulary；`infra/pathidentity` 继续只拥有可复用的路径机制，不依赖 Application。
+- 后果：物理删除 `adapter/workspacepath`、全部旧 import、架构例外和空目录，不保留 alias、forwarder 或 compatibility package。Bootstrap 和测试统一消费 `workspaceadapter.Resolver`；路径 identity、错误分类、symlink escape 防护、project-root discovery、协议与持久行为不变。

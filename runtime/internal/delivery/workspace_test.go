@@ -12,7 +12,6 @@ import (
 	"time"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspacepath"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -57,7 +56,7 @@ func (inertWorkspaceCloser) Close() error                               { return
 func (inertWorkspaceCloser) Accept([]workspaceapp.AuthoredChange) error { return nil }
 
 func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces {
-	roots := workspaceapp.NewScope(cwd, cwd, workspacepath.Resolver{})
+	roots := workspaceapp.NewScope(cwd, cwd, workspaceadapter.Resolver{})
 	watcher := cfg.Watcher
 	if watcher == nil {
 		watcher = workspaceadapter.NewGitWatcher(context.Background())
@@ -74,13 +73,13 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 			authoredWatcher = inertAuthoredWatcher{}
 		}
 	}
-	authoredWatch := workspaceapp.NewAuthoredWatch(roots, workspacepath.Resolver{}, authoredWatcher)
+	authoredWatch := workspaceapp.NewAuthoredWatch(roots, workspaceadapter.Resolver{}, authoredWatcher)
 	return workspaceSurfaces{
 		roots:         roots,
 		files:         workspaceapp.NewFiles(roots, workspaceadapter.FileBrowser{}),
 		vcs:           workspaceapp.NewVCS(roots, workspaceadapter.VCS{}),
 		discovery:     workspaceapp.NewDiscovery(roots, nil, nil, cfg.Recipes),
-		knowledge:     workspaceapp.NewKnowledge(roots, workspacepath.Resolver{}, cfg.Knowledge, authoredWatch, nil),
+		knowledge:     workspaceapp.NewKnowledge(roots, workspaceadapter.Resolver{}, cfg.Knowledge, authoredWatch, nil),
 		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
 		hooks:         workspaceapp.NewHooks(roots, cfg.Hooks, cfg.Trust, nil),
 		watch:         workspaceapp.NewGitWatch(roots, watcher),
