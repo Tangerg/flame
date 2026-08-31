@@ -9,9 +9,9 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
-	"github.com/Tangerg/flame/cli/internal/feedback"
 )
 
 type diagnosticToolBindingStub struct {
@@ -151,7 +151,7 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 
 	feedbacks := &feedbackBindingStub{t: t}
 	feedbackAdapter := &feedbackAdapter{runtime: &Connection{feedback: feedbacks, meta: requestMeta("test")}}
-	signal := feedback.Signal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: feedback.Positive, Text: "useful"}
+	signal := agent.FeedbackSignal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: agent.FeedbackPositive, Text: "useful"}
 	if err := feedbackAdapter.Record(t.Context(), signal); err != nil || feedbacks.recorded != signal {
 		t.Fatalf("Record = %v, recorded %+v", err, feedbacks.recorded)
 	}
@@ -167,14 +167,14 @@ func TestHookAdapterRejectsCatalogForAnotherProject(t *testing.T) {
 
 type feedbackBindingStub struct {
 	t        *testing.T
-	recorded feedback.Signal
+	recorded agent.FeedbackSignal
 }
 
 func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol.FeedbackRequest, options flameruntime.CommandOptions) error {
 	assertCommandMeta(f.t, options)
-	f.recorded = feedback.Signal{
+	f.recorded = agent.FeedbackSignal{
 		SessionID: request.SessionID, RunID: request.RunID, ItemID: request.ItemID,
-		Rating: feedback.Rating(request.Rating), Text: request.Text,
+		Rating: agent.FeedbackRating(request.Rating), Text: request.Text,
 	}
 	return nil
 }

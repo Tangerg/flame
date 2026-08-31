@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/core/text"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -27,7 +26,7 @@ type sessionHeader struct {
 	glyphs       kit.Glyphs
 	session      agent.Session
 	usage        agent.Usage
-	goal         goal.Goal
+	goal         agent.Goal
 	goalPresent  bool
 	changes      int
 	changesKnown bool
@@ -41,9 +40,9 @@ func (s *sessionHeader) SetSession(session agent.Session) { s.session = session 
 
 func (s *sessionHeader) SetUsage(usage agent.Usage) { s.usage = usage.Clone() }
 
-func (s *sessionHeader) SetGoal(current *goal.Goal) {
+func (s *sessionHeader) SetGoal(current *agent.Goal) {
 	if current == nil {
-		s.goal, s.goalPresent = goal.Goal{}, false
+		s.goal, s.goalPresent = agent.Goal{}, false
 		return
 	}
 	s.goal, s.goalPresent = *current, true
@@ -102,9 +101,9 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 	prefix := "[Goal: " + state + "]"
 	style := s.theme.Accent
 	switch s.goal.Status() {
-	case goal.Paused:
+	case agent.GoalPaused:
 		style = s.theme.Warning
-	case goal.Blocked:
+	case agent.GoalBlocked:
 		style = s.theme.Danger
 	}
 	right := goalUsageLabel(s.goal.Used())
@@ -124,7 +123,7 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 	}
 }
 
-func goalUsageLabel(used goal.Usage) string {
+func goalUsageLabel(used agent.GoalUsage) string {
 	parts := make([]string, 0, 3)
 	if used.Runs() > 0 {
 		parts = append(parts, countedNoun(used.Runs(), "run"))

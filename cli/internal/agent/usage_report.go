@@ -1,5 +1,5 @@
-// Package usage defines the CLI-owned usage reporting model and read port.
-package usage
+// Usage report values describe durable Run metering presented by the CLI.
+package agent
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
-type Totals struct {
+type UsageTotals struct {
 	InputTokens      int64
 	OutputTokens     int64
 	CacheReadTokens  int64
@@ -19,7 +19,7 @@ type Totals struct {
 	CostUSD          *float64
 }
 
-func (t Totals) Validate() error {
+func (t UsageTotals) Validate() error {
 	if t.InputTokens < 0 || t.OutputTokens < 0 || t.CacheReadTokens < 0 ||
 		t.CacheWriteTokens < 0 || t.ReasoningTokens < 0 {
 		return errors.New("usage totals contain a negative token count")
@@ -30,13 +30,13 @@ func (t Totals) Validate() error {
 	return nil
 }
 
-type Bucket struct {
+type UsageBucket struct {
 	Key    string
-	Totals Totals
+	Totals UsageTotals
 	Runs   int
 }
 
-func (b Bucket) Validate() error {
+func (b UsageBucket) Validate() error {
 	if strings.TrimSpace(b.Key) == "" {
 		return errors.New("usage bucket key is empty")
 	}
@@ -46,13 +46,13 @@ func (b Bucket) Validate() error {
 	return b.Totals.Validate()
 }
 
-type SessionReport struct {
+type SessionUsageReport struct {
 	SessionID string
-	Total     Totals
-	ByModel   []Bucket
+	Total     UsageTotals
+	ByModel   []UsageBucket
 }
 
-func (s SessionReport) Validate() error {
+func (s SessionUsageReport) Validate() error {
 	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
 	}
@@ -62,17 +62,17 @@ func (s SessionReport) Validate() error {
 	return validateBuckets("session usage report", s.ByModel)
 }
 
-type Summary struct {
-	Period     SummaryPeriod
-	Total      Totals
-	ByProvider []Bucket
-	ByModel    []Bucket
-	ByDay      []Bucket
+type UsageSummary struct {
+	Period     UsageSummaryPeriod
+	Total      UsageTotals
+	ByProvider []UsageBucket
+	ByModel    []UsageBucket
+	ByDay      []UsageBucket
 	Sessions   int
 	Runs       int
 }
 
-func (s Summary) Validate() error {
+func (s UsageSummary) Validate() error {
 	if s.Sessions < 0 || s.Runs < 0 {
 		return errors.New("usage summary contains a negative count")
 	}
@@ -84,7 +84,7 @@ func (s Summary) Validate() error {
 	}
 	for _, breakdown := range []struct {
 		name    string
-		buckets []Bucket
+		buckets []UsageBucket
 	}{
 		{name: "provider", buckets: s.ByProvider},
 		{name: "model", buckets: s.ByModel},
@@ -97,7 +97,7 @@ func (s Summary) Validate() error {
 	return nil
 }
 
-func validateBuckets(context string, buckets []Bucket) error {
+func validateBuckets(context string, buckets []UsageBucket) error {
 	seen := make(map[string]struct{}, len(buckets))
 	for index, bucket := range buckets {
 		if err := bucket.Validate(); err != nil {
@@ -111,7 +111,7 @@ func validateBuckets(context string, buckets []Bucket) error {
 	return nil
 }
 
-type Service interface {
-	SessionUsage(context.Context, string) (SessionReport, error)
-	Summary(context.Context, SummaryPeriod) (Summary, error)
+type UsageService interface {
+	SessionUsage(context.Context, string) (SessionUsageReport, error)
+	Summary(context.Context, UsageSummaryPeriod) (UsageSummary, error)
 }

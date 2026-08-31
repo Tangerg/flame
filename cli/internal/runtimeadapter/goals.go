@@ -8,7 +8,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/goal"
+	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
 type goalBinding interface {
@@ -20,13 +20,13 @@ type goalBinding interface {
 	ResumeGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error)
 }
 
-func (r *Connection) UpdateGoal(ctx context.Context, update goal.Update) (goal.Goal, error) {
+func (r *Connection) UpdateGoal(ctx context.Context, update agent.UpdateGoal) (agent.Goal, error) {
 	if err := update.Validate(); err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	result, err := r.goals.UpdateGoal(ctx, protocol.UpdateGoalRequest{
 		SessionID: update.SessionID,
@@ -34,10 +34,10 @@ func (r *Connection) UpdateGoal(ctx context.Context, update goal.Update) (goal.G
 	}, options)
 	projected, err := projectGoalResult("update goal", update.SessionID, result, err)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	if err := update.ValidateResult(projected); err != nil {
-		return goal.Goal{}, runtimeContractViolation("update goal returned an invalid acknowledgement: %v", err)
+		return agent.Goal{}, runtimeContractViolation("update goal returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
@@ -56,30 +56,30 @@ func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-var _ goal.Service = (*Connection)(nil)
+var _ agent.GoalService = (*Connection)(nil)
 
-func (r *Connection) GetGoal(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
+func (r *Connection) GetGoal(ctx context.Context, sessionID string) (agent.Goal, bool, error) {
 	if sessionID == "" {
-		return goal.Goal{}, false, errors.New("get goal: session id is empty")
+		return agent.Goal{}, false, errors.New("get goal: session id is empty")
 	}
 	result, err := r.goals.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID}, r.callOptions())
 	if err != nil {
-		return goal.Goal{}, false, classifyError(err)
+		return agent.Goal{}, false, classifyError(err)
 	}
 	if result == nil {
-		return goal.Goal{}, false, nil
+		return agent.Goal{}, false, nil
 	}
 	projected, err := projectGoalResult("get goal", sessionID, result, nil)
 	return projected, err == nil, err
 }
 
-func (r *Connection) StartGoal(ctx context.Context, start goal.Start) (goal.Goal, error) {
+func (r *Connection) StartGoal(ctx context.Context, start agent.StartGoal) (agent.Goal, error) {
 	if err := start.Validate(); err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	result, err := r.goals.StartGoal(ctx, protocol.StartGoalRequest{
 		SessionID: start.SessionID, Objective: start.Objective,
@@ -88,35 +88,35 @@ func (r *Connection) StartGoal(ctx context.Context, start goal.Start) (goal.Goal
 	}, options)
 	projected, err := projectGoalResult("start goal", start.SessionID, result, err)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	if err := start.ValidateResult(projected); err != nil {
-		return goal.Goal{}, runtimeContractViolation("start goal returned an invalid acknowledgement: %v", err)
+		return agent.Goal{}, runtimeContractViolation("start goal returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func (r *Connection) StopGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
+func (r *Connection) StopGoal(ctx context.Context, sessionID string) (agent.Goal, error) {
 	projected, err := r.changeGoal(ctx, "stop goal", sessionID, r.goals.StopGoal)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
-	if projected.Status() == goal.Active {
-		return goal.Goal{}, runtimeContractViolation("stop goal returned an active acknowledgement")
+	if projected.Status() == agent.GoalActive {
+		return agent.Goal{}, runtimeContractViolation("stop goal returned an active acknowledgement")
 	}
 	return projected, nil
 }
 
-func (r *Connection) ResumeGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
+func (r *Connection) ResumeGoal(ctx context.Context, sessionID string) (agent.Goal, error) {
 	projected, err := r.changeGoal(ctx, "resume goal", sessionID, r.goals.ResumeGoal)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
-	if projected.Status() != goal.Active {
-		return goal.Goal{}, runtimeContractViolation(
+	if projected.Status() != agent.GoalActive {
+		return agent.Goal{}, runtimeContractViolation(
 			"resume goal returned status %q, want %q",
 			projected.Status(),
-			goal.Active,
+			agent.GoalActive,
 		)
 	}
 	return projected, nil
@@ -126,31 +126,31 @@ func (r *Connection) changeGoal(
 	ctx context.Context,
 	operation, sessionID string,
 	change func(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error),
-) (goal.Goal, error) {
+) (agent.Goal, error) {
 	if sessionID == "" {
-		return goal.Goal{}, fmt.Errorf("%s: session id is empty", operation)
+		return agent.Goal{}, fmt.Errorf("%s: session id is empty", operation)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	result, err := change(ctx, protocol.GoalRequest{SessionID: sessionID}, options)
 	return projectGoalResult(operation, sessionID, result, err)
 }
 
-func projectGoalResult(operation, expectedSessionID string, result *protocol.Goal, err error) (goal.Goal, error) {
+func projectGoalResult(operation, expectedSessionID string, result *protocol.Goal, err error) (agent.Goal, error) {
 	if err != nil {
-		return goal.Goal{}, classifyError(err)
+		return agent.Goal{}, classifyError(err)
 	}
 	if result == nil {
-		return goal.Goal{}, runtimeContractViolation("%s returned nil", operation)
+		return agent.Goal{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	projected, err := projectGoal(*result)
 	if err != nil {
-		return goal.Goal{}, runtimeContractViolation("%s returned an invalid goal: %v", operation, err)
+		return agent.Goal{}, runtimeContractViolation("%s returned an invalid goal: %v", operation, err)
 	}
 	if projected.SessionID() != expectedSessionID {
-		return goal.Goal{}, runtimeContractViolation(
+		return agent.Goal{}, runtimeContractViolation(
 			"%s returned session %q for %q",
 			operation,
 			projected.SessionID(),
@@ -160,32 +160,32 @@ func projectGoalResult(operation, expectedSessionID string, result *protocol.Goa
 	return projected, nil
 }
 
-func projectGoal(value protocol.Goal) (goal.Goal, error) {
+func projectGoal(value protocol.Goal) (agent.Goal, error) {
 	budget, err := projectGoalBudget(value.Budget)
 	if err != nil {
-		return goal.Goal{}, fmt.Errorf("project goal budget: %w", err)
+		return agent.Goal{}, fmt.Errorf("project goal budget: %w", err)
 	}
-	used, err := goal.NewUsage(value.Used.Runs, value.Used.CostUSD, value.Used.Steps)
+	used, err := agent.NewGoalUsage(value.Used.Runs, value.Used.CostUSD, value.Used.Steps)
 	if err != nil {
-		return goal.Goal{}, fmt.Errorf("project goal usage: %w", err)
+		return agent.Goal{}, fmt.Errorf("project goal usage: %w", err)
 	}
-	snapshot := goal.Snapshot{
-		SessionID: value.SessionID, Objective: value.Objective, Status: goal.Status(value.Status),
+	snapshot := agent.GoalSnapshot{
+		SessionID: value.SessionID, Objective: value.Objective, Status: agent.GoalStatus(value.Status),
 		Provider: value.Provider, Model: value.Model, Budget: budget, Used: used,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 	if value.Reason != nil {
-		snapshot.ReasonCode = goal.ReasonCode(value.Reason.Code)
+		snapshot.ReasonCode = agent.GoalReasonCode(value.Reason.Code)
 		snapshot.ReasonDetail = value.Reason.Detail
 	}
-	projected, err := goal.Restore(snapshot)
+	projected, err := agent.RestoreGoal(snapshot)
 	if err != nil {
-		return goal.Goal{}, fmt.Errorf("project goal: %w", err)
+		return agent.Goal{}, fmt.Errorf("project goal: %w", err)
 	}
 	return projected, nil
 }
 
-func goalBudgetToProtocol(budget goal.Budget) *protocol.GoalBudget {
+func goalBudgetToProtocol(budget agent.GoalBudget) *protocol.GoalBudget {
 	if budget.Unlimited() {
 		return nil
 	}
@@ -202,11 +202,11 @@ func goalBudgetToProtocol(budget goal.Budget) *protocol.GoalBudget {
 	return wire
 }
 
-func projectGoalBudget(wire *protocol.GoalBudget) (goal.Budget, error) {
+func projectGoalBudget(wire *protocol.GoalBudget) (agent.GoalBudget, error) {
 	if wire == nil {
-		return goal.UnlimitedBudget(), nil
+		return agent.UnlimitedGoalBudget(), nil
 	}
-	return goal.NewBudget(goal.BudgetLimits{
+	return agent.NewGoalBudget(agent.GoalBudgetLimits{
 		MaxRuns: wire.MaxRuns, MaxCostUSD: wire.MaxCostUSD, MaxSteps: wire.MaxSteps,
 	})
 }

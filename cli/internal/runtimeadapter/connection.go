@@ -22,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
-	"github.com/Tangerg/flame/cli/internal/feedback"
 	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -383,7 +382,7 @@ func (r *Connection) HookService() hookpolicy.Service {
 	return &hookAdapter{runtime: r}
 }
 
-func (r *Connection) FeedbackService() feedback.Service {
+func (r *Connection) FeedbackService() agent.FeedbackService {
 	return &feedbackAdapter{runtime: r}
 }
 

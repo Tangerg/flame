@@ -72,6 +72,13 @@ identities, infers providers, normalizes values, or owns Runtime lifecycle.
 Independent mechanisms such as exact integer advancement remain separate when
 they have their own vocabulary and peer consumers.
 
+`internal/agent` owns the cohesive CLI projection of the Agent Session and Run
+context. Session, Run, Goal, feedback, and usage values use semantic type names
+inside that package and share its consumer-owned Runtime ports. These facts do
+not earn separate packages merely because Runtime exposes separate operations;
+new packages require a different lifecycle, external boundary, or bounded
+context rather than another `Service` interface.
+
 ## Command model
 
 The root command is built by a factory for every process or test. Commands:

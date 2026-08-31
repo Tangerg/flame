@@ -12,12 +12,11 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
+	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/usage"
 )
 
 type runtimeReaderMode uint8
@@ -64,8 +63,8 @@ type runtimeReaderSelection struct {
 }
 
 type usageReport struct {
-	session usage.SessionReport
-	summary usage.Summary
+	session agent.SessionUsageReport
+	summary agent.UsageSummary
 }
 
 func (a *app) setRuntimeReader(mode runtimeReaderMode) {
@@ -103,16 +102,16 @@ func (a *app) ShowUsage(argument string) error {
 	return nil
 }
 
-func parseUsagePeriod(argument string) (usage.SummaryPeriod, error) {
+func parseUsagePeriod(argument string) (agent.UsageSummaryPeriod, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" || strings.EqualFold(argument, "all") {
-		return usage.AllTime(), nil
+		return agent.AllTimeUsage(), nil
 	}
 	days, err := strconv.Atoi(argument)
 	if err != nil || days <= 0 {
-		return usage.SummaryPeriod{}, errors.New("usage: /usage [positive-days|all]")
+		return agent.UsageSummaryPeriod{}, errors.New("usage: /usage [positive-days|all]")
 	}
-	return usage.RecentDays(days)
+	return agent.RecentUsageDays(days)
 }
 
 func usageDocument(report usageReport) (readerDocument, error) {
@@ -137,7 +136,7 @@ func usageDocument(report usageReport) (readerDocument, error) {
 	}, nil
 }
 
-func appendUsageBreakdown(sections []ToolSection, title string, buckets []usage.Bucket) []ToolSection {
+func appendUsageBreakdown(sections []ToolSection, title string, buckets []agent.UsageBucket) []ToolSection {
 	if len(buckets) == 0 {
 		return sections
 	}
@@ -152,7 +151,7 @@ func appendUsageBreakdown(sections []ToolSection, title string, buckets []usage.
 	return append(sections, ToolSection{Title: title, Style: toolSectionCode, Language: "text", Text: strings.Join(lines, "\n")})
 }
 
-func usageTotalsText(totals usage.Totals) string {
+func usageTotalsText(totals agent.UsageTotals) string {
 	parts := []string{
 		"input " + formatThousands(totals.InputTokens),
 		"output " + formatThousands(totals.OutputTokens),
@@ -561,7 +560,7 @@ func (a *app) goalReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func goalDocument(current goal.Goal, exists bool) readerDocument {
+func goalDocument(current agent.Goal, exists bool) readerDocument {
 	if !exists {
 		return paragraphDocument("Session goal", "none", []string{"No autonomous goal is active or paused for this session."})
 	}
@@ -603,15 +602,15 @@ func (a *app) StartGoal(objective string) error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	start := goal.Start{
+	start := agent.StartGoal{
 		SessionID: a.session.ID, Objective: strings.TrimSpace(objective),
 		Provider: a.options.Provider, Model: a.options.Model,
-		Budget: goal.UnlimitedBudget(),
+		Budget: agent.UnlimitedGoalBudget(),
 	}
 	if err := start.Validate(); err != nil {
 		return err
 	}
-	return a.changeGoal("starting session goal", func(ctx context.Context) (goal.Goal, error) {
+	return a.changeGoal("starting session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.StartGoal(ctx, start)
 	})
 }
@@ -620,11 +619,11 @@ func (a *app) UpdateGoal(objective string) error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	update := goal.Update{SessionID: a.session.ID, Objective: strings.TrimSpace(objective)}
+	update := agent.UpdateGoal{SessionID: a.session.ID, Objective: strings.TrimSpace(objective)}
 	if err := update.Validate(); err != nil {
 		return err
 	}
-	return a.changeGoal("updating session goal", func(ctx context.Context) (goal.Goal, error) {
+	return a.changeGoal("updating session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.UpdateGoal(ctx, update)
 	})
 }
@@ -650,7 +649,7 @@ func (a *app) ClearGoal() error {
 				a.header.SetGoal(nil)
 				a.setRuntimeReader(runtimeReaderGoal)
 				a.workspaceReader = workspaceReaderNone
-				a.openReaderDocument(goalDocument(goal.Goal{}, false))
+				a.openReaderDocument(goalDocument(agent.Goal{}, false))
 			}
 			a.status.note("goal · cleared")
 		},
@@ -666,7 +665,7 @@ func (a *app) StopGoal() error {
 		return errors.New("this runtime composition has no goal service")
 	}
 	sessionID := a.session.ID
-	return a.changeGoal("stopping session goal", func(ctx context.Context) (goal.Goal, error) {
+	return a.changeGoal("stopping session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.StopGoal(ctx, sessionID)
 	})
 }
@@ -676,26 +675,26 @@ func (a *app) ResumeGoal() error {
 		return errors.New("this runtime composition has no goal service")
 	}
 	sessionID := a.session.ID
-	return a.changeGoal("resuming session goal", func(ctx context.Context) (goal.Goal, error) {
+	return a.changeGoal("resuming session goal", func(ctx context.Context) (agent.Goal, error) {
 		return a.goals.ResumeGoal(ctx, sessionID)
 	})
 }
 
-func (a *app) changeGoal(label string, change func(context.Context) (goal.Goal, error)) error {
+func (a *app) changeGoal(label string, change func(context.Context) (agent.Goal, error)) error {
 	presentation := a.sessionContext
 	a.status.note(label)
 	sessionID := a.session.ID
-	work := func(ctx context.Context) (goal.Goal, error) {
+	work := func(ctx context.Context) (agent.Goal, error) {
 		current, exists, err := a.goals.GetGoal(ctx, sessionID)
 		if err != nil {
-			return goal.Goal{}, err
+			return agent.Goal{}, err
 		}
 		if exists && !current.Status().AllowsLifecycleCommands() {
-			return goal.Goal{}, errors.New("goal is completing final accounting; wait for the next runtime change")
+			return agent.Goal{}, errors.New("goal is completing final accounting; wait for the next runtime change")
 		}
 		return change(ctx)
 	}
-	started := a.runAdmissionMutation(goalOperation, false, work, func(current goal.Goal, err error) {
+	started := a.runAdmissionMutation(goalOperation, false, work, func(current agent.Goal, err error) {
 		if err != nil {
 			a.message(label + " failed: " + err.Error())
 			return

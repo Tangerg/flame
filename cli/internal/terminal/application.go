@@ -23,8 +23,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/feedback"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
@@ -37,7 +35,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/skills"
-	"github.com/Tangerg/flame/cli/internal/usage"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -76,9 +73,9 @@ type app struct {
 	workspaces       workspace.Service
 	changes          changefeed.Source
 	transfers        sessiontransfer.Service
-	usage            usage.Service
+	usage            agent.UsageService
 	modelConfig      modelconfig.Service
-	goals            goal.Service
+	goals            agent.GoalService
 	skills           skills.Service
 	mcp              mcp.Service
 	schedules        schedule.Service
@@ -87,7 +84,7 @@ type app struct {
 	diagnosticTools  diagnostictool.Service
 	authoringContext authoringcontext.Service
 	hooks            hookpolicy.Service
-	feedback         feedback.Service
+	feedback         agent.FeedbackService
 	runtimeProfile   *runtimeprofile.Profile
 	artifacts        sessionartifact.Store
 	session          agent.Session
@@ -198,9 +195,9 @@ type appConfig struct {
 	workspaces       workspace.Service
 	changes          changefeed.Source
 	transfers        sessiontransfer.Service
-	usage            usage.Service
+	usage            agent.UsageService
 	modelConfig      modelconfig.Service
-	goals            goal.Service
+	goals            agent.GoalService
 	skills           skills.Service
 	mcp              mcp.Service
 	schedules        schedule.Service
@@ -209,7 +206,7 @@ type appConfig struct {
 	diagnosticTools  diagnostictool.Service
 	authoringContext authoringcontext.Service
 	hooks            hookpolicy.Service
-	feedback         feedback.Service
+	feedback         agent.FeedbackService
 	runtimeProfile   *runtimeprofile.Profile
 	clientVersion    string
 	snapshot         agent.SessionSnapshot

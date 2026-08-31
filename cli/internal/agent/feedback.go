@@ -1,6 +1,6 @@
-// Package feedback defines user-authored quality signals attached to the
-// current runtime conversation.
-package feedback
+// Feedback values describe user-authored quality signals attached to the
+// current agent conversation.
+package agent
 
 import (
 	"context"
@@ -11,37 +11,37 @@ import (
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
-type Rating string
+type FeedbackRating string
 
 const (
-	Positive Rating = "positive"
-	Negative Rating = "negative"
+	FeedbackPositive FeedbackRating = "positive"
+	FeedbackNegative FeedbackRating = "negative"
 )
 
-func ParseRating(value string) (Rating, error) {
-	rating := Rating(strings.TrimSpace(value))
+func ParseFeedbackRating(value string) (FeedbackRating, error) {
+	rating := FeedbackRating(strings.TrimSpace(value))
 	if err := rating.Validate(); err != nil {
 		return "", err
 	}
 	return rating, nil
 }
 
-func (r Rating) Validate() error {
-	if r != "" && r != Positive && r != Negative {
+func (r FeedbackRating) Validate() error {
+	if r != "" && r != FeedbackPositive && r != FeedbackNegative {
 		return fmt.Errorf("feedback rating %q is invalid", r)
 	}
 	return nil
 }
 
-type Signal struct {
+type FeedbackSignal struct {
 	SessionID string
 	RunID     string
 	ItemID    string
-	Rating    Rating
+	Rating    FeedbackRating
 	Text      string
 }
 
-func (s Signal) Validate() error {
+func (s FeedbackSignal) Validate() error {
 	var problems []error
 	if s.SessionID != "" {
 		if err := cliidentity.ValidateSession(s.SessionID); err != nil {
@@ -70,6 +70,6 @@ func (s Signal) Validate() error {
 	return nil
 }
 
-type Service interface {
-	Record(context.Context, Signal) error
+type FeedbackService interface {
+	Record(context.Context, FeedbackSignal) error
 }

@@ -22,8 +22,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/extensions"
-	"github.com/Tangerg/flame/cli/internal/feedback"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
@@ -38,7 +36,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/skills"
-	"github.com/Tangerg/flame/cli/internal/usage"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -50,9 +47,9 @@ type Config struct {
 	Workspaces       workspace.Service
 	Changes          changefeed.Source
 	Transfers        sessiontransfer.Service
-	Usage            usage.Service
+	Usage            agent.UsageService
 	ModelConfig      modelconfig.Service
-	Goals            goal.Service
+	Goals            agent.GoalService
 	Skills           skills.Service
 	MCP              mcp.Service
 	Schedules        schedule.Service
@@ -61,7 +58,7 @@ type Config struct {
 	DiagnosticTools  diagnostictool.Service
 	AuthoringContext authoringcontext.Service
 	Hooks            hookpolicy.Service
-	Feedback         feedback.Service
+	Feedback         agent.FeedbackService
 	ClientVersion    string
 	SessionID        string
 	Workspace        string

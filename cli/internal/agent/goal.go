@@ -1,6 +1,6 @@
-// Package goal defines autonomous-session objective lifecycle values and its
-// consumer-owned runtime port.
-package goal
+// Goal values describe the autonomous objective lifecycle observed and
+// controlled within an agent Session.
+package agent
 
 import (
 	"context"
@@ -13,101 +13,101 @@ import (
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
-type Status string
+type GoalStatus string
 
 const (
-	Active     Status = "active"
-	Paused     Status = "paused"
-	Blocked    Status = "blocked"
-	Completing Status = "completing"
+	GoalActive     GoalStatus = "active"
+	GoalPaused     GoalStatus = "paused"
+	GoalBlocked    GoalStatus = "blocked"
+	GoalCompleting GoalStatus = "completing"
 )
 
-func (s Status) valid() bool {
-	return s == Active || s == Paused || s == Blocked || s == Completing
+func (s GoalStatus) valid() bool {
+	return s == GoalActive || s == GoalPaused || s == GoalBlocked || s == GoalCompleting
 }
 
 // AllowsLifecycleCommands reports whether a start, stop, or resume request can
 // be meaningful in this observed state. The runtime remains authoritative for
 // concurrent transitions between the observation and a command.
-func (s Status) AllowsLifecycleCommands() bool { return s.valid() && s != Completing }
+func (s GoalStatus) AllowsLifecycleCommands() bool { return s.valid() && s != GoalCompleting }
 
-type ReasonCode string
+type GoalReasonCode string
 
 const (
-	ReasonNone             ReasonCode = ""
-	StoppedByUser          ReasonCode = "stoppedByUser"
-	RuntimeRestarted       ReasonCode = "runtimeRestarted"
-	RunStartFailed         ReasonCode = "runStartFailed"
-	AwaitingInput          ReasonCode = "awaitingInput"
-	TerminalOutcomeMissing ReasonCode = "terminalOutcomeMissing"
-	RunNotCompleted        ReasonCode = "runNotCompleted"
-	RunBudgetReached       ReasonCode = "runBudgetReached"
-	CostBudgetReached      ReasonCode = "costBudgetReached"
-	StepBudgetReached      ReasonCode = "stepBudgetReached"
-	BlockedByModel         ReasonCode = "blockedByModel"
+	GoalReasonNone             GoalReasonCode = ""
+	GoalStoppedByUser          GoalReasonCode = "stoppedByUser"
+	GoalRuntimeRestarted       GoalReasonCode = "runtimeRestarted"
+	GoalRunStartFailed         GoalReasonCode = "runStartFailed"
+	GoalAwaitingInput          GoalReasonCode = "awaitingInput"
+	GoalTerminalOutcomeMissing GoalReasonCode = "terminalOutcomeMissing"
+	GoalRunNotCompleted        GoalReasonCode = "runNotCompleted"
+	GoalRunBudgetReached       GoalReasonCode = "runBudgetReached"
+	GoalCostBudgetReached      GoalReasonCode = "costBudgetReached"
+	GoalStepBudgetReached      GoalReasonCode = "stepBudgetReached"
+	GoalBlockedByModel         GoalReasonCode = "blockedByModel"
 )
 
-func (r ReasonCode) valid() bool {
+func (r GoalReasonCode) valid() bool {
 	switch r {
-	case StoppedByUser, RuntimeRestarted, RunStartFailed, AwaitingInput,
-		TerminalOutcomeMissing, RunNotCompleted, RunBudgetReached,
-		CostBudgetReached, StepBudgetReached, BlockedByModel:
+	case GoalStoppedByUser, GoalRuntimeRestarted, GoalRunStartFailed, GoalAwaitingInput,
+		GoalTerminalOutcomeMissing, GoalRunNotCompleted, GoalRunBudgetReached,
+		GoalCostBudgetReached, GoalStepBudgetReached, GoalBlockedByModel:
 		return true
 	default:
 		return false
 	}
 }
 
-type Reason struct {
-	code   ReasonCode
+type GoalReason struct {
+	code   GoalReasonCode
 	detail string
 }
 
-func (r Reason) Code() ReasonCode { return r.code }
+func (r GoalReason) Code() GoalReasonCode { return r.code }
 
-func (r Reason) Detail() string { return r.detail }
+func (r GoalReason) Detail() string { return r.detail }
 
-func newReason(status Status, code ReasonCode, detail string) (Reason, error) {
+func newGoalReason(status GoalStatus, code GoalReasonCode, detail string) (GoalReason, error) {
 	if !code.valid() {
-		return Reason{}, fmt.Errorf("goal reason %q is invalid", code)
+		return GoalReason{}, fmt.Errorf("goal reason %q is invalid", code)
 	}
 	if detail != strings.TrimSpace(detail) {
-		return Reason{}, errors.New("goal reason detail must not have surrounding whitespace")
+		return GoalReason{}, errors.New("goal reason detail must not have surrounding whitespace")
 	}
 	switch status {
-	case Paused:
+	case GoalPaused:
 		switch code {
-		case StoppedByUser, RuntimeRestarted, RunStartFailed, AwaitingInput, TerminalOutcomeMissing:
+		case GoalStoppedByUser, GoalRuntimeRestarted, GoalRunStartFailed, GoalAwaitingInput, GoalTerminalOutcomeMissing:
 			if detail != "" {
-				return Reason{}, fmt.Errorf("goal reason %q must not carry detail", code)
+				return GoalReason{}, fmt.Errorf("goal reason %q must not carry detail", code)
 			}
-		case RunNotCompleted:
+		case GoalRunNotCompleted:
 			if detail == "" {
-				return Reason{}, errors.New("goal run-not-completed reason requires a terminal outcome")
+				return GoalReason{}, errors.New("goal run-not-completed reason requires a terminal outcome")
 			}
 		default:
-			return Reason{}, fmt.Errorf("goal reason %q cannot pause a goal", code)
+			return GoalReason{}, fmt.Errorf("goal reason %q cannot pause a goal", code)
 		}
-	case Blocked:
+	case GoalBlocked:
 		switch code {
-		case RunBudgetReached, CostBudgetReached, StepBudgetReached:
+		case GoalRunBudgetReached, GoalCostBudgetReached, GoalStepBudgetReached:
 			if detail != "" {
-				return Reason{}, fmt.Errorf("goal reason %q must not carry detail", code)
+				return GoalReason{}, fmt.Errorf("goal reason %q must not carry detail", code)
 			}
-		case BlockedByModel:
+		case GoalBlockedByModel:
 			if detail == "" {
-				return Reason{}, errors.New("goal model block requires an explanation")
+				return GoalReason{}, errors.New("goal model block requires an explanation")
 			}
 		default:
-			return Reason{}, fmt.Errorf("goal reason %q cannot block a goal", code)
+			return GoalReason{}, fmt.Errorf("goal reason %q cannot block a goal", code)
 		}
 	default:
-		return Reason{}, fmt.Errorf("goal status %q cannot carry a reason", status)
+		return GoalReason{}, fmt.Errorf("goal status %q cannot carry a reason", status)
 	}
-	return Reason{code: code, detail: detail}, nil
+	return GoalReason{code: code, detail: detail}, nil
 }
 
-type Budget struct {
+type GoalBudget struct {
 	maxRuns      int
 	maxCostUSD   float64
 	maxSteps     int
@@ -117,41 +117,41 @@ type Budget struct {
 	initialized  bool
 }
 
-type BudgetLimits struct {
+type GoalBudgetLimits struct {
 	MaxRuns    *int
 	MaxCostUSD *float64
 	MaxSteps   *int
 }
 
-func UnlimitedBudget() Budget { return Budget{initialized: true} }
+func UnlimitedGoalBudget() GoalBudget { return GoalBudget{initialized: true} }
 
-func NewBudget(limits BudgetLimits) (Budget, error) {
-	budget := Budget{initialized: true}
+func NewGoalBudget(limits GoalBudgetLimits) (GoalBudget, error) {
+	budget := GoalBudget{initialized: true}
 	if limits.MaxRuns != nil {
 		if *limits.MaxRuns <= 0 {
-			return Budget{}, errors.New("goal budget maximum runs must be positive")
+			return GoalBudget{}, errors.New("goal budget maximum runs must be positive")
 		}
 		budget.maxRuns, budget.runsLimited = *limits.MaxRuns, true
 	}
 	if limits.MaxCostUSD != nil {
 		if *limits.MaxCostUSD <= 0 || math.IsNaN(*limits.MaxCostUSD) || math.IsInf(*limits.MaxCostUSD, 0) {
-			return Budget{}, errors.New("goal budget maximum cost must be finite and positive")
+			return GoalBudget{}, errors.New("goal budget maximum cost must be finite and positive")
 		}
 		budget.maxCostUSD, budget.costLimited = *limits.MaxCostUSD, true
 	}
 	if limits.MaxSteps != nil {
 		if *limits.MaxSteps <= 0 {
-			return Budget{}, errors.New("goal budget maximum steps must be positive")
+			return GoalBudget{}, errors.New("goal budget maximum steps must be positive")
 		}
 		budget.maxSteps, budget.stepsLimited = *limits.MaxSteps, true
 	}
 	if budget.Unlimited() {
-		return Budget{}, errors.New("limited goal budget requires at least one limit")
+		return GoalBudget{}, errors.New("limited goal budget requires at least one limit")
 	}
 	return budget, nil
 }
 
-func (b Budget) Validate() error {
+func (b GoalBudget) Validate() error {
 	if !b.initialized {
 		return errors.New("goal budget must be constructed explicitly")
 	}
@@ -166,35 +166,35 @@ func (b Budget) Validate() error {
 	return nil
 }
 
-func (b Budget) Unlimited() bool {
+func (b GoalBudget) Unlimited() bool {
 	return b.initialized && !b.runsLimited && !b.costLimited && !b.stepsLimited
 }
 
-func (b Budget) MaxRuns() (int, bool)        { return b.maxRuns, b.runsLimited }
-func (b Budget) MaxCostUSD() (float64, bool) { return b.maxCostUSD, b.costLimited }
-func (b Budget) MaxSteps() (int, bool)       { return b.maxSteps, b.stepsLimited }
+func (b GoalBudget) MaxRuns() (int, bool)        { return b.maxRuns, b.runsLimited }
+func (b GoalBudget) MaxCostUSD() (float64, bool) { return b.maxCostUSD, b.costLimited }
+func (b GoalBudget) MaxSteps() (int, bool)       { return b.maxSteps, b.stepsLimited }
 
-func (b Budget) exhausted(used Usage) bool {
+func (b GoalBudget) exhausted(used GoalUsage) bool {
 	return b.runsLimited && used.runs >= b.maxRuns ||
 		b.costLimited && used.costUSD >= b.maxCostUSD ||
 		b.stepsLimited && used.steps >= b.maxSteps
 }
 
-type Usage struct {
+type GoalUsage struct {
 	runs    int
 	costUSD float64
 	steps   int
 }
 
-func NewUsage(runs int, costUSD float64, steps int) (Usage, error) {
-	usage := Usage{runs: runs, costUSD: costUSD, steps: steps}
+func NewGoalUsage(runs int, costUSD float64, steps int) (GoalUsage, error) {
+	usage := GoalUsage{runs: runs, costUSD: costUSD, steps: steps}
 	if err := usage.Validate(); err != nil {
-		return Usage{}, err
+		return GoalUsage{}, err
 	}
 	return usage, nil
 }
 
-func (u Usage) Validate() error {
+func (u GoalUsage) Validate() error {
 	if u.runs < 0 || u.costUSD < 0 || u.steps < 0 ||
 		math.IsNaN(u.costUSD) || math.IsInf(u.costUSD, 0) {
 		return errors.New("goal usage contains a non-finite or negative value")
@@ -202,24 +202,24 @@ func (u Usage) Validate() error {
 	return nil
 }
 
-func (u Usage) Runs() int        { return u.runs }
-func (u Usage) CostUSD() float64 { return u.costUSD }
-func (u Usage) Steps() int       { return u.steps }
-func (u Usage) IsZero() bool     { return u == (Usage{}) }
+func (u GoalUsage) Runs() int        { return u.runs }
+func (u GoalUsage) CostUSD() float64 { return u.costUSD }
+func (u GoalUsage) Steps() int       { return u.steps }
+func (u GoalUsage) IsZero() bool     { return u == (GoalUsage{}) }
 
-// Snapshot is the technical reconstruction boundary for a Runtime Goal
-// projection. It is not a mutation surface: Restore validates and owns every
+// GoalSnapshot is the technical reconstruction boundary for a Runtime Goal
+// projection. It is not a mutation surface: RestoreGoal validates and owns every
 // field before the value can enter the CLI domain.
-type Snapshot struct {
+type GoalSnapshot struct {
 	SessionID    string
 	Objective    string
-	Status       Status
-	ReasonCode   ReasonCode
+	Status       GoalStatus
+	ReasonCode   GoalReasonCode
 	ReasonDetail string
 	Provider     string
 	Model        string
-	Budget       Budget
-	Used         Usage
+	Budget       GoalBudget
+	Used         GoalUsage
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -227,24 +227,24 @@ type Snapshot struct {
 type Goal struct {
 	sessionID string
 	objective string
-	status    Status
-	reason    *Reason
+	status    GoalStatus
+	reason    *GoalReason
 	provider  string
 	model     string
-	budget    Budget
-	used      Usage
+	budget    GoalBudget
+	used      GoalUsage
 	createdAt time.Time
 	updatedAt time.Time
 }
 
-func Restore(snapshot Snapshot) (Goal, error) {
+func RestoreGoal(snapshot GoalSnapshot) (Goal, error) {
 	value := Goal{
 		sessionID: snapshot.SessionID, objective: snapshot.Objective, status: snapshot.Status,
 		provider: snapshot.Provider, model: snapshot.Model, budget: snapshot.Budget, used: snapshot.Used,
-		createdAt: canonicalTime(snapshot.CreatedAt), updatedAt: canonicalTime(snapshot.UpdatedAt),
+		createdAt: canonicalGoalTime(snapshot.CreatedAt), updatedAt: canonicalGoalTime(snapshot.UpdatedAt),
 	}
-	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonDetail != "" {
-		reason, err := newReason(snapshot.Status, snapshot.ReasonCode, snapshot.ReasonDetail)
+	if snapshot.ReasonCode != GoalReasonNone || snapshot.ReasonDetail != "" {
+		reason, err := newGoalReason(snapshot.Status, snapshot.ReasonCode, snapshot.ReasonDetail)
 		if err != nil {
 			return Goal{}, err
 		}
@@ -269,14 +269,14 @@ func (g Goal) Validate() error {
 	if !g.status.valid() {
 		problems = append(problems, fmt.Errorf("status %q is invalid", g.status))
 	}
-	if (g.status == Active || g.status == Completing) && g.reason != nil {
+	if (g.status == GoalActive || g.status == GoalCompleting) && g.reason != nil {
 		problems = append(problems, errors.New("non-resting goal carries a stopping reason"))
 	}
-	if (g.status == Paused || g.status == Blocked) && g.reason == nil {
+	if (g.status == GoalPaused || g.status == GoalBlocked) && g.reason == nil {
 		problems = append(problems, errors.New("resting goal has no reason"))
 	}
 	if g.reason != nil {
-		validated, err := newReason(g.status, g.reason.code, g.reason.detail)
+		validated, err := newGoalReason(g.status, g.reason.code, g.reason.detail)
 		if err != nil || validated != *g.reason {
 			problems = append(problems, err)
 		}
@@ -290,7 +290,7 @@ func (g Goal) Validate() error {
 	} else if g.updatedAt.Before(g.createdAt) {
 		problems = append(problems, errors.New("update time precedes creation"))
 	}
-	if g.status == Active && g.budget.exhausted(g.used) {
+	if g.status == GoalActive && g.budget.exhausted(g.used) {
 		problems = append(problems, errors.New("active goal has exhausted its budget"))
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -299,8 +299,8 @@ func (g Goal) Validate() error {
 	return nil
 }
 
-func (g Goal) Snapshot() Snapshot {
-	snapshot := Snapshot{
+func (g Goal) Snapshot() GoalSnapshot {
+	snapshot := GoalSnapshot{
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
 		Provider: g.provider, Model: g.model, Budget: g.budget, Used: g.used,
 		CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
@@ -313,44 +313,44 @@ func (g Goal) Snapshot() Snapshot {
 
 func (g Goal) SessionID() string    { return g.sessionID }
 func (g Goal) Objective() string    { return g.objective }
-func (g Goal) Status() Status       { return g.status }
+func (g Goal) Status() GoalStatus   { return g.status }
 func (g Goal) Provider() string     { return g.provider }
 func (g Goal) Model() string        { return g.model }
-func (g Goal) Budget() Budget       { return g.budget }
-func (g Goal) Used() Usage          { return g.used }
+func (g Goal) Budget() GoalBudget   { return g.budget }
+func (g Goal) Used() GoalUsage      { return g.used }
 func (g Goal) CreatedAt() time.Time { return g.createdAt }
 func (g Goal) UpdatedAt() time.Time { return g.updatedAt }
 
-func (g Goal) Reason() (Reason, bool) {
+func (g Goal) Reason() (GoalReason, bool) {
 	if g.reason == nil {
-		return Reason{}, false
+		return GoalReason{}, false
 	}
 	return *g.reason, true
 }
 
-func canonicalTime(value time.Time) time.Time {
+func canonicalGoalTime(value time.Time) time.Time {
 	if value.IsZero() {
 		return time.Time{}
 	}
 	return value.UTC()
 }
 
-type Start struct {
+type StartGoal struct {
 	SessionID string
 	Objective string
 	Provider  string
 	Model     string
-	Budget    Budget
+	Budget    GoalBudget
 }
 
-// Update revises the objective of the current Goal without replacing its
+// UpdateGoal revises the objective of the current Goal without replacing its
 // lifecycle, model selection, budget, or accumulated usage.
-type Update struct {
+type UpdateGoal struct {
 	SessionID string
 	Objective string
 }
 
-func (u Update) Validate() error {
+func (u UpdateGoal) Validate() error {
 	if err := cliidentity.ValidateSession(u.SessionID); err != nil {
 		return fmt.Errorf("update goal: %w", err)
 	}
@@ -363,7 +363,7 @@ func (u Update) Validate() error {
 	return nil
 }
 
-func (u Update) ValidateResult(result Goal) error {
+func (u UpdateGoal) ValidateResult(result Goal) error {
 	if err := u.Validate(); err != nil {
 		return err
 	}
@@ -383,7 +383,7 @@ func (u Update) ValidateResult(result Goal) error {
 	return nil
 }
 
-func (s Start) Validate() error {
+func (s StartGoal) Validate() error {
 	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
@@ -404,7 +404,7 @@ func (s Start) Validate() error {
 
 // ValidateResult verifies that a successful start acknowledgement represents
 // the fresh objective incarnation requested by the caller.
-func (s Start) ValidateResult(result Goal) error {
+func (s StartGoal) ValidateResult(result Goal) error {
 	if err := s.Validate(); err != nil {
 		return err
 	}
@@ -418,8 +418,8 @@ func (s Start) ValidateResult(result Goal) error {
 	if result.Objective() != s.Objective {
 		problems = append(problems, fmt.Errorf("runtime returned objective %q, want %q", result.Objective(), s.Objective))
 	}
-	if result.Status() != Active {
-		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status(), Active))
+	if result.Status() != GoalActive {
+		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status(), GoalActive))
 	}
 	if result.Provider() != s.Provider || result.Model() != s.Model {
 		problems = append(problems, fmt.Errorf(
@@ -439,10 +439,10 @@ func (s Start) ValidateResult(result Goal) error {
 	return nil
 }
 
-type Service interface {
+type GoalService interface {
 	GetGoal(context.Context, string) (Goal, bool, error)
-	StartGoal(context.Context, Start) (Goal, error)
-	UpdateGoal(context.Context, Update) (Goal, error)
+	StartGoal(context.Context, StartGoal) (Goal, error)
+	UpdateGoal(context.Context, UpdateGoal) (Goal, error)
 	ClearGoal(context.Context, string) error
 	StopGoal(context.Context, string) (Goal, error)
 	ResumeGoal(context.Context, string) (Goal, error)

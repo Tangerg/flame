@@ -16,29 +16,27 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
-	"github.com/Tangerg/flame/cli/internal/usage"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
 type usageServiceStub struct{}
 
-func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (usage.SessionReport, error) {
+func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (agent.SessionUsageReport, error) {
 	cost := 0.25
-	return usage.SessionReport{
-		SessionID: sessionID, Total: usage.Totals{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
-		ByModel: []usage.Bucket{{Key: "deepseek/model", Totals: usage.Totals{InputTokens: 1_200}}},
+	return agent.SessionUsageReport{
+		SessionID: sessionID, Total: agent.UsageTotals{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
+		ByModel: []agent.UsageBucket{{Key: "deepseek/model", Totals: agent.UsageTotals{InputTokens: 1_200}}},
 	}, nil
 }
 
-func (usageServiceStub) Summary(_ context.Context, period usage.SummaryPeriod) (usage.Summary, error) {
+func (usageServiceStub) Summary(_ context.Context, period agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
 	cost := 1.5
-	return usage.Summary{
-		Period: period, Total: usage.Totals{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
-		ByProvider: []usage.Bucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
+	return agent.UsageSummary{
+		Period: period, Total: agent.UsageTotals{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
+		ByProvider: []agent.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
 	}, nil
 }
 
@@ -47,14 +45,14 @@ type blockingUsageService struct {
 	canceled chan struct{}
 }
 
-func (b blockingUsageService) SessionUsage(ctx context.Context, _ string) (usage.SessionReport, error) {
+func (b blockingUsageService) SessionUsage(ctx context.Context, _ string) (agent.SessionUsageReport, error) {
 	close(b.started)
 	<-ctx.Done()
 	close(b.canceled)
-	return usage.SessionReport{}, context.Cause(ctx)
+	return agent.SessionUsageReport{}, context.Cause(ctx)
 }
 
-func (blockingUsageService) Summary(context.Context, usage.SummaryPeriod) (usage.Summary, error) {
+func (blockingUsageService) Summary(context.Context, agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
 	panic("summary must not run after the session usage query is canceled")
 }
 
@@ -441,14 +439,14 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 
 type goalServiceStub struct {
 	mu         sync.Mutex
-	current    *goal.Goal
+	current    *agent.Goal
 	reads      atomic.Int32
 	writes     atomic.Int32
 	readErr    chan error
 	readSignal chan struct{}
 }
 
-func (g *goalServiceStub) GetGoal(context.Context, string) (goal.Goal, bool, error) {
+func (g *goalServiceStub) GetGoal(context.Context, string) (agent.Goal, bool, error) {
 	g.reads.Add(1)
 	select {
 	case g.readSignal <- struct{}{}:
@@ -456,51 +454,51 @@ func (g *goalServiceStub) GetGoal(context.Context, string) (goal.Goal, bool, err
 	}
 	select {
 	case err := <-g.readErr:
-		return goal.Goal{}, false, err
+		return agent.Goal{}, false, err
 	default:
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return goal.Goal{}, false, nil
+		return agent.Goal{}, false, nil
 	}
 	return *g.current, true, nil
 }
 
-func (g *goalServiceStub) StartGoal(_ context.Context, start goal.Start) (goal.Goal, error) {
+func (g *goalServiceStub) StartGoal(_ context.Context, start agent.StartGoal) (agent.Goal, error) {
 	g.writes.Add(1)
 	if err := start.Validate(); err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	at := time.Unix(1, 0).UTC()
-	current, err := goal.Restore(goal.Snapshot{
-		SessionID: start.SessionID, Objective: start.Objective, Status: goal.Active,
+	current, err := agent.RestoreGoal(agent.GoalSnapshot{
+		SessionID: start.SessionID, Objective: start.Objective, Status: agent.GoalActive,
 		Provider: start.Provider, Model: start.Model, Budget: start.Budget,
 		CreatedAt: at, UpdatedAt: at,
 	})
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	g.set(current)
 	return current, nil
 }
 
-func (g *goalServiceStub) UpdateGoal(_ context.Context, update goal.Update) (goal.Goal, error) {
+func (g *goalServiceStub) UpdateGoal(_ context.Context, update agent.UpdateGoal) (agent.Goal, error) {
 	g.writes.Add(1)
 	if err := update.Validate(); err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return goal.Goal{}, errors.New("no goal")
+		return agent.Goal{}, errors.New("no goal")
 	}
 	snapshot := g.current.Snapshot()
 	snapshot.Objective = update.Objective
 	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := goal.Restore(snapshot)
+	current, err := agent.RestoreGoal(snapshot)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	g.current = &current
 	return current, nil
@@ -514,57 +512,57 @@ func (g *goalServiceStub) ClearGoal(context.Context, string) error {
 	return nil
 }
 
-func (g *goalServiceStub) StopGoal(context.Context, string) (goal.Goal, error) {
+func (g *goalServiceStub) StopGoal(context.Context, string) (agent.Goal, error) {
 	g.writes.Add(1)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return goal.Goal{}, errors.New("no goal")
+		return agent.Goal{}, errors.New("no goal")
 	}
 	snapshot := g.current.Snapshot()
-	snapshot.Status = goal.Paused
-	snapshot.ReasonCode = goal.StoppedByUser
+	snapshot.Status = agent.GoalPaused
+	snapshot.ReasonCode = agent.GoalStoppedByUser
 	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := goal.Restore(snapshot)
+	current, err := agent.RestoreGoal(snapshot)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	g.current = &current
 	return current, nil
 }
 
-func (g *goalServiceStub) ResumeGoal(context.Context, string) (goal.Goal, error) {
+func (g *goalServiceStub) ResumeGoal(context.Context, string) (agent.Goal, error) {
 	g.writes.Add(1)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return goal.Goal{}, errors.New("no goal")
+		return agent.Goal{}, errors.New("no goal")
 	}
 	snapshot := g.current.Snapshot()
-	snapshot.Status = goal.Active
-	snapshot.ReasonCode = goal.ReasonNone
+	snapshot.Status = agent.GoalActive
+	snapshot.ReasonCode = agent.GoalReasonNone
 	snapshot.ReasonDetail = ""
 	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := goal.Restore(snapshot)
+	current, err := agent.RestoreGoal(snapshot)
 	if err != nil {
-		return goal.Goal{}, err
+		return agent.Goal{}, err
 	}
 	g.current = &current
 	return current, nil
 }
 
-func (g *goalServiceStub) set(current goal.Goal) {
+func (g *goalServiceStub) set(current agent.Goal) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.current = &current
 }
 
-func testGoal(t testing.TB, objective string) goal.Goal {
+func testGoal(t testing.TB, objective string) agent.Goal {
 	t.Helper()
 	at := time.Unix(1, 0).UTC()
-	current, err := goal.Restore(goal.Snapshot{
-		SessionID: "ses_demo_1", Objective: objective, Status: goal.Active,
-		Budget: goal.UnlimitedBudget(), CreatedAt: at, UpdatedAt: at,
+	current, err := agent.RestoreGoal(agent.GoalSnapshot{
+		SessionID: "ses_demo_1", Objective: objective, Status: agent.GoalActive,
+		Budget: agent.UnlimitedGoalBudget(), CreatedAt: at, UpdatedAt: at,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -572,19 +570,19 @@ func testGoal(t testing.TB, objective string) goal.Goal {
 	return current
 }
 
-func reviseGoal(t testing.TB, current goal.Goal, revise func(*goal.Snapshot)) goal.Goal {
+func reviseGoal(t testing.TB, current agent.Goal, revise func(*agent.GoalSnapshot)) agent.Goal {
 	t.Helper()
 	snapshot := current.Snapshot()
 	revise(&snapshot)
 	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	revised, err := goal.Restore(snapshot)
+	revised, err := agent.RestoreGoal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return revised
 }
 
-func goalPointer(current goal.Goal) *goal.Goal { return &current }
+func goalPointer(current agent.Goal) *agent.Goal { return &current }
 
 func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	goals := new(goalServiceStub)
@@ -627,9 +625,9 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if err != nil || !exists {
 		t.Fatalf("goal = (%+v, %t, %v)", current, exists, err)
 	}
-	goals.set(reviseGoal(t, current, func(snapshot *goal.Snapshot) {
-		snapshot.Status = goal.Blocked
-		snapshot.ReasonCode = goal.BlockedByModel
+	goals.set(reviseGoal(t, current, func(snapshot *agent.GoalSnapshot) {
+		snapshot.Status = agent.GoalBlocked
+		snapshot.ReasonCode = agent.GoalBlockedByModel
 		snapshot.ReasonDetail = "needs clarification"
 	}))
 	baseline := goals.reads.Load()
@@ -642,9 +640,9 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if goals.reads.Load() <= baseline {
 		t.Fatal("goals.changed did not refetch the goal")
 	}
-	goals.set(reviseGoal(t, current, func(snapshot *goal.Snapshot) {
-		snapshot.Status = goal.Completing
-		snapshot.ReasonCode = goal.ReasonNone
+	goals.set(reviseGoal(t, current, func(snapshot *agent.GoalSnapshot) {
+		snapshot.Status = agent.GoalCompleting
+		snapshot.ReasonCode = agent.GoalReasonNone
 		snapshot.ReasonDetail = ""
 	}))
 	source.events <- changefeed.Event{
@@ -663,7 +661,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		t.Fatalf("goal mutations after settlement command = %d, want %d", writes, baselineWrites)
 	}
 	settling, exists, err := goals.GetGoal(t.Context(), "ses_demo_1")
-	if err != nil || !exists || settling.Status() != goal.Completing {
+	if err != nil || !exists || settling.Status() != agent.GoalCompleting {
 		t.Fatalf("goal after rejected settlement command = (%+v, %t, %v)", settling, exists, err)
 	}
 	host.Type("/goal-clear")
@@ -817,7 +815,7 @@ type blockingGoalMutationService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
+func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID string) (agent.Goal, error) {
 	select {
 	case b.started <- struct{}{}:
 	default:
@@ -830,7 +828,7 @@ func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID st
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return goal.Goal{}, context.Cause(ctx)
+		return agent.Goal{}, context.Cause(ctx)
 	}
 }
 

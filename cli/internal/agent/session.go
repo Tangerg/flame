@@ -10,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/exactint"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
@@ -181,7 +180,7 @@ type SessionSnapshot struct {
 	Transcript   []Block
 	Runs         []Run
 	Plan         *Plan
-	Goal         *goal.Goal
+	Goal         *Goal
 	Interactions []Interaction
 }
 

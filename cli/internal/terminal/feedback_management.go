@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/feedback"
 )
 
 func (a *app) RecordFeedback(argument string) error {
@@ -14,12 +13,12 @@ func (a *app) RecordFeedback(argument string) error {
 		return errors.New("this runtime composition has no feedback service")
 	}
 	ratingText, note, _ := strings.Cut(strings.TrimSpace(argument), " ")
-	rating, err := feedback.ParseRating(ratingText)
+	rating, err := agent.ParseFeedbackRating(ratingText)
 	if err != nil {
 		return errors.New("usage: /feedback <positive|negative> [note]")
 	}
 	runID, itemID := latestAssistantTarget(a.conversation.Blocks())
-	signal := feedback.Signal{
+	signal := agent.FeedbackSignal{
 		SessionID: a.session.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),
 	}
@@ -28,8 +27,8 @@ func (a *app) RecordFeedback(argument string) error {
 	}
 	a.status.note("recording feedback")
 	if !a.runApplicationOperation(feedbackOperation, false,
-		func(ctx context.Context) (feedback.Signal, error) { return signal, a.feedback.Record(ctx, signal) },
-		func(recorded feedback.Signal, err error) {
+		func(ctx context.Context) (agent.FeedbackSignal, error) { return signal, a.feedback.Record(ctx, signal) },
+		func(recorded agent.FeedbackSignal, err error) {
 			if err != nil {
 				a.message("record feedback failed: " + err.Error())
 				return

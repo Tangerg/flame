@@ -8,9 +8,8 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/goal"
+	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/usage"
 )
 
 type usageBindingStub struct {
@@ -72,7 +71,7 @@ func TestUsageAdapterKeepsAllTimeAbsentOnTheWire(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	report, err := runtime.Summary(t.Context(), usage.AllTime())
+	report, err := runtime.Summary(t.Context(), agent.AllTimeUsage())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +90,7 @@ func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	if _, err := runtime.Summary(t.Context(), usage.SummaryPeriod{}); err == nil {
+	if _, err := runtime.Summary(t.Context(), agent.UsageSummaryPeriod{}); err == nil {
 		t.Fatal("Summary accepted an unknown period")
 	}
 	if called {
@@ -115,11 +114,11 @@ func TestUsageAdapterRejectsInvalidRuntimeReports(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func recentUsagePeriod(t *testing.T, days int) usage.SummaryPeriod {
+func recentUsagePeriod(t *testing.T, days int) agent.UsageSummaryPeriod {
 	t.Helper()
-	period, err := usage.RecentDays(days)
+	period, err := agent.RecentUsageDays(days)
 	if err != nil {
-		t.Fatalf("usage.RecentDays(%d): %v", days, err)
+		t.Fatalf("agent.RecentUsageDays(%d): %v", days, err)
 	}
 	return period
 }
@@ -467,27 +466,27 @@ func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
 	if _, exists, err := runtime.GetGoal(t.Context(), "ses_1"); err != nil || exists {
 		t.Fatalf("empty GetGoal = (%t, %v)", exists, err)
 	}
-	started, err := runtime.StartGoal(t.Context(), goal.Start{SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3)})
-	if err != nil || started.Status() != goal.Active || stub.last != "start" {
+	started, err := runtime.StartGoal(t.Context(), agent.StartGoal{SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3)})
+	if err != nil || started.Status() != agent.GoalActive || stub.last != "start" {
 		t.Fatalf("StartGoal = (%+v, %v), last %q", started, err, stub.last)
 	}
-	updated, err := runtime.UpdateGoal(t.Context(), goal.Update{SessionID: "ses_1", Objective: "ship"})
+	updated, err := runtime.UpdateGoal(t.Context(), agent.UpdateGoal{SessionID: "ses_1", Objective: "ship"})
 	if err != nil || updated.Objective() != "ship" || stub.last != "update" {
 		t.Fatalf("UpdateGoal = (%+v, %v), last %q", updated, err, stub.last)
 	}
 	stopped, err := runtime.StopGoal(t.Context(), "ses_1")
-	if _, present := stopped.Reason(); err != nil || stopped.Status() != goal.Paused || !present || stub.last != "stop" {
+	if _, present := stopped.Reason(); err != nil || stopped.Status() != agent.GoalPaused || !present || stub.last != "stop" {
 		t.Fatalf("StopGoal = (%+v, %v), last %q", stopped, err, stub.last)
 	}
 	resumed, err := runtime.ResumeGoal(t.Context(), "ses_1")
-	if err != nil || resumed.Status() != goal.Active || stub.last != "resume" {
+	if err != nil || resumed.Status() != agent.GoalActive || stub.last != "resume" {
 		t.Fatalf("ResumeGoal = (%+v, %v), last %q", resumed, err, stub.last)
 	}
 	completing := *stub.current
 	completing.Status = protocol.GoalCompleting
 	stub.current = &completing
 	observed, exists, err := runtime.GetGoal(t.Context(), "ses_1")
-	if _, present := observed.Reason(); err != nil || !exists || observed.Status() != goal.Completing || present {
+	if _, present := observed.Reason(); err != nil || !exists || observed.Status() != agent.GoalCompleting || present {
 		t.Fatalf("completing GetGoal = (%+v, %t, %v)", observed, exists, err)
 	}
 	if err := runtime.ClearGoal(t.Context(), "ses_1"); err != nil || stub.last != "clear" {
@@ -575,7 +574,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 				return &result
 			}()},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.StartGoal(t.Context(), goal.Start{
+				_, err := runtime.StartGoal(t.Context(), agent.StartGoal{
 					SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3),
 				})
 				return err
@@ -597,7 +596,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 				return &result
 			}()},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.UpdateGoal(t.Context(), goal.Update{SessionID: "ses_1", Objective: "ship"})
+				_, err := runtime.UpdateGoal(t.Context(), agent.UpdateGoal{SessionID: "ses_1", Objective: "ship"})
 				return err
 			},
 		},
@@ -620,9 +619,9 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	}
 }
 
-func limitedGoalBudget(t testing.TB, maxRuns int) goal.Budget {
+func limitedGoalBudget(t testing.TB, maxRuns int) agent.GoalBudget {
 	t.Helper()
-	budget, err := goal.NewBudget(goal.BudgetLimits{MaxRuns: &maxRuns})
+	budget, err := agent.NewGoalBudget(agent.GoalBudgetLimits{MaxRuns: &maxRuns})
 	if err != nil {
 		t.Fatal(err)
 	}

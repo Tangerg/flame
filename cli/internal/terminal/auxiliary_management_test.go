@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
-	"github.com/Tangerg/flame/cli/internal/feedback"
 	"github.com/Tangerg/flame/cli/internal/hookpolicy"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
@@ -276,39 +275,39 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 	stop()
 }
 
-type feedbackServiceStub struct{ recorded chan feedback.Signal }
+type feedbackServiceStub struct{ recorded chan agent.FeedbackSignal }
 
 type blockingFeedbackService struct {
-	feedback.Service
-	started  chan feedback.Signal
+	agent.FeedbackService
+	started  chan agent.FeedbackSignal
 	release  chan struct{}
 	canceled chan struct{}
 }
 
-func (b *blockingFeedbackService) Record(ctx context.Context, signal feedback.Signal) error {
+func (b *blockingFeedbackService) Record(ctx context.Context, signal agent.FeedbackSignal) error {
 	b.started <- signal
 	select {
 	case <-b.release:
-		return b.Service.Record(ctx, signal)
+		return b.FeedbackService.Record(ctx, signal)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
 	}
 }
 
-func (f *feedbackServiceStub) Record(_ context.Context, signal feedback.Signal) error {
+func (f *feedbackServiceStub) Record(_ context.Context, signal agent.FeedbackSignal) error {
 	f.recorded <- signal
 	return nil
 }
 
 func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
-	feedbacks := &feedbackServiceStub{recorded: make(chan feedback.Signal, 1)}
+	feedbacks := &feedbackServiceStub{recorded: make(chan agent.FeedbackSignal, 1)}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	host.Type("/feedback positive useful explanation")
 	host.Press(input.Enter)
 	signal := awaitValue(t, feedbacks.recorded, "feedback")
-	if signal.SessionID != "ses_demo_1" || signal.RunID == "" || signal.ItemID != "demo_answer" || signal.Rating != feedback.Positive || signal.Text != "useful explanation" {
+	if signal.SessionID != "ses_demo_1" || signal.RunID == "" || signal.ItemID != "demo_answer" || signal.Rating != agent.FeedbackPositive || signal.Text != "useful explanation" {
 		t.Fatalf("feedback signal = %+v", signal)
 	}
 	host.Shows(t, "feedback recorded · positive")
@@ -317,9 +316,9 @@ func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
 
 func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	backend := runtimefixture.New()
-	base := &feedbackServiceStub{recorded: make(chan feedback.Signal, 1)}
+	base := &feedbackServiceStub{recorded: make(chan agent.FeedbackSignal, 1)}
 	feedbacks := &blockingFeedbackService{
-		Service: base, started: make(chan feedback.Signal, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		FeedbackService: base, started: make(chan agent.FeedbackSignal, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(feedbacks.release) })
 	t.Cleanup(release)

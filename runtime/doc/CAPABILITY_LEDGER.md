@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P283 进行中。
+> 状态：当前能力快照；P292 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -591,6 +591,8 @@ P289把只有`runsegment.Finalizer`一个语义消费者的`adapter/sessiontitle
 P290把CLI的`modelidentity`、`sessionidentity`与`runidentity`三个跨层准入微包收敛为`internal/identity`。Session、Run、Segment、Item、Event与exact model selection仍保留各自命名规则和Event独立资源上限，但生产消费者只校验后继续持有Runtime原始字符串，因此删除无人持有的CLI影子`*ID`类型、`Parse/String/Validate`往返和原样赋回；新包不生成identity、不normalize、不推断provider，也不取得Runtime生命周期。`exactint`因拥有独立数值推进机制和多个真实消费者继续保留。旧package、alias与forwarder全部删除，CLI architecture allowlist同步收口；Runtime公共Go surface、Protocol、Artifact、SQLite、HTTP及Desktop不变。
 
 P291完成本轮Runtime/CLI package graph的caller、dynamic entrypoint、external boundary与lifecycle审计。相对本Goal开始前，Runtime Go package目录从122收敛到112，CLI从47收敛到40；退役的Delivery子层、embedded binding、CLI backend/mock/workflow/identity微包与Runtime identity/title微包在生产源码、测试和文档owner外均无残留，也不存在零字节Go文件。剩余单消费者package分别拥有filesystem publication、plugin process、provider credential overlay、isolation、telemetry、recovery transaction、checkpoint、file observation、LSP或其他独立外部资源/失败生命周期；单文件shared mechanism则都有多个真实peer consumer。它们不因目录计数继续合并，后续结构变化必须重新给出consumer、owner与失败反例。
+
+P292纠正P291只逐包举证、没有审视整体bounded-context形状的过早结论。CLI 的 Goal、feedback 与 usage 都是同一 Agent Session/Run context 的消费投影和端口，现已收回 `internal/agent` 并改用 `Goal*`、`Feedback*`、`Usage*` 语义全名；旧三个package、import、架构例外和遗留空目录均不存在。Runtime/CLI 的剩余平铺package继续按共同变化、唯一owner、外部边界和真实生命周期审计，不能再以“存在一个接口或不变量”单独证明目录合理。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

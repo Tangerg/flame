@@ -911,3 +911,10 @@
 - 背景：标题生成只在 `runsegment.Finalizer` 的 terminal/parked Run 边界发生；`TitleGenerator` 消费接口、fallback 结算和 maintenance lifecycle 都已由 `runsegment` 拥有。旧 `adapter/sessiontitle` 只有这一位生产消费者，没有独立状态、生命周期、外部协议或替换轴，只把同一个 use case 的接口与唯一实现拆成两个 package。相反，`adapter/utilitymodel` 同时服务 title、compaction、Memory 和 Skill maintenance，并拥有 Scope model SDK 的 request envelope，仍是有真实多消费者和外部翻译的边界。
 - 决策：把 model-backed title generator 与 sanitization policy 移入 `adapter/runsegment/title_generator.go`；`NewTitleGenerator` 直接返回 consumer-owned `TitleGenerator`，Bootstrap 只装配 `runsegment`。标题的 20 KiB input、64-token output、80-rune result、provider failure fallback 与 first-writer Session policy保持不变。
 - 后果：物理删除 `adapter/sessiontitle`，不保留 alias、forwarder、factory shim 或 Bootstrap wrapper。Run-boundary maintenance 的接口、实现、fallback 和生命周期在同一 package 可发现；`utilitymodel` 继续隔离 middleware-free auxiliary provider call，未把 Scope SDK 泄漏到 Application。
+
+## ADR-RT-128：CLI Runtime 投影按 Agent 上下文收口，不按 operation 拆 package
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 CLI Agent context 第一批完成；允许 CLI internal Go API breaking change，Runtime 公共 Go surface、Protocol、Artifact、SQLite 与 Desktop 不变。
+- 背景：CLI 的 Goal、feedback 与 usage 都是同一 Agent Session/Run context 的消费投影，只有 Runtime adapter 与 Terminal 两个共同消费者，却分别占用一个平级 package，并各自暴露含糊的 `Status`、`Service`、`Summary`。这种结构把 Runtime operation catalog 误当 bounded context，使调用点依赖 import alias 才能表达语义，也让每增加一个管理能力就倾向新增一个 package。
+- 决策：`cli/internal/agent` 共同拥有 Session、Run、Goal、feedback 与 usage 的 CLI rich projection 和 consumer-owned ports；以职责文件组织，不建立总 service object。合并后的公共内部词汇使用 `GoalStatus`、`GoalBudget`、`FeedbackSignal`、`UsageSummary` 等语义全名，Terminal 与 Runtime adapter 直接消费同一 package。独立 workspace、filesystem、plugin process、Runtime translation 与 durable Workbench 边界继续保留。
+- 后果：物理删除 `cli/internal/goal`、`feedback` 与 `usage`，同步迁移测试和架构守卫，不保留 alias、forwarder 或 compatibility package。合并没有让 CLI Domain import Runtime Protocol，也没有把 Runtime adapter 或 Terminal lifecycle 塞入 `agent`；后续 capability package 必须证明它不属于现有 Agent、Session、Run、Workspace 或 Workbench context。

@@ -6,7 +6,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/feedback"
+	"github.com/Tangerg/flame/cli/internal/agent"
 )
 
 type feedbackBinding interface {
@@ -15,9 +15,9 @@ type feedbackBinding interface {
 
 type feedbackAdapter struct{ runtime *Connection }
 
-var _ feedback.Service = (*feedbackAdapter)(nil)
+var _ agent.FeedbackService = (*feedbackAdapter)(nil)
 
-func (f *feedbackAdapter) Record(ctx context.Context, signal feedback.Signal) error {
+func (f *feedbackAdapter) Record(ctx context.Context, signal agent.FeedbackSignal) error {
 	r := f.runtime
 	if err := signal.Validate(); err != nil {
 		return err

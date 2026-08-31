@@ -20,24 +20,24 @@ import (
 
 func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 	root := moduleRoot(t)
-	goalPath := filepath.Join(root, "internal", "goal", "goal.go")
+	goalPath := filepath.Join(root, "internal", "agent", "goal.go")
 	wantGoal := map[string]string{
-		"sessionID": "string", "objective": "string", "status": "Status", "reason": "*Reason",
-		"provider": "string", "model": "string", "budget": "Budget", "used": "Usage",
+		"sessionID": "string", "objective": "string", "status": "GoalStatus", "reason": "*GoalReason",
+		"provider": "string", "model": "string", "budget": "GoalBudget", "used": "GoalUsage",
 		"createdAt": "time.Time", "updatedAt": "time.Time",
 	}
 	if fields := cliStructFieldTypes(t, goalPath, "Goal"); !maps.Equal(fields, wantGoal) {
-		t.Fatalf("goal.Goal fields = %v, want private immutable state %v", fields, wantGoal)
+		t.Fatalf("agent.Goal fields = %v, want private immutable state %v", fields, wantGoal)
 	}
-	if fields := cliStructFieldTypes(t, goalPath, "Reason"); !maps.Equal(fields, map[string]string{
-		"code": "ReasonCode", "detail": "string",
+	if fields := cliStructFieldTypes(t, goalPath, "GoalReason"); !maps.Equal(fields, map[string]string{
+		"code": "GoalReasonCode", "detail": "string",
 	}) {
-		t.Fatalf("goal.Reason fields = %v, want private reason state", fields)
+		t.Fatalf("agent.GoalReason fields = %v, want private reason state", fields)
 	}
-	if fields := cliStructFieldTypes(t, goalPath, "Usage"); !maps.Equal(fields, map[string]string{
+	if fields := cliStructFieldTypes(t, goalPath, "GoalUsage"); !maps.Equal(fields, map[string]string{
 		"runs": "int", "costUSD": "float64", "steps": "int",
 	}) {
-		t.Fatalf("goal.Usage fields = %v, want private accounting state", fields)
+		t.Fatalf("agent.GoalUsage fields = %v, want private accounting state", fields)
 	}
 
 	adapterPath := filepath.Join(root, "internal", "runtimeadapter", "goals.go")
@@ -46,12 +46,12 @@ func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(contents)
-	for _, required := range []string{"goal.NewUsage(", "goal.Restore(snapshot)"} {
+	for _, required := range []string{"agent.NewGoalUsage(", "agent.RestoreGoal(snapshot)"} {
 		if !strings.Contains(text, required) {
 			t.Errorf("embedded Goal adapter lost validated construction %q", required)
 		}
 	}
-	if strings.Contains(text, "projected := goal.Goal{") {
+	if strings.Contains(text, "projected := agent.Goal{") {
 		t.Fatal("embedded Goal adapter restored caller-shaped aggregate construction")
 	}
 }
@@ -200,18 +200,18 @@ func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 
 func TestUsageSummaryOwnsAllTimeVsRecentPeriod(t *testing.T) {
 	root := moduleRoot(t)
-	usagePath := filepath.Join(root, "internal", "usage", "usage.go")
-	fields := cliStructFieldTypes(t, usagePath, "Summary")
-	if got := fields["Period"]; got != "SummaryPeriod" {
-		t.Fatalf("usage.Summary.Period type = %q, want SummaryPeriod", got)
+	usagePath := filepath.Join(root, "internal", "agent", "usage_report.go")
+	fields := cliStructFieldTypes(t, usagePath, "UsageSummary")
+	if got := fields["Period"]; got != "UsageSummaryPeriod" {
+		t.Fatalf("agent.UsageSummary.Period type = %q, want UsageSummaryPeriod", got)
 	}
 	if _, exists := fields["SinceDays"]; exists {
-		t.Fatal("usage.Summary restored primitive SinceDays")
+		t.Fatal("agent.UsageSummary restored primitive SinceDays")
 	}
-	periodPath := filepath.Join(root, "internal", "usage", "period.go")
-	period := cliStructFieldTypes(t, periodPath, "SummaryPeriod")
-	if period["kind"] != "summaryPeriodKind" || period["days"] != "int" {
-		t.Fatalf("usage.SummaryPeriod fields = %v, want private kind/days", period)
+	periodPath := filepath.Join(root, "internal", "agent", "usage_period.go")
+	period := cliStructFieldTypes(t, periodPath, "UsageSummaryPeriod")
+	if period["kind"] != "usageSummaryPeriodKind" || period["days"] != "int" {
+		t.Fatalf("agent.UsageSummaryPeriod fields = %v, want private kind/days", period)
 	}
 }
 
@@ -277,9 +277,9 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 		{public: "Workspaces", private: "workspaces", typeName: "workspace.Service"},
 		{public: "Changes", private: "changes", typeName: "changefeed.Source"},
 		{public: "Transfers", private: "transfers", typeName: "sessiontransfer.Service"},
-		{public: "Usage", private: "usage", typeName: "usage.Service"},
+		{public: "Usage", private: "usage", typeName: "agent.UsageService"},
 		{public: "ModelConfig", private: "modelConfig", typeName: "modelconfig.Service"},
-		{public: "Goals", private: "goals", typeName: "goal.Service"},
+		{public: "Goals", private: "goals", typeName: "agent.GoalService"},
 		{public: "Skills", private: "skills", typeName: "skills.Service"},
 		{public: "MCP", private: "mcp", typeName: "mcp.Service"},
 		{public: "Schedules", private: "schedules", typeName: "schedule.Service"},
@@ -288,7 +288,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 		{public: "DiagnosticTools", private: "diagnosticTools", typeName: "diagnostictool.Service"},
 		{public: "AuthoringContext", private: "authoringContext", typeName: "authoringcontext.Service"},
 		{public: "Hooks", private: "hooks", typeName: "hookpolicy.Service"},
-		{public: "Feedback", private: "feedback", typeName: "feedback.Service"},
+		{public: "Feedback", private: "feedback", typeName: "agent.FeedbackService"},
 	}
 	for _, port := range ports {
 		if got := config[port.public]; got != port.typeName {
@@ -1147,13 +1147,10 @@ var layers = []struct {
 	{"internal/agentmemory/", "agentmemory"},
 	{"internal/diagnostictool/", "diagnostictool"},
 	{"internal/hookpolicy/", "hookpolicy"},
-	{"internal/feedback/", "feedback"},
 	{"internal/failure/", "failure"},
 	{"internal/changefeed/", "changefeed"},
 	{"internal/workspace/", "workspace"},
-	{"internal/usage/", "usage"},
 	{"internal/modelconfig/", "modelconfig"},
-	{"internal/goal/", "goal"},
 	{"internal/knowledge/", "knowledge"},
 	{"internal/skills/", "skills"},
 	{"internal/mcp/", "mcp"},

@@ -13,14 +13,11 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/feedback"
-	"github.com/Tangerg/flame/cli/internal/goal"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
-	usageapi "github.com/Tangerg/flame/cli/internal/usage"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -50,7 +47,7 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 
 func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID string) {
 	t.Helper()
-	start := goal.Start{
+	start := agent.StartGoal{
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing", Budget: limitedGoalBudget(t, 3),
 	}
@@ -61,7 +58,7 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	if validateResultErr := start.ValidateResult(started); validateResultErr != nil {
 		t.Fatalf("started goal: %v", validateResultErr)
 	}
-	update := goal.Update{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
+	update := agent.UpdateGoal{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
 	updated, err := runtime.UpdateGoal(t.Context(), update)
 	if err != nil {
 		t.Fatalf("UpdateGoal: %v", err)
@@ -73,14 +70,14 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	if err != nil {
 		t.Fatalf("StopGoal: %v", err)
 	}
-	if stopped.Status() == goal.Active {
+	if stopped.Status() == agent.GoalActive {
 		t.Fatalf("stopped goal remained active: %+v", stopped)
 	}
 	resumed, err := runtime.ResumeGoal(t.Context(), sessionID)
 	if err != nil {
 		t.Fatalf("ResumeGoal: %v", err)
 	}
-	if resumed.Status() != goal.Active {
+	if resumed.Status() != agent.GoalActive {
 		t.Fatalf("resumed goal = %+v", resumed)
 	}
 	if _, err := runtime.StopGoal(t.Context(), sessionID); err != nil {
@@ -217,8 +214,8 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 	if catalog, err := hooks.Catalog(t.Context(), workspace); err != nil {
 		t.Fatalf("Hooks = (%+v, %v)", catalog, err)
 	}
-	if err := feedbackService.Record(t.Context(), feedback.Signal{
-		SessionID: sessionID, Rating: feedback.Positive, Text: "embedded integration",
+	if err := feedbackService.Record(t.Context(), agent.FeedbackSignal{
+		SessionID: sessionID, Rating: agent.FeedbackPositive, Text: "embedded integration",
 	}); err != nil {
 		t.Fatalf("Create feedback: %v", err)
 	}
@@ -491,7 +488,7 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 	if err != nil || sessionUsage.SessionID != sessionID {
 		t.Fatalf("SessionUsage = (%+v, %v)", sessionUsage, err)
 	}
-	usagePeriod, err := usageapi.RecentDays(30)
+	usagePeriod, err := agent.RecentUsageDays(30)
 	if err != nil {
 		t.Fatal(err)
 	}
