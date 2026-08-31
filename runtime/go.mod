@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/runtime
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260830234203-b74d44fa48db
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260831011542-92fa7f3f912c
 	github.com/Tangerg/scope/a2a v0.12.0
 	github.com/Tangerg/scope/agent v0.12.0
 	github.com/Tangerg/scope/core v0.12.0
