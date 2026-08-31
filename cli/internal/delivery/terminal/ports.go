@@ -29,9 +29,9 @@ type Runtime interface {
 	SteerRun(context.Context, agent.SteerRun) error
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
 	ListModels(context.Context) ([]protocol.Model, error)
-	GetApprovalMode(context.Context) (agent.ApprovalMode, error)
-	SetApprovalMode(context.Context, agent.ApprovalMode) (agent.ApprovalMode, error)
-	ListApprovalRules(context.Context, string) ([]agent.ApprovalRule, error)
+	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
+	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalMode, error)
+	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error
 }
 

@@ -7,9 +7,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
@@ -67,7 +66,7 @@ func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.
 			return nil, cobra.ShellCompDirectiveError
 		}
 		rules, err := runtime.ListApprovalRules(cmd.Context(), *sessionID)
-		if err != nil || agent.ValidateApprovalRules(rules) != nil {
+		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		items := make([]string, 0, len(rules))
@@ -92,9 +91,6 @@ func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID s
 	if err != nil {
 		return err
 	}
-	if err := agent.ValidateApprovalRules(rules); err != nil {
-		return fmt.Errorf("list approval rules: %w", err)
-	}
 	if asJSON {
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
 			Rules []approvalRuleJSON `json:"rules"`
@@ -118,7 +114,7 @@ type approvalRuleJSON struct {
 	Decision string `json:"decision"`
 }
 
-func encodeApprovalRules(rules []agent.ApprovalRule) []approvalRuleJSON {
+func encodeApprovalRules(rules []protocol.ApprovalRule) []approvalRuleJSON {
 	encoded := make([]approvalRuleJSON, 0, len(rules))
 	for _, rule := range rules {
 		encoded = append(encoded, approvalRuleJSON{

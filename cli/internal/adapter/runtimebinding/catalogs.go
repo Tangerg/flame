@@ -10,7 +10,6 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
@@ -95,7 +94,7 @@ func cloneProtocolModel(value protocol.Model) protocol.Model {
 	return value
 }
 
-func (r *Connection) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {
+func (r *Connection) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode, error) {
 	result, err := r.approvals.GetApprovalMode(ctx, r.callOptions())
 	if err != nil {
 		return "", classifyError(err)
@@ -103,31 +102,31 @@ func (r *Connection) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, e
 	if result == nil {
 		return "", runtimeContractViolation("get approval mode returned nil")
 	}
-	mode := agent.ApprovalMode(result.Mode)
-	if err := mode.Validate(); err != nil {
-		return "", runtimeContractViolation("get approval mode returned an invalid projection: %v", err)
+	if err := (protocol.SetApprovalModeRequest{Mode: result.Mode}).ValidateWire(); err != nil {
+		return "", runtimeContractViolation("get approval mode returned an invalid mode: %v", err)
 	}
-	return mode, nil
+	return result.Mode, nil
 }
 
-func (r *Connection) SetApprovalMode(ctx context.Context, mode agent.ApprovalMode) (agent.ApprovalMode, error) {
-	if err := mode.Validate(); err != nil {
+func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalMode, error) {
+	request := protocol.SetApprovalModeRequest{Mode: mode}
+	if err := request.ValidateWire(); err != nil {
 		return "", err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return "", err
 	}
-	result, err := r.approvals.SetApprovalMode(ctx, protocol.SetApprovalModeRequest{Mode: protocol.ApprovalMode(mode)}, options)
+	result, err := r.approvals.SetApprovalMode(ctx, request, options)
 	if err != nil {
 		return "", classifyError(err)
 	}
 	if result == nil {
 		return "", runtimeContractViolation("set approval mode returned nil")
 	}
-	applied := agent.ApprovalMode(result.Mode)
-	if err := applied.Validate(); err != nil {
-		return "", runtimeContractViolation("set approval mode returned an invalid projection: %v", err)
+	applied := result.Mode
+	if err := (protocol.SetApprovalModeRequest{Mode: applied}).ValidateWire(); err != nil {
+		return "", runtimeContractViolation("set approval mode returned an invalid mode: %v", err)
 	}
 	if applied != mode {
 		return "", runtimeContractViolation("set approval mode returned %q for %q", applied, mode)
@@ -135,7 +134,7 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode agent.ApprovalMod
 	return applied, nil
 }
 
-func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
+func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
 	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
@@ -146,17 +145,7 @@ func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([
 	if result == nil {
 		return nil, runtimeContractViolation("list approval rules returned nil")
 	}
-	rules := make([]agent.ApprovalRule, 0, len(result.Rules))
-	for _, value := range result.Rules {
-		rules = append(rules, agent.ApprovalRule{
-			ID: value.ID, Scope: agent.RememberScope(value.Scope), Tool: value.Tool,
-			Subject: value.Subject, Dir: value.Dir, Decision: agent.ApprovalRuleDecision(value.Decision),
-		})
-	}
-	if err := agent.ValidateApprovalRules(rules); err != nil {
-		return nil, runtimeContractViolation("list approval rules returned an invalid projection: %v", err)
-	}
-	return rules, nil
+	return slices.Clone(result.Rules), nil
 }
 
 func (r *Connection) DeleteApprovalRule(ctx context.Context, id string) error {

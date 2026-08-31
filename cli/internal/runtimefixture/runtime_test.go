@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/exactint"
 )
@@ -347,9 +349,9 @@ func TestProjectApprovalRulesFollowTheResolvedProjectRoot(t *testing.T) {
 	runtime.mu.Lock()
 	runtime.sessions["ses_demo_1"].meta.Workspace.ProjectRoot = "/tmp/demo"
 	runtime.sessions["ses_demo_2"].meta.Workspace.ProjectRoot = "/tmp/demo"
-	runtime.rules = []storedRule{{view: agent.ApprovalRule{
-		ID: "rule_project", Scope: agent.RememberProject, Dir: "/tmp/demo",
-		Tool: "shell", Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
+	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
+		ID: "rule_project", Scope: protocol.ApprovalRuleScopeProject, Dir: "/tmp/demo",
+		Tool: "shell", Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	}}}
 	runtime.mu.Unlock()
 
@@ -452,7 +454,7 @@ func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, r
 		t.Fatalf("completed approval item = %+v", approvalItem)
 	}
 	rules, err := runtime.ListApprovalRules(t.Context(), sessionID)
-	if err != nil || len(rules) != 1 || rules[0].Scope != agent.RememberProject {
+	if err != nil || len(rules) != 1 || rules[0].Scope != protocol.ApprovalRuleScopeProject {
 		t.Fatalf("rules = %+v, %v", rules, err)
 	}
 }
@@ -806,8 +808,8 @@ func TestInvalidFaultConfigurationDoesNotMutateRunState(t *testing.T) {
 func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T) {
 	runtime := New()
 	runtime.Instant = true
-	runtime.rules = []storedRule{{view: agent.ApprovalRule{
-		ID: "rule_1", Scope: agent.RememberGlobal, Tool: "shell", Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
+	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell", Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	}}}
 	var continuedWith []agent.InterruptAnswer
 	runtime.Script = func(string) Script {

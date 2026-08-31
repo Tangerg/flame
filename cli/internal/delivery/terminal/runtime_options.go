@@ -47,7 +47,7 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
 		approvalModeTitle,
 		approvalModeDetail,
-		func(mode agent.ApprovalMode) {
+		func(mode protocol.ApprovalMode) {
 			if !a.dialogs.approvalModeDialog.Open() {
 				return
 			}
@@ -55,7 +55,7 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 			a.setApprovalMode(mode)
 		},
 	)
-	a.dialogs.approvalModePicker.SetItems([]agent.ApprovalMode{agent.ApprovalModeSafe, agent.ApprovalModeBalanced, agent.ApprovalModeYolo})
+	a.dialogs.approvalModePicker.SetItems([]protocol.ApprovalMode{protocol.ApprovalModeSafe, protocol.ApprovalModeBalanced, protocol.ApprovalModeYolo})
 	a.dialogs.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.dialogs.approvalModePicker,
 		Where: layout.Placement{Width: 88, Height: 9},
@@ -123,10 +123,10 @@ func (a *app) ChooseApprovalMode() {
 	a.status.note("choose the runtime approval mode")
 }
 
-func (a *app) setApprovalMode(mode agent.ApprovalMode) {
+func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
 	a.runAdmissionMutation(approvalModeOperation, true,
-		func(ctx context.Context) (agent.ApprovalMode, error) { return a.runtime.SetApprovalMode(ctx, mode) },
-		func(applied agent.ApprovalMode, err error) {
+		func(ctx context.Context) (protocol.ApprovalMode, error) { return a.runtime.SetApprovalMode(ctx, mode) },
+		func(applied protocol.ApprovalMode, err error) {
 			if err != nil {
 				a.message("could not set approval mode: " + err.Error())
 				return
@@ -138,8 +138,8 @@ func (a *app) setApprovalMode(mode agent.ApprovalMode) {
 
 func (a *app) ShowRuntimeStatus() {
 	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) (agent.ApprovalMode, error) { return a.runtime.GetApprovalMode(ctx) },
-		func(mode agent.ApprovalMode, err error) {
+		func(ctx context.Context) (protocol.ApprovalMode, error) { return a.runtime.GetApprovalMode(ctx) },
+		func(mode protocol.ApprovalMode, err error) {
 			if err != nil {
 				a.message("could not read runtime status: " + err.Error())
 				return
@@ -152,7 +152,7 @@ func (a *app) ShowRuntimeStatus() {
 	)
 }
 
-func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions, mode agent.ApprovalMode) string {
+func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions, mode protocol.ApprovalMode) string {
 	lines := []string{
 		"model: " + modelLabel(options),
 		"approval mode: " + string(mode) + limitsLabel(options.Limits),
@@ -224,15 +224,12 @@ func (a *app) approvalRulesReaderQuery() runtimeReaderQuery {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			if err := agent.ValidateApprovalRules(rules); err != nil {
-				return readerDocument{}, fmt.Errorf("runtime approval rules: %w", err)
-			}
 			return approvalRulesDocument(rules), nil
 		},
 	}
 }
 
-func approvalRulesDocument(rules []agent.ApprovalRule) readerDocument {
+func approvalRulesDocument(rules []protocol.ApprovalRule) readerDocument {
 	if len(rules) == 0 {
 		return paragraphDocument("Approval rules", "none remembered", []string{"No remembered approval rules."})
 	}
@@ -255,17 +252,14 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 	sessionID := a.session.current.ID
 	a.status.note("loading approval rule to forget")
 	if !a.runOperation(approvalRuleOperation, false,
-		func(ctx context.Context) (agent.ApprovalRule, error) {
+		func(ctx context.Context) (protocol.ApprovalRule, error) {
 			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
 			if err != nil {
-				return agent.ApprovalRule{}, err
-			}
-			if err := agent.ValidateApprovalRules(rules); err != nil {
-				return agent.ApprovalRule{}, fmt.Errorf("runtime approval rules: %w", err)
+				return protocol.ApprovalRule{}, err
 			}
 			return resolveApprovalRule(rules, identity)
 		},
-		func(rule agent.ApprovalRule, err error) {
+		func(rule protocol.ApprovalRule, err error) {
 			if err != nil {
 				a.message("load approval rule failed: " + err.Error())
 				return
@@ -287,13 +281,13 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 	return nil
 }
 
-func resolveApprovalRule(rules []agent.ApprovalRule, identity string) (agent.ApprovalRule, error) {
+func resolveApprovalRule(rules []protocol.ApprovalRule, identity string) (protocol.ApprovalRule, error) {
 	for _, rule := range rules {
 		if rule.ID == identity {
 			return rule, nil
 		}
 	}
-	var matches []agent.ApprovalRule
+	var matches []protocol.ApprovalRule
 	for _, rule := range rules {
 		if strings.HasPrefix(rule.ID, identity) {
 			matches = append(matches, rule)
@@ -301,17 +295,17 @@ func resolveApprovalRule(rules []agent.ApprovalRule, identity string) (agent.App
 	}
 	switch len(matches) {
 	case 0:
-		return agent.ApprovalRule{}, errors.New("approval rule not found: " + identity)
+		return protocol.ApprovalRule{}, errors.New("approval rule not found: " + identity)
 	case 1:
 		return matches[0], nil
 	default:
-		return agent.ApprovalRule{}, errors.New("approval rule identity is ambiguous; use the full id")
+		return protocol.ApprovalRule{}, errors.New("approval rule identity is ambiguous; use the full id")
 	}
 }
 
 type approvalRuleDeletionResult struct {
 	id    string
-	rules []agent.ApprovalRule
+	rules []protocol.ApprovalRule
 }
 
 func (a *app) deleteApprovalRule(sessionID, id string) {
@@ -325,7 +319,7 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 			if err != nil {
 				return approvalRuleDeletionResult{}, err
 			}
-			if err := agent.ValidateApprovalRuleDeletion(rules, id); err != nil {
+			if err := validateApprovalRuleDeletion(rules, id); err != nil {
 				return approvalRuleDeletionResult{}, fmt.Errorf("verify approval rule deletion: %w", err)
 			}
 			return approvalRuleDeletionResult{id: id, rules: rules}, nil
@@ -352,26 +346,35 @@ func (a *app) syncOptions(message string) {
 	a.message(message)
 }
 
-func approvalModeTitle(mode agent.ApprovalMode) string {
+func validateApprovalRuleDeletion(rules []protocol.ApprovalRule, id string) error {
+	for _, rule := range rules {
+		if rule.ID == id {
+			return fmt.Errorf("approval rule %q remains after deletion", id)
+		}
+	}
+	return nil
+}
+
+func approvalModeTitle(mode protocol.ApprovalMode) string {
 	switch mode {
-	case agent.ApprovalModeSafe:
+	case protocol.ApprovalModeSafe:
 		return "Safe"
-	case agent.ApprovalModeBalanced:
+	case protocol.ApprovalModeBalanced:
 		return "Balanced"
-	case agent.ApprovalModeYolo:
+	case protocol.ApprovalModeYolo:
 		return "Yolo"
 	default:
 		return string(mode)
 	}
 }
 
-func approvalModeDetail(mode agent.ApprovalMode) string {
+func approvalModeDetail(mode protocol.ApprovalMode) string {
 	switch mode {
-	case agent.ApprovalModeSafe:
+	case protocol.ApprovalModeSafe:
 		return "ask before write, exec, and network tools"
-	case agent.ApprovalModeBalanced:
+	case protocol.ApprovalModeBalanced:
 		return "allow writes and network; ask before shell execution"
-	case agent.ApprovalModeYolo:
+	case protocol.ApprovalModeYolo:
 		return "allow every tool without approval prompts"
 	default:
 		return ""

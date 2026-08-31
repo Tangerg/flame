@@ -7,8 +7,6 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type approvalBindingRecorder struct {
@@ -52,7 +50,7 @@ func TestCatalogsRejectResponsesOutsideTheRequestedIdentity(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 
 	approvals := &Connection{approvals: &approvalBindingRecorder{setMode: protocol.ApprovalModeYolo}, meta: requestMeta("test")}
-	_, err = approvals.SetApprovalMode(t.Context(), agent.ApprovalModeSafe)
+	_, err = approvals.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe)
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -135,8 +133,8 @@ func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rules) != 1 || rules[0].ID != "rule_1" || rules[0].Scope != agent.RememberProject ||
-		rules[0].Subject != "go test *" || rules[0].Dir != "/workspace" || rules[0].Decision != agent.ApprovalRuleAllow {
+	if len(rules) != 1 || rules[0].ID != "rule_1" || rules[0].Scope != protocol.ApprovalRuleScopeProject ||
+		rules[0].Subject != "go test *" || rules[0].Dir != "/workspace" || rules[0].Decision != protocol.ApprovalRuleDecisionAllow {
 		t.Fatalf("approval rules = %+v", rules)
 	}
 	if recorder.listRequest.SessionID != "session_1" {

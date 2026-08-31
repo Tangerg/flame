@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -3748,8 +3749,8 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 		t.Fatalf("remembered denial = %+v", answer)
 	}
 	rules, err := backend.ListApprovalRules(t.Context(), firstRuntimeSession(t, backend))
-	if err != nil || len(rules) != 1 || rules[0].Decision != agent.ApprovalRuleDeny ||
-		rules[0].Scope != agent.RememberSession {
+	if err != nil || len(rules) != 1 || rules[0].Decision != protocol.ApprovalRuleDecisionDeny ||
+		rules[0].Scope != protocol.ApprovalRuleScopeSession {
 		t.Fatalf("remembered denial rules = %+v, %v", rules, err)
 	}
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -3827,7 +3828,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 				if len(rules) != 0 {
 					t.Fatalf("one-shot decision created rules: %+v", rules)
 				}
-			} else if len(rules) != 1 || rules[0].Scope != test.remember ||
+			} else if len(rules) != 1 || rules[0].Scope != approvalRuleScope(test.remember) ||
 				rules[0].Decision != approvalRuleDecision(test.decision) {
 				t.Fatalf("remembered rules = %+v", rules)
 			}
@@ -3837,11 +3838,24 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 	}
 }
 
-func approvalRuleDecision(decision agent.ApprovalDecision) agent.ApprovalRuleDecision {
+func approvalRuleDecision(decision agent.ApprovalDecision) protocol.ApprovalRuleDecision {
 	if decision == agent.ApprovalApprove {
-		return agent.ApprovalRuleAllow
+		return protocol.ApprovalRuleDecisionAllow
 	}
-	return agent.ApprovalRuleDeny
+	return protocol.ApprovalRuleDecisionDeny
+}
+
+func approvalRuleScope(scope agent.RememberScope) protocol.ApprovalRuleScope {
+	switch scope {
+	case agent.RememberSession:
+		return protocol.ApprovalRuleScopeSession
+	case agent.RememberProject:
+		return protocol.ApprovalRuleScopeProject
+	case agent.RememberGlobal:
+		return protocol.ApprovalRuleScopeGlobal
+	default:
+		return ""
+	}
 }
 
 func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T) {
@@ -4165,7 +4179,7 @@ func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
 	host.Hides(t, "How should flame proceed?")
 	sessionID := firstRuntimeSession(t, backend)
 	rules, err := backend.ListApprovalRules(t.Context(), sessionID)
-	if err != nil || len(rules) != 1 || rules[0].Scope != agent.RememberSession {
+	if err != nil || len(rules) != 1 || rules[0].Scope != protocol.ApprovalRuleScopeSession {
 		t.Fatalf("remembered rules = %+v, %v", rules, err)
 	}
 	host.Type("/rules")
@@ -4188,7 +4202,7 @@ func TestApprovalModeSelectionRoundTripsThroughTheRuntime(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "approval mode · safe")
 	mode, err := backend.GetApprovalMode(t.Context())
-	if err != nil || mode != agent.ApprovalModeSafe {
+	if err != nil || mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode = (%q, %v)", mode, err)
 	}
 

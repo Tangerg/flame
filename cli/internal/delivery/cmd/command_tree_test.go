@@ -15,6 +15,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
@@ -1034,7 +1035,7 @@ func drainContinuation(t *testing.T, stream agent.SegmentStream) {
 	}
 }
 
-func onlyApprovalRule(t *testing.T, runtime Runtime, sessionID string) agent.ApprovalRule {
+func onlyApprovalRule(t *testing.T, runtime Runtime, sessionID string) protocol.ApprovalRule {
 	t.Helper()
 	rules, err := runtime.ListApprovalRules(t.Context(), sessionID)
 	if err != nil {

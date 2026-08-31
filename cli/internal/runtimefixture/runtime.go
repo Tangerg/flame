@@ -3,7 +3,6 @@ package runtimefixture
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -45,7 +44,7 @@ type Runtime struct {
 	runs         map[string]*runState
 	runOrder     []string
 	rules        []storedRule
-	approvalMode agent.ApprovalMode
+	approvalMode protocol.ApprovalMode
 	fault        int
 	identities   mockIdentitySequence
 	now          func() time.Time
@@ -66,7 +65,7 @@ type durableItem struct {
 }
 
 type storedRule struct {
-	view      agent.ApprovalRule
+	view      protocol.ApprovalRule
 	sessionID string
 }
 
@@ -101,7 +100,7 @@ func New() *Runtime {
 	runtime := &Runtime{
 		sessions:     make(map[string]*sessionState),
 		runs:         make(map[string]*runState),
-		approvalMode: agent.ApprovalModeBalanced,
+		approvalMode: protocol.ApprovalModeBalanced,
 		now:          time.Now,
 	}
 	for _, session := range demoSessions() {
@@ -127,7 +126,7 @@ func mockModelTokenLimits(contextWindow, maxOutput int64) *protocol.ModelTokenLi
 	return &protocol.ModelTokenLimits{ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput}
 }
 
-func (r *Runtime) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, error) {
+func (r *Runtime) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode, error) {
 	if err := context.Cause(ctx); err != nil {
 		return "", err
 	}
@@ -136,12 +135,9 @@ func (r *Runtime) GetApprovalMode(ctx context.Context) (agent.ApprovalMode, erro
 	return r.approvalMode, nil
 }
 
-func (r *Runtime) SetApprovalMode(ctx context.Context, mode agent.ApprovalMode) (agent.ApprovalMode, error) {
+func (r *Runtime) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalMode, error) {
 	if err := context.Cause(ctx); err != nil {
 		return "", err
-	}
-	if err := mode.Validate(); err != nil {
-		return "", fmt.Errorf("mock: %w", err)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()

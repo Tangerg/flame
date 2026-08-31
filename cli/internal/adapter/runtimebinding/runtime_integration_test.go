@@ -522,12 +522,12 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 		t.Fatalf("ListApprovalRules = (%+v, %v)", rules, listApprovalRulesErr)
 	}
 
-	applied, err := runtime.SetApprovalMode(t.Context(), agent.ApprovalModeSafe)
-	if err != nil || applied != agent.ApprovalModeSafe {
+	applied, err := runtime.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe)
+	if err != nil || applied != protocol.ApprovalModeSafe {
 		t.Fatalf("SetApprovalMode = (%q, %v)", applied, err)
 	}
 	mode, err := runtime.GetApprovalMode(t.Context())
-	if err != nil || mode != agent.ApprovalModeSafe {
+	if err != nil || mode != protocol.ApprovalModeSafe {
 		t.Fatalf("GetApprovalMode = (%q, %v)", mode, err)
 	}
 }

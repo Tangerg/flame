@@ -74,14 +74,14 @@ type mutableRuntimeCatalog struct {
 
 	mu                 sync.Mutex
 	models             []protocol.Model
-	rules              []agent.ApprovalRule
+	rules              []protocol.ApprovalRule
 	deleted            chan string
 	ignoreRuleDeletion bool
 }
 
 type blockingApprovalModeRuntime struct {
 	Runtime
-	started  chan agent.ApprovalMode
+	started  chan protocol.ApprovalMode
 	release  chan struct{}
 	canceled chan struct{}
 }
@@ -140,8 +140,8 @@ func (b *blockingSessionDeleteRuntime) DeleteSession(
 
 func (b *blockingApprovalModeRuntime) SetApprovalMode(
 	ctx context.Context,
-	mode agent.ApprovalMode,
-) (agent.ApprovalMode, error) {
+	mode protocol.ApprovalMode,
+) (protocol.ApprovalMode, error) {
 	select {
 	case b.started <- mode:
 	default:
@@ -164,7 +164,7 @@ func (m *mutableRuntimeCatalog) ListModels(context.Context) ([]protocol.Model, e
 	return slices.Clone(m.models), nil
 }
 
-func (m *mutableRuntimeCatalog) ListApprovalRules(context.Context, string) ([]agent.ApprovalRule, error) {
+func (m *mutableRuntimeCatalog) ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return slices.Clone(m.rules), nil
@@ -173,7 +173,7 @@ func (m *mutableRuntimeCatalog) ListApprovalRules(context.Context, string) ([]ag
 func (m *mutableRuntimeCatalog) DeleteApprovalRule(_ context.Context, id string) error {
 	m.mu.Lock()
 	if !m.ignoreRuleDeletion {
-		m.rules = slices.DeleteFunc(m.rules, func(rule agent.ApprovalRule) bool { return rule.ID == id })
+		m.rules = slices.DeleteFunc(m.rules, func(rule protocol.ApprovalRule) bool { return rule.ID == id })
 	}
 	m.mu.Unlock()
 	if m.deleted != nil {
@@ -188,7 +188,7 @@ func (m *mutableRuntimeCatalog) setModels(models ...protocol.Model) {
 	m.mu.Unlock()
 }
 
-func (m *mutableRuntimeCatalog) setRules(rules ...agent.ApprovalRule) {
+func (m *mutableRuntimeCatalog) setRules(rules ...protocol.ApprovalRule) {
 	m.mu.Lock()
 	m.rules = slices.Clone(rules)
 	m.mu.Unlock()
@@ -290,9 +290,9 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Press(input.Enter)
 		host.Shows(t, "No remembered approval rules")
 
-		catalog.setRules(agent.ApprovalRule{
-			ID: "rule_external", Scope: agent.RememberGlobal, Tool: "shell",
-			Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
+		catalog.setRules(protocol.ApprovalRule{
+			ID: "rule_external", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
+			Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 		})
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ApprovalsChanged), Sequence: 1}
 		awaitSignal(t, source.applied, "approvals.changed delivery")
@@ -326,9 +326,9 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T) {
 	catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New(), deleted: make(chan string, 1)}
-	catalog.setRules(agent.ApprovalRule{
-		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
-		Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
+	catalog.setRules(protocol.ApprovalRule{
+		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
+		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	})
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
 	host.Shows(t, "Ask flame")
@@ -357,9 +357,9 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 	catalog := &mutableRuntimeCatalog{
 		Runtime: runtimefixture.New(), deleted: make(chan string, 1), ignoreRuleDeletion: true,
 	}
-	catalog.setRules(agent.ApprovalRule{
-		ID: "rule_external_123", Scope: agent.RememberGlobal, Tool: "shell",
-		Subject: "go test ./...", Decision: agent.ApprovalRuleAllow,
+	catalog.setRules(protocol.ApprovalRule{
+		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
+		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	})
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
 	host.Shows(t, "Ask flame")
@@ -379,7 +379,7 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	base := runtimefixture.New()
 	runtime := &blockingApprovalModeRuntime{
-		Runtime: base, started: make(chan agent.ApprovalMode, 1),
+		Runtime: base, started: make(chan protocol.ApprovalMode, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}, 1),
 	}
 	release := sync.OnceFunc(func() { close(runtime.release) })
@@ -396,7 +396,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 	host.Shows(t, "Runtime approval mode")
 	host.Press(input.Enter)
 	host.Hides(t, "Runtime approval mode")
-	if mode := awaitValue(t, runtime.started, "approval mode mutation"); mode != agent.ApprovalModeSafe {
+	if mode := awaitValue(t, runtime.started, "approval mode mutation"); mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode mutation = %q, want safe", mode)
 	}
 
@@ -430,7 +430,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 	release()
 	host.Shows(t, "approval mode · safe")
 	mode, err := base.GetApprovalMode(t.Context())
-	if err != nil || mode != agent.ApprovalModeSafe {
+	if err != nil || mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode after mutation = (%q, %v)", mode, err)
 	}
 	stop()
@@ -440,7 +440,7 @@ func TestRunAdmissionWaitsForApprovalModeMutationSettlement(t *testing.T) {
 	base := runtimefixture.New()
 	recorder := &recordingRuntime{Runtime: base}
 	runtime := &blockingApprovalModeRuntime{
-		Runtime: recorder, started: make(chan agent.ApprovalMode, 1),
+		Runtime: recorder, started: make(chan protocol.ApprovalMode, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}, 1),
 	}
 	release := sync.OnceFunc(func() { close(runtime.release) })
@@ -453,7 +453,7 @@ func TestRunAdmissionWaitsForApprovalModeMutationSettlement(t *testing.T) {
 	host.Shows(t, "Runtime approval mode")
 	host.Press(input.Enter)
 	host.Hides(t, "Runtime approval mode")
-	if mode := awaitValue(t, runtime.started, "approval mode mutation"); mode != agent.ApprovalModeSafe {
+	if mode := awaitValue(t, runtime.started, "approval mode mutation"); mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode mutation = %q, want safe", mode)
 	}
 
@@ -582,7 +582,7 @@ func TestDismissingSessionCenterCancelsCatalogRefresh(t *testing.T) {
 
 func TestResolveApprovalRuleRequiresAnUnambiguousIdentity(t *testing.T) {
 	t.Parallel()
-	rules := []agent.ApprovalRule{{ID: "rule_alpha"}, {ID: "rule_alpine"}}
+	rules := []protocol.ApprovalRule{{ID: "rule_alpha"}, {ID: "rule_alpine"}}
 	if rule, err := resolveApprovalRule(rules, "rule_alpha"); err != nil || rule.ID != "rule_alpha" {
 		t.Fatalf("exact rule = (%+v, %v)", rule, err)
 	}

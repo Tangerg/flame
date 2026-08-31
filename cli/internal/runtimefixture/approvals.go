@@ -7,11 +7,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
-func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
+func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
@@ -24,7 +26,7 @@ func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]ag
 	if session == nil {
 		return nil, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, sessionID)
 	}
-	out := make([]agent.ApprovalRule, 0, len(r.rules))
+	out := make([]protocol.ApprovalRule, 0, len(r.rules))
 	for _, stored := range r.rules {
 		if ruleApplies(stored, sessionID, session.meta.Workspace.ProjectRoot) {
 			out = append(out, stored.view)
@@ -57,14 +59,15 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval,
 	}
 	session := r.sessions[run.sessionID]
 	tool, subject := approvalRuleParts(approval)
+	scope := approvalRuleScope(answer.Remember)
 	for _, stored := range r.rules {
 		rule := stored.view
-		if rule.Tool == tool && rule.Subject == subject && rule.Scope == answer.Remember && ruleApplies(stored, run.sessionID, session.meta.Workspace.ProjectRoot) {
+		if rule.Tool == tool && rule.Subject == subject && rule.Scope == scope && ruleApplies(stored, run.sessionID, session.meta.Workspace.ProjectRoot) {
 			return
 		}
 	}
-	rule := agent.ApprovalRule{
-		ID: r.identities.next(ruleIdentity), Scope: answer.Remember,
+	rule := protocol.ApprovalRule{
+		ID: r.identities.next(ruleIdentity), Scope: scope,
 		Tool: tool, Subject: subject, Decision: approvalRuleDecision(answer.Decision),
 	}
 	stored := storedRule{view: rule}
@@ -105,21 +108,21 @@ func (r *Runtime) rememberedAnswerLocked(run *runState, approval agent.Approval)
 	for _, stored := range slices.Backward(r.rules) {
 		rule := stored.view
 		if rule.Tool == tool && rule.Subject == subject && ruleApplies(stored, run.sessionID, workspace) {
-			return agent.ApprovalAnswer{Decision: approvalDecision(rule.Decision), Remember: rule.Scope}, true
+			return agent.ApprovalAnswer{Decision: approvalDecision(rule.Decision), Remember: rememberScope(rule.Scope)}, true
 		}
 	}
 	return agent.ApprovalAnswer{}, false
 }
 
-func approvalRuleDecision(decision agent.ApprovalDecision) agent.ApprovalRuleDecision {
+func approvalRuleDecision(decision agent.ApprovalDecision) protocol.ApprovalRuleDecision {
 	if decision == agent.ApprovalApprove {
-		return agent.ApprovalRuleAllow
+		return protocol.ApprovalRuleDecisionAllow
 	}
-	return agent.ApprovalRuleDeny
+	return protocol.ApprovalRuleDecisionDeny
 }
 
-func approvalDecision(decision agent.ApprovalRuleDecision) agent.ApprovalDecision {
-	if decision == agent.ApprovalRuleAllow {
+func approvalDecision(decision protocol.ApprovalRuleDecision) agent.ApprovalDecision {
+	if decision == protocol.ApprovalRuleDecisionAllow {
 		return agent.ApprovalApprove
 	}
 	return agent.ApprovalDeny
@@ -127,14 +130,40 @@ func approvalDecision(decision agent.ApprovalRuleDecision) agent.ApprovalDecisio
 
 func ruleApplies(rule storedRule, sessionID, workspace string) bool {
 	switch rule.view.Scope {
-	case agent.RememberSession:
+	case protocol.ApprovalRuleScopeSession:
 		return rule.sessionID == sessionID
-	case agent.RememberProject:
+	case protocol.ApprovalRuleScopeProject:
 		return rule.view.Dir == workspace
-	case agent.RememberGlobal:
+	case protocol.ApprovalRuleScopeGlobal:
 		return true
 	default:
 		return false
+	}
+}
+
+func approvalRuleScope(scope agent.RememberScope) protocol.ApprovalRuleScope {
+	switch scope {
+	case agent.RememberSession:
+		return protocol.ApprovalRuleScopeSession
+	case agent.RememberProject:
+		return protocol.ApprovalRuleScopeProject
+	case agent.RememberGlobal:
+		return protocol.ApprovalRuleScopeGlobal
+	default:
+		return ""
+	}
+}
+
+func rememberScope(scope protocol.ApprovalRuleScope) agent.RememberScope {
+	switch scope {
+	case protocol.ApprovalRuleScopeSession:
+		return agent.RememberSession
+	case protocol.ApprovalRuleScopeProject:
+		return agent.RememberProject
+	case protocol.ApprovalRuleScopeGlobal:
+		return agent.RememberGlobal
+	default:
+		return agent.RememberNone
 	}
 }
 
