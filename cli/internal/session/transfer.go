@@ -1,6 +1,4 @@
-// Package sessiontransfer defines the consumer-owned port for portable runtime
-// session artifacts. The artifact body stays opaque to the CLI domain.
-package sessiontransfer
+package session
 
 import (
 	"bytes"
@@ -16,54 +14,54 @@ import (
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
-type Format string
+type DocumentFormat string
 
 const (
-	Markdown Format = "md"
-	JSON     Format = "json"
+	MarkdownFormat DocumentFormat = "md"
+	JSONFormat     DocumentFormat = "json"
 
 	// MaximumDocumentBytes is the complete encoded size accepted by every CLI
-	// session export/import boundary.
+	// Session export/import boundary.
 	MaximumDocumentBytes = 64 << 20
 )
 
-func ParseFormat(value string) (Format, error) {
+func ParseDocumentFormat(value string) (DocumentFormat, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "md", "markdown":
-		return Markdown, nil
+		return MarkdownFormat, nil
 	case "json":
-		return JSON, nil
+		return JSONFormat, nil
 	default:
 		return "", fmt.Errorf("export format %q is unsupported; use markdown or json", strings.TrimSpace(value))
 	}
 }
 
-func (f Format) Extension() string {
+func (f DocumentFormat) Extension() string {
 	switch f {
-	case Markdown:
+	case MarkdownFormat:
 		return ".md"
-	case JSON:
+	case JSONFormat:
 		return ".json"
 	default:
 		return ""
 	}
 }
 
-func (f Format) Validate() error {
-	if f != Markdown && f != JSON {
+func (f DocumentFormat) Validate() error {
+	if f != MarkdownFormat && f != JSONFormat {
 		return fmt.Errorf("session document format %q is invalid", f)
 	}
 	return nil
 }
 
-// Document is an immutable runtime-authored export. JSON documents are
+// Document is an immutable Runtime-authored export. JSON documents are
 // round-trippable; Markdown documents are human-readable projections only.
 type Document struct {
-	format Format
+	format DocumentFormat
 	body   []byte
 }
 
-func NewDocument(format Format, body []byte) (Document, error) {
+func NewDocument(format DocumentFormat, body []byte) (Document, error) {
 	body, err := validateDocumentBody(format, body)
 	if err != nil {
 		return Document{}, err
@@ -71,7 +69,7 @@ func NewDocument(format Format, body []byte) (Document, error) {
 	return Document{format: format, body: slices.Clone(body)}, nil
 }
 
-func validateDocumentBody(format Format, body []byte) ([]byte, error) {
+func validateDocumentBody(format DocumentFormat, body []byte) ([]byte, error) {
 	if err := format.Validate(); err != nil {
 		return nil, err
 	}
@@ -85,14 +83,14 @@ func validateDocumentBody(format Format, body []byte) ([]byte, error) {
 	if !utf8.Valid(body) {
 		return nil, errors.New("session document is not valid UTF-8")
 	}
-	if format == JSON && !json.Valid(body) {
+	if format == JSONFormat && !json.Valid(body) {
 		return nil, errors.New("session artifact is not valid JSON")
 	}
 	return body, nil
 }
 
-func (d Document) Format() Format { return d.format }
-func (d Document) Bytes() []byte  { return slices.Clone(d.body) }
+func (d Document) Format() DocumentFormat { return d.format }
+func (d Document) Bytes() []byte          { return slices.Clone(d.body) }
 
 func (d Document) Validate() error {
 	_, err := validateDocumentBody(d.format, d.body)
@@ -100,12 +98,12 @@ func (d Document) Validate() error {
 }
 
 func (d Document) Importable() bool {
-	return d.format == JSON && d.Validate() == nil
+	return d.format == JSONFormat && d.Validate() == nil
 }
 
 type ExportRequest struct {
 	SessionID string
-	Format    Format
+	Format    DocumentFormat
 }
 
 func (e ExportRequest) Validate() error {
@@ -130,7 +128,7 @@ func (i ImportRequest) Validate() error {
 	return nil
 }
 
-type Service interface {
+type TransferService interface {
 	ExportSession(context.Context, ExportRequest) (Document, error)
 	ImportSession(context.Context, ImportRequest) (agent.Session, error)
 }

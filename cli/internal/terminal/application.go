@@ -26,8 +26,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessionartifact"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -66,7 +66,7 @@ type app struct {
 	runtime          agent.Runtime
 	workspaces       workspace.Service
 	changes          changefeed.Source
-	transfers        sessiontransfer.Service
+	transfers        session.TransferService
 	usage            agent.UsageService
 	modelConfig      modelconfig.Service
 	goals            agent.GoalService
@@ -188,7 +188,7 @@ type appConfig struct {
 	runtime          agent.Runtime
 	workspaces       workspace.Service
 	changes          changefeed.Source
-	transfers        sessiontransfer.Service
+	transfers        session.TransferService
 	usage            agent.UsageService
 	modelConfig      modelconfig.Service
 	goals            agent.GoalService

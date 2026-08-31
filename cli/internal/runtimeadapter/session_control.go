@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -24,7 +24,7 @@ type sessionBinding interface {
 	ImportSession(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error)
 }
 
-var _ sessiontransfer.Service = (*Connection)(nil)
+var _ session.TransferService = (*Connection)(nil)
 
 func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSession) (agent.RollbackResult, error) {
 	if err := input.Validate(); err != nil {
@@ -97,58 +97,58 @@ func projectDroppedRun(value protocol.DroppedRun) (agent.DroppedRun, error) {
 	return projected, nil
 }
 
-func (r *Connection) ExportSession(ctx context.Context, request sessiontransfer.ExportRequest) (sessiontransfer.Document, error) {
+func (r *Connection) ExportSession(ctx context.Context, request session.ExportRequest) (session.Document, error) {
 	if err := request.Validate(); err != nil {
-		return sessiontransfer.Document{}, err
+		return session.Document{}, err
 	}
 	if err := r.requireFeature(runtimeprofile.FeatureSessionExport); err != nil {
-		return sessiontransfer.Document{}, err
+		return session.Document{}, err
 	}
 	response, err := r.sessions.ExportSession(ctx, protocol.ExportSessionRequest{
 		SessionID: request.SessionID, Format: protocol.ExportFormat(request.Format),
 	}, r.callOptions())
 	if err != nil {
-		return sessiontransfer.Document{}, classifyError(err)
+		return session.Document{}, classifyError(err)
 	}
 	if response == nil {
-		return sessiontransfer.Document{}, runtimeContractViolation("export session returned nil")
+		return session.Document{}, runtimeContractViolation("export session returned nil")
 	}
 	if protocol.ExportFormat(request.Format) != response.Format {
-		return sessiontransfer.Document{}, runtimeContractViolation("export session returned format %q, want %q", response.Format, request.Format)
+		return session.Document{}, runtimeContractViolation("export session returned format %q, want %q", response.Format, request.Format)
 	}
 	var body []byte
 	switch request.Format {
-	case sessiontransfer.Markdown:
+	case session.MarkdownFormat:
 		if response.Artifact != nil || response.Markdown == "" {
-			return sessiontransfer.Document{}, runtimeContractViolation("export session returned a malformed Markdown result")
+			return session.Document{}, runtimeContractViolation("export session returned a malformed Markdown result")
 		}
 		body = []byte(response.Markdown)
-	case sessiontransfer.JSON:
+	case session.JSONFormat:
 		if response.Artifact == nil || response.Markdown != "" {
-			return sessiontransfer.Document{}, runtimeContractViolation("export session returned a malformed JSON result")
+			return session.Document{}, runtimeContractViolation("export session returned a malformed JSON result")
 		}
 		if validateWireTreeErr := protocol.ValidateWireTree(*response.Artifact); validateWireTreeErr != nil {
-			return sessiontransfer.Document{}, runtimeContractViolation("export session returned an invalid artifact: %v", validateWireTreeErr)
+			return session.Document{}, runtimeContractViolation("export session returned an invalid artifact: %v", validateWireTreeErr)
 		}
 		if response.Artifact.Session.ID != request.SessionID {
-			return sessiontransfer.Document{}, runtimeContractViolation(
+			return session.Document{}, runtimeContractViolation(
 				"export session returned artifact for %q, want %q",
 				response.Artifact.Session.ID, request.SessionID,
 			)
 		}
 		body, err = json.MarshalIndent(response.Artifact, "", "  ")
 		if err != nil {
-			return sessiontransfer.Document{}, runtimeContractViolation("export session artifact cannot be encoded: %v", err)
+			return session.Document{}, runtimeContractViolation("export session artifact cannot be encoded: %v", err)
 		}
 	}
-	document, err := sessiontransfer.NewDocument(request.Format, body)
+	document, err := session.NewDocument(request.Format, body)
 	if err != nil {
-		return sessiontransfer.Document{}, runtimeContractViolation("export session returned an invalid document: %v", err)
+		return session.Document{}, runtimeContractViolation("export session returned an invalid document: %v", err)
 	}
 	return document, nil
 }
 
-func (r *Connection) ImportSession(ctx context.Context, request sessiontransfer.ImportRequest) (agent.Session, error) {
+func (r *Connection) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
 	if err := request.Validate(); err != nil {
 		return agent.Session{}, err
 	}

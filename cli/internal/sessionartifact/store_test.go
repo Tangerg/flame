@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 )
 
 func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
 	workspace := t.TempDir()
-	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, []byte(`{"version":17}`))
+	document, err := session.NewDocument(session.JSONFormat, []byte(`{"version":17}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
 }
 
 func TestStoreRejectsPathsAsExportNames(t *testing.T) {
-	document, err := sessiontransfer.NewDocument(sessiontransfer.Markdown, []byte("# Session"))
+	document, err := session.NewDocument(session.MarkdownFormat, []byte("# Session"))
 	if err != nil {
 		t.Fatal(err)
 	}

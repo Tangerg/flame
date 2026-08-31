@@ -1,4 +1,5 @@
-// Package session owns the application use cases around durable conversations.
+// Package session owns CLI application use cases and consumer contracts around
+// durable Runtime Sessions.
 package session
 
 import (

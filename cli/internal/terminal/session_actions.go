@@ -15,13 +15,12 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/session"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
 type sessionImport struct {
 	path     string
-	artifact sessiontransfer.Document
+	artifact session.Document
 }
 
 func (a *app) prepareSessionImport(path string) error {
@@ -57,10 +56,10 @@ func (a *app) prepareSessionImport(path string) error {
 	return nil
 }
 
-func (a *app) importSession(artifact sessiontransfer.Document) {
+func (a *app) importSession(artifact session.Document) {
 	a.runSessionChange("importing session",
 		func(ctx context.Context) (agent.SessionSnapshot, error) {
-			imported, err := a.transfers.ImportSession(ctx, sessiontransfer.ImportRequest{Artifact: artifact})
+			imported, err := a.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
 			if err != nil {
 				return agent.SessionSnapshot{}, err
 			}

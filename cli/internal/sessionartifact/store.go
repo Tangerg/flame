@@ -12,14 +12,14 @@ import (
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 )
 
 // Store owns the filesystem boundary for session documents. Its zero value is
 // ready to use and publishes without overwriting different existing content.
 type Store struct{}
 
-func (Store) Publish(workspace, title, requestedName string, document sessiontransfer.Document) (string, error) {
+func (Store) Publish(workspace, title, requestedName string, document session.Document) (string, error) {
 	if err := document.Validate(); err != nil {
 		return "", fmt.Errorf("publish session document: %w", err)
 	}
@@ -48,36 +48,36 @@ func (Store) Publish(workspace, title, requestedName string, document sessiontra
 // Load reads an explicitly selected JSON artifact. Relative paths resolve from
 // the active workspace; absolute paths remain valid so users can move sessions
 // between projects without first copying them into the destination workspace.
-func (Store) Load(workspace, selectedPath string) (sessiontransfer.Document, error) {
+func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	path, err := resolveInputPath(workspace, selectedPath)
 	if err != nil {
-		return sessiontransfer.Document{}, err
+		return session.Document{}, err
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return sessiontransfer.Document{}, fmt.Errorf("open session artifact: %w", err)
+		return session.Document{}, fmt.Errorf("open session artifact: %w", err)
 	}
 	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
-		return sessiontransfer.Document{}, fmt.Errorf("inspect session artifact: %w", err)
+		return session.Document{}, fmt.Errorf("inspect session artifact: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return sessiontransfer.Document{}, errors.New("session artifact is not a regular file")
+		return session.Document{}, errors.New("session artifact is not a regular file")
 	}
-	if info.Size() > int64(sessiontransfer.MaximumDocumentBytes) {
-		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", sessiontransfer.MaximumDocumentBytes)
+	if info.Size() > int64(session.MaximumDocumentBytes) {
+		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 	}
-	body, err := io.ReadAll(io.LimitReader(file, sessiontransfer.MaximumDocumentBytes+1))
+	body, err := io.ReadAll(io.LimitReader(file, session.MaximumDocumentBytes+1))
 	if err != nil {
-		return sessiontransfer.Document{}, fmt.Errorf("read session artifact: %w", err)
+		return session.Document{}, fmt.Errorf("read session artifact: %w", err)
 	}
-	if len(body) > sessiontransfer.MaximumDocumentBytes {
-		return sessiontransfer.Document{}, fmt.Errorf("session artifact exceeds %d bytes", sessiontransfer.MaximumDocumentBytes)
+	if len(body) > session.MaximumDocumentBytes {
+		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 	}
-	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, body)
+	document, err := session.NewDocument(session.JSONFormat, body)
 	if err != nil {
-		return sessiontransfer.Document{}, fmt.Errorf("read session artifact: %w", err)
+		return session.Document{}, fmt.Errorf("read session artifact: %w", err)
 	}
 	return document, nil
 }
@@ -128,7 +128,7 @@ func resolveInputPath(workspace, selected string) (string, error) {
 	return resolved, nil
 }
 
-func documentName(title, requested string, format sessiontransfer.Format) (string, error) {
+func documentName(title, requested string, format session.DocumentFormat) (string, error) {
 	requested = strings.TrimSpace(requested)
 	if requested == "" {
 		stem := pathologize.Clean(strings.TrimSpace(title))

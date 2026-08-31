@@ -15,7 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -110,7 +110,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	}
 	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: agent.RestoreHistory})
 	requireRuntimeContractViolation(t, err)
-	_, err = runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{SessionID: "ses_1", Format: sessiontransfer.JSON})
+	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.JSONFormat})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -133,11 +133,11 @@ func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 		sessions: stub, meta: requestMeta("test"),
 		profile: sessionControlProfile(runtimeprofile.FeatureSessionExport),
 	}
-	markdown, err := runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{SessionID: "ses_1", Format: sessiontransfer.Markdown})
+	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.MarkdownFormat})
 	if err != nil || string(markdown.Bytes()) != "# Runtime transcript" {
 		t.Fatalf("Markdown export = (%q, %v)", markdown.Bytes(), err)
 	}
-	artifact, err := runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{SessionID: "ses_1", Format: sessiontransfer.JSON})
+	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.JSONFormat})
 	versionField := fmt.Sprintf(`"version": %d`, protocol.SessionArtifactVersion)
 	if err != nil || !strings.Contains(string(artifact.Bytes()), versionField) || !artifact.Importable() {
 		t.Fatalf("JSON export = (%q, %v)", artifact.Bytes(), err)
@@ -167,21 +167,21 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 		profile: sessionControlProfile(runtimeprofile.FeatureSessionExport),
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
-	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, []byte(artifactJSON))
+	document, err := session.NewDocument(session.JSONFormat, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := runtime.ImportSession(t.Context(), sessiontransfer.ImportRequest{Artifact: document})
-	if err != nil || session.ID != "ses_1" {
-		t.Fatalf("ImportSession = (%+v, %v)", session, err)
+	imported, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
+	if err != nil || imported.ID != "ses_1" {
+		t.Fatalf("ImportSession = (%+v, %v)", imported, err)
 	}
 
 	unknownJSON := fmt.Sprintf(`{"version":%d,"future":true}`, protocol.SessionArtifactVersion)
-	unknown, err := sessiontransfer.NewDocument(sessiontransfer.JSON, []byte(unknownJSON))
+	unknown, err := session.NewDocument(session.JSONFormat, []byte(unknownJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ImportSession(t.Context(), sessiontransfer.ImportRequest{Artifact: unknown}); err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: unknown}); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("unknown artifact field error = %v", err)
 	}
 }
@@ -201,7 +201,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, body)
+	document, err := session.NewDocument(session.JSONFormat, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 				meta:    requestMeta("test"),
 				profile: sessionControlProfile(runtimeprofile.FeatureSessionExport),
 			}
-			_, err := runtime.ImportSession(t.Context(), sessiontransfer.ImportRequest{Artifact: document})
+			_, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
 			requireRuntimeContractViolation(t, err)
 		})
 	}
@@ -273,17 +273,17 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("files rollback error = %v, want ErrIncompatibleRuntime", err)
 	}
-	if _, err := runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{
-		SessionID: "ses_1", Format: sessiontransfer.JSON,
+	if _, err := runtime.ExportSession(t.Context(), session.ExportRequest{
+		SessionID: "ses_1", Format: session.JSONFormat,
 	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("export error = %v, want ErrIncompatibleRuntime", err)
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","workspace":{"path":"/workspace"},"provider":"mock","model":"balanced"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
-	document, err := sessiontransfer.NewDocument(sessiontransfer.JSON, []byte(artifactJSON))
+	document, err := session.NewDocument(session.JSONFormat, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ImportSession(t.Context(), sessiontransfer.ImportRequest{Artifact: document}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("import error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if called {

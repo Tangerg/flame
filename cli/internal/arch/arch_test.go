@@ -276,7 +276,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 		{public: "Runtime", private: "runtime", typeName: "agent.Runtime"},
 		{public: "Workspaces", private: "workspaces", typeName: "workspace.Service"},
 		{public: "Changes", private: "changes", typeName: "changefeed.Source"},
-		{public: "Transfers", private: "transfers", typeName: "sessiontransfer.Service"},
+		{public: "Transfers", private: "transfers", typeName: "session.TransferService"},
 		{public: "Usage", private: "usage", typeName: "agent.UsageService"},
 		{public: "ModelConfig", private: "modelConfig", typeName: "modelconfig.Service"},
 		{public: "Goals", private: "goals", typeName: "agent.GoalService"},
@@ -1160,7 +1160,6 @@ var layers = []struct {
 	{"internal/runtimeprofile/", "runtimeprofile"},
 	{"internal/session/", "session"},
 	{"internal/sessionartifact/", "sessionartifact"},
-	{"internal/sessiontransfer/", "sessiontransfer"},
 	{"internal/workbench/", "workbench"},
 	{"internal/agent/", "agent"},
 	{"internal/settings/", "settings"},
@@ -1192,19 +1191,18 @@ var allowed = map[string][]string{
 	"retry":           {"agent"},
 	"extensions":      nil,
 	"promptqueue":     {"agent", "identity"},
-	"sessiontransfer": {"agent", "identity"},
-	"sessionartifact": {"sessiontransfer"},
+	"sessionartifact": {"session"},
 	"workbench":       {"agent", "commandreplay", "identity"},
 
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
-	"runtimeadapter": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "workspace"},
+	"runtimeadapter": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "session", "workspace"},
 	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "workbench", "workspace"},
+	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "settings", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
@@ -1275,7 +1273,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "run", "session", "sessionartifact", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1353,7 +1351,6 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/run", "internal/cmd", true},
 		{"internal/session", "internal/terminal", true},
 		{"internal/sessionartifact", "internal/terminal", true},
-		{"internal/sessiontransfer", "internal/terminal", true},
 		{"internal/workbench", "internal/terminal", true},
 		{"internal/settings", "internal/terminal", true},
 		{"internal/promptqueue", "internal/terminal", true},
@@ -1366,7 +1363,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/runtimeadapter", "internal/terminal", true},
 		{"internal/terminal", "internal/agent", false},
 		{"internal/terminal", "internal/sessionartifact", false},
-		{"internal/terminal", "internal/sessiontransfer", false},
+		{"internal/terminal", "internal/session", false},
 		{"internal/terminal", "internal/workbench", false},
 		{"internal/terminal", "internal/extensions", false},
 		{"internal/cmd", "internal/terminal", true},

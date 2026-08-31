@@ -28,7 +28,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/session"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -40,7 +39,7 @@ type Config struct {
 	RuntimeProfile   *runtimeprofile.Profile
 	Workspaces       workspace.Service
 	Changes          changefeed.Source
-	Transfers        sessiontransfer.Service
+	Transfers        session.TransferService
 	Usage            agent.UsageService
 	ModelConfig      modelconfig.Service
 	Goals            agent.GoalService

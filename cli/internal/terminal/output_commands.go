@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 )
 
 type sessionOutputResult struct {
@@ -59,7 +59,7 @@ func (a *app) exportSession(argument string) error {
 	title := a.session.Title
 	started := a.runApplicationOperation(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionOutputResult, error) {
-			document, err := a.transfers.ExportSession(ctx, sessiontransfer.ExportRequest{SessionID: sessionID, Format: format})
+			document, err := a.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})
 			if err != nil {
 				return sessionOutputResult{}, err
 			}
@@ -80,13 +80,13 @@ func (a *app) exportSession(argument string) error {
 	return nil
 }
 
-func parseExportArgument(argument string) (sessiontransfer.Format, string, error) {
+func parseExportArgument(argument string) (session.DocumentFormat, string, error) {
 	argument = strings.TrimSpace(argument)
 	formatName, filename, found := strings.Cut(argument, " ")
 	if !found {
 		formatName, filename = argument, ""
 	}
-	format, err := sessiontransfer.ParseFormat(formatName)
+	format, err := session.ParseDocumentFormat(formatName)
 	if err != nil {
 		return "", "", err
 	}

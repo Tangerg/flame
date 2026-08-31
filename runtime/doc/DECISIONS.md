@@ -960,3 +960,10 @@
 - 背景：`cli/internal/retry.Backoff` 与 `cli/internal/reconnect.Policy` 分别实现了同一套 base、doubling、maximum 指数退避；Run 和 Terminal 的重连路径必须同时 import 两个 package，前者计算是否重试和 delay，后者再负责等待。`reconnect` 虽有多个调用点，但没有独立资源或生命周期，它的唯一机制正是 `retry` 已拥有的 schedule；分包让同一算法产生两份真相，并把“有多个消费者”误当成“必须有两个 owner”。
 - 决策：`cli/internal/retry` 以多个职责文件共同拥有通用 `Backoff`、cancellation-aware wait、`ReconnectPolicy` 和 classified transport admission。`ReconnectPolicy` 只保存有限 attempt budget 和唯一 `Backoff`，连 configured state 都由 `Backoff` 的闭合 mode 表达；`agent.ErrCommandInProgress` 的一秒下限在同一 policy 上叠加，不复制指数算法。API 改用 `NewReconnectPolicy`、`DisabledReconnectPolicy`、`IsReconnectable` 与 `ErrInvalidReconnectPolicy` 等语义全名。
 - 后果：物理删除 `cli/internal/reconnect`、全部旧 import、架构层与空目录，不保留 alias、forwarder 或 compatibility package。Run、Terminal、Session 与 mutation 继续按各自生命周期决定何时调用 retry，`retry` 只拥有可复用机制和 transport failure classification；重连预算、命令提交下限、取消及用户行为不变。
+
+## ADR-RT-135：Portable Session 文档与 transfer port 属于 Session context
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 CLI Session context 批次完成；允许 CLI internal Go API breaking change，Runtime 公共 Go surface、Protocol、Artifact、SQLite 与 Desktop 不变。
+- 背景：`cli/internal/sessiontransfer` 只定义 portable Session document、format、export/import request 与 Runtime consumer port；这些值都以 Session identity 为中心，没有独立进程、连接、存储或 workflow lifecycle。实际文件读取、路径解析和安全发布已由 `sessionartifact` 独立拥有。旧结构把同一 Session application context 按 transfer operation 拆为平级 package，导致 Terminal 同时 import `session` 与 `sessiontransfer`，Runtime adapter 也实现一个脱离 Session owner 的含糊 `Service`。
+- 决策：`cli/internal/session` 以职责文件共同拥有 opening/update/delete/rollback 用例以及 portable `Document`、`DocumentFormat`、`ExportRequest`、`ImportRequest` 和 `TransferService`。格式常量改为 `MarkdownFormat`/`JSONFormat`，完整文档仍唯一拥有 UTF-8、JSON、immutable body 与 64 MiB encoded envelope。`sessionartifact` 继续作为 outbound filesystem adapter，只消费 `session.Document` 并负责 bounded read、path policy、staging 与 conflict-safe publication。
+- 后果：物理删除 `cli/internal/sessiontransfer`、全部旧 import、架构层和空目录，不保留 alias、forwarder 或 compatibility package。CLI Session 语义与其消费端口在同一 context 可发现，外部文件 authority 仍被独立隔离；Runtime Protocol、artifact shape、文件 bytes、导入导出行为和资源上限不变。

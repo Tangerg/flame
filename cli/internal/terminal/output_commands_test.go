@@ -15,7 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
@@ -24,7 +24,7 @@ func TestParseExportArgumentSeparatesTheFormatFromAnOptionalSpacedFilename(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if format != sessiontransfer.Markdown || filename != "Project notes.md" {
+	if format != session.MarkdownFormat || filename != "Project notes.md" {
 		t.Fatalf("export argument = %q, %q", format, filename)
 	}
 	if _, _, err := parseExportArgument("pdf report.pdf"); err == nil {
@@ -45,37 +45,37 @@ func (c *copyTestHost) Copy(value string) bool {
 type outputTransferStub struct{}
 
 type blockingOutputTransfer struct {
-	sessiontransfer.Service
-	started  chan sessiontransfer.ExportRequest
+	session.TransferService
+	started  chan session.ExportRequest
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 func (b *blockingOutputTransfer) ExportSession(
 	ctx context.Context,
-	request sessiontransfer.ExportRequest,
-) (sessiontransfer.Document, error) {
+	request session.ExportRequest,
+) (session.Document, error) {
 	b.started <- request
 	select {
 	case <-b.release:
-		return b.Service.ExportSession(ctx, request)
+		return b.TransferService.ExportSession(ctx, request)
 	case <-ctx.Done():
 		close(b.canceled)
-		return sessiontransfer.Document{}, context.Cause(ctx)
+		return session.Document{}, context.Cause(ctx)
 	}
 }
 
-func (outputTransferStub) ExportSession(_ context.Context, request sessiontransfer.ExportRequest) (sessiontransfer.Document, error) {
+func (outputTransferStub) ExportSession(_ context.Context, request session.ExportRequest) (session.Document, error) {
 	if err := request.Validate(); err != nil {
-		return sessiontransfer.Document{}, err
+		return session.Document{}, err
 	}
-	if request.Format == sessiontransfer.Markdown {
-		return sessiontransfer.NewDocument(sessiontransfer.Markdown, []byte("# Runtime export\n\nstable answer\n"))
+	if request.Format == session.MarkdownFormat {
+		return session.NewDocument(session.MarkdownFormat, []byte("# Runtime export\n\nstable answer\n"))
 	}
-	return sessiontransfer.NewDocument(sessiontransfer.JSON, []byte(`{"version":17}`))
+	return session.NewDocument(session.JSONFormat, []byte(`{"version":17}`))
 }
 
-func (outputTransferStub) ImportSession(context.Context, sessiontransfer.ImportRequest) (agent.Session, error) {
+func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (agent.Session, error) {
 	return agent.Session{}, errors.New("unexpected import")
 }
 
@@ -140,7 +140,7 @@ func TestCopyLastAndExportCommandsUseTheDurableSessionSnapshot(t *testing.T) {
 func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	workspace := t.TempDir()
 	backend := runtimefixture.New()
-	session, err := backend.CreateSession(t.Context(), agent.CreateSession{
+	created, err := backend.CreateSession(t.Context(), agent.CreateSession{
 		Title: "Export ownership", Workspace: workspace,
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "create export history"))
+	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(created.ID, "create export history"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		}
 	}
 	transfer := &blockingOutputTransfer{
-		Service: outputTransferStub{}, started: make(chan sessiontransfer.ExportRequest, 1),
+		TransferService: outputTransferStub{}, started: make(chan session.ExportRequest, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(transfer.release) })
@@ -167,17 +167,17 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Transfers: transfer, Changes: source, SessionID: session.ID})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Transfers: transfer, Changes: source, SessionID: created.ID})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/export markdown owned.md")
 	host.Press(input.Enter)
 	request := awaitValue(t, transfer.started, "session export")
-	if request.SessionID != session.ID {
-		t.Fatalf("export session = %q, want %q", request.SessionID, session.ID)
+	if request.SessionID != created.ID {
+		t.Fatalf("export session = %q, want %q", request.SessionID, created.ID)
 	}
 	title := "Projection changed during export"
-	installChangedSessionProjection(t, backend, source, session.ID, title)
+	installChangedSessionProjection(t, backend, source, created.ID, title)
 	host.Shows(t, "session refreshed after runtime change")
 	select {
 	case <-transfer.canceled:

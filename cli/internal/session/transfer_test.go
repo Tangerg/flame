@@ -1,4 +1,4 @@
-package sessiontransfer
+package session
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	body := []byte(`{"version":17}`)
-	document, err := NewDocument(JSON, body)
+	document, err := NewDocument(JSONFormat, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	if !document.Importable() {
 		t.Fatal("valid JSON document is not importable")
 	}
-	markdown, err := NewDocument(Markdown, []byte("# Session"))
+	markdown, err := NewDocument(MarkdownFormat, []byte("# Session"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 
 func TestDocumentRejectsOversizedPortableContent(t *testing.T) {
 	body := bytes.Repeat([]byte("x"), MaximumDocumentBytes+1)
-	if _, err := NewDocument(Markdown, body); err == nil {
+	if _, err := NewDocument(MarkdownFormat, body); err == nil {
 		t.Fatal("oversized session document was accepted")
 	}
 }

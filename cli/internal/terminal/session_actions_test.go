@@ -18,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
@@ -533,11 +533,11 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 
 type importingTransfer struct{ runtime *runtimefixture.Runtime }
 
-func (i importingTransfer) ExportSession(context.Context, sessiontransfer.ExportRequest) (sessiontransfer.Document, error) {
-	return sessiontransfer.Document{}, errors.New("unexpected export")
+func (i importingTransfer) ExportSession(context.Context, session.ExportRequest) (session.Document, error) {
+	return session.Document{}, errors.New("unexpected export")
 }
 
-func (i importingTransfer) ImportSession(ctx context.Context, request sessiontransfer.ImportRequest) (agent.Session, error) {
+func (i importingTransfer) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
 	if err := request.Validate(); err != nil {
 		return agent.Session{}, err
 	}

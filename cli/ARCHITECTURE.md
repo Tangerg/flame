@@ -65,6 +65,13 @@ schedule, while `ReconnectPolicy` adds classified admission and a finite
 attempt budget for Run, Runtime invalidation, workspace inspection, and MCP
 management. Do not split retry admission from the schedule it consumes.
 
+`internal/session` also owns the portable Session document value, export/import
+requests, and the consumer-owned Runtime transfer port. These facts share the
+Session identity and lifecycle; they are not a separate bounded context.
+`internal/sessionartifact` remains a distinct outbound filesystem adapter: it
+owns path resolution, bounded reads, conflict-safe publication, and exact-byte
+transfer without owning the document semantics.
+
 `internal/identity` owns the CLI domain's admission policy for exact foreign
 Runtime resource and model-selection identities. It keeps Session, Run,
 Segment, Item, Event, provider, model, and reasoning rules in
@@ -125,7 +132,7 @@ The CLI can share a compatible Runtime data directory with another process becau
 
 CLI run settings hold an optional exact provider/model override, not a product default. The zero pair means “use the active Session selection”; one-shot and TUI commands preserve that omission on the wire. Presentation may combine the omitted override with the current Session projection to show the exact effective model, but that derived label never becomes command state. Explicit configuration or `--provider` + `--model` still sends an override. CLI preference environment variables use `FLAME_CLI_*`; Runtime deployment/configuration keeps `FLAME_*`. Root persistent preference flags are bound from the root flag set, so a subcommand-local flag such as `sessions update --model` cannot mutate unrelated Run settings.
 
-Portable Session exports cross the Runtime/filesystem boundary as one immutable `sessiontransfer.Document`. The Document owns format, UTF-8/JSON validity, canonical body, and the 64 MiB complete encoded limit; adapters may reject a file before reading it but cannot publish or import a larger second representation. Filesystem publication writes the exact Document bytes, so the write path cannot create an artifact that the next CLI process rejects by construction.
+Portable Session exports cross the Runtime/filesystem boundary as one immutable `session.Document`. The Document owns format, UTF-8/JSON validity, canonical body, and the 64 MiB complete encoded limit; adapters may reject a file before reading it but cannot publish or import a larger second representation. Filesystem publication writes the exact Document bytes, so the write path cannot create an artifact that the next CLI process rejects by construction.
 
 ## Terminal model
 

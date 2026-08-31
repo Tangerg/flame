@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/schedule"
-	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
+	"github.com/Tangerg/flame/cli/internal/session"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -273,19 +273,19 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 
 func requireSessionPortability(t *testing.T, runtime *Connection, sessionID string) {
 	t.Helper()
-	markdown, err := runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{
-		SessionID: sessionID, Format: sessiontransfer.Markdown,
+	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{
+		SessionID: sessionID, Format: session.MarkdownFormat,
 	})
 	if err != nil || len(markdown.Bytes()) == 0 || markdown.Importable() {
 		t.Fatalf("Markdown ExportSession = (%q, %v)", markdown.Bytes(), err)
 	}
-	artifact, err := runtime.ExportSession(t.Context(), sessiontransfer.ExportRequest{
-		SessionID: sessionID, Format: sessiontransfer.JSON,
+	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{
+		SessionID: sessionID, Format: session.JSONFormat,
 	})
 	if err != nil || !artifact.Importable() {
 		t.Fatalf("JSON ExportSession = (%q, %v)", artifact.Bytes(), err)
 	}
-	imported, err := runtime.ImportSession(t.Context(), sessiontransfer.ImportRequest{Artifact: artifact})
+	imported, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: artifact})
 	if err != nil || imported.ID != sessionID {
 		t.Fatalf("ImportSession = (%+v, %v)", imported, err)
 	}
