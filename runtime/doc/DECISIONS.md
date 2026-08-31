@@ -869,3 +869,10 @@
 - 背景：当前 Anthropic SDK 的 Models API 明确默认每页 20、单页范围 1–1000，并通过 `has_more` 表达后续页。ADR-RT-120 修正路径与鉴权后，Runtime 仍不传 `limit` 且通用 response DTO 忽略 `has_more`；因此一个完全正常的 Anthropic endpoint 会让模型选择器只看到前 20 个身份，同时 `providers.test` 把这份部分目录当作成功。超时、1 MiB 文档上限与 4096 raw-entry 上限都不能证明单页就是全集。
 - 决策：Anthropic listing 请求固定使用该协议的最大合法单页 `limit=1000`；response DTO 显式读取 `has_more`。若 endpoint 在最大单页下仍声明更多模型，整个 probe 失败并沿既有 Application policy 回退/返回 failed verdict，不发布部分结果。OpenAI-family response 不解释该字段，既有单请求语义不变。
 - 后果：现实规模的 Anthropic catalog 一次请求即可完整返回；超过 1000 或忽略 limit 的 endpoint 不再产生看似成功的残缺选择器。没有引入 cursor 状态机、多请求重试、循环检测、聚合 buffer、SDK Models client、用户 page-size 配置或第二资源预算；将来只有真实 catalog 超过 1000 时才用新证据评估分页。
+
+## ADR-RT-122：未知 provider 不能被 `models.list` 伪装成空目录
+
+- 状态：已接受并实施，当前质量 Goal Q4 本批完成；只修改 Runtime Models Application/Delivery、测试与 API 文档，公共 Protocol shape/version、Artifact、SQLite、Desktop、Agent Framework 与 CLI shape 不变。
+- 背景：Provider catalog 是受支持 identity 的唯一 owner，`providers.update`、`providers.test` 与 role validation 都通过 `supportedProvider` 拒绝未知值；旧 `ListModels` 却只在 metadata lookup 成功时尝试远端发现，lookup 缺失随后直接读取静态 catalog 并返回成功空页。失败优先 Application/Delivery 反例证明 `models.list(provider="missing")` 不报错、也不触发 lister，使客户端无法区分“不支持”与“合法 provider 暂无模型”。
+- 决策：`Coordinator.ListModels` 在任何 registry access、remote probe 或 catalog fallback 前调用既有 `supportedProvider`；缺失 identity 返回 `ErrProviderUnsupported`。Delivery 的 `ListModels` 与其他 model 命令共用 `mapModelError`，把该领域错误投影为既有 `invalid_params`；registry/caller/infra 错误仍保持原样。
+- 后果：`providers.list` 与 `models.list` 对支持集合只有一份事实，未知 provider 不再产生可缓存的假空目录；合法 endpoint probe failure 仍可按既有策略回退真正的 provider catalog。没有新增 error code、provider allowlist、handler 分支、兼容空页、协议字段或第二 metadata lookup。

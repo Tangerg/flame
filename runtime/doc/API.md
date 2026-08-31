@@ -846,7 +846,8 @@ API origin/gateway prefix，请求 `{baseURL}/v1/models`，并发送 `x-api-key`
 和实际 chat adapter 因而共享同一协议归属；应用层不按 provider identity 猜路径或鉴权。Anthropic 请求使用官方单页上限
 `limit=1000`；若响应仍声明 `has_more:true`，Runtime 拒绝该不完整目录，不把第一页发布成完整事实。
 
-`models.*` 提供模型目录与 utility / embedding 角色；`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
+`models.*` 提供模型目录与 utility / embedding 角色；`models.list` 的 provider 必须来自 `providers.list`，未知 identity 返回
+`invalid_params`，不能用成功空页冒充“受支持但无模型”。`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
 
 ### 7.7 可选域（capability-gated）
 
