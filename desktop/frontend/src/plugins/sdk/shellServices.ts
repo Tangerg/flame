@@ -1,29 +1,27 @@
 // The plugin that provides the shell's Services.
 //
-// One plugin rather than five: the reason any of these changes is the same one —
+// One plugin rather than four: the reason any of these changes is the same one —
 // the app shell grew a capability — and splitting a tiny provider per
 // contract buys indirection, not cohesion. The consumers are still decoupled;
 // each declares only the contract it uses, which is the property that matters.
+//
+// WORKSPACE is the exception, and provided by the workspace context instead: its
+// state is a context aggregate, and reaching one from here would invert the
+// platform's direction.
 
 import { definePlugin } from "dougong";
 import { addLocaleBundle } from "@/lib/i18n";
-import { navigator } from "@/lib/navigation";
-import { useContextDockStore } from "@/state/contextDockStore";
 import { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
-import { WORKSPACE_VIEW } from "./kernelPoints";
 import { executeCommand } from "./selectors/commands";
-import { lookupExtensionByKey } from "./selectors/extensions";
 import {
   COMMANDS,
   CONFIG,
   I18N,
   WINDOW,
-  WORKSPACE,
   type CommandsService,
   type ConfigService,
   type I18nService,
   type WindowService,
-  type WorkspaceService,
 } from "./services";
 import { useWindowStore } from "./windowStore";
 
@@ -47,20 +45,6 @@ const window: WindowService = {
   setWorking: (on) => useWindowStore.getState().setWorking(on),
 };
 
-const workspace: WorkspaceService = {
-  openView(id) {
-    if (!lookupExtensionByKey(WORKSPACE_VIEW, id)) {
-      console.warn(`[plugin] workspace.openView("${id}"): no view registered`);
-      return;
-    }
-    navigator().go({ view: id });
-  },
-  closeView(id) {
-    if (navigator().get().view === id) navigator().go({ view: null });
-    useContextDockStore.getState().closeDockTab(id);
-  },
-};
-
 const commands: CommandsService = {
   execute: (id, ...args) => executeCommand(id, ...args),
 };
@@ -71,8 +55,7 @@ export const shellServices = definePlugin({
     config: CONFIG,
     i18n: I18N,
     window: WINDOW,
-    workspace: WORKSPACE,
     commands: COMMANDS,
   },
-  setup: () => ({ config, i18n, window, workspace, commands }),
+  setup: () => ({ config, i18n, window, commands }),
 });

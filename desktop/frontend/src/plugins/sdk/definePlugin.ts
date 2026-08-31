@@ -12,7 +12,7 @@ import {
 import type { Contribution } from "./contracts";
 import { notifyFrom } from "./notifications";
 import type { AmbientShell } from "./services";
-import { startTask } from "@/state/tasksStore";
+import { startTask } from "./tasksStore";
 import { createStorage } from "./storage";
 import type { Disposable } from "./types/common";
 import type { ExtensionContributionOptions, ExtensionPoint } from "./types/extensions";

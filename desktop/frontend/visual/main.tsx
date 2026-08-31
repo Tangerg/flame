@@ -8,9 +8,10 @@ import { queryClient } from "@/lib/queryClient";
 import { setLocale } from "@/lib/i18n";
 import { configureNavigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
-import { uiTypeLadderCssVariables } from "@/lib/typography";
+import { uiTypeLadderCssVariables } from "@/plugins/builtin/theme/kit/typeLadder";
+import { installAppearancePreferencePort } from "@/plugins/builtin/theme/adapters/appearancePreferenceBinding";
 import { installDocumentAppearance } from "@/plugins/builtin/theme/adapters/documentAppearance";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
 import { VISUAL_WORK_INDEX_STATES, type VisualWorkIndexState } from "./shellFixtureStates";
@@ -136,14 +137,18 @@ const node = await fixtureNode();
 // regression could reach a screenshot. The store already carries the query
 // parameters this file resolved, so the pipeline reproduces the deterministic
 // motion and type the specs depend on rather than fighting it.
-useUiStore.setState({
+useAppearanceStore.setState({
   theme,
   motionScale,
   ...(requestedFontSize !== null && Number.isFinite(Number(requestedFontSize))
     ? { fontSize: Number(requestedFontSize) }
     : {}),
 });
-installDocumentAppearance(useUiStore);
+// Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
+// the preference through this port, so painting without binding it renders a broken
+// settings surface the specs would photograph as if it were the product.
+installAppearancePreferencePort();
+installDocumentAppearance(useAppearanceStore);
 
 createRoot(container).render(
   <QueryClientProvider client={queryClient}>

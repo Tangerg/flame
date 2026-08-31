@@ -47,6 +47,7 @@ export interface WorkspaceNavigationPort {
   useSidebarDrawer(): WorkspaceDrawer;
   useSidebarWidth(): WorkspaceColumnWidth;
   useDockWidth(): WorkspaceOptionalColumnWidth;
+  toggleSidebar(): void;
   selectChat(): void;
   openView(id: string): void;
   openViewInDock(id: string): void;

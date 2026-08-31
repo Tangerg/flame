@@ -417,7 +417,7 @@ test("accent selection gives an immediate, durable visual acknowledgement", asyn
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const persisted = JSON.parse(localStorage.getItem("flame.ui") ?? "null") as {
+        const persisted = JSON.parse(localStorage.getItem("flame.appearance") ?? "null") as {
           state?: { accent?: string };
         } | null;
         return persisted?.state?.accent;

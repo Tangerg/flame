@@ -6,11 +6,11 @@ import { useWorkIndexActions } from "@/plugins/builtin/navigation/public/workInd
 import { isLightTheme, toggleThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import { Slot } from "@/plugins/host/Slot";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearance } from "@/plugins/builtin/theme/public/appearance";
 
 function ThemeToggle() {
   const t = useT();
-  const theme = useUiStore((s) => s.theme);
+  const theme = useAppearance((s) => s.theme);
   const isLight = isLightTheme(theme);
   return (
     <Button

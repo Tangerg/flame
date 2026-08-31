@@ -1,5 +1,5 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
-export type StreamReveal = "smooth" | "typewriter";
+import type { StreamReveal } from "@/plugins/builtin/chat/message/public/streamReveal";
 
 export interface PersonalizationPreferencesPort {
   useCompletionSound(): boolean;

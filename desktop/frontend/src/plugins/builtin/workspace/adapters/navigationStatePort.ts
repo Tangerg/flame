@@ -2,9 +2,9 @@
 // the user's location — they come from the Navigator, so history holds them.
 // What the dock has OPEN, and the per-view state inside it, is memory the
 // location doesn't describe: that stays in the store.
-import { useUiStore } from "@/state/uiStore";
+import { useShellLayoutStore } from "./shellLayoutStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
-import { useContextDockStore } from "@/state/contextDockStore";
+import { useContextDockStore } from "./contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { configureWorkspaceNavigationPort } from "../application/ports/navigationState";
 
@@ -47,20 +47,21 @@ export function installWorkspaceNavigationPort(): () => void {
     // The drawer follows the user's preference and nothing else. The dock is a
     // separate resizable column, so opening it cannot override that preference.
     useSidebarDrawer: () => ({
-      collapsed: useUiStore((state) => state.sidebarCollapsed),
-      toggle: useUiStore((state) => state.toggleSidebar),
+      collapsed: useShellLayoutStore((state) => state.sidebarCollapsed),
+      toggle: useShellLayoutStore((state) => state.toggleSidebar),
     }),
     useSidebarWidth: () => ({
-      width: useUiStore((state) => state.sidebarWidth),
-      setWidth: useUiStore((state) => state.setSidebarWidth),
+      width: useShellLayoutStore((state) => state.sidebarWidth),
+      setWidth: useShellLayoutStore((state) => state.setSidebarWidth),
     }),
     useDockWidth: () => {
-      const setDockWidthRatio = useUiStore((state) => state.setDockWidthRatio);
+      const setDockWidthRatio = useShellLayoutStore((state) => state.setDockWidthRatio);
       return {
-        width: useUiStore((state) => state.dockWidthRatio),
+        width: useShellLayoutStore((state) => state.dockWidthRatio),
         setWidth: setDockWidthRatio,
       };
     },
+    toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
     // Taking the whole card leaves the dock's own selection alone: closing the
     // full view brings back whatever the user had beside the chat.

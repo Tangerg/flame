@@ -22,6 +22,7 @@ export {
   useActiveWorkspaceViewId,
   showWorkspaceDock,
   toggleWorkspaceDock,
+  toggleWorkspaceSidebar,
   useWorkspaceDock,
   useExpandedWorkspaceToolIds,
   useSelectedWorkspaceToolId,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useContextDockStore } from "@/state/contextDockStore";
+import { useContextDockStore } from "./adapters/contextDockStore";
 import { navigator } from "@/lib/navigation";
-import sessionNavigation from ".";
+import { workspaceSessionNavigation as sessionNavigation } from "./sessionNavigation";
 import { definePlugin } from "@/plugins/sdk";
 import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
 import { WORKSPACE_SCOPE_PORTS } from "@/plugins/builtin/workspace/public/ports";

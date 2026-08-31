@@ -62,6 +62,11 @@ export function useDockWidth(): WorkspaceOptionalColumnWidth {
   return workspaceNavigation().useDockWidth();
 }
 
+/** The imperative half of `useSidebarDrawer`, for the global shortcut. */
+export function toggleWorkspaceSidebar(): void {
+  workspaceNavigation().toggleSidebar();
+}
+
 export function selectWorkspaceChat(): void {
   workspaceNavigation().selectChat();
 }

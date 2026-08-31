@@ -88,8 +88,8 @@ export interface AgentSourceSpec {
   factory: () => AgentDriver;
 }
 
-// Task types are declared by the store that implements them (`state/tasksStore`)
-// and re-exported here as the plugin-facing contract. Declaring them on this side
+// Task types are declared by the store that implements them (`tasksStore`) and
+// re-exported here as the plugin-facing contract. Declaring them on this side
 // made the edge two-way — the host imports `startTask` from that store — and a
 // type is not exempt from direction.
-export type { TaskHandle, TaskStartOptions } from "@/state/tasksStore";
+export type { TaskHandle, TaskStartOptions } from "../tasksStore";

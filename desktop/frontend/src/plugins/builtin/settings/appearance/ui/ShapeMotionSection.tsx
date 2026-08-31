@@ -1,4 +1,4 @@
-import { UI_DENSITY_MODES, type UiDensity } from "@/lib/density";
+import { UI_DENSITY_MODES, type UiDensity } from "@/plugins/builtin/theme/public/appearance";
 import { Segmented, type SegmentedOption } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useShapeMotionPreferences } from "../application/appearancePreferences";

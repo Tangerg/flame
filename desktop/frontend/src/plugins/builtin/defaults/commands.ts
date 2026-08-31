@@ -12,10 +12,11 @@ import {
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,
   toggleWorkspaceDock,
+  toggleWorkspaceSidebar,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { COMMAND, definePlugin } from "@/plugins/sdk";
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
-import { useUiStore } from "@/state/uiStore";
+
 import { navigator } from "@/lib/navigation";
 import { defaultStaticCommands } from "./application/defaultContributions";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -45,7 +46,7 @@ export const defaultCommands = definePlugin({
   name: "flame.builtin.default-commands",
   setup(ctx) {
     for (const command of defaultStaticCommands({
-      toggleSidebar: () => useUiStore.getState().toggleSidebar(),
+      toggleSidebar: toggleWorkspaceSidebar,
       toggleDock: toggleWorkspaceDock,
       toggleTheme: toggleThemeScheme,
       newChat: openNewChatSession,

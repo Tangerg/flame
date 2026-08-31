@@ -1,8 +1,10 @@
 import { colord } from "colord";
 import { describe, expect, it } from "vitest";
-import { densityCssVariables, DEFAULT_UI_DENSITY } from "@/lib/density";
+import { densityCssVariables } from "./kit/density";
+import { DEFAULT_UI_DENSITY } from "./kit/appearance";
 import { iconScaleCssVariables } from "@/lib/iconScale";
-import { normalizeUiFontSize, uiTypeLadderCssVariables } from "@/lib/typography";
+import { normalizeUiFontSize } from "@/lib/typography";
+import { uiTypeLadderCssVariables } from "./kit/typeLadder";
 import { declaredInBlock, declaredInCss } from "@/test/stylesheet";
 
 // `globals.css` declares every `--density-*`, `--icon-*`, `--fs-*` and accent shade as a

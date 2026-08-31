@@ -2,8 +2,7 @@
 // and 0 is RED — so pure black would paint every surface pink. Neutral chroma is
 // PROPORTIONAL to the accent's own, so a grey accent yields grey surfaces with no branch.
 
-import type { AccentTint } from "@/lib/appearance";
-import { DEFAULT_ACCENT_TINT } from "@/lib/appearance";
+import { DEFAULT_ACCENT_TINT, type AccentTint } from "./appearance";
 import type { NeutralStep } from "@/plugins/sdk";
 
 /** Hue in DEGREES. */

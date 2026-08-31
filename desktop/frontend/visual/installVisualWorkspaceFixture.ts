@@ -46,8 +46,12 @@ import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/
 import { CONTEXT_DOCK_DESTINATION, DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type { FeatureCapability, ServerCapabilities } from "@/rpc";
-import { useContextDockStore, WorkspaceFileFocus } from "@/state/contextDockStore";
-import { useUiStore } from "@/state/uiStore";
+import {
+  useContextDockStore,
+  WorkspaceFileFocus,
+} from "@/plugins/builtin/workspace/adapters/contextDockStore";
+import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
+import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
 import { navigator } from "@/lib/navigation";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
 import { installVisualAgentFixture } from "./installVisualAgentFixture";
@@ -490,10 +494,8 @@ export async function installVisualWorkspaceFixture(
     view: state === "settings" ? "settings" : null,
     settings: state === "settings" ? "appearance" : null,
   });
-  useUiStore.setState({
-    theme,
-    visualStyle: "flame",
-    motionScale: 0,
+  useAppearanceStore.setState({ theme, visualStyle: "flame", motionScale: 0 });
+  useShellLayoutStore.setState({
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
     // Only the review view splits, and only above a width the others never need.
@@ -526,7 +528,7 @@ export async function installVisualWorkspaceFixture(
 
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
-  useUiStore.subscribe((next, previous) => {
+  useShellLayoutStore.subscribe((next, previous) => {
     if (next.dockWidthRatio === previous.dockWidthRatio) return;
     root.dataset.visualDockWidthCommits = String(
       Number(root.dataset.visualDockWidthCommits ?? "0") + 1,

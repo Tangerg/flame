@@ -1,10 +1,7 @@
 // A separate axis from the type ladder. Chrome-bar heights deliberately do NOT scale: the
 // content header, drawer header and traffic-light gutter share one number across the seam.
 
-export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
-export type UiDensity = (typeof UI_DENSITY_MODES)[number];
-
-export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
+import { DEFAULT_UI_DENSITY, UI_DENSITY_MODES, type UiDensity } from "./appearance";
 
 const SCALE: Readonly<Record<UiDensity, number>> = {
   compact: 0.85,

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ToolCall } from "@/plugins/builtin/agent/public/viewState";
-import { useContextDockStore, WorkspaceFileFocus } from "@/state/contextDockStore";
+import {
+  useContextDockStore,
+  WorkspaceFileFocus,
+} from "@/plugins/builtin/workspace/adapters/contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { hasWorkspaceViewForTool, openWorkspaceViewForTool } from "./toolRouting";
 import { workspaceCommandActivitiesFromAgentTools } from "./toolActivity";

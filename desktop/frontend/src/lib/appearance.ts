@@ -3,15 +3,10 @@
 
 import { useSyncExternalStore } from "react";
 
-// Declared here because this is the one module every ring may import.
+// Declared here, not in the theme context that owns the rest of the appearance vocabulary,
+// because these two travel DOWN this seam: `lib/highlight` reads the scheme and `lib/motion`
+// reads the motion, and neither may import a plugin.
 export type Scheme = "dark" | "light";
-export type ColorThemeId = string;
-export type VisualStyleId = string;
-
-export const ACCENT_TINTS = ["off", "soft", "standard"] as const;
-export type AccentTint = (typeof ACCENT_TINTS)[number];
-
-export const DEFAULT_ACCENT_TINT: AccentTint = "standard";
 
 export interface VisualStyleMotion {
   instantMs: number;

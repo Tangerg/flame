@@ -1,5 +1,5 @@
-import type { AccentTint, ColorThemeId } from "@/lib/appearance";
-import type { UiDensity } from "@/lib/density";
+import type { AccentTint, ColorThemeId } from "@/plugins/builtin/theme/public/appearance";
+import type { UiDensity } from "@/plugins/builtin/theme/public/appearance";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 export interface CustomTheme {

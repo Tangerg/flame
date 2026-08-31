@@ -11,7 +11,7 @@ import {
   useSelectWorkspaceTool,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { useUiStore } from "@/state/uiStore";
+import { useStreamRevealStore } from "@/plugins/builtin/chat/message/public/streamReveal";
 import { ChatErrorBoundary } from "./ChatErrorBoundary";
 import { ComposerSurface } from "./ComposerSurface";
 import { ComposerOverlayTop, FloatingComposer, RuntimeConnectionNotice } from "./FloatingComposer";
@@ -55,7 +55,7 @@ export function ChatStream({ onSend }: Props) {
   const selectTool = useSelectWorkspaceTool();
   const toggleExpandedTool = useToggleWorkspaceTool();
 
-  const textReveal = useUiStore((state) => state.streamReveal);
+  const textReveal = useStreamRevealStore((state) => state.streamReveal);
 
   const toolIdSignature = useMemo(() => Object.keys(toolCalls).join("\u001f"), [toolCalls]);
   const toolIds = useMemo(

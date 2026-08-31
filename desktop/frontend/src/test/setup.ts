@@ -10,7 +10,10 @@ import { useConfigStore } from "@/plugins/sdk/config";
 import { usePluginErrorStore } from "@/plugins/sdk/errors";
 import { useNotificationStore } from "@/plugins/sdk/notifications";
 import { resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { useContextDockStore, WorkspaceFileFocus } from "@/state/contextDockStore";
+import {
+  useContextDockStore,
+  WorkspaceFileFocus,
+} from "@/plugins/builtin/workspace/adapters/contextDockStore";
 import { configureNavigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { installAgentDefaultSessionPort } from "@/plugins/builtin/agent/adapters/agentDefaultSessionPort";

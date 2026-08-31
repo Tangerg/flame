@@ -2,7 +2,7 @@ import type { Scheme } from "@/lib/appearance";
 import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { systemAppearance } from "./ports/systemAppearance";
-import { themePreference } from "./ports/themePreference";
+import { appearancePreferencePort } from "./ports/appearancePreference";
 
 /**
  * Callers asking "is this light?" MUST resolve through here rather than comparing the id
@@ -24,8 +24,8 @@ export function isLightTheme(themeId: string): boolean {
  * plugin system. The store holds the value; this decides it.
  */
 export function toggleThemeScheme(): void {
-  const preference = themePreference();
-  const target = resolveThemeScheme(preference.activeTheme()) === "dark" ? "light" : "dark";
+  const preference = appearancePreferencePort();
+  const target = resolveThemeScheme(preference.read().theme) === "dark" ? "light" : "dark";
   const next = lookupExtensionPoint(COLOR_THEME).find((spec) => spec.scheme === target);
-  if (next) preference.setTheme(next.id);
+  if (next) preference.edit().setTheme(next.id);
 }

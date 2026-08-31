@@ -1,31 +1,35 @@
-import { useUiStore } from "@/state/uiStore";
+// Binds this pane's port to the theme context's published preference. The pane declares
+// what it needs field by field; the theme publishes one selector — the translation between
+// the two is exactly what an adapter is for.
+
+import { editAppearance, useAppearance } from "@/plugins/builtin/theme/public/appearance";
 import { configureAppearancePreferencesPort } from "../application/ports/preferences";
 
 export function installAppearancePreferencesPort(): () => void {
   return configureAppearancePreferencesPort({
-    useTheme: () => useUiStore((state) => state.theme),
-    useSetTheme: () => useUiStore((state) => state.setTheme),
-    useAccent: () => useUiStore((state) => state.accent),
-    useSetAccent: () => useUiStore((state) => state.setAccent),
-    useCustomTheme: () => useUiStore((state) => state.customTheme),
-    useSetCustomTheme: () => useUiStore((state) => state.setCustomTheme),
-    useContrast: () => useUiStore((state) => state.contrast),
-    useAccentTint: () => useUiStore((state) => state.accentTint),
-    useSetAccentTint: () => useUiStore((state) => state.setAccentTint),
-    useSetContrast: () => useUiStore((state) => state.setContrast),
-    useUiFont: () => useUiStore((state) => state.uiFont),
-    useCodeFont: () => useUiStore((state) => state.codeFont),
-    useFontSize: () => useUiStore((state) => state.fontSize),
-    useFontSmoothing: () => useUiStore((state) => state.fontSmoothing),
-    useSetUiFont: () => useUiStore((state) => state.setUiFont),
-    useSetCodeFont: () => useUiStore((state) => state.setCodeFont),
-    useSetFontSize: () => useUiStore((state) => state.setFontSize),
-    useSetFontSmoothing: () => useUiStore((state) => state.setFontSmoothing),
-    useRadiusScale: () => useUiStore((state) => state.radiusScale),
-    useMotionScale: () => useUiStore((state) => state.motionScale),
-    useDensity: () => useUiStore((state) => state.density),
-    useSetDensity: () => useUiStore((state) => state.setDensity),
-    useSetRadiusScale: () => useUiStore((state) => state.setRadiusScale),
-    useSetMotionScale: () => useUiStore((state) => state.setMotionScale),
+    useTheme: () => useAppearance((state) => state.theme),
+    useSetTheme: () => editAppearance().setTheme,
+    useAccent: () => useAppearance((state) => state.accent),
+    useSetAccent: () => editAppearance().setAccent,
+    useCustomTheme: () => useAppearance((state) => state.customTheme),
+    useSetCustomTheme: () => editAppearance().setCustomTheme,
+    useContrast: () => useAppearance((state) => state.contrast),
+    useAccentTint: () => useAppearance((state) => state.accentTint),
+    useSetAccentTint: () => editAppearance().setAccentTint,
+    useSetContrast: () => editAppearance().setContrast,
+    useUiFont: () => useAppearance((state) => state.uiFont),
+    useCodeFont: () => useAppearance((state) => state.codeFont),
+    useFontSize: () => useAppearance((state) => state.fontSize),
+    useFontSmoothing: () => useAppearance((state) => state.fontSmoothing),
+    useSetUiFont: () => editAppearance().setUiFont,
+    useSetCodeFont: () => editAppearance().setCodeFont,
+    useSetFontSize: () => editAppearance().setFontSize,
+    useSetFontSmoothing: () => editAppearance().setFontSmoothing,
+    useRadiusScale: () => useAppearance((state) => state.radiusScale),
+    useMotionScale: () => useAppearance((state) => state.motionScale),
+    useDensity: () => useAppearance((state) => state.density),
+    useSetDensity: () => editAppearance().setDensity,
+    useSetRadiusScale: () => editAppearance().setRadiusScale,
+    useSetMotionScale: () => editAppearance().setMotionScale,
   });
 }

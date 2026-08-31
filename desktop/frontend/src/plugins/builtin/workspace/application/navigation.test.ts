@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useContextDockStore, WorkspaceFileFocus } from "@/state/contextDockStore";
+import {
+  useContextDockStore,
+  WorkspaceFileFocus,
+} from "@/plugins/builtin/workspace/adapters/contextDockStore";
 import { navigator } from "@/lib/navigation";
 import {
   WORKSPACE_DOCK_CATALOG,

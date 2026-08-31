@@ -5,18 +5,18 @@
 
 import { definePlugin } from "@/plugins/sdk";
 import { disposeOnHmr } from "@/lib/hmr";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "./adapters/appearanceStore";
 import { installDocumentAppearance } from "./adapters/documentAppearance";
 import { installSystemAppearance } from "./adapters/systemAppearance";
-import { installThemePreferencePort } from "./adapters/uiThemePreference";
+import { installAppearancePreferencePort } from "./adapters/appearancePreferenceBinding";
 
 export const appearancePainter = definePlugin({
   name: "flame.builtin.appearance-painter",
   setup(ctx) {
-    const releasePreference = installThemePreferencePort();
+    const releasePreference = installAppearancePreferencePort();
     // Before the painter: its first paint resolves the scheme, which asks this.
     const releaseSystem = installSystemAppearance();
-    const stopPainting = installDocumentAppearance(useUiStore);
+    const stopPainting = installDocumentAppearance(useAppearanceStore);
     const uninstall = () => {
       stopPainting();
       releaseSystem();

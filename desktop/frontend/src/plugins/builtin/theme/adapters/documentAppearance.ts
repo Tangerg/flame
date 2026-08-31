@@ -1,27 +1,31 @@
 import { colord } from "colord";
 import type { StoreApi } from "zustand";
-import type { AccentTint, ColorThemeId, VisualStyleId } from "@/lib/appearance";
+import type {
+  AccentTint,
+  AppearancePreference,
+  ColorThemeId,
+  VisualStyleId,
+} from "../kit/appearance";
 import {
   publishMotionScale,
   publishScheme,
   publishTokens,
   publishVisualStyleMotion,
 } from "@/lib/appearance";
-import { densityCssVariables } from "@/lib/density";
+import { densityCssVariables } from "../kit/density";
 import { iconScaleCssVariables } from "@/lib/iconScale";
-import { uiTypeLadderCssVariables } from "@/lib/typography";
+import { uiTypeLadderCssVariables } from "../kit/typeLadder";
 import type { ColorThemeSpec, NeutralStep } from "@/plugins/sdk";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { subscribeContributions } from "@/plugins/sdk";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
-import type { UiState } from "@/state/uiPreferences";
 import { accentTintedNeutral } from "../kit/accentTint";
 import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
 import { subscribeSystemScheme } from "./systemAppearance";
 
-type UiEffectStore<T extends UiState> = Pick<StoreApi<T>, "getState" | "subscribe">;
+type UiEffectStore<T extends AppearancePreference> = Pick<StoreApi<T>, "getState" | "subscribe">;
 
 function lightAccent(darkHex: string): string {
   const preset = lookupExtensionPoint(ACCENT).find((accent) => accent.dark === darkHex);
@@ -167,7 +171,9 @@ function applyShape(density: string, radiusScale: number, motionScale: number): 
   else root.removeAttribute("data-motion");
 }
 
-export function installDocumentAppearance<T extends UiState>(store: UiEffectStore<T>): () => void {
+export function installDocumentAppearance<T extends AppearancePreference>(
+  store: UiEffectStore<T>,
+): () => void {
   const initial = store.getState();
   applyColorTheme(initial.theme, initial.accent, initial.contrast, initial.accentTint);
   applyVisualStyle(initial.visualStyle);

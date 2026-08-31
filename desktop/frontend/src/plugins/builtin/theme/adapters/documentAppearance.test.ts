@@ -11,11 +11,11 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { installDocumentAppearance } from "./documentAppearance";
 import { installSystemAppearance } from "./systemAppearance";
 import { toggleThemeScheme } from "../application/themeScheme";
-import { installThemePreferencePort } from "./uiThemePreference";
+import { installAppearancePreferencePort } from "./appearancePreferenceBinding";
 import type { PluginContext } from "@/plugins/sdk";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 
@@ -39,7 +39,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute("style");
   document.documentElement.className = "";
   // Reset UI store to defaults (the setup file already wipes plugin store).
-  useUiStore.setState({
+  useAppearanceStore.setState({
     theme: "dark",
     visualStyle: "synara",
     accent: "#1ed760",
@@ -54,9 +54,9 @@ beforeEach(() => {
   // The painter installs from the theme pack's setup in the app; a test drives
   // it directly — in the same order, so resolving a scheme has its port.
   uninstall();
-  installThemePreferencePort();
+  installAppearancePreferencePort();
   installSystemAppearance();
-  uninstall = installDocumentAppearance(useUiStore);
+  uninstall = installDocumentAppearance(useAppearanceStore);
 });
 
 /** Both schemes registered under their canonical ids — anything a test does that
@@ -104,7 +104,7 @@ describe("neutral family following the live accent", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useUiStore.setState({ theme: "tinted", accent: "#3574f0" });
+    useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
 
     // The derivation has to be a no-op on the accent the family was measured against,
     // or every golden in the tree moves for nothing.
@@ -116,7 +116,7 @@ describe("neutral family following the live accent", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useUiStore.setState({ theme: "tinted", accent: "#000000" });
+    useAppearanceStore.setState({ theme: "tinted", accent: "#000000" });
 
     // Reported: picking pure black painted every surface pink, because CSS reads a
     // powerless hue as 0 and 0 is red. A grey accent has no hue to borrow.
@@ -129,10 +129,10 @@ describe("neutral family following the live accent", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useUiStore.setState({ theme: "tinted", accent: "#3574f0" });
+    useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
     const blue = painted("color-sunken");
 
-    useUiStore.setState({ accent: "#e8590c" });
+    useAppearanceStore.setState({ accent: "#e8590c" });
     expect(painted("color-sunken")).not.toBe(blue);
   });
 
@@ -145,7 +145,7 @@ describe("neutral family following the live accent", () => {
         tokens: { "color-accent": "#268bd2", "color-surface": "#eee8d5" },
       });
     });
-    useUiStore.setState({ theme: "solarized", accent: "#7f52ff" });
+    useAppearanceStore.setState({ theme: "solarized", accent: "#7f52ff" });
 
     // Solarized's base2 is Solarized, not a tint of whatever accent is selected.
     expect(painted("color-surface")).toBe("#eee8d5");
@@ -155,11 +155,11 @@ describe("neutral family following the live accent", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useUiStore.setState({ theme: "tinted", accent: "#7f52ff", accentTint: "off" });
+    useAppearanceStore.setState({ theme: "tinted", accent: "#7f52ff", accentTint: "off" });
     const off = painted("color-sunken");
     expect(channelSpread(off)).toBeLessThanOrEqual(1);
 
-    useUiStore.setState({ accentTint: "standard" });
+    useAppearanceStore.setState({ accentTint: "standard" });
     expect(painted("color-sunken")).not.toBe(off);
   });
 });
@@ -195,7 +195,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useUiStore.getState().setTheme("solarized-light");
+    useAppearanceStore.getState().setTheme("solarized-light");
 
     const root = document.documentElement;
     expect(root.classList.contains("theme-light")).toBe(true);
@@ -219,13 +219,13 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useUiStore.getState().setTheme("light");
+    useAppearanceStore.getState().setTheme("light");
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#fafafa");
     expect(root.style.getPropertyValue("--color-text")).toBe("#171717");
 
-    useUiStore.getState().setTheme("dark");
+    useAppearanceStore.getState().setTheme("dark");
     expect(root.style.getPropertyValue("--color-bg")).toBe("#010102");
     expect(root.style.getPropertyValue("--color-text")).toBe("#f7f8f8");
   });
@@ -246,7 +246,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useUiStore.getState().setTheme("light");
+    useAppearanceStore.getState().setTheme("light");
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#fafafa");
@@ -269,7 +269,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useUiStore.getState().setTheme("light");
+    useAppearanceStore.getState().setTheme("light");
 
     expect(document.documentElement.style.getPropertyValue("--color-accent")).toBe("#15883e");
   });
@@ -292,12 +292,12 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useUiStore.setState({ theme: "dark" });
+    useAppearanceStore.setState({ theme: "dark" });
     toggleThemeScheme();
-    expect(useUiStore.getState().theme).toBe("solarized-light");
+    expect(useAppearanceStore.getState().theme).toBe("solarized-light");
 
     toggleThemeScheme();
-    expect(useUiStore.getState().theme).toBe("dark");
+    expect(useAppearanceStore.getState().theme).toBe("dark");
   });
 });
 
@@ -321,7 +321,7 @@ describe("visual-style contract", () => {
       });
     });
 
-    useUiStore.getState().setVisualStyle("test-style");
+    useAppearanceStore.getState().setVisualStyle("test-style");
 
     const root = document.documentElement;
     expect(root.dataset.visualStyle).toBe("test-style");
@@ -368,8 +368,8 @@ describe("visual-style contract", () => {
       });
     });
 
-    useUiStore.getState().setVisualStyle("first");
-    useUiStore.getState().setVisualStyle("second");
+    useAppearanceStore.getState().setVisualStyle("first");
+    useAppearanceStore.getState().setVisualStyle("second");
 
     expect(document.documentElement.style.getPropertyValue("--shadow-surface-card")).toBe("");
   });
@@ -377,7 +377,7 @@ describe("visual-style contract", () => {
 
 describe("UI preference DOM synchronization", () => {
   it("applies and clears font preferences", async () => {
-    const state = useUiStore.getState();
+    const state = useAppearanceStore.getState();
     state.setUiFont("Inter");
     state.setCodeFont("JetBrains Mono");
     state.setFontSize(17);
@@ -394,9 +394,9 @@ describe("UI preference DOM synchronization", () => {
     expect(style.getPropertyValue("--fs-prose")).toBe("19px");
     expect(style.getPropertyValue("--fs-ui-sm")).toBe("16px");
 
-    useUiStore.getState().setUiFont("");
-    useUiStore.getState().setCodeFont("");
-    useUiStore.getState().setFontSize(null);
+    useAppearanceStore.getState().setUiFont("");
+    useAppearanceStore.getState().setCodeFont("");
+    useAppearanceStore.getState().setFontSize(null);
 
     expect(style.getPropertyValue("--font-sans")).toBe("");
     expect(style.getPropertyValue("--font-mono")).toBe("");
@@ -405,10 +405,10 @@ describe("UI preference DOM synchronization", () => {
 
   it("applies contrast, radius, and reduced-motion preferences", async () => {
     await registerSchemePair();
-    useUiStore.getState().setTheme("light");
-    useUiStore.getState().setContrast(100);
-    useUiStore.getState().setRadiusScale(1.25);
-    useUiStore.getState().setMotionScale(0);
+    useAppearanceStore.getState().setTheme("light");
+    useAppearanceStore.getState().setContrast(100);
+    useAppearanceStore.getState().setRadiusScale(1.25);
+    useAppearanceStore.getState().setMotionScale(0);
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--depth-step")).toBe("10.0%");
@@ -416,7 +416,7 @@ describe("UI preference DOM synchronization", () => {
     expect(root.style.getPropertyValue("--motion-scale")).toBe("0");
     expect(root.dataset.motion).toBe("off");
 
-    useUiStore.getState().setMotionScale(0.5);
+    useAppearanceStore.getState().setMotionScale(0.5);
     expect(root.dataset.motion).toBeUndefined();
   });
 
@@ -425,10 +425,10 @@ describe("UI preference DOM synchronization", () => {
   // the mapping is doubled there.
   it("doubles the ladder step on dark so both schemes separate equally", async () => {
     await registerSchemePair();
-    useUiStore.getState().setContrast(25);
-    useUiStore.getState().setTheme("light");
+    useAppearanceStore.getState().setContrast(25);
+    useAppearanceStore.getState().setTheme("light");
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("4.0%");
-    useUiStore.getState().setTheme("dark");
+    useAppearanceStore.getState().setTheme("dark");
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("8.0%");
   });
 });

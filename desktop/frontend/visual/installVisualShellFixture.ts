@@ -25,7 +25,8 @@ import {
 } from "@/plugins/builtin/workspace/public/queries";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
+import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
 import type { VisualShellTheme, VisualWorkIndexState } from "./shellFixtureStates";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
@@ -175,9 +176,8 @@ export async function installVisualShellFixture(
     draftSessionIds: new Set(),
   });
   navigator().go({ session: state === "populated" ? ACTIVE_SESSION_ID : "" });
-  useUiStore.setState({
-    theme,
-    visualStyle: "flame",
+  useAppearanceStore.setState({ theme, visualStyle: "flame" });
+  useShellLayoutStore.setState({
     sidebarCollapsed: !sidebarOpen,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
   });

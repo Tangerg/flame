@@ -12,7 +12,7 @@ import {
   subscribeRootRunSettlements,
 } from "@/plugins/builtin/agent/public/run";
 import { definePlugin, READY_HANDLER } from "@/plugins/sdk";
-import { useUiStore } from "@/state/uiStore";
+import { useCompletionSoundStore } from "./completionSound";
 import { PRODUCT_NAME } from "@/product";
 
 function onSettled({ sessionId, status, errorMessage }: RootRunSettlement): void {
@@ -46,7 +46,7 @@ function onSettled({ sessionId, status, errorMessage }: RootRunSettlement): void
   // replaces its own notification instead of stacking a pile.
   osNotify(title, { body, tag: `run:${sessionId}` });
   // Optional audible companion, same blurred-only gate as the notification.
-  if (useUiStore.getState().completionSound) playCompletionChime();
+  if (useCompletionSoundStore.getState().completionSound) playCompletionChime();
 }
 
 export const completionNotify = definePlugin({

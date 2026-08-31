@@ -1,5 +1,5 @@
 import { resolveThemeScheme } from "@/plugins/builtin/theme/public/scheme";
-import type { ColorThemeId } from "@/lib/appearance";
+import type { ColorThemeId } from "@/plugins/builtin/theme/public/appearance";
 import { appearancePreferences, type CustomTheme } from "./ports/preferences";
 
 export function useThemePreference() {

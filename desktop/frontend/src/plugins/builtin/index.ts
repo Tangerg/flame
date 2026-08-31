@@ -32,8 +32,9 @@ import {
 } from "./defaults";
 import diagnostics from "./workspace/diagnostics";
 import workspaceBootstrap from "./workspace/bootstrap";
+import { workspaceService } from "./workspace/adapters/workspaceService";
 import workspaceEvents from "./workspace/events";
-import workspaceSessionNavigation from "./workspace/session-navigation";
+import { workspaceSessionNavigation } from "./workspace/sessionNavigation";
 import globalKeymap from "./command/global-keymap";
 import sessionSearch from "./command/session-search";
 import hooksPane from "./settings/hooks";
@@ -123,6 +124,7 @@ const infrastructure: AnyPlugin[] = [
   agentBootstrap,
   runtime,
   workspaceBootstrap,
+  workspaceService,
   defaultDataProviders,
   workspaceEvents,
   workspaceSessionNavigation,

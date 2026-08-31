@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { visualStyleMotion, type Scheme, type VisualStyleMotion } from "@/lib/appearance";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -89,14 +89,14 @@ describe("the stylesheet defaults and the scalars the painter writes alone", () 
     [":root", "light"],
     ["html.theme-dark", "dark"],
   ])("agree on the ink step %s opens at (%s)", (selector, scheme) => {
-    const { contrast } = useUiStore.getState();
+    const { contrast } = useAppearanceStore.getState();
     expect(percent(declaredInBlock(selector, "--depth-step"))).toBe(
       percent(depthStep(scheme as Scheme, contrast)),
     );
   });
 
   it("agree on the shape and motion scales", () => {
-    const { radiusScale, motionScale } = useUiStore.getState();
+    const { radiusScale, motionScale } = useAppearanceStore.getState();
     expect(declaredInBlock(":root", "--radius-scale")).toBe(String(radiusScale));
     expect(declaredInBlock(":root", "--motion-scale")).toBe(String(motionScale));
   });

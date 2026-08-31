@@ -9,10 +9,10 @@ import type { Scheme } from "@/lib/appearance";
 import { disposeOnHmr } from "@/lib/hmr";
 import { definePlugin, type Disposable } from "@/plugins/sdk";
 import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
-import { useUiStore } from "@/state/uiStore";
+import { useAppearanceStore } from "../adapters/appearanceStore";
 import { colorThemeContribution } from "../kit/colorThemeContribution";
 import type { ColorThemePluginSpec } from "../kit/types";
-import type { CustomTheme } from "@/state/uiStore";
+import type { CustomTheme } from "../kit/appearance";
 
 const CUSTOM_THEME_ID = "custom";
 
@@ -68,7 +68,7 @@ export default definePlugin({
   setup(ctx) {
     let contribution: Disposable | undefined;
     const register = () => {
-      const { customTheme, accent, contrast } = useUiStore.getState();
+      const { customTheme, accent, contrast } = useAppearanceStore.getState();
       const spec = deriveCustomSpec(customTheme, accent, contrast);
       // COLOR_THEME is single-keyed. A live custom palette therefore replaces
       // its one contribution; publishing the same `custom` key twice aborts the
@@ -88,7 +88,7 @@ export default definePlugin({
     register();
     // Re-derive when the base colors, shared accent, or global contrast
     // change. applyTheme then re-applies the tokens.
-    const unsub = useUiStore.subscribe((s, p) => {
+    const unsub = useAppearanceStore.subscribe((s, p) => {
       if (s.customTheme !== p.customTheme || s.accent !== p.accent || s.contrast !== p.contrast)
         register();
     });

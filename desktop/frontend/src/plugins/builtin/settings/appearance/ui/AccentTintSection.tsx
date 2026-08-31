@@ -1,7 +1,6 @@
 import type { SegmentedOption } from "@/ui";
 import { Segmented } from "@/ui";
-import type { AccentTint } from "@/lib/appearance";
-import { ACCENT_TINTS } from "@/lib/appearance";
+import { ACCENT_TINTS, type AccentTint } from "@/plugins/builtin/theme/public/appearance";
 import { useT } from "@/lib/i18n";
 import { useAccentTintPreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../public";
