@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"path/filepath"
 
+	scopea2a "github.com/Tangerg/scope/a2a"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/a2a"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
@@ -146,11 +146,11 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build shell tools: %w", err)
 	}
-	var a2aConns *a2a.Connections
+	var a2aTools *scopea2a.ToolSet
 	cleanupOnError := true
 	defer func() {
 		if cleanupOnError {
-			err = errors.Join(err, shells.KillAll(), codeIntel.Close(), a2aConns.Close())
+			err = errors.Join(err, a2aTools.Close(), shells.KillAll(), codeIntel.Close())
 		}
 	}()
 
@@ -215,8 +215,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		return Built{}, fmt.Errorf("toolset: build propose_skill: %w", err)
 	}
 
-	connections, err := dialA2AConnections(ctx, config)
-	a2aConns = connections.a2a
+	a2aTools, err = openA2AToolSet(ctx, config.A2AAgents)
 	if err != nil {
 		return Built{}, err
 	}
@@ -226,7 +225,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		DefaultCWD:         config.DefaultCWD,
 		SkillsUserDir:      config.SkillsUserDir,
 		Online:             online,
-		A2A:                connections.a2aTools,
+		A2A:                a2aTools.Tools(),
 		LSP:                lspTools,
 		Shell:              shellTools,
 		AskUser:            askUserTool,
@@ -256,7 +255,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		Closers: []func() error{
 			codeIntel.Close,
 			shells.KillAll,
-			a2aConns.Close,
+			a2aTools.Close,
 		},
 	}, nil
 }

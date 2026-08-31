@@ -307,13 +307,15 @@ internal/
   infra/
     filesystem/{fileobservation, knowledgefile, pathidentity, skillauthoring}
     git/{checkpoint, process}
-    integration/{a2a, llm, lsp, mcp}
+    integration/{llm, lsp, mcp}
     process/{exec, sandbox, teardown}
     storage/{sqlite}
     advisorylock  telemetry
 ```
 
 `run`、`session`、`workspace`、`agentexec`、`model`、`toolset` 与 `git` 可以同时是 context root package 和子能力的命名空间，因为父 package 本身拥有 aggregate 或 translation vocabulary；纯命名空间没有 Go 文件。`modelref`、`resourceid`、`invalidation`、`opaquetoken`、`ownership`、`pagination`、`taskgroup`、`executionctx` 等跨上下文 owner 保持环内直达，不能为目录对称性硬归给某个消费者。除 Go `internal` 这类语言机制外，生产 package 不超过 `ring/context/package` 三层。
+
+`adapter/toolset` 直接消费已发布的 Scope A2A `ToolSet`：Flame 只把产品配置翻译成 endpoint 并记录启动观测，连接的 partial-open cleanup、tool snapshot 与幂等关闭由该发布库唯一拥有。不得在 Infra 中为它增加转发配置、生命周期 wrapper 或重复测试。
 
 ### 6.2 Domain
 

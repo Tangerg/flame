@@ -845,14 +845,13 @@ func TestAgentExecDelegatesManagedExecution(t *testing.T) {
 	}
 }
 
-// TestCapabilityAdaptersDoNotImportTransportSDKs keeps MCP/A2A protocol
-// libraries behind internal/infra. Tool assembly consumes the infrastructure
-// adapters through local configuration and the narrow tool.Tool capability;
-// it must not construct or expose transport-library types itself.
-func TestCapabilityAdaptersDoNotImportTransportSDKs(t *testing.T) {
+// TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs keeps raw MCP/A2A
+// protocol clients out of tool assembly. The released Scope A2A ToolSet is
+// deliberately consumed here because it already owns endpoint translation,
+// partial-open cleanup, immutable tool publication, and idempotent shutdown.
+func TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs(t *testing.T) {
 	root := moduleRoot(t)
 	forbidExternalImports(t, filepath.Join(root, "internal", "adapter", "toolset"), []string{
-		"github.com/Tangerg/scope/a2a",
 		"github.com/Tangerg/scope/mcp",
 		"github.com/a2aproject/a2a-go",
 		"github.com/modelcontextprotocol/go-sdk",

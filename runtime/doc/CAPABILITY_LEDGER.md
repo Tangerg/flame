@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P306 已完成。
+> 状态：当前能力快照；P309 已完成。
 >
 > 基线日期：2026-08-30。
 
@@ -625,6 +625,8 @@ P306完成Runtime/CLI package graph复核。Runtime `internal/...`当前91个Go 
 P307修正P306仍把“叶包独立成立”等同于“必须在环根部平铺”的结论。CLI 现在由 `domain/application/adapter/delivery` 四个物理环表达依赖方向；Runtime 的 Domain、Application、Adapter、Infra 在环内再按 Run、Session、Automation、Workspace、Integration、Toolset、Git、Process 与 Storage 等已证明 context 建立一层无Go文件namespace。Runtime/CLI的Go package数量没有因层级调整增加；`executionctx`等跨context机制保持环内直达，single-child namespace被撤回。旧import与空目录物理删除，拓扑门禁同时拒绝新的未审查平铺package、facade parent和超过`ring/context/package`的装饰性嵌套。
 
 P308完成package path与qualifier口吃收口。CLI 的 Runtime binding lifecycle、Protocol translation 与 negotiated Profile 归并为唯一 `adapter/runtimebinding`，删除没有独立producer/lifecycle的`runtimeprofile` package；Runtime 的多消费者辅助模型边界保留职责但改为`adapter/model/auxiliary`。`runs`、`sessions`与HTTP internal API让package qualifier提供owner，不再重复`Run`/`Session`/`HTTP`前缀；exact ubiquitous aggregate继续保留`run.Run`等领域名。生成 Contract 的 `HTTPTransportKind` 同步 breaking 改名为 `TransportKind`，JSON field/value保持不变，不建立Go与Schema之间的兼容别名。旧路径、旧导出名、comment/error词汇与架构例外均删除，路径与导出名门禁阻止回流。
+
+P309删除Runtime A2A integration的转发wrapper链。`adapter/toolset`现在从唯一`A2AAgentConfig`直接翻译到已发布的Scope endpoint并持有Scope `ToolSet`；partial-open cleanup、immutable tool snapshot与幂等shutdown不再由Flame复制第二份authority。旧`infra/integration/a2a` package、重复配置、连接wrapper及上游生命周期重复测试均物理删除；Runtime `internal/...`因此为90个Go package，CLI仍为27个，公共合同与运行行为不变。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
