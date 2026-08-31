@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/mutation"
-	steeringoutbox "github.com/Tangerg/flame/cli/internal/steering"
+	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -49,7 +49,7 @@ func (a *app) steerRun(instruction string) error {
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
-	pending, err := steeringoutbox.Stage(
+	pending, err := runworkflow.StageSteer(
 		a.workbench, a.session.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile),
 	)
 	if err != nil {
@@ -62,12 +62,12 @@ func (a *app) steerRun(instruction string) error {
 	a.restoreComposer(agent.Message{})
 	a.draftState.Reset(a.session.ID, agent.Message{})
 	started := a.runSessionSettlement(steerRunOperation, false,
-		func(ctx context.Context) (steeringoutbox.Result, error) {
-			return steeringoutbox.Deliver(
+		func(ctx context.Context) (runworkflow.SteerResult, error) {
+			return runworkflow.DeliverSteer(
 				ctx, a.runtime, pending, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
 			)
 		},
-		func(result steeringoutbox.Result, deliveryErr error) {
+		func(result runworkflow.SteerResult, deliveryErr error) {
 			a.settleSteer(result, deliveryErr, runID)
 		},
 	)
@@ -84,7 +84,7 @@ func (a *app) steerRun(instruction string) error {
 	return nil
 }
 
-func (a *app) settleSteer(result steeringoutbox.Result, deliveryErr error, runID string) {
+func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error, runID string) {
 	switch result.Outcome {
 	case mutation.Confirmed:
 		if err := a.acknowledgeSteer(result.Pending); err != nil {

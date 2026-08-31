@@ -31,13 +31,13 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
+	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/session"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/settings"
 	"github.com/Tangerg/flame/cli/internal/skills"
-	"github.com/Tangerg/flame/cli/internal/steering"
 	"github.com/Tangerg/flame/cli/internal/usage"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -212,7 +212,7 @@ func recoverSessionCommands(
 	); err != nil {
 		return fmt.Errorf("recover session deletions: %w", err)
 	}
-	if err := steering.Recover(
+	if err := runworkflow.RecoverSteers(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
 		return fmt.Errorf("recover steer commands: %w", err)

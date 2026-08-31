@@ -1,4 +1,4 @@
-package steering
+package run
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := new(steerRuntimeStub)
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := Recover(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
 		t.Fatal(err)
 	}
 	if len(runtime.requests) != 1 || !runtime.requests[0].Equal(pending.Command()) {
@@ -54,7 +54,7 @@ func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := &steerRuntimeStub{err: agent.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := Recover(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
 		t.Fatal(err)
 	}
 	if _, found := store.PendingSteer(pending.SessionID()); found {
@@ -74,7 +74,7 @@ func TestRecoverRefusesToGuessAtOrAfterTheReplayDeadline(t *testing.T) {
 			store, pending := fixture.store, fixture.pending
 			runtime := new(steerRuntimeStub)
 			fixture.now = pending.Replay().Until().Add(offset)
-			err := Recover(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
 			if err == nil {
 				t.Fatal("expired replay unexpectedly succeeded")
 			}
@@ -93,7 +93,7 @@ func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	pending := fixture.pending
 	runtime := &steerRuntimeStub{err: agent.ErrCommandStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	result, err := Deliver(t.Context(), runtime, pending, fixture.policy(t), retry.ImmediateBackoff())
+	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), retry.ImmediateBackoff())
 	if !errors.Is(err, agent.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -112,7 +112,7 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 		fixture.now = pending.Replay().Until()
 		runtime.err = nil
 	}
-	err := Recover(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+	err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovery error = %v", err)
 	}
@@ -140,18 +140,18 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 		t.Fatal(err)
 	}
 	policy := commandreplay.UnavailablePolicy()
-	pending, err := Stage(store, "ses_1", request, source, policy)
+	pending, err := StageSteer(store, "ses_1", request, source, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	runtime := &steerRuntimeStub{err: agent.ErrDisconnected}
-	result, err := Deliver(t.Context(), runtime, pending, policy, retry.ImmediateBackoff())
+	result, err := DeliverSteer(t.Context(), runtime, pending, policy, retry.ImmediateBackoff())
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 1 {
 		t.Fatalf("fresh delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
 	}
 
 	runtime = new(steerRuntimeStub)
-	err = Recover(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
+	err = RecoverSteers(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
 	if err == nil || len(runtime.requests) != 0 {
 		t.Fatalf("cold recovery = %v, requests %+v", err, runtime.requests)
 	}
@@ -201,7 +201,7 @@ func stagedSteer(t *testing.T) *steerFixture {
 	if saveDraftErr := store.SaveDraft("ses_1", source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	pending, err := Stage(store, "ses_1", request, source, fixture.policy(t))
+	pending, err := StageSteer(store, "ses_1", request, source, fixture.policy(t))
 	if err != nil {
 		t.Fatal(err)
 	}

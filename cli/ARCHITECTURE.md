@@ -55,6 +55,14 @@ Single-concept packages that only rename a value, expose one forwarding function
 
 Do not collapse the tree into a broad `service` or `backend` layer. Prefer cohesive packages with several responsibility-named files.
 
+`internal/run` owns the CLI application workflow for unattended execution,
+segment reattachment, and durable steering settlement. `internal/session` owns
+Session opening, updates, deletion, rollback, and their local settlement. These
+packages orchestrate Runtime commands and CLI-local records; they do not own a
+second Run or Session state machine. `internal/reconnect` remains independent
+because its classified transport retry policy has peer consumers in Run,
+Runtime invalidation, workspace inspection, and MCP management.
+
 ## Command model
 
 The root command is built by a factory for every process or test. Commands:

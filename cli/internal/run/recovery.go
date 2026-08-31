@@ -1,6 +1,4 @@
-// Package runrecovery reconciles a dropped live segment with the runtime's
-// authoritative cold projections.
-package runrecovery
+package run
 
 import (
 	"context"
@@ -12,24 +10,24 @@ import (
 
 const sessionAttachAttempts = 8
 
-// Source is the narrow runtime surface needed for cold recovery.
-type Source interface {
+// RecoverySource is the narrow runtime surface needed for cold recovery.
+type RecoverySource interface {
 	agent.SessionReader
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 }
 
-// State is a coherent cold projection and, while its run is still executing,
+// Recovery is a coherent cold projection and, while its run is still executing,
 // a stream attached before the final read. Stream is empty for waiting and
 // finished runs.
-type State struct {
+type Recovery struct {
 	Snapshot agent.SessionSnapshot
 	Run      agent.Run
 	Stream   agent.SegmentStream
 }
 
-// Required reports whether a failed segment subscription must be reconciled
+// RecoveryRequired reports whether a failed segment subscription must be reconciled
 // from durable reads instead of retried with the same cursor.
-func Required(err error) bool {
+func RecoveryRequired(err error) bool {
 	return errors.Is(err, agent.ErrStaleSegment) ||
 		errors.Is(err, agent.ErrRunWaiting) ||
 		errors.Is(err, agent.ErrRunFinished) ||
@@ -37,43 +35,43 @@ func Required(err error) bool {
 		errors.Is(err, agent.ErrReplayUnavailable)
 }
 
-// Recover follows the runtime's attach-then-read rule. For a live run it first
+// RecoverSegment follows the runtime's attach-then-read rule. For a live run it first
 // attaches at the current segment head and only then performs the durable read,
 // preventing an unobserved gap between the snapshot and later stream events.
-func Recover(ctx context.Context, source Source, sessionID, runID string) (State, error) {
+func RecoverSegment(ctx context.Context, source RecoverySource, sessionID, runID string) (Recovery, error) {
 	first, run, err := read(ctx, source, sessionID, runID)
 	if err != nil || run.Status != agent.RunStatusRunning {
-		return State{Snapshot: first, Run: run}, err
+		return Recovery{Snapshot: first, Run: run}, err
 	}
 	stream, release, err := attach(ctx, source, run)
 	if err != nil {
-		return State{}, err
+		return Recovery{}, err
 	}
 	second, current, err := read(ctx, source, sessionID, runID)
 	if err != nil {
 		release()
-		return State{}, err
+		return Recovery{}, err
 	}
 	if current.Status != agent.RunStatusRunning {
 		release()
-		return State{Snapshot: second, Run: current}, nil
+		return Recovery{Snapshot: second, Run: current}, nil
 	}
 	if current.ActiveSegmentID != stream.SegmentID {
 		release()
-		return State{}, fmt.Errorf("%w: run %s changed from segment %s to %s during recovery", agent.ErrStaleSegment, runID, stream.SegmentID, current.ActiveSegmentID)
+		return Recovery{}, fmt.Errorf("%w: run %s changed from segment %s to %s during recovery", agent.ErrStaleSegment, runID, stream.SegmentID, current.ActiveSegmentID)
 	}
-	return State{Snapshot: second, Run: current, Stream: releaseWhenDone(stream, release)}, nil
+	return Recovery{Snapshot: second, Run: current, Stream: releaseWhenDone(stream, release)}, nil
 }
 
 // AttachSession obtains a coherent session projection and, when its current
 // root Run is executing, a cursorless tail that was attached before the final
 // cold read. It retries when another client crosses a Run or Segment boundary
 // during that handshake.
-func AttachSession(ctx context.Context, source Source, sessionID string) (State, error) {
+func AttachSession(ctx context.Context, source RecoverySource, sessionID string) (Recovery, error) {
 	for range sessionAttachAttempts {
 		first, err := readSnapshot(ctx, source, sessionID)
 		if err != nil {
-			return State{}, err
+			return Recovery{}, err
 		}
 		run, ok := first.ActiveRun()
 		if !ok || run.Status != agent.RunStatusRunning {
@@ -82,15 +80,15 @@ func AttachSession(ctx context.Context, source Source, sessionID string) (State,
 
 		stream, release, err := attach(ctx, source, run)
 		if err != nil {
-			if Required(err) {
+			if RecoveryRequired(err) {
 				continue
 			}
-			return State{}, err
+			return Recovery{}, err
 		}
 		second, err := readSnapshot(ctx, source, sessionID)
 		if err != nil {
 			release()
-			return State{}, err
+			return Recovery{}, err
 		}
 		current, active := second.ActiveRun()
 		if !active || current.Status != agent.RunStatusRunning {
@@ -101,16 +99,16 @@ func AttachSession(ctx context.Context, source Source, sessionID string) (State,
 			release()
 			continue
 		}
-		return State{
+		return Recovery{
 			Snapshot: second,
 			Run:      current,
 			Stream:   releaseWhenDone(stream, release),
 		}, nil
 	}
-	return State{}, fmt.Errorf("%w: session %s did not hold a stable active segment", agent.ErrStaleSegment, sessionID)
+	return Recovery{}, fmt.Errorf("%w: session %s did not hold a stable active segment", agent.ErrStaleSegment, sessionID)
 }
 
-func attach(ctx context.Context, source Source, run agent.Run) (agent.SegmentStream, context.CancelFunc, error) {
+func attach(ctx context.Context, source RecoverySource, run agent.Run) (agent.SegmentStream, context.CancelFunc, error) {
 	streamCtx, release := context.WithCancel(ctx)
 	stream, err := source.SubscribeRun(streamCtx, agent.SubscribeRun{RunID: run.ID, SegmentID: run.ActiveSegmentID})
 	if err != nil {
@@ -133,12 +131,12 @@ func releaseWhenDone(stream agent.SegmentStream, release context.CancelFunc) age
 	return stream
 }
 
-func stateWithoutStream(snapshot agent.SessionSnapshot) State {
+func stateWithoutStream(snapshot agent.SessionSnapshot) Recovery {
 	run, ok := snapshot.ActiveRun()
 	if !ok {
 		run, _ = snapshot.LatestRun()
 	}
-	return State{Snapshot: snapshot, Run: run}
+	return Recovery{Snapshot: snapshot, Run: run}
 }
 
 func read(ctx context.Context, source agent.SessionReader, sessionID, runID string) (agent.SessionSnapshot, agent.Run, error) {

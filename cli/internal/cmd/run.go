@@ -14,8 +14,8 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/attachment"
-	"github.com/Tangerg/flame/cli/internal/oneshot"
 	"github.com/Tangerg/flame/cli/internal/render"
+	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/session"
 )
@@ -95,7 +95,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return fmt.Errorf("runtime command replay policy: %w", err)
 	}
-	return oneshot.Execute(cmd.Context(), oneshot.Invocation{
+	return runworkflow.Execute(cmd.Context(), runworkflow.Invocation{
 		Runtime:  runtime,
 		Renderer: newRunRenderer(cmd, format),
 		Start: agent.StartRun{
@@ -161,7 +161,7 @@ func (r *runFlags) buildMessage(cmd *cobra.Command, args []string, workspace str
 	return agent.Message{Text: text, Attachments: attached}, nil
 }
 
-func newRunRenderer(cmd *cobra.Command, format outputFormat) oneshot.Renderer {
+func newRunRenderer(cmd *cobra.Command, format outputFormat) runworkflow.Renderer {
 	switch format {
 	case outputJSON:
 		return render.NewResultJSON(cmd.OutOrStdout())

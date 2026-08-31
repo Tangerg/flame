@@ -1,4 +1,4 @@
-package runrecovery_test
+package run_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/runrecovery"
+	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
@@ -26,10 +26,10 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	consumeSegment(t, opened)
-	if _, subscribeRunErr := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{RunID: opened.RunID, SegmentID: opened.SegmentID}); !runrecovery.Required(subscribeRunErr) {
+	if _, subscribeRunErr := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{RunID: opened.RunID, SegmentID: opened.SegmentID}); !runworkflow.RecoveryRequired(subscribeRunErr) {
 		t.Fatalf("subscribe error = %v, want a cold-recovery condition", subscribeRunErr)
 	}
-	recovered, err := runrecovery.Recover(t.Context(), runtime, session.ID, opened.RunID)
+	recovered, err := runworkflow.RecoverSegment(t.Context(), runtime, session.ID, opened.RunID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recovered, err := runrecovery.Recover(t.Context(), runtime, session.ID, opened.RunID)
+	recovered, err := runworkflow.RecoverSegment(t.Context(), runtime, session.ID, opened.RunID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +86,8 @@ func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	observed := &orderedSource{Source: runtime}
-	recovered, err := runrecovery.AttachSession(t.Context(), observed, session.ID)
+	observed := &orderedSource{source: runtime}
+	recovered, err := runworkflow.AttachSession(t.Context(), observed, session.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		}
 		consumeSegment(t, opened)
 
-		recovered, err := runrecovery.AttachSession(t.Context(), runtime, session.ID)
+		recovered, err := runworkflow.AttachSession(t.Context(), runtime, session.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		}
 		consumeSegment(t, opened)
 
-		recovered, err := runrecovery.AttachSession(t.Context(), runtime, session.ID)
+		recovered, err := runworkflow.AttachSession(t.Context(), runtime, session.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +167,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		recovered, err := runrecovery.AttachSession(t.Context(), runtime, session.ID)
+		recovered, err := runworkflow.AttachSession(t.Context(), runtime, session.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,11 +198,11 @@ func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 		agent.ErrStaleSegment, agent.ErrRunWaiting, agent.ErrRunFinished,
 		agent.ErrReplayCursorInvalid, agent.ErrReplayUnavailable,
 	} {
-		if !runrecovery.Required(errors.Join(errors.New("adapter"), err)) {
-			t.Fatalf("Required(%v) = false", err)
+		if !runworkflow.RecoveryRequired(errors.Join(errors.New("adapter"), err)) {
+			t.Fatalf("RecoveryRequired(%v) = false", err)
 		}
 	}
-	if runrecovery.Required(agent.ErrDisconnected) {
+	if runworkflow.RecoveryRequired(agent.ErrDisconnected) {
 		t.Fatal("a transport disconnect was classified as cold recovery")
 	}
 }
@@ -215,7 +215,7 @@ func completedScript(string) runtimefixture.Script {
 }
 
 type orderedSource struct {
-	runrecovery.Source
+	source runworkflow.RecoverySource
 
 	mu         sync.Mutex
 	operations []string
@@ -223,12 +223,12 @@ type orderedSource struct {
 
 func (o *orderedSource) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
 	o.record("read")
-	return o.Source.GetSession(ctx, id)
+	return o.source.GetSession(ctx, id)
 }
 
 func (o *orderedSource) SubscribeRun(ctx context.Context, request agent.SubscribeRun) (agent.SegmentStream, error) {
 	o.record("attach")
-	return o.Source.SubscribeRun(ctx, request)
+	return o.source.SubscribeRun(ctx, request)
 }
 
 func (o *orderedSource) record(operation string) {

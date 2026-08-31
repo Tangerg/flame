@@ -1,4 +1,4 @@
-package oneshot
+package run
 
 import (
 	"context"

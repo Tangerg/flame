@@ -1,6 +1,4 @@
-// Package steering owns crash-safe delivery and settlement of run steering
-// commands whose attachments are borrowed from the session composer.
-package steering
+package run
 
 import (
 	"context"
@@ -14,13 +12,13 @@ import (
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
-type runtime interface {
+type steerRuntime interface {
 	SteerRun(context.Context, agent.SteerRun) error
 }
 
-// Stage atomically transfers the source draft's attachments into a durable
+// StageSteer atomically transfers the source draft's attachments into a durable
 // command journal before delivery can begin.
-func Stage(
+func StageSteer(
 	authoring *workbench.Store,
 	sessionID string,
 	request agent.SteerRun,
@@ -54,23 +52,23 @@ func Stage(
 	return pending, nil
 }
 
-// Result binds settlement to the exact durable command.
-type Result struct {
+// SteerResult binds settlement to the exact durable command.
+type SteerResult struct {
 	Pending workbench.PendingSteer
 	Outcome mutation.Outcome
 }
 
-// Deliver settles a freshly staged command. An unadvertised Runtime permits
+// DeliverSteer settles a freshly staged command. An unadvertised Runtime permits
 // exactly one I/O attempt; only an advertised guard permits acknowledgement
 // retries.
-func Deliver(
+func DeliverSteer(
 	ctx context.Context,
-	runtime runtime,
+	runtime steerRuntime,
 	pending workbench.PendingSteer,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
-) (Result, error) {
-	result := Result{Pending: pending}
+) (SteerResult, error) {
+	result := SteerResult{Pending: pending}
 	if runtime == nil {
 		return result, errors.New("steer runtime is unavailable")
 	}
@@ -93,12 +91,12 @@ func Deliver(
 	return result, err
 }
 
-// Recover replays every unsettled command only while the same runtime
+// RecoverSteers replays every unsettled command only while the same runtime
 // idempotency namespace still guarantees its original response. Definitive
 // refusals atomically return attachments to the durable session draft.
-func Recover(
+func RecoverSteers(
 	ctx context.Context,
-	runtime runtime,
+	runtime steerRuntime,
 	authoring *workbench.Store,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
@@ -113,7 +111,7 @@ func Recover(
 				pending.SessionID(),
 			)
 		}
-		result, err := Deliver(ctx, runtime, pending, policy, backoff)
+		result, err := DeliverSteer(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			if acknowledgeErr := authoring.AcknowledgePendingSteer(

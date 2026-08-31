@@ -1,5 +1,4 @@
-// Package oneshot owns unattended runs that stream to a non-interactive renderer.
-package oneshot
+package run
 
 import (
 	"context"
@@ -12,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
-	"github.com/Tangerg/flame/cli/internal/runrecovery"
 )
 
 const cancellationTimeout = 5 * time.Second
@@ -308,13 +306,13 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (dispositi
 			e.current = rebound
 			return continuing, nil
 		}
-		if !runrecovery.Required(err) {
+		if !RecoveryRequired(err) {
 			cause = err
 			continue
 		}
-		recovered, recoveryErr := runrecovery.Recover(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
+		recovered, recoveryErr := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
 		if recoveryErr != nil {
-			if !runrecovery.Required(recoveryErr) {
+			if !RecoveryRequired(recoveryErr) {
 				cause = recoveryErr
 			}
 			continue
@@ -323,7 +321,7 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (dispositi
 	}
 }
 
-func (e *executionDriver) installRecovery(ctx context.Context, recovered runrecovery.State) (disposition, error) {
+func (e *executionDriver) installRecovery(ctx context.Context, recovered Recovery) (disposition, error) {
 	if err := e.invocation.Renderer.Reconcile(recovered.Snapshot); err != nil {
 		return abandoned, err
 	}
@@ -343,7 +341,7 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered runreco
 	return continuing, nil
 }
 
-func restoreRecoveredConversation(conversation *agent.Conversation, recovered runrecovery.State) error {
+func restoreRecoveredConversation(conversation *agent.Conversation, recovered Recovery) error {
 	if recovered.Run.Status == agent.RunStatusRunning {
 		return conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}

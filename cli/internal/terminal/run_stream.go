@@ -16,8 +16,8 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
+	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/runrecovery"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
@@ -309,15 +309,15 @@ func (s *streamFollower) current() bool {
 	return s != nil && s.app != nil && s.app.operations.Current(s.lease)
 }
 
-func (s *streamFollower) restoreAttachedSession(sessionID string) (runrecovery.State, bool) {
+func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.Recovery, bool) {
 	for {
-		recovered, err := runrecovery.AttachSession(s.ctx, s.app.runtime, sessionID)
+		recovered, err := runworkflow.AttachSession(s.ctx, s.app.runtime, sessionID)
 		if err == nil {
 			s.failures = 0
 			return recovered, true
 		}
 		if !s.waitBeforeRetry("", fmt.Errorf("restore active session: %w", err)) {
-			return runrecovery.State{}, false
+			return runworkflow.Recovery{}, false
 		}
 	}
 }
@@ -497,7 +497,7 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (agent.
 		if err == nil {
 			return s.acceptRebound(runID, segmentID, rebound)
 		}
-		if !runrecovery.Required(err) {
+		if !runworkflow.RecoveryRequired(err) {
 			cause = err
 			continue
 		}
@@ -554,9 +554,9 @@ func (s *streamFollower) acceptRebound(runID, segmentID string, rebound agent.Se
 }
 
 func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
-	recovered, err := runrecovery.Recover(s.ctx, s.app.runtime, s.app.session.ID, runID)
+	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.app.session.ID, runID)
 	if err != nil {
-		if runrecovery.Required(err) {
+		if runworkflow.RecoveryRequired(err) {
 			return recoveryAttempt{disposition: recoveryRetry, cause: cause}
 		}
 		return recoveryAttempt{disposition: recoveryRetry, cause: err}

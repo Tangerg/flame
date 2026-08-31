@@ -648,7 +648,7 @@ func (a *app) newTranscript() *transcriptView {
 
 // reconcileRunSnapshot atomically replaces the in-memory projection after a
 // segment can no longer be replayed. It deliberately keeps the current stream
-// operation alive: runrecovery already attached the replacement stream before
+// operation alive: run recovery already attached the replacement stream before
 // taking this snapshot, so canceling that operation here would reopen a gap.
 func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.SegmentStream) error {
 	if snapshot.Session.ID != a.session.ID {

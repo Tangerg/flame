@@ -385,15 +385,15 @@ func TestDurableCommandsShareOneReplayDomainModel(t *testing.T) {
 			}
 		}
 	}
-	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "oneshot", "execution.go"), "Invocation")
+	invocation := cliStructFieldTypes(t, filepath.Join(root, "internal", "run", "execution.go"), "Invocation")
 	if got := invocation["ReplayPolicy"]; got != "commandreplay.Policy" {
-		t.Fatalf("oneshot.Invocation.ReplayPolicy type = %q, want commandreplay.Policy", got)
+		t.Fatalf("run.Invocation.ReplayPolicy type = %q, want commandreplay.Policy", got)
 	}
 	if _, exists := invocation["ReplayRetention"]; exists {
-		t.Fatal("oneshot.Invocation restored primitive ReplayRetention")
+		t.Fatal("run.Invocation restored primitive ReplayRetention")
 	}
 	for _, path := range []string{
-		filepath.Join(root, "internal", "steering", "steering.go"),
+		filepath.Join(root, "internal", "run", "steering.go"),
 		filepath.Join(root, "internal", "session", "deletion.go"),
 		filepath.Join(root, "internal", "session", "rollback.go"),
 	} {
@@ -437,17 +437,17 @@ func TestPendingSteerSeparatesImmutableOwnershipFromPersistenceRecord(t *testing
 		}
 	}
 
-	applicationPath := filepath.Join(root, "internal", "steering", "steering.go")
+	applicationPath := filepath.Join(root, "internal", "run", "steering.go")
 	contents, err := os.ReadFile(applicationPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(contents)
 	if !strings.Contains(text, "workbench.NewPendingSteer(") {
-		t.Fatal("steering Stage no longer constructs the durable aggregate through its owner")
+		t.Fatal("run StageSteer no longer constructs the durable aggregate through its owner")
 	}
 	if strings.Contains(text, "pending := workbench.PendingSteer{") {
-		t.Fatal("steering Stage restored caller-shaped pending steer construction")
+		t.Fatal("run StageSteer restored caller-shaped pending steer construction")
 	}
 }
 
@@ -1167,15 +1167,13 @@ var layers = []struct {
 	{"internal/mutation/", "mutation"},
 	{"internal/reconnect/", "reconnect"},
 	{"internal/retry/", "retry"},
-	{"internal/runrecovery/", "runrecovery"},
+	{"internal/run/", "run"},
 	{"internal/commandreplay/", "commandreplay"},
 	{"internal/runtimeprofile/", "runtimeprofile"},
 	{"internal/session/", "session"},
 	{"internal/sessionartifact/", "sessionartifact"},
 	{"internal/sessiontransfer/", "sessiontransfer"},
-	{"internal/steering/", "steering"},
 	{"internal/workbench/", "workbench"},
-	{"internal/oneshot/", "oneshot"},
 	{"internal/agent/", "agent"},
 	{"internal/settings/", "settings"},
 	{"internal/extensions/", "extensions"},
@@ -1212,10 +1210,9 @@ var allowed = map[string][]string{
 	"schedule":         {"exactint", "modelidentity", "runidentity", "sessionidentity"},
 	"settings":         {"agent"},
 	"session":          {"agent", "commandreplay", "mutation", "retry", "sessionidentity", "workbench"},
-	"steering":         {"agent", "commandreplay", "mutation", "retry", "workbench"},
+	"run":              {"agent", "commandreplay", "mutation", "reconnect", "retry", "workbench"},
 	"mutation":         {"agent", "commandreplay", "retry"},
 	"retry":            nil,
-	"oneshot":          {"agent", "commandreplay", "mutation", "reconnect", "retry", "runrecovery"},
 	"extensions":       nil,
 	"promptqueue":      {"agent", "sessionidentity"},
 	"sessiontransfer":  {"agent", "sessionidentity"},
@@ -1225,16 +1222,15 @@ var allowed = map[string][]string{
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
 	"reconnect":      {"agent"},
-	"runrecovery":    {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "sessionidentity", "workspace"},
 	"runtimeadapter": {"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "runidentity", "runtimeprofile", "schedule", "sessionidentity", "sessiontransfer", "skills", "usage", "workspace"},
 	"render":         {"agent", "failure", "runidentity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
+	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "run", "runidentity", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "skills", "usage", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
-	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "oneshot", "render", "runtimeprofile", "session", "settings", "workbench"},
+	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
 }
 
@@ -1303,7 +1299,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
+	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1343,7 +1339,7 @@ func TestAdapterBoundaryRulesRefuseInwardLeaks(t *testing.T) {
 	}{
 		{layer: "agent", imported: runtimePath + "/protocol"},
 		{layer: "settings", imported: cobraPath},
-		{layer: "oneshot", imported: viperPath},
+		{layer: "run", imported: viperPath},
 	} {
 		if adapterDependencyAllowed(test.layer, test.imported) {
 			t.Errorf("%s unexpectedly accepts %s", test.layer, test.imported)
@@ -1378,12 +1374,11 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/testsupport/runtimefixture", "internal/render", true},
 		{"internal/attachment", "internal/terminal", true},
 		{"internal/reconnect", "internal/cmd", true},
-		{"internal/runrecovery", "internal/cmd", true},
+		{"internal/run", "internal/cmd", true},
 		{"internal/session", "internal/terminal", true},
 		{"internal/sessionartifact", "internal/terminal", true},
 		{"internal/sessiontransfer", "internal/terminal", true},
 		{"internal/workbench", "internal/terminal", true},
-		{"internal/oneshot", "internal/cmd", true},
 		{"internal/settings", "internal/terminal", true},
 		{"internal/promptqueue", "internal/terminal", true},
 		{"internal/render", "internal/terminal", true},
@@ -1403,13 +1398,11 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/render", "internal/agent", false},
 		{"internal/attachment", "internal/agent", false},
 		{"internal/reconnect", "internal/agent", false},
-		{"internal/runrecovery", "internal/agent", false},
-		{"internal/cmd", "internal/runrecovery", true},
+		{"internal/run", "internal/agent", false},
 		{"internal/cmd", "internal/session", false},
-		{"internal/cmd", "internal/oneshot", false},
+		{"internal/cmd", "internal/run", false},
 		{"internal/settings", "internal/agent", false},
 		{"internal/session", "internal/agent", false},
-		{"internal/oneshot", "internal/agent", false},
 		{"internal/promptqueue", "internal/agent", false},
 	} {
 		from, to := layerOf(tc.from), layerOf(tc.to)
