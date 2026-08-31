@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/mutation"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -75,7 +74,7 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (agent.SegmentStream, error) {
 		opened, err := openStartRun(
-			ctx, a.runtime, input, reconnect.Disabled(), commandReplayAdmission(replay, a.runtimeProfile),
+			ctx, a.runtime, input, retry.DisabledReconnectPolicy(), commandReplayAdmission(replay, a.runtimeProfile),
 		)
 		if err != nil {
 			if _, accepted := agent.AcceptedMutationReceipt(err); accepted {
@@ -193,7 +192,7 @@ func openStartRun(
 	ctx context.Context,
 	runtime agent.RunLifecycle,
 	command agent.StartRun,
-	policy reconnect.Policy,
+	policy retry.ReconnectPolicy,
 	admit mutation.Admission,
 ) (agent.SegmentStream, error) {
 	if err := policy.Validate(); err != nil {
@@ -299,7 +298,7 @@ type streamFollower struct {
 	lease      operationLease
 	open       func(context.Context) (agent.SegmentStream, error)
 	applyEvent func(agent.RunEvent) error
-	policy     reconnect.Policy
+	policy     retry.ReconnectPolicy
 	opening    streamOpeningObserver
 	failures   int
 	checkpoint string

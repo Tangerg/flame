@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/mcp"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
@@ -412,7 +411,7 @@ func (m mcpAuthorizationObserver) observe(
 		}
 		next, err := m.service.GetAuthorization(ctx, reference)
 		if err != nil {
-			if !reconnect.Retryable(err) {
+			if !retry.IsReconnectable(err) {
 				return mcp.AuthorizationAttempt{}, err
 			}
 			failures++

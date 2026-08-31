@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
@@ -58,7 +57,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err := invocation.ReplayPolicy.Validate(); err != nil {
 		return fmt.Errorf("one-shot command replay policy: %w", err)
 	}
-	reconnectPolicy, err := reconnect.New(invocation.ReconnectAttempts)
+	reconnectPolicy, err := retry.NewReconnectPolicy(invocation.ReconnectAttempts)
 	if err != nil {
 		return fmt.Errorf("one-shot reconnect policy: %w", err)
 	}
@@ -202,7 +201,7 @@ const (
 
 func (d disposition) preservesRun() bool { return d == settled || d == parked }
 
-func drive(ctx context.Context, invocation Invocation, policy reconnect.Policy, opened agent.SegmentStream) (disposition, error) {
+func drive(ctx context.Context, invocation Invocation, policy retry.ReconnectPolicy, opened agent.SegmentStream) (disposition, error) {
 	driver := executionDriver{
 		invocation: invocation, openedRunID: opened.RunID,
 		conversation: agent.NewConversation(), policy: policy, current: opened,
@@ -214,7 +213,7 @@ type executionDriver struct {
 	invocation   Invocation
 	openedRunID  string
 	conversation *agent.Conversation
-	policy       reconnect.Policy
+	policy       retry.ReconnectPolicy
 	current      agent.SegmentStream
 	failures     int
 }

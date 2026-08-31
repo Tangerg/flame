@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P297 进行中。
+> 状态：当前能力快照；P298 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -603,6 +603,8 @@ P295把Run外direct diagnostic Tool的list/invoke编排收回`application/worksp
 P296把CLI的authoring context、Knowledge、Skills、lifecycle Hooks与direct diagnostic Tool投影收回`internal/workspace`。这些能力都从当前workspace/project/home上下文取得scope或authority，且只有Runtime adapter与Terminal这组共同消费者；合并后以`Authoring*`、`Knowledge*`、`Skill*`、`Hook*`、`DiagnosticTool*`语义全名保持各自不变量和窄consumer port，不建立总service。五个旧package、import、架构层、早已退役的Goal/feedback/usage allowlist残留及空目录均物理删除，Runtime Protocol与行为不变。
 
 P297把CLI Agent Memory管理投影收回`internal/agent`。它与Session、Run、Goal、feedback、usage拥有同一组Runtime adapter/Terminal消费者且没有独立资源lifecycle；合并后以`Memory*`语义全名保留target、item、review与patch不变量，不建立总service，也不改变Runtime `domain/agentmemory`的独立领域owner。旧package、import、架构层和空目录均物理删除。
+
+P298把CLI的transport reconnect budget收回`internal/retry`。原`retry.Backoff`与`reconnect.Policy`重复持有base/doubling/maximum指数算法，Run与Terminal还必须同时组合两个package；现在`ReconnectPolicy`组合唯一`Backoff`，只增加classified admission、finite attempt budget与command-in-progress floor。旧`internal/reconnect`、import、架构层和空目录均物理删除，没有alias、forwarder或兼容路径。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

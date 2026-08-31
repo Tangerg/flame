@@ -23,7 +23,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
+	"github.com/Tangerg/flame/cli/internal/retry"
 	runworkflow "github.com/Tangerg/flame/cli/internal/run"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
@@ -132,7 +132,7 @@ type preparedSession struct {
 	attachments      *attachment.Resolver
 	keyBindings      keyBindings
 	settings         settings.Config
-	reconnectPolicy  reconnect.Policy
+	reconnectPolicy  retry.ReconnectPolicy
 	options          agent.RunOptions
 	workbench        *workbench.Store
 	draft            agent.Message
@@ -148,7 +148,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
-	reconnectPolicy, err := reconnect.New(configured.UI.ReconnectAttempts)
+	reconnectPolicy, err := retry.NewReconnectPolicy(configured.UI.ReconnectAttempts)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session reconnect policy: %w", err)
 	}
@@ -221,7 +221,7 @@ func openPreparedSession(
 	cfg Config,
 	profile *runtimeprofile.Profile,
 	configured settings.Config,
-	reconnectPolicy reconnect.Policy,
+	reconnectPolicy retry.ReconnectPolicy,
 	bindings keyBindings,
 	authoring *workbench.Store,
 ) (preparedSession, error) {

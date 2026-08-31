@@ -59,9 +59,11 @@ Do not collapse the tree into a broad `service` or `backend` layer. Prefer cohes
 segment reattachment, and durable steering settlement. `internal/session` owns
 Session opening, updates, deletion, rollback, and their local settlement. These
 packages orchestrate Runtime commands and CLI-local records; they do not own a
-second Run or Session state machine. `internal/reconnect` remains independent
-because its classified transport retry policy has peer consumers in Run,
-Runtime invalidation, workspace inspection, and MCP management.
+second Run or Session state machine. `internal/retry` owns the shared retry
+mechanism and transport-recovery policy: `Backoff` is the only exponential
+schedule, while `ReconnectPolicy` adds classified admission and a finite
+attempt budget for Run, Runtime invalidation, workspace inspection, and MCP
+management. Do not split retry admission from the schedule it consumes.
 
 `internal/identity` owns the CLI domain's admission policy for exact foreign
 Runtime resource and model-selection identities. It keeps Session, Run,

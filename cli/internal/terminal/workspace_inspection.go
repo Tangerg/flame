@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/workspace"
@@ -582,7 +581,7 @@ func (r runtimeChangeMonitor) waitToRetry(ctx context.Context, failure error, fa
 	if cause := context.Cause(ctx); cause != nil {
 		return cause
 	}
-	if !reconnect.Retryable(failure) {
+	if !retry.IsReconnectable(failure) {
 		return failure
 	}
 	if err := r.recovery.Wait(ctx, failures); err != nil {
@@ -599,7 +598,7 @@ func (r runtimeChangeMonitor) runWithoutWatch(ctx context.Context) error {
 	for context.Cause(ctx) == nil {
 		if err := r.refreshFiles(ctx); err == nil {
 			return nil
-		} else if !reconnect.Retryable(err) {
+		} else if !retry.IsReconnectable(err) {
 			return err
 		}
 		failures++

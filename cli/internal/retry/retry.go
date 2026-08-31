@@ -1,4 +1,4 @@
-// Package retry owns transport-agnostic waiting and exponential backoff.
+// Package retry owns retry schedules and classified transport-recovery policy.
 package retry
 
 import (

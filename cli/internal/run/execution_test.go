@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/mutation"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
+	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
@@ -228,8 +228,8 @@ func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
 		ReplayPolicy: commandreplay.UnavailablePolicy(),
 		Start:        unlimitedStart("ses_demo_1", "must not start"),
 	})
-	if !errors.Is(err, reconnect.ErrInvalidPolicy) {
-		t.Fatalf("Execute error = %v, want ErrInvalidPolicy", err)
+	if !errors.Is(err, retry.ErrInvalidReconnectPolicy) {
+		t.Fatalf("Execute error = %v, want ErrInvalidReconnectPolicy", err)
 	}
 	page, listErr := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "ses_demo_1", PageSize: agent.DefaultPageSize(),

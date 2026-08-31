@@ -1001,14 +1001,14 @@ func TestRetrySchedulesRequireNamedConstructionAndOneTerminalOwner(t *testing.T)
 			t.Errorf("retry.Backoff restored mutable exported field %s", leaked)
 		}
 	}
-	reconnectPath := filepath.Join(root, "internal", "reconnect", "reconnect.go")
-	policy := cliStructFieldTypes(t, reconnectPath, "Policy")
-	if policy["configured"] != "bool" || policy["attempts"] != "int" || policy["base"] != "time.Duration" || policy["maximum"] != "time.Duration" {
-		t.Fatalf("reconnect.Policy fields = %v, want private configured schedule", policy)
+	reconnectPath := filepath.Join(root, "internal", "retry", "reconnect.go")
+	policy := cliStructFieldTypes(t, reconnectPath, "ReconnectPolicy")
+	if len(policy) != 2 || policy["attempts"] != "int" || policy["backoff"] != "Backoff" {
+		t.Fatalf("retry.ReconnectPolicy fields = %v, want only private attempt budget and shared backoff", policy)
 	}
 	applicationPath := filepath.Join(root, "internal", "terminal", "application.go")
-	if got := cliStructFieldTypes(t, applicationPath, "app")["reconnectPolicy"]; got != "reconnect.Policy" {
-		t.Fatalf("terminal.app.reconnectPolicy type = %q, want reconnect.Policy", got)
+	if got := cliStructFieldTypes(t, applicationPath, "app")["reconnectPolicy"]; got != "retry.ReconnectPolicy" {
+		t.Fatalf("terminal.app.reconnectPolicy type = %q, want retry.ReconnectPolicy", got)
 	}
 }
 
@@ -1154,7 +1154,6 @@ var layers = []struct {
 	{"internal/attachment/", "attachment"},
 	{"internal/promptqueue/", "promptqueue"},
 	{"internal/mutation/", "mutation"},
-	{"internal/reconnect/", "reconnect"},
 	{"internal/retry/", "retry"},
 	{"internal/run/", "run"},
 	{"internal/commandreplay/", "commandreplay"},
@@ -1188,9 +1187,9 @@ var allowed = map[string][]string{
 	"schedule":        {"exactint", "identity"},
 	"settings":        {"agent"},
 	"session":         {"agent", "commandreplay", "identity", "mutation", "retry", "workbench"},
-	"run":             {"agent", "commandreplay", "mutation", "reconnect", "retry", "workbench"},
+	"run":             {"agent", "commandreplay", "mutation", "retry", "workbench"},
 	"mutation":        {"agent", "commandreplay", "retry"},
-	"retry":           nil,
+	"retry":           {"agent"},
 	"extensions":      nil,
 	"promptqueue":     {"agent", "identity"},
 	"sessiontransfer": {"agent", "identity"},
@@ -1199,14 +1198,13 @@ var allowed = map[string][]string{
 
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
-	"reconnect":      {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
 	"runtimeadapter": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "workspace"},
 	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "reconnect", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "workbench", "workspace"},
+	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
@@ -1277,7 +1275,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1351,7 +1349,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/extensions", "internal/agent", true},
 		{"internal/testsupport/runtimefixture", "internal/render", true},
 		{"internal/attachment", "internal/terminal", true},
-		{"internal/reconnect", "internal/cmd", true},
+		{"internal/retry", "internal/cmd", true},
 		{"internal/run", "internal/cmd", true},
 		{"internal/session", "internal/terminal", true},
 		{"internal/sessionartifact", "internal/terminal", true},
@@ -1375,7 +1373,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/sideload", "internal/extensions", false},
 		{"internal/render", "internal/agent", false},
 		{"internal/attachment", "internal/agent", false},
-		{"internal/reconnect", "internal/agent", false},
+		{"internal/retry", "internal/agent", false},
 		{"internal/run", "internal/agent", false},
 		{"internal/cmd", "internal/session", false},
 		{"internal/cmd", "internal/run", false},

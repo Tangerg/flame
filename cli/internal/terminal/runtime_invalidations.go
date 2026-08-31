@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
 	"github.com/Tangerg/flame/cli/internal/retry"
 )
 
@@ -153,7 +152,7 @@ func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
 		failures := 0
 		for {
 			document, err := read(ctx)
-			if err == nil || !reconnect.Retryable(err) {
+			if err == nil || !retry.IsReconnectable(err) {
 				return document, err
 			}
 			failures++
@@ -284,7 +283,7 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (age
 	failures := 0
 	for {
 		snapshot, err := a.runtime.GetSession(ctx, sessionID)
-		if err == nil || !reconnect.Retryable(err) {
+		if err == nil || !retry.IsReconnectable(err) {
 			return snapshot, err
 		}
 		failures++

@@ -1,4 +1,4 @@
-package reconnect
+package retry
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestReconnectRetriesOnlyTransientErrorsWithinBudget(t *testing.T) {
-	policy, err := newPolicy(3, 10*time.Millisecond, 25*time.Millisecond)
+	policy, err := newReconnectPolicy(3, 10*time.Millisecond, 25*time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,35 +33,40 @@ func TestReconnectRetriesOnlyTransientErrorsWithinBudget(t *testing.T) {
 }
 
 func TestCommandCommitRetriesHonorTheRuntimeBackoffFloor(t *testing.T) {
-	policy, err := newPolicy(2, 10*time.Millisecond, 2*time.Second)
+	policy, err := newReconnectPolicy(2, 10*time.Millisecond, 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if delay, ok, err := policy.Next(1, agent.ErrCommandInProgress); err != nil || !ok || delay != time.Second {
 		t.Fatalf("command progress retry = %s, %t; want 1s, true", delay, ok)
 	}
-	if !Retryable(agent.ErrCommandInProgress) {
+	if !IsReconnectable(agent.ErrCommandInProgress) {
 		t.Fatal("command progress was not retryable")
 	}
-	if Retryable(agent.ErrCommandConflict) {
+	if IsReconnectable(agent.ErrCommandConflict) {
 		t.Fatal("command identity conflict was retryable")
 	}
 }
 
-func TestReconnectPolicyRequiresNamedDisabledOrConfiguredState(t *testing.T) {
+func TestReconnectPolicyRequiresNamedDisabledOrBoundedState(t *testing.T) {
 	t.Parallel()
-	if _, retryable, err := Disabled().Next(1, agent.ErrDisconnected); err != nil || retryable {
-		t.Fatalf("disabled Next = (%t, %v)", retryable, err)
+	if _, reconnectable, err := DisabledReconnectPolicy().Next(1, agent.ErrDisconnected); err != nil || reconnectable {
+		t.Fatalf("disabled Next = (%t, %v)", reconnectable, err)
 	}
-	if _, _, err := (Policy{}).Next(1, agent.ErrDisconnected); !errors.Is(err, ErrInvalidPolicy) {
+	if _, _, err := (ReconnectPolicy{}).Next(1, agent.ErrDisconnected); !errors.Is(err, ErrInvalidReconnectPolicy) {
 		t.Fatalf("zero policy Next = %v", err)
 	}
-	if _, err := New(-1); !errors.Is(err, ErrInvalidPolicy) {
-		t.Fatalf("New(-1) = %v", err)
+	if _, err := NewReconnectPolicy(-1); !errors.Is(err, ErrInvalidReconnectPolicy) {
+		t.Fatalf("NewReconnectPolicy(-1) = %v", err)
+	}
+	for _, bounds := range [][2]time.Duration{{0, time.Second}, {time.Second, time.Millisecond}} {
+		if _, err := newReconnectPolicy(1, bounds[0], bounds[1]); !errors.Is(err, ErrInvalidReconnectPolicy) {
+			t.Fatalf("newReconnectPolicy(1, %s, %s) = %v", bounds[0], bounds[1], err)
+		}
 	}
 }
 
-func TestRetryableRecognizesOnlyClassifiedDisconnects(t *testing.T) {
+func TestIsReconnectableRecognizesOnlyClassifiedDisconnects(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
@@ -76,8 +81,8 @@ func TestRetryableRecognizesOnlyClassifiedDisconnects(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := Retryable(test.err); got != test.want {
-				t.Fatalf("Retryable(%v) = %t, want %t", test.err, got, test.want)
+			if got := IsReconnectable(test.err); got != test.want {
+				t.Fatalf("IsReconnectable(%v) = %t, want %t", test.err, got, test.want)
 			}
 		})
 	}

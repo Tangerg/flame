@@ -953,3 +953,10 @@
 - 背景：CLI `agentmemory` 只有一个生产文件，定义 Runtime-maintained Memory 的管理投影和 consumer port；生产消费者仍只有 Runtime adapter 与 Terminal，与 `internal/agent` 已拥有的 Session、Run、Goal、feedback 和 usage 完全相同。它没有独立持久化、文件、进程、连接或 workflow lifecycle，单独 package 只是复刻 Runtime 的 bounded-context 目录；Runtime `domain/agentmemory` 的长期记忆、review/fold/ranking 语义仍有真实独立 owner，不能据此要求每个客户端复制同一物理结构。
 - 决策：`cli/internal/agent` 以 `MemoryScope`、`MemoryTarget`、`MemoryItem`、`MemoryPatch`、`MemoryReviewDecision` 和 `MemoryService` 语义全名共同拥有该消费投影；Runtime adapter 继续负责 Protocol 翻译和 workspace canonicalization，Terminal 继续拥有管理交互，Runtime Domain 继续唯一拥有产品 Memory 规则。
 - 后果：物理删除 `cli/internal/agentmemory`、全部 import、架构层和空目录，不保留 alias、forwarder 或 compatibility package。CLI Agent context 增加一个职责文件而不是总 service facade；Runtime Agent Memory 聚合、Protocol shape、持久化和用户行为不变。
+
+## ADR-RT-134：CLI 重连预算与指数退避必须共用一个机制 owner
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 CLI recovery mechanism 批次完成；允许 CLI internal Go API breaking change，Runtime 公共 Go surface、Protocol、Artifact、SQLite 与 Desktop 不变。
+- 背景：`cli/internal/retry.Backoff` 与 `cli/internal/reconnect.Policy` 分别实现了同一套 base、doubling、maximum 指数退避；Run 和 Terminal 的重连路径必须同时 import 两个 package，前者计算是否重试和 delay，后者再负责等待。`reconnect` 虽有多个调用点，但没有独立资源或生命周期，它的唯一机制正是 `retry` 已拥有的 schedule；分包让同一算法产生两份真相，并把“有多个消费者”误当成“必须有两个 owner”。
+- 决策：`cli/internal/retry` 以多个职责文件共同拥有通用 `Backoff`、cancellation-aware wait、`ReconnectPolicy` 和 classified transport admission。`ReconnectPolicy` 只保存有限 attempt budget 和唯一 `Backoff`，连 configured state 都由 `Backoff` 的闭合 mode 表达；`agent.ErrCommandInProgress` 的一秒下限在同一 policy 上叠加，不复制指数算法。API 改用 `NewReconnectPolicy`、`DisabledReconnectPolicy`、`IsReconnectable` 与 `ErrInvalidReconnectPolicy` 等语义全名。
+- 后果：物理删除 `cli/internal/reconnect`、全部旧 import、架构层与空目录，不保留 alias、forwarder 或 compatibility package。Run、Terminal、Session 与 mutation 继续按各自生命周期决定何时调用 retry，`retry` 只拥有可复用机制和 transport failure classification；重连预算、命令提交下限、取消及用户行为不变。

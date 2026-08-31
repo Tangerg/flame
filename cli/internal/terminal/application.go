@@ -23,7 +23,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/mcp"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/reconnect"
+	"github.com/Tangerg/flame/cli/internal/retry"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 	"github.com/Tangerg/flame/cli/internal/sessionartifact"
@@ -96,7 +96,7 @@ type app struct {
 	queueDrawer     *queueDrawer
 	status          *statusView
 	settings        settings.Config
-	reconnectPolicy reconnect.Policy
+	reconnectPolicy retry.ReconnectPolicy
 	options         agent.RunOptions
 	composer        kit.Composer
 	prompt          *promptView
@@ -210,7 +210,7 @@ type appConfig struct {
 	attachments      *attachment.Resolver
 	initialDraft     agent.Message
 	settings         settings.Config
-	reconnectPolicy  reconnect.Policy
+	reconnectPolicy  retry.ReconnectPolicy
 	options          agent.RunOptions
 	keyBindings      keyBindings
 	queue            *promptqueue.Queue
