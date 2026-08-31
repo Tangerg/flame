@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 var (
@@ -514,7 +514,7 @@ func validateEntry(commandID agent.CommandID, sessionID string, message agent.Me
 	if err := commandID.Validate(); err != nil {
 		return fmt.Errorf("prompt queue: %w", err)
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrSessionIDRequired, err)
 	}
 	if err := message.Validate(); err != nil {

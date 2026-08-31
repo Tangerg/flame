@@ -1141,6 +1141,7 @@ var layers = []struct {
 }{
 	{"internal/testsupport/runtimefixture/", "runtimefixture"},
 	{"internal/exactint/", "exactint"},
+	{"internal/identity/", "identity"},
 	{"internal/runtimeadapter/", "runtimeadapter"},
 	{"internal/authoringcontext/", "authoringcontext"},
 	{"internal/agentmemory/", "agentmemory"},
@@ -1151,9 +1152,6 @@ var layers = []struct {
 	{"internal/changefeed/", "changefeed"},
 	{"internal/workspace/", "workspace"},
 	{"internal/usage/", "usage"},
-	{"internal/modelidentity/", "modelidentity"},
-	{"internal/sessionidentity/", "sessionidentity"},
-	{"internal/runidentity/", "runidentity"},
 	{"internal/modelconfig/", "modelconfig"},
 	{"internal/goal/", "goal"},
 	{"internal/knowledge/", "knowledge"},
@@ -1186,49 +1184,47 @@ var layers = []struct {
 // dependency fail closed instead of silently weakening the architecture.
 var allowed = map[string][]string{
 	// Domain policy and generic infrastructure are the center.
-	"failure":          {"runidentity"},
+	"failure":          {"identity"},
 	"exactint":         nil,
-	"modelidentity":    nil,
-	"sessionidentity":  nil,
-	"runidentity":      nil,
+	"identity":         nil,
 	"commandreplay":    nil,
 	"runtimeprofile":   {"commandreplay"},
-	"agent":            {"exactint", "failure", "goal", "modelidentity", "runidentity", "sessionidentity", "workspace"},
+	"agent":            {"exactint", "failure", "goal", "identity", "workspace"},
 	"agentmemory":      nil,
 	"authoringcontext": nil,
 	"diagnostictool":   nil,
 	"hookpolicy":       nil,
-	"feedback":         {"runidentity", "sessionidentity"},
+	"feedback":         {"identity"},
 	"changefeed":       nil,
 	"workspace":        nil,
-	"usage":            {"sessionidentity"},
-	"modelconfig":      {"failure", "modelidentity"},
-	"goal":             {"modelidentity", "sessionidentity"},
+	"usage":            {"identity"},
+	"modelconfig":      {"failure", "identity"},
+	"goal":             {"identity"},
 	"knowledge":        nil,
 	"skills":           nil,
 	"mcp":              {"failure"},
-	"schedule":         {"exactint", "modelidentity", "runidentity", "sessionidentity"},
+	"schedule":         {"exactint", "identity"},
 	"settings":         {"agent"},
-	"session":          {"agent", "commandreplay", "mutation", "retry", "sessionidentity", "workbench"},
+	"session":          {"agent", "commandreplay", "identity", "mutation", "retry", "workbench"},
 	"run":              {"agent", "commandreplay", "mutation", "reconnect", "retry", "workbench"},
 	"mutation":         {"agent", "commandreplay", "retry"},
 	"retry":            nil,
 	"extensions":       nil,
-	"promptqueue":      {"agent", "sessionidentity"},
-	"sessiontransfer":  {"agent", "sessionidentity"},
+	"promptqueue":      {"agent", "identity"},
+	"sessiontransfer":  {"agent", "identity"},
 	"sessionartifact":  {"sessiontransfer"},
-	"workbench":        {"agent", "commandreplay", "runidentity", "sessionidentity"},
+	"workbench":        {"agent", "commandreplay", "identity"},
 
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
 	"reconnect":      {"agent"},
-	"runtimefixture": {"agent", "exactint", "failure", "sessionidentity", "workspace"},
-	"runtimeadapter": {"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "runidentity", "runtimeprofile", "schedule", "sessionidentity", "sessiontransfer", "skills", "usage", "workspace"},
-	"render":         {"agent", "failure", "runidentity"},
+	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
+	"runtimeadapter": {"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "identity", "knowledge", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "skills", "usage", "workspace"},
+	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "run", "runidentity", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "skills", "usage", "workbench", "workspace"},
+	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "identity", "knowledge", "mcp", "modelconfig", "mutation", "promptqueue", "reconnect", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiontransfer", "settings", "skills", "usage", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
 	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
 	"arch":     nil,
@@ -1299,7 +1295,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "identity", "knowledge", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "run", "session", "sessionartifact", "sessiontransfer", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {

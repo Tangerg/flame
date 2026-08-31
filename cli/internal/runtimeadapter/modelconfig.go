@@ -8,8 +8,8 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
 )
 
 type modelConfigBinding interface {
@@ -204,7 +204,7 @@ func validateProviderUpdate(update modelconfig.UpdateProvider, result modelconfi
 }
 
 func (r *Connection) TestProvider(ctx context.Context, providerID string) (modelconfig.TestResult, error) {
-	if err := modelidentity.Provider(providerID); err != nil {
+	if err := cliidentity.ValidateProvider(providerID); err != nil {
 		return modelconfig.TestResult{}, fmt.Errorf("test provider: %w", err)
 	}
 	result, err := r.modelConfig.TestProvider(ctx, protocol.TestProviderRequest{Provider: providerID}, r.callOptions())

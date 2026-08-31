@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type Format string
@@ -109,7 +109,7 @@ type ExportRequest struct {
 }
 
 func (e ExportRequest) Validate() error {
-	if _, err := sessionidentity.Parse(e.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("export session: %w", err)
 	}
 	if err := e.Format.Validate(); err != nil {

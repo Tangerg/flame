@@ -7,9 +7,9 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/mutation"
 	"github.com/Tangerg/flame/cli/internal/retry"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
 
@@ -39,11 +39,9 @@ func Delete(
 	if authoring == nil {
 		return DeletionResult{}, errors.New("CLI workbench is unavailable")
 	}
-	identity, err := sessionidentity.Parse(sessionID)
-	if err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return DeletionResult{}, err
 	}
-	sessionID = identity.String()
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
 	fresh := !exists
 	if exists && pending.Phase == workbench.SessionDeletionConfirmed {

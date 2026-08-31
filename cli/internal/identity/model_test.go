@@ -1,4 +1,4 @@
-package modelidentity
+package identity
 
 import (
 	"strings"
@@ -20,12 +20,12 @@ func TestSelectionUsesRuntimeIdentityEnvelope(t *testing.T) {
 		{name: "effort too long", provider: "openai", model: "gpt-5", effort: strings.Repeat("e", MaximumReasoningEffortCharacters+1)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if err := Selection(test.provider, test.model, test.effort); err == nil {
+			if err := ValidateModelSelection(test.provider, test.model, test.effort); err == nil {
 				t.Fatal("Selection accepted invalid identity")
 			}
 		})
 	}
-	if err := Selection(
+	if err := ValidateModelSelection(
 		strings.Repeat("提", MaximumProviderCharacters),
 		strings.Repeat("模", MaximumModelCharacters),
 		strings.Repeat("强", MaximumReasoningEffortCharacters),

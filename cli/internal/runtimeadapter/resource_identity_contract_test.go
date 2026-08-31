@@ -3,20 +3,17 @@ package runtimeadapter
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestResourceIdentityDomainsMatchTheRuntimeContract(t *testing.T) {
-	if sessionidentity.MaximumCharacters != protocol.MaximumResourceIdentityCharacters ||
-		runidentity.MaximumCharacters != protocol.MaximumResourceIdentityCharacters ||
-		runidentity.MaximumEventCharacters != protocol.MaximumRunEventIDCharacters {
+	if cliidentity.MaximumResourceCharacters != protocol.MaximumResourceIdentityCharacters ||
+		cliidentity.MaximumEventCharacters != protocol.MaximumRunEventIDCharacters {
 		t.Fatalf(
-			"CLI resource identity bounds = session %d, run %d, event %d; Runtime contract = resource %d, event %d",
-			sessionidentity.MaximumCharacters,
-			runidentity.MaximumCharacters,
-			runidentity.MaximumEventCharacters,
+			"CLI identity limits = resource:%d event:%d; Runtime = resource:%d event:%d",
+			cliidentity.MaximumResourceCharacters,
+			cliidentity.MaximumEventCharacters,
 			protocol.MaximumResourceIdentityCharacters,
 			protocol.MaximumRunEventIDCharacters,
 		)

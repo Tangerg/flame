@@ -1,8 +1,4 @@
-// Package modelidentity owns CLI-side restoration and command admission for
-// Runtime model identities. The Runtime remains authoritative; these checks
-// keep embedded/custom transports and persisted CLI state from bypassing the
-// same public resource envelope.
-package modelidentity
+package identity
 
 import (
 	"errors"
@@ -11,7 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-var ErrIncompleteSelection = errors.New("provider and model must be selected together")
+var ErrIncompleteModelSelection = errors.New("provider and model must be selected together")
 
 // These are CLI product limits, not transport constants. The Runtime adapter
 // owns the test that proves this consumer policy remains aligned with the
@@ -22,24 +18,24 @@ const (
 	MaximumReasoningEffortCharacters = 32
 )
 
-func Provider(value string) error {
-	return validate("provider", value, MaximumProviderCharacters)
+func ValidateProvider(value string) error {
+	return validateModelIdentity("provider", value, MaximumProviderCharacters)
 }
 
-func Model(value string) error {
-	return validate("model", value, MaximumModelCharacters)
+func ValidateModel(value string) error {
+	return validateModelIdentity("model", value, MaximumModelCharacters)
 }
 
-func ReasoningEffort(value string) error {
-	return validate("reasoning effort", value, MaximumReasoningEffortCharacters)
+func ValidateReasoningEffort(value string) error {
+	return validateModelIdentity("reasoning effort", value, MaximumReasoningEffortCharacters)
 }
 
-// Selection validates the zero-or-complete model identity. Empty provider and
+// ValidateModelSelection validates the zero-or-complete model identity. Empty provider and
 // model mean the surrounding Runtime default; effort can only qualify an exact
 // pair.
-func Selection(provider, model, reasoningEffort string) error {
+func ValidateModelSelection(provider, model, reasoningEffort string) error {
 	if (provider == "") != (model == "") {
-		return ErrIncompleteSelection
+		return ErrIncompleteModelSelection
 	}
 	if model == "" {
 		if reasoningEffort != "" {
@@ -47,19 +43,19 @@ func Selection(provider, model, reasoningEffort string) error {
 		}
 		return nil
 	}
-	if err := Provider(provider); err != nil {
+	if err := ValidateProvider(provider); err != nil {
 		return err
 	}
-	if err := Model(model); err != nil {
+	if err := ValidateModel(model); err != nil {
 		return err
 	}
 	if reasoningEffort != "" {
-		return ReasoningEffort(reasoningEffort)
+		return ValidateReasoningEffort(reasoningEffort)
 	}
 	return nil
 }
 
-func validate(label, value string, maximumCharacters int) error {
+func validateModelIdentity(label, value string, maximumCharacters int) error {
 	if value == "" {
 		return fmt.Errorf("%s identity is empty", label)
 	}

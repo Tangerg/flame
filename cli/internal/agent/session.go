@@ -11,9 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/exactint"
 	"github.com/Tangerg/flame/cli/internal/goal"
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
-	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/workspace"
 )
 
@@ -48,7 +46,7 @@ func (s Session) Equal(other Session) bool {
 
 func (s Session) Validate() error {
 	var problems []error
-	if _, err := sessionidentity.Parse(s.ID); err != nil {
+	if err := cliidentity.ValidateSession(s.ID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := s.Workspace.Validate(); err != nil {
@@ -107,7 +105,7 @@ func ParseModelRef(value string) (ModelRef, error) {
 }
 
 func (m ModelRef) Validate() error {
-	if err := modelidentity.Selection(m.Provider, m.Model, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(m.Provider, m.Model, ""); err != nil {
 		return err
 	}
 	if strings.Contains(m.Provider, modelRefSeparator) {
@@ -572,7 +570,7 @@ type UpdateSession struct {
 }
 
 func (u UpdateSession) Validate() error {
-	if _, err := sessionidentity.Parse(u.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(u.SessionID); err != nil {
 		return fmt.Errorf("session update: %w", err)
 	}
 	if u.Title == nil && u.Workspace == nil && u.Model == nil && u.Favorite == nil {
@@ -637,11 +635,11 @@ type ForkSession struct {
 }
 
 func (f ForkSession) Validate() error {
-	if _, err := sessionidentity.Parse(f.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(f.SessionID); err != nil {
 		return fmt.Errorf("session fork: %w", err)
 	}
 	if f.FromRunID != "" {
-		if _, err := runidentity.ParseRun(f.FromRunID); err != nil {
+		if err := cliidentity.ValidateRun(f.FromRunID); err != nil {
 			return fmt.Errorf("session fork: %w", err)
 		}
 	}

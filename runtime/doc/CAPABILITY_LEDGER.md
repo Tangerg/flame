@@ -588,6 +588,8 @@ P288把Runtime根下9个按identity种类拆分的微包收敛为一个受限`in
 
 P289把只有`runsegment.Finalizer`一个语义消费者的`adapter/sessiontitle`收回`adapter/runsegment`。consumer-owned `TitleGenerator`接口、model-backed实现、fallback sanitization、terminal/parked maintenance结算与Bootstrap construction现在同属Run边界owner；`adapter/utilitymodel`继续作为title/compaction/Memory/Skill共同消费的Scope model SDK防腐与资源包络。旧package物理删除且无alias/forwarder；title输入输出预算、provider failure fallback、Session first-writer行为及公共合同均不变。
 
+P290把CLI的`modelidentity`、`sessionidentity`与`runidentity`三个跨层准入微包收敛为`internal/identity`。Session、Run、Segment、Item、Event与exact model selection仍保留各自命名规则和Event独立资源上限，但生产消费者只校验后继续持有Runtime原始字符串，因此删除无人持有的CLI影子`*ID`类型、`Parse/String/Validate`往返和原样赋回；新包不生成identity、不normalize、不推断provider，也不取得Runtime生命周期。`exactint`因拥有独立数值推进机制和多个真实消费者继续保留。旧package、alias与forwarder全部删除，CLI architecture allowlist同步收口；Runtime公共Go surface、Protocol、Artifact、SQLite、HTTP及Desktop不变。
+
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 
 MCP server registry identity现由独立`ServerName`拥有1–32位canonical lowercase ASCII spelling，并贯穿registry/live supersession/OAuth/tool policy/tool namespace；公开Go/Schema/TypeScript与fresh SQLite CHECK使用同一规则。SQLite当前epoch因此为94，Artifact仍为v27。

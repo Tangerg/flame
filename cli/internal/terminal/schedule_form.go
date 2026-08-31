@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/schedule"
 )
 
@@ -180,7 +180,7 @@ func validateCronShape(value string) error {
 }
 
 func validateScheduleModelPair(provider, model string) error {
-	if err := modelidentity.Selection(provider, model, ""); errors.Is(err, modelidentity.ErrIncompleteSelection) {
+	if err := cliidentity.ValidateModelSelection(provider, model, ""); errors.Is(err, cliidentity.ErrIncompleteModelSelection) {
 		return errors.New("provider and model must both be set or both be empty")
 	} else if err != nil {
 		return err

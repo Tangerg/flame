@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	r.mu.Lock()

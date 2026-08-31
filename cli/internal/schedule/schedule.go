@@ -11,9 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/exactint"
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
-	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 // Schedule is one revisioned instruction set that the runtime fires on a cron
@@ -288,10 +286,10 @@ type RunHandle struct {
 }
 
 func (r RunHandle) Validate() error {
-	if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(r.SessionID); err != nil {
 		return fmt.Errorf("schedule run handle: %w", err)
 	}
-	if _, err := runidentity.ParseRun(r.RunID); err != nil {
+	if err := cliidentity.ValidateRun(r.RunID); err != nil {
 		return fmt.Errorf("schedule run handle: %w", err)
 	}
 	return nil
@@ -316,8 +314,8 @@ func validateInstructionsAndCron(instructions, cron string) error {
 }
 
 func validateModelSelection(provider, model string) error {
-	if err := modelidentity.Selection(provider, model, ""); err != nil {
-		if errors.Is(err, modelidentity.ErrIncompleteSelection) {
+	if err := cliidentity.ValidateModelSelection(provider, model, ""); err != nil {
+		if errors.Is(err, cliidentity.ErrIncompleteModelSelection) {
 			return errors.New("schedule provider and model must both be set or both be empty")
 		}
 		return fmt.Errorf("schedule: %w", err)

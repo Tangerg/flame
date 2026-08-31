@@ -6,8 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/runidentity"
 	"unicode/utf8"
+
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 func InteractionItemID(interaction Interaction) string {
@@ -68,10 +69,10 @@ func ValidateInteractions(interactions []Interaction) error {
 
 func (a Approval) Validate() error {
 	var problems []error
-	if _, err := runidentity.ParseRun(a.RunID); err != nil {
+	if err := cliidentity.ValidateRun(a.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if _, err := runidentity.ParseItem(a.ItemID); err != nil {
+	if err := cliidentity.ValidateItem(a.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(a.Title) == "" {
@@ -118,10 +119,10 @@ func (a Approval) Equal(other Approval) bool {
 
 func (q Question) Validate() error {
 	var problems []error
-	if _, err := runidentity.ParseRun(q.RunID); err != nil {
+	if err := cliidentity.ValidateRun(q.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if _, err := runidentity.ParseItem(q.ItemID); err != nil {
+	if err := cliidentity.ValidateItem(q.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(q.Title) == "" {

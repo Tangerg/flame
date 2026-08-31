@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type Totals struct {
@@ -53,7 +53,7 @@ type SessionReport struct {
 }
 
 func (s SessionReport) Validate() error {
-	if _, err := sessionidentity.Parse(s.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
 	}
 	if err := s.Total.Validate(); err != nil {

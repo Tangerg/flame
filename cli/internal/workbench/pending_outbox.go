@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 // PendingRuns returns unacknowledged run-opening commands in authoring order.
@@ -28,7 +28,7 @@ func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 // StagePendingResume transfers a completed interaction review into the durable
 // command outbox before delivery starts.
 func (s *Store) StagePendingResume(sessionID string, pending PendingResume) error {
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	if err := pending.validate(); err != nil {
@@ -81,7 +81,7 @@ func (s *Store) RequeuePendingResume(
 	if err := replay.Validate(); err != nil {
 		return PendingResume{}, err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return PendingResume{}, err
 	}
 	replacement, err := agent.NewCommandID()
@@ -113,7 +113,7 @@ func (s *Store) RequeuePendingResume(
 // runtime has deleted or replaced. It never runs as part of ordinary session
 // navigation, where the outstanding command must remain recoverable.
 func (s *Store) DiscardPendingResume(sessionID string) error {
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -132,7 +132,7 @@ func (s *Store) retirePendingResume(sessionID string, commandID agent.CommandID)
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -186,7 +186,7 @@ func (s *Store) StagePendingRun(pending PendingRun) error {
 // Queue edits use this boundary so reordering, replacement, and deletion are
 // crash-consistent with the next launch.
 func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	if err := validatePendingRunSequence(sessionID, commands); err != nil {
@@ -214,7 +214,7 @@ func (s *Store) MarkPendingRunDispatching(
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -250,7 +250,7 @@ func (s *Store) MarkPendingRunCanceling(
 	if err := commandID.Validate(); err != nil {
 		return "", err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return "", err
 	}
 	s.mu.Lock()
@@ -284,7 +284,7 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID agent.CommandID) (
 	if err := commandID.Validate(); err != nil {
 		return "", err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return "", err
 	}
 	s.mu.Lock()
@@ -314,7 +314,7 @@ func (s *Store) AcknowledgePendingRun(sessionID string, commandID agent.CommandI
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()

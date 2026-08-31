@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/runidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 )
 
@@ -19,7 +19,7 @@ type runCatalogBinding interface {
 }
 
 func (r *Connection) GetRun(ctx context.Context, runID string) (agent.Run, error) {
-	if _, err := runidentity.ParseRun(runID); err != nil {
+	if err := cliidentity.ValidateRun(runID); err != nil {
 		return agent.Run{}, fmt.Errorf("get run: %w", err)
 	}
 	value, err := r.runCatalog.GetRun(ctx, protocol.GetRunRequest{RunID: runID}, r.callOptions())

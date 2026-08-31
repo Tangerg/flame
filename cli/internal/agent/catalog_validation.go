@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 func (m Model) Validate() error {
 	var problems []error
-	if err := modelidentity.Selection(m.Provider, m.ID, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(m.Provider, m.ID, ""); err != nil {
 		problems = append(problems, err)
 	}
 	if err := m.TokenLimits.Validate(); err != nil {
@@ -83,7 +83,7 @@ func (m ModelCapabilities) validate() error {
 func validateUniqueModelStrings(label string, values []string) error {
 	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
-		if err := modelidentity.ReasoningEffort(value); err != nil {
+		if err := cliidentity.ValidateReasoningEffort(value); err != nil {
 			return fmt.Errorf("%s: %w", label, err)
 		}
 		if _, duplicate := seen[value]; duplicate {

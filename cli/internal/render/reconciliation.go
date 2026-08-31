@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/runidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 // resolveSnapshotRun selects the already accepted run from a cold projection.
@@ -19,7 +19,7 @@ func resolveSnapshotRun(snapshot agent.SessionSnapshot, runID string) (agent.Run
 		}
 		return latest, nil
 	}
-	if _, err := runidentity.ParseRun(runID); err != nil {
+	if err := cliidentity.ValidateRun(runID); err != nil {
 		return agent.Run{}, fmt.Errorf("snapshot run: %w", err)
 	}
 	run, ok := snapshot.RunByID(runID)

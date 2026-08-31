@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type modelCatalogBinding interface {
@@ -163,7 +163,7 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode agent.ApprovalMod
 }
 
 func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]agent.ApprovalRule, error) {
-	if _, err := sessionidentity.Parse(sessionID); err != nil {
+	if err := cliidentity.ValidateSession(sessionID); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	result, err := r.approvals.ListApprovalRules(ctx, protocol.ListApprovalRulesRequest{SessionID: sessionID}, r.callOptions())

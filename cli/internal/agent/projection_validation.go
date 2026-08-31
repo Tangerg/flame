@@ -8,17 +8,15 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
-	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 func (r Run) Validate() error {
 	var problems []error
-	if _, err := runidentity.ParseRun(r.ID); err != nil {
+	if err := cliidentity.ValidateRun(r.ID); err != nil {
 		problems = append(problems, err)
 	}
-	if _, err := sessionidentity.Parse(r.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(r.SessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := r.Lineage.validate(r.ID); err != nil {
@@ -27,11 +25,11 @@ func (r Run) Validate() error {
 	if !slices.Contains([]RunStatus{RunStatusRunning, RunStatusWaiting, RunStatusFinished}, r.Status) {
 		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
 	}
-	if err := modelidentity.Selection(r.Provider, r.Model, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(r.Provider, r.Model, ""); err != nil {
 		problems = append(problems, err)
 	}
 	if r.Status == RunStatusRunning {
-		if _, err := runidentity.ParseSegment(r.ActiveSegmentID); err != nil {
+		if err := cliidentity.ValidateSegment(r.ActiveSegmentID); err != nil {
 			problems = append(problems, fmt.Errorf("running run: %w", err))
 		}
 	}
@@ -102,16 +100,16 @@ func (r RunLineage) validate(runID string) error {
 		}
 		return nil
 	case childRunLineage:
-		if _, err := runidentity.ParseRun(runID); err != nil {
+		if err := cliidentity.ValidateRun(runID); err != nil {
 			return fmt.Errorf("child run lineage: %w", err)
 		}
-		if _, err := runidentity.ParseItem(r.spawnedByBlockID); err != nil {
+		if err := cliidentity.ValidateItem(r.spawnedByBlockID); err != nil {
 			return fmt.Errorf("child run lineage spawn block: %w", err)
 		}
-		if _, err := runidentity.ParseRun(r.parentRunID); err != nil {
+		if err := cliidentity.ValidateRun(r.parentRunID); err != nil {
 			return fmt.Errorf("child run lineage parent: %w", err)
 		}
-		if _, err := runidentity.ParseRun(r.rootRunID); err != nil {
+		if err := cliidentity.ValidateRun(r.rootRunID); err != nil {
 			return fmt.Errorf("child run lineage root: %w", err)
 		}
 	case 0:
@@ -131,7 +129,7 @@ func (r RunLineage) validate(runID string) error {
 
 func (r RunOptions) Validate() error {
 	var problems []error
-	if err := modelidentity.Selection(r.Provider, r.Model, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(r.Provider, r.Model, ""); err != nil {
 		problems = append(problems, err)
 	}
 	if err := r.Limits.Validate(); err != nil {
@@ -207,7 +205,7 @@ func (u Usage) Validate() error {
 		return errors.New("usage duration cannot be negative")
 	}
 	for model, usage := range u.ByModel {
-		if err := modelidentity.Model(model); err != nil {
+		if err := cliidentity.ValidateModel(model); err != nil {
 			return fmt.Errorf("usage model identity: %w", err)
 		}
 		if err := validateModelUsage(usage); err != nil {
@@ -241,7 +239,7 @@ func ValidateEvent(event Event) error {
 	case BlockStarted:
 		return item.Block.validateLifecycle(false)
 	case BlockDelta:
-		if _, err := runidentity.ParseItem(item.BlockID); err != nil {
+		if err := cliidentity.ValidateItem(item.BlockID); err != nil {
 			return fmt.Errorf("block delta: %w", err)
 		}
 		if item.Text == "" {
@@ -249,7 +247,7 @@ func ValidateEvent(event Event) error {
 		}
 		return nil
 	case ToolArgumentsDelta:
-		if _, err := runidentity.ParseItem(item.BlockID); err != nil {
+		if err := cliidentity.ValidateItem(item.BlockID); err != nil {
 			return fmt.Errorf("tool arguments delta: %w", err)
 		}
 		return nil
@@ -303,10 +301,10 @@ func (b Block) validateLifecycle(completed bool) error {
 }
 
 func (b Block) validateEnvelope(completed bool) error {
-	if _, err := runidentity.ParseItem(b.ID); err != nil {
+	if err := cliidentity.ValidateItem(b.ID); err != nil {
 		return fmt.Errorf("transcript block: %w", err)
 	}
-	if _, err := runidentity.ParseRun(b.RunID); err != nil {
+	if err := cliidentity.ValidateRun(b.RunID); err != nil {
 		return fmt.Errorf("transcript block %s: %w", b.ID, err)
 	}
 	if !slices.Contains([]BlockStatus{BlockStatusRunning, BlockStatusCompleted, BlockStatusIncomplete}, b.Status) {

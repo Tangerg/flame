@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/runidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type problemCarrier interface {
@@ -109,7 +109,7 @@ func (p Problem) Validate() error {
 		seen[requirement] = struct{}{}
 	}
 	if p.ActiveRun != nil {
-		if _, err := runidentity.ParseRun(p.ActiveRun.RunID); err != nil {
+		if err := cliidentity.ValidateRun(p.ActiveRun.RunID); err != nil {
 			problems = append(problems, err)
 		}
 		switch p.ActiveRun.Status {

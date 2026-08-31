@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type Status string
@@ -259,7 +258,7 @@ func Restore(snapshot Snapshot) (Goal, error) {
 
 func (g Goal) Validate() error {
 	var problems []error
-	if _, err := sessionidentity.Parse(g.sessionID); err != nil {
+	if err := cliidentity.ValidateSession(g.sessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(g.objective) == "" {
@@ -282,7 +281,7 @@ func (g Goal) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := modelidentity.Selection(g.provider, g.model, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(g.provider, g.model, ""); err != nil {
 		problems = append(problems, err)
 	}
 	problems = append(problems, g.budget.Validate(), g.used.Validate())
@@ -352,7 +351,7 @@ type Update struct {
 }
 
 func (u Update) Validate() error {
-	if _, err := sessionidentity.Parse(u.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(u.SessionID); err != nil {
 		return fmt.Errorf("update goal: %w", err)
 	}
 	if strings.TrimSpace(u.Objective) == "" {
@@ -385,7 +384,7 @@ func (u Update) ValidateResult(result Goal) error {
 }
 
 func (s Start) Validate() error {
-	if _, err := sessionidentity.Parse(s.SessionID); err != nil {
+	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	if strings.TrimSpace(s.Objective) == "" {
@@ -394,7 +393,7 @@ func (s Start) Validate() error {
 	if s.Objective != strings.TrimSpace(s.Objective) {
 		return errors.New("start goal: objective must not have surrounding whitespace")
 	}
-	if err := modelidentity.Selection(s.Provider, s.Model, ""); err != nil {
+	if err := cliidentity.ValidateModelSelection(s.Provider, s.Model, ""); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	if err := s.Budget.Validate(); err != nil {

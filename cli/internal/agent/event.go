@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/runidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 // RunEvent is one projected runtime event. EventID is an opaque replay token
@@ -34,16 +34,16 @@ func (r RunEvent) StreamSegment() string {
 // Validate enforces the CLI-owned event envelope and payload identity without
 // depending on the conversation aggregate that later folds the event.
 func (r RunEvent) Validate() error {
-	if _, err := runidentity.ParseEvent(r.EventID); err != nil {
+	if err := cliidentity.ValidateEvent(r.EventID); err != nil {
 		return fmt.Errorf("run event: %w", err)
 	}
-	if _, err := runidentity.ParseRun(r.RunID); err != nil {
+	if err := cliidentity.ValidateRun(r.RunID); err != nil {
 		return fmt.Errorf("run event: %w", err)
 	}
-	if _, err := runidentity.ParseSegment(r.SegmentID); err != nil {
+	if err := cliidentity.ValidateSegment(r.SegmentID); err != nil {
 		return fmt.Errorf("run event: %w", err)
 	}
-	if _, err := runidentity.ParseSegment(r.StreamSegment()); err != nil {
+	if err := cliidentity.ValidateSegment(r.StreamSegment()); err != nil {
 		return fmt.Errorf("run event stream: %w", err)
 	}
 	if r.Event == nil {

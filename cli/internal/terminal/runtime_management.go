@@ -14,9 +14,9 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/goal"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 	"github.com/Tangerg/flame/cli/internal/knowledge"
 	"github.com/Tangerg/flame/cli/internal/modelconfig"
-	"github.com/Tangerg/flame/cli/internal/modelidentity"
 	"github.com/Tangerg/flame/cli/internal/usage"
 )
 
@@ -329,7 +329,7 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := modelidentity.Provider(providerID); err != nil {
+	if err := cliidentity.ValidateProvider(providerID); err != nil {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	a.status.note("testing provider " + providerID)
@@ -359,7 +359,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := modelidentity.Provider(providerID); err != nil {
+	if err := cliidentity.ValidateProvider(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
 	presentation := a.sessionContext

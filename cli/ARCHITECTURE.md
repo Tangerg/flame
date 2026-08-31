@@ -63,6 +63,15 @@ second Run or Session state machine. `internal/reconnect` remains independent
 because its classified transport retry policy has peer consumers in Run,
 Runtime invalidation, workspace inspection, and MCP management.
 
+`internal/identity` owns the CLI domain's admission policy for exact foreign
+Runtime resource and model-selection identities. It keeps Session, Run,
+Segment, Item, Event, provider, model, and reasoning rules in
+responsibility-named files, but does not wrap those foreign strings in a second
+set of value types when no CLI aggregate consumes such types. It never creates
+identities, infers providers, normalizes values, or owns Runtime lifecycle.
+Independent mechanisms such as exact integer advancement remain separate when
+they have their own vocabulary and peer consumers.
+
 ## Command model
 
 The root command is built by a factory for every process or test. Commands:

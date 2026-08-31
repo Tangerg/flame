@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/runidentity"
-	"github.com/Tangerg/flame/cli/internal/sessionidentity"
+	cliidentity "github.com/Tangerg/flame/cli/internal/identity"
 )
 
 type Rating string
@@ -45,17 +44,17 @@ type Signal struct {
 func (s Signal) Validate() error {
 	var problems []error
 	if s.SessionID != "" {
-		if _, err := sessionidentity.Parse(s.SessionID); err != nil {
+		if err := cliidentity.ValidateSession(s.SessionID); err != nil {
 			problems = append(problems, err)
 		}
 	}
 	if s.RunID != "" {
-		if _, err := runidentity.ParseRun(s.RunID); err != nil {
+		if err := cliidentity.ValidateRun(s.RunID); err != nil {
 			problems = append(problems, err)
 		}
 	}
 	if s.ItemID != "" {
-		if _, err := runidentity.ParseItem(s.ItemID); err != nil {
+		if err := cliidentity.ValidateItem(s.ItemID); err != nil {
 			problems = append(problems, err)
 		}
 	}
