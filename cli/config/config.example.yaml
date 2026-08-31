@@ -4,18 +4,19 @@
 #   cp config/config.example.yaml .flame.yaml
 #
 # Without ./.flame.yaml, Flame reads config.yaml from the OS user config
-# directory under flame/. FLAME_* environment variables and CLI flags override
-# file values. `flame config path` shows the selected file and `flame config
-# show` prints the merged, validated result.
+# directory under flame/. FLAME_CLI_* environment variables and CLI flags
+# override file values. `flame config path` shows the selected file and `flame
+# config show` prints the merged, validated result.
 #
 # This file configures the CLI consumer only. Provider credentials, custom
 # endpoints, utility/embedding roles, Runtime server, sandbox, MCP, and LSP are
 # Runtime-owned settings; inspect or change them from the interactive CLI with
 # /providers, /provider-config, and the related Runtime commands.
 
-# Provider and model are one exact selection and must be changed together.
-provider: deepseek
-model: deepseek-v4-flash
+# Omit provider/model to inherit the active Session's durable selection. To
+# override it for new Runs, set one exact pair; the fields move together.
+# provider: deepseek
+# model: deepseek-v4-flash
 
 # Omit a limit for unlimited. Every configured value must be strictly positive.
 # run:

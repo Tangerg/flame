@@ -14,9 +14,6 @@ import (
 )
 
 const (
-	DefaultProvider = "deepseek"
-	DefaultModel    = "deepseek-v4-flash"
-
 	ActionSend            = "send"
 	ActionNewline         = "newline"
 	ActionCancelRun       = "cancel-run"
@@ -99,8 +96,6 @@ type Plugins struct {
 
 func Default() Config {
 	return Config{
-		Provider: DefaultProvider,
-		Model:    DefaultModel,
 		Approval: Approval{Remember: RememberNone},
 		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24, ReconnectAttempts: 4},
 		Keys: map[string][]string{

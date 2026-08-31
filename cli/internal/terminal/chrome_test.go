@@ -168,12 +168,12 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 	prompt.Focus(true)
 
 	idle := drawRoot(t, prompt, 120, prompt.Measure(120))
-	for _, want := range []string{settings.DefaultProvider + "/" + settings.DefaultModel, "enter", "shift+enter", "ctrl+p"} {
+	for _, want := range []string{"runtime default", "enter", "shift+enter", "ctrl+p"} {
 		if !strings.Contains(idle, want) {
 			t.Errorf("idle prompt does not contain %q:\n%s", want, idle)
 		}
 	}
-	if status := drawStatic(t, newStatusView(kit.Dark(), kit.Unicode()), 120, 1); strings.Contains(status, settings.DefaultProvider) {
+	if status := drawStatic(t, newStatusView(kit.Dark(), kit.Unicode()), 120, 1); strings.Contains(status, "runtime default") {
 		t.Fatalf("status repeated the model already owned by the composer footer:\n%s", status)
 	}
 

@@ -2967,7 +2967,7 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 	configured.Run.MaxSteps = new(42)
 	configured.Run.MaxBudgetUSD = new(2.5)
 	host, stop := runUIWithSettings(t, backend, configured)
-	host.Shows(t, settings.DefaultProvider+"/"+settings.DefaultModel)
+	host.Shows(t, "mock/balanced")
 
 	host.Type("/model")
 	host.Press(input.Enter)
@@ -2996,6 +2996,25 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 		if !stepsLimited || steps != 42 || !budgetLimited || budget != 2.5 {
 			t.Fatalf("StartRun limits = %+v", got.Limits)
 		}
+	}
+
+	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
+	stop()
+}
+
+func TestDefaultRunInheritsTheSessionModel(t *testing.T) {
+	backend := &recordingRuntime{Runtime: mock.New()}
+	backend.Instant = true
+	host, stop := runUIWithSettings(t, backend, settings.Default())
+	host.Shows(t, "mock/balanced")
+
+	host.Type("inherit the session model")
+	host.Press(input.Enter)
+	host.Shows(t, "How should flame proceed?")
+	host.Press(input.Esc)
+	host.Shows(t, "complete")
+	if got := backend.options(); got.Provider != "" || got.Model != "" {
+		t.Fatalf("default StartRun overrode the Session model = %+v", got)
 	}
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})

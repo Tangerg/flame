@@ -56,14 +56,14 @@ var runLimitFlagBindings = [...]runLimitFlagBinding{
 func configureRoot(v *viper.Viper, root *cobra.Command) {
 	defaults := settings.Default()
 	setDefaults(v, defaults)
-	v.SetEnvPrefix("FLAME")
+	v.SetEnvPrefix("FLAME_CLI")
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
 
 	flags := root.PersistentFlags()
 	flags.String("config", "", "Configuration file (default: ./.flame.yaml or the user config directory)")
-	flags.String("provider", defaults.Provider, "Provider used for new runs (must be paired with --model)")
-	flags.String("model", defaults.Model, "Model used for new runs (must be paired with --provider)")
+	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
+	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
 	flags.String("max-total-tokens", "", "Maximum cumulative tokens per run (strictly positive; omit for unlimited)")
 	flags.String("max-steps", "", "Maximum steps per run (strictly positive; omit for unlimited)")
 	flags.String("max-budget-usd", "", "Maximum run cost in USD (strictly positive; omit for unlimited)")
@@ -117,7 +117,7 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 
 func applyRunLimitFlags(v *viper.Viper, cmd *cobra.Command) error {
 	for _, binding := range runLimitFlagBindings {
-		flag := cmd.Flags().Lookup(binding.flag)
+		flag := cmd.Root().PersistentFlags().Lookup(binding.flag)
 		if flag == nil || !flag.Changed {
 			continue
 		}
@@ -177,7 +177,10 @@ func selectConfigSource(v *viper.Viper, explicitPath string) error {
 
 func bindSettingFlags(v *viper.Viper, cmd *cobra.Command) error {
 	for _, binding := range settingFlagBindings {
-		flag := cmd.Flags().Lookup(binding.flag)
+		// A subcommand may own a same-named local flag with different semantics
+		// (sessions update --model is a provider/model patch). Only the root's
+		// persistent preference flags may feed CLI settings.
+		flag := cmd.Root().PersistentFlags().Lookup(binding.flag)
 		if flag == nil {
 			continue
 		}

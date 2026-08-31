@@ -28,7 +28,7 @@ func TestDefaultIsValidAndCloned(t *testing.T) {
 	if *limited.Run.MaxSteps != 9 {
 		t.Fatal("Clone leaked a run limit pointer")
 	}
-	if options, err := defaults.RunOptions(); err != nil || options.Provider != DefaultProvider || options.Model != DefaultModel || !options.Limits.Unlimited() {
+	if options, err := defaults.RunOptions(); err != nil || options.Provider != "" || options.Model != "" || !options.Limits.Unlimited() {
 		t.Fatalf("RunOptions = %+v", options)
 	}
 	if defaults.Approval.Remember != RememberNone {

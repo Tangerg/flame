@@ -234,7 +234,13 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	cfg.keyBindings.setResolver(loop.After)
 	appearance := newTerminalAppearance(loop)
 	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
-	brand := newBrandBanner(appearance.theme, appearance.glyphs, cfg.clientVersion, cfg.snapshot.Session, cfg.options)
+	brand := newBrandBanner(
+		appearance.theme,
+		appearance.glyphs,
+		cfg.clientVersion,
+		cfg.snapshot.Session,
+		displayRunOptions(cfg.options, cfg.snapshot.Session),
+	)
 	transcript.SetEntrance(brand)
 	a := &app{
 		ctx: cfg.context, loop: loop, runtime: cfg.services.Agent, workspaces: cfg.services.Workspaces,
@@ -505,7 +511,7 @@ func (a *app) configureCompletion(appearance terminalAppearance) {
 
 func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
 	theme, glyphs := appearance.theme, appearance.glyphs
-	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer, a.options)
+	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer, a.displayOptions())
 	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
 	a.wireTranscript(a.transcript)
 	a.shell.Focus(true)
@@ -723,7 +729,15 @@ func (a *app) setActiveSession(session agent.Session) {
 	a.session = session
 	a.header.SetSession(session)
 	a.brand.SetSession(session)
+	a.brand.SetOptions(a.displayOptions())
+	if a.prompt != nil {
+		a.prompt.SetOptions(a.displayOptions())
+	}
 	a.setWindowTitle()
+}
+
+func (a *app) displayOptions() agent.RunOptions {
+	return displayRunOptions(a.options, a.session)
 }
 
 func (a *app) Draw(frame headless.Frame) {

@@ -570,7 +570,7 @@ func (s sessionInstallation) apply(a *app) {
 	a.workbenchHealth.enterSession()
 	a.status.setProblem(a.workbenchHealth.problem())
 	a.header.SetUsage(s.projection.conversation.Usage())
-	a.prompt.SetOptions(a.options)
+	a.prompt.SetOptions(a.displayOptions())
 	a.prompt.SetBusy(s.projection.conversation.Busy())
 	a.shell.SetTranscript(s.projection.transcript)
 	a.syncQueue()

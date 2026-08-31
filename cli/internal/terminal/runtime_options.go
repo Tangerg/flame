@@ -149,7 +149,7 @@ func (a *app) ShowRuntimeStatus() {
 			}
 			a.transcript.Append(&kit.Entry{
 				Theme: a.transcript.theme, Label: "runtime options",
-				Body: runtimeStatusText(a.runtimeProfile, a.options, mode),
+				Body: runtimeStatusText(a.runtimeProfile, a.displayOptions(), mode),
 			})
 		},
 	)
@@ -350,8 +350,8 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 }
 
 func (a *app) syncOptions(message string) {
-	a.prompt.SetOptions(a.options)
-	a.brand.SetOptions(a.options)
+	a.prompt.SetOptions(a.displayOptions())
+	a.brand.SetOptions(a.displayOptions())
 	a.message(message)
 }
 

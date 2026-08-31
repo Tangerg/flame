@@ -10,9 +10,9 @@ import (
 	"github.com/Tangerg/flame/cli/internal/settings"
 )
 
-func TestConfigurationUsesDeepSeekProductDefaults(t *testing.T) {
-	t.Setenv("FLAME_PROVIDER", "")
-	t.Setenv("FLAME_MODEL", "")
+func TestConfigurationInheritsTheRuntimeModelByDefault(t *testing.T) {
+	t.Setenv("FLAME_CLI_PROVIDER", "")
+	t.Setenv("FLAME_CLI_MODEL", "")
 	out, _, err := executeCommand(t, instantRuntime(), "", "config", "show")
 	if err != nil {
 		t.Fatalf("config show: %v", err)
@@ -21,17 +21,35 @@ func TestConfigurationUsesDeepSeekProductDefaults(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("config show JSON: %v\n%s", err, out)
 	}
-	if got.Provider != settings.DefaultProvider || got.Model != settings.DefaultModel {
-		t.Fatalf("default model = %q/%q, want %q/%q", got.Provider, got.Model, settings.DefaultProvider, settings.DefaultModel)
+	if got.Provider != "" || got.Model != "" {
+		t.Fatalf("default model override = %q/%q, want omitted", got.Provider, got.Model)
 	}
 	if got.Run.MaxTotalTokens != nil || got.Run.MaxSteps != nil || got.Run.MaxBudgetUSD != nil {
 		t.Fatalf("default run limits = %+v, want explicit absence", got.Run)
 	}
 }
 
-func TestShippedExampleIsValidCLIConfiguration(t *testing.T) {
-	t.Setenv("FLAME_PROVIDER", "")
+func TestRuntimeProviderEnvironmentDoesNotBecomeAClientOverride(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("FLAME_MODEL", "")
+	t.Setenv("FLAME_CLI_PROVIDER", "")
+	t.Setenv("FLAME_CLI_MODEL", "")
+	out, _, err := executeCommand(t, instantRuntime(), "", "config", "show")
+	if err != nil {
+		t.Fatalf("config show: %v", err)
+	}
+	var got settings.Config
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("config show JSON: %v\n%s", err, out)
+	}
+	if got.Provider != "" || got.Model != "" {
+		t.Fatalf("Runtime environment leaked into CLI model override = %q/%q", got.Provider, got.Model)
+	}
+}
+
+func TestShippedExampleIsValidCLIConfiguration(t *testing.T) {
+	t.Setenv("FLAME_CLI_PROVIDER", "")
+	t.Setenv("FLAME_CLI_MODEL", "")
 	path := filepath.Join("..", "..", "config", "config.example.yaml")
 	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show")
 	if err != nil {
@@ -41,8 +59,8 @@ func TestShippedExampleIsValidCLIConfiguration(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("example config output: %v\n%s", err, out)
 	}
-	if got.Provider != settings.DefaultProvider || got.Model != settings.DefaultModel {
-		t.Fatalf("example model = %q/%q, want %q/%q", got.Provider, got.Model, settings.DefaultProvider, settings.DefaultModel)
+	if got.Provider != "" || got.Model != "" {
+		t.Fatalf("example model override = %q/%q, want omitted", got.Provider, got.Model)
 	}
 }
 
@@ -51,7 +69,7 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	if err := os.WriteFile(path, []byte("provider: file-provider\nmodel: file-model\nrun:\n  max-total-tokens: 12000\n  max-steps: 8\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("FLAME_MODEL", "environment-model")
+	t.Setenv("FLAME_CLI_MODEL", "environment-model")
 	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "--max-steps", "12", "config", "show")
 	if err != nil {
 		t.Fatalf("config show: %v", err)
@@ -66,9 +84,9 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 }
 
 func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
-	t.Setenv("FLAME_UI_TRANSCRIPT_RETAIN", "77")
-	t.Setenv("FLAME_UI_TOOL_DETAILS", "true")
-	t.Setenv("FLAME_APPROVAL_REMEMBER", "project")
+	t.Setenv("FLAME_CLI_UI_TRANSCRIPT_RETAIN", "77")
+	t.Setenv("FLAME_CLI_UI_TOOL_DETAILS", "true")
+	t.Setenv("FLAME_CLI_APPROVAL_REMEMBER", "project")
 	out, _, err := executeCommand(t, instantRuntime(), "", "config", "show")
 	if err != nil {
 		t.Fatal(err)

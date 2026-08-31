@@ -373,6 +373,16 @@ func modelLabel(options agent.RunOptions) string {
 	return "runtime default"
 }
 
+// displayRunOptions resolves an omitted CLI override only for presentation.
+// Commands retain the empty pair so Runtime can read the active Session's
+// durable selection instead of receiving a second client-owned default.
+func displayRunOptions(options agent.RunOptions, session agent.Session) agent.RunOptions {
+	if options.Provider == "" && options.Model == "" {
+		options.Provider, options.Model = session.Provider, session.Model
+	}
+	return options
+}
+
 func limitsLabel(limits agent.RunLimits) string {
 	parts := make([]string, 0, 3)
 	if value, limited := limits.MaxTotalTokens(); limited {
