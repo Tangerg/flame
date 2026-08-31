@@ -932,3 +932,10 @@
 - 背景：`application/plans`、`queries`、`usage` 和 `feedback` 各自只有一到两个生产文件，没有独立进程、外部协议或 composition lifecycle。Plan replacement 已被 `sessions` 的 rollback/fork/restore 原子写集合横向消费；queries 读取同一 Session 的 Transcript、Run、Pending 与 Plan；usage 折叠 Session/Run durable record；feedback 记录 Session/Run/Item 质量观察。这些包把同一个 Session application context 按 operation catalog 拆成平级目录，产生 `Coordinator`、`Dependencies`、`Store`、`Reporter` 等含糊词汇和重复分页 helper。
 - 决策：`application/sessions` 以职责文件共同拥有 Session lifecycle coordinator、`PlanCoordinator`、`QueryCoordinator`、`UsageReporter` 与 `FeedbackRecorder`；所有端口和 read models 使用 `Plan*`、`Query*`、`Usage*`、`Feedback*` 语义全名，不建立总 service facade。Plan、Session、Run、Transcript、Accounting 与 Feedback Domain value 继续各自拥有不变量，persistence 继续只执行 Application 决定的 CAS/write-set。
 - 后果：物理删除 `application/plans`、`queries`、`usage`、`feedback` 及全部旧 import/架构路径，并删除合并后重复的 page-limit test helper；不保留 alias、forwarder 或 compatibility package。Delivery 与 Bootstrap 直接消费 `sessions` 的窄能力，Protocol method、wire shape、SQLite schema 和行为不变。
+
+## ADR-RT-131：Direct diagnostic Tool 属于 Workspace Application context
+
+- 状态：已接受并实施，当前 Runtime/CLI 治本重构 Goal 的 Runtime Workspace Application 批次完成；允许 Runtime internal Go API breaking change，公共 Go surface、Protocol、Artifact、SQLite、Desktop 与 CLI 不变。
+- 背景：`application/tools` 只列出可在 Run 外直接调用的只读诊断工具，并在 invoke 前委托 Workspace root resolver 准入 cwd。它没有 Agent ToolSet lifecycle、独立工具状态、外部翻译或自己的路径不变量；唯一生产构造点把现有 `workspace.Scope` 注入 `Roots`。按 `tools.list/invoke` operation 建平级包使 root admission owner 与唯一 coordinator 被物理拆开。
+- 决策：`application/workspace` 以 `DiagnosticTools`、`DiagnosticToolRegistry`、`DiagnosticToolRoots` 和 `DiagnosticToolInvocation` 语义共同拥有 Run 外诊断用例；它仍只消费专用只读 registry，不接管 Agent ToolSet、approval、execution 或 Tool Domain。Bootstrap 直接把现有 Workspace scope 与 registry 组合，Delivery 只消费窄接口。
+- 后果：物理删除 `application/tools` 及旧 import，不保留 alias、forwarder 或 compatibility package。Workspace root 继续只有一个准入路径，direct diagnostics 与 Agent tools 继续是不同能力；Protocol `tools.*` shape 和实际调用行为不变。

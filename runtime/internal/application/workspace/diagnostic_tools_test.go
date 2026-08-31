@@ -1,4 +1,4 @@
-package tools
+package workspace
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func (r *rootRecorder) ResolveRoot(cwd string) (string, error) {
 }
 
 func TestListUsesRegistry(t *testing.T) {
-	c := New(toolRegistryFixture{tools: []tool.Tool{{Name: "read"}}}, &rootRecorder{})
+	c := NewDiagnosticTools(toolRegistryFixture{tools: []tool.Tool{{Name: "read"}}}, &rootRecorder{})
 
 	got, err := c.List(context.Background())
 	if err != nil {
@@ -55,9 +55,9 @@ func TestListUsesRegistry(t *testing.T) {
 func TestInvokeUsesRegistry(t *testing.T) {
 	invoker := &toolRegistryRecorder{}
 	roots := &rootRecorder{}
-	c := New(invoker, roots)
+	c := NewDiagnosticTools(invoker, roots)
 
-	got, err := c.Invoke(context.Background(), Invocation{Name: "read", Arguments: `{"path":"main.go"}`, CWD: "/requested"})
+	got, err := c.Invoke(context.Background(), DiagnosticToolInvocation{Name: "read", Arguments: `{"path":"main.go"}`, CWD: "/requested"})
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
 	}

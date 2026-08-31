@@ -244,11 +244,14 @@ Domain entity 只保护自身不变量。需要同时改变多个 aggregate 时�
 | `conversation` | stable chat value contract | 管理产品消息历史，不依赖 Transcript/Run implementation |
 | `application/runs` | Run、Session、Conversation、Transcript、Interrupt、Accounting | 作为明确用例协调者，不把跨聚合规则塞进任一 Store |
 | `application/sessions` | Session、Plan、Run/Transcript read models、Accounting、Feedback | 拥有 Session lifecycle write-set 与 Session context projections；按职责文件和语义全名组织，不建立 operation package |
+| `application/workspace` | Workspace scope、authored resources、filesystem/VCS、direct diagnostics | 先统一解析 workspace root，再驱动对应消费方端口；direct diagnostic tools 不建立平级 Application package |
 | Goal/Schedule/Tool application use cases | Runs capability | 在各自消费者处定义窄接口，由 composition 绑定 runs concrete type，避免 application package 横向胖依赖 |
 
 `application/runs` 按职责文件共同拥有 Run lifecycle 与 durable Conversation history 的应用编排。Conversation sequence、compaction 和 watermark rebase 仍由各自 Domain value 决策；Application 只协调跨 Conversation/Run 的完整 write-set。不得再按 `conversations` 这一单项 operation 建平级 Application package。
 
 `application/sessions` 按职责文件共同拥有 Session lifecycle、Plan transition、durable execution query、usage report 与 feedback recording。各 Domain aggregate/value 继续独占不变量；Session package 只拥有用例排序、消费方端口和 read model folding。不得按 `plans`、`queries`、`usage` 或 `feedback` 的 operation 名称重新拆平级 Application package。
+
+`application/workspace` 拥有所有以 admitted workspace root 为前置条件的公共用例。Direct diagnostic Tool catalog 仍与 Agent ToolSet 分离，但它的 list/invoke 编排和 root admission 同属 Workspace Application context；不得因 Protocol operation 名为 `tools.*` 再建无独立生命周期的 `application/tools`。
 
 跨上下文共享只允许引用权威 owner 的稳定 identity/value。不得为了避免 import 而复制 enum/ID，也不得为了复用一个小 helper 建立“shared domain”包。
 

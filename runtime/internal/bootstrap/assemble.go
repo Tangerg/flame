@@ -29,7 +29,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/sessionadmission"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
-	"github.com/Tangerg/flame/runtime/internal/application/tools"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -377,7 +376,7 @@ func buildAssemblyCore(
 
 	approvalCoordinator := approvals.New(policy.approvals, cfg.SessionStore)
 
-	toolCoordinator := tools.New(execution.toolRegistry, workspaceServices.scope)
+	toolCoordinator := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 
 	mcpCoordinator := mcpapp.New(mcpapp.Config{
 		Registry:            cfg.MCPRegistry,

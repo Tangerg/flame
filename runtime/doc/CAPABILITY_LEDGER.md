@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P294 进行中。
+> 状态：当前能力快照；P295 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -597,6 +597,8 @@ P292纠正P291只逐包举证、没有审视整体bounded-context形状的过早
 P293把 durable Conversation history 与 compaction 编排从单项 operation package 收回 `application/runs`。`ConversationHistory` 负责 read/seed/append/truncate，`ConversationCompactionPlan` 负责一次性表达 history replacement 与所有 Run watermark rebase；Domain `conversation` 仍决定纯 sequence/compaction 规则，persistence 仍原子执行完整 write-set。旧 `application/conversations` 路径及 import 已物理删除，不建立 compatibility package，也不把 Conversation 与 Run aggregate 合并。
 
 P294把 Plan transition、durable execution queries、usage reporting 与 feedback recording从四个operation-shaped Application package收回`application/sessions`。`PlanCoordinator`直接服务Session rollback/fork/restore write-set，`QueryCoordinator`读取同一Session的Transcript/Run/Pending/Plan，`UsageReporter`折叠Session/Run metering，`FeedbackRecorder`写入Session/Run/Item质量观察；端口与read model全部使用语义全名且没有总service facade。旧`application/plans`、`queries`、`usage`、`feedback`路径和重复page-limit helper均物理删除，Domain与Protocol/SQLite shape不变。
+
+P295把Run外direct diagnostic Tool的list/invoke编排收回`application/workspace`。`DiagnosticTools`先通过既有Workspace scope准入cwd，再调用专用只读registry；它不接管Agent ToolSet、approval或execution lifecycle。旧`application/tools`路径和import已物理删除，不保留兼容包，Protocol `tools.*` shape与Workspace root语义不变。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

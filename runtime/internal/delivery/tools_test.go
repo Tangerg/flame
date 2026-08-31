@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	toolapp "github.com/Tangerg/flame/runtime/internal/application/tools"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,7 +20,7 @@ type toolRegistryFake struct {
 
 func (t *toolRegistryFake) List(context.Context) ([]tool.Tool, error) { return t.tools, nil }
 
-func (t *toolRegistryFake) Invoke(_ context.Context, in toolapp.Invocation) (tool.Result, error) {
+func (t *toolRegistryFake) Invoke(_ context.Context, in workspaceapp.DiagnosticToolInvocation) (tool.Result, error) {
 	t.invokedCWD = in.CWD
 	t.invokedName = in.Name
 	t.invokedPayload = in.Arguments

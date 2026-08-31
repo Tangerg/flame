@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	toolapp "github.com/Tangerg/flame/runtime/internal/application/tools"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -35,7 +35,7 @@ func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest)
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.tools.Invoke(ctx, toolapp.Invocation{
+	result, err := s.tools.Invoke(ctx, workspaceapp.DiagnosticToolInvocation{
 		Name: in.Name, Arguments: string(args), CWD: workspaceRefPath(in.Workspace),
 	})
 	if err != nil {

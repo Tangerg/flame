@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/sessions"
-	toolapp "github.com/Tangerg/flame/runtime/internal/application/tools"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/knowledge"
@@ -74,7 +73,7 @@ type modelUseCases interface {
 }
 
 type toolUseCases interface {
-	Invoke(ctx context.Context, in toolapp.Invocation) (toolsvc.Result, error)
+	Invoke(ctx context.Context, in workspaceapp.DiagnosticToolInvocation) (toolsvc.Result, error)
 	List(ctx context.Context) ([]toolsvc.Tool, error)
 }
 
