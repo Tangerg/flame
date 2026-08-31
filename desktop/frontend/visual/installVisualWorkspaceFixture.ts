@@ -1,4 +1,5 @@
 import { queryClient } from "@/lib/queryClient";
+import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/plugins/builtin/command/shortcuts";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
@@ -426,6 +427,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-stats": "tool-stats",
   "dock-tools": "tools",
   "dock-file": "file",
+  "dock-catalog": WORKSPACE_DOCK_CATALOG,
 };
 
 export async function installVisualWorkspaceFixture(
@@ -459,18 +461,22 @@ export async function installVisualWorkspaceFixture(
     // carries. Present only in the state that is about it: adding it everywhere
     // moved the tab strip in every other golden, which is a change to states
     // that have nothing to do with the feature.
-    dockViewIds: [
-      ...(DOCK_VIEW_BY_STATE[state] === "inbox" ? ["inbox"] : []),
-      ...(DOCK_VIEW_BY_STATE[state] === "tool-stats" ? ["tool-stats"] : []),
-      ...(DOCK_VIEW_BY_STATE[state] === "tools" ? ["tools"] : []),
-      "explorer",
-      "file",
-      "diff",
-      "terminal",
-      "plan",
-      "timeline",
-    ],
-    lastViewId: dockViewId,
+    // A dock nobody has put anything in yet: it opens onto its catalogue.
+    dockViewIds:
+      state === "dock-catalog"
+        ? []
+        : [
+            ...(DOCK_VIEW_BY_STATE[state] === "inbox" ? ["inbox"] : []),
+            ...(DOCK_VIEW_BY_STATE[state] === "tool-stats" ? ["tool-stats"] : []),
+            ...(DOCK_VIEW_BY_STATE[state] === "tools" ? ["tools"] : []),
+            "explorer",
+            "file",
+            "diff",
+            "terminal",
+            "plan",
+            "timeline",
+          ],
+    lastViewId: state === "dock-catalog" ? null : dockViewId,
     fileFocus: WorkspaceFileFocus.empty().moveTo(ACTIVE_DIFF_FILE),
     fileViewer: { path: ACTIVE_DIFF_FILE, line: 6 },
     selectedToolId: "",

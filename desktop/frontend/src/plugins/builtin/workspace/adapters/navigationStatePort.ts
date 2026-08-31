@@ -3,6 +3,7 @@
 // What the dock has OPEN, and the per-view state inside it, is memory the
 // location doesn't describe: that stays in the store.
 import { useUiStore } from "@/state/uiStore";
+import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import { useContextDockStore } from "@/state/contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { configureWorkspaceNavigationPort } from "../application/ports/navigationState";
@@ -93,7 +94,9 @@ export function installWorkspaceNavigationPort(): () => void {
     collapseDock: () => navigator().go({ dock: null }),
     showDock: (defaultViewId) => {
       const target = useContextDockStore.getState().dockTabToShow(defaultViewId);
-      useContextDockStore.getState().openDockTab(target);
+      // The catalogue is a destination, not a tab: opening one for it would leave the person
+      // closing a tab they never asked for.
+      if (target !== WORKSPACE_DOCK_CATALOG) useContextDockStore.getState().openDockTab(target);
       showDockView(target, true);
     },
     /** A stale id is a no-op: it is not the surface on screen. */

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useContextDockStore, WorkspaceFileFocus } from "@/state/contextDockStore";
 import { navigator } from "@/lib/navigation";
 import {
+  WORKSPACE_DOCK_CATALOG,
+  activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,
   collapseWorkspaceDock,
@@ -12,7 +14,6 @@ import {
   selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
-  activateWorkspaceSessionScope,
 } from "./navigation";
 
 function reset() {
@@ -83,13 +84,25 @@ describe("workspace navigation port", () => {
     });
   });
 
-  it("showing an empty dock starts in Explorer", () => {
+  // A dock with nothing in it opens onto its catalogue, which is a destination and not a
+  // tab: picking one for the person leaves them closing a panel they never asked for.
+  it("showing an empty dock offers the catalogue rather than choosing a panel", () => {
     showWorkspaceDock();
 
+    expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
     expect(useContextDockStore.getState()).toMatchObject({
-      dockViewIds: ["explorer"],
-      lastViewId: "explorer",
+      dockViewIds: [],
+      lastViewId: WORKSPACE_DOCK_CATALOG,
     });
+  });
+
+  it("shows the remembered panel instead of the catalogue when there is one", () => {
+    openWorkspaceViewInDock("diff");
+    collapseWorkspaceDock();
+
+    showWorkspaceDock();
+
+    expect(navigator().get().dock).toBe("diff");
   });
 
   it("toggles the visible dock without discarding its session tabs", () => {

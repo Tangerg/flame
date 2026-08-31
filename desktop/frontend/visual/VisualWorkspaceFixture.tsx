@@ -17,6 +17,7 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-tools": "Tool catalog",
   "dock-file": "File viewer",
   "dock-empty": "Diff · empty",
+  "dock-catalog": "Dock catalogue",
   "dock-loading": "Diff · loading",
   "dock-error": "Diff · error",
   settings: "Settings",

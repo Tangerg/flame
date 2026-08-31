@@ -65,6 +65,7 @@ export const es: Record<string, string> = {
   "chat.jumpToBottom": "Ir al final",
 
   "dock.action.browse": "Explorar paneles",
+  "dock.catalog.title": "Abrir un panel",
   "dock.picker.placeholder": "Buscar un panel…",
   "dock.picker.empty": "No se encontraron paneles",
   "dock.action.hide": "Contraer espacio derecho",

@@ -6,6 +6,7 @@ import { CatalogPicker, knownIconName, type CatalogPickerGroup, type IconName } 
 import {
   AgentContentCard,
   AgentContextDock,
+  AgentDockCatalog,
   type AgentDockTab,
   AgentDockTabs,
   AgentDockToggle,
@@ -39,6 +40,7 @@ import { useWorkspaceViews } from "@/plugins/sdk";
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { basename } from "@/lib/path";
 import { Slot } from "@/plugins/host/Slot";
+import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatStream } from "./ChatStream";
 import { DockResizer } from "./DockResizer";
 import { HeaderDiffStat } from "./HeaderDiffStat";
@@ -65,15 +67,12 @@ function SessionOwnedWorkspaceState({
   return <Fragment key={sessionId}>{children}</Fragment>;
 }
 
-function AddDockViewPicker({
-  groups,
-  openViewIds,
-}: {
-  groups: ContextDockDestinationGroup[];
-  openViewIds: ReadonlySet<string>;
-}) {
+function useDockCatalogGroups(
+  groups: ContextDockDestinationGroup[],
+  openViewIds: ReadonlySet<string>,
+): CatalogPickerGroup[] {
   const t = useT();
-  const pickerGroups: CatalogPickerGroup[] = groups.map((group) => ({
+  return groups.map((group) => ({
     id: group.id,
     label: t(group.title),
     items: group.destinations.map((destination) => ({
@@ -84,6 +83,17 @@ function AddDockViewPicker({
       active: openViewIds.has(destination.viewId),
     })),
   }));
+}
+
+function AddDockViewPicker({
+  groups,
+  openViewIds,
+}: {
+  groups: ContextDockDestinationGroup[];
+  openViewIds: ReadonlySet<string>;
+}) {
+  const t = useT();
+  const pickerGroups = useDockCatalogGroups(groups, openViewIds);
 
   return (
     <CatalogPicker
@@ -92,6 +102,23 @@ function AddDockViewPicker({
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
       onSelect={(item) => openWorkspaceViewInDock(item.id)}
+    />
+  );
+}
+
+function DockCatalogPage({
+  groups,
+  openViewIds,
+}: {
+  groups: ContextDockDestinationGroup[];
+  openViewIds: ReadonlySet<string>;
+}) {
+  const t = useT();
+  return (
+    <AgentDockCatalog
+      groups={useDockCatalogGroups(groups, openViewIds)}
+      title={t("dock.catalog.title")}
+      onSelect={openWorkspaceViewInDock}
     />
   );
 }
@@ -133,8 +160,10 @@ export function ChatPanel({ onSend }: Props) {
   const [dockAvailable, setDockAvailable] = useState(true);
 
   const hasDockOwner = activeSessionId !== "";
-  const dockOpen =
-    hasDockOwner && dock.open && dock.activeViewId !== null && dock.viewIds.length > 0;
+  // Open with nothing in it is a REAL state: the dock shows its catalogue then, so being open
+  // no longer depends on already holding a tab.
+  const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
+  const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
 
@@ -234,6 +263,7 @@ export function ChatPanel({ onSend }: Props) {
                 <DockHeader tabs={dockTabs} groups={catalog} openViewIds={openViewIds} />
               )}
               <div className="relative min-h-0 flex-1">
+                {showingCatalog && <DockCatalogPage groups={catalog} openViewIds={openViewIds} />}
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
                     <div data-dock-view-id={viewId} className="absolute inset-0 flex flex-col">

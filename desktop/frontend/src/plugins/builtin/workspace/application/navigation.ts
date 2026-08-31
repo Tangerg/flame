@@ -8,7 +8,11 @@ import {
   type WorkspaceFileViewer,
 } from "./ports/navigationState";
 
-const DEFAULT_DOCK_VIEW_ID = "explorer";
+/**
+ * The dock's own destination for "open, showing what could go here". It is a location value
+ * rather than a tab: a tab would be one the person never asked for and has to close.
+ */
+export const WORKSPACE_DOCK_CATALOG = "catalog";
 
 export function useActiveWorkspaceViewId(): string | null {
   return workspaceNavigation().useActiveViewId();
@@ -106,7 +110,7 @@ export function collapseWorkspaceDock(): void {
 }
 
 export function showWorkspaceDock(): void {
-  workspaceNavigation().showDock(DEFAULT_DOCK_VIEW_ID);
+  workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG);
 }
 
 /** Toggle the context dock through the same navigation owner as the on-screen
@@ -117,7 +121,7 @@ export function toggleWorkspaceDock(): void {
   if (workspaceNavigation().dock().open) {
     workspaceNavigation().collapseDock();
   } else {
-    workspaceNavigation().showDock(DEFAULT_DOCK_VIEW_ID);
+    workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG);
   }
 }
 

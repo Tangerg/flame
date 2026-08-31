@@ -67,6 +67,7 @@ export const zhTW: Record<string, string> = {
   "chat.jumpToBottom": "跳到底部",
 
   "dock.action.browse": "瀏覽面板",
+  "dock.catalog.title": "開啟一個面板",
   "dock.picker.placeholder": "尋找面板…",
   "dock.picker.empty": "找不到符合的面板",
   "dock.action.hide": "收合右側工作區",

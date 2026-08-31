@@ -65,6 +65,7 @@ export const fr: Record<string, string> = {
   "chat.jumpToBottom": "Aller en bas",
 
   "dock.action.browse": "Parcourir les panneaux",
+  "dock.catalog.title": "Ouvrir un panneau",
   "dock.picker.placeholder": "Rechercher un panneau…",
   "dock.picker.empty": "Aucun panneau trouvé",
   "dock.action.hide": "Replier l’espace de droite",

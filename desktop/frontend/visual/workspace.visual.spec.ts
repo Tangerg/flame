@@ -120,6 +120,15 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
     return;
   }
+  if (state === "dock-catalog") {
+    // A dock holding nothing shows what it could hold. Ready is the catalogue's own heading
+    // plus one destination row — the tab strip is empty here, so there is no tab to wait on.
+    await expect(page.getByText(en["dock.catalog.title"]!, { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".agent-context-dock").getByRole("button", { name: "Explorer" }),
+    ).toBeVisible();
+    return;
+  }
   if (state === "settings") {
     await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
     // The heading is owned by the settings host and renders before the lazy

@@ -38,6 +38,7 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-tools",
   "dock-file",
   "dock-empty",
+  "dock-catalog",
   "dock-loading",
   "dock-error",
   "settings",

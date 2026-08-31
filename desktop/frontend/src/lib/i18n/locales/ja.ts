@@ -64,6 +64,7 @@ export const ja: Record<string, string> = {
   "chat.jumpToBottom": "最下部へ移動",
 
   "dock.action.browse": "パネルを参照",
+  "dock.catalog.title": "パネルを開く",
   "dock.picker.placeholder": "パネルを検索…",
   "dock.picker.empty": "パネルが見つかりません",
   "dock.action.hide": "右ワークスペースを折りたたむ",

@@ -65,6 +65,7 @@ export const de: Record<string, string> = {
   "chat.jumpToBottom": "Nach unten springen",
 
   "dock.action.browse": "Bereiche durchsuchen",
+  "dock.catalog.title": "Ein Panel öffnen",
   "dock.picker.placeholder": "Bereich suchen…",
   "dock.picker.empty": "Keine Bereiche gefunden",
   "dock.action.hide": "Rechten Arbeitsbereich einklappen",

@@ -1,4 +1,5 @@
 export {
+  WORKSPACE_DOCK_CATALOG,
   activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,

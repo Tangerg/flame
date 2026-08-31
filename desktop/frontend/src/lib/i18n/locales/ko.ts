@@ -64,6 +64,7 @@ export const ko: Record<string, string> = {
   "chat.jumpToBottom": "맨 아래로 이동",
 
   "dock.action.browse": "패널 탐색",
+  "dock.catalog.title": "패널 열기",
   "dock.picker.placeholder": "패널 검색…",
   "dock.picker.empty": "패널을 찾을 수 없음",
   "dock.action.hide": "오른쪽 작업 영역 접기",

@@ -23,6 +23,7 @@ vi.mock("@/plugins/builtin/agent/public/run", () => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
+  WORKSPACE_DOCK_CATALOG: "catalog",
   closeAllWorkspaceDockViews: vi.fn(),
   closeOtherWorkspaceDockViews: vi.fn(),
   closeWorkspaceDockView: vi.fn(),

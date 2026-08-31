@@ -73,6 +73,7 @@ export const en: Record<string, string> = {
   "chat.jumpToBottom": "Jump to bottom",
 
   "dock.action.browse": "Browse panels",
+  "dock.catalog.title": "Open a panel",
   "dock.picker.placeholder": "Find a panel…",
   "dock.picker.empty": "No panels found",
   "dock.action.hide": "Collapse right workspace",
