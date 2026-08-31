@@ -3,7 +3,7 @@
 // images and pastes are heavy and meant to be sent immediately, so a reload drops them.
 
 import { z } from "zod";
-import type { ComposerDraftArchive } from "../domain/draftArchive";
+import type { ComposerDraft, ComposerDraftArchive } from "../domain/draftArchive";
 
 const persistedDraftSchema = z.object({
   drafts: z.record(z.string(), z.object({ value: z.string() })),
@@ -20,9 +20,13 @@ export function persistedComposerDrafts(
 export function parsePersistedComposerDrafts(persisted: unknown): ComposerDraftArchive | null {
   const parsed = persistedDraftSchema.safeParse(persisted);
   if (!parsed.success) return null;
-  const drafts: ComposerDraftArchive = {};
-  for (const [id, draft] of Object.entries(parsed.data.drafts)) {
-    drafts[id] = { value: draft.value, images: [], pastes: [] };
-  }
-  return drafts;
+  // Materialised in one step rather than assigned key by key: an id of `__proto__`
+  // assigns nothing to an object literal, so the draft would be dropped without a
+  // word by the very function whose job is to admit or reject it.
+  return Object.fromEntries(
+    Object.entries(parsed.data.drafts).map(([id, draft]): [string, ComposerDraft] => [
+      id,
+      { value: draft.value, images: [], pastes: [] },
+    ]),
+  );
 }

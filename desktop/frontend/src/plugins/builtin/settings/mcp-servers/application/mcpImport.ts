@@ -13,13 +13,15 @@ const envSchema = z
   .transform((env) => {
     if (env === undefined) return undefined;
     if (!Array.isArray(env)) return env;
-    const out: Record<string, string> = {};
+    // Via a Map: assigning a pasted name onto an object literal silently drops an
+    // entry called `__proto__`, so that variable would go missing on import.
+    const out = new Map<string, string>();
     for (const kv of env) {
       const i = kv.indexOf("=");
-      if (i === -1) out[kv] = "";
-      else out[kv.slice(0, i)] = kv.slice(i + 1);
+      if (i === -1) out.set(kv, "");
+      else out.set(kv.slice(0, i), kv.slice(i + 1));
     }
-    return out;
+    return Object.fromEntries(out);
   });
 
 const serverSchema = z.object({
@@ -48,12 +50,12 @@ function authorizationFrom(s: ParsedServer): string | undefined {
 // empty map.
 function headersExceptAuth(s: ParsedServer): Record<string, string> | undefined {
   if (!s.headers) return undefined;
-  const out: Record<string, string> = {};
+  const out = new Map<string, string>();
   for (const [k, v] of Object.entries(s.headers)) {
     if (k.toLowerCase() === "authorization") continue;
-    out[k] = v;
+    out.set(k, v);
   }
-  return Object.keys(out).length ? out : undefined;
+  return out.size ? Object.fromEntries(out) : undefined;
 }
 
 export interface McpImportResult {

@@ -55,16 +55,20 @@ function linesToList(text: string): string[] | undefined {
   return list.length ? list : undefined;
 }
 
+// Accumulated in a Map and materialised once. Assigning a typed name straight onto
+// an object literal silently DROPS an entry called `__proto__` — the setter takes
+// the string and stores nothing — so an environment variable by that name would
+// vanish between the field and the wire.
 function linesToMap(text: string): Record<string, string> | undefined {
-  const out: Record<string, string> = {};
+  const out = new Map<string, string>();
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
     const i = line.indexOf("=");
-    if (i === -1) out[line] = "";
-    else out[line.slice(0, i)] = line.slice(i + 1);
+    if (i === -1) out.set(line, "");
+    else out.set(line.slice(0, i), line.slice(i + 1));
   }
-  return Object.keys(out).length ? out : undefined;
+  return out.size ? Object.fromEntries(out) : undefined;
 }
 
 export function initialMCPServerDraft(server?: MCPServerSettings): MCPServerDraft {

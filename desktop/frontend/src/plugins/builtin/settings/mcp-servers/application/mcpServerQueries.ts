@@ -48,19 +48,22 @@ export const MCP_TOOLS_KEY = "mcp-tools";
 // `^[a-z0-9][a-z0-9._-]{0,31}$` — lowercase, no spaces. Display-cased keys can
 // never match a name the runtime is able to send, which is how every server was
 // falling back to the generic glyph.
-const MCP_ICON: Record<string, string> = {
-  filesystem: "folder",
-  git: "branch",
-  github: "git",
-  linear: "list",
-  shell: "terminal",
-  slack: "chat",
-  "web-search": "globe",
-  websearch: "globe",
-};
+// A Map, not an object: that regex admits `constructor`, so a server named it would
+// read an inherited member out of an object literal and return a function where an
+// icon name belongs.
+const MCP_ICON = new Map([
+  ["filesystem", "folder"],
+  ["git", "branch"],
+  ["github", "git"],
+  ["linear", "list"],
+  ["shell", "terminal"],
+  ["slack", "chat"],
+  ["web-search", "globe"],
+  ["websearch", "globe"],
+]);
 
 export function mcpServerIcon(name: string): string {
-  return MCP_ICON[name.toLowerCase()] ?? "tool";
+  return MCP_ICON.get(name.toLowerCase()) ?? "tool";
 }
 
 export const useMCPServers = createDataQuery<MCPServerSettings[]>(MCP_SERVERS_KEY);

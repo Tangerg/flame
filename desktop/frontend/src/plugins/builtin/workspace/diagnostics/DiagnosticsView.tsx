@@ -84,14 +84,17 @@ function LogsPanel() {
   );
 }
 
-const SEVERITY_TONE: Record<string, string> = {
-  ERROR: "text-negative",
-  WARN: "text-warning",
-  DEBUG: "text-fg-faint",
-};
+// A Map, not an object: the key is a severity string off the telemetry stream, and
+// an object would answer `constructor` with an inherited member instead of the
+// fallback tone.
+const SEVERITY_TONE = new Map([
+  ["ERROR", "text-negative"],
+  ["WARN", "text-warning"],
+  ["DEBUG", "text-fg-faint"],
+]);
 
 function severityTone(sev: string): string {
-  return SEVERITY_TONE[sev] ?? "text-fg-muted";
+  return SEVERITY_TONE.get(sev) ?? "text-fg-muted";
 }
 
 function MetricsPanel() {
@@ -118,21 +121,24 @@ interface NameGroup {
   rows: MetricRow[];
 }
 
+// A Map, not an object: grouped by an instrument name off the telemetry stream, and
+// an object literal answers `constructor` with a function — which reads as an existing
+// group and then throws on `g.rows.push`.
 function groupByName(rows: MetricRow[]): NameGroup[] {
-  const by: Record<string, NameGroup> = {};
+  const by = new Map<string, NameGroup>();
   for (const r of rows) {
-    const g = by[r.name];
+    const g = by.get(r.name);
     if (g) g.rows.push(r);
     else
-      by[r.name] = {
+      by.set(r.name, {
         name: r.name,
         unit: r.unit,
         description: r.description,
         kind: r.kind,
         rows: [r],
-      };
+      });
   }
-  return Object.values(by)
+  return [...by.values()]
     .map((g) => ({ ...g, rows: g.rows.slice().sort((a, b) => b.count - a.count) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

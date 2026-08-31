@@ -8,11 +8,11 @@ export type { PlanStep } from "@/plugins/sdk/types/agentSessionView";
 
 // The Plan is a SESSION projection written only by the root Run, not a transcript Item —
 // it has no run of its own and nothing about it is per-turn.
-const TOOL_STEP_STATUS: Record<string, PlanStep["status"]> = {
-  completed: "done",
-  in_progress: "active",
-  pending: "pending",
-};
+const TOOL_STEP_STATUS = new Map<string, PlanStep["status"]>([
+  ["completed", "done"],
+  ["in_progress", "active"],
+  ["pending", "pending"],
+]);
 
 const NO_STEPS: readonly PlanStep[] = Object.freeze([]);
 
@@ -85,7 +85,7 @@ export function planStepsFromArguments(args: unknown): readonly PlanStep[] {
     projected.push({
       id: String(index),
       text: description,
-      status: TOOL_STEP_STATUS[String(status)] ?? "pending",
+      status: TOOL_STEP_STATUS.get(String(status)) ?? "pending",
     });
   }
   return projected;

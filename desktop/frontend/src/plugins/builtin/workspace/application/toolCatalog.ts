@@ -41,12 +41,12 @@ export interface ToolCatalogViewModel {
 
 // A safety class reads as a tone; which fill and ink that tone wears is the
 // Badge's business, not this layer's. Application exposes semantic tone only.
-const TONE_BY_SAFETY: Record<string, Tone> = {
-  safe: "accent",
-  write: "warning",
-  exec: "negative",
-  network: "neutral",
-};
+const TONE_BY_SAFETY = new Map<string, Tone>([
+  ["safe", "accent"],
+  ["write", "warning"],
+  ["exec", "negative"],
+  ["network", "neutral"],
+]);
 
 export function useBuiltinToolConfigs() {
   return useWorkspaceBuiltinTools();
@@ -132,5 +132,5 @@ export function builtinToolSafetyTone(safetyClass: BuiltinToolSummary["safetyCla
   if (!safetyClass) {
     return "neutral";
   }
-  return TONE_BY_SAFETY[safetyClass] ?? "neutral";
+  return TONE_BY_SAFETY.get(safetyClass) ?? "neutral";
 }

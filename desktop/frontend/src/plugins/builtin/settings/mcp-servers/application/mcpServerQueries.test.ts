@@ -20,4 +20,14 @@ describe("the MCP server glyph", () => {
   it("is not written in a casing the wire cannot produce", () => {
     expect(mcpServerIcon("Git")).toBe(mcpServerIcon("git"));
   });
+
+  // `constructor` satisfies that regex, so it is a name a person can actually give a
+  // server — and an object-literal table would have answered it with the Object
+  // constructor, typed as the string this returns.
+  it("falls back for a name that also names an inherited member", () => {
+    expect("constructor").toMatch(WIRE_NAME);
+    for (const name of ["constructor", "tostring", "valueof", "hasownproperty"]) {
+      expect(mcpServerIcon(name)).toBe("tool");
+    }
+  });
 });

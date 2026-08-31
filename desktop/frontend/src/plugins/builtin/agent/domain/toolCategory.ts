@@ -10,22 +10,25 @@ export type ToolCategory =
   | "subagent" // delegate_task → { summary, instructions } + a plain-string reply
   | "generic"; // MCP "<server>_<tool>" / anything unknown → JSON tree
 
-const TOOL_CATEGORY: Record<string, ToolCategory> = {
-  shell: "command",
+// A Map, not an object: an MCP server names its own tools, so this is indexed by a
+// string nobody here chose. An object literal answers `constructor` with an inherited
+// member, which is not a ToolCategory and is not "generic" either.
+const TOOL_CATEGORY = new Map<string, ToolCategory>([
+  ["shell", "command"],
   // The only built-in file mutation, and its result is a CALL-SCOPED receipt — not a
   // workspace diff.
-  apply_patch: "fileEdit",
-  grep: "search",
-  glob: "search",
-  web_search: "webSearch",
-  read: "read",
-  delegate_task: "subagent", // the runtime's delegation tool (spawns a child run, returns its reply)
-};
+  ["apply_patch", "fileEdit"],
+  ["grep", "search"],
+  ["glob", "search"],
+  ["web_search", "webSearch"],
+  ["read", "read"],
+  ["delegate_task", "subagent"], // the runtime's delegation tool (spawns a child run, returns its reply)
+]);
 // Everything else stays "generic" ON PURPOSE: labels, icons and previews key on the tool
 // NAME, and the generic projection already passes their results through.
 
 export function toolCategory(name: string): ToolCategory {
-  return TOOL_CATEGORY[name] ?? "generic";
+  return TOOL_CATEGORY.get(name) ?? "generic";
 }
 
 // These interrupt from inside their own call, so the runtime emits BOTH a toolCall Item

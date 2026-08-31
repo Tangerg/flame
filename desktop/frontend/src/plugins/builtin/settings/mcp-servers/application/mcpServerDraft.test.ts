@@ -42,6 +42,30 @@ describe("mcpServerDraft", () => {
     });
   });
 
+  // Assigning a typed name onto an object literal silently discards `__proto__` —
+  // the setter takes the string and stores nothing — so the variable disappeared
+  // between the form and the wire with no error anywhere.
+  it("carries an environment variable whose name is an inherited member", () => {
+    const input = mcpServerInputFromDraft({
+      name: "srv",
+      transport: "stdio",
+      description: "",
+      command: "run",
+      args: "",
+      environment: editRetainedValue("__proto__=polluted\nconstructor=c\nKEEP=1"),
+      dir: "",
+      url: "",
+      authorization: setRetainedValueCleared(false),
+      headers: setRetainedValueCleared(false),
+      timeoutSec: "",
+      disabledTools: [],
+      autoApproveTools: [],
+    });
+
+    expect(Object.keys(input.env ?? {}).sort()).toEqual(["KEEP", "__proto__", "constructor"]);
+    expect(Object.getPrototypeOf(input.env)).toBe(Object.prototype);
+  });
+
   it("keeps blank http authorization omitted and parses extra headers", () => {
     const server: MCPServerSettings = {
       id: "cloud",

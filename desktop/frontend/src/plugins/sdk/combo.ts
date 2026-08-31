@@ -5,16 +5,19 @@
 // Unmapped segments pass through unchanged, which keeps a literal "ctrl+k"
 // distinct from "mod+k".
 
-const MODIFIER_ALIAS: Record<string, string> = {
-  cmd: "mod",
-  meta: "mod",
-  mod: "mod",
-  ctrl: "ctrl",
-  control: "ctrl",
-  shift: "shift",
-  alt: "alt",
-  option: "alt",
-};
+// A Map, not an object: an unmapped segment must pass through unchanged, and an
+// object would answer `constructor` with an inherited member instead of nothing —
+// silently swallowing that segment rather than keeping it.
+const MODIFIER_ALIAS = new Map([
+  ["cmd", "mod"],
+  ["meta", "mod"],
+  ["mod", "mod"],
+  ["ctrl", "ctrl"],
+  ["control", "ctrl"],
+  ["shift", "shift"],
+  ["alt", "alt"],
+  ["option", "alt"],
+]);
 
 // Matches the common docs convention, e.g. "mod+shift+k".
 const MODIFIER_ORDER = ["mod", "ctrl", "alt", "shift"] as const;
@@ -24,7 +27,7 @@ const MODIFIER_ORDER = ["mod", "ctrl", "alt", "shift"] as const;
 export function normalizeCombo(combo: string): string {
   const parts = combo.split("+").map((p) => p.trim().toLowerCase());
   const key = parts.pop() ?? "";
-  const mods = new Set<string>(parts.map((p) => MODIFIER_ALIAS[p] ?? p));
+  const mods = new Set<string>(parts.map((p) => MODIFIER_ALIAS.get(p) ?? p));
   const sortedMods = MODIFIER_ORDER.filter((m) => mods.has(m));
   return [...sortedMods, key].join("+");
 }

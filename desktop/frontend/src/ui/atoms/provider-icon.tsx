@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { createElement, type ComponentType } from "react";
 import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
 import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Mono";
 import Gemini from "@lobehub/icons/es/Gemini/components/Mono";
@@ -14,33 +14,38 @@ import { Icon } from "@/ui/icons";
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
-const BRAND: Record<string, BrandIcon> = {
-  deepseek: DeepSeek,
-  openai: OpenAI,
-  anthropic: Anthropic,
-  claude: Anthropic,
-  gemini: Gemini,
-  google: Gemini,
-  meta: Meta,
-  llama: Meta,
-  mistral: Mistral,
-  moonshot: Moonshot,
-  kimi: Moonshot,
-  ollama: Ollama,
-  qwen: Qwen,
-  zhipu: Zhipu,
-};
+// A Map, not an object: the key is a provider name the runtime chose, and an object
+// answers `constructor` and `toString` with inherited members — a provider named
+// either would hand back a FUNCTION here and render it as a component.
+const BRAND = new Map<string, BrandIcon>([
+  ["deepseek", DeepSeek],
+  ["openai", OpenAI],
+  ["anthropic", Anthropic],
+  ["claude", Anthropic],
+  ["gemini", Gemini],
+  ["google", Gemini],
+  ["meta", Meta],
+  ["llama", Meta],
+  ["mistral", Mistral],
+  ["moonshot", Moonshot],
+  ["kimi", Moonshot],
+  ["ollama", Ollama],
+  ["qwen", Qwen],
+  ["zhipu", Zhipu],
+]);
 
 export function ProviderIcon({ provider, size = "md" }: { provider: string; size?: IconSize }) {
-  const Brand = BRAND[provider.toLowerCase()];
-  if (Brand) {
+  const brand = BRAND.get(provider.toLowerCase());
+  if (brand) {
     return (
       <span
         aria-hidden
         className="inline-grid shrink-0 place-items-center [&>svg]:size-full"
         style={{ width: `var(--icon-${size})`, height: `var(--icon-${size})` }}
       >
-        <Brand size={0} />
+        {/* The mark is one of the module constants above, picked by name — never built
+            here, which is why it is applied rather than written as `<Brand />`. */}
+        {createElement(brand, { size: 0 })}
       </span>
     );
   }

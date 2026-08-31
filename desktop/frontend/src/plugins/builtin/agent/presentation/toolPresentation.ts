@@ -25,24 +25,24 @@ export interface ToolMetaItem {
 // A row's title is either one of these UI-chosen verbs or the runtime's own tool name,
 // which is data and stays verbatim. That mix is why the translator arrives as an argument
 // here instead of this returning a `labelKey`.
-const TOOL_LABEL_KEYS: Record<string, string> = {
-  shell: "tool.label.shell",
-  read: "tool.label.read",
-  edit: "tool.label.edit",
-  write: "tool.label.write",
-  apply_patch: "tool.label.applyPatch",
-  grep: "tool.label.grep",
-  glob: "tool.label.glob",
-  lsp: "tool.label.lsp",
+const TOOL_LABEL_KEYS = new Map([
+  ["shell", "tool.label.shell"],
+  ["read", "tool.label.read"],
+  ["edit", "tool.label.edit"],
+  ["write", "tool.label.write"],
+  ["apply_patch", "tool.label.applyPatch"],
+  ["grep", "tool.label.grep"],
+  ["glob", "tool.label.glob"],
+  ["lsp", "tool.label.lsp"],
   // No identifying argument to title with, so without an entry here these read as raw
   // snake_case names.
-  enter_plan_mode: "tool.label.enterPlanMode",
-  set_plan: "tool.label.setPlan",
-  exit_plan_mode: "tool.label.exitPlanMode",
-  list_skills: "tool.label.listSkills",
-  list_schedules: "tool.label.listSchedules",
-  read_tool_result: "tool.label.readToolResult",
-};
+  ["enter_plan_mode", "tool.label.enterPlanMode"],
+  ["set_plan", "tool.label.setPlan"],
+  ["exit_plan_mode", "tool.label.exitPlanMode"],
+  ["list_skills", "tool.label.listSkills"],
+  ["list_schedules", "tool.label.listSchedules"],
+  ["read_tool_result", "tool.label.readToolResult"],
+]);
 
 // `path` is the runtime's own spelling (ApprovalSubject reads the same field), so a rename
 // cannot drift these apart without also breaking the approval rules.
@@ -58,7 +58,7 @@ export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   // Keyed on "the projection had nothing better than the tool's own name", NOT on `fn`
   // matching a table entry — the same thing by coincidence until a shell command happens
   // to be spelled `grep`.
-  const labelKey = tool.fn === tool.name ? TOOL_LABEL_KEYS[tool.name] : undefined;
+  const labelKey = tool.fn === tool.name ? TOOL_LABEL_KEYS.get(tool.name) : undefined;
   const label: ToolDetail = labelKey
     ? { kind: "text", value: t(labelKey) }
     : { kind: tool.fnKind ?? "text", value: tool.fn };

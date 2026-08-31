@@ -3,41 +3,44 @@
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/.test(navigator.platform);
 
-const MAC_GLYPHS: Record<string, string> = {
-  mod: "⌘",
-  cmd: "⌘",
-  ctrl: "⌃",
-  shift: "⇧",
-  alt: "⌥",
-  option: "⌥",
-  meta: "⌘",
-};
+// Maps, not objects: every table here is indexed by a segment of a combo string a
+// plugin wrote, and an object literal answers `constructor` with a FUNCTION — which
+// would then be returned as the glyph to render.
+const MAC_GLYPHS = new Map([
+  ["mod", "⌘"],
+  ["cmd", "⌘"],
+  ["ctrl", "⌃"],
+  ["shift", "⇧"],
+  ["alt", "⌥"],
+  ["option", "⌥"],
+  ["meta", "⌘"],
+]);
 
-const PC_LABELS: Record<string, string> = {
-  mod: "Ctrl",
-  cmd: "Ctrl",
-  ctrl: "Ctrl",
-  shift: "Shift",
-  alt: "Alt",
-  option: "Alt",
-  meta: "Win",
-};
+const PC_LABELS = new Map([
+  ["mod", "Ctrl"],
+  ["cmd", "Ctrl"],
+  ["ctrl", "Ctrl"],
+  ["shift", "Shift"],
+  ["alt", "Alt"],
+  ["option", "Alt"],
+  ["meta", "Win"],
+]);
 
 // Named keys whose display form doesn't depend on platform — arrows render as
 // glyphs everywhere, "Escape" abbreviates to "Esc".
-const NAMED_KEYS: Record<string, string> = {
-  escape: "Esc",
-  arrowup: "↑",
-  arrowdown: "↓",
-  arrowleft: "←",
-  arrowright: "→",
-};
+const NAMED_KEYS = new Map([
+  ["escape", "Esc"],
+  ["arrowup", "↑"],
+  ["arrowdown", "↓"],
+  ["arrowleft", "←"],
+  ["arrowright", "→"],
+]);
 
 function formatPart(part: string): string {
   const lower = part.toLowerCase();
-  const mod = (IS_MAC ? MAC_GLYPHS : PC_LABELS)[lower];
+  const mod = (IS_MAC ? MAC_GLYPHS : PC_LABELS).get(lower);
   if (mod) return mod;
-  const named = NAMED_KEYS[lower];
+  const named = NAMED_KEYS.get(lower);
   if (named) return named;
   if (lower.length === 1) return lower.toUpperCase();
   // Capitalise multi-char keys (Enter, Tab, Space, …).
@@ -58,16 +61,16 @@ export function comboGlyph(combo: string): string {
 // Mac and Control elsewhere — narrower than "either one, on both platforms",
 // which is what the hand-rolled dispatcher did and which made ⌃K on a Mac open
 // the command palette. Cocoa has already spent that chord on kill-line.
-const DISPATCH_MODIFIERS: Record<string, string> = {
-  mod: "$mod",
-  cmd: "$mod",
-  meta: "$mod",
-  ctrl: "Control",
-  control: "Control",
-  alt: "Alt",
-  option: "Alt",
-  shift: "Shift",
-};
+const DISPATCH_MODIFIERS = new Map([
+  ["mod", "$mod"],
+  ["cmd", "$mod"],
+  ["meta", "$mod"],
+  ["ctrl", "Control"],
+  ["control", "Control"],
+  ["alt", "Alt"],
+  ["option", "Alt"],
+  ["shift", "Shift"],
+]);
 
 function dispatchKey(key: string): string {
   if (/^[a-z]$/i.test(key)) return `Key${key.toUpperCase()}`;
@@ -90,7 +93,7 @@ export function dispatchBinding(combo: string): string {
     .map((press) => {
       const parts = press.split("+").map((part) => part.trim());
       const key = parts.pop() ?? "";
-      const modifiers = parts.map((part) => DISPATCH_MODIFIERS[part.toLowerCase()] ?? part);
+      const modifiers = parts.map((part) => DISPATCH_MODIFIERS.get(part.toLowerCase()) ?? part);
       return [...modifiers, dispatchKey(key)].join("+");
     })
     .join(" ");

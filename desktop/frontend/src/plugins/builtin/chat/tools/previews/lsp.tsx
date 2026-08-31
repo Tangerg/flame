@@ -63,10 +63,13 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   );
 }
 
-const SEVERITY_TONE: Record<string, string> = {
-  error: "text-negative",
-  warning: "text-warning",
-};
+// A Map, not an object: the key is the first word of a tool's output line, so a
+// diagnostic starting with `constructor` would otherwise pull an inherited member
+// out and paint its source text into the className.
+const SEVERITY_TONE = new Map([
+  ["error", "text-negative"],
+  ["warning", "text-warning"],
+]);
 
 function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
@@ -75,7 +78,7 @@ function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
       {rows.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((row, i) => {
         const space = row.indexOf(" ");
         const severity = space === -1 ? "" : row.slice(0, space);
-        const tone = SEVERITY_TONE[severity];
+        const tone = SEVERITY_TONE.get(severity);
         if (!tone) {
           return (
             <div key={i} className="truncate py-0.5 text-fg-soft">
