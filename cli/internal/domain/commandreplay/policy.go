@@ -21,14 +21,6 @@ type Policy struct {
 	now        func() time.Time
 }
 
-func UnavailablePolicy() Policy {
-	return Policy{kind: policyUnavailable, now: time.Now}
-}
-
-func NewPolicy(capability Capability) (Policy, error) {
-	return NewPolicyWithClock(capability, time.Now)
-}
-
 func NewPolicyWithClock(capability Capability, now func() time.Time) (Policy, error) {
 	if err := capability.Validate(); err != nil {
 		return Policy{}, err

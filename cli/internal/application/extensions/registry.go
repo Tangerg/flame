@@ -57,16 +57,6 @@ type Point[T any] struct {
 	keyOf      func(T) string
 }
 
-// NewKeyedPoint defines a point with one contribution per non-empty key.
-func NewKeyedPoint[T any](id string, keyOf func(T) string) Point[T] {
-	return Point[T]{id: id, keying: Keyed, keyOf: keyOf}
-}
-
-// NewMultiPoint defines a point where every contribution coexists.
-func NewMultiPoint[T any](id string) Point[T] {
-	return Point[T]{id: id, keying: Multi}
-}
-
 // NewCapabilityMultiPoint defines a protected point where ordered contributions
 // coexist.
 func NewCapabilityMultiPoint[T any](id string, capability Capability) Point[T] {

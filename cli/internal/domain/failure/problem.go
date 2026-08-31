@@ -16,11 +16,6 @@ import (
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
-type problemCarrier interface {
-	error
-	Failure() *Problem
-}
-
 // RequirementKind names the capability registry that contains a missing
 // capability.
 type RequirementKind string
@@ -69,20 +64,6 @@ type Problem struct {
 	RequiredCapabilities []CapabilityRequirement `json:"requiredCapabilities,omitempty"`
 	ActiveRun            *ActiveRun              `json:"activeRun,omitempty"`
 	Errors               []FieldError            `json:"errors,omitempty"`
-}
-
-// FromError returns the CLI-owned structured failure carried anywhere in an
-// error chain. The returned problem is independently owned.
-func FromError(err error) (*Problem, bool) {
-	if err == nil {
-		return nil, false
-	}
-	carrier, ok := errors.AsType[problemCarrier](err)
-	if !ok {
-		return nil, false
-	}
-	problem := carrier.Failure()
-	return problem, problem != nil
 }
 
 // Validate checks the portable structure without copying the runtime's

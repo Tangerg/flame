@@ -46,18 +46,6 @@ const (
 	FeatureSubagents     FeatureName = "subagents"
 )
 
-// KnownFeatures returns the runtime feature vocabulary understood by this CLI.
-// Profiles still preserve unknown future names for diagnostics.
-func KnownFeatures() []FeatureName {
-	return []FeatureName{
-		FeatureReasoning, FeatureMultimodal, FeatureCompaction, FeaturePlan,
-		FeatureGoals, FeatureAgentMemory, FeatureKnowledge, FeatureSkills,
-		FeatureMCP, FeatureSchedules, FeatureGit,
-		FeatureCheckpoints, FeatureFileWatch, FeatureLSP, FeatureSessionExport,
-		FeatureRelocate, FeatureSubagents,
-	}
-}
-
 type Feature struct {
 	Enabled               bool `json:"enabled"`
 	ClientOptIn           bool `json:"clientOptIn"`

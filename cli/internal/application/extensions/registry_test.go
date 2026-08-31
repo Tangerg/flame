@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func newTestKeyedPoint[T any](id string, keyOf func(T) string) Point[T] {
+	return Point[T]{id: id, keying: Keyed, keyOf: keyOf}
+}
+
+func newTestMultiPoint[T any](id string) Point[T] {
+	return Point[T]{id: id, keying: Multi}
+}
+
 func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
 	registry := &Registry{
 		next:    registrationSequence(math.MaxUint64),
@@ -21,7 +29,7 @@ func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
 
 func TestContributionSequenceExhaustionDoesNotCreatePointState(t *testing.T) {
 	registry := &Registry{next: registrationSequence(math.MaxUint64)}
-	point := NewMultiPoint[string]("test.exhausted")
+	point := newTestMultiPoint[string]("test.exhausted")
 	if _, _, err := registry.insertContribution("plugin", point, "", "value", 0); !errors.Is(err, errRegistrationSequenceExhausted) {
 		t.Fatalf("contribution after sequence exhaustion error = %v", err)
 	}
@@ -32,7 +40,7 @@ func TestContributionSequenceExhaustionDoesNotCreatePointState(t *testing.T) {
 
 func TestRejectedContributionDoesNotConsumeRegistrationSequence(t *testing.T) {
 	registry := new(Registry)
-	point := NewKeyedPoint("test.sequence", func(value format) string { return value.ID })
+	point := newTestKeyedPoint("test.sequence", func(value format) string { return value.ID })
 	if _, _, err := registry.insertContribution("first", point, "same", format{ID: "same"}, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +59,7 @@ type format struct {
 }
 
 func TestKeyedContributionsAreTypedOrderedAndDisposable(t *testing.T) {
-	point := NewKeyedPoint("test.format", func(value format) string { return value.ID })
+	point := newTestKeyedPoint("test.format", func(value format) string { return value.ID })
 	registry := new(Registry)
 	loaded, err := Load(registry, manifest("formats", contributeFormats(point)))
 	if err != nil {
@@ -84,7 +92,7 @@ func contributeFormats(point Point[format]) func(*Scope) error {
 }
 
 func TestSetupFailureRollsBackEarlierContributions(t *testing.T) {
-	point := NewMultiPoint[func()]("test.hook")
+	point := newTestMultiPoint[func()]("test.hook")
 	registry := new(Registry)
 	want := errors.New("setup failed")
 	_, err := Load(registry, manifest("broken", func(scope *Scope) error {
@@ -102,7 +110,7 @@ func TestSetupFailureRollsBackEarlierContributions(t *testing.T) {
 }
 
 func TestKeyedPointRejectsDuplicateOwnership(t *testing.T) {
-	point := NewKeyedPoint("test.format", func(value format) string { return value.ID })
+	point := newTestKeyedPoint("test.format", func(value format) string { return value.ID })
 	registry := new(Registry)
 	first, err := Load(registry, manifest("first", func(scope *Scope) error {
 		_, err := scope.Contribute(point, format{ID: "json"}, Contribution{})
@@ -122,8 +130,8 @@ func TestKeyedPointRejectsDuplicateOwnership(t *testing.T) {
 }
 
 func TestPointsWithTheSameIDCannotDisagreeOnType(t *testing.T) {
-	stringsPoint := NewMultiPoint[string]("test.same")
-	intsPoint := NewMultiPoint[int]("test.same")
+	stringsPoint := newTestMultiPoint[string]("test.same")
+	intsPoint := newTestMultiPoint[int]("test.same")
 	registry := new(Registry)
 	loaded, err := Load(registry, manifest("strings", func(scope *Scope) error {
 		_, err := scope.Contribute(stringsPoint, "one", Contribution{})
@@ -165,7 +173,7 @@ func TestPluginMustUnloadBeforeItCanReload(t *testing.T) {
 }
 
 func TestScopeRejectsOwnershipAfterSetupReturns(t *testing.T) {
-	point := NewMultiPoint[string]("test.late")
+	point := newTestMultiPoint[string]("test.late")
 	registry := new(Registry)
 	var retained *Scope
 	loaded, err := Load(registry, manifest("late", func(scope *Scope) error {
@@ -192,7 +200,7 @@ func TestScopeSealWinsAgainstAnInFlightLateContribution(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	result := make(chan error, 1)
-	point := NewKeyedPoint("test.concurrent-late", func(value string) string {
+	point := newTestKeyedPoint("test.concurrent-late", func(value string) string {
 		close(entered)
 		<-release
 		return value

@@ -41,7 +41,10 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	t.Parallel()
 
-	policy := UnavailablePolicy()
+	policy, err := UnavailablePolicyWithClock(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := policy.Validate(); err != nil {
 		t.Fatal(err)
 	}

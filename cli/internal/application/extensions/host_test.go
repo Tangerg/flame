@@ -118,7 +118,7 @@ func TestHostOrdersDependenciesAndReloadsTheirClosure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = host.Close() }()
-	point := NewMultiPoint[string]("test.lifecycle")
+	point := newTestMultiPoint[string]("test.lifecycle")
 	var lifecycle []string
 	results, err := host.Activate([]Plugin{
 		lifecyclePlugin(point, &lifecycle, "test.dependent", "test.base"),
@@ -266,7 +266,7 @@ func TestCleanupFailuresAreJoinedAfterEveryCleanupRuns(t *testing.T) {
 
 func TestHostUnloadSurfacesCleanupFailureAfterReleasingContributions(t *testing.T) {
 	want := errors.New("cleanup failed")
-	point := NewMultiPoint[string]("test.cleanup-point")
+	point := newTestMultiPoint[string]("test.cleanup-point")
 	registry := new(Registry)
 	host, err := NewHost(registry)
 	if err != nil {

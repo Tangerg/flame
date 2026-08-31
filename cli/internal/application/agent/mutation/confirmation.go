@@ -126,15 +126,11 @@ func OutcomeUnknown(err error) bool {
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }
 
-// Confirm retries one idempotent mutation until its acknowledgement is
+// ConfirmAdmitted retries one idempotent mutation until its acknowledgement is
 // observed, a definitive refusal arrives, or the owning context ends. The
-// attempt closure must capture and reuse the same mutation identity.
-func Confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(context.Context) (T, error)) (T, error) {
-	return ConfirmAdmitted(ctx, backoff, nil, attempt)
-}
-
-// ConfirmAdmitted has the same acknowledgement semantics as Confirm and also
-// requires admission immediately before every attempt, including the first.
+// attempt closure must capture and reuse the same mutation identity. Admission
+// runs immediately before every attempt, including the first; nil admits every
+// attempt.
 // An admission failure is an unknown outcome: an earlier call may have
 // committed even though its replay guarantee has since expired.
 func ConfirmAdmitted[T any](

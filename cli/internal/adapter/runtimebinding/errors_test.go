@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type runtimeProblemError struct {
@@ -48,21 +47,10 @@ func TestClassifyErrorPreservesIdentityAndProjectsRecoveryMetadata(t *testing.T)
 	if !errors.As(err, &wire) || wire.Problem().Type != protocol.ErrCapabilityNotNeg.Error() {
 		t.Fatalf("runtime problem was not preserved: %T %v", err, err)
 	}
-	problem, ok := failure.FromError(err)
-	if !ok || problem == nil || len(problem.RequiredCapabilities) != 1 ||
-		problem.RequiredCapabilities[0].Kind != failure.RequirementRuntimeTopic ||
-		problem.RequiredCapabilities[0].Name != "files.changed" {
-		t.Fatalf("projected failure = (%+v, %v)", problem, ok)
-	}
 	for _, want := range []string{"declare the missing topic", "docs.example", "runtimeTopic:files.changed"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("projected error omitted %q: %s", want, err)
 		}
-	}
-	problem.Detail = "mutated"
-	again, _ := failure.FromError(err)
-	if again.Detail != "declare the missing topic" {
-		t.Fatal("projected error leaked mutable failure state")
 	}
 }
 
@@ -92,9 +80,13 @@ func TestClassifyErrorProjectsUnmappedRuntimeProblem(t *testing.T) {
 		},
 	}
 	err := classifyError(source)
-	problem, ok := failure.FromError(err)
-	if !ok || problem.Type != protocol.ProblemRateLimited || problem.RetryAfterSeconds != 4 || !errors.Is(err, source.cause) {
-		t.Fatalf("unmapped runtime problem = (%+v, %v), err=%v", problem, ok, err)
+	if !errors.Is(err, source.cause) {
+		t.Fatalf("unmapped runtime problem lost its cause: %v", err)
+	}
+	for _, want := range []string{protocol.ProblemRateLimited, "retry after 4s"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("unmapped runtime problem omitted %q: %v", want, err)
+		}
 	}
 }
 
@@ -106,9 +98,6 @@ func TestClassifyErrorRejectsMalformedRuntimeProblem(t *testing.T) {
 	}
 	err := classifyError(source)
 	requireRuntimeContractViolation(t, err)
-	if problem, ok := failure.FromError(err); ok {
-		t.Fatalf("malformed runtime failure crossed the adapter boundary: %+v", problem)
-	}
 	if !errors.Is(err, source.cause) {
 		t.Fatalf("contract violation lost the runtime cause: %v", err)
 	}

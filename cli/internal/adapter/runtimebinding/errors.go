@@ -33,8 +33,6 @@ func (p projectedError) Unwrap() []error {
 	return []error{p.kind, p.source}
 }
 
-func (p projectedError) Failure() *failure.Problem { return p.problem.Clone() }
-
 // runtimeContractViolation marks a response that cannot satisfy the protocol
 // negotiated at startup. Callers may retry transport and storage failures, but
 // the same malformed response cannot become valid through backoff.

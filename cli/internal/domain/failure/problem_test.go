@@ -1,16 +1,9 @@
 package failure
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 	"testing"
 )
-
-type carryingError struct{ problem *Problem }
-
-func (c carryingError) Error() string     { return "failed" }
-func (c carryingError) Failure() *Problem { return c.problem.Clone() }
 
 func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	t.Parallel()
@@ -59,22 +52,5 @@ func TestProblemRejectsMalformedStructuredLeaves(t *testing.T) {
 		if err := problem.Validate(); err == nil {
 			t.Fatalf("Validate accepted malformed problem: %+v", problem)
 		}
-	}
-}
-
-func TestFromErrorFindsAndOwnsNestedFailure(t *testing.T) {
-	t.Parallel()
-
-	source := &Problem{Type: "rate_limited", Detail: "wait"}
-	problem, ok := FromError(fmt.Errorf("outer: %w", carryingError{problem: source}))
-	if !ok || problem == nil || !problem.Equal(source) {
-		t.Fatalf("FromError = (%+v, %v)", problem, ok)
-	}
-	problem.Detail = "mutated"
-	if source.Detail != "wait" {
-		t.Fatal("FromError returned carrier-owned state")
-	}
-	if problem, ok := FromError(errors.New("ordinary")); ok || problem != nil {
-		t.Fatalf("ordinary error produced a problem: (%+v, %v)", problem, ok)
 	}
 }

@@ -12,6 +12,19 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
+func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(context.Context) (T, error)) (T, error) {
+	return ConfirmAdmitted(ctx, backoff, nil, attempt)
+}
+
+func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
+	t.Helper()
+	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
 func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	for _, err := range []error{
 		agent.ErrDisconnected,
@@ -68,7 +81,7 @@ func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
-	_, err := Confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
 		attempts++
 		return struct{}{}, agent.ErrCommandStoreMismatch
 	})
@@ -80,18 +93,18 @@ func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
 	t.Parallel()
 	attempts := 0
-	_, err := Confirm(t.Context(), retry.Backoff{}, func(context.Context) (struct{}, error) {
+	_, err := confirm(t.Context(), retry.Backoff{}, func(context.Context) (struct{}, error) {
 		attempts++
 		return struct{}{}, nil
 	})
 	if !errors.Is(err, retry.ErrInvalidBackoff) || attempts != 0 {
-		t.Fatalf("Confirm = %v after %d attempts", err, attempts)
+		t.Fatalf("confirm = %v after %d attempts", err, attempts)
 	}
 }
 
 func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 	attempts := 0
-	result, err := Confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
+	result, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
 		attempts++
 		if attempts < 3 {
 			return "", context.DeadlineExceeded
@@ -106,7 +119,7 @@ func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	attempts := 0
-	_, err := Confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
 		attempts++
 		cancel()
 		return struct{}{}, context.DeadlineExceeded
@@ -169,7 +182,7 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.T) {
 	t.Parallel()
 
-	policy := commandreplay.UnavailablePolicy()
+	policy := unavailableReplayPolicy(t)
 	guard, err := policy.NewGuard()
 	if err != nil {
 		t.Fatal(err)

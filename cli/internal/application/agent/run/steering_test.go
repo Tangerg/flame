@@ -139,7 +139,7 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 	if err := store.SaveDraft("ses_1", source); err != nil {
 		t.Fatal(err)
 	}
-	policy := commandreplay.UnavailablePolicy()
+	policy := unavailableReplayPolicy(t)
 	pending, err := StageSteer(store, "ses_1", request, source, policy)
 	if err != nil {
 		t.Fatal(err)

@@ -10,7 +10,7 @@ import (
 
 func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
 	t.Parallel()
-	if _, err := NewEntryID(0); err == nil {
+	if err := (EntryID{}).Validate(); err == nil {
 		t.Fatal("zero queue entry identity was constructed")
 	}
 	if err := (EntryID{}).Validate(); err == nil {
@@ -175,10 +175,7 @@ func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 	if err := queue.Restore("session", []agent.StartRun{command}, command.CommandID); err == nil {
 		t.Fatal("durable restore accepted invalid run options")
 	}
-	entryID, idErr := NewEntryID(99)
-	if idErr != nil {
-		t.Fatal(idErr)
-	}
+	entryID := EntryID{value: 99}
 	state := State{Entries: []Entry{{
 		ID: entryID, CommandID: command.CommandID, SessionID: command.SessionID,
 		Message: command.Message, Options: command.Options,

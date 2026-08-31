@@ -25,11 +25,16 @@ import (
 
 func testQueueEntryID(t *testing.T, value uint64) promptqueue.EntryID {
 	t.Helper()
-	id, err := promptqueue.NewEntryID(value)
-	if err != nil {
-		t.Fatal(err)
+	queue := promptqueue.New()
+	var entry promptqueue.Entry
+	for index := uint64(0); index < value; index++ {
+		var err error
+		entry, err = queue.Enqueue("ses_test", agent.Message{Text: "test entry"})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
-	return id
+	return entry.ID
 }
 
 type finishObservingRuntime struct {

@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"slices"
 	"testing"
 	"time"
 
@@ -9,22 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
-
-func TestCLIProfileFeatureVocabularyMatchesRuntimeProtocol(t *testing.T) {
-	t.Parallel()
-
-	want := protocol.FeatureKeys()
-	gotNames := KnownFeatures()
-	got := make([]string, len(gotNames))
-	for index, name := range gotNames {
-		got[index] = string(name)
-	}
-	slices.Sort(got)
-	slices.Sort(want)
-	if !slices.Equal(got, want) {
-		t.Fatalf("CLI features = %v, runtime features = %v", got, want)
-	}
-}
 
 func TestRuntimeProfileProjectionPreservesCompleteDiscovery(t *testing.T) {
 	t.Parallel()
