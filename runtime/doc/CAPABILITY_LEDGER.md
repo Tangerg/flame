@@ -1,6 +1,6 @@
 # Flame Runtime 能力台账
 
-> 状态：当前能力快照；P304 进行中。
+> 状态：当前能力快照；P305 进行中。
 >
 > 基线日期：2026-08-30。
 
@@ -617,6 +617,8 @@ P302把Runtime `adapter/modelcatalog`与`adapter/modelclient`收敛为`adapter/m
 P303把Runtime测试构造与内存fake从五个entity-shaped单文件fixture package收回唯一`internal/testsupport`。Conversation store、deterministic identity、Item/Run/Session builders继续按职责分文件，并以`ConversationStore`、`MustRestoreItem`、`MustRestoreRun`、`MustRestoreSession`等语义全名消除同package冲突；生产Domain构造路径、测试行为与可见合同不变。五个旧子package、import和空目录均物理删除，不保留测试兼容别名。
 
 P304把Runtime `application/sessionadmission`与`application/ownershiprecovery`收敛为`application/ownership`。Session/working-tree admission、recovery election与ordered Run→Goal reconciliation现在共用唯一`Lease` owner；`AdmissionBackend`与`RecoveryBackend`只表达不同acquisition语义，同一个`adapter/runtimeownership.Manager`不再实现两套重复Lease类型。旧package、import、通用`New`构造器和空目录均删除，不保留兼容路径。
+
+P305把Runtime `adapter/providerregistry`收回`adapter/model`。stored-over-environment credential precedence、environment-only Provider materialization、identity verification与durable update隔离现在和catalog/probe/chat/embedding共处同一Provider/Model translation context；Bootstrap只组合一个model adapter，环境secret仍只存在immutable process overlay。旧package、import、错误前缀和空目录均物理删除。
 
 SQLite child-start、model/tool invocation与coarse Run recovery state已经按生命周期拆型；任何Run row都先经过唯一state codec再恢复aggregate，SQL参数处才转回durable spelling。数据库CHECK约束和Go值对象共同防止未知或跨生命周期状态进入恢复裁决。
 

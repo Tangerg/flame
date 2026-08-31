@@ -338,6 +338,8 @@ Infra：
 
 `adapter/workspace` 以职责文件共同拥有 admitted workspace 的 canonical path/confinement、filesystem、VCS、checkpoint、authored-resource observation 与 Skill library translation。`Resolver` 把 `infra/pathidentity` 的通用机制投影为 Workspace Application 的路径事实和错误；`SkillLibraries` 只把 user/project scope 映射到 `skillauthoring.Store`。Application 仍通过自己的窄端口消费，不能再按 path 或 Skill proposal operation 建平级 adapter package。
 
+`adapter/model` 以职责文件共同拥有 Provider/Model 外部翻译：stored-over-environment credential overlay、catalog facts/probe/listing、selection admission、pricing 与 chat/embedding client construction。环境凭据只形成 immutable process overlay，永不进入 inner durable registry；不得按 registry/catalog/client 阶段重新拆平级 adapter package。
+
 ### 6.5 Protocol 与 Delivery
 
 公共 `protocol` 只包含 binding-neutral Runtime 合同：DTO、枚举、请求/响应、事件、客户端可见 problem、版本与严格验证。它不包含服务端 method-group interface、context key、Router、numeric JSON-RPC code、HTTP status、reflection registry 或生成器实现细节。

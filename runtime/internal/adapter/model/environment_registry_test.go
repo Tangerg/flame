@@ -1,4 +1,4 @@
-package providerregistry
+package model
 
 import (
 	"context"
@@ -215,7 +215,7 @@ func TestRegistryRejectsMismatchedStoredIdentity(t *testing.T) {
 	}}
 	registry := registryWithEnvironment(t, inner, nil)
 	_, _, err := registry.Get(t.Context(), "openai")
-	if !errors.Is(err, ErrIdentityMismatch) {
+	if !errors.Is(err, ErrRegistryIdentityMismatch) {
 		t.Fatalf("identity mismatch error = %v", err)
 	}
 }

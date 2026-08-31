@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/providerregistry"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/application/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/mcpserver"
@@ -49,7 +49,7 @@ func ProviderRegistry(registry models.ProviderRegistry, settings config.Settings
 	if apiKey, present := settings.APIKey.EnvironmentValue(); present {
 		environmentKeys[settings.Provider] = apiKey
 	}
-	return providerregistry.WithEnvironmentKeys(registry, environmentKeys)
+	return modeladapter.WithEnvironmentKeys(registry, environmentKeys)
 }
 
 // MCPServers projects config-file MCP entries into the runtime registry model.

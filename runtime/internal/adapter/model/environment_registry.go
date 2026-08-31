@@ -1,6 +1,4 @@
-// Package providerregistry decorates the model-provider registry with
-// process-environment credential fallback and accurate credential provenance.
-package providerregistry
+package model
 
 import (
 	"cmp"
@@ -13,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/provider"
 )
 
-var ErrIdentityMismatch = errors.New("provider registry: stored identity does not match lookup identity")
+var ErrRegistryIdentityMismatch = errors.New("model: stored provider identity does not match lookup identity")
 
 // environmentRegistry is the sole owner of the stored-over-environment
 // precedence rule. Environment credentials are an immutable startup snapshot
@@ -30,11 +28,11 @@ func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]strin
 	snapshot := make(map[string]provider.APIKey, len(envKeys))
 	for id, rawKey := range envKeys {
 		if _, err := provider.New(id); err != nil {
-			return nil, fmt.Errorf("provider registry: environment provider id %q: %w", id, err)
+			return nil, fmt.Errorf("model: environment provider id %q: %w", id, err)
 		}
 		key, err := provider.NewAPIKey(rawKey)
 		if err != nil {
-			return nil, fmt.Errorf("provider registry: environment credential for %q: %w", id, err)
+			return nil, fmt.Errorf("model: environment credential for %q: %w", id, err)
 		}
 		snapshot[id] = key
 	}
@@ -43,7 +41,7 @@ func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]strin
 
 func (e *environmentRegistry) resolve(entry provider.Provider, found bool, id string) (provider.Provider, bool, error) {
 	if found && entry.ID() != id {
-		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", ErrIdentityMismatch, entry.ID(), id)
+		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", ErrRegistryIdentityMismatch, entry.ID(), id)
 	}
 	if !found {
 		key, hasEnvironmentCredential := e.envKeys[id]
