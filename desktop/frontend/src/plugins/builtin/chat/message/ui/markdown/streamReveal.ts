@@ -157,6 +157,13 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
   return reduce ? rawText : rawText.slice(0, displayLen);
 }
 
+/**
+ * Trailing-throttles a streaming value, and at `minMs <= 0` returns the SAME value it was
+ * given rather than a committed copy. That identity is load-bearing: `MarkdownMessage`
+ * compares `source === text` to decide what material is visible, and a committed copy is
+ * never `===`. It is also why the throttle here is not `useThrottledValue` from react-pacer,
+ * which routes every value through state.
+ */
 export function useCommitThrottle(value: string, minMs: number): string {
   const [committed, setCommitted] = useState(value);
   const lastCommitRef = useRef(0);
