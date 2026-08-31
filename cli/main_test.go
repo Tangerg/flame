@@ -22,10 +22,10 @@ import (
 
 	"github.com/Tangerg/oolong/ptytest"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
 
@@ -817,7 +817,7 @@ func TestFlameProcess(t *testing.T) {
 	}
 	stateDirectory := filepath.Join(flameHome, "cli")
 	dependencies := cmd.Dependencies{
-		OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 			announce()
 			return runtime, nil, nil
 		},

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -132,10 +132,10 @@ func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	t.Parallel()
 
-	profile := runtimeprofile.Profile{Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{
-		runtimeprofile.FeatureGit:           {},
-		runtimeprofile.FeatureRelocate:      {},
-		runtimeprofile.FeatureSessionExport: {},
+	profile := runtimebinding.Profile{Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
+		runtimebinding.FeatureGit:           {},
+		runtimebinding.FeatureRelocate:      {},
+		runtimebinding.FeatureSessionExport: {},
 	}}
 	application := &app{
 		runtimeProfile: &profile,
@@ -164,15 +164,15 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.T) {
 	t.Parallel()
 
-	features := map[runtimeprofile.FeatureName]runtimeprofile.Feature{
-		runtimeprofile.FeatureGoals:       {},
-		runtimeprofile.FeatureSkills:      {},
-		runtimeprofile.FeatureMCP:         {},
-		runtimeprofile.FeatureSchedules:   {},
-		runtimeprofile.FeatureAgentMemory: {},
-		runtimeprofile.FeatureKnowledge:   {},
+	features := map[runtimebinding.FeatureName]runtimebinding.Feature{
+		runtimebinding.FeatureGoals:       {},
+		runtimebinding.FeatureSkills:      {},
+		runtimebinding.FeatureMCP:         {},
+		runtimebinding.FeatureSchedules:   {},
+		runtimebinding.FeatureAgentMemory: {},
+		runtimebinding.FeatureKnowledge:   {},
 	}
-	profile := runtimeprofile.Profile{Features: features}
+	profile := runtimebinding.Profile{Features: features}
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
@@ -182,13 +182,13 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		agentMemory:    newAgentMemoryServiceStub(),
 		knowledge:      newKnowledgeServiceStub(),
 	}
-	checks := map[runtimeprofile.FeatureName]func(*app) CommandAvailability{
-		runtimeprofile.FeatureGoals:       availableWithGoals,
-		runtimeprofile.FeatureSkills:      availableWithSkills,
-		runtimeprofile.FeatureMCP:         availableWithMCP,
-		runtimeprofile.FeatureSchedules:   availableWithSchedules,
-		runtimeprofile.FeatureAgentMemory: availableWithAgentMemory,
-		runtimeprofile.FeatureKnowledge:   availableWithKnowledge,
+	checks := map[runtimebinding.FeatureName]func(*app) CommandAvailability{
+		runtimebinding.FeatureGoals:       availableWithGoals,
+		runtimebinding.FeatureSkills:      availableWithSkills,
+		runtimebinding.FeatureMCP:         availableWithMCP,
+		runtimebinding.FeatureSchedules:   availableWithSchedules,
+		runtimebinding.FeatureAgentMemory: availableWithAgentMemory,
+		runtimebinding.FeatureKnowledge:   availableWithKnowledge,
 	}
 	for feature, check := range checks {
 		if availability := check(application); availability.Enabled || !strings.Contains(availability.Reason, "was not negotiated") {
@@ -213,8 +213,8 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *testing.T) {
 	t.Parallel()
 
-	application := &app{runtimeProfile: &runtimeprofile.Profile{Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{
-		runtimeprofile.FeatureMultimodal: {Enabled: false},
+	application := &app{runtimeProfile: &runtimebinding.Profile{Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
+		runtimebinding.FeatureMultimodal: {Enabled: false},
 	}}}
 	text := agent.Message{Attachments: []agent.Attachment{{Kind: agent.AttachmentText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {

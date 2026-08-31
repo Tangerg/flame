@@ -1,6 +1,6 @@
 // Package terminal is the interactive adapter for the Flame runtime. It owns
 // oolong state and translates user intent into the runtime port; neither the
-// domain model nor a runtime adapter imports this package.
+// domain model nor the Runtime binding adapter imports this package.
 package terminal
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/application/mcp"
@@ -36,7 +36,7 @@ import (
 // Config describes one terminal application instance.
 type Config struct {
 	Runtime          agent.Runtime
-	RuntimeProfile   *runtimeprofile.Profile
+	RuntimeProfile   *runtimebinding.Profile
 	Workspaces       workspace.Service
 	Changes          changefeed.Source
 	Transfers        session.TransferService
@@ -127,7 +127,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 
 type preparedSession struct {
 	opened           agent.SessionSnapshot
-	runtimeProfile   *runtimeprofile.Profile
+	runtimeProfile   *runtimebinding.Profile
 	attachments      *attachment.Resolver
 	keyBindings      keyBindings
 	settings         settings.Config
@@ -168,8 +168,8 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 	return workbench.OpenDirectory(directory, workbench.Config{})
 }
 
-func validatedSessionConfig(cfg Config) (*runtimeprofile.Profile, settings.Config, keyBindings, error) {
-	var profile *runtimeprofile.Profile
+func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
+	var profile *runtimebinding.Profile
 	if cfg.RuntimeProfile != nil {
 		cloned := cfg.RuntimeProfile.Clone()
 		if err := cloned.Validate(); err != nil {
@@ -195,7 +195,7 @@ func recoverSessionCommands(
 	ctx context.Context,
 	runtime agent.Runtime,
 	authoring *workbench.Store,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 ) error {
 	if err := session.RecoverDeletions(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
@@ -218,7 +218,7 @@ func recoverSessionCommands(
 func openPreparedSession(
 	ctx context.Context,
 	cfg Config,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 	configured settings.Config,
 	reconnectPolicy retry.ReconnectPolicy,
 	bindings keyBindings,
@@ -265,15 +265,15 @@ func openPreparedSession(
 	}, nil
 }
 
-func commandReplayPolicy(profile *runtimeprofile.Profile) commandreplay.Policy {
-	policy, err := runtimeprofile.CommandReplayPolicy(profile)
+func commandReplayPolicy(profile *runtimebinding.Profile) commandreplay.Policy {
+	policy, err := runtimebinding.CommandReplayPolicy(profile)
 	if err != nil {
 		return commandreplay.Policy{}
 	}
 	return policy
 }
 
-func commandReplayGuard(profile *runtimeprofile.Profile) commandreplay.Guard {
+func commandReplayGuard(profile *runtimebinding.Profile) commandreplay.Guard {
 	guard, err := commandReplayPolicy(profile).NewGuard()
 	if err != nil {
 		return commandreplay.Guard{}
@@ -281,16 +281,16 @@ func commandReplayGuard(profile *runtimeprofile.Profile) commandreplay.Guard {
 	return guard
 }
 
-func commandReplaySafe(guard commandreplay.Guard, profile *runtimeprofile.Profile) bool {
+func commandReplaySafe(guard commandreplay.Guard, profile *runtimebinding.Profile) bool {
 	return commandReplaySafeAt(guard, profile, time.Now().UTC())
 }
 
 func commandReplaySafeAt(
 	guard commandreplay.Guard,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 	now time.Time,
 ) bool {
-	policy, err := runtimeprofile.CommandReplayPolicyWithClock(profile, func() time.Time { return now })
+	policy, err := runtimebinding.CommandReplayPolicyWithClock(profile, func() time.Time { return now })
 	if err != nil {
 		return false
 	}
@@ -299,14 +299,14 @@ func commandReplaySafeAt(
 
 func commandReplayStoreMatches(
 	guard commandreplay.Guard,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 ) bool {
 	return commandReplayPolicy(profile).SameStore(guard)
 }
 
 func commandReplayAdmission(
 	guard commandreplay.Guard,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 ) mutation.Admission {
 	return mutation.FreshDynamicReplayAdmission(func() commandreplay.Policy {
 		return commandReplayPolicy(profile)

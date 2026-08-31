@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -155,7 +155,7 @@ func (a *app) ShowRuntimeStatus() {
 	)
 }
 
-func runtimeStatusText(profile *runtimeprofile.Profile, options agent.RunOptions, mode agent.ApprovalMode) string {
+func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions, mode agent.ApprovalMode) string {
 	lines := []string{
 		"model: " + modelLabel(options),
 		"approval mode: " + string(mode) + limitsLabel(options.Limits),
@@ -184,7 +184,7 @@ func runtimeStatusText(profile *runtimeprofile.Profile, options agent.RunOptions
 	return strings.Join(slices.Concat(profileLines, lines), "\n")
 }
 
-func runConcurrencyLabel(limit runtimeprofile.RunConcurrencyLimit) string {
+func runConcurrencyLabel(limit runtimebinding.RunConcurrencyLimit) string {
 	maximum, bounded := limit.Maximum()
 	if !bounded {
 		return "unbounded"

@@ -175,7 +175,7 @@ func presentLimits(limits rundomain.Limits) *protocol.RunLimits {
 	return wire
 }
 
-func presentProgress(progress runs.RunProgress) protocol.RunProgress {
+func presentProgress(progress runs.Progress) protocol.RunProgress {
 	return protocol.RunProgress{
 		Step:  progress.Step,
 		Usage: presentUsage(progress.Usage), ContextTokens: progress.ContextTokens,

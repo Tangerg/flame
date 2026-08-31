@@ -22,7 +22,7 @@ type Event struct {
 	// assigns it together with Sequence, so the two cannot disagree.
 	Cursor    string
 	Timestamp time.Time
-	Payload   RunEvent
+	Payload   ProjectionEvent
 }
 
 // Replayable supplies the journal's retention and lossless queue policy.

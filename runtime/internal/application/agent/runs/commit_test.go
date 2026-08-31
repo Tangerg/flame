@@ -137,7 +137,7 @@ func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 		t.Fatal("EventCommit accepted a model invocation from another Segment")
 	}
 	commit.ModelInvocations = nil
-	commit.Progress = &RunProgressCommit{
+	commit.Progress = &ProgressCommit{
 		SegmentID: "segment_2", Metrics: run.Metrics{}, UpdatedAt: startedAt,
 	}
 	if err := commit.Validate(); err == nil {

@@ -12,7 +12,7 @@ import (
 )
 
 type interruptProjection struct {
-	events        []RunEvent
+	events        []ProjectionEvent
 	items         []transcript.Item
 	approvalItems map[int]transcript.Item
 }
@@ -218,7 +218,7 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 	}, nil
 }
 
-func completedEventItems(items []transcript.Item, events []RunEvent) []transcript.Item {
+func completedEventItems(items []transcript.Item, events []ProjectionEvent) []transcript.Item {
 	for _, event := range events {
 		if completed, ok := event.(ItemCompleted); ok {
 			items = append(items, completed.Item)
@@ -560,12 +560,12 @@ func cloneOpenTool(current *openTool) *openTool {
 	return &tool
 }
 
-func (r *reducer) drainTools() ([]RunEvent, error) {
+func (r *reducer) drainTools() ([]ProjectionEvent, error) {
 	tools := r.tools.drain()
 	if len(tools) == 0 {
 		return nil, nil
 	}
-	var out []RunEvent
+	var out []ProjectionEvent
 	for _, ref := range tools {
 		if ref.end != nil {
 			completed, err := r.completeTool(ref, *ref.end)

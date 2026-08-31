@@ -30,8 +30,8 @@ type UsageBucket struct {
 	Runs  int
 }
 
-// SessionUsageReport is one session's cumulative metering and per-model split.
-type SessionUsageReport struct {
+// UsageReport is one session's cumulative metering and per-model split.
+type UsageReport struct {
 	Total   accounting.Totals
 	ByModel map[string]accounting.Totals
 }
@@ -73,17 +73,17 @@ func NewUsageReporter(deps UsageDependencies) *UsageReporter {
 }
 
 // Session returns one session's cumulative metering and per-model split.
-func (r *UsageReporter) Session(ctx context.Context, sessionID string) (SessionUsageReport, error) {
+func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {
 	runs, err := r.runs.ListRuns(ctx, sessionID)
 	if err != nil {
-		return SessionUsageReport{}, err
+		return UsageReport{}, err
 	}
 	total := usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
 	for _, run := range runs {
 		foldRun(run, time.Time{}, &total, nil, byModel, nil, false)
 	}
-	report := SessionUsageReport{Total: total.usage()}
+	report := UsageReport{Total: total.usage()}
 	if len(byModel) > 0 {
 		report.ByModel = make(map[string]accounting.Totals, len(byModel))
 		for name, bucket := range byModel {

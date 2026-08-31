@@ -40,7 +40,7 @@ func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 		t.Fatalf("agent.GoalUsage fields = %v, want private accounting state", fields)
 	}
 
-	adapterPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "goals.go")
+	adapterPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "goals.go")
 	contents, err := os.ReadFile(adapterPath)
 	if err != nil {
 		t.Fatal(err)
@@ -112,9 +112,9 @@ func TestWorkspaceRequestModelsOwnOptionalPositiveIntent(t *testing.T) {
 	}
 }
 
-func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T) {
+func TestRuntimeBindingCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	paginationPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "pagination.go")
+	paginationPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "pagination.go")
 	contents, err := os.ReadFile(paginationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *tes
 		{path: "schedules.go", policy: "maximumSchedulePageRequests"},
 		{path: "workspaces.go", policy: "maximumWorkspaceFilePageRequests"},
 	} {
-		path := filepath.Join(root, "internal", "adapter", "runtimeadapter", caller.path)
+		path := filepath.Join(root, "internal", "adapter", "runtimebinding", caller.path)
 		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -157,7 +157,7 @@ func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *tes
 }
 
 func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
-	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "adapter", "runtimeadapter", "connection.go"))
+	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "adapter", "runtimebinding", "connection.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
 
 func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "adapter", "runtimeadapter", "sessions.go")
+	path := filepath.Join(root, "internal", "adapter", "runtimebinding", "sessions.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -215,41 +215,41 @@ func TestUsageSummaryOwnsAllTimeVsRecentPeriod(t *testing.T) {
 	}
 }
 
-func TestRuntimeProfileOwnsRunConcurrencySemantics(t *testing.T) {
+func TestRuntimeBindingProfileOwnsRunConcurrencySemantics(t *testing.T) {
 	root := moduleRoot(t)
-	profilePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "profile.go")
+	profilePath := filepath.Join(root, "internal", "adapter", "runtimebinding", "negotiated_profile.go")
 	limits := cliStructFieldTypes(t, profilePath, "Limits")
 	if got := limits["RunConcurrency"]; got != "RunConcurrencyLimit" {
-		t.Fatalf("runtimeprofile.Limits.RunConcurrency type = %q, want RunConcurrencyLimit", got)
+		t.Fatalf("runtimebinding.Limits.RunConcurrency type = %q, want RunConcurrencyLimit", got)
 	}
 	if got := limits["CommandReplay"]; got != "commandreplay.Capability" {
-		t.Fatalf("runtimeprofile.Limits.CommandReplay type = %q, want commandreplay.Capability", got)
+		t.Fatalf("runtimebinding.Limits.CommandReplay type = %q, want commandreplay.Capability", got)
 	}
 	if _, exists := limits["MaxConcurrentRuns"]; exists {
-		t.Fatal("runtimeprofile.Limits restored primitive MaxConcurrentRuns")
+		t.Fatal("runtimebinding.Limits restored primitive MaxConcurrentRuns")
 	}
 	for _, retired := range []string{"IdempotencyNamespace", "IdempotencyRetentionSeconds"} {
 		if _, exists := limits[retired]; exists {
-			t.Fatalf("runtimeprofile.Limits restored primitive %s", retired)
+			t.Fatalf("runtimebinding.Limits restored primitive %s", retired)
 		}
 	}
-	valuePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "run_concurrency.go")
+	valuePath := filepath.Join(root, "internal", "adapter", "runtimebinding", "run_concurrency.go")
 	value := cliStructFieldTypes(t, valuePath, "RunConcurrencyLimit")
 	if value["kind"] != "RunConcurrencyLimitKind" || value["maximum"] != "int" {
-		t.Fatalf("runtimeprofile.RunConcurrencyLimit fields = %v, want private kind/maximum", value)
+		t.Fatalf("runtimebinding.RunConcurrencyLimit fields = %v, want private kind/maximum", value)
 	}
 }
 
-func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
+func TestRuntimeBindingOwnsCommandReplayPolicyProjection(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "adapter", "runtimeprofile", "command_replay.go")
+	path := filepath.Join(root, "internal", "adapter", "runtimebinding", "command_replay.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(contents), "func CommandReplayPolicy(") ||
 		!strings.Contains(string(contents), "func CommandReplayPolicyWithClock(") {
-		t.Fatal("runtimeprofile does not own optional profile to replay policy projection")
+		t.Fatal("runtime binding does not own optional profile to replay policy projection")
 	}
 	for _, consumer := range []string{
 		filepath.Join(root, "internal", "delivery", "terminal", "run.go"),
@@ -308,7 +308,7 @@ func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 
 func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
 	root := moduleRoot(t)
-	profilePath := filepath.Join(root, "internal", "adapter", "runtimeprofile", "profile.go")
+	profilePath := filepath.Join(root, "internal", "adapter", "runtimebinding", "negotiated_profile.go")
 	contents, err := os.ReadFile(profilePath)
 	if err != nil {
 		t.Fatal(err)
@@ -316,7 +316,7 @@ func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.
 	if strings.Contains(string(contents), "func (p Profile) Available() bool") {
 		t.Fatal("runtime profile restored Server.Name-based presence inference")
 	}
-	runtimePath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "connection.go")
+	runtimePath := filepath.Join(root, "internal", "adapter", "runtimebinding", "connection.go")
 	contents, err = os.ReadFile(runtimePath)
 	if err != nil {
 		t.Fatal(err)
@@ -831,7 +831,7 @@ func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 		want string
 	}{
 		{path: filepath.Join(root, "internal", "application", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
-		{path: filepath.Join(root, "internal", "adapter", "runtimeadapter", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
+		{path: filepath.Join(root, "internal", "adapter", "runtimebinding", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
 	} {
 		contents, err := os.ReadFile(consumer.path)
 		if err != nil {
@@ -867,7 +867,7 @@ func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 	if strings.Contains(text, "return r == (RunLineage{})") {
 		t.Fatal("agent.RunLineage restored zero-value root inference")
 	}
-	projectionPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "projection.go")
+	projectionPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "projection.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
@@ -900,7 +900,7 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 			t.Errorf("modelconfig.Role lacks constructor %q", constructor)
 		}
 	}
-	projectionPath := filepath.Join(root, "internal", "adapter", "runtimeadapter", "modelconfig.go")
+	projectionPath := filepath.Join(root, "internal", "adapter", "runtimebinding", "modelconfig.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1142,7 +1142,7 @@ var layers = []struct {
 	{"internal/testsupport/runtimefixture/", "runtimefixture"},
 	{"internal/exactint/", "exactint"},
 	{"internal/domain/identity/", "identity"},
-	{"internal/adapter/runtimeadapter/", "runtimeadapter"},
+	{"internal/adapter/runtimebinding/", "runtimebinding"},
 	{"internal/domain/failure/", "failure"},
 	{"internal/application/changefeed/", "changefeed"},
 	{"internal/domain/workspace/", "workspace"},
@@ -1157,7 +1157,6 @@ var layers = []struct {
 	{"internal/application/retry/", "retry"},
 	{"internal/application/run/", "run"},
 	{"internal/domain/commandreplay/", "commandreplay"},
-	{"internal/adapter/runtimeprofile/", "runtimeprofile"},
 	{"internal/application/session/", "session"},
 	{"internal/adapter/sessionartifact/", "sessionartifact"},
 	{"internal/application/workbench/", "workbench"},
@@ -1177,7 +1176,6 @@ var allowed = map[string][]string{
 	"exactint":        nil,
 	"identity":        nil,
 	"commandreplay":   nil,
-	"runtimeprofile":  {"commandreplay"},
 	"agent":           {"exactint", "failure", "identity", "workspace"},
 	"changefeed":      nil,
 	"workspace":       nil,
@@ -1197,14 +1195,14 @@ var allowed = map[string][]string{
 	// Outbound adapters share domain contracts, not one another.
 	"attachment":     {"agent"},
 	"runtimefixture": {"agent", "exactint", "failure", "identity", "workspace"},
-	"runtimeadapter": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "runtimeprofile", "schedule", "session", "workspace"},
+	"runtimebinding": {"agent", "changefeed", "commandreplay", "failure", "identity", "mcp", "modelconfig", "schedule", "session", "workspace"},
 	"render":         {"agent", "failure", "identity"},
 
 	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
 	// boundary around terminal contributions; main is the only composition root.
-	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimeprofile", "schedule", "session", "sessionartifact", "settings", "workbench", "workspace"},
+	"terminal": {"agent", "attachment", "changefeed", "commandreplay", "extensions", "failure", "identity", "mcp", "modelconfig", "mutation", "promptqueue", "retry", "run", "runtimebinding", "schedule", "session", "sessionartifact", "settings", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
-	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimeprofile", "session", "settings", "workbench"},
+	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "render", "run", "runtimebinding", "session", "settings", "workbench"},
 	"arch":     nil,
 }
 
@@ -1212,7 +1210,7 @@ var adapterDependencies = []struct {
 	path          string
 	allowedLayers []string
 }{
-	{path: runtimePath, allowedLayers: []string{"runtimeadapter"}},
+	{path: runtimePath, allowedLayers: []string{"runtimebinding"}},
 	{path: cobraPath, allowedLayers: []string{"cmd"}},
 	{path: viperPath, allowedLayers: []string{"cmd"}},
 }
@@ -1262,6 +1260,26 @@ func TestEveryInternalPackageBelongsToALayer(t *testing.T) {
 	}
 }
 
+func TestPackagePathsDoNotRepeatTheirOwners(t *testing.T) {
+	root := moduleRoot(t)
+	packages := make(map[string]struct{})
+	walk(t, root, func(dir, _ string) {
+		if strings.HasPrefix(dir, "internal/") {
+			packages[dir] = struct{}{}
+		}
+	})
+	for _, dir := range slices.Sorted(maps.Keys(packages)) {
+		parts := strings.Split(strings.TrimPrefix(dir, "internal/"), "/")
+		leaf := parts[len(parts)-1]
+		for _, owner := range parts[:len(parts)-1] {
+			if len(leaf) > len(owner) &&
+				(strings.HasPrefix(leaf, owner) || strings.HasSuffix(leaf, owner)) {
+				t.Errorf("%s repeats enclosing owner %s; let the import path supply that vocabulary", dir, owner)
+			}
+		}
+	}
+}
+
 // TestTheLibraryStaysALibrary is the rule that keeps the interface library extractable.
 //
 // It is in its own module, so a reference from the library back into this program will
@@ -1273,7 +1291,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimeprofile", "schedule", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "run", "session", "sessionartifact", "workbench", "extensions", "render"}
+	terminalFree := []string{"agent", "changefeed", "commandreplay", "exactint", "failure", "identity", "mcp", "modelconfig", "mutation", "retry", "runtimebinding", "schedule", "workspace", "settings", "runtimefixture", "attachment", "promptqueue", "run", "session", "sessionartifact", "workbench", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1343,7 +1361,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 	}{
 		{"internal/domain/agent", "internal/testsupport/runtimefixture", true},
 		{"internal/domain/agent", "internal/delivery/terminal", true},
-		{"internal/domain/agent", "internal/adapter/runtimeadapter", true},
+		{"internal/domain/agent", "internal/adapter/runtimebinding", true},
 		{"internal/application/extensions", "internal/domain/agent", true},
 		{"internal/testsupport/runtimefixture", "internal/delivery/render", true},
 		{"internal/adapter/attachment", "internal/delivery/terminal", true},
@@ -1359,8 +1377,8 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/delivery/sideload", "internal/delivery/cmd", true},
 
 		{"internal/testsupport/runtimefixture", "internal/domain/agent", false},
-		{"internal/adapter/runtimeadapter", "internal/domain/agent", false},
-		{"internal/adapter/runtimeadapter", "internal/delivery/terminal", true},
+		{"internal/adapter/runtimebinding", "internal/domain/agent", false},
+		{"internal/adapter/runtimebinding", "internal/delivery/terminal", true},
 		{"internal/delivery/terminal", "internal/domain/agent", false},
 		{"internal/delivery/terminal", "internal/adapter/sessionartifact", false},
 		{"internal/delivery/terminal", "internal/application/session", false},

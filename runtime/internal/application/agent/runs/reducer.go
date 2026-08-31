@@ -30,7 +30,7 @@ var (
 // arise from the same ExecutionFact decision. The pump commits it before placing
 // Event on the journal.
 type reduction struct {
-	Event  RunEvent
+	Event  ProjectionEvent
 	Commit *EventCommit
 	Nudge  *Nudge
 }
@@ -49,14 +49,14 @@ type reductionBatch struct {
 // factReduction is the complete in-memory consequence of one executor fact
 // before Run events are projected into their durable publication shape.
 type factReduction struct {
-	events               []RunEvent
+	events               []ProjectionEvent
 	items                []transcript.Item
 	parkItems            []transcript.Item
 	conversationMessages []corechat.Message
 	modelInvocations     []ModelInvocationCommit
 	toolInvocations      []ToolInvocationCommit
 	settledToolCallIDs   []string
-	progress             *RunProgressCommit
+	progress             *ProgressCommit
 }
 
 type reducerConfig struct {
@@ -97,7 +97,7 @@ type reducerConfig struct {
 }
 
 // reducer is the per-segment state machine that turns executor events into the
-// canonical RunEvent family and EventCommit facts. It owns open item state,
+// canonical Event family and EventCommit facts. It owns open item state,
 // item identity, resume correlation, terminal synthesis, and error semantics.
 type reducer struct {
 	cfg     reducerConfig
@@ -277,7 +277,7 @@ func (r *reducer) open() (reductionBatch, error) {
 	if err != nil {
 		return reductionBatch{}, err
 	}
-	out := []RunEvent{SegmentStarted{Run: opening}}
+	out := []ProjectionEvent{SegmentStarted{Run: opening}}
 	userMessage, err := r.openUserMessage()
 	if err != nil {
 		return reductionBatch{}, err
@@ -450,7 +450,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 	r.modelCalls[started.CallID] = startedAt
 	r.modelBoundaryClosed = false
 	return factReduction{
-		events: []RunEvent{SegmentProgressed{Progress: RunProgress{Activity: "Calling model"}}},
+		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Calling model"}}},
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: started.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationStarted, StartedAt: startedAt,
@@ -524,7 +524,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 			CallID: completed.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		}},
-		progress: &RunProgressCommit{
+		progress: &ProgressCommit{
 			SegmentID: r.cfg.SegmentID, Metrics: metrics,
 			ContextTokens: r.contextTokens, UpdatedAt: finishedAt,
 		},
@@ -549,7 +549,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	}
 	delete(r.modelCalls, failed.CallID)
 	return factReduction{
-		events: []RunEvent{SegmentProgressed{Progress: RunProgress{Activity: "Model call failed"}}},
+		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}},
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,
@@ -662,7 +662,7 @@ func (r *reducer) attachDurableObservation(
 	conversationMessages []corechat.Message,
 	modelInvocations []ModelInvocationCommit,
 	toolInvocations []ToolInvocationCommit,
-	progress *RunProgressCommit,
+	progress *ProgressCommit,
 ) error {
 	if len(conversationMessages) == 0 && len(modelInvocations) == 0 && len(toolInvocations) == 0 && progress == nil {
 		return nil
@@ -836,12 +836,12 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 // across a human boundary but whose executor attempt never restarted in this
 // Segment. Without this step an activation failure or a cancel-before-activate
 // can terminalize the Run while leaving its preexisting Tool Item running.
-func (r *reducer) abandonUnconsumedResumeTools() ([]RunEvent, error) {
+func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	if r.resume == nil {
 		return nil, nil
 	}
 	remaining := r.resume.remainingDrainedTools()
-	events := make([]RunEvent, 0, len(remaining))
+	events := make([]ProjectionEvent, 0, len(remaining))
 	for _, drained := range remaining {
 		arguments, err := parseToolArguments(drained.Arguments)
 		if err != nil {
@@ -876,7 +876,7 @@ func (r *reducer) abort() {
 	r.errFailure = &run.Failure{Kind: run.FailureInternal}
 }
 
-func (r *reducer) project(events []RunEvent) (reductionBatch, error) {
+func (r *reducer) project(events []ProjectionEvent) (reductionBatch, error) {
 	events = r.fenceFinalPlan(events)
 	reductions := make([]reduction, 0, len(events))
 	for _, event := range events {
@@ -956,7 +956,7 @@ func parkReductionBatch(reductions []reduction, parkBoundary int) (reductionBatc
 // It belongs to the batch rather than to either finish path: a park and a terminal
 // are two reasons for one boundary, and a rule stated in both places is a rule that
 // drifts in one of them.
-func (r *reducer) fenceFinalPlan(events []RunEvent) []RunEvent {
+func (r *reducer) fenceFinalPlan(events []ProjectionEvent) []ProjectionEvent {
 	if r.plan == nil {
 		return events
 	}
@@ -968,12 +968,12 @@ func (r *reducer) fenceFinalPlan(events []RunEvent) []RunEvent {
 		// One fence per segment: a resumed segment fences again only if it changes
 		// the projection again.
 		r.plan = nil
-		return slices.Insert(events, i, RunEvent(fence))
+		return slices.Insert(events, i, ProjectionEvent(fence))
 	}
 	return events
 }
 
-func (r *reducer) projectOne(event RunEvent) (reduction, error) {
+func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	if event == nil {
 		return reduction{}, fmt.Errorf("%w: nil run event", errReducerInvariant)
 	}

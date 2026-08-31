@@ -12,7 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 )
 
 func newRuntimeCommand(provider runtimeProvider) *cobra.Command {
@@ -54,7 +54,7 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 	return command
 }
 
-func writeRuntimeProfile(output io.Writer, profile runtimeprofile.Profile) error {
+func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error {
 	writer := tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
 	rows := [][2]string{
 		{"runtime", profile.Server.Name + " " + profile.Server.Version},
@@ -104,7 +104,7 @@ func writeRuntimeProfile(output io.Writer, profile runtimeprofile.Profile) error
 	return writer.Flush()
 }
 
-func formatRunConcurrency(limit runtimeprofile.RunConcurrencyLimit) string {
+func formatRunConcurrency(limit runtimebinding.RunConcurrencyLimit) string {
 	maximum, bounded := limit.Maximum()
 	if !bounded {
 		return "unbounded"

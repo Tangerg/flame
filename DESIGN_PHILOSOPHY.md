@@ -54,6 +54,8 @@ Create a package when it owns a coherent vocabulary, invariant, lifecycle, trans
 
 Physical hierarchy follows the context map after ownership is proven. Large rings may use one non-package namespace level to group several related packages; the namespace is navigation, not another abstraction. Keep ring-wide mechanisms and context-root aggregates direct, and do not create single-child or facade namespaces for visual symmetry.
 
+Names use that hierarchy instead of restating it. A leaf does not repeat its ring or parent context, and an exported API lets its package qualifier provide the owner: `runs.Progress`, not `runs.RunProgress`. An exact aggregate such as `run.Run` or `session.Session` remains valid when both words are the ubiquitous language and no shorter semantic noun exists.
+
 Use domain names, not layer-role suffixes. `goal`, `session`, `workspace`, and `toolset` describe ownership. `service`, `manager`, `impl`, `common`, and `helpers` hide it.
 
 ## Discover abstractions from consumers

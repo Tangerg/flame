@@ -320,14 +320,14 @@ func TestReplayRetentionDoesNotDependOnAnOuterEncoding(t *testing.T) {
 		}
 	}
 
-	eventPath := filepath.Join(runs, "run_event.go")
+	eventPath := filepath.Join(runs, "projection_event.go")
 	eventFile, err := parser.ParseFile(token.NewFileSet(), eventPath, nil, 0)
 	if err != nil {
-		t.Fatalf("parse RunEvent: %v", err)
+		t.Fatalf("parse ProjectionEvent: %v", err)
 	}
-	methods := interfaceMethods(eventFile, "RunEvent")
+	methods := interfaceMethods(eventFile, "ProjectionEvent")
 	if !slices.Contains(methods, "retainedBytes") {
-		t.Fatal("RunEvent no longer makes retention accounting mandatory for every event variant")
+		t.Fatal("ProjectionEvent no longer makes retention accounting mandatory for every event variant")
 	}
 }
 

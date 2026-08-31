@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/delivery/render"
@@ -91,7 +91,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
+	replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
 	if err != nil {
 		return fmt.Errorf("runtime command replay policy: %w", err)
 	}

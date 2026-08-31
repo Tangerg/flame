@@ -98,7 +98,7 @@ type queryUseCases interface {
 }
 
 type usageUseCases interface {
-	Session(ctx context.Context, sessionID string) (sessions.SessionUsageReport, error)
+	Session(ctx context.Context, sessionID string) (sessions.UsageReport, error)
 	Summary(ctx context.Context, period sessions.UsageSummaryPeriod) (sessions.UsageSummary, error)
 }
 

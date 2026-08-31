@@ -32,7 +32,7 @@ Runtime data never becomes CLI-owned merely because the CLI caches it for render
 main
  ├── cmd ────────────────┐
  ├── terminal ───────────┤
- └── runtimeadapter ─────┤
+ └── runtimebinding ─────┤
                          v
              CLI application and domain
 ```
@@ -41,10 +41,12 @@ The arrows show source dependencies toward CLI policy. Delivery may depend on
 Application, Domain, and explicit adapters; Adapter may depend on Application
 and Domain; Application may depend on Domain. Cobra and Viper remain in
 `delivery/cmd`, Oolong remains in `delivery/terminal`, and the public Runtime
-module remains in `adapter/runtimeadapter`.
+module remains in `adapter/runtimebinding`.
 
-`internal/adapter/runtimeadapter.Connection` owns the public binding lifecycle,
-negotiated profile, command metadata, and protocol translation. It does not own
+`internal/adapter/runtimebinding.Connection` owns the public binding lifecycle,
+negotiated profile, command metadata, and protocol translation. The profile is
+part of that boundary rather than a second package because it has no producer or
+lifecycle outside connection negotiation. The binding does not own
 product state or define a second Runtime model. `main` is the only place that
 fans one Connection out into the narrow interfaces defined by CLI consumers;
 commands receive only `agent.Runtime` plus the immutable profile, and terminal

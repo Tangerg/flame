@@ -114,7 +114,6 @@ export type WireTypeName =
   | "GrepMatch"
   | "GrepRequest"
   | "GrepResult"
-  | "HTTPTransportKind"
   | "HealthStatus"
   | "HookEvent"
   | "HookInfo"
@@ -293,6 +292,7 @@ export type WireTypeName =
   | "TestProviderRequest"
   | "ToolInvocation"
   | "ToolSpec"
+  | "TransportKind"
   | "UpdateGoalRequest"
   | "UpdateKnowledgeRequest"
   | "UpdateMCPServerRequest"
@@ -1079,7 +1079,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     matches: array(ref(() => CHECKS.GrepMatch)),
     total: integer(),
   }, ["matches", "total"]),
-  HTTPTransportKind: enumOf(["http"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"]),
   HookInfo: object({
@@ -2827,7 +2826,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     endpoints: ref(() => CHECKS.RuntimeInfoEndpoints),
     protocolVersion: text(),
     server: ref(() => CHECKS.RuntimeServerInfo),
-    transport: ref(() => CHECKS.HTTPTransportKind),
+    transport: ref(() => CHECKS.TransportKind),
   }, ["endpoints", "protocolVersion", "server", "transport"]),
   RuntimeInfoEndpoints: object({
     info: text(),
@@ -3245,6 +3244,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     parameters: record(anything()),
     safetyClass: ref(() => CHECKS.SafetyClass),
   }, ["name"]),
+  TransportKind: enumOf(["http"]),
   UpdateGoalRequest: object({
     objective: text(),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

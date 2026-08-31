@@ -43,7 +43,7 @@ type Coordinator struct {
 	sessionCreator                     SessionCreator
 	activeRuns                         ActiveRunReader
 	interrupts                         PendingInterruptReader
-	terminations                       RunTerminationCommitter
+	terminations                       TerminationCommitter
 	childStarts                        ChildRunStartCommitter
 	resumeClaims                       ResumeClaimCommitter
 	checkpoints                        WaitingCheckpointReader
@@ -55,7 +55,7 @@ type Coordinator struct {
 	// served has to say WHY — waiting, finished, a child, or a segment that has
 	// been replaced — and only the durable projection knows: the live registry
 	// holds running segments, so every one of those looks identical there.
-	runs RunProjection
+	runs Projection
 	// items resolves the exact parent tool projection a waiting child
 	// cancellation replaces.
 	items ItemProjection
@@ -92,7 +92,7 @@ type Dependencies struct {
 	WaitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
 	Session                            SessionPorts
 	Projection                         ProjectionPorts
-	Runs                               RunProjection
+	Runs                               Projection
 	Items                              ItemProjection
 	Admissions                         *ownership.Gate
 	Isolation                          IsolationProvider // nil disables isolated sessions (their start is refused)

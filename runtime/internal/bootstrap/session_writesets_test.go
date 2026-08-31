@@ -43,13 +43,13 @@ func bootstrapRestoreReplacement(
 	t *testing.T,
 	current session.Session,
 	restored session.Session,
-) sessions.SessionReplacement {
+) sessions.Replacement {
 	t.Helper()
 	next, err := current.ReplaceWithRestore(restored, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("derive restored Session replacement: %v", err)
 	}
-	replacement, err := sessions.NextSessionReplacement(current, next)
+	replacement, err := sessions.NextReplacement(current, next)
 	if err != nil {
 		t.Fatalf("prepare restored Session replacement: %v", err)
 	}

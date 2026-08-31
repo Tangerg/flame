@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -42,7 +42,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 				if !strings.Contains(output, `"runConcurrency":{"type":"bounded","maximum":4}`) {
 					t.Fatalf("runtime profile JSON omitted the explicit concurrency policy: %s", output)
 				}
-				var decoded runtimeprofile.Profile
+				var decoded runtimebinding.Profile
 				if err := json.Unmarshal([]byte(output), &decoded); err != nil {
 					t.Fatal(err)
 				}
@@ -56,7 +56,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
-			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 				return runtimefixture.New(), new(profile.Clone()), nil
 			}})
 			root.SetOut(&output)
@@ -70,9 +70,9 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 	}
 }
 
-func commandRuntimeProfile(t *testing.T) runtimeprofile.Profile {
+func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 	t.Helper()
-	concurrency, err := runtimeprofile.NewBoundedRunConcurrencyLimit(4)
+	concurrency, err := runtimebinding.NewBoundedRunConcurrencyLimit(4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,21 +80,21 @@ func commandRuntimeProfile(t *testing.T) runtimeprofile.Profile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return runtimeprofile.Profile{
-		Protocol:  runtimeprofile.Protocol{Version: "2.0"},
-		Server:    runtimeprofile.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
+	return runtimebinding.Profile{
+		Protocol:  runtimebinding.Protocol{Version: "2.0"},
+		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
 		RunEvents: []string{"segment.started"}, RuntimeTopics: []string{"files.changed"},
 		StreamingMethods: []string{"runs.start"},
-		Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{
+		Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
 			"mcp": {
 				Enabled: true, ClientOptIn: true, ClientRequested: true, RequiredByRunProtocol: true,
 			},
 		},
-		Limits: runtimeprofile.Limits{
+		Limits: runtimebinding.Limits{
 			RunConcurrency: concurrency, CommandReplay: commandReplay,
-			RunReplay:                        runtimeprofile.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
+			RunReplay:                        runtimebinding.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
+			RuntimeSubscription:              runtimebinding.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},
 	}
 }

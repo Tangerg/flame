@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
@@ -77,8 +77,8 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			if update.Workspace != nil && profile != nil &&
-				!profile.Supports(runtimeprofile.FeatureRelocate) {
-				return fmt.Errorf("runtime capability %q was not negotiated", runtimeprofile.FeatureRelocate)
+				!profile.Supports(runtimebinding.FeatureRelocate) {
+				return fmt.Errorf("runtime capability %q was not negotiated", runtimebinding.FeatureRelocate)
 			}
 			updated, err := session.Update(cmd.Context(), runtime, update)
 			if err != nil {
@@ -296,7 +296,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
-			replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
+			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}

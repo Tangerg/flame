@@ -62,6 +62,8 @@ When a ring has become a flat catalog of independently justified packages, group
 
 Do not merge solely because a package has one consumer. A strict codec, confined filesystem capability, protocol adapter, or rich value can have one consumer and still protect a meaningful boundary.
 
+After ownership and hierarchy are correct, read import paths and representative call sites as sentences. Remove a leaf that repeats an enclosing ring or context and remove an exported prefix already supplied by the package qualifier. Do not replace an exact domain aggregate such as `goal.Goal` with a vague synonym merely to satisfy a mechanical naming rule.
+
 After a merge, delete the old import path, forwarding API, mocks, architecture exceptions, and documentation. Do not create a new umbrella package to hide the same concepts.
 
 ## Replace a contract completely

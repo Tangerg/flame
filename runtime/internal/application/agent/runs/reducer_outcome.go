@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func (r *reducer) segmentEnd(e SegmentEnded) ([]RunEvent, error) {
+func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	if e.Reason != run.OutcomeFailed && e.Reason != run.OutcomeTimedOut && e.Reason != run.OutcomeLost && e.Failure != nil {
 		return nil, errors.New("outcome does not allow a failure")
 	}

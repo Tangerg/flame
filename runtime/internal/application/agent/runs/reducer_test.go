@@ -1612,15 +1612,15 @@ func TestReducerRejectsInvalidInterruptProjection(t *testing.T) {
 	waiting := SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{State: run.Waiting})}
 	tests := []struct {
 		name   string
-		events []RunEvent
+		events []ProjectionEvent
 	}{
 		{
 			name:   "multiple interrupt boundaries",
-			events: []RunEvent{waiting, waiting},
+			events: []ProjectionEvent{waiting, waiting},
 		},
 		{
 			name: "additional lifecycle transition",
-			events: []RunEvent{
+			events: []ProjectionEvent{
 				SegmentStarted{Run: testsupport.MustRestoreRun(run.Snapshot{State: run.Running})},
 				waiting,
 			},

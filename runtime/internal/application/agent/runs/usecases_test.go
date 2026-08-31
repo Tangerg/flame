@@ -66,7 +66,7 @@ type completeTestSessionPorts interface {
 	SessionCreator
 	ActiveRunReader
 	PendingInterruptReader
-	RunTerminationCommitter
+	TerminationCommitter
 }
 
 func testSessionPorts(ports completeTestSessionPorts) SessionPorts {

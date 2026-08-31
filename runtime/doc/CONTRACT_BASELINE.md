@@ -203,11 +203,13 @@ P287 breaking 将公共同进程 Go binding 从 `runtime/embedded` 移到模块�
 
 P288 只改变 Runtime internal package graph：9 个 cross-ring identity 微包收敛为受限 `internal/identity` shared kernel，distinct value types、grammar、resource envelope 与 construction invariants 保持同值。领域 identity 仍由各自 Domain owner拥有，不新增 generic ID 或可解释 wire；公共 root/protocol/localruntime surface、contract digest、Protocol、Artifact、SQLite 与 HTTP wire 均不变。
 
-P289 只改变 Runtime internal Adapter package graph：唯一服务 `runsegment.Finalizer` 的 model-backed Session title generator 并入 `adapter/runsegment`，`utilitymodel` 外部 SDK 防腐边界保持独立。标题预算、fallback、first-writer 与 maintenance lifecycle 行为不变；公共 Go surface、contract digest、Protocol、Artifact、SQLite、Desktop 与 CLI 均不变。
+P289 只改变 Runtime internal Adapter package graph：唯一服务 `runsegment.Finalizer` 的 model-backed Session title generator 并入 `adapter/runsegment`，当前 `adapter/model/auxiliary` 外部 SDK 防腐边界保持独立。标题预算、fallback、first-writer 与 maintenance lifecycle 行为不变；公共 Go surface、contract digest、Protocol、Artifact、SQLite、Desktop 与 CLI 均不变。
 
 P290 只改变 CLI internal package graph：三个 identity admission 微包收敛为一个受限 `internal/identity`，并删除无生产类型消费者的 CLI 影子身份表示。CLI 仍对每种外来 Runtime identity 执行 exact、非修复式准入；Runtime root/protocol/localruntime surface、contract digest、Protocol、Artifact、SQLite、HTTP wire 与 Desktop 均不变。
 
 P307 只改变 Runtime/CLI internal package 的物理层级与 import path：CLI 建立 Domain/Application/Adapter/Delivery 四环，Runtime 在既有依赖环内按已证明 context 增加一层无 Go 文件 namespace，并将叶 package 名与目录统一。没有新增 facade 或生产 package；公共 Runtime root/protocol/localruntime surface、contract digest、Protocol、Artifact、SQLite、HTTP wire 与 Desktop 均不变。
+
+P308 breaking 改变 Runtime/CLI internal package graph、import path 与 Go identifier：CLI `runtimeadapter`/`runtimeprofile` 合并为 `adapter/runtimebinding`，Runtime `adapter/model/utilitymodel` 改为 `adapter/model/auxiliary`，并删除 `runs.Run*`、`sessions.Session*`、`http.HTTP*` 中 package qualifier 已提供的重复前缀。生成 Schema/TypeScript 中的 `HTTPTransportKind` 同步改为 `TransportKind`，contract digest 因此刷新；不保留旧类型别名。公共 Runtime root/protocol/localruntime Go surface、Protocol method/field、`transport: "http"` JSON wire、Artifact、SQLite 与 Desktop source 均不变。
 
 P283继续breaking收紧协调身份：Goal incarnation成为独立128-code-point exact富值并贯穿Goal/Run/HITL/checkpoint/SQLite；Schedule补入`sch_`framed 256-code-point公开资源合同，occurrence由Schedule identity与canonical due-millisecond cursor共同拥有，scheduled opening也解析同一occurrence而非只TrimSpace。executor instance/member/wait-request/effect严格区分并共享Agent Framework的256-byte URI-safe port合同；Executable build只接受canonical `sha256:<64 lowercase hex>`；deployment implementation/configuration分别持有最多256个exact printable non-whitespace code point，Framework digest不再读取未验证string；provider ToolCall correlation归Conversation Domain所有并在usage、working context、commit/recovery、普通/delegate Tool与Pending边界接受最多512个exact printable non-whitespace code point；top-level write-set commit统一为`run_commit_`framed、最多256-byte URI-safe技术身份，且富值从Application write-set贯穿adapter port和SQLite marker，不再在每层退化成裸string或保留双轨optional parser。Run replay cursor的process epoch、RunID和SegmentID也已作为独立富值保留在内存 authority 中，版本化JSON是唯一字符串编解码边界；分页的timestamp+Run anchor同样拒绝伪造Run identity。每个Bootstrap进程只发布canonical `runtime_<lowercase UUID>` incarnation；所有产品发射面消费唯一`identity.ProductName=flame`，不再把通用`runtime`当品牌。durable idempotency namespace由独立`identity.IdempotencyNamespace`从SQLite贯穿Bootstrap，operation在业务准入前精确解析，HTTP不再trim身份；公开Go/Schema/TypeScript合同共同声明`^idp_[0-9a-f]{32}$`。process-local MCP OAuth attempt也由Application富值拥有并在lookup前解析，公开request/response共同发布`^mcpauth_[A-Z2-7]{26,64}$`。Agent Memory item同样由独立`ItemID`拥有`^mem_[0-9a-f]{32}$`，Domain、Application、SQLite strict codec与生成Go/Schema/TypeScript校验器共享精确语法；显式用户激活已有proposal时保留原身份且不再预先生成并丢弃随机ID。Protocol日期仍为`2026-08-30`，Artifact v27不变；持久准入CHECK使SQLite前移epoch 93，Go API surface未变，Manifest/OpenRPC/Schema digest按新增约束刷新。
 
@@ -245,7 +247,7 @@ Run session-change notifier以实际`sessionRunObserver` registration集合拥�
 |---|---|
 | `contract/manifest.json` | `10dd28bfc19312bfed0dc39a58bb25ae6fc4b42b8cf82143ffd744982e22b06f` |
 | `contract/openrpc.json` | `f73da812bbe749158344e838692bc1ae2fc2bf108423fdfef16eed5b53b35401` |
-| `contract/schema.json` | `02cb972c0d9db91a523f9acd7fa71e55f8decf8488b3ecf837e25d57c99706f8` |
+| `contract/schema.json` | `f8e15684dd3a2b63e4e1ae6e7c4112d2be1292131d7598945e0bdee29fcd984d` |
 | `contract/go-api.json` | `af15710cf99c5eaf17720c55d931200ec0a1049a48dd97a994588b777c86588f` |
 
 TypeScript generated files 是派生制品，不单独定义语义。它们必须由同一个 contract generator 产生且 diff-free；当前前端/TUI/CLI 是否已经消费最新 shape，由 P10/P12 的 consumer handoff 记录，不通过兼容字段掩盖。

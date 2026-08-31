@@ -203,7 +203,7 @@ Skill Proposal review queue 同样是完整、本地且非分页的读模型，�
 
 Skill 的 progressive-disclosure 与管理面必须消费同一份有限来源事实。每个 project/user source 最多 256 个 valid-named Skill candidate，top-level 枚举最多读取 272 个 raw entries；完整 `SKILL.md` 与 model-facing bundled resource 分别最多 1 MiB，必须在 parse/string/Tool result 前以 stat + cancellation-aware bounded reader 准入。用户托管库的 active + archived 总量、批准事务、完整 `skills.library.list`、idle sweep 与 `.usage.json` 共同服从 256 项容量；usage sidecar 最多 64 KiB/256 records。任一越界整体失败，不把截断集合宣称为 complete list，也不让 Desktop discovery 与 Run 内 `list_skills/load_skill/read_skill_resource` 观察不同语料。
 
-Runtime 的 title、compaction、Agent Memory consolidation 与 Skill mining 都是 request-detached auxiliary model use case，不进入交互 Run 的 Conversation、usage 或 middleware。`adapter/model/utilitymodel` 是这些调用的唯一请求包络：每次调用必须显式声明 aggregate input bytes 与 output tokens，越界在 provider I/O 前失败。Run-maintenance transcript 只有一个 512KiB request / 384KiB transcript / 24KiB-per-message policy，按消息公平保留 head/tail；compaction trigger 另行测量原始 transcript footprint，不能因模型输入有界而低估压缩时机。Memory curation 只对能完整装入预算的 ledger sequence 前缀推进 watermark，未进入 prompt 的事实继续待处理。
+Runtime 的 title、compaction、Agent Memory consolidation 与 Skill mining 都是 request-detached auxiliary model use case，不进入交互 Run 的 Conversation、usage 或 middleware。`adapter/model/auxiliary` 是这些调用的唯一请求包络：每次调用必须显式声明 aggregate input bytes 与 output tokens，越界在 provider I/O 前失败。Run-maintenance transcript 只有一个 512KiB request / 384KiB transcript / 24KiB-per-message policy，按消息公平保留 head/tail；compaction trigger 另行测量原始 transcript footprint，不能因模型输入有界而低估压缩时机。Memory curation 只对能完整装入预算的 ledger sequence 前缀推进 watermark，未进入 prompt 的事实继续待处理。
 
 ### 5.8 Aggregate roots
 
@@ -299,7 +299,7 @@ internal/
   adapter/
     agentexec/{interactioninput}
     integration/{hooks, mcpconnection}
-    model/{utilitymodel}
+    model/{auxiliary}
     run/{maintenance, recovery, segment}
     toolset/{builtin, codeintel, planpresentation}
     workspace/{isolation, promptsource}
@@ -356,7 +356,7 @@ Adapter 实现 Application 消费端口并翻译外部能力。若 Domain 存在
 - `toolset`：组装通用 Tool 能力；
 - `workspace`、`maintenance`、`runtimeownership`、`hooks`：各自准确的应用适配。
 
-`maintenance` 不直接构造无界 provider request，也不为不同 worker 暴露 uncapped render mode；语义化选择哪些 material 进入预算属于各 worker，最终输入/输出配额验证与 `chat.Options.MaxTokens` 投影只属于 `utilitymodel`。
+`maintenance` 不直接构造无界 provider request，也不为不同 worker 暴露 uncapped render mode；语义化选择哪些 material 进入预算属于各 worker，最终输入/输出配额验证与 `chat.Options.MaxTokens` 投影只属于 `auxiliary`。
 
 Adapter 不能只是同名 Infra 类型的透传包装。没有翻译、组合或策略意义的中间层必须合并。
 
@@ -378,7 +378,7 @@ Infra：
 
 `adapter/model` 以职责文件共同拥有 Provider/Model 外部翻译：stored-over-environment credential overlay、catalog facts/probe/listing、selection admission、pricing 与 chat/embedding client construction。环境凭据只形成 immutable process overlay，永不进入 inner durable registry；不得按 registry/catalog/client 阶段重新拆平级 adapter package。
 
-小型 adapter 只在拥有真实边界时保留：`planpresentation` 是 Agent prompt 与 Plan Tool 共用的纯模型投影，`utilitymodel` 是多个 maintenance/Run consumers 共用的有界辅助模型调用机制，`mcpconnection`、`isolation`、`recovery` 与 `scheduleidentity` 分别拥有 live external lifecycle、sandbox、atomic recovery translation 或外部 entropy。单一 Bootstrap 构造点本身既不是合并证据，也不能替代这些边界；若其 owner 或消费者消失，package 必须随之删除。
+小型 adapter 只在拥有真实边界时保留：`planpresentation` 是 Agent prompt 与 Plan Tool 共用的纯模型投影，`auxiliary` 是多个 maintenance/Run consumers 共用的有界辅助模型调用机制，`mcpconnection`、`isolation`、`recovery` 与 `scheduleidentity` 分别拥有 live external lifecycle、sandbox、atomic recovery translation 或外部 entropy。单一 Bootstrap 构造点本身既不是合并证据，也不能替代这些边界；若其 owner 或消费者消失，package 必须随之删除。
 
 ### 6.6 Protocol 与 Delivery
 

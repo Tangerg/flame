@@ -12,7 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
@@ -108,7 +108,7 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 
 func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 	var opened bool
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		opened = true
 		return instantRuntime(), nil, nil
 	}}
@@ -127,11 +127,11 @@ func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimeprofile.FeatureSubagents] = runtimeprofile.Feature{
+	profile.Features[runtimebinding.FeatureSubagents] = runtimebinding.Feature{
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsListCommand(provider)
@@ -319,11 +319,11 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimeprofile.FeatureSubagents] = runtimeprofile.Feature{
+	profile.Features[runtimebinding.FeatureSubagents] = runtimebinding.Feature{
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsShowCommand(provider)

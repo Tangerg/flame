@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/oolong/highlight"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/adapter/sessionartifact"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
@@ -79,7 +79,7 @@ type app struct {
 	authoringContext workspace.AuthoringContextService
 	hooks            workspace.HookService
 	feedback         agent.FeedbackService
-	runtimeProfile   *runtimeprofile.Profile
+	runtimeProfile   *runtimebinding.Profile
 	artifacts        sessionartifact.Store
 	session          agent.Session
 	registry         *extensions.Registry
@@ -201,7 +201,7 @@ type appConfig struct {
 	authoringContext workspace.AuthoringContextService
 	hooks            workspace.HookService
 	feedback         agent.FeedbackService
-	runtimeProfile   *runtimeprofile.Profile
+	runtimeProfile   *runtimebinding.Profile
 	clientVersion    string
 	snapshot         agent.SessionSnapshot
 	registry         *extensions.Registry

@@ -224,7 +224,7 @@ const (
 	ToolTask    ToolKind = "task"
 )
 
-// ToolCall is a tool invocation as the runtime adapter chose to present it.
+// ToolCall is a tool invocation as the Runtime binding chose to present it.
 //
 // Every field is a projection the adapter already computed. Name preserves the
 // provider-facing label for diagnostics; Kind and the structured fields below

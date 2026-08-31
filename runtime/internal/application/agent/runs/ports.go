@@ -225,9 +225,9 @@ type PendingInterruptReader interface {
 	LookupOpenInterrupt(ctx context.Context, runID string) (Pending, bool, error)
 }
 
-// RunTerminationCommitter owns the atomic application write-sets for canceling
+// TerminationCommitter owns the atomic application write-sets for canceling
 // a parked Run or declaring its executor state unrecoverable.
-type RunTerminationCommitter interface {
+type TerminationCommitter interface {
 	ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (run.Run, error)
 	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
 	ApplyClaimedRunLost(ctx context.Context, pending Pending, finishedAt time.Time) error
@@ -240,16 +240,16 @@ type SessionPorts struct {
 	Creator      SessionCreator
 	ActiveRuns   ActiveRunReader
 	Interrupts   PendingInterruptReader
-	Terminations RunTerminationCommitter
+	Terminations TerminationCommitter
 }
 
-// RunProjection is the run use cases' durable Run read. Run answers point
+// Projection is the run use cases' durable Run read. Run answers point
 // identity; Tree resolves any root or child Run to its complete
 // root/descendant aggregate in one read, so a tree-scoped command does not first
 // race a target lookup against a second tree lookup. The projection returns
 // facts, not cancellation policy: application/domain code owns topology
 // validation and subtree meaning.
-type RunProjection interface {
+type Projection interface {
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	Tree(ctx context.Context, runID string) ([]run.Run, error)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/utilitymodel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
 )
 
 const compactionPrompt = `You are compacting the earlier portion of a long coding-agent
@@ -81,7 +81,7 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (compact
 	if c.client != nil {
 		client = c.client(ctx)
 	}
-	text, err := utilitymodel.Complete(ctx, client, utilitymodel.Prompt{
+	text, err := auxiliary.Complete(ctx, client, auxiliary.Prompt{
 		SystemPrompt: compactionPrompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})

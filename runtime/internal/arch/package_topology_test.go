@@ -92,3 +92,45 @@ func TestRingPackagesUseContextHierarchy(t *testing.T) {
 		})
 	}
 }
+
+// TestPackagePathsDoNotRepeatTheirOwners keeps a package leaf from restating
+// an enclosing ring or context, such as adapter/runtimeadapter or
+// model/utilitymodel. The enclosing path already supplies that vocabulary.
+func TestPackagePathsDoNotRepeatTheirOwners(t *testing.T) {
+	root := filepath.Join(moduleRoot(t), "internal")
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() && entry.Name() == "testdata" {
+			return filepath.SkipDir
+		}
+		if !entry.IsDir() || path == root {
+			return nil
+		}
+		hasPackage, err := directoryHasDirectProductionGo(path)
+		if err != nil || !hasPackage {
+			return err
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		parts := strings.Split(filepath.ToSlash(relative), "/")
+		leaf := parts[len(parts)-1]
+		for _, owner := range parts[:len(parts)-1] {
+			if packagePathStutters(leaf, owner) {
+				t.Errorf("%s repeats enclosing owner %s; let the import path supply that vocabulary", relative, owner)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan package paths: %v", err)
+	}
+}
+
+func packagePathStutters(leaf, owner string) bool {
+	return len(leaf) > len(owner) &&
+		(strings.HasPrefix(leaf, owner) || strings.HasSuffix(leaf, owner))
+}

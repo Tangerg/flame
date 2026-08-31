@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/model/utilitymodel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/model/auxiliary"
 )
 
 // titleMaxInputRunes caps the slice of the opening user message fed to the
@@ -26,12 +26,12 @@ const titleMaxRunes = 80
 // cheaper utility model. A nil generator or Resolver uses only the deterministic
 // opening-message fallback.
 type modelTitleGenerator struct {
-	client utilitymodel.Resolver
+	client auxiliary.Resolver
 }
 
 // NewTitleGenerator builds the Run-boundary title generator over a per-call
 // utility-model resolver.
-func NewTitleGenerator(client utilitymodel.Resolver) TitleGenerator {
+func NewTitleGenerator(client auxiliary.Resolver) TitleGenerator {
 	return &modelTitleGenerator{client: client}
 }
 
@@ -63,7 +63,7 @@ func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string)
 	if client == nil {
 		return fallback, nil
 	}
-	text, err := utilitymodel.Complete(ctx, client, utilitymodel.Prompt{
+	text, err := auxiliary.Complete(ctx, client, auxiliary.Prompt{
 		SystemPrompt: titlePrompt, UserPrompt: msg,
 		MaxInputBytes: titleModelInputBytes, MaxOutputTokens: titleModelOutputTokens,
 	})

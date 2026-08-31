@@ -232,7 +232,7 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 	ints := &fakeInterrupts{pending: []runs.Pending{{RootRunID: "run_1"}}}
 	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
 
-	page, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
+	page, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
 	if err != nil || len(page.Items) != 1 || len(page.Runs) != 1 || tx.session != "ses_1" {
 		t.Fatalf("ListItemPage items=%d runs=%d session=%q err=%v", len(page.Items), len(page.Runs), tx.session, err)
 	}
@@ -255,7 +255,7 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 	tx := &fakeTranscript{items: sequencedItems(5)}
 	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
-	first, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
+	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 		t.Fatalf("first page = %+v, want two items and a cursor", first)
 	}
 
-	second, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, first.NextCursor, explicitPageLimit(t, 2))
+	second, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, first.NextCursor, explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 		t.Fatalf("second page = %+v, want it_3 onward", second)
 	}
 
-	last, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, second.NextCursor, explicitPageLimit(t, 2))
+	last, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, second.NextCursor, explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("last page: %v", err)
 	}
@@ -299,24 +299,24 @@ func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 		Sessions:   &fakeSessions{},
 	})
 
-	other, err := c.ListItemPage(ctx, SessionItems("ses_other"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
+	other, err := c.ListItemPage(ctx, Items("ses_other"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("other session page: %v", err)
 	}
-	if _, listItemPageErr := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, other.NextCursor, explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
+	if _, listItemPageErr := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, other.NextCursor, explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
 		t.Fatalf("cross-session cursor err = %v, want ErrInvalidCursor", listItemPageErr)
 	}
-	if _, listItemPageErr := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, "not-a-cursor", explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
+	if _, listItemPageErr := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "not-a-cursor", explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
 		t.Fatalf("damaged cursor err = %v, want ErrInvalidCursor", listItemPageErr)
 	}
 
 	// Direction is part of the query, not a display preference applied afterwards: an
 	// anchor from a forward page names a position a backward page never reaches.
-	forward, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
+	forward, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("forward page: %v", err)
 	}
-	if _, listItemPageErr := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.NewestFirst, forward.NextCursor, explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
+	if _, listItemPageErr := c.ListItemPage(ctx, Items("ses_1"), transcript.NewestFirst, forward.NextCursor, explicitPageLimit(t, 2)); !errors.Is(listItemPageErr, pagination.ErrInvalidCursor) {
 		t.Fatalf("reversed-direction cursor err = %v, want ErrInvalidCursor", listItemPageErr)
 	}
 
@@ -326,7 +326,7 @@ func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run page: %v", err)
 	}
-	if _, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, runScoped.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
+	if _, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, runScoped.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("run cursor on the session page err = %v, want ErrInvalidCursor", err)
 	}
 }
@@ -339,7 +339,7 @@ func TestListItemPageWalksBackwardFromTheTail(t *testing.T) {
 	tx := &fakeTranscript{items: sequencedItems(5)}
 	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
-	first, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.NewestFirst, "", explicitPageLimit(t, 2))
+	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.NewestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestListItemPageWalksBackwardFromTheTail(t *testing.T) {
 		t.Fatalf("first page = %+v, want the last two items newest first", first.Items)
 	}
 
-	second, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.NewestFirst, first.NextCursor, explicitPageLimit(t, 2))
+	second, err := c.ListItemPage(ctx, Items("ses_1"), transcript.NewestFirst, first.NextCursor, explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -462,7 +462,7 @@ func TestListItemPageRefusesAScopeThatNamesNothing(t *testing.T) {
 		Sessions:   &fakeSessions{missing: []string{"ses_gone"}},
 	})
 
-	if _, err := c.ListItemPage(ctx, SessionItems("ses_gone"), transcript.OldestFirst, "", pagination.DefaultLimit()); !errors.Is(err, session.ErrNotFound) {
+	if _, err := c.ListItemPage(ctx, Items("ses_gone"), transcript.OldestFirst, "", pagination.DefaultLimit()); !errors.Is(err, session.ErrNotFound) {
 		t.Fatalf("missing session err = %v, want session.ErrNotFound", err)
 	}
 	if _, err := c.ListItemPage(ctx, RunItems("run_gone"), transcript.OldestFirst, "", pagination.DefaultLimit()); !errors.Is(err, transcript.ErrRunNotFound) {
@@ -474,7 +474,7 @@ func TestListItemPageRejectsAnUnknownOrder(t *testing.T) {
 	tx := &fakeTranscript{items: sequencedItems(1)}
 	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
-	if _, err := c.ListItemPage(t.Context(), SessionItems("ses_1"), transcript.SequenceOrder("ascending"), "", explicitPageLimit(t, 1)); err == nil {
+	if _, err := c.ListItemPage(t.Context(), Items("ses_1"), transcript.SequenceOrder("ascending"), "", explicitPageLimit(t, 1)); err == nil {
 		t.Fatal("unknown order returned no error")
 	}
 	if tx.order != "" {
@@ -762,7 +762,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 		t.Fatalf("cross-query cursor err = %v, want ErrInvalidCursor", listRunPageErr)
 	}
 
-	itemPage, err := c.ListItemPage(ctx, SessionItems("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
+	itemPage, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("item page: %v", err)
 	}

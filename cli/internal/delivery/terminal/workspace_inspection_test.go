@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -578,15 +578,15 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	t.Parallel()
 
-	features := map[runtimeprofile.FeatureName]runtimeprofile.Feature{
-		runtimeprofile.FeaturePlan:      {},
-		runtimeprofile.FeatureGoals:     {},
-		runtimeprofile.FeatureSkills:    {},
-		runtimeprofile.FeatureMCP:       {},
-		runtimeprofile.FeatureSchedules: {},
-		runtimeprofile.FeatureKnowledge: {},
+	features := map[runtimebinding.FeatureName]runtimebinding.Feature{
+		runtimebinding.FeaturePlan:      {},
+		runtimebinding.FeatureGoals:     {},
+		runtimebinding.FeatureSkills:    {},
+		runtimebinding.FeatureMCP:       {},
+		runtimebinding.FeatureSchedules: {},
+		runtimebinding.FeatureKnowledge: {},
 	}
-	profile := runtimeprofile.Profile{Features: features}
+	profile := runtimebinding.Profile{Features: features}
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),

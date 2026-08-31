@@ -8,7 +8,7 @@ import (
 
 const (
 	// MaximumResourceCharacters is the CLI domain envelope for ordinary opaque Runtime
-	// execution identities. The runtime adapter proves it remains synchronized
+	// execution identities. The Runtime binding proves it remains synchronized
 	// with the public protocol contract.
 	MaximumResourceCharacters = 256
 	// MaximumEventCharacters is the separate envelope for a replay Event

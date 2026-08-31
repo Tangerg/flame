@@ -100,7 +100,7 @@ func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	grandchild := testsupport.MustRestoreRun(grandchildSnapshot)
 	snapshot.Runs = []run.Run{grandchild, child, root}
 
-	replacement, err := InitialSessionReplacement(snapshot.Session)
+	replacement, err := InitialReplacement(snapshot.Session)
 	if err != nil {
 		t.Fatalf("initial Session replacement: %v", err)
 	}

@@ -123,7 +123,7 @@ func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error)
 		if scope.SessionID == "" {
 			return sessions.ItemScope{}, fmt.Errorf("%w: scope.sessionId is required for a session scope", protocol.ErrInvalidParams)
 		}
-		return sessions.SessionItems(scope.SessionID), nil
+		return sessions.Items(scope.SessionID), nil
 	case protocol.ItemScopeRun:
 		if scope.RunID == "" {
 			return sessions.ItemScope{}, fmt.Errorf("%w: scope.runId is required for a run scope", protocol.ErrInvalidParams)

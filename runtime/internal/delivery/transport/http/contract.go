@@ -58,9 +58,9 @@ type EnumSpec struct {
 	Values []string
 }
 
-// HTTPContract is the delivery-owned machine description used by both routing
+// ContractSpec is the delivery-owned machine description used by both routing
 // helpers and the out-of-graph contract generator.
-type HTTPContract struct {
+type ContractSpec struct {
 	Endpoints []EndpointSpec
 	Enums     []EnumSpec
 }
@@ -121,14 +121,14 @@ var endpointRegistry = struct {
 	Enums: []EnumSpec{
 		{Type: reflect.TypeFor[HealthStatus](), Values: []string{string(HealthOK), string(HealthDegraded), string(HealthUnhealthy)}},
 		{Type: reflect.TypeFor[LivenessState](), Values: []string{string(LivenessOK)}},
-		{Type: reflect.TypeFor[HTTPTransportKind](), Values: []string{string(HTTPTransport)}},
+		{Type: reflect.TypeFor[TransportKind](), Values: []string{string(Transport)}},
 	},
 }
 
 // Contract returns an isolated snapshot so generators and tests cannot mutate
 // the process's routing authority.
-func Contract() HTTPContract {
-	contract := HTTPContract{
+func Contract() ContractSpec {
+	contract := ContractSpec{
 		Endpoints: make([]EndpointSpec, len(endpointRegistry.Endpoints)),
 		Enums:     make([]EnumSpec, len(endpointRegistry.Enums)),
 	}

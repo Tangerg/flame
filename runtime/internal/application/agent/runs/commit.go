@@ -273,7 +273,7 @@ func (s StateChange) Valid() bool {
 
 // ModelInvocationState records the durable application observation of one
 // provider call. It is deliberately smaller than a model response: semantic
-// output belongs to Transcript Items and accounting belongs to RunProgressCommit.
+// output belongs to Transcript Items and accounting belongs to ProgressCommit.
 // This record exists to distinguish an invocation that never crossed the
 // provider boundary from one whose final projection became indeterminate.
 type ModelInvocationState string
@@ -407,18 +407,18 @@ func (m ModelInvocationCommit) validate() error {
 	return nil
 }
 
-// RunProgressCommit is the durable progress snapshot produced at a model-response
+// ProgressCommit is the durable progress snapshot produced at a model-response
 // boundary. Metrics are cumulative; ContextTokens is the latest prompt footprint
 // and may decrease after compaction. SegmentID fences both facts to the exact
 // running segment so a stale continuation cannot overwrite a newer Run.
-type RunProgressCommit struct {
+type ProgressCommit struct {
 	SegmentID     string
 	Metrics       run.Metrics
 	ContextTokens int64
 	UpdatedAt     time.Time
 }
 
-func (r RunProgressCommit) validate() error {
+func (r ProgressCommit) validate() error {
 	if _, err := resourceid.ParseSegment(r.SegmentID); err != nil {
 		return fmt.Errorf("runs: progress: %w", err)
 	}
@@ -460,7 +460,7 @@ type EventCommit struct {
 	// Items derived from one authoritative executor fact.
 	ModelInvocations []ModelInvocationCommit
 	ToolInvocations  []ToolInvocationCommit
-	Progress         *RunProgressCommit
+	Progress         *ProgressCommit
 	Run              *run.Run
 	GoalRun          *goal.RunRecord
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the

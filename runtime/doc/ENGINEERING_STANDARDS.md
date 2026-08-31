@@ -392,6 +392,7 @@ Agent Framework 迁移不能只用 mock Engine 证明。必须运行真实 Inter
 - 单消费者不自动等于必须合并：strict codec、生成合同、平台 adapter 或清晰的领域 value object 即使只有一个消费者，只要边界本身稳定，仍可独立；
 - 一个文件因多个不同原因变化时才拆分；一个对象的状态、行为、join/dispose 和不变量不能为了缩短文件被摊成过程式 helper 集合；
 - 禁止 `common`、`utils`、`helpers`、`types`、`misc` 等无 owner 杂物包。共享代码必须以它拥有的语义命名；
+- package path 与调用点只陈述一次 owner：叶名不得重复外层 ring/context，导出名不得在 package qualifier 后再次添加同一 owner 前缀；`run.Run`、`session.Session` 这类 exact ubiquitous aggregate 不为机械消重改成含糊同义词；
 - 新增 package、interface、facade、singleton accessor 或 forwarding wrapper，必须在评审中说明它切断了什么依赖或保护了什么不变量。
 
 ### 8.2 对象、构造与行为

@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -195,7 +195,7 @@ func (a *app) createSessionInWorkspace(requested string) error {
 }
 
 func (a *app) RelocateSession(requested string) error {
-	if err := a.requireRuntimeFeature(runtimeprofile.FeatureRelocate); err != nil {
+	if err := a.requireRuntimeFeature(runtimebinding.FeatureRelocate); err != nil {
 		return err
 	}
 	path, err := resolveWorkspace(a.session.Workspace.Path, requested)

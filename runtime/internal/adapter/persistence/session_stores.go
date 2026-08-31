@@ -332,7 +332,7 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 
 func (s *SessionStores) saveSessionReplacement(
 	ctx context.Context,
-	replacement sessions.SessionReplacement,
+	replacement sessions.Replacement,
 ) error {
 	if replacement.ExpectedRevision() == 0 {
 		return s.sessions.Insert(ctx, replacement.State())

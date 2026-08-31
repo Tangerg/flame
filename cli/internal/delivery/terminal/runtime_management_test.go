@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/modelconfig"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -117,20 +117,20 @@ func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
 }
 
 func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
-	profile := runtimeprofile.Profile{
-		Protocol:  runtimeprofile.Protocol{Version: "2.0"},
-		Server:    runtimeprofile.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
+	profile := runtimebinding.Profile{
+		Protocol:  runtimebinding.Protocol{Version: "2.0"},
+		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
 		RunEvents: []string{"segment.started"}, RuntimeTopics: []string{"files.changed"},
 		StreamingMethods: []string{"runs.start"},
-		Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{
-			runtimeprofile.FeatureMCP: {Enabled: true},
+		Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
+			runtimebinding.FeatureMCP: {Enabled: true},
 		},
-		Limits: runtimeprofile.Limits{
+		Limits: runtimebinding.Limits{
 			RunConcurrency:                   boundedRunConcurrency(t, 4),
 			CommandReplay:                    testCommandReplay(t, "idp_test", 10*time.Minute),
-			RunReplay:                        runtimeprofile.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
+			RunReplay:                        runtimebinding.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
+			RuntimeSubscription:              runtimebinding.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), RuntimeProfile: &profile})
@@ -147,9 +147,9 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 	stop()
 }
 
-func boundedRunConcurrency(t *testing.T, maximum int) runtimeprofile.RunConcurrencyLimit {
+func boundedRunConcurrency(t *testing.T, maximum int) runtimebinding.RunConcurrencyLimit {
 	t.Helper()
-	limit, err := runtimeprofile.NewBoundedRunConcurrencyLimit(maximum)
+	limit, err := runtimebinding.NewBoundedRunConcurrencyLimit(maximum)
 	if err != nil {
 		t.Fatal(err)
 	}

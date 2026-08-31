@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func presentRunEvent(event runs.RunEvent) protocol.StreamEvent {
+func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 	switch event := event.(type) {
 	case runs.SegmentStarted:
 		run := presentRun(event.Run)
@@ -119,7 +119,7 @@ func mapRunEvents(ctx context.Context, in iter.Seq[runs.Event]) iter.Seq[protoco
 
 // safePresentRunEvent contains only presenter failures. In particular, it must
 // not recover a panic raised by the downstream range body through yield.
-func safePresentRunEvent(ctx context.Context, event runs.RunEvent) (presented protocol.StreamEvent, ok bool) {
+func safePresentRunEvent(ctx context.Context, event runs.ProjectionEvent) (presented protocol.StreamEvent, ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("delivery: run-event presenter panicked, terminating stream: %v", r))

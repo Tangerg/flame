@@ -17,7 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
@@ -51,13 +51,13 @@ func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string
 func executeCommandWithRuntime(
 	t *testing.T,
 	runtime agent.Runtime,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 	stdin string,
 	args ...string,
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	dependencies := Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		return runtime, profile, nil
 	}}
 	root := NewRoot(dependencies)
@@ -705,8 +705,8 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 		t.Fatal(err)
 	}
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimeprofile.FeatureRelocate] = runtimeprofile.Feature{}
-	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	profile.Features[runtimebinding.FeatureRelocate] = runtimebinding.Feature{}
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		return base, new(profile.Clone()), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
@@ -857,7 +857,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 			return runtime, nil, nil
 		},
 		StateDirectory: stateDirectory,
@@ -1068,7 +1068,7 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 		resolved = true
 		return instantRuntime(), nil, nil
 	}})

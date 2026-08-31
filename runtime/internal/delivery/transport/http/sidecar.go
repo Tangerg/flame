@@ -20,14 +20,14 @@ type RuntimeInfoEndpoints struct {
 	Readiness string `json:"readiness"`
 }
 
-type HTTPTransportKind string
+type TransportKind string
 
-const HTTPTransport HTTPTransportKind = "http"
+const Transport TransportKind = "http"
 
 type RuntimeInfo struct {
 	ProtocolVersion string               `json:"protocolVersion"`
 	Server          RuntimeServerInfo    `json:"server"`
-	Transport       HTTPTransportKind    `json:"transport"`
+	Transport       TransportKind        `json:"transport"`
 	Endpoints       RuntimeInfoEndpoints `json:"endpoints"`
 }
 
@@ -39,7 +39,7 @@ func newInfoResponse(server protocol.ServerInfo, currentVersion string) RuntimeI
 			Name:       server.Name,
 			Version:    server.Version,
 		},
-		Transport: HTTPTransport,
+		Transport: Transport,
 		Endpoints: RuntimeInfoEndpoints{
 			RPC:       endpointPath(endpointRPC),
 			Info:      endpointPath(endpointInfo),

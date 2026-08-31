@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -93,8 +93,8 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 		return err
 	}
 	if r.includeDescendants && profile != nil &&
-		!profile.Supports(runtimeprofile.FeatureSubagents) {
-		return fmt.Errorf("runtime capability %q was not negotiated", runtimeprofile.FeatureSubagents)
+		!profile.Supports(runtimebinding.FeatureSubagents) {
+		return fmt.Errorf("runtime capability %q was not negotiated", runtimebinding.FeatureSubagents)
 	}
 	page, err := runtime.ListRuns(cmd.Context(), query)
 	if err != nil {
@@ -209,7 +209,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 				return fmt.Errorf("prepare run cancellation: %w", err)
 			}
 			request := agent.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
-			replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
+			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
@@ -280,7 +280,7 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		includeDescendants := profile == nil ||
-			profile.Supports(runtimeprofile.FeatureSubagents)
+			profile.Supports(runtimebinding.FeatureSubagents)
 		page, err := runtime.ListRuns(cmd.Context(), agent.RunQuery{
 			IncludeDescendants: includeDescendants, PageSize: agent.MaximumPageSize(),
 		})

@@ -43,7 +43,7 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	}, nil
 }
 
-func presentSessionUsage(report sessions.SessionUsageReport) *protocol.Usage {
+func presentSessionUsage(report sessions.UsageReport) *protocol.Usage {
 	out := &protocol.Usage{ModelUsage: presentModelUsage(report.Total)}
 	if len(report.ByModel) > 0 {
 		out.ByModel = make(map[string]protocol.ModelUsage, len(report.ByModel))

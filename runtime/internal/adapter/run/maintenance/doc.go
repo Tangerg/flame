@@ -6,7 +6,7 @@
 // A model-call compaction result is atomically installed in durable history and
 // Interaction recovery state before the main model sees it. The workers share
 // only this package's transcript rendering; the generic middleware-free call
-// belongs to adapter/model/utilitymodel.
+// belongs to adapter/model/auxiliary.
 //
 // Pipeline owns ordering and failure aggregation for a clean Run boundary. The
 // execution adapter supplies finished-Run facts and observes the result.

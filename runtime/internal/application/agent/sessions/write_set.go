@@ -49,41 +49,41 @@ type ForkPlan struct {
 	PlanReplacement *PlanReplacement
 }
 
-// SessionReplacement is an immutable Application decision to insert a restored
+// Replacement is an immutable Application decision to insert a restored
 // Session at revision one or replace the target's current revision exactly.
-type SessionReplacement struct {
+type Replacement struct {
 	expectedRevision uint64
 	state            session.Session
 }
 
-// InitialSessionReplacement prepares an initial restored Session write.
-func InitialSessionReplacement(state session.Session) (SessionReplacement, error) {
-	replacement := SessionReplacement{state: state}
+// InitialReplacement prepares an initial restored Session write.
+func InitialReplacement(state session.Session) (Replacement, error) {
+	replacement := Replacement{state: state}
 	if err := replacement.Validate(); err != nil {
-		return SessionReplacement{}, err
+		return Replacement{}, err
 	}
 	return replacement, nil
 }
 
-// NextSessionReplacement prepares an exact replacement of current.
-func NextSessionReplacement(current, state session.Session) (SessionReplacement, error) {
-	replacement := SessionReplacement{expectedRevision: current.Revision(), state: state}
+// NextReplacement prepares an exact replacement of current.
+func NextReplacement(current, state session.Session) (Replacement, error) {
+	replacement := Replacement{expectedRevision: current.Revision(), state: state}
 	if err := replacement.Validate(); err != nil {
-		return SessionReplacement{}, err
+		return Replacement{}, err
 	}
 	return replacement, nil
 }
 
 // ExpectedRevision returns zero for an initial insert or the target revision
 // an exact replacement was based on.
-func (s SessionReplacement) ExpectedRevision() uint64 { return s.expectedRevision }
+func (s Replacement) ExpectedRevision() uint64 { return s.expectedRevision }
 
 // State returns the complete already-decided Session aggregate.
-func (s SessionReplacement) State() session.Session { return s.state }
+func (s Replacement) State() session.Session { return s.state }
 
 // Validate proves that s is either one initial aggregate or one monotonic
 // replacement of an existing aggregate.
-func (s SessionReplacement) Validate() error {
+func (s Replacement) Validate() error {
 	if err := s.state.Validate(); err != nil {
 		return fmt.Errorf("sessions: invalid Session replacement: %w", err)
 	}
@@ -108,7 +108,7 @@ func (s SessionReplacement) Validate() error {
 // explicit command makes the persistence boundary's destructive operation
 // visible instead of silently accepting every snapshot-shaped value.
 type RestorePlan struct {
-	Session     SessionReplacement
+	Session     Replacement
 	Messages    []chat.Message
 	Items       []transcript.Item
 	Runs        []rundomain.Run
@@ -120,7 +120,7 @@ type RestorePlan struct {
 
 func restorePlan(
 	snapshot Snapshot,
-	sessionReplacement SessionReplacement,
+	sessionReplacement Replacement,
 	planReplacement *PlanReplacement,
 ) RestorePlan {
 	return RestorePlan{

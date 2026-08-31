@@ -68,7 +68,7 @@ func (s *stagedExecutionHandoff) abandonWithin(
 // an accepted Segment consumes the staged executor instead.
 type claimedResumeAttempt struct {
 	pending      Pending
-	terminations RunTerminationCommitter
+	terminations TerminationCommitter
 	nowUTC       func() time.Time
 	staged       *stagedExecutionHandoff
 	settled      bool

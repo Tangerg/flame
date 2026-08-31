@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
@@ -27,7 +27,7 @@ func (a *app) prepareSessionImport(path string) error {
 	if a.transfers == nil {
 		return errors.New("this runtime composition has no session transfer service")
 	}
-	if err := a.requireRuntimeFeature(runtimeprofile.FeatureSessionExport); err != nil {
+	if err := a.requireRuntimeFeature(runtimebinding.FeatureSessionExport); err != nil {
 		return err
 	}
 	workspace := a.session.Workspace.Path
@@ -81,7 +81,7 @@ func (a *app) prepareSessionRollback(argument string) error {
 		return err
 	}
 	if request.Scope != agent.RestoreHistory {
-		if err := a.requireRuntimeFeature(runtimeprofile.FeatureCheckpoints); err != nil {
+		if err := a.requireRuntimeFeature(runtimebinding.FeatureCheckpoints); err != nil {
 			return err
 		}
 	}

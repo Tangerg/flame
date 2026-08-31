@@ -28,7 +28,7 @@ func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemI
 	}
 }
 
-func (r *reducer) appendText(text string) ([]RunEvent, error) {
+func (r *reducer) appendText(text string) ([]ProjectionEvent, error) {
 	if text == "" {
 		return nil, nil
 	}
@@ -36,7 +36,7 @@ func (r *reducer) appendText(text string) ([]RunEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []RunEvent
+	var out []ProjectionEvent
 	if r.text == nil {
 		id, identityErr := r.nextItemID()
 		if identityErr != nil {
@@ -56,7 +56,7 @@ func (r *reducer) appendText(text string) ([]RunEvent, error) {
 	}), nil
 }
 
-func (r *reducer) appendReasoning(text string) ([]RunEvent, error) {
+func (r *reducer) appendReasoning(text string) ([]ProjectionEvent, error) {
 	if text == "" {
 		return nil, nil
 	}
@@ -64,7 +64,7 @@ func (r *reducer) appendReasoning(text string) ([]RunEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []RunEvent
+	var out []ProjectionEvent
 	if r.reasoning == nil {
 		id, identityErr := r.nextItemID()
 		if identityErr != nil {
@@ -84,7 +84,7 @@ func (r *reducer) appendReasoning(text string) ([]RunEvent, error) {
 	}), nil
 }
 
-func (r *reducer) closeText(phase transcript.MessagePhase) ([]RunEvent, error) {
+func (r *reducer) closeText(phase transcript.MessagePhase) ([]ProjectionEvent, error) {
 	if r.text == nil {
 		return nil, nil
 	}
@@ -97,10 +97,10 @@ func (r *reducer) closeText(phase transcript.MessagePhase) ([]RunEvent, error) {
 		return nil, err
 	}
 	r.text = nil
-	return []RunEvent{ItemCompleted{Item: item}}, nil
+	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
 }
 
-func (r *reducer) closeReasoning() ([]RunEvent, error) {
+func (r *reducer) closeReasoning() ([]ProjectionEvent, error) {
 	if r.reasoning == nil {
 		return nil, nil
 	}
@@ -113,10 +113,10 @@ func (r *reducer) closeReasoning() ([]RunEvent, error) {
 		return nil, err
 	}
 	r.reasoning = nil
-	return []RunEvent{ItemCompleted{Item: item}}, nil
+	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
 }
 
-func (r *reducer) closeStreaming(phase transcript.MessagePhase) ([]RunEvent, error) {
+func (r *reducer) closeStreaming(phase transcript.MessagePhase) ([]ProjectionEvent, error) {
 	reasoning, err := r.closeReasoning()
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (r *reducer) closeStreaming(phase transcript.MessagePhase) ([]RunEvent, err
 func (r *reducer) completeAssistantMessage(
 	message corechat.Message,
 	phase transcript.MessagePhase,
-) ([]RunEvent, error) {
+) ([]ProjectionEvent, error) {
 	if message.Role != corechat.RoleAssistant {
 		return nil, fmt.Errorf("completed message role is %q, want %q", message.Role, corechat.RoleAssistant)
 	}
@@ -178,7 +178,7 @@ func (r *reducer) completeAssistantMessage(
 func (r *reducer) completeModelMessage(
 	message corechat.Message,
 	phase transcript.MessagePhase,
-) ([]RunEvent, error) {
+) ([]ProjectionEvent, error) {
 	if message.Role != corechat.RoleAssistant {
 		return nil, fmt.Errorf("completed model message role is %q, want %q", message.Role, corechat.RoleAssistant)
 	}
@@ -220,7 +220,7 @@ func assistantMediaBlock(value *media.Media) (transcript.ContentBlock, error) {
 	return transcript.ContentBlock{Kind: transcript.ImageContent, MediaType: value.MIME, Bytes: data}, nil
 }
 
-func (r *reducer) completeReasoning(text string) ([]RunEvent, error) {
+func (r *reducer) completeReasoning(text string) ([]ProjectionEvent, error) {
 	if text == "" {
 		return r.closeReasoning()
 	}
@@ -238,7 +238,7 @@ func (r *reducer) completeReasoning(text string) ([]RunEvent, error) {
 		}
 	}
 	r.reasoning = nil
-	out := make([]RunEvent, 0, 2)
+	out := make([]ProjectionEvent, 0, 2)
 	if started {
 		start, err := newTransientItemStart(r.itemIdentity(id, createdAt), transcript.Reasoning)
 		if err != nil {
@@ -257,7 +257,7 @@ func (r *reducer) completeReasoning(text string) ([]RunEvent, error) {
 func (r *reducer) completeMessageContent(
 	content []transcript.ContentBlock,
 	phase transcript.MessagePhase,
-) ([]RunEvent, error) {
+) ([]ProjectionEvent, error) {
 	if len(content) == 0 {
 		return r.closeText(phase)
 	}
@@ -275,7 +275,7 @@ func (r *reducer) completeMessageContent(
 		}
 	}
 	r.text = nil
-	out := make([]RunEvent, 0, 2)
+	out := make([]ProjectionEvent, 0, 2)
 	if started {
 		start, err := newTransientItemStart(r.itemIdentity(id, createdAt), transcript.AgentMessage)
 		if err != nil {
@@ -291,7 +291,7 @@ func (r *reducer) completeMessageContent(
 	return out, nil
 }
 
-func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
+func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
 		return nil, err
 	}
@@ -348,7 +348,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]RunEvent, error) {
 		return nil, err
 	}
 	step := metrics.Steps()
-	out = append(out, SegmentProgressed{Progress: RunProgress{
+	out = append(out, SegmentProgressed{Progress: Progress{
 		Step: &step, Activity: e.Activity,
 	}})
 	identity, reused, err := r.reuseOrCreateToolItem(e.CallID, e.ToolName, arguments)
@@ -440,7 +440,7 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 	return r.runningToolItem(match)
 }
 
-func (r *reducer) toolEnd(e ToolCallFinished) ([]RunEvent, []ToolInvocationCommit, []corechat.Message, error) {
+func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, []corechat.Message, error) {
 	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
 		return nil, nil, nil, err
 	}
@@ -486,9 +486,9 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]RunEvent, []ToolInvocationCommi
 // flushEndedTools commits only the longest completed prefix. Tools may finish
 // concurrently in any order, but transcript identity, mutation nudges, and
 // durable insertion order must follow the model's call order.
-func (r *reducer) flushEndedTools() ([]RunEvent, []ToolInvocationCommit, []corechat.Message, error) {
+func (r *reducer) flushEndedTools() ([]ProjectionEvent, []ToolInvocationCommit, []corechat.Message, error) {
 	ordered := r.tools.ordered()
-	var out []RunEvent
+	var out []ProjectionEvent
 	var invocations []ToolInvocationCommit
 	var results []corechat.ToolResult
 	for _, ref := range ordered {
@@ -552,8 +552,8 @@ func (r *reducer) forgetToolEnds(callIDs []string) {
 	}
 }
 
-func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]RunEvent, error) {
-	var out []RunEvent
+func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionEvent, error) {
+	var out []ProjectionEvent
 	if e.OutputText != "" {
 		delta, err := newToolOutputItemDelta(e.OutputText)
 		if err != nil {
@@ -595,7 +595,7 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]RunEvent, e
 // usageProgress records the executor's latest accounting report and previews the
 // Run's resulting total. The report is remembered rather than only forwarded:
 // it is what the Run commits if the segment ends without a fresh one.
-func (r *reducer) usageProgress(e UsageReported) ([]RunEvent, error) {
+func (r *reducer) usageProgress(e UsageReported) ([]ProjectionEvent, error) {
 	if err := r.applyUsage(SegmentUsage{
 		Tokens:  e.TokenUsage,
 		ByModel: e.ByModel,
@@ -609,7 +609,7 @@ func (r *reducer) usageProgress(e UsageReported) ([]RunEvent, error) {
 		return nil, err
 	}
 	usage, reported := metrics.Usage()
-	progress := RunProgress{}
+	progress := Progress{}
 	if reported {
 		progress.Usage = &usage
 	}
@@ -620,10 +620,10 @@ func (r *reducer) usageProgress(e UsageReported) ([]RunEvent, error) {
 	}
 	step := r.step
 	progress.Step = &step
-	return []RunEvent{SegmentProgressed{Progress: progress}}, nil
+	return []ProjectionEvent{SegmentProgressed{Progress: progress}}, nil
 }
 
-func (r *reducer) compaction(e CompactionBoundary) ([]RunEvent, error) {
+func (r *reducer) compaction(e CompactionBoundary) ([]ProjectionEvent, error) {
 	dropped := max(e.MessagesBefore-e.MessagesAfter, 0)
 	id, err := r.nextItemID()
 	if err != nil {
@@ -634,10 +634,10 @@ func (r *reducer) compaction(e CompactionBoundary) ([]RunEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []RunEvent{ItemCompleted{Item: item}}, nil
+	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
 }
 
-func (r *reducer) openUserMessage() ([]RunEvent, error) {
+func (r *reducer) openUserMessage() ([]ProjectionEvent, error) {
 	if len(r.userInput) == 0 {
 		return nil, nil
 	}
@@ -651,10 +651,10 @@ func (r *reducer) openUserMessage() ([]RunEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []RunEvent{ItemCompleted{Item: item}}, nil
+	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
 }
 
-func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]RunEvent, error) {
+func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEvent, error) {
 	if len(e.Messages) == 0 {
 		return nil, errors.New("applied steer batch is empty")
 	}
@@ -694,18 +694,18 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]RunEvent, erro
 		out = append(out, ItemCompleted{Item: item})
 	}
 	if len(out) == 0 {
-		out = append(out, SegmentProgressed{Progress: RunProgress{Activity: applyingUserInputActivity}})
+		out = append(out, SegmentProgressed{Progress: Progress{Activity: applyingUserInputActivity}})
 	}
 	return out, nil
 }
 
-func (r *reducer) planSnapshot(e PlanUpdated) []RunEvent {
+func (r *reducer) planSnapshot(e PlanUpdated) []ProjectionEvent {
 	snapshot := r.planState(e.State)
 	// Remembered so the segment can fence its final value: a client folding this
 	// stream must reach segment.finished holding the Plan the segment ended with,
 	// not the Plan as of whichever change happened to be published last.
 	r.plan = &snapshot
-	return []RunEvent{snapshot}
+	return []ProjectionEvent{snapshot}
 }
 
 func (r *reducer) planState(state plan.State) PlanSnapshot {

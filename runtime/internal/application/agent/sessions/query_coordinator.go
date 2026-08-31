@@ -134,8 +134,8 @@ type ItemScope struct {
 	includeDescendants bool
 }
 
-// SessionItems scopes a page to a session's whole timeline.
-func SessionItems(sessionID string) ItemScope {
+// Items scopes a page to a session's whole timeline.
+func Items(sessionID string) ItemScope {
 	return ItemScope{kind: sessionItemScope, subjectID: sessionID}
 }
 

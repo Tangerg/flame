@@ -597,8 +597,6 @@ export interface GrepResult {
   total: number;
 }
 
-export type HTTPTransportKind = "http";
-
 export type HealthStatus = "ok" | "degraded" | "unhealthy";
 
 export type HookEvent = "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "SubagentStart" | "SubagentStop" | "PreCompact" | "Stop" | "Notification";
@@ -1291,7 +1289,7 @@ export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
   protocolVersion: string;
   server: RuntimeServerInfo;
-  transport: HTTPTransportKind;
+  transport: TransportKind;
 }
 
 export interface RuntimeInfoEndpoints {
@@ -1542,6 +1540,8 @@ export interface ToolSpec {
   safetyClass?: SafetyClass;
 }
 
+export type TransportKind = "http";
+
 export interface UpdateGoalRequest {
   objective: string;
   sessionId: string;
@@ -1709,7 +1709,6 @@ export const WIRE_ENUMS = {
   FileStatus: ["added", "modified", "deleted", "renamed", "untracked"],
   GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "blockedByModel"],
   GoalStatus: ["active", "paused", "blocked", "completing"],
-  HTTPTransportKind: ["http"],
   HealthStatus: ["ok", "degraded", "unhealthy"],
   HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"],
   HookScope: ["global", "project"],
@@ -1752,6 +1751,7 @@ export const WIRE_ENUMS = {
   SkillScope: ["project", "user"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
+  TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],
 } as const;
 

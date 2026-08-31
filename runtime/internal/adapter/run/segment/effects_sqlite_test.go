@@ -302,7 +302,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	wrongSegment := runs.RunProgressCommit{
+	wrongSegment := runs.ProgressCommit{
 		SegmentID: "seg_wrong", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
 	}
 	err = effects.CommitEvent(ctx, runs.EventCommit{
@@ -539,7 +539,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			State: runs.ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
-	wrongSegment := runs.RunProgressCommit{
+	wrongSegment := runs.ProgressCommit{
 		SegmentID: "seg_wrong", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
 	}
 	err = effects.CommitEvent(ctx, runs.EventCommit{
@@ -2774,7 +2774,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
 			State: runs.ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		}},
-		Progress: &runs.RunProgressCommit{
+		Progress: &runs.ProgressCommit{
 			SegmentID: draft.SegmentID,
 			Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 				Steps: 1, Usage: usage,

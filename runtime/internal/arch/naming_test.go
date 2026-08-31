@@ -11,6 +11,74 @@ import (
 	"testing"
 )
 
+// TestExportedNamesUseTheirPackageQualifier keeps an internal API from saying
+// the same owner twice at every call site (for example, runs.RunEvent). The
+// aggregate itself may share the package name, as in run.Run; only an added
+// exported suffix is redundant because the qualifier already supplies it.
+func TestExportedNamesUseTheirPackageQualifier(t *testing.T) {
+	root := filepath.Join(moduleRoot(t), "internal")
+	err := walkProductionGoFiles(root, func(path string, file *ast.File) error {
+		prefixes := packageQualifierPrefixes(file.Name.Name)
+		for _, declaration := range file.Decls {
+			switch typed := declaration.(type) {
+			case *ast.FuncDecl:
+				if typed.Recv == nil {
+					assertNameUsesQualifier(t, path, prefixes, typed.Name.Name)
+				}
+			case *ast.GenDecl:
+				for _, specification := range typed.Specs {
+					switch spec := specification.(type) {
+					case *ast.TypeSpec:
+						assertNameUsesQualifier(t, path, prefixes, spec.Name.Name)
+					case *ast.ValueSpec:
+						for _, name := range spec.Names {
+							assertNameUsesQualifier(t, path, prefixes, name.Name)
+						}
+					}
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk internal package names: %v", err)
+	}
+}
+
+func packageQualifierPrefixes(name string) []string {
+	prefixes := []string{name}
+	singular := name
+	switch {
+	case strings.HasSuffix(name, "ies"):
+		singular = strings.TrimSuffix(name, "ies") + "y"
+	case strings.HasSuffix(name, "s") &&
+		!strings.HasSuffix(name, "ss") &&
+		!strings.HasSuffix(name, "us") &&
+		!strings.HasSuffix(name, "is"):
+		singular = strings.TrimSuffix(name, "s")
+	}
+	if singular != "" && singular != name {
+		prefixes = append(prefixes, singular)
+	}
+	return prefixes
+}
+
+func assertNameUsesQualifier(t *testing.T, path string, prefixes []string, name string) {
+	t.Helper()
+	if !ast.IsExported(name) {
+		return
+	}
+	for _, prefix := range prefixes {
+		if len(name) <= len(prefix) || !strings.EqualFold(name[:len(prefix)], prefix) {
+			continue
+		}
+		if ast.IsExported(name[len(prefix):]) {
+			t.Errorf("%s declares %s; package %s already supplies the %s prefix", path, name, filepath.Base(filepath.Dir(path)), prefix)
+			return
+		}
+	}
+}
+
 // TestInnerQueriesDoNotUseJavaGetterNames keeps internal semantic APIs on Go
 // vocabulary. Delivery is intentionally excluded because its exported method
 // names mirror the published RPC operations; inner queries instead use a noun,

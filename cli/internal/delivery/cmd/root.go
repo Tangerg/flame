@@ -19,7 +19,7 @@ import (
 
 	"github.com/Tangerg/oolong/core/term"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -36,7 +36,7 @@ const configIndependentAnnotation = "flame/config-independent"
 // Runtime construction stays lazy so help and completion do not open sockets,
 // databases, or other process-owned resources.
 type Dependencies struct {
-	OpenRuntime    func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error)
+	OpenRuntime    func(context.Context) (agent.Runtime, *runtimebinding.Profile, error)
 	StartTerminal  func(context.Context, TerminalRequest) error
 	StateDirectory string
 }
@@ -54,7 +54,7 @@ type TerminalRequest struct {
 // runtimeProvider delays construction until a command needs the runtime. It
 // owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
-	open func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error)
+	open func(context.Context) (agent.Runtime, *runtimebinding.Profile, error)
 }
 
 func (r runtimeProvider) Open(cmd *cobra.Command) (agent.Runtime, error) {
@@ -62,7 +62,7 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (agent.Runtime, error) {
 	return runtime, err
 }
 
-func (r runtimeProvider) OpenRuntime(cmd *cobra.Command) (agent.Runtime, *runtimeprofile.Profile, error) {
+func (r runtimeProvider) OpenRuntime(cmd *cobra.Command) (agent.Runtime, *runtimebinding.Profile, error) {
 	return r.resolve(cmd.Context())
 }
 
@@ -71,7 +71,7 @@ func (r runtimeProvider) OpenQuietly(cmd *cobra.Command) (agent.Runtime, error) 
 	return runtime, err
 }
 
-func (r runtimeProvider) resolve(ctx context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+func (r runtimeProvider) resolve(ctx context.Context) (agent.Runtime, *runtimebinding.Profile, error) {
 	if r.open == nil {
 		return nil, nil, errors.New("runtime factory is required")
 	}

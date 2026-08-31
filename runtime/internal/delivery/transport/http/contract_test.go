@@ -2,7 +2,7 @@ package http
 
 import "testing"
 
-func TestHTTPContractHasUniqueCompleteEndpoints(t *testing.T) {
+func TestContractHasUniqueCompleteEndpoints(t *testing.T) {
 	t.Parallel()
 
 	names := make(map[string]bool)
@@ -32,7 +32,7 @@ func TestHTTPContractHasUniqueCompleteEndpoints(t *testing.T) {
 	}
 }
 
-func TestHTTPContractReturnsAnIsolatedSnapshot(t *testing.T) {
+func TestContractReturnsAnIsolatedSnapshot(t *testing.T) {
 	t.Parallel()
 
 	first := Contract()

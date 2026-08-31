@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/session"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
@@ -928,22 +928,22 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stopRestarted()
 }
 
-func steerReplayTestProfile(t *testing.T, workspace string) runtimeprofile.Profile {
+func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profile {
 	t.Helper()
-	return runtimeprofile.Profile{
-		Protocol: runtimeprofile.Protocol{Version: "2.0"},
-		Server: runtimeprofile.Server{
+	return runtimebinding.Profile{
+		Protocol: runtimebinding.Protocol{Version: "2.0"},
+		Server: runtimebinding.Server{
 			Name: "steer-test", Version: "1.0.0", DefaultWorkspace: workspace, Home: workspace,
 		},
-		Features: map[runtimeprofile.FeatureName]runtimeprofile.Feature{},
-		Limits: runtimeprofile.Limits{
+		Features: map[runtimebinding.FeatureName]runtimebinding.Feature{},
+		Limits: runtimebinding.Limits{
 			RunConcurrency: boundedRunConcurrency(t, 1),
 			CommandReplay:  testCommandReplay(t, terminalTestReplayNamespace, 10*time.Minute),
-			RunReplay: runtimeprofile.ReplayLimits{
+			RunReplay: runtimebinding.ReplayLimits{
 				Scope: "runtimeInstanceRootSegment", MaxEvents: 128, MaxBytes: 1 << 20,
 			},
 			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              runtimeprofile.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
+			RuntimeSubscription:              runtimebinding.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
 		},
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/term"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimeprofile"
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/run"
@@ -907,7 +907,7 @@ func openStartRunWithBackoff(
 	runtime agent.RunLifecycle,
 	command agent.StartRun,
 	replay commandreplay.Guard,
-	profile *runtimeprofile.Profile,
+	profile *runtimebinding.Profile,
 	backoff retry.Backoff,
 ) (agent.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(

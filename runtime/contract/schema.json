@@ -2628,12 +2628,6 @@
         "total"
       ]
     },
-    "HTTPTransportKind": {
-      "type": "string",
-      "enum": [
-        "http"
-      ]
-    },
     "HealthStatus": {
       "type": "string",
       "enum": [
@@ -7730,7 +7724,7 @@
           "$ref": "#/$defs/RuntimeServerInfo"
         },
         "transport": {
-          "$ref": "#/$defs/HTTPTransportKind"
+          "$ref": "#/$defs/TransportKind"
         }
       },
       "required": [
@@ -9151,6 +9145,12 @@
       },
       "required": [
         "name"
+      ]
+    },
+    "TransportKind": {
+      "type": "string",
+      "enum": [
+        "http"
       ]
     },
     "UpdateGoalRequest": {

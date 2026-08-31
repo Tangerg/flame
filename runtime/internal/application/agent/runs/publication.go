@@ -517,7 +517,7 @@ func (t treePublisher) reduceInterruptedRoute(
 	return treeBarrierReduction{route: route, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
 }
 
-func suspendedInterrupts(events []RunEvent) []transcript.Interrupt {
+func suspendedInterrupts(events []ProjectionEvent) []transcript.Interrupt {
 	for _, event := range events {
 		if finished, ok := event.(SegmentFinished); ok {
 			return slices.Clone(finished.Interrupts)

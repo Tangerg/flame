@@ -221,7 +221,7 @@ type queriesCoordinatorProvider interface {
 // omit it; a handler that then addresses a segment fails loudly rather than
 // guessing what the run is doing.
 type runProjectionProvider interface {
-	runProjection() runs.RunProjection
+	runProjection() runs.Projection
 }
 
 type conversationReaderProvider interface {
@@ -278,7 +278,7 @@ func (inertItemProjection) Item(context.Context, string) (transcript.Item, bool,
 	return transcript.Item{}, false, nil
 }
 
-func nonNilRunProjection(projection runs.RunProjection) runs.RunProjection {
+func nonNilRunProjection(projection runs.Projection) runs.Projection {
 	if projection == nil {
 		return inertRunProjection{}
 	}
@@ -295,7 +295,7 @@ func itemProjectionFor(rt testRuntime) runs.ItemProjection {
 	return provider.Transcript()
 }
 
-func (s stubRuntime) runProjection() runs.RunProjection {
+func (s stubRuntime) runProjection() runs.Projection {
 	if s.runs == nil {
 		return nil
 	}
@@ -343,7 +343,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		}
 	}
 	var ids atomic.Uint64
-	var runProjection runs.RunProjection
+	var runProjection runs.Projection
 	if p, ok := rt.(runProjectionProvider); ok {
 		runProjection = p.runProjection()
 	}

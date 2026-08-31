@@ -20,8 +20,8 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		small RunEvent
-		large RunEvent
+		small ProjectionEvent
+		large ProjectionEvent
 	}{
 		{
 			name:  "run",
@@ -74,7 +74,7 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 }
 
 func TestNonReplayablePayloadsDoNotConsumeReplayBudget(t *testing.T) {
-	if got := (SegmentProgressed{Progress: RunProgress{Activity: strings.Repeat("x", 1024)}}).retainedBytes(); got != 0 {
+	if got := (SegmentProgressed{Progress: Progress{Activity: strings.Repeat("x", 1024)}}).retainedBytes(); got != 0 {
 		t.Fatalf("SegmentProgressed retention charge = %d, want 0", got)
 	}
 	delta, err := newReasoningItemDelta(strings.Repeat("x", 1024))

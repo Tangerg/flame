@@ -503,7 +503,7 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 	return nil
 }
 
-func validateRoutedEvent(route *executorRoute, sessionID string, routed RunEvent) error {
+func validateRoutedEvent(route *executorRoute, sessionID string, routed ProjectionEvent) error {
 	if routed == nil {
 		return fmt.Errorf("%w: route %q carries a nil event", errReducerInvariant, route.runID)
 	}
