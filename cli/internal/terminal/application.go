@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/agentmemory"
 	"github.com/Tangerg/flame/cli/internal/attachment"
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
-	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
@@ -194,23 +193,38 @@ type app struct {
 }
 
 type appConfig struct {
-	context         context.Context
-	services        backend.Services
-	runtimeProfile  *runtimeprofile.Profile
-	clientVersion   string
-	snapshot        agent.SessionSnapshot
-	registry        *extensions.Registry
-	pluginHost      *extensions.Host
-	pluginIssues    []extensions.SourceIssue
-	attachments     *attachment.Resolver
-	initialDraft    agent.Message
-	settings        settings.Config
-	reconnectPolicy reconnect.Policy
-	options         agent.RunOptions
-	keyBindings     keyBindings
-	queue           *promptqueue.Queue
-	workbench       *workbench.Store
-	editor          promptEditor
+	context          context.Context
+	runtime          agent.Runtime
+	workspaces       workspace.Service
+	changes          changefeed.Source
+	transfers        sessiontransfer.Service
+	usage            usage.Service
+	modelConfig      modelconfig.Service
+	goals            goal.Service
+	skills           skills.Service
+	mcp              mcp.Service
+	schedules        schedule.Service
+	agentMemory      agentmemory.Service
+	knowledge        knowledge.Service
+	diagnosticTools  diagnostictool.Service
+	authoringContext authoringcontext.Service
+	hooks            hookpolicy.Service
+	feedback         feedback.Service
+	runtimeProfile   *runtimeprofile.Profile
+	clientVersion    string
+	snapshot         agent.SessionSnapshot
+	registry         *extensions.Registry
+	pluginHost       *extensions.Host
+	pluginIssues     []extensions.SourceIssue
+	attachments      *attachment.Resolver
+	initialDraft     agent.Message
+	settings         settings.Config
+	reconnectPolicy  reconnect.Policy
+	options          agent.RunOptions
+	keyBindings      keyBindings
+	queue            *promptqueue.Queue
+	workbench        *workbench.Store
+	editor           promptEditor
 }
 
 type terminalAppearance struct {
@@ -243,13 +257,13 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	)
 	transcript.SetEntrance(brand)
 	a := &app{
-		ctx: cfg.context, loop: loop, runtime: cfg.services.Agent, workspaces: cfg.services.Workspaces,
+		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile,
-		changes:        cfg.services.Changes, transfers: cfg.services.Transfers, usage: cfg.services.Usage, modelConfig: cfg.services.ModelConfig,
-		goals: cfg.services.Goals, skills: cfg.services.Skills, mcp: cfg.services.MCP, schedules: cfg.services.Schedules,
-		agentMemory: cfg.services.AgentMemory, knowledge: cfg.services.Knowledge,
-		diagnosticTools:  cfg.services.DiagnosticTools,
-		authoringContext: cfg.services.AuthoringContext, hooks: cfg.services.Hooks, feedback: cfg.services.Feedback,
+		changes:        cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
+		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, schedules: cfg.schedules,
+		agentMemory: cfg.agentMemory, knowledge: cfg.knowledge,
+		diagnosticTools:  cfg.diagnosticTools,
+		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
 		session: cfg.snapshot.Session, registry: cfg.registry,
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		conversation:       agent.NewConversation(),

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/cmd"
 )
 
@@ -32,22 +31,19 @@ func run() int {
 		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 		return exitCode(err)
 	}
-	return runWithRuntimeOwner(owner, filepath.Join(flameHome, "cli"))
+	return runWithDependencies(runtimeDependencies(owner, filepath.Join(flameHome, "cli")), owner)
 }
 
-func runWithRuntimeOwner(owner runtimeOwner, stateDirectory string) int {
+func runWithDependencies(dependencies cmd.Dependencies, closer runtimeCloser) int {
 	ctx, stop := processSignalContext(context.Background())
 	defer stop()
 
-	root := cmd.NewRoot(cmd.Dependencies{
-		OpenRuntime:    owner.Runtime,
-		StateDirectory: stateDirectory,
-	})
+	root := cmd.NewRoot(dependencies)
 	root.SetIn(os.Stdin)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	err := root.ExecuteContext(ctx)
-	err = errors.Join(err, closeRuntimeOwner(owner))
+	err = errors.Join(err, closeRuntimeOwner(closer))
 	if cause := context.Cause(ctx); cause != nil {
 		err = errors.Join(cause, err)
 	}
@@ -58,12 +54,11 @@ func runWithRuntimeOwner(owner runtimeOwner, stateDirectory string) int {
 	return exitCode(err)
 }
 
-type runtimeOwner interface {
-	Runtime(context.Context) (backend.Services, error)
+type runtimeCloser interface {
 	Close() error
 }
 
-func closeRuntimeOwner(owner runtimeOwner) error {
+func closeRuntimeOwner(owner runtimeCloser) error {
 	if owner == nil {
 		return nil
 	}

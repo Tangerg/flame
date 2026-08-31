@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -43,22 +42,24 @@ func (p *postCommitDeleteRuntime) DeleteSession(ctx context.Context, request age
 // run in parallel and assert on exact output.
 func executeCommand(t *testing.T, rt agent.Runtime, stdin string, args ...string) (string, string, error) {
 	t.Helper()
-	services := backend.AgentOnly(rt)
 	if rt == nil {
-		services = backend.AgentOnly(runtimefixture.New())
+		rt = runtimefixture.New()
 	}
-	return executeCommandWithServices(t, services, stdin, args...)
+	return executeCommandWithRuntime(t, rt, nil, stdin, args...)
 }
 
-func executeCommandWithServices(
+func executeCommandWithRuntime(
 	t *testing.T,
-	services backend.Services,
+	runtime agent.Runtime,
+	profile *runtimeprofile.Profile,
 	stdin string,
 	args ...string,
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) { return services, nil }}
+	dependencies := Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		return runtime, profile, nil
+	}}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
@@ -335,7 +336,7 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 	t.Run("start", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseStart: true}
 		profile := commandRuntimeProfile(t)
-		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "run", "-s", firstSession(t, runtime), "start once")
+		_, _, err := executeCommandWithRuntime(t, runtime, &profile, "", "run", "-s", firstSession(t, runtime), "start once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -348,7 +349,7 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 	t.Run("resume", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseResume: true}
 		profile := commandRuntimeProfile(t)
-		_, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
+		_, _, err := executeCommandWithRuntime(t, runtime, &profile, "", "run", "--approve-all", "-s", firstSession(t, runtime), "resume once")
 		if err != nil {
 			t.Fatalf("run error = %v", err)
 		}
@@ -705,8 +706,8 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	}
 	profile := commandRuntimeProfile(t)
 	profile.Features[runtimeprofile.FeatureRelocate] = runtimeprofile.Feature{}
-	provider := runtimeProvider{open: func(context.Context) (backend.Services, error) {
-		return backend.Services{Agent: base, RuntimeProfile: new(profile.Clone())}, nil
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		return base, new(profile.Clone()), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
 	command.SetOut(&strings.Builder{})
@@ -856,7 +857,9 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime:    func(context.Context) (backend.Services, error) { return backend.AgentOnly(runtime), nil },
+		OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+			return runtime, nil, nil
+		},
 		StateDirectory: stateDirectory,
 	})
 	root.SetOut(&output)
@@ -1065,9 +1068,9 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (backend.Services, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
 		resolved = true
-		return backend.AgentOnly(instantRuntime()), nil
+		return instantRuntime(), nil, nil
 	}})
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)

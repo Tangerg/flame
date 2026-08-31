@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/workbench"
 )
@@ -17,7 +16,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 	host.Type("draft survives no-op edits")
@@ -53,7 +52,7 @@ func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 
@@ -93,7 +92,7 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 			backend := runtimefixture.New()
 			backend.Instant = true
 			stateDirectory := t.TempDir()
-			host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+			host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
 			host.Shows(t, "Ask flame")
 			sessionID := firstRuntimeSession(t, backend)
 

@@ -23,7 +23,8 @@ import (
 	"github.com/Tangerg/oolong/ptytest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
+	"github.com/Tangerg/flame/cli/internal/cmd"
+	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/terminal"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
@@ -423,7 +424,7 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Services: backendcontract.AgentOnly(backend), Workspace: t.TempDir(),
+		Runtime: backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +493,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 		}}
 	}
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Services: backendcontract.AgentOnly(backend), Workspace: t.TempDir(),
+		Runtime: backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -805,24 +806,34 @@ func TestFlameProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Args = append([]string{os.Args[0]}, flag.Args()...)
-	owner := &testProcessRuntimeOwner{services: backendcontract.AgentOnly(runtimefixture.New())}
-	os.Exit(runWithRuntimeOwner(owner, filepath.Join(flameHome, "cli")))
-}
-
-type testProcessRuntimeOwner struct {
-	services  backendcontract.Services
-	announced bool
-}
-
-func (o *testProcessRuntimeOwner) Runtime(context.Context) (backendcontract.Services, error) {
-	if !o.announced {
+	runtime := runtimefixture.New()
+	announced := false
+	announce := func() {
+		if announced {
+			return
+		}
 		_, _ = fmt.Fprintln(os.Stderr, testRuntimeReadyMarkerForTest)
-		o.announced = true
+		announced = true
 	}
-	return o.services, nil
+	stateDirectory := filepath.Join(flameHome, "cli")
+	dependencies := cmd.Dependencies{
+		OpenRuntime: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+			announce()
+			return runtime, nil, nil
+		},
+		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
+			announce()
+			configured := request.Settings.Clone()
+			return terminal.Run(ctx, terminal.Config{
+				Runtime: runtime, SessionID: request.SessionID, Workspace: request.Workspace,
+				InitialPrompt: request.InitialPrompt, Settings: &configured,
+				StateDirectory: request.StateDirectory,
+			})
+		},
+		StateDirectory: stateDirectory,
+	}
+	os.Exit(runWithDependencies(dependencies, new(scriptedRuntimeOwner)))
 }
-
-func (*testProcessRuntimeOwner) Close() error { return nil }
 
 func buildProductionBinary(t *testing.T) string {
 	t.Helper()
@@ -1012,10 +1023,6 @@ func (t testExitError) ExitCode() int { return t.code }
 type scriptedRuntimeOwner struct {
 	closeErrors []error
 	closes      int
-}
-
-func (*scriptedRuntimeOwner) Runtime(context.Context) (backendcontract.Services, error) {
-	return backendcontract.Services{}, nil
 }
 
 func (s *scriptedRuntimeOwner) Close() error {

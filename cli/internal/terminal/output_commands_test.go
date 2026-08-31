@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/sessiontransfer"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -86,7 +85,7 @@ func runUIWithCopyHost(t *testing.T, backend agent.Runtime, workspace string) (*
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend, Transfers: outputTransferStub{}}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -168,7 +167,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Transfers: transfer, Changes: source}, SessionID: session.ID})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Transfers: transfer, Changes: source, SessionID: session.ID})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/export markdown owned.md")

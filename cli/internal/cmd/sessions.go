@@ -73,15 +73,15 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			if err := update.Validate(); err != nil {
 				return err
 			}
-			services, err := provider.OpenServices(cmd)
+			runtime, profile, err := provider.OpenRuntime(cmd)
 			if err != nil {
 				return err
 			}
-			if update.Workspace != nil && services.RuntimeProfile != nil &&
-				!services.RuntimeProfile.Supports(runtimeprofile.FeatureRelocate) {
+			if update.Workspace != nil && profile != nil &&
+				!profile.Supports(runtimeprofile.FeatureRelocate) {
 				return fmt.Errorf("runtime capability %q was not negotiated", runtimeprofile.FeatureRelocate)
 			}
-			updated, err := session.Update(cmd.Context(), services.Agent, update)
+			updated, err := session.Update(cmd.Context(), runtime, update)
 			if err != nil {
 				return err
 			}
@@ -289,7 +289,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if !yes {
 				return errors.New("refusing to delete without --yes")
 			}
-			services, err := provider.OpenServices(cmd)
+			runtime, profile, err := provider.OpenRuntime(cmd)
 			if err != nil {
 				return err
 			}
@@ -297,12 +297,12 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
-			replayPolicy, err := runtimeprofile.CommandReplayPolicy(services.RuntimeProfile)
+			replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
 			result, err := sessiondeletion.Execute(
-				cmd.Context(), services.Agent, authoring, args[0],
+				cmd.Context(), runtime, authoring, args[0],
 				replayPolicy,
 				mutation.AcknowledgementBackoff(),
 			)

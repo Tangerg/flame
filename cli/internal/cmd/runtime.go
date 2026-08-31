@@ -31,23 +31,23 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 		Short: "Show discovery identity, capabilities, and hard limits",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			services, err := provider.OpenServices(cmd)
+			_, profile, err := provider.OpenRuntime(cmd)
 			if err != nil {
 				return err
 			}
-			if services.RuntimeProfile == nil {
+			if profile == nil {
 				return errors.New("runtime discovery profile is unavailable")
 			}
-			profile := services.RuntimeProfile.Clone()
-			if err := profile.Validate(); err != nil {
+			projected := profile.Clone()
+			if err := projected.Validate(); err != nil {
 				return err
 			}
 			if asJSON {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetEscapeHTML(false)
-				return encoder.Encode(profile)
+				return encoder.Encode(projected)
 			}
-			return writeRuntimeProfile(cmd.OutOrStdout(), profile)
+			return writeRuntimeProfile(cmd.OutOrStdout(), projected)
 		},
 	}
 	command.Flags().BoolVar(&asJSON, "json", false, "Write the complete profile as JSON")

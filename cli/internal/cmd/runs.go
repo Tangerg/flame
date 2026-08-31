@@ -88,15 +88,15 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err := query.Validate(); err != nil {
 		return err
 	}
-	services, err := provider.OpenServices(cmd)
+	runtime, profile, err := provider.OpenRuntime(cmd)
 	if err != nil {
 		return err
 	}
-	if r.includeDescendants && services.RuntimeProfile != nil &&
-		!services.RuntimeProfile.Supports(runtimeprofile.FeatureSubagents) {
+	if r.includeDescendants && profile != nil &&
+		!profile.Supports(runtimeprofile.FeatureSubagents) {
 		return fmt.Errorf("runtime capability %q was not negotiated", runtimeprofile.FeatureSubagents)
 	}
-	page, err := services.Agent.ListRuns(cmd.Context(), query)
+	page, err := runtime.ListRuns(cmd.Context(), query)
 	if err != nil {
 		return err
 	}
@@ -200,17 +200,16 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			if !yes {
 				return errors.New("refusing to cancel a run without --yes")
 			}
-			services, err := provider.OpenServices(cmd)
+			runtime, profile, err := provider.OpenRuntime(cmd)
 			if err != nil {
 				return err
 			}
-			runtime := services.Agent
 			commandID, err := agent.NewCommandID()
 			if err != nil {
 				return fmt.Errorf("prepare run cancellation: %w", err)
 			}
 			request := agent.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
-			replayPolicy, err := runtimeprofile.CommandReplayPolicy(services.RuntimeProfile)
+			replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
@@ -276,13 +275,13 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		services, err := provider.resolve(cmd.Context())
+		runtime, profile, err := provider.resolve(cmd.Context())
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		includeDescendants := services.RuntimeProfile == nil ||
-			services.RuntimeProfile.Supports(runtimeprofile.FeatureSubagents)
-		page, err := services.Agent.ListRuns(cmd.Context(), agent.RunQuery{
+		includeDescendants := profile == nil ||
+			profile.Supports(runtimeprofile.FeatureSubagents)
+		page, err := runtime.ListRuns(cmd.Context(), agent.RunQuery{
 			IncludeDescendants: includeDescendants, PageSize: agent.MaximumPageSize(),
 		})
 		if err != nil || page.Validate() != nil {

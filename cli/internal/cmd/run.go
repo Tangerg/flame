@@ -83,16 +83,15 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	services, err := provider.OpenServices(cmd)
+	runtime, profile, err := provider.OpenRuntime(cmd)
 	if err != nil {
 		return err
 	}
-	runtime := services.Agent
 	opened, err := session.Open(cmd.Context(), runtime, r.sessionID, workspacePath)
 	if err != nil {
 		return err
 	}
-	replayPolicy, err := runtimeprofile.CommandReplayPolicy(services.RuntimeProfile)
+	replayPolicy, err := runtimeprofile.CommandReplayPolicy(profile)
 	if err != nil {
 		return fmt.Errorf("runtime command replay policy: %w", err)
 	}

@@ -30,16 +30,16 @@ Runtime data never becomes CLI-owned merely because the CLI caches it for render
 
 ```text
 main
- ├── cmd ───────────────┐
- ├── terminal ──────────┤
- └── runtimeembedded ───┤
-                        v
+ ├── cmd ────────────────┐
+ ├── terminal ───────────┤
+ └── runtimeadapter ─────┤
+                         v
              CLI application and domain
 ```
 
 The arrows show source dependencies toward CLI policy. The outer packages may import Cobra, Viper, Oolong, and Runtime public packages. Inner packages must not.
 
-`internal/runtimeembedded` converts public protocol values once at the edge. Consumer packages define the narrow interfaces they need. `internal/backend` may group concrete capabilities for composition, but it must not become a service locator passed through the application.
+`internal/runtimeadapter.Connection` owns the public binding lifecycle, negotiated profile, command metadata, and protocol translation. It does not own product state or define a second Runtime model. `main` is the only place that fans one Connection out into the narrow interfaces defined by CLI consumers; commands receive only `agent.Runtime` plus the immutable profile, and terminal construction receives explicit ports. There is no backend service bag or service locator.
 
 ## Package shape
 

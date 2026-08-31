@@ -40,7 +40,7 @@ func TestGoalProjectionRequiresImmutableRestoration(t *testing.T) {
 		t.Fatalf("goal.Usage fields = %v, want private accounting state", fields)
 	}
 
-	adapterPath := filepath.Join(root, "internal", "runtimeembedded", "goals.go")
+	adapterPath := filepath.Join(root, "internal", "runtimeadapter", "goals.go")
 	contents, err := os.ReadFile(adapterPath)
 	if err != nil {
 		t.Fatal(err)
@@ -112,9 +112,9 @@ func TestWorkspaceRequestModelsOwnOptionalPositiveIntent(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T) {
+func TestRuntimeAdapterCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T) {
 	root := moduleRoot(t)
-	paginationPath := filepath.Join(root, "internal", "runtimeembedded", "pagination.go")
+	paginationPath := filepath.Join(root, "internal", "runtimeadapter", "pagination.go")
 	contents, err := os.ReadFile(paginationPath)
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestEmbeddedCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T
 		{path: "schedules.go", policy: "maximumSchedulePageRequests"},
 		{path: "workspaces.go", policy: "maximumWorkspaceFilePageRequests"},
 	} {
-		path := filepath.Join(root, "internal", "runtimeembedded", caller.path)
+		path := filepath.Join(root, "internal", "runtimeadapter", caller.path)
 		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -157,7 +157,7 @@ func TestEmbeddedCursorTraversalOwnsFiniteCapacityAndOpaqueIdentity(t *testing.T
 }
 
 func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
-	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "runtimeembedded", "runtime.go"))
+	contents, err := os.ReadFile(filepath.Join(moduleRoot(t), "internal", "runtimeadapter", "connection.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
 	for _, required := range []string{
 		"protocol.MaximumRunEventIDCharacters",
 		"protocol.IDPrefixEvent",
-		"func (r *Runtime) subscriptionOptions(afterEventID string) (flameruntime.RunSubscriptionOptions, error)",
+		"func (r *Connection) subscriptionOptions(afterEventID string) (flameruntime.RunSubscriptionOptions, error)",
 	} {
 		if !strings.Contains(text, required) {
 			t.Errorf("Run replay adapter lost public contract %q", required)
@@ -175,7 +175,7 @@ func TestRunReplayCursorUsesThePublicResourceAndFramingContract(t *testing.T) {
 
 func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "runtimeembedded", "sessions.go")
+	path := filepath.Join(root, "internal", "runtimeadapter", "sessions.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +187,7 @@ func TestSessionCatalogFiltersStayAtTheRuntimeQueryBoundary(t *testing.T) {
 		t.Fatal("session adapter does not project its filters into sessions.list")
 	}
 	for _, retired := range []string{
-		"func (r *Runtime) listFilteredSessions(",
+		"func (r *Connection) listFilteredSessions(",
 		"func matchesSession(",
 		"Limit: protocolPositiveInt(1)",
 		"maximumFilteredSessionPageRequests",
@@ -268,37 +268,45 @@ func TestRuntimeProfileOwnsCommandReplayPolicyProjection(t *testing.T) {
 	}
 }
 
-func TestTerminalCarriesOneBackendCompositionManifest(t *testing.T) {
+func TestTerminalReceivesExplicitConsumerPorts(t *testing.T) {
 	root := moduleRoot(t)
 	config := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "run.go"), "Config")
-	if got := config["Services"]; got != "backend.Services" {
-		t.Fatalf("terminal.Config.Services type = %q, want backend.Services", got)
-	}
 	appConfig := cliStructFieldTypes(t, filepath.Join(root, "internal", "terminal", "application.go"), "appConfig")
-	if got := appConfig["services"]; got != "backend.Services" {
-		t.Fatalf("terminal.appConfig.services type = %q, want backend.Services", got)
+	ports := []struct{ public, private, typeName string }{
+		{public: "Runtime", private: "runtime", typeName: "agent.Runtime"},
+		{public: "Workspaces", private: "workspaces", typeName: "workspace.Service"},
+		{public: "Changes", private: "changes", typeName: "changefeed.Source"},
+		{public: "Transfers", private: "transfers", typeName: "sessiontransfer.Service"},
+		{public: "Usage", private: "usage", typeName: "usage.Service"},
+		{public: "ModelConfig", private: "modelConfig", typeName: "modelconfig.Service"},
+		{public: "Goals", private: "goals", typeName: "goal.Service"},
+		{public: "Skills", private: "skills", typeName: "skills.Service"},
+		{public: "MCP", private: "mcp", typeName: "mcp.Service"},
+		{public: "Schedules", private: "schedules", typeName: "schedule.Service"},
+		{public: "AgentMemory", private: "agentMemory", typeName: "agentmemory.Service"},
+		{public: "Knowledge", private: "knowledge", typeName: "knowledge.Service"},
+		{public: "DiagnosticTools", private: "diagnosticTools", typeName: "diagnostictool.Service"},
+		{public: "AuthoringContext", private: "authoringContext", typeName: "authoringcontext.Service"},
+		{public: "Hooks", private: "hooks", typeName: "hookpolicy.Service"},
+		{public: "Feedback", private: "feedback", typeName: "feedback.Service"},
 	}
-	for _, retired := range []struct{ public, private string }{
-		{public: "Runtime", private: "runtime"}, {public: "RuntimeProfile"},
-		{public: "Workspaces", private: "workspaces"}, {public: "Changes", private: "changes"},
-		{public: "Transfers", private: "transfers"}, {public: "Usage", private: "usage"},
-		{public: "ModelConfig", private: "modelConfig"}, {public: "Goals", private: "goals"},
-		{public: "Skills", private: "skills"}, {public: "MCP", private: "mcp"},
-		{public: "Schedules", private: "schedules"}, {public: "AgentMemory", private: "agentMemory"},
-		{public: "Knowledge", private: "knowledge"}, {public: "DiagnosticTools", private: "diagnosticTools"},
-		{public: "AuthoringContext", private: "authoringContext"}, {public: "Hooks", private: "hooks"},
-		{public: "Feedback", private: "feedback"},
-	} {
-		if _, exists := config[retired.public]; exists {
-			t.Errorf("terminal.Config restored exploded backend service %s", retired.public)
+	for _, port := range ports {
+		if got := config[port.public]; got != port.typeName {
+			t.Errorf("terminal.Config.%s type = %q, want %q", port.public, got, port.typeName)
 		}
-		if _, exists := appConfig[retired.private]; retired.private != "" && exists {
-			t.Errorf("terminal.appConfig restored exploded backend service %s", retired.private)
+		if got := appConfig[port.private]; got != port.typeName {
+			t.Errorf("terminal.appConfig.%s type = %q, want %q", port.private, got, port.typeName)
 		}
+	}
+	if _, exists := config["Services"]; exists {
+		t.Fatal("terminal.Config restored a service locator")
+	}
+	if _, exists := appConfig["services"]; exists {
+		t.Fatal("terminal.appConfig restored a service locator")
 	}
 }
 
-func TestEmbeddedRuntimeDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
+func TestRuntimeConnectionDoesNotInferProfilePresenceFromBrandFields(t *testing.T) {
 	root := moduleRoot(t)
 	profilePath := filepath.Join(root, "internal", "runtimeprofile", "profile.go")
 	contents, err := os.ReadFile(profilePath)
@@ -308,13 +316,13 @@ func TestEmbeddedRuntimeDoesNotInferProfilePresenceFromBrandFields(t *testing.T)
 	if strings.Contains(string(contents), "func (p Profile) Available() bool") {
 		t.Fatal("runtime profile restored Server.Name-based presence inference")
 	}
-	runtimePath := filepath.Join(root, "internal", "runtimeembedded", "runtime.go")
+	runtimePath := filepath.Join(root, "internal", "runtimeadapter", "connection.go")
 	contents, err = os.ReadFile(runtimePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(contents), ".profile.Available()") {
-		t.Fatal("embedded Runtime conditionally publishes its construction-owned profile")
+		t.Fatal("Runtime connection conditionally publishes its construction-owned profile")
 	}
 }
 
@@ -823,7 +831,7 @@ func TestRunLimitsRequireExplicitConstructionAndDurableIdentity(t *testing.T) {
 		want string
 	}{
 		{path: filepath.Join(root, "internal", "promptqueue", "queue.go"), want: "agent.UnlimitedRunLimits()"},
-		{path: filepath.Join(root, "internal", "runtimeembedded", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
+		{path: filepath.Join(root, "internal", "runtimeadapter", "projection.go"), want: "Limits: agent.UnlimitedRunLimits()"},
 	} {
 		contents, err := os.ReadFile(consumer.path)
 		if err != nil {
@@ -859,14 +867,14 @@ func TestRunLineageRequiresExplicitClosedConstruction(t *testing.T) {
 	if strings.Contains(text, "return r == (RunLineage{})") {
 		t.Fatal("agent.RunLineage restored zero-value root inference")
 	}
-	projectionPath := filepath.Join(root, "internal", "runtimeembedded", "projection.go")
+	projectionPath := filepath.Join(root, "internal", "runtimeadapter", "projection.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	projection := string(contents)
 	if !strings.Contains(projection, "agent.RootRunLineage()") || !strings.Contains(projection, "agent.NewChildRunLineage(") {
-		t.Fatal("embedded Runtime no longer projects explicit root/child lineage")
+		t.Fatal("Runtime adapter no longer projects explicit root/child lineage")
 	}
 }
 
@@ -892,14 +900,14 @@ func TestModelRolesOwnExplicitInheritedDisabledAndConfiguredModes(t *testing.T) 
 			t.Errorf("modelconfig.Role lacks constructor %q", constructor)
 		}
 	}
-	projectionPath := filepath.Join(root, "internal", "runtimeembedded", "modelconfig.go")
+	projectionPath := filepath.Join(root, "internal", "runtimeadapter", "modelconfig.go")
 	contents, err = os.ReadFile(projectionPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	projection := string(contents)
 	if !strings.Contains(projection, "projectUtilityRole(") || !strings.Contains(projection, "projectEmbeddingRole(") {
-		t.Fatal("embedded Runtime no longer owns role-specific wire projection")
+		t.Fatal("Runtime adapter no longer owns role-specific wire projection")
 	}
 	terminalPath := filepath.Join(root, "internal", "terminal", "runtime_management.go")
 	contents, err = os.ReadFile(terminalPath)
@@ -1133,7 +1141,7 @@ var layers = []struct {
 }{
 	{"internal/testsupport/runtimefixture/", "runtimefixture"},
 	{"internal/exactint/", "exactint"},
-	{"internal/runtimeembedded/", "runtimeembedded"},
+	{"internal/runtimeadapter/", "runtimeadapter"},
 	{"internal/authoringcontext/", "authoringcontext"},
 	{"internal/agentmemory/", "agentmemory"},
 	{"internal/diagnostictool/", "diagnostictool"},
@@ -1152,7 +1160,6 @@ var layers = []struct {
 	{"internal/skills/", "skills"},
 	{"internal/mcp/", "mcp"},
 	{"internal/schedule/", "schedule"},
-	{"internal/backend/", "backend"},
 	{"internal/sideload/", "sideload"},
 	{"internal/terminal/", "terminal"},
 	{"internal/attachment/", "attachment"},
@@ -1205,7 +1212,6 @@ var allowed = map[string][]string{
 	"skills":           nil,
 	"mcp":              {"failure"},
 	"schedule":         {"exactint", "modelidentity", "runidentity", "sessionidentity"},
-	"backend":          {"agent", "agentmemory", "authoringcontext", "changefeed", "diagnostictool", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "runtimeprofile", "schedule", "sessiontransfer", "skills", "usage", "workspace"},
 	"settings":         {"agent"},
 	"session":          {"agent"},
 	"sessiondeletion":  {"agent", "commandreplay", "mutation", "retry", "sessionidentity", "workbench"},
@@ -1221,18 +1227,18 @@ var allowed = map[string][]string{
 	"workbench":        {"agent", "commandreplay", "runidentity", "sessionidentity"},
 
 	// Outbound adapters share domain contracts, not one another.
-	"attachment":      {"agent"},
-	"reconnect":       {"agent"},
-	"runrecovery":     {"agent"},
-	"runtimefixture":  {"agent", "exactint", "failure", "sessionidentity", "workspace"},
-	"runtimeembedded": {"agent", "agentmemory", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "runidentity", "runtimeprofile", "schedule", "sessionidentity", "sessiontransfer", "skills", "usage", "workspace"},
-	"render":          {"agent", "failure", "runidentity"},
+	"attachment":     {"agent"},
+	"reconnect":      {"agent"},
+	"runrecovery":    {"agent"},
+	"runtimefixture": {"agent", "exactint", "failure", "sessionidentity", "workspace"},
+	"runtimeadapter": {"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "runidentity", "runtimeprofile", "schedule", "sessionidentity", "sessiontransfer", "skills", "usage", "workspace"},
+	"render":         {"agent", "failure", "runidentity"},
 
-	// Delivery adapters compose inward abstractions. Sideloading is the outer trust
-	// boundary around terminal contributions; cmd is the application composition root.
-	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
+	// Delivery adapters consume inward abstractions. Sideloading is the outer trust
+	// boundary around terminal contributions; main is the only composition root.
+	"terminal": {"agent", "agentmemory", "attachment", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "extensions", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "mutation", "promptqueue", "reconnect", "retry", "runidentity", "runrecovery", "runtimeprofile", "schedule", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "settings", "skills", "steering", "usage", "workbench", "workspace"},
 	"sideload": {"extensions", "terminal"},
-	"cmd":      {"agent", "attachment", "backend", "commandreplay", "extensions", "failure", "mutation", "oneshot", "render", "retry", "runtimeprofile", "session", "sessiondeletion", "settings", "sideload", "terminal", "workbench"},
+	"cmd":      {"agent", "attachment", "commandreplay", "failure", "mutation", "oneshot", "render", "runtimeprofile", "session", "sessiondeletion", "settings", "workbench"},
 	"arch":     nil,
 }
 
@@ -1240,7 +1246,7 @@ var adapterDependencies = []struct {
 	path          string
 	allowedLayers []string
 }{
-	{path: runtimePath, allowedLayers: []string{"runtimeembedded"}},
+	{path: runtimePath, allowedLayers: []string{"runtimeadapter"}},
 	{path: cobraPath, allowedLayers: []string{"cmd"}},
 	{path: viperPath, allowedLayers: []string{"cmd"}},
 }
@@ -1301,7 +1307,7 @@ func TestTheLibraryStaysALibrary(t *testing.T) {
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
 
-	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "backend", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeembedded", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
+	terminalFree := []string{"agent", "agentmemory", "authoringcontext", "changefeed", "commandreplay", "diagnostictool", "exactint", "failure", "feedback", "goal", "hookpolicy", "knowledge", "mcp", "modelconfig", "modelidentity", "sessionidentity", "runidentity", "mutation", "retry", "runtimeprofile", "schedule", "skills", "usage", "workspace", "settings", "runtimefixture", "runtimeadapter", "attachment", "promptqueue", "reconnect", "runrecovery", "session", "sessionartifact", "sessiondeletion", "sessionrollback", "sessiontransfer", "steering", "workbench", "oneshot", "extensions", "render"}
 	walk(t, root, func(dir, path string) {
 		layer := layerOf(dir)
 		if !slices.Contains(terminalFree, layer) {
@@ -1371,7 +1377,7 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 	}{
 		{"internal/agent", "internal/testsupport/runtimefixture", true},
 		{"internal/agent", "internal/terminal", true},
-		{"internal/agent", "internal/runtimeembedded", true},
+		{"internal/agent", "internal/runtimeadapter", true},
 		{"internal/extensions", "internal/agent", true},
 		{"internal/testsupport/runtimefixture", "internal/render", true},
 		{"internal/attachment", "internal/terminal", true},
@@ -1389,14 +1395,14 @@ func TestTheRulesWouldActuallyRefuseSomething(t *testing.T) {
 		{"internal/sideload", "internal/cmd", true},
 
 		{"internal/testsupport/runtimefixture", "internal/agent", false},
-		{"internal/runtimeembedded", "internal/agent", false},
-		{"internal/runtimeembedded", "internal/terminal", true},
+		{"internal/runtimeadapter", "internal/agent", false},
+		{"internal/runtimeadapter", "internal/terminal", true},
 		{"internal/terminal", "internal/agent", false},
 		{"internal/terminal", "internal/sessionartifact", false},
 		{"internal/terminal", "internal/sessiontransfer", false},
 		{"internal/terminal", "internal/workbench", false},
 		{"internal/terminal", "internal/extensions", false},
-		{"internal/cmd", "internal/terminal", false},
+		{"internal/cmd", "internal/terminal", true},
 		{"internal/sideload", "internal/extensions", false},
 		{"internal/render", "internal/agent", false},
 		{"internal/attachment", "internal/agent", false},

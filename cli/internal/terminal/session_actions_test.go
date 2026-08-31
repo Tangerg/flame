@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
@@ -182,7 +181,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(saveDraftErr)
 	}
 	backend := &postCommitSessionDeleteRuntime{Runtime: base, deleted: make(chan struct{}, 1)}
-	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: backend}, SessionID: "ses_demo_1", StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, SessionID: "ses_demo_1", StateDirectory: stateDirectory})
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions · Center")
@@ -556,7 +555,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend, Transfers: importingTransfer{runtime: backend}}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -880,7 +879,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 		t.Fatal(err)
 	}
 	profile := steerReplayTestProfile(t, workspace)
-	host, stop := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: runtime, RuntimeProfile: &profile}, Workspace: workspace,
+	host, stop := runUIFromConfig(t, Config{Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
 		StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "Ask flame")
@@ -905,7 +904,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stop()
 
 	replay := &cachedSteeringRuntime{Runtime: base, accepted: accepted}
-	restarted, stopRestarted := runUIFromConfig(t, Config{Services: backendcontract.Services{Agent: replay, RuntimeProfile: &profile}, Workspace: workspace,
+	restarted, stopRestarted := runUIFromConfig(t, Config{Runtime: replay, RuntimeProfile: &profile, Workspace: workspace,
 		SessionID: sessionID, StateDirectory: stateDirectory,
 	})
 	restarted.Shows(t, "focus on parsing")

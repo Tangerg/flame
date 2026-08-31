@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
 )
@@ -109,9 +108,9 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 
 func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 	var opened bool
-	provider := runtimeProvider{open: func(context.Context) (backend.Services, error) {
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
 		opened = true
-		return backend.AgentOnly(instantRuntime()), nil
+		return instantRuntime(), nil, nil
 	}}
 	command := newRunsListCommand(provider)
 	command.SetOut(&strings.Builder{})
@@ -132,8 +131,8 @@ func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (backend.Services, error) {
-		return backend.Services{Agent: runtime, RuntimeProfile: new(profile.Clone())}, nil
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsListCommand(provider)
 	command.SetOut(&strings.Builder{})
@@ -292,7 +291,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	}
 	runtime := &uncertainRunCancellationRuntime{Runtime: base}
 	profile := commandRuntimeProfile(t)
-	if _, _, err := executeCommandWithServices(t, backend.Services{Agent: runtime, RuntimeProfile: &profile}, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
+	if _, _, err := executeCommandWithRuntime(t, runtime, &profile, "", "runs", "cancel", opened.RunID, "--yes"); err != nil {
 		t.Fatal(err)
 	}
 	attempts := runtime.cancelAttempts()
@@ -324,8 +323,8 @@ func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (backend.Services, error) {
-		return backend.Services{Agent: runtime, RuntimeProfile: new(profile.Clone())}, nil
+	provider := runtimeProvider{open: func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
+		return runtime, new(profile.Clone()), nil
 	}}
 	command := newRunsShowCommand(provider)
 	command.SetContext(t.Context())

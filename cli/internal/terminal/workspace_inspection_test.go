@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/testsupport/runtimefixture"
@@ -178,7 +177,7 @@ func runUIWithWorkspaceBackend(t *testing.T, service workspace.Service, source c
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Services: backendcontract.Services{Agent: backend, Workspaces: service, Changes: source}, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

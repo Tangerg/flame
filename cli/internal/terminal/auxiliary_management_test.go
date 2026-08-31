@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/agent"
 	"github.com/Tangerg/flame/cli/internal/authoringcontext"
-	backendcontract "github.com/Tangerg/flame/cli/internal/backend"
 	"github.com/Tangerg/flame/cli/internal/changefeed"
 	"github.com/Tangerg/flame/cli/internal/diagnostictool"
 	"github.com/Tangerg/flame/cli/internal/feedback"
@@ -37,7 +36,7 @@ func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation diagnos
 
 func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) {
 	tools := &diagnosticToolServiceStub{invoked: make(chan diagnostictool.Invocation, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), DiagnosticTools: tools}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), DiagnosticTools: tools, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/tools")
 	host.Press(input.Enter)
@@ -75,7 +74,7 @@ func (authoringContextServiceStub) Recipes(context.Context, string) ([]authoring
 func TestAuthoringDocumentsAndRecipeExpansionUseTheUnifiedPromptPath(t *testing.T) {
 	runtime := &recordingRuntime{Runtime: runtimefixture.New()}
 	runtime.Instant = true
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtime, AuthoringContext: authoringContextServiceStub{}}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtime, AuthoringContext: authoringContextServiceStub{}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/agent-docs")
 	host.Press(input.Enter)
@@ -162,7 +161,7 @@ func (h *hookServiceStub) SetProjectTrust(_ context.Context, _ string, trusted b
 
 func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 	hooks := &hookServiceStub{changed: make(chan bool, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), Hooks: hooks}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/hooks")
 	host.Press(input.Enter)
@@ -187,7 +186,7 @@ func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 
 func TestHookTrustDoesNotReportSuccessWhenAuthoritativeCatalogIsUnchanged(t *testing.T) {
 	hooks := &hookServiceStub{ignoreTrust: true, changed: make(chan bool, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), Hooks: hooks}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/hooks-trust")
 	host.Press(input.Enter)
@@ -208,7 +207,7 @@ func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.HooksChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), Hooks: hooks, Changes: source}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Changes: source, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "hook change subscription")
 	if !slices.Equal(subscription.Topics, []changefeed.Topic{changefeed.HooksChanged}) {
@@ -240,7 +239,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Hooks: hooks, Changes: source}, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Hooks: hooks, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/hooks-trust")
@@ -304,7 +303,7 @@ func (f *feedbackServiceStub) Record(_ context.Context, signal feedback.Signal) 
 
 func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
 	feedbacks := &feedbackServiceStub{recorded: make(chan feedback.Signal, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: runtimefixture.New(), Feedback: feedbacks}, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	host.Type("/feedback positive useful explanation")
 	host.Press(input.Enter)
@@ -328,7 +327,7 @@ func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Services: backendcontract.Services{Agent: backend, Feedback: feedbacks, Changes: source}, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Feedback: feedbacks, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/feedback positive durable signal")

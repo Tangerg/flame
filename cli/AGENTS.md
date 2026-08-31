@@ -15,4 +15,4 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 - Runtime events are observations. Completed Runtime Items and authoritative snapshots win after gaps, reconnects, and cold recovery.
 - Preserve exact provider/model identity and model-owned options. Never infer a provider from a model name or retain credentials in history, frames, errors, or logs.
 - Test user-visible one-shot and terminal flows. Use in-memory root-command tests for routing and a real PTY only when terminal escape sequences, resize, focus, input decoding, or restoration are the contract.
-- The current `backend`, `runtimeembedded`, capability-service, and one-action package tree is migration debt. Do not add new consumers or abstractions to it while it is being removed.
+- `runtimeadapter` is the single external translation boundary. Its `Connection` owns binding lifecycle, negotiation, and DTO translation but no product state machine; only the composition root may fan it out into consumer-owned ports. Capability-service and one-action packages remain migration debt and must not gain new abstractions while they are being collapsed.

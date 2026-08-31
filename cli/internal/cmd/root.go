@@ -20,11 +20,8 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/agent"
-	"github.com/Tangerg/flame/cli/internal/backend"
-	"github.com/Tangerg/flame/cli/internal/extensions"
+	"github.com/Tangerg/flame/cli/internal/runtimeprofile"
 	"github.com/Tangerg/flame/cli/internal/settings"
-	"github.com/Tangerg/flame/cli/internal/sideload"
-	terminalui "github.com/Tangerg/flame/cli/internal/terminal"
 )
 
 // version is overridden at link time via -ldflags "-X ...cmd.version=...".
@@ -39,56 +36,67 @@ const configIndependentAnnotation = "flame/config-independent"
 // Runtime construction stays lazy so help and completion do not open sockets,
 // databases, or other process-owned resources.
 type Dependencies struct {
-	OpenRuntime    func(context.Context) (backend.Services, error)
+	OpenRuntime    func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error)
+	StartTerminal  func(context.Context, TerminalRequest) error
+	StateDirectory string
+}
+
+// TerminalRequest is the command-owned input needed to start one interactive
+// delivery. Concrete Runtime adapters and terminal dependencies stay in main.
+type TerminalRequest struct {
+	SessionID      string
+	Workspace      string
+	InitialPrompt  string
+	Settings       settings.Config
 	StateDirectory string
 }
 
 // runtimeProvider delays construction until a command needs the runtime. It
 // owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
-	open func(context.Context) (backend.Services, error)
+	open func(context.Context) (agent.Runtime, *runtimeprofile.Profile, error)
 }
 
 func (r runtimeProvider) Open(cmd *cobra.Command) (agent.Runtime, error) {
-	services, err := r.OpenServices(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return services.Agent, nil
+	runtime, _, err := r.resolve(cmd.Context())
+	return runtime, err
 }
 
-func (r runtimeProvider) OpenServices(cmd *cobra.Command) (backend.Services, error) {
-	services, err := r.resolve(cmd.Context())
-	if err != nil {
-		return backend.Services{}, err
-	}
-	return services, nil
+func (r runtimeProvider) OpenRuntime(cmd *cobra.Command) (agent.Runtime, *runtimeprofile.Profile, error) {
+	return r.resolve(cmd.Context())
 }
 
 func (r runtimeProvider) OpenQuietly(cmd *cobra.Command) (agent.Runtime, error) {
-	services, err := r.resolve(cmd.Context())
-	return services.Agent, err
+	runtime, _, err := r.resolve(cmd.Context())
+	return runtime, err
 }
 
-func (r runtimeProvider) resolve(ctx context.Context) (backend.Services, error) {
+func (r runtimeProvider) resolve(ctx context.Context) (agent.Runtime, *runtimeprofile.Profile, error) {
 	if r.open == nil {
-		return backend.Services{}, errors.New("runtime factory is required")
+		return nil, nil, errors.New("runtime factory is required")
 	}
-	services, err := r.open(ctx)
+	runtime, profile, err := r.open(ctx)
 	if err != nil {
-		return backend.Services{}, err
+		return nil, nil, err
 	}
-	if err := services.Validate(); err != nil {
-		return backend.Services{}, err
+	if runtime == nil {
+		return nil, nil, errors.New("runtime factory returned no agent runtime")
 	}
-	return services, nil
+	if profile != nil {
+		cloned := profile.Clone()
+		if err := cloned.Validate(); err != nil {
+			return nil, nil, err
+		}
+		profile = &cloned
+	}
+	return runtime, profile, nil
 }
 
 // NewRoot builds an isolated command tree from process-owned dependencies.
 func NewRoot(dependencies Dependencies) *cobra.Command {
 	provider := runtimeProvider{open: dependencies.OpenRuntime}
 	v := viper.New()
-	root := newRootCommand(v, provider, dependencies.StateDirectory)
+	root := newRootCommand(v, provider, dependencies.StartTerminal, dependencies.StateDirectory)
 	configureRoot(v, root)
 	root.Flags().StringP("session", "s", "", "Open an existing session instead of a new one")
 	root.PersistentFlags().StringP("cwd", "C", "", "Workspace directory for a new session (default: current directory)")
@@ -101,7 +109,12 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 	return root
 }
 
-func newRootCommand(v *viper.Viper, provider runtimeProvider, stateDirectory string) *cobra.Command {
+func newRootCommand(
+	v *viper.Viper,
+	provider runtimeProvider,
+	startTerminal func(context.Context, TerminalRequest) error,
+	stateDirectory string,
+) *cobra.Command {
 	return &cobra.Command{
 		Use:   "flame [prompt...]",
 		Short: "Terminal front end for the flame agent runtime",
@@ -134,7 +147,7 @@ func newRootCommand(v *viper.Viper, provider runtimeProvider, stateDirectory str
 			if err != nil {
 				return err
 			}
-			return runInteractive(cmd, args, provider, config, stateDirectory)
+			return runInteractive(cmd, args, startTerminal, config, stateDirectory)
 		},
 	}
 }
@@ -163,10 +176,15 @@ func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Vip
 // With no terminal to take over it says so and points at the command that does not
 // need one, rather than failing with something about file descriptors: a program whose
 // output is being piped wants text, not frames.
-func runInteractive(cmd *cobra.Command, args []string, provider runtimeProvider, config settings.Config, stateDirectory string) error {
-	services, err := provider.OpenServices(cmd)
-	if err != nil {
-		return err
+func runInteractive(
+	cmd *cobra.Command,
+	args []string,
+	startTerminal func(context.Context, TerminalRequest) error,
+	config settings.Config,
+	stateDirectory string,
+) error {
+	if startTerminal == nil {
+		return errors.New("terminal starter is required")
 	}
 	workspacePath, err := resolveWorkspace(cmd)
 	if err != nil {
@@ -176,14 +194,11 @@ func runInteractive(cmd *cobra.Command, args []string, provider runtimeProvider,
 	// stays reachable by its own name.
 	sessionID, _ := cmd.Flags().GetString("session")
 
-	err = terminalui.Run(cmd.Context(), terminalui.Config{
-		Services:       services,
-		ClientVersion:  version,
+	err = startTerminal(cmd.Context(), TerminalRequest{
 		SessionID:      sessionID,
 		Workspace:      workspacePath,
 		InitialPrompt:  strings.TrimSpace(strings.Join(args, " ")),
-		Settings:       new(config),
-		PluginSources:  []extensions.Source{sideload.New(config.Plugins.Directories)},
+		Settings:       config.Clone(),
 		StateDirectory: stateDirectory,
 	})
 	if errors.Is(err, term.ErrNotTerminal) {
