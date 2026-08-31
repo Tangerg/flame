@@ -1,5 +1,5 @@
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
-import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { useRecordComposerHistory } from "@/plugins/builtin/chat/composer/public/history";
 import { TextArea } from "@/ui";
 import {
@@ -15,7 +15,7 @@ import { ComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
 
 interface Props {
-  onSend: (input: UserInput) => boolean;
+  onSend: (input: AgentInput) => boolean;
   value: string;
   onChange: (v: string) => void;
   onClear: () => void;

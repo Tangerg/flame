@@ -1,6 +1,6 @@
 import { Activity, Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { dockWidthRow } from "./dockWidth";
-import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { ViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { CatalogPicker, knownIconName, type CatalogPickerGroup, type IconName } from "@/ui";
 import {
@@ -52,7 +52,7 @@ function viewIcon(name: string | undefined): IconName | undefined {
 }
 
 interface Props {
-  onSend: (input: UserInput) => boolean;
+  onSend: (input: AgentInput) => boolean;
 }
 
 function SessionOwnedWorkspaceState({

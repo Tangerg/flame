@@ -1,13 +1,9 @@
 // One submit path for the Enter key, the send button and plugin key bindings, so they
 // cannot diverge. Owns slash routing and the clear-only-after-accepted invariant.
 
-import {
-  buildInput,
-  textInput,
-  type InputImage,
-  type UserInput,
-} from "@/plugins/builtin/chat/composer/public/input";
+import { buildInput, type InputImage } from "@/plugins/builtin/chat/composer/public/input";
 import type { PastedText } from "../domain/draft";
+import { agentTextInput, type AgentInput } from "@/plugins/builtin/agent/public/input";
 import { createComposerSendIntent } from "../domain/sendIntent";
 import {
   COMPOSER_SUBMIT_MODE,
@@ -22,7 +18,7 @@ import {
 export interface SubmitDeps {
   value: string;
   clear: () => void;
-  sendInput: (input: UserInput) => boolean;
+  sendInput: (input: AgentInput) => boolean;
   images: InputImage[];
   pastes: PastedText[];
   recordHistory: (text: string) => void;
@@ -93,7 +89,7 @@ export function submitComposer({
     if (spec?.run) {
       if (intent.historyText) recordHistory(intent.historyText);
       void Promise.resolve(
-        spec.run({ args: slash.args, send: (text: string) => sendInput(textInput(text)) }),
+        spec.run({ args: slash.args, send: (text: string) => sendInput(agentTextInput(text)) }),
       ).catch((err) => {
         console.error(`[plugin] command ${slash.cmd} threw:`, err);
         const owner = lookupSlashCommandOwner(slash.cmd) ?? "unknown";

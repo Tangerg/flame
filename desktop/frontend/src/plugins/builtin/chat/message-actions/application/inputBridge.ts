@@ -1,6 +1,5 @@
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { ComposerDraftInput } from "../../composer/public/draft";
-export { composerInputToAgentInput } from "../../composer/public/sendToAgent";
 
 export function agentInputToComposerDraft(input: AgentInput): ComposerDraftInput {
   return {

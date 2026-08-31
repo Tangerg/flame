@@ -1,5 +1,5 @@
 import { memo } from "react";
-import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { Composer, SlashSuggestions } from "@/plugins/builtin/chat/composer/public/ui";
 import { useSelectedModel } from "@/plugins/builtin/chat/composer/public/selectedModel";
 import {
@@ -19,7 +19,7 @@ import {
 export const ComposerSurface = memo(function ComposerSurface({
   onSend,
 }: {
-  onSend: (input: UserInput) => boolean;
+  onSend: (input: AgentInput) => boolean;
 }) {
   const value = useComposerText();
   const setValue = useSetComposerText();

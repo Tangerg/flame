@@ -8,7 +8,7 @@ export { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
 export type { ConfigValue } from "./config";
 
 export { definePlugin } from "./definePlugin";
-export { createKernel, startKernel, stopKernel } from "./bootstrap";
+export { startKernel, stopKernel } from "./bootstrap";
 export type { Contributor, PluginContext, PluginSpec } from "./definePlugin";
 export { contributeLayout } from "./contributeHelpers";
 export type { Contribution } from "./contracts";

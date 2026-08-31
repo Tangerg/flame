@@ -1,19 +1,4 @@
-export interface UserTextInput {
-  kind: "text";
-  text: string;
-}
-
-export interface UserImageInput {
-  kind: "image";
-  mime: string;
-  data: string;
-}
-
-export type UserInputPart = UserTextInput | UserImageInput;
-
-export interface UserInput {
-  parts: UserInputPart[];
-}
+import type { AgentInput, AgentInputPart } from "@/plugins/builtin/agent/public/input";
 
 /** One image attachment ready to inline. `data` is raw base64 (no data: prefix). */
 export interface InputImage {
@@ -21,13 +6,8 @@ export interface InputImage {
   data: string;
 }
 
-/** Plain-text input — the common programmatic case. Empty text → empty input. */
-export function textInput(text: string): UserInput {
-  return text ? { parts: [{ kind: "text", text }] } : { parts: [] };
-}
-
-export function buildInput(text: string, images: InputImage[]): UserInput {
-  const parts: UserInputPart[] = [];
+export function buildInput(text: string, images: InputImage[]): AgentInput {
+  const parts: AgentInputPart[] = [];
   if (text) parts.push({ kind: "text", text });
   for (const img of images) parts.push({ kind: "image", mime: img.mime, data: img.data });
   return { parts };

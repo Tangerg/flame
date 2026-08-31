@@ -5,7 +5,7 @@ import type { Message } from "@/plugins/builtin/agent/public/viewState";
 import { t } from "@/lib/i18n";
 import { notifyError, notifyInfo } from "@/plugins/sdk";
 import { buildInput } from "@/plugins/builtin/chat/composer/public/input";
-import { agentInputToComposerDraft, composerInputToAgentInput } from "./inputBridge";
+import { agentInputToComposerDraft } from "./inputBridge";
 import { describeRpcError } from "@/lib/rpcErrors";
 import {
   activeAgentConversation,
@@ -46,10 +46,7 @@ export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): v
   const prompt = regenerationPromptBefore(messages, msg.id);
   if (!prompt) return;
   if (!prompt.runId) {
-    sendToAgentSession(
-      sessionId,
-      composerInputToAgentInput(buildInput(prompt.text, prompt.images)),
-    );
+    sendToAgentSession(sessionId, buildInput(prompt.text, prompt.images));
     return;
   }
   void rollbackSessionToBeforeRun(sessionId, prompt.runId, opts?.restoreFiles ? "both" : "history")
@@ -61,7 +58,7 @@ export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): v
       const input =
         rollback.status === "committed" && rollback.userInput
           ? rollback.userInput
-          : composerInputToAgentInput(buildInput(prompt.text, prompt.images));
+          : buildInput(prompt.text, prompt.images);
       if (!sendToAgentSession(sessionId, input)) {
         notifyInfo(t("session.regenerate.switchedAway"), {
           source: "session",

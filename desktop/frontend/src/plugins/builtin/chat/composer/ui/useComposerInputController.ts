@@ -7,7 +7,7 @@ import type {
 } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
-import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useFileMentions } from "@/plugins/builtin/chat/composer/public/fileMentions";
@@ -27,7 +27,7 @@ interface Args {
   value: string;
   onChange: (value: string) => void;
   onClear: () => void;
-  onSend: (input: UserInput) => boolean;
+  onSend: (input: AgentInput) => boolean;
   images: ComposerImage[];
   pastes: PastedText[];
   recordHistory: (text: string) => void;

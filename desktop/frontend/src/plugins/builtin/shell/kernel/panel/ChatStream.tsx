@@ -1,4 +1,4 @@
-import type { UserInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
@@ -26,7 +26,7 @@ import {
 } from "@/plugins/builtin/chat/message/public/rendering";
 
 interface Props {
-  onSend: (input: UserInput) => boolean;
+  onSend: (input: AgentInput) => boolean;
 }
 
 const RAIL =

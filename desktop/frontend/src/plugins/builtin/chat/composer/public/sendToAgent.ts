@@ -1,1 +1,1 @@
-export { composerInputToAgentInput, useSendComposerInput } from "../application/sendToAgent";
+export { useSendComposerInput } from "../application/sendToAgent";
