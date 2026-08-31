@@ -840,6 +840,11 @@ provider 的 key，读取面自然回落到 `credential:{source:"env",masked}`�
 探测由 Runtime 以 10 秒 deadline 有界结算；caller cancel 仍终止 command，Runtime-owned timeout 则返回稳定的 failed verdict，
 不会让一个不响应的 endpoint 永久占住客户端配置操作。
 
+Endpoint-owned 模型目录使用 provider profile 的真实 wire protocol，而不是统一伪装成 OpenAI：OpenAI-compatible、Azure OpenAI
+与 Ollama 请求 `{baseURL}/models`，按配置发送 Bearer credential；Anthropic-compatible 把 `baseURL` 解释为 `/v1` 之前的
+API origin/gateway prefix，请求 `{baseURL}/v1/models`，并发送 `x-api-key` 与 `anthropic-version`。模型列表、provider test
+和实际 chat adapter 因而共享同一协议归属；应用层不按 provider identity 猜路径或鉴权。
+
 `models.*` 提供模型目录与 utility / embedding 角色；`tools.*` 提供直接诊断工具的 `list` / `invoke`（§4.7）。
 
 ### 7.7 可选域（capability-gated）

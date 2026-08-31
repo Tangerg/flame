@@ -32,8 +32,9 @@ utilityModel: ""
 apiKey: ""
 
 # Optional API endpoint override. Empty = the adapter's built-in default.
-# Point this at a proxy, gateway, regional endpoint, or a self-hosted
-# OpenAI-compatible server. Overridden by FLAME_BASEURL env.
+# OpenAI-compatible endpoints normally include /v1; Azure OpenAI endpoints
+# must end in /openai/v1; Anthropic-compatible endpoints name the origin or
+# gateway prefix before the adapter-appended /v1. Overridden by FLAME_BASEURL.
 baseURL: ""
 
 # Tool-result eviction: a single tool output larger than this many bytes is
