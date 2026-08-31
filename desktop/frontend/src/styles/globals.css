@@ -280,8 +280,8 @@
 
 :root {
   --color-accent: #2b5fd0;
-  --color-accent-border: #2454bd;
-  --color-accent-press: #1e48a3;
+  --color-accent-border: #2450ae;
+  --color-accent-press: #1d408c;
 
   --color-bg: #ffffff;
   --color-surface: #f4f6fa;
@@ -663,8 +663,8 @@ html.theme-dark body {
 }
 html.theme-dark {
   --color-accent: #3574f0;
-  --color-accent-border: #2a63d8;
-  --color-accent-press: #2354bd;
+  --color-accent-border: #115beb;
+  --color-accent-press: #0f4cc5;
 
   --color-bg: #1d1f23;
   --color-surface: #2a2d32;
