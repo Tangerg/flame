@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -13,18 +14,25 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func newScheduleStore(t *testing.T) *sqlite.ScheduleStore {
 	t.Helper()
+	store, _, _ := newScheduleRunStores(t)
+	return store
+}
+
+func newScheduleRunStores(t *testing.T) (*sqlite.ScheduleStore, *sqlite.RunStore, *sql.DB) {
+	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return sqlite.NewScheduleStore(db)
+	return sqlite.NewScheduleStore(db), sqlite.NewRunStore(db), db
 }
 
 func insertSchedule(ctx context.Context, store *sqlite.ScheduleStore, snapshot schedule.Snapshot) (schedule.Schedule, error) {
@@ -72,6 +80,18 @@ func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
 		panic(err)
 	}
 	return value
+}
+
+func admitOccurrenceRun(t *testing.T, store *sqlite.RunStore, occurrence schedule.Occurrence) run.Draft {
+	t.Helper()
+	draft := run.Draft{
+		RunID: occurrence.RunID(), SessionID: occurrence.SessionID(),
+		SegmentID: "seg_schedule", CreatedAt: occurrence.FiredAt(),
+	}
+	if err := store.Admit(t.Context(), draft); err != nil {
+		t.Fatalf("admit occurrence Run: %v", err)
+	}
+	return draft
 }
 
 func testRunRecord(scheduled schedule.Schedule, ranAt time.Time) schedule.RunRecord {
@@ -181,7 +201,7 @@ func TestScheduleStoreRejectsMalformedLookupIdentities(t *testing.T) {
 // the worker advanced it would rewind the schedule and re-fire it every tick.
 func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	ctx := t.Context()
-	s := newScheduleStore(t)
+	s, runStore, _ := newScheduleRunStores(t)
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
@@ -202,6 +222,7 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	if err != nil || !claimed {
 		t.Fatalf("Claim = (%v, %v), want true, nil", claimed, err)
 	}
+	admitOccurrenceRun(t, runStore, occurrence)
 	if err := s.Accept(ctx, testAcceptance(occurrence)); err != nil {
 		t.Fatalf("Accept: %v", err)
 	}
@@ -275,6 +296,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if claimed, err := store.Claim(ctx, claim); err != nil || !claimed {
 		t.Fatalf("Claim before exhausted Accept = (%v, %v)", claimed, err)
 	}
+	admitOccurrenceRun(t, sqlite.NewRunStore(db), occurrence)
 	setRevision(exactint.Maximum)
 	if err := store.Accept(ctx, testAcceptance(occurrence)); !errors.Is(err, schedule.ErrRevisionExhausted) {
 		t.Fatalf("Accept error = %v, want ErrRevisionExhausted", err)
@@ -335,7 +357,7 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 
 func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	ctx := t.Context()
-	store := newScheduleStore(t)
+	store, runStore, _ := newScheduleRunStores(t)
 	dueAt := time.Date(2026, 7, 25, 9, 0, 0, 0, time.UTC)
 	nextAt := dueAt.Add(time.Hour)
 	selection, selectionErr := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "xhigh")
@@ -367,8 +389,18 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	if err != nil || !got.NextRunAt().Equal(nextAt) || !got.LastRunAt().IsZero() {
 		t.Fatalf("schedule after Claim = (%+v, %v), want advanced cursor and no accepted run", got, err)
 	}
+	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr == nil {
+		t.Fatal("Accept succeeded before its Run was admitted")
+	}
+	if pending, pendingErr := store.Pending(ctx, 100); pendingErr != nil || len(pending) != 1 {
+		t.Fatalf("Pending after ownerless Accept = (%+v, %v), want original occurrence", pending, pendingErr)
+	}
+	admitOccurrenceRun(t, runStore, occurrence)
 	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr != nil {
 		t.Fatalf("Accept: %v", acceptErr)
+	}
+	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr != nil {
+		t.Fatalf("repeat Accept: %v", acceptErr)
 	}
 	if pending, err = store.Pending(ctx, 100); err != nil || len(pending) != 0 {
 		t.Fatalf("Pending after Accept = (%+v, %v), want empty", pending, err)
@@ -379,9 +411,69 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	}
 }
 
+func TestAcceptedScheduleOccurrenceFollowsRunLifecycle(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		terminal bool
+	}{
+		{name: "terminal", terminal: true},
+		{name: "deleted"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := t.Context()
+			store, runStore, database := newScheduleRunStores(t)
+			dueAt := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+			created, err := insertSchedule(ctx, store, schedule.Snapshot{
+				Instructions: "review", Cron: "@hourly", Enabled: true, NextRunAt: dueAt,
+			})
+			if err != nil {
+				t.Fatalf("create Schedule: %v", err)
+			}
+			claim := testClaim(created, "ses_firing_owner", "run_firing_owner", dueAt)
+			occurrence := claim.Occurrence()
+			if claimed, err := store.Claim(ctx, claim); err != nil || !claimed {
+				t.Fatalf("Claim = (%v, %v), want true, nil", claimed, err)
+			}
+			draft := admitOccurrenceRun(t, runStore, occurrence)
+			if err := store.Accept(ctx, testAcceptance(occurrence)); err != nil {
+				t.Fatalf("Accept: %v", err)
+			}
+			var state string
+			if err := database.QueryRowContext(ctx,
+				`SELECT state FROM schedule_firings WHERE id = ?`, occurrence.ID(),
+			).Scan(&state); err != nil || state != "accepted" {
+				t.Fatalf("accepted firing = %q, %v", state, err)
+			}
+
+			if test.terminal {
+				current, found, err := runStore.Run(ctx, draft.RunID)
+				if err != nil || !found {
+					t.Fatalf("load Run: found=%t err=%v", found, err)
+				}
+				finished, err := current.Terminate(run.Termination{
+					Outcome: run.OutcomeCompleted, FinishedAt: dueAt.Add(time.Second), MessageMark: 0,
+				})
+				if err != nil {
+					t.Fatalf("terminate Run: %v", err)
+				}
+				if err := runStore.Terminalize(ctx, finished); err != nil {
+					t.Fatalf("persist terminal Run: %v", err)
+				}
+			} else if err := runStore.Delete(ctx, draft.SessionID, draft.RunID); err != nil {
+				t.Fatalf("delete Run: %v", err)
+			}
+			if err := database.QueryRowContext(ctx,
+				`SELECT state FROM schedule_firings WHERE id = ?`, occurrence.ID(),
+			).Scan(&state); !errors.Is(err, sql.ErrNoRows) {
+				t.Fatalf("firing after Run %s read = %v, want pruned", test.name, err)
+			}
+		})
+	}
+}
+
 func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 	ctx := t.Context()
-	store := newScheduleStore(t)
+	store, runStore, _ := newScheduleRunStores(t)
 	firstDueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	secondDueAt := firstDueAt.Add(time.Hour)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
@@ -415,6 +507,7 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 		t.Fatalf("Pending = (%+v, %v), want only first occurrence", pending, err)
 	}
 
+	admitOccurrenceRun(t, runStore, first)
 	if acceptErr := store.Accept(ctx, testAcceptance(first)); acceptErr != nil {
 		t.Fatalf("Accept first occurrence: %v", acceptErr)
 	}

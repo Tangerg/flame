@@ -65,7 +65,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 // schemaEpoch identifies the one storage shape this build understands. It is an
 // epoch rather than a version because nothing connects two values: a database
 // stamped with any other number is refused, never upgraded.
-const schemaEpoch = 96
+const schemaEpoch = 97
 
 func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 	var epoch int
@@ -565,6 +565,10 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
 		`CREATE INDEX IF NOT EXISTS idx_schedules_due
 			ON schedules(enabled, next_run_at)`,
+		// A pending firing is a recoverable work item whose future Run does not
+		// exist yet. Acceptance requires that exact Run to have been admitted; the
+		// accepted row then acts only as a live-Run idempotency tombstone and follows
+		// the Run through terminalization or deletion.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedule_firings (
 			id          TEXT    PRIMARY KEY,
 			schedule_id TEXT    NOT NULL,
@@ -589,6 +593,17 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		// another pending firing while Run admission is temporarily unavailable.
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
 			ON schedule_firings(schedule_id) WHERE state = '%s'`, scheduleFiringPending.databaseValue()),
+		`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_schedule_firing
+			AFTER UPDATE OF state ON runs
+			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
+			BEGIN
+				DELETE FROM schedule_firings WHERE run_id = NEW.run_id;
+			END`,
+		`CREATE TRIGGER IF NOT EXISTS prune_deleted_run_schedule_firing
+			AFTER DELETE ON runs
+			BEGIN
+				DELETE FROM schedule_firings WHERE run_id = OLD.run_id;
+			END`,
 		// The namespace tells reconnecting clients whether a persisted
 		// Idempotency-Key belongs to this exact durable replay store. It is opaque,
 		// contains no path or credential, and survives process restarts while a

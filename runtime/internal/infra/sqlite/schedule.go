@@ -222,9 +222,10 @@ func (s *ScheduleStore) Pending(ctx context.Context, limit int) ([]schedule.Occu
 	return occurrences, nil
 }
 
-// Accept confirms the occurrence in the same transaction as its Run opening.
-// Repeating the same confirmation is harmless; any other run id is a durable
-// ownership violation rather than an invitation to create a duplicate run.
+// Accept confirms the occurrence in the same transaction as its exact Run
+// opening. Repeating the confirmation while that Run is live is harmless; any
+// other or absent Run is an ownership violation. The accepted tombstone follows
+// the Run lifecycle and is pruned when that Run finishes or is deleted.
 func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptance) error {
 	if err := acceptance.Validate(); err != nil {
 		return fmt.Errorf("sqlite: invalid schedule acceptance: %w", err)
@@ -232,8 +233,16 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 	occurrenceID, runID := acceptance.OccurrenceID(), acceptance.RunID()
 	return RunInTx(ctx, s.db, func(ctx context.Context) error {
 		res, err := conn(ctx, s.db).ExecContext(ctx,
-			`UPDATE schedule_firings SET state = ? WHERE id = ? AND run_id = ? AND state = ?`,
-			scheduleFiringAccepted.databaseValue(), occurrenceID, runID, scheduleFiringPending.databaseValue())
+			`UPDATE schedule_firings SET state = ?
+			  WHERE id = ? AND run_id = ? AND state = ?
+			    AND EXISTS (
+				SELECT 1 FROM runs
+				 WHERE runs.run_id = schedule_firings.run_id
+				   AND runs.session_id = schedule_firings.session_id
+				   AND runs.state != ?
+			    )`,
+			scheduleFiringAccepted.databaseValue(), occurrenceID, runID,
+			scheduleFiringPending.databaseValue(), runStateTerminal.databaseValue())
 		if err != nil {
 			return fmt.Errorf("sqlite: accept schedule occurrence: %w", err)
 		}
@@ -266,7 +275,10 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 		if storedRunID == runID && state == scheduleFiringAccepted {
 			return nil
 		}
-		return errors.New("sqlite: schedule occurrence is owned by another run")
+		if storedRunID != runID {
+			return errors.New("sqlite: schedule occurrence is owned by another run")
+		}
+		return errors.New("sqlite: schedule occurrence has no owning active Run")
 	})
 }
 
