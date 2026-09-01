@@ -223,6 +223,26 @@ func TestKnowledgeTargetIsUnambiguous(t *testing.T) {
 	}
 }
 
+func TestRollbackFileRestorationRequiresRunBoundary(t *testing.T) {
+	t.Parallel()
+
+	for _, request := range []RollbackSessionRequest{
+		{SessionID: "ses_1"},
+		{SessionID: "ses_1", RestoreType: RestoreHistory},
+		{SessionID: "ses_1", ToRunID: "run_1", RestoreType: RestoreFiles},
+		{SessionID: "ses_1", ToRunID: "run_1", RestoreType: RestoreBoth},
+	} {
+		if err := request.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected rollback target %+v: %v", request, err)
+		}
+	}
+	for _, restore := range []RestoreType{RestoreFiles, RestoreBoth} {
+		assertConstraintField(t, (RollbackSessionRequest{
+			SessionID: "ses_1", RestoreType: restore,
+		}).ValidateWire(), "RollbackSessionRequest", "toRunId")
+	}
+}
+
 func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 	t.Parallel()
 

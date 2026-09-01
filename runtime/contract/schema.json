@@ -6860,6 +6860,42 @@
       },
       "required": [
         "sessionId"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "restoreType": {
+                "const": "files"
+              }
+            },
+            "required": [
+              "restoreType"
+            ]
+          },
+          "then": {
+            "required": [
+              "toRunId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "restoreType": {
+                "const": "both"
+              }
+            },
+            "required": [
+              "restoreType"
+            ]
+          },
+          "then": {
+            "required": [
+              "toRunId"
+            ]
+          }
+        }
       ]
     },
     "RollbackSessionResponse": {

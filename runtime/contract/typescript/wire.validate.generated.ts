@@ -2534,11 +2534,25 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     userItemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId"]),
-  RollbackSessionRequest: object({
-    restoreType: ref(() => CHECKS.RestoreType),
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    toRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["sessionId"]),
+  RollbackSessionRequest: allOf([
+    object({
+      restoreType: ref(() => CHECKS.RestoreType),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      toRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    }, ["sessionId"]),
+    ifThen(
+      fields({
+        restoreType: literal("files"),
+      }, ["restoreType"]),
+      fields({}, ["toRunId"]),
+    ),
+    ifThen(
+      fields({
+        restoreType: literal("both"),
+      }, ["restoreType"]),
+      fields({}, ["toRunId"]),
+    ),
+  ]),
   RollbackSessionResponse: object({
     droppedRuns: array(ref(() => CHECKS.DroppedRun)),
     session: ref(() => CHECKS.Session),

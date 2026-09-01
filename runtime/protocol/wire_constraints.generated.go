@@ -72,6 +72,8 @@ func (r RollbackSessionRequest) ValidateWire() error {
 		identity("toRunId", r.ToRunID),
 		maxLength("toRunId", r.ToRunID, 256),
 		closedEnum("restoreType", string(r.RestoreType), []string{"history", "files", "both"}, true),
+		requiredWhen(wireFieldEquals(r, "restoreType", "files"), "toRunId", r),
+		requiredWhen(wireFieldEquals(r, "restoreType", "both"), "toRunId", r),
 	)
 }
 

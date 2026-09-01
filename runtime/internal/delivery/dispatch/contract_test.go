@@ -134,17 +134,17 @@ func TestCapabilityGateOnlyBitesTheGatedRequest(t *testing.T) {
 		want:     "",
 	}, {
 		name:   "restoring files needs checkpoints",
-		method: "sessions.rollback", params: `{"sessionId":"ses_1","restoreType":"files"}`,
+		method: "sessions.rollback", params: `{"sessionId":"ses_1","toRunId":"run_1","restoreType":"files"}`,
 		features: map[string]bool{"checkpoints": false},
 		want:     "capability_not_negotiated",
 	}, {
 		name:   "restoring both needs checkpoints",
-		method: "sessions.rollback", params: `{"sessionId":"ses_1","restoreType":"both"}`,
+		method: "sessions.rollback", params: `{"sessionId":"ses_1","toRunId":"run_1","restoreType":"both"}`,
 		features: map[string]bool{"checkpoints": false},
 		want:     "capability_not_negotiated",
 	}, {
 		name:   "restoring files is allowed once checkpoints are on",
-		method: "sessions.rollback", params: `{"sessionId":"ses_1","restoreType":"files"}`,
+		method: "sessions.rollback", params: `{"sessionId":"ses_1","toRunId":"run_1","restoreType":"files"}`,
 		features: map[string]bool{"checkpoints": true},
 		want:     "",
 	}, {

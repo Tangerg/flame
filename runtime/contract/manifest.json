@@ -4427,6 +4427,35 @@
       ]
     },
     {
+      "type": "RollbackSessionRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "restoreType",
+              "operator": "equals",
+              "value": "files"
+            }
+          ],
+          "required": [
+            "toRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "restoreType",
+              "operator": "equals",
+              "value": "both"
+            }
+          ],
+          "required": [
+            "toRunId"
+          ]
+        }
+      ]
+    },
+    {
       "type": "MCPAuthorizationAttempt",
       "rules": [
         {

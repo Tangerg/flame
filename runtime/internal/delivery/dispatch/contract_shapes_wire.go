@@ -729,6 +729,20 @@ func registerObjectConstraints(s *Shapes) {
 			AllowedValues: []AllowedValueSet{{Field: "status", Values: []string{string(protocol.AgentMemoryStatusActive)}}},
 		}},
 	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.RollbackSessionRequest](),
+		Rules: []ConditionalRule{{
+			When: []delivery.FieldCondition{{
+				Field: "restoreType", Operator: delivery.OperatorEquals, Value: string(protocol.RestoreFiles),
+			}},
+			Required: []string{"toRunId"},
+		}, {
+			When: []delivery.FieldCondition{{
+				Field: "restoreType", Operator: delivery.OperatorEquals, Value: string(protocol.RestoreBoth),
+			}},
+			Required: []string{"toRunId"},
+		}},
+	})
 
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
