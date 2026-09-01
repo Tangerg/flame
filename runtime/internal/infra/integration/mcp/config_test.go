@@ -78,6 +78,7 @@ func TestServerConfigValidate(t *testing.T) {
 		{"stdio without command", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio}, false},
 		{"stdio with endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
 		{"http auth fields ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
+		{"http authorization header duplicate", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, false},
 		{"http oauth with static authorization", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
 		{"http oauth with authorization header", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
 		{"stdio with auth", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},

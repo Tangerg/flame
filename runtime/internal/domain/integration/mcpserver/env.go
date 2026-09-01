@@ -1,6 +1,10 @@
 package mcpserver
 
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
 // injectionEnvKeys are environment variables that hijack the dynamic linker or a
 // language runtime of a spawned process. They have no legitimate use in an MCP
@@ -21,21 +25,28 @@ var injectionEnvKeys = map[string]struct{}{
 	"DYLD_FRAMEWORK_PATH":   {},
 }
 
-// SafeEnv returns [Server.Env] with the dynamic-linker / runtime injection keys
-// (see [injectionEnvKeys]) removed, so a spawned stdio server can't be hijacked
-// through a poisoned env entry. The dial layer flattens the result before
-// spawning. It returns a fresh map — never mutates Env — and preserves the
-// empty case (nil Env → nil result).
-func (s Server) SafeEnv() map[string]string {
-	if s.Env == nil {
-		return nil
+func validateProcessConfiguration(command string, args []string, environment map[string]string, dir string) error {
+	if strings.ContainsRune(command, 0) {
+		return errors.New("command contains NUL")
 	}
-	out := make(map[string]string, len(s.Env))
-	for k, v := range s.Env {
-		if _, blocked := injectionEnvKeys[strings.ToUpper(k)]; blocked {
-			continue
+	for index, argument := range args {
+		if strings.ContainsRune(argument, 0) {
+			return fmt.Errorf("args[%d] contains NUL", index)
 		}
-		out[k] = v
 	}
-	return out
+	if strings.ContainsRune(dir, 0) {
+		return errors.New("dir contains NUL")
+	}
+	for key, value := range environment {
+		if key == "" || strings.ContainsAny(key, "=\x00") {
+			return fmt.Errorf("env key %q is invalid", key)
+		}
+		if strings.ContainsRune(value, 0) {
+			return fmt.Errorf("env value for %q contains NUL", key)
+		}
+		if _, blocked := injectionEnvKeys[strings.ToUpper(key)]; blocked {
+			return fmt.Errorf("env key %q is not allowed", key)
+		}
+	}
+	return nil
 }

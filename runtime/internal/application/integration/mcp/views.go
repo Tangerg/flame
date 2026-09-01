@@ -34,6 +34,7 @@ type AuthorizationChange struct {
 }
 
 // HeadersChange is a write-only full replacement for HTTP headers.
+// Authorization remains the dedicated [AuthorizationChange] field.
 type HeadersChange struct {
 	Kind  SecretChangeKind
 	Value map[string]string

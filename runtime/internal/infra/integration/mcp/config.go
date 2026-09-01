@@ -121,7 +121,12 @@ func (s ServerConfig) Validate() error {
 		if s.Command != "" {
 			return fmt.Errorf("mcp server %q: Command must be empty for HTTP transport", s.Name)
 		}
-		if s.OAuthHandler != nil && s.hasStaticAuthorization() {
+		for name := range s.Headers {
+			if strings.EqualFold(name, "Authorization") {
+				return fmt.Errorf("mcp server %q: Headers must not duplicate Authorization", s.Name)
+			}
+		}
+		if s.OAuthHandler != nil && s.Authorization != "" {
 			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.Name)
 		}
 	case TransportStdio:
@@ -144,18 +149,6 @@ func (s ServerConfig) Validate() error {
 		return fmt.Errorf("mcp server %q: unknown transport %q", s.Name, s.Transport)
 	}
 	return nil
-}
-
-func (s ServerConfig) hasStaticAuthorization() bool {
-	if s.Authorization != "" {
-		return true
-	}
-	for name, value := range s.Headers {
-		if strings.EqualFold(name, "Authorization") && value != "" {
-			return true
-		}
-	}
-	return false
 }
 
 func dial(

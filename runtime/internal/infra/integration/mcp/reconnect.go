@@ -61,7 +61,7 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 		return fmt.Errorf("mcp: invalid server %q: %w", cfg.Name, err)
 	}
 	restored := cfg.OAuthHandler
-	if cfg.Transport == TransportHTTP && restored == nil && !cfg.hasStaticAuthorization() {
+	if cfg.Transport == TransportHTTP && restored == nil && cfg.Authorization == "" {
 		var err error
 		restored, err = restoreOAuthHandler(ctx, c.lifetime, c.oauthSessions, cfg.Name, cfg.Endpoint)
 		if err != nil {
@@ -104,7 +104,7 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 	if handler == nil ||
 		current.Transport != TransportHTTP ||
 		candidate.Transport != TransportHTTP ||
-		candidate.hasStaticAuthorization() ||
+		candidate.Authorization != "" ||
 		!httporigin.Same(current.Endpoint, candidate.Endpoint) {
 		return nil
 	}
@@ -135,7 +135,7 @@ func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) 
 		c.mu.Unlock()
 		return errors.New("mcp: OAuth applies to HTTP servers only")
 	}
-	if configuredServer.config.hasStaticAuthorization() {
+	if configuredServer.config.Authorization != "" {
 		c.mu.Unlock()
 		return errors.New("mcp: clear static Authorization before starting OAuth")
 	}

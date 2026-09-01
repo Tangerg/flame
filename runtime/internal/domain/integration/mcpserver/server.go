@@ -39,8 +39,8 @@ type Server struct {
 
 	// Authorization, when set, is sent as the HTTP `Authorization` header
 	// (typically "Bearer <token>") — HTTP transport only. It is sensitive and
-	// must never be logged or exposed without masking. The dedicated value wins over any
-	// "Authorization" entry in [Server.Headers].
+	// must never be logged or exposed without masking. [Server.Headers] cannot
+	// carry a second Authorization representation.
 	Authorization string
 
 	// Headers carries extra static HTTP request headers (e.g. "X-API-Key") sent
@@ -136,6 +136,9 @@ func (s Server) Validate() error {
 		if s.Dir != "" {
 			return fmt.Errorf("mcpserver %q: Dir applies to stdio transport only", s.Name)
 		}
+		if err := validateHTTPConfiguration(s.Authorization, s.Headers); err != nil {
+			return fmt.Errorf("mcpserver %q: %w", s.Name, err)
+		}
 	case TransportStdio:
 		if s.Command == "" {
 			return fmt.Errorf("mcpserver %q: Command is required for stdio transport", s.Name)
@@ -148,6 +151,9 @@ func (s Server) Validate() error {
 		}
 		if len(s.Headers) > 0 {
 			return fmt.Errorf("mcpserver %q: Headers apply to http transport only", s.Name)
+		}
+		if err := validateProcessConfiguration(s.Command, s.Args, s.Env, s.Dir); err != nil {
+			return fmt.Errorf("mcpserver %q: %w", s.Name, err)
 		}
 	default:
 		return fmt.Errorf("mcpserver %q: unknown transport %q (want %q or %q)", s.Name, s.Transport, TransportStdio, TransportStreamableHTTP)

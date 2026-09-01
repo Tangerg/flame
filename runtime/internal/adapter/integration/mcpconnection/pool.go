@@ -164,7 +164,7 @@ func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
 	case mcpserver.TransportStdio:
 		cfg.Command = server.Command
 		cfg.Args = slices.Clone(server.Args)
-		cfg.Env = flattenEnv(server.SafeEnv())
+		cfg.Env = flattenEnv(server.Env)
 		cfg.Dir = server.Dir
 	}
 	if err := cfg.Validate(); err != nil {

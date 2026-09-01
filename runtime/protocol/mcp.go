@@ -114,7 +114,9 @@ type MCPAuthorizationChange struct {
 
 // MCPHeadersChange is the write-only full replacement for HTTP headers. Header
 // values may contain credentials, so reads expose masked values and updates use
-// the same exact omission/set/clear semantics as Authorization.
+// the same exact omission/set/clear semantics as Authorization. The map cannot
+// contain Authorization itself; callers use [MCPAuthorizationChange] so that
+// credential has one owner and one replacement path.
 type MCPHeadersChange struct {
 	Type  MCPSecretChangeType `json:"type"`
 	Value map[string]string   `json:"value,omitempty"`
