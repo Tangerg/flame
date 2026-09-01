@@ -150,7 +150,7 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 
 	feedbacks := &feedbackBindingStub{t: t}
 	feedbackAdapter := &Feedback{runtime: &Connection{feedback: feedbacks, meta: requestMeta("test")}}
-	signal := agent.FeedbackSignal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: agent.FeedbackPositive, Text: "useful"}
+	signal := agent.FeedbackSignal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: protocol.FeedbackPositive, Text: "useful"}
 	if err := feedbackAdapter.Record(t.Context(), signal); err != nil || feedbacks.recorded != signal {
 		t.Fatalf("Record = %v, recorded %+v", err, feedbacks.recorded)
 	}
@@ -173,7 +173,7 @@ func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol
 	assertCommandMeta(f.t, options)
 	f.recorded = agent.FeedbackSignal{
 		SessionID: request.SessionID, RunID: request.RunID, ItemID: request.ItemID,
-		Rating: agent.FeedbackRating(request.Rating), Text: request.Text,
+		Rating: request.Rating, Text: request.Text,
 	}
 	return nil
 }

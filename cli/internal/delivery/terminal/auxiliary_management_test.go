@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
@@ -305,7 +306,7 @@ func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
 	host.Type("/feedback positive useful explanation")
 	host.Press(input.Enter)
 	signal := awaitValue(t, feedbacks.recorded, "feedback")
-	if signal.SessionID != "ses_demo_1" || signal.RunID == "" || signal.ItemID != "demo_answer" || signal.Rating != agent.FeedbackPositive || signal.Text != "useful explanation" {
+	if signal.SessionID != "ses_demo_1" || signal.RunID == "" || signal.ItemID != "demo_answer" || signal.Rating != protocol.FeedbackPositive || signal.Text != "useful explanation" {
 		t.Fatalf("feedback signal = %+v", signal)
 	}
 	host.Shows(t, "feedback recorded · positive")

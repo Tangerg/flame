@@ -7,57 +7,31 @@ import (
 	"fmt"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type FeedbackRating string
-
-const (
-	FeedbackPositive FeedbackRating = "positive"
-	FeedbackNegative FeedbackRating = "negative"
-)
-
-func ParseFeedbackRating(value string) (FeedbackRating, error) {
-	rating := FeedbackRating(strings.TrimSpace(value))
-	if err := rating.Validate(); err != nil {
+func ParseFeedbackRating(value string) (protocol.FeedbackRating, error) {
+	rating := protocol.FeedbackRating(strings.TrimSpace(value))
+	if err := (protocol.FeedbackRequest{Rating: rating}).ValidateWire(); err != nil {
 		return "", err
 	}
 	return rating, nil
-}
-
-func (r FeedbackRating) Validate() error {
-	if r != "" && r != FeedbackPositive && r != FeedbackNegative {
-		return fmt.Errorf("feedback rating %q is invalid", r)
-	}
-	return nil
 }
 
 type FeedbackSignal struct {
 	SessionID string
 	RunID     string
 	ItemID    string
-	Rating    FeedbackRating
+	Rating    protocol.FeedbackRating
 	Text      string
 }
 
 func (s FeedbackSignal) Validate() error {
 	var problems []error
-	if s.SessionID != "" {
-		if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if s.RunID != "" {
-		if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if s.ItemID != "" {
-		if err := runtimeprotocol.ValidateItemID(s.ItemID); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if err := s.Rating.Validate(); err != nil {
+	if err := protocol.ValidateWireTree(protocol.FeedbackRequest{
+		SessionID: s.SessionID, RunID: s.RunID, ItemID: s.ItemID,
+		Rating: s.Rating, Text: s.Text,
+	}); err != nil {
 		problems = append(problems, err)
 	}
 	if s.Rating == "" && strings.TrimSpace(s.Text) == "" {

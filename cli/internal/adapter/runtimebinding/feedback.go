@@ -26,6 +26,6 @@ func (f *Feedback) Record(ctx context.Context, signal agent.FeedbackSignal) erro
 	}
 	return classifyError(r.feedback.CreateFeedback(ctx, protocol.FeedbackRequest{
 		SessionID: signal.SessionID, RunID: signal.RunID, ItemID: signal.ItemID,
-		Rating: protocol.FeedbackRating(signal.Rating), Text: signal.Text,
+		Rating: signal.Rating, Text: signal.Text,
 	}, options))
 }
