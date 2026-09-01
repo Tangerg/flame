@@ -20,6 +20,7 @@ func parseMCPServers(raw string) ([]MCPServer, error) {
 	parts := strings.Split(raw, ",")
 	out := make([]MCPServer, 0, len(parts))
 	seen := make(map[string]struct{}, len(parts))
+	tokenOwners := make(map[string]string, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
@@ -41,6 +42,19 @@ func parseMCPServers(raw string) ([]MCPServer, error) {
 		srv, err := parseMCPServerValue(name, value)
 		if err != nil {
 			return nil, fmt.Errorf("entry %q: %w", p, err)
+		}
+		if srv.Authorization != "" {
+			tokenKey := envTokenKey(name)
+			if owner, collision := tokenOwners[tokenKey]; collision {
+				return nil, fmt.Errorf(
+					"entry %q: servers %q and %q share credential variable %s",
+					p,
+					owner,
+					name,
+					mcpTokenEnvironment(name),
+				)
+			}
+			tokenOwners[tokenKey] = name
 		}
 		seen[name] = struct{}{}
 		out = append(out, srv)

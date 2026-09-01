@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -131,5 +132,19 @@ func TestParseMCPServers_AuthFromEnv(t *testing.T) {
 	}
 	if got := byName["local"].Authorization; got != "" {
 		t.Errorf("stdio server picked up Authorization %q, want none", got)
+	}
+}
+
+func TestParseMCPServersRejectsAmbiguousTokenEnvironment(t *testing.T) {
+	t.Setenv("FLAME_MCP_MY_API_TOKEN", "shared-secret")
+
+	_, err := parseMCPServers("my-api=https://one.example/mcp,my.api=https://two.example/mcp")
+	if err == nil {
+		t.Fatal("parse err = nil, want credential-variable collision")
+	}
+	for _, detail := range []string{"my-api", "my.api", "FLAME_MCP_MY_API_TOKEN"} {
+		if !strings.Contains(err.Error(), detail) {
+			t.Fatalf("parse err = %q, want detail %q", err, detail)
+		}
 	}
 }
