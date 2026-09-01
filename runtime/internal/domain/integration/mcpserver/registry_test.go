@@ -1,6 +1,8 @@
 package mcpserver
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,5 +51,26 @@ func TestServerValidateRejectsCrossTransportState(t *testing.T) {
 				t.Fatal("Validate err = nil, want cross-transport state rejected")
 			}
 		})
+	}
+}
+
+func TestServerFormattingRedactsCredentials(t *testing.T) {
+	server := Server{
+		Name:          testMCPServerName("private"),
+		Transport:     TransportStreamableHTTP,
+		URL:           "https://url-user:url-secret@example.com/mcp",
+		Authorization: "Bearer authorization-secret",
+		Headers:       map[string]string{"X-Key": "header-secret"},
+		Env:           map[string]string{"TOKEN": "environment-secret"},
+	}
+
+	formatted := fmt.Sprintf("%+v", server)
+	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret", "environment-secret"} {
+		if strings.Contains(formatted, secret) {
+			t.Fatalf("formatted server exposed %q: %s", secret, formatted)
+		}
+	}
+	if got := strings.Count(formatted, "[REDACTED]"); got != 4 {
+		t.Fatalf("formatted server redactions = %d, want 4: %s", got, formatted)
 	}
 }

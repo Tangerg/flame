@@ -72,6 +72,40 @@ type Server struct {
 	ToolPolicy ServerToolPolicy
 }
 
+// Format keeps credential-bearing fields behind a redaction boundary for every
+// fmt verb. Connection adapters reveal the raw fields explicitly; diagnostics
+// and test failures must not do so accidentally through %+v or %#v.
+func (s Server) Format(state fmt.State, _ rune) {
+	timeout := "unbounded"
+	if duration, bounded := s.HandshakeTimeout.Duration(); bounded {
+		timeout = duration.String()
+	}
+	_, _ = fmt.Fprintf(
+		state,
+		"Server{Name:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s, ToolPolicyRules:%d}",
+		s.Name,
+		s.Transport,
+		s.Enabled,
+		s.Description,
+		secretPresence(s.URL != ""),
+		secretPresence(s.Authorization != ""),
+		secretPresence(len(s.Headers) > 0),
+		s.Command,
+		s.Args,
+		secretPresence(len(s.Env) > 0),
+		s.Dir,
+		timeout,
+		len(s.ToolPolicy.Rules()),
+	)
+}
+
+func secretPresence(present bool) string {
+	if present {
+		return "[REDACTED]"
+	}
+	return "<absent>"
+}
+
 // Validate reports whether the server is well-formed for its transport: the
 // chosen transport's required field is set and the other transport's fields
 // are blank before connection-specific state is attached.

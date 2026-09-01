@@ -23,3 +23,9 @@ func TestSame(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRejectsURLCredentials(t *testing.T) {
+	if _, err := Parse("https://user:secret@example.com/mcp"); err == nil {
+		t.Fatal("Parse err = nil, want URL credentials rejected")
+	}
+}

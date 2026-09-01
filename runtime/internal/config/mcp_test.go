@@ -83,6 +83,11 @@ func TestParseMCPServers(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "http endpoint carries credentials",
+			in:      "github=https://user:secret@mcp.example/",
+			wantErr: true,
+		},
+		{
 			name:    "stdio empty command",
 			in:      "fs=stdio:",
 			wantErr: true,

@@ -37,6 +37,9 @@ func FromURL(u *url.URL) (Origin, error) {
 	if u == nil {
 		return Origin{}, errors.New("URL is nil")
 	}
+	if u.User != nil {
+		return Origin{}, errors.New("URL credentials are not allowed")
+	}
 	scheme := strings.ToLower(u.Scheme)
 	if scheme != "http" && scheme != "https" {
 		return Origin{}, fmt.Errorf("scheme %q is not HTTP or HTTPS", u.Scheme)
