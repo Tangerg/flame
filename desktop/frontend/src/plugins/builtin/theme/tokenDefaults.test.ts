@@ -83,4 +83,9 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     expect(declaredInBlock(":root", "--color-media-preview")).toBe("rgb(0 0 0 / 0.9)");
     expect(declaredInBlock(":root", "--color-on-media")).toBe("#ffffff");
   });
+  it("keeps one gutter for every dock list row, scaled by density", () => {
+    expect(declaredInBlock(":root", "--density-view-gutter")).toBe("16px");
+    expect(densityCssVariables("compact")["--density-view-gutter"]).toBe("14px");
+    expect(densityCssVariables("spacious")["--density-view-gutter"]).toBe("18px");
+  });
 });

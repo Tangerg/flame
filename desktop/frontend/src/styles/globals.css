@@ -432,6 +432,10 @@
   --field-height-lg: 32px;
   --menu-row-height: 30px;
   --dock-tab-height: 28px;
+  --composer-attachment-radius: max(
+    0px,
+    calc(var(--shape-composer) - var(--density-composer-editor-start))
+  );
   --composer-control-height: 28px;
   --composer-control-icon: 16px;
   --dock-navigator-width: 240px;
@@ -444,6 +448,7 @@
   --density-navigation-section-gap: 18px;
   --density-navigation-group-gap: 10px;
   --density-column-gutter: 12px;
+  --density-view-gutter: 16px;
   --density-column-gutter-wide: 20px;
   --density-composer-editor-top: 12px;
   --density-composer-editor-bottom: 8px;

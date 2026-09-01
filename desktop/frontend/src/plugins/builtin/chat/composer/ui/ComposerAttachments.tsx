@@ -77,7 +77,7 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
 function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () => void }) {
   const t = useT();
   return (
-    <div className="group relative h-14 w-14 overflow-hidden rounded-md media-edge">
+    <div className="group relative h-14 w-14 overflow-hidden rounded-[var(--composer-attachment-radius)] media-edge">
       <img
         src={`data:${image.mime};base64,${image.data}`}
         alt={image.name ?? ""}

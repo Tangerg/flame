@@ -40,7 +40,7 @@ import {
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
     <SectionLabel
-      className="px-4 pb-1"
+      className="px-[var(--density-view-gutter)] pb-1"
       trailing={count === undefined ? undefined : <span className="font-mono">{count}</span>}
     >
       {children}
@@ -61,7 +61,7 @@ function BuiltinToolsSection() {
   if (isLoading || view.isEmpty) return null;
   return (
     <div className="pb-1.5">
-      <p className="px-4 pb-2 text-ui-xs leading-body text-fg-muted">
+      <p className="px-[var(--density-view-gutter)] pb-2 text-ui-xs leading-body text-fg-muted">
         {t("tools.diagnostics.sub")}
       </p>
       {view.families.map((family) => (
@@ -124,7 +124,7 @@ function DiagnosticToolRowPresentation({
           tool: tool.name,
         })}
         onClick={() => setOpen((value) => !value)}
-        className="grid grid-cols-[14px_auto_minmax(0,1fr)] items-start gap-2.5 px-4 py-1 text-left hover:bg-hover"
+        className="grid grid-cols-[14px_auto_minmax(0,1fr)] items-start gap-2.5 px-[var(--density-view-gutter)] py-1 text-left hover:bg-hover"
       >
         <Icon
           name="chevron-down"
@@ -221,7 +221,10 @@ function DiagnosticToolInvocationMaterial({
   };
 
   return (
-    <div id={panelId} className="flex flex-col gap-2.5 px-4 pt-1 pb-3 pl-[58px]">
+    <div
+      id={panelId}
+      className="flex flex-col gap-2.5 px-[var(--density-view-gutter)] pt-1 pb-3 pl-[58px]"
+    >
       <label className="flex flex-col gap-1 text-ui-xs font-medium text-fg-muted">
         {t("tools.diagnostics.arguments")}
         <TextArea
@@ -310,7 +313,11 @@ export function ToolsTab() {
       >
         {(rows) => rows.map((s) => <McpRow key={s.id} server={s} />)}
       </DataView>
-      <TextButton size="sm" onClick={openMcpSettings} className="px-4 pt-3.5 pb-4.5 leading-body">
+      <TextButton
+        size="sm"
+        onClick={openMcpSettings}
+        className="px-[var(--density-view-gutter)] pt-3.5 pb-4.5 leading-body"
+      >
         <Icon name="settings" size="xs" />
         {t("tools.footer")}
       </TextButton>

@@ -88,7 +88,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
-        className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-0 bg-transparent px-4 py-2 text-left hover:bg-hover"
+        className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-0 bg-transparent px-[var(--density-view-gutter)] py-2 text-left hover:bg-hover"
       >
         <Icon
           name="chevron-down"
@@ -101,7 +101,10 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
         </span>
       </Pressable>
       <Collapsible open={open}>
-        <div id={panelId} className="flex flex-col gap-2 px-4 pb-3 pl-10">
+        <div
+          id={panelId}
+          className="flex flex-col gap-2 px-[var(--density-view-gutter)] pb-3 pl-10"
+        >
           <TextArea
             aria-label={t("knowledge.aria", { path: row.path })}
             value={editor.draft}

@@ -31,7 +31,7 @@ export function RecipesTab() {
         {(rows) => (
           <div className="flex flex-col">
             {rows.map((r) => (
-              <div key={r.id} className="px-4 py-2">
+              <div key={r.id} className="px-[var(--density-view-gutter)] py-2">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-mono text-ui-md font-semibold text-accent">
                     {r.command}
