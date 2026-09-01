@@ -11,6 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
+var errSourceNotRegular = errors.New("checkpoint: source is not a regular file")
+
 // git runs one git command against the shadow GIT_DIR with cwd as the work tree
 // (workTree may be empty for repo-only operations like rev-parse). A fixed
 // identity + disabled signing keep commits independent of the user's global git
@@ -86,7 +88,7 @@ func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
 }
 
 func copyFile(src, dst string, maxBytes int64) (err error) {
-	in, err := os.Open(src)
+	in, err := openBoundedRegularFile(src, maxBytes)
 	if err != nil {
 		return err
 	}
@@ -102,6 +104,46 @@ func copyFile(src, dst string, maxBytes int64) (err error) {
 	}
 	if written > maxBytes {
 		return fmt.Errorf("%w: source index exceeds %d bytes", ErrSnapshotTooLarge, maxBytes)
+	}
+	return nil
+}
+
+func openBoundedRegularFile(path string, maxBytes int64) (_ *os.File, err error) {
+	source, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateBoundedRegularFile(source, maxBytes); err != nil {
+		return nil, err
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, file.Close())
+		}
+	}()
+	opened, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(source, opened) {
+		return nil, errors.New("checkpoint: source changed while it was being opened")
+	}
+	if err := validateBoundedRegularFile(opened, maxBytes); err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func validateBoundedRegularFile(info os.FileInfo, maxBytes int64) error {
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%w: mode %s", errSourceNotRegular, info.Mode().Type())
+	}
+	if info.Size() > maxBytes {
+		return fmt.Errorf("%w: source uses %d bytes, maximum %d", ErrSnapshotTooLarge, info.Size(), maxBytes)
 	}
 	return nil
 }

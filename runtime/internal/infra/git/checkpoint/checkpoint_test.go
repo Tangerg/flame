@@ -137,6 +137,18 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := copyFile(source, filepath.Join(t.TempDir(), "copy"), 4); !errors.Is(err, ErrSnapshotTooLarge) {
 		t.Fatalf("copyFile() error = %v, want ErrSnapshotTooLarge", err)
 	}
+
+	invalidSource := t.TempDir()
+	if _, err := readSourceAlternates(invalidSource); !errors.Is(err, errSourceNotRegular) {
+		t.Fatalf("readSourceAlternates(directory) error = %v, want errSourceNotRegular", err)
+	}
+	invalidDestination := filepath.Join(t.TempDir(), "copy")
+	if err := copyFile(invalidSource, invalidDestination, maxSourceIndexBytes); !errors.Is(err, errSourceNotRegular) {
+		t.Fatalf("copyFile(directory) error = %v, want errSourceNotRegular", err)
+	}
+	if _, err := os.Stat(invalidDestination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid copy destination stat error = %v, want os.ErrNotExist", err)
+	}
 }
 
 // TestStore_SkipsLargeFiles: a file over maxCheckpointFileSize is left out of

@@ -228,21 +228,10 @@ func (seed sourceRepositorySeed) copyIndex() error {
 	if err != nil {
 		return fmt.Errorf("checkpoint: discover source index: %w", err)
 	}
-	info, err := os.Stat(sourceIndex)
-	if errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(sourceIndex); errors.Is(err, os.ErrNotExist) {
 		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return fmt.Errorf("checkpoint: inspect source index: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("checkpoint: source index %q is not a regular file", sourceIndex)
-	}
-	if info.Size() > maxSourceIndexBytes {
-		return fmt.Errorf(
-			"%w: source index has %d bytes, maximum %d",
-			ErrSnapshotTooLarge, info.Size(), maxSourceIndexBytes,
-		)
 	}
 	if err := copyFile(sourceIndex, filepath.Join(seed.gitDir, "index"), maxSourceIndexBytes); err != nil {
 		return fmt.Errorf("checkpoint: copy source index: %w", err)
@@ -251,24 +240,11 @@ func (seed sourceRepositorySeed) copyIndex() error {
 }
 
 func readSourceAlternates(path string) ([]byte, error) {
-	file, err := os.Open(path)
+	file, err := openBoundedRegularFile(path, maxSourceAlternatesBytes)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("checkpoint: source alternates %q is not a regular file", path)
-	}
-	if info.Size() > maxSourceAlternatesBytes {
-		return nil, fmt.Errorf(
-			"%w: source alternates have %d bytes, maximum %d",
-			ErrSnapshotTooLarge, info.Size(), maxSourceAlternatesBytes,
-		)
-	}
 	data, err := io.ReadAll(io.LimitReader(file, maxSourceAlternatesBytes+1))
 	if err != nil {
 		return nil, err
