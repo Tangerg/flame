@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 )
@@ -81,11 +80,7 @@ func (s compactionSummary) Message() chat.Message {
 func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (compactionSummary, error) {
 	transcript := renderTranscript(msgs)
 
-	var client *chatclient.Client
-	if c.client != nil {
-		client = c.client(ctx)
-	}
-	text, err := modeladapter.CompleteAuxiliary(ctx, client, modeladapter.AuxiliaryPrompt{
+	text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: compactionPrompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})

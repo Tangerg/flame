@@ -25,7 +25,7 @@ import (
 // maintenance services take — these tests don't exercise the runtime's
 // utility-role swap, just a stable stub model.
 func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
-	return func(context.Context) *chatclient.Client { return &c }
+	return func(context.Context) (*chatclient.Client, error) { return &c, nil }
 }
 
 func textToolOutput(t *testing.T, output chat.ToolOutput) string {

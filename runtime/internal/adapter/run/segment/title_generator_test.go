@@ -56,7 +56,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewTitleGenerator(func(context.Context) *chatclient.Client { return &client })
+	generator := NewTitleGenerator(func(context.Context) (*chatclient.Client, error) { return &client, nil })
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider outage  \ninclude the request log")
 	if !errors.Is(err, providerErr) {
@@ -74,5 +74,20 @@ func TestGenerateUsesOpeningMessageFallbackWithoutUtilityClient(t *testing.T) {
 	}
 	if got != "修复会话恢复反馈" {
 		t.Fatalf("Generate title = %q, want first opening-message line", got)
+	}
+}
+
+func TestGenerateReturnsOpeningMessageFallbackWhenUtilityResolutionFails(t *testing.T) {
+	resolutionErr := errors.New("utility credentials expired")
+	generator := NewTitleGenerator(func(context.Context) (*chatclient.Client, error) {
+		return nil, resolutionErr
+	})
+
+	got, err := generator.Generate(t.Context(), "  Diagnose provider resolution  \ninclude the request log")
+	if !errors.Is(err, resolutionErr) {
+		t.Fatalf("Generate error = %v, want resolution failure", err)
+	}
+	if got != "Diagnose provider resolution" {
+		t.Fatalf("Generate title = %q, want deterministic opening-message fallback", got)
 	}
 }

@@ -13,7 +13,21 @@ import (
 // Resolver selects the current utility-role client for each call. Resolving at
 // the boundary lets a role configuration change take effect without rebuilding
 // the owning worker.
-type AuxiliaryResolver func(context.Context) *chatclient.Client
+type AuxiliaryResolver func(context.Context) (*chatclient.Client, error)
+
+// Complete resolves the exact live auxiliary selection and performs one call.
+// A configured role that cannot resolve is an error; callers must not silently
+// substitute a different provider/model identity.
+func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt) (string, error) {
+	if r == nil {
+		return "", errors.New("auxiliary model: resolver is required")
+	}
+	client, err := r(ctx)
+	if err != nil {
+		return "", err
+	}
+	return CompleteAuxiliary(ctx, client, prompt)
+}
 
 // callTimeout bounds one auxiliary model request independently of an Agent Run.
 const callTimeout = 2 * time.Minute

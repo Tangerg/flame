@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -40,7 +41,12 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	}}
 	resolve := LiveUtilityClient(resolver, selection, staticRoleSource{})
 
-	if first, second := resolve(t.Context()), resolve(t.Context()); first != client || second != client {
+	first, firstErr := resolve(t.Context())
+	second, secondErr := resolve(t.Context())
+	if firstErr != nil || secondErr != nil {
+		t.Fatalf("resolve errors = (%v, %v)", firstErr, secondErr)
+	}
+	if first != client || second != client {
 		t.Fatalf("resolved clients = (%p, %p), want (%p, %p)", first, second, client, client)
 	}
 	if calls != 2 {
@@ -48,7 +54,7 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	}
 }
 
-func TestLiveUtilityClientFallsBackThroughResolver(t *testing.T) {
+func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
 	mainSelection := mustRoleSelection(t, "anthropic", "claude-main")
 	utilitySelection := mustRoleSelection(t, "openai", "utility-model")
 	client := newTestChatClient(t)
@@ -62,11 +68,12 @@ func TestLiveUtilityClientFallsBackThroughResolver(t *testing.T) {
 	}}
 	resolve := LiveUtilityClient(resolver, mainSelection, staticRoleSource{selection: utilitySelection})
 
-	if got := resolve(t.Context()); got != client {
-		t.Fatalf("fallback client = %p, want %p", got, client)
+	got, err := resolve(t.Context())
+	if err == nil || got != nil || !strings.Contains(err.Error(), "utility provider unavailable") {
+		t.Fatalf("resolve configured utility = (%p, %v), want exact failure", got, err)
 	}
-	if len(resolved) != 2 || resolved[0] != utilitySelection || resolved[1] != mainSelection {
-		t.Fatalf("resolved selections = %#v, want utility then main", resolved)
+	if len(resolved) != 1 || resolved[0] != utilitySelection {
+		t.Fatalf("resolved selections = %#v, want utility only", resolved)
 	}
 }
 

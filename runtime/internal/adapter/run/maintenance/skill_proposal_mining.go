@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	skillspec "github.com/Tangerg/scope/skills"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
@@ -293,7 +292,7 @@ description: <what the skill does and WHEN to use it, one or two sentences>
 // directive, or a new-skill SKILL.md; the caller interprets which.
 func (s *SkillProposalMiner) askForSkill(ctx context.Context, messages []chat.Message) (string, error) {
 	transcript := renderTranscript(messages)
-	text, err := modeladapter.CompleteAuxiliary(ctx, s.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
+	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: skillMinerPrompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
@@ -335,7 +334,7 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 	input.WriteString(current.Instructions)
 	input.WriteString("\n\nCONVERSATION\n---\n")
 	input.WriteString(renderTranscript(messages))
-	text, err := modeladapter.CompleteAuxiliary(ctx, s.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
+	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: skillRevisePrompt, UserPrompt: input.String(),
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
@@ -347,13 +346,6 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 		return "", nil
 	}
 	return trimmed, nil
-}
-
-func (s *SkillProposalMiner) resolveClient(ctx context.Context) *chatclient.Client {
-	if s.client == nil {
-		return nil
-	}
-	return s.client(ctx)
 }
 
 // unfence strips a single wrapping Markdown code fence when the model wrapped

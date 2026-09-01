@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -266,7 +265,7 @@ transient state, one-off observations, and facts already obvious from source.
 If nothing deserves the append-only memory ledger, respond exactly NO_FACTS.
 Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bullets,
 ordered from most important to least important, without a preamble or code fence.`
-	text, err := modeladapter.CompleteAuxiliary(ctx, m.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
+	text, err := m.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: prompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
@@ -306,7 +305,7 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 	for _, fact := range pending {
 		fmt.Fprintf(&input, "[%s #%d] %s\n", fact.Day, fact.Sequence, fact.Content)
 	}
-	text, err := modeladapter.CompleteAuxiliary(ctx, m.resolveClient(ctx), modeladapter.AuxiliaryPrompt{
+	text, err := m.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: systemPrompt, UserPrompt: input.String(),
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
@@ -321,11 +320,4 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 		return "", nil
 	}
 	return text, nil
-}
-
-func (m *MemoryConsolidator) resolveClient(ctx context.Context) *chatclient.Client {
-	if m.client == nil {
-		return nil
-	}
-	return m.client(ctx)
 }

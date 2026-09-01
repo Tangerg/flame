@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 // modelEnvironment is the composition-time graph shared by interactive model
@@ -16,7 +15,7 @@ import (
 type modelEnvironment struct {
 	chatResolver       ChatResolver
 	utilityRoleState   *models.RoleState
-	utilityClient      func(context.Context) *chatclient.Client
+	utilityClient      modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder

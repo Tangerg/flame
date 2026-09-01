@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/Tangerg/scope/core/chatclient"
 
@@ -22,15 +24,15 @@ type ChatClientResolver interface {
 	ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error)
 }
 
-// LiveUtilityClient resolves the optional specialized role on every use. When
-// that role is unavailable it resolves the main selection through the same live
-// boundary; no process-start client or retired credential generation is kept.
+// LiveUtilityClient resolves the optional specialized role on every use. An
+// absent role selects the main model; a configured role is exact and never
+// silently falls back to another provider/model when resolution fails.
 func LiveUtilityClient(
 	resolver ChatClientResolver,
 	mainSelection modelref.Selection,
 	roles RoleSource,
-) func(context.Context) *chatclient.Client {
-	return func(ctx context.Context) *chatclient.Client {
+) AuxiliaryResolver {
+	return func(ctx context.Context) (*chatclient.Client, error) {
 		selection := mainSelection
 		if roles != nil {
 			if role := roles.Role(); role.Configured() {
@@ -38,14 +40,18 @@ func LiveUtilityClient(
 			}
 		}
 		resolved, err := resolver.ResolveChat(ctx, selection)
-		if err == nil && resolved.Client() != nil {
-			return resolved.Client()
+		if err != nil {
+			return nil, fmt.Errorf(
+				"auxiliary model: resolve %s/%s: %w",
+				selection.Provider(),
+				selection.Model(),
+				err,
+			)
 		}
-		if selection == mainSelection {
-			return nil
+		if resolved.Client() == nil {
+			return nil, errors.New("auxiliary model: resolved client is nil")
 		}
-		resolved, _ = resolver.ResolveChat(ctx, mainSelection)
-		return resolved.Client()
+		return resolved.Client(), nil
 	}
 }
 

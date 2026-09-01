@@ -1,10 +1,8 @@
 package bootstrap
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chatclient"
 	skillspec "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
@@ -24,7 +22,7 @@ func buildRunMaintenance(
 	skills *workspace.Skills,
 	skillMaintenance *workspace.SkillMaintenance,
 	memoryCuration *agentmemory.Curation,
-	resolveUtility func(context.Context) *chatclient.Client,
+	resolveUtility modeladapter.AuxiliaryResolver,
 ) (agentexec.RunMaintenance, agentexec.ModelContextCompactor, error) {
 	fallbackLimits := modelref.TokenLimits{}
 	limits, found, err := modeladapter.LookupTokenLimits(defaultSelection)

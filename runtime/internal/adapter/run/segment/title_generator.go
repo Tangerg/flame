@@ -59,11 +59,7 @@ func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string)
 	if runes := []rune(msg); len(runes) > titleMaxInputRunes {
 		msg = string(runes[:titleMaxInputRunes])
 	}
-	client := g.client(ctx)
-	if client == nil {
-		return fallback, nil
-	}
-	text, err := modeladapter.CompleteAuxiliary(ctx, client, modeladapter.AuxiliaryPrompt{
+	text, err := g.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		SystemPrompt: titlePrompt, UserPrompt: msg,
 		MaxInputBytes: titleModelInputBytes, MaxOutputTokens: titleModelOutputTokens,
 	})
