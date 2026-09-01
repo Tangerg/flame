@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
@@ -233,18 +234,14 @@ func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
 	if !source.IsDir() {
 		return nil, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, directory)
 	}
-	dir, err := os.Open(directory)
+	dir, _, err := fileinput.OpenDirectoryExpected(directory, source)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
+			return nil, fmt.Errorf("%w: %q changed while it was being opened", errInvalidListPath, directory)
+		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
 	defer func() { _ = dir.Close() }()
-	opened, err := dir.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("inspect opened listing path %q: %w", directory, err)
-	}
-	if !opened.IsDir() || !os.SameFile(source, opened) {
-		return nil, fmt.Errorf("%w: %q changed while it was being opened", errInvalidListPath, directory)
-	}
 
 	// Read one sentinel entry beyond the contract limit. os.ReadDir(directory)
 	// would materialize an unbounded directory before the safety policy had a

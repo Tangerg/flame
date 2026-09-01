@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const (
@@ -137,18 +138,14 @@ func readRecipeDirectory(ctx context.Context, directory string) ([]os.DirEntry, 
 	if !source.IsDir() {
 		return nil, fmt.Errorf("%w: recipe source %q is not a directory", workspaceapp.ErrInvalidPromptSource, directory)
 	}
-	dir, err := os.Open(directory)
+	dir, _, err := fileinput.OpenDirectoryExpected(directory, source)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
+			return nil, fmt.Errorf("%w: recipe source %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, directory)
+		}
 		return nil, fmt.Errorf("promptsource: open recipe directory %q: %w", directory, err)
 	}
 	defer func() { _ = dir.Close() }()
-	opened, err := dir.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("promptsource: inspect opened recipe directory %q: %w", directory, err)
-	}
-	if !opened.IsDir() || !os.SameFile(source, opened) {
-		return nil, fmt.Errorf("%w: recipe source %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, directory)
-	}
 	entries, err := dir.ReadDir(maxRecipeDirectoryEntries + 1)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("promptsource: read recipe directory %q: %w", directory, err)

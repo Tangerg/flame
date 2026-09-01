@@ -171,7 +171,7 @@ func (r *runtimeSkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntr
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
-	directory, err := root.Open(".")
+	directory, _, err := fileinput.OpenDirectoryAt(root, ".")
 	if err != nil {
 		return nil, errors.Join(err, root.Close())
 	}

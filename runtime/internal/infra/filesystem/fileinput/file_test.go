@@ -65,3 +65,28 @@ func TestOpenExpectedRejectsAReplacement(t *testing.T) {
 		t.Fatalf("OpenExpected replacement error = %v, want ErrChanged", err)
 	}
 }
+
+func TestOpenDirectoryAdmitsOnlyTheExpectedDirectory(t *testing.T) {
+	rootPath := t.TempDir()
+	directory := filepath.Join(rootPath, "directory")
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	opened, info, err := OpenDirectory(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("opened mode = %s, want directory", info.Mode())
+	}
+	if err := opened.Close(); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(rootPath, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenDirectory(file); !errors.Is(err, ErrNotDirectory) {
+		t.Fatalf("OpenDirectory file error = %v, want ErrNotDirectory", err)
+	}
+}

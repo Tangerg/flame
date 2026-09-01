@@ -1,6 +1,6 @@
-// Package fileinput opens bounded regular files without blocking on special
-// filesystem nodes. It owns source identity and size admission; callers retain
-// content validation and translation into application errors.
+// Package fileinput opens verified filesystem inputs without blocking on
+// special nodes. It owns source identity, kind, and file-size admission;
+// callers retain content validation and translation into application errors.
 package fileinput
 
 import (
@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	ErrNotRegular = errors.New("file input: source is not a regular file")
-	ErrTooLarge   = errors.New("file input: source exceeds its byte limit")
-	ErrChanged    = errors.New("file input: source changed while it was being opened")
+	ErrNotRegular   = errors.New("file input: source is not a regular file")
+	ErrNotDirectory = errors.New("file input: source is not a directory")
+	ErrTooLarge     = errors.New("file input: source exceeds its byte limit")
+	ErrChanged      = errors.New("file input: source changed while it was being opened")
 )
 
 // Open returns one read-only file only when the path still names the same
