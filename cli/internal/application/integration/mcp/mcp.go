@@ -186,40 +186,29 @@ func (s Server) Clone() Server {
 	return s
 }
 
-type ChangeKind string
-
-const (
-	Set   ChangeKind = "set"
-	Clear ChangeKind = "clear"
-)
-
-func (c ChangeKind) Validate() error {
-	if c != Set && c != Clear {
-		return fmt.Errorf("MCP secret change %q is invalid", c)
-	}
-	return nil
-}
-
 type AuthorizationChange struct {
-	Kind  ChangeKind
+	Kind  protocol.MCPSecretChangeType
 	Value string
 }
 
 func (a AuthorizationChange) Validate() error {
-	if err := a.Kind.Validate(); err != nil {
-		return err
-	}
-	if a.Kind == Set && strings.TrimSpace(a.Value) == "" {
-		return errors.New("MCP authorization set value is empty")
-	}
-	if a.Kind == Clear && a.Value != "" {
-		return errors.New("MCP authorization clear carries a value")
+	switch a.Kind {
+	case protocol.MCPSecretSet:
+		if strings.TrimSpace(a.Value) == "" {
+			return errors.New("MCP authorization set value is empty")
+		}
+	case protocol.MCPSecretClear:
+		if a.Value != "" {
+			return errors.New("MCP authorization clear carries a value")
+		}
+	default:
+		return fmt.Errorf("MCP secret change %q is invalid", a.Kind)
 	}
 	return nil
 }
 
 type HeadersChange struct {
-	Kind  ChangeKind
+	Kind  protocol.MCPSecretChangeType
 	Value map[string]string
 }
 
@@ -228,7 +217,7 @@ func (h HeadersChange) Validate() error {
 }
 
 type EnvironmentChange struct {
-	Kind  ChangeKind
+	Kind  protocol.MCPSecretChangeType
 	Value map[string]string
 }
 
@@ -303,13 +292,13 @@ func (c ConnectionInput) Clone() ConnectionInput {
 }
 
 func (c ConnectionInput) validateCandidateSecrets() error {
-	if c.Authorization != nil && c.Authorization.Kind == Clear {
+	if c.Authorization != nil && c.Authorization.Kind == protocol.MCPSecretClear {
 		return errors.New("MCP candidate cannot clear authorization without an existing server")
 	}
-	if c.Headers != nil && c.Headers.Kind == Clear {
+	if c.Headers != nil && c.Headers.Kind == protocol.MCPSecretClear {
 		return errors.New("MCP candidate cannot clear headers without an existing server")
 	}
-	if c.Environment != nil && c.Environment.Kind == Clear {
+	if c.Environment != nil && c.Environment.Kind == protocol.MCPSecretClear {
 		return errors.New("MCP candidate cannot clear environment without an existing server")
 	}
 	return nil
@@ -539,9 +528,9 @@ func validateMaskedSecret(label string, change *AuthorizationChange, masked stri
 	switch {
 	case change == nil && masked != "":
 		return fmt.Errorf("runtime returned unexpected masked %s", label)
-	case change != nil && change.Kind == Set && masked == "":
+	case change != nil && change.Kind == protocol.MCPSecretSet && masked == "":
 		return fmt.Errorf("runtime did not confirm masked %s", label)
-	case change != nil && change.Kind == Clear && masked != "":
+	case change != nil && change.Kind == protocol.MCPSecretClear && masked != "":
 		return fmt.Errorf("runtime kept masked %s after clear", label)
 	default:
 		return nil
@@ -557,7 +546,7 @@ func validateMaskedMap[T interface {
 		}
 		return nil
 	}
-	var kind ChangeKind
+	var kind protocol.MCPSecretChangeType
 	var values map[string]string
 	switch change := any(*raw).(type) {
 	case HeadersChange:
@@ -565,7 +554,7 @@ func validateMaskedMap[T interface {
 	case EnvironmentChange:
 		kind, values = change.Kind, change.Value
 	}
-	if kind == Clear {
+	if kind == protocol.MCPSecretClear {
 		if len(masked) != 0 {
 			return fmt.Errorf("runtime kept masked %s after clear", label)
 		}
@@ -687,15 +676,18 @@ func (a AuthorizationAttempt) Reference() AuthorizationReference {
 	return AuthorizationReference{ID: a.ID, Server: a.Server}
 }
 
-func validateMapChange(label string, kind ChangeKind, values map[string]string) error {
-	if err := kind.Validate(); err != nil {
-		return err
-	}
-	if kind == Clear && len(values) != 0 {
-		return fmt.Errorf("%s clear carries values", label)
-	}
-	if kind == Set && len(values) == 0 {
-		return fmt.Errorf("%s set value is empty", label)
+func validateMapChange(label string, kind protocol.MCPSecretChangeType, values map[string]string) error {
+	switch kind {
+	case protocol.MCPSecretClear:
+		if len(values) != 0 {
+			return fmt.Errorf("%s clear carries values", label)
+		}
+	case protocol.MCPSecretSet:
+		if len(values) == 0 {
+			return fmt.Errorf("%s set value is empty", label)
+		}
+	default:
+		return fmt.Errorf("MCP secret change %q is invalid", kind)
 	}
 	return validateStringMap(label, values)
 }

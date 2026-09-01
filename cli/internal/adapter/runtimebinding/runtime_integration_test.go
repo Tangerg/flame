@@ -537,8 +537,8 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("NewHandshakeTimeout: %v", err)
 	}
-	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer integration-secret"}
-	headers := mcp.HeadersChange{Kind: mcp.Set, Value: map[string]string{"X-Key": "integration-secret"}}
+	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer integration-secret"}
+	headers := mcp.HeadersChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"X-Key": "integration-secret"}}
 	candidate := mcp.Candidate{
 		Name: "integration-docs", Enabled: false, Description: "Integration MCP",
 		Connection: mcp.ConnectionInput{
@@ -554,8 +554,8 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if validateResultErr := candidate.ValidateResult(created); validateResultErr != nil {
 		t.Fatalf("created MCP server: %v", validateResultErr)
 	}
-	clearAuthorization := mcp.AuthorizationChange{Kind: mcp.Clear}
-	clearHeaders := mcp.HeadersChange{Kind: mcp.Clear}
+	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
+	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
 	description := "Updated integration MCP"
 	updatedTimeout, err := mcp.NewHandshakeTimeout(10)
 	if err != nil {

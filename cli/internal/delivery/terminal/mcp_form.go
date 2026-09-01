@@ -380,10 +380,10 @@ func mcpAuthorizationChange(mode formChange, value string) (*mcp.AuthorizationCh
 	}
 	switch mode {
 	case formChangeSet:
-		change := &mcp.AuthorizationChange{Kind: mcp.Set, Value: strings.TrimSpace(value)}
+		change := &mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: strings.TrimSpace(value)}
 		return change, change.Validate()
 	case formChangeClear:
-		return &mcp.AuthorizationChange{Kind: mcp.Clear}, nil
+		return &mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}, nil
 	case formChangeKeep:
 		return nil, nil
 	}
@@ -395,7 +395,7 @@ func mcpHeadersChange(mode formChange, value string) (*mcp.HeadersChange, error)
 		return nil, err
 	}
 	if mode.ClearsValue() {
-		return &mcp.HeadersChange{Kind: mcp.Clear}, nil
+		return &mcp.HeadersChange{Kind: protocol.MCPSecretClear}, nil
 	}
 	if !mode.SetsValue() {
 		return nil, nil
@@ -404,7 +404,7 @@ func mcpHeadersChange(mode formChange, value string) (*mcp.HeadersChange, error)
 	if err != nil {
 		return nil, err
 	}
-	change := &mcp.HeadersChange{Kind: mcp.Set, Value: values}
+	change := &mcp.HeadersChange{Kind: protocol.MCPSecretSet, Value: values}
 	return change, change.Validate()
 }
 
@@ -413,7 +413,7 @@ func mcpEnvironmentChange(mode formChange, value string) (*mcp.EnvironmentChange
 		return nil, err
 	}
 	if mode.ClearsValue() {
-		return &mcp.EnvironmentChange{Kind: mcp.Clear}, nil
+		return &mcp.EnvironmentChange{Kind: protocol.MCPSecretClear}, nil
 	}
 	if !mode.SetsValue() {
 		return nil, nil
@@ -422,7 +422,7 @@ func mcpEnvironmentChange(mode formChange, value string) (*mcp.EnvironmentChange
 	if err != nil {
 		return nil, err
 	}
-	change := &mcp.EnvironmentChange{Kind: mcp.Set, Value: values}
+	change := &mcp.EnvironmentChange{Kind: protocol.MCPSecretSet, Value: values}
 	return change, change.Validate()
 }
 

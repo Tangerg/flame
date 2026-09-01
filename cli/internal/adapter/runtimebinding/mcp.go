@@ -291,17 +291,17 @@ func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConne
 	}
 	if connection.Authorization != nil {
 		projected.Authorization = &protocol.MCPAuthorizationChange{
-			Type: protocol.MCPSecretChangeType(connection.Authorization.Kind), Value: connection.Authorization.Value,
+			Type: connection.Authorization.Kind, Value: connection.Authorization.Value,
 		}
 	}
 	if connection.Headers != nil {
 		projected.Headers = &protocol.MCPHeadersChange{
-			Type: protocol.MCPSecretChangeType(connection.Headers.Kind), Value: maps.Clone(connection.Headers.Value),
+			Type: connection.Headers.Kind, Value: maps.Clone(connection.Headers.Value),
 		}
 	}
 	if connection.Environment != nil {
 		projected.Env = &protocol.MCPEnvironmentChange{
-			Type: protocol.MCPSecretChangeType(connection.Environment.Kind), Value: maps.Clone(connection.Environment.Value),
+			Type: connection.Environment.Kind, Value: maps.Clone(connection.Environment.Value),
 		}
 	}
 	return projected

@@ -197,7 +197,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	if err != nil || len(servers) != 1 || servers[0].State.Type != protocol.MCPServerConnected || servers[0].Connection.AuthorizationMasked == "" {
 		t.Fatalf("Servers = (%+v, %v)", servers, err)
 	}
-	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer secret"}
+	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
 	candidate := mcp.Candidate{
 		Name: "new-docs", Enabled: true,
 		Connection: mcp.ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://new.example/tools", Authorization: &authorization},
@@ -276,7 +276,7 @@ func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t 
 
 func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
-	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer secret"}
+	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
 	candidate := mcp.Candidate{
 		Name: "docs", Enabled: true, Description: "Documentation",
 		Connection: mcp.ConnectionInput{

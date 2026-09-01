@@ -11,7 +11,7 @@ import (
 )
 
 func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
-	authorization := AuthorizationChange{Kind: Set, Value: "Bearer secret"}
+	authorization := AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
 	http := ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization}
 	if err := http.Validate(); err != nil {
 		t.Fatal(err)
@@ -20,7 +20,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 	if err := http.Validate(); err == nil {
 		t.Fatal("HTTP connection carrying a stdio command was accepted")
 	}
-	environment := EnvironmentChange{Kind: Set, Value: map[string]string{"TOKEN": "secret"}}
+	environment := EnvironmentChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"TOKEN": "secret"}}
 	stdio := ConnectionInput{Transport: protocol.MCPTransportStdio, Command: "server", Environment: &environment}
 	if err := stdio.Validate(); err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 	if err := stdio.Validate(); err == nil {
 		t.Fatal("stdio connection carrying HTTP authorization was accepted")
 	}
-	clear := AuthorizationChange{Kind: Clear}
+	clear := AuthorizationChange{Kind: protocol.MCPSecretClear}
 	candidate := Candidate{Name: "docs", Connection: ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example", Authorization: &clear}}
 	if err := candidate.Validate(); err == nil {
 		t.Fatal("candidate clearing a nonexistent secret was accepted")
@@ -79,8 +79,8 @@ func TestServerUpdateRequiresAnExplicitChange(t *testing.T) {
 func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	t.Parallel()
 	timeout := mustHandshakeTimeout(t, 15)
-	authorization := AuthorizationChange{Kind: Set, Value: "Bearer secret"}
-	headers := HeadersChange{Kind: Set, Value: map[string]string{"X-Key": "secret"}}
+	authorization := AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
+	headers := HeadersChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"X-Key": "secret"}}
 	candidate := Candidate{
 		Name: "docs", Enabled: true, Description: "Documentation", HandshakeTimeout: timeout,
 		Connection: ConnectionInput{
@@ -143,8 +143,8 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		t.Fatalf("update result error = %v", err)
 	}
 
-	clearAuthorization := AuthorizationChange{Kind: Clear}
-	clearHeaders := HeadersChange{Kind: Clear}
+	clearAuthorization := AuthorizationChange{Kind: protocol.MCPSecretClear}
+	clearHeaders := HeadersChange{Kind: protocol.MCPSecretClear}
 	connectionUpdate := ServerUpdate{
 		Server: candidate.Name,
 		Connection: &ConnectionInput{
@@ -164,7 +164,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		t.Fatalf("secret clear result error = %v", err)
 	}
 
-	environment := EnvironmentChange{Kind: Set, Value: map[string]string{"TOKEN": "secret"}}
+	environment := EnvironmentChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"TOKEN": "secret"}}
 	stdioCandidate := Candidate{
 		Name: "local", Enabled: false,
 		Connection: ConnectionInput{
