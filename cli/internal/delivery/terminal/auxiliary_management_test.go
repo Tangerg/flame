@@ -142,7 +142,7 @@ func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalo
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []workspace.LifecycleHook{{
-		Event: workspace.HookPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: workspace.HookProject,
+		Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: protocol.HookScopeProject,
 		Source: "/workspace/.flame/hooks.json", Active: h.trusted,
 	}}}, nil
 }
