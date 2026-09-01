@@ -47,6 +47,12 @@ func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	if err := server.Validate(); err == nil {
 		t.Fatal("connected state carrying a problem was accepted")
 	}
+	server.State.Problem = nil
+	server.DisabledTools = []string{"write"}
+	server.AutoApproveTools = []string{"write"}
+	if err := server.Validate(); err == nil {
+		t.Fatal("server accepted contradictory tool policy")
+	}
 	now := time.Now()
 	attempt := AuthorizationAttempt{ID: "auth_1", Server: "docs", Status: AuthorizationPending, CreatedAt: now}
 	if err := attempt.Validate(); err != nil {
@@ -179,6 +185,35 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	missingEnvironment.Connection.EnvironmentMasked = nil
 	if err := stdioCandidate.ValidateResult(missingEnvironment); err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Fatalf("stdio result error = %v", err)
+	}
+}
+
+func TestMCPMutationResultsAcceptRuntimeToolPolicyCanonicalization(t *testing.T) {
+	candidate := Candidate{
+		Name: "docs", Enabled: true,
+		Connection:       ConnectionInput{Transport: Stdio, Command: "docs-server"},
+		DisabledTools:    []string{"write", "read"},
+		AutoApproveTools: []string{"search", "fetch"},
+	}
+	result := Server{
+		Name: candidate.Name, Connection: Connection{Transport: Stdio, Command: "docs-server"},
+		DisabledTools: []string{"read", "write"}, AutoApproveTools: []string{"fetch", "search"},
+		State: State{Type: Disconnected},
+	}
+	if err := candidate.ValidateResult(result); err != nil {
+		t.Fatalf("canonical create result: %v", err)
+	}
+
+	disabled := []string{"write", "read"}
+	update := ServerUpdate{Server: "docs", DisabledTools: &disabled}
+	if err := update.ValidateResult(result); err != nil {
+		t.Fatalf("canonical update result: %v", err)
+	}
+
+	contradictory := candidate
+	contradictory.AutoApproveTools = []string{"write"}
+	if err := contradictory.Validate(); err == nil {
+		t.Fatal("candidate accepted contradictory tool policy")
 	}
 }
 

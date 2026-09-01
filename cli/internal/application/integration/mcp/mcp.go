@@ -194,10 +194,7 @@ func (s Server) Validate() error {
 	if err := s.State.Validate(); err != nil {
 		return fmt.Errorf("MCP server %s: %w", s.Name, err)
 	}
-	if err := validateUniqueStrings("disabled MCP tools", s.DisabledTools); err != nil {
-		return err
-	}
-	return validateUniqueStrings("auto-approved MCP tools", s.AutoApproveTools)
+	return validateCanonicalToolPolicy(s.DisabledTools, s.AutoApproveTools)
 }
 
 func (s Server) Clone() Server {
@@ -366,10 +363,7 @@ func (c Candidate) Validate() error {
 	if err := c.Connection.validateCandidateSecrets(); err != nil {
 		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
 	}
-	if err := validateUniqueStrings("disabled MCP tools", c.DisabledTools); err != nil {
-		return err
-	}
-	return validateUniqueStrings("auto-approved MCP tools", c.AutoApproveTools)
+	return validateToolPolicy(c.DisabledTools, c.AutoApproveTools)
 }
 
 func (c Candidate) Clone() Candidate {
@@ -396,10 +390,10 @@ func (c Candidate) ValidateResult(result Server) error {
 	if !result.HandshakeTimeout.Equal(c.HandshakeTimeout) {
 		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, c.HandshakeTimeout))
 	}
-	if !slices.Equal(result.DisabledTools, c.DisabledTools) {
+	if !equalToolNameSet(result.DisabledTools, c.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, c.DisabledTools))
 	}
-	if !slices.Equal(result.AutoApproveTools, c.AutoApproveTools) {
+	if !equalToolNameSet(result.AutoApproveTools, c.AutoApproveTools) {
 		problems = append(problems, fmt.Errorf("runtime returned auto-approved tools %v, want %v", result.AutoApproveTools, c.AutoApproveTools))
 	}
 	problems = append(problems, validateEnabledResult(c.Enabled, result.State))
@@ -447,6 +441,11 @@ func (s ServerUpdate) Validate() error {
 			return err
 		}
 	}
+	if s.DisabledTools != nil && s.AutoApproveTools != nil {
+		if err := validateToolPolicy(*s.DisabledTools, *s.AutoApproveTools); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -475,10 +474,10 @@ func (s ServerUpdate) ValidateResult(result Server) error {
 	if s.HandshakeTimeout != nil && !result.HandshakeTimeout.Equal(*s.HandshakeTimeout) {
 		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, *s.HandshakeTimeout))
 	}
-	if s.DisabledTools != nil && !slices.Equal(result.DisabledTools, *s.DisabledTools) {
+	if s.DisabledTools != nil && !equalToolNameSet(result.DisabledTools, *s.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, *s.DisabledTools))
 	}
-	if s.AutoApproveTools != nil && !slices.Equal(result.AutoApproveTools, *s.AutoApproveTools) {
+	if s.AutoApproveTools != nil && !equalToolNameSet(result.AutoApproveTools, *s.AutoApproveTools) {
 		problems = append(problems, fmt.Errorf("runtime returned auto-approved tools %v, want %v", result.AutoApproveTools, *s.AutoApproveTools))
 	}
 	if s.Connection != nil {
@@ -747,4 +746,47 @@ func validateUniqueStrings(label string, values []string) error {
 		seen[value] = struct{}{}
 	}
 	return nil
+}
+
+// validateToolPolicy checks the two-list command projection as one relation:
+// one remote tool may have at most one policy decision. Input order is not
+// semantic; Runtime owns the canonical sorted projection returned by reads.
+func validateToolPolicy(disabled, autoApproved []string) error {
+	if err := validateUniqueStrings("disabled MCP tools", disabled); err != nil {
+		return err
+	}
+	if err := validateUniqueStrings("auto-approved MCP tools", autoApproved); err != nil {
+		return err
+	}
+	disabledSet := make(map[string]struct{}, len(disabled))
+	for _, tool := range disabled {
+		disabledSet[tool] = struct{}{}
+	}
+	for _, tool := range autoApproved {
+		if _, contradictory := disabledSet[tool]; contradictory {
+			return fmt.Errorf("MCP tool %q is both disabled and auto-approved", tool)
+		}
+	}
+	return nil
+}
+
+func validateCanonicalToolPolicy(disabled, autoApproved []string) error {
+	if err := validateToolPolicy(disabled, autoApproved); err != nil {
+		return err
+	}
+	if !slices.IsSorted(disabled) || !slices.IsSorted(autoApproved) {
+		return errors.New("MCP tool policy is not in canonical order")
+	}
+	return nil
+}
+
+func equalToolNameSet(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	left = slices.Clone(left)
+	right = slices.Clone(right)
+	slices.Sort(left)
+	slices.Sort(right)
+	return slices.Equal(left, right)
 }
