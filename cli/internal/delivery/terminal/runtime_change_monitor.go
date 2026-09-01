@@ -48,7 +48,7 @@ func (a *app) followRuntimeChanges() {
 					a.applyRuntimeInvalidation(event)
 				})
 			},
-			applyResync: func(topics []changefeed.Topic) error {
+			applyResync: func(topics []protocol.RuntimeTopic) error {
 				return post(ctx, dispatcher, func() {
 					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
 						return
@@ -85,7 +85,7 @@ type runtimeChangeMonitor struct {
 	resources          runtimeResourceObservation
 	applyFiles         func([]workspace.Change) error
 	applyEvent         func(changefeed.Event) error
-	applyResync        func([]changefeed.Topic) error
+	applyResync        func([]protocol.RuntimeTopic) error
 	subscriptionLimits changefeed.SubscriptionLimits
 }
 
@@ -131,7 +131,7 @@ func (r runtimeChangeMonitor) run(ctx context.Context) error {
 		return r.runWithoutWatch(ctx)
 	}
 	requested := changefeed.Subscription{Topics: topics}
-	if r.observesWorkspace() && containsTopic(topics, changefeed.FilesChanged) {
+	if r.observesWorkspace() && containsTopic(topics, protocol.TopicFilesChanged) {
 		requested.Watches = []changefeed.Watch{{ID: workspaceWatchID, Workspace: r.workspace}}
 	}
 	subscriptions, err := r.subscriptionLimits.Partition(requested)
@@ -158,7 +158,7 @@ func (r runtimeChangeMonitor) runSubscriptions(ctx context.Context, subscription
 
 	fileOwner := 0
 	for index, subscription := range subscriptions {
-		if containsTopic(subscription.Topics, changefeed.FilesChanged) {
+		if containsTopic(subscription.Topics, protocol.TopicFilesChanged) {
 			fileOwner = index
 			break
 		}
@@ -253,7 +253,7 @@ func (r runtimeChangeMonitor) openSubscriptionAttempt(
 
 func (r runtimeChangeMonitor) consumeSubscription(
 	attempt runtimeChangeAttempt,
-	topics []changefeed.Topic,
+	topics []protocol.RuntimeTopic,
 	ownsFileProjection bool,
 ) (bool, error) {
 	sequences := changefeed.NewSequenceTracker()
@@ -273,7 +273,7 @@ func (r runtimeChangeMonitor) consumeSubscription(
 
 func (r runtimeChangeMonitor) consumeChangeEvent(
 	ctx context.Context,
-	topics []changefeed.Topic,
+	topics []protocol.RuntimeTopic,
 	ownsFileProjection bool,
 	sequences *changefeed.SequenceTracker,
 	event changefeed.Event,
@@ -286,7 +286,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 		return false, nil
 	}
 	if disposition == changefeed.SequenceGap {
-		if ownsFileProjection && containsTopic(topics, changefeed.FilesChanged) {
+		if ownsFileProjection && containsTopic(topics, protocol.TopicFilesChanged) {
 			if err := r.refreshFiles(ctx); err != nil {
 				return false, err
 			}
@@ -304,7 +304,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 			return false, err
 		}
 	}
-	if event.Type != changefeed.EventType(changefeed.FilesChanged) {
+	if event.Type != protocol.RuntimeFilesChanged {
 		if err := r.invalidate(event); err != nil {
 			return false, err
 		}
@@ -344,46 +344,46 @@ func (r runtimeChangeMonitor) runWithoutWatch(ctx context.Context) error {
 	return context.Cause(ctx)
 }
 
-func (r runtimeChangeMonitor) supportedTopics() []changefeed.Topic {
+func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	if r.source == nil {
 		return nil
 	}
-	candidates := []changefeed.Topic{changefeed.SessionsChanged, changefeed.RunsChanged}
+	candidates := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}
 	if r.resources.plan {
-		candidates = append(candidates, changefeed.PlanChanged)
+		candidates = append(candidates, protocol.TopicPlanChanged)
 	}
-	candidates = append(candidates, changefeed.InterruptsChanged)
+	candidates = append(candidates, protocol.TopicInterruptsChanged)
 	if r.resources.goals {
-		candidates = append(candidates, changefeed.GoalsChanged)
+		candidates = append(candidates, protocol.TopicGoalsChanged)
 	}
 	if r.resources.skills {
-		candidates = append(candidates, changefeed.SkillsChanged)
+		candidates = append(candidates, protocol.TopicSkillsChanged)
 	}
 	if r.resources.mcp {
-		candidates = append(candidates, changefeed.MCPChanged)
+		candidates = append(candidates, protocol.TopicMCPChanged)
 	}
 	if r.resources.schedules {
-		candidates = append(candidates, changefeed.SchedulesChanged)
+		candidates = append(candidates, protocol.TopicSchedulesChanged)
 	}
 	if r.resources.knowledge {
-		candidates = append(candidates, changefeed.KnowledgeChanged)
+		candidates = append(candidates, protocol.TopicKnowledgeChanged)
 	}
 	if r.resources.hooks {
-		candidates = append(candidates, changefeed.HooksChanged)
+		candidates = append(candidates, protocol.TopicHooksChanged)
 	}
 	if r.resources.models {
-		candidates = append(candidates, changefeed.ModelsChanged)
+		candidates = append(candidates, protocol.TopicModelsChanged)
 	}
 	if r.resources.approvals {
-		candidates = append(candidates, changefeed.ApprovalsChanged)
+		candidates = append(candidates, protocol.TopicApprovalsChanged)
 	}
 	if r.resources.agentMemory {
-		candidates = append(candidates, changefeed.AgentMemoryChanged)
+		candidates = append(candidates, protocol.TopicAgentMemoryChanged)
 	}
 	if r.observesWorkspace() {
-		candidates = append([]changefeed.Topic{changefeed.FilesChanged}, candidates...)
+		candidates = append([]protocol.RuntimeTopic{protocol.TopicFilesChanged}, candidates...)
 	}
-	topics := make([]changefeed.Topic, 0, len(candidates))
+	topics := make([]protocol.RuntimeTopic, 0, len(candidates))
 	for _, topic := range candidates {
 		if r.source.Supports(topic) {
 			topics = append(topics, topic)
@@ -415,7 +415,7 @@ func (r runtimeChangeMonitor) invalidate(event changefeed.Event) error {
 	return r.applyEvent(event)
 }
 
-func (r runtimeChangeMonitor) resync(topics []changefeed.Topic) error {
+func (r runtimeChangeMonitor) resync(topics []protocol.RuntimeTopic) error {
 	if r.applyResync == nil {
 		return nil
 	}
@@ -424,7 +424,7 @@ func (r runtimeChangeMonitor) resync(topics []changefeed.Topic) error {
 
 func (r runtimeChangeMonitor) invalidatesFiles(event changefeed.Event) bool {
 	switch event.Type {
-	case changefeed.EventType(changefeed.FilesChanged):
+	case protocol.RuntimeFilesChanged:
 		if event.WatchID != "" {
 			return event.WatchID == workspaceWatchID &&
 				(event.Workspace == "" || event.Workspace == r.workspace)
@@ -433,14 +433,14 @@ func (r runtimeChangeMonitor) invalidatesFiles(event changefeed.Event) bool {
 		// affected workspace but no client watch identity, and must refresh the
 		// same authoritative projection as a watch-produced signal.
 		return event.Workspace == "" || event.Workspace == r.workspace
-	case changefeed.Resync:
-		return containsTopic(event.Topics, changefeed.FilesChanged) || containsString(event.WatchIDs, workspaceWatchID)
+	case protocol.RuntimeResync:
+		return containsTopic(event.Topics, protocol.TopicFilesChanged) || containsString(event.WatchIDs, workspaceWatchID)
 	default:
 		return false
 	}
 }
 
-func containsTopic(values []changefeed.Topic, target changefeed.Topic) bool {
+func containsTopic(values []protocol.RuntimeTopic, target protocol.RuntimeTopic) bool {
 	for _, value := range values {
 		if value == target {
 			return true

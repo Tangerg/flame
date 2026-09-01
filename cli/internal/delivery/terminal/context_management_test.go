@@ -360,7 +360,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -490,12 +490,12 @@ func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
 	knowledgeStore := newKnowledgeServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.KnowledgeChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Changes: source, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "knowledge change subscription")
-	if !slices.Equal(subscription.Topics, []changefeed.Topic{changefeed.KnowledgeChanged}) {
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged}) {
 		t.Fatalf("knowledge subscription = %v", subscription.Topics)
 	}
 	host.Type("/knowledge-read home")
@@ -506,7 +506,7 @@ func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
 	knowledgeStore.content[protocol.KnowledgeScopeHome] = "preferences from runtime change"
 	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+external"
 	knowledgeStore.mu.Unlock()
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.KnowledgeChanged), Sequence: 1}
+	source.events <- changefeed.Event{Type: protocol.RuntimeKnowledgeChanged, Sequence: 1}
 	awaitValue(t, source.applied, "knowledge invalidation")
 	host.Shows(t, "preferences from runtime change")
 	host.Hides(t, "cwd guidance")
@@ -517,7 +517,7 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 	knowledgeStore := newKnowledgeServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.KnowledgeChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Changes: source, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
@@ -531,7 +531,7 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+resync"
 	knowledgeStore.mu.Unlock()
 	source.events <- changefeed.Event{
-		Type: changefeed.Resync, Sequence: 1, Topics: []changefeed.Topic{changefeed.KnowledgeChanged},
+		Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
 	}
 	awaitValue(t, source.applied, "knowledge resync")
 	host.Shows(t, "preferences from scoped resync")
@@ -650,7 +650,7 @@ func TestKnowledgeEditorSaveOutlivesSameSessionProjectionReplacement(t *testing.
 	}
 
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")

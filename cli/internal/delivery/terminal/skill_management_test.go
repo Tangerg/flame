@@ -237,12 +237,12 @@ func TestSkillsChangedRefetchesOnlyAnOpenSkillProjection(t *testing.T) {
 	service := newSkillServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.SkillsChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "skill invalidation subscription")
-	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.SkillsChanged {
+	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicSkillsChanged {
 		t.Fatalf("skill subscription = %+v", subscription)
 	}
 	host.Type("/skills")
@@ -252,7 +252,7 @@ func TestSkillsChangedRefetchesOnlyAnOpenSkillProjection(t *testing.T) {
 	service.mu.Lock()
 	service.discovered[0].Description = "Release with verified artifacts"
 	service.mu.Unlock()
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.SkillsChanged), Sequence: 1, Names: []string{"release-checks"}}
+	source.events <- changefeed.Event{Type: protocol.RuntimeSkillsChanged, Sequence: 1, Names: []string{"release-checks"}}
 	awaitSignal(t, source.applied, "skills.changed delivery")
 	host.Shows(t, "Release with verified artifacts")
 	if service.reads.Load() <= baseline {
@@ -288,7 +288,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")

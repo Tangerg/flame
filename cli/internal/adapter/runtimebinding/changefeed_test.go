@@ -36,13 +36,13 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 	}}
 	runtime := &Connection{
 		changes: stub, meta: requestMeta("test"),
-		profile: changefeedProfile(changefeed.FilesChanged),
+		profile: changefeedProfile(protocol.TopicFilesChanged),
 	}
 	runtime.profile.Features = map[string]Feature{
 		protocol.FeatureFileWatch: {Enabled: true},
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
-		Topics:  []changefeed.Topic{changefeed.FilesChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
 	})
 	if err != nil {
@@ -74,10 +74,10 @@ func TestChangefeedAdapterProjectsBroadFileInvalidations(t *testing.T) {
 	}}
 	runtime := &Connection{
 		changes: stub, meta: requestMeta("test"),
-		profile: changefeedProfile(changefeed.FilesChanged),
+		profile: changefeedProfile(protocol.TopicFilesChanged),
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
-		Topics: []changefeed.Topic{changefeed.FilesChanged},
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -103,13 +103,13 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 	}{
 		{
 			name:         "topic",
-			subscription: changefeed.Subscription{Topics: []changefeed.Topic{changefeed.SessionsChanged}},
+			subscription: changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}},
 			event:        protocol.RuntimeEvent{Type: protocol.RuntimeRunsChanged, Sequence: 1},
 		},
 		{
 			name: "watch",
 			subscription: changefeed.Subscription{
-				Topics:  []changefeed.Topic{changefeed.FilesChanged},
+				Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 				Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
 			},
 			event: protocol.RuntimeEvent{
@@ -119,7 +119,7 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 		},
 		{
 			name:         "resync",
-			subscription: changefeed.Subscription{Topics: []changefeed.Topic{changefeed.SessionsChanged}},
+			subscription: changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}},
 			event: protocol.RuntimeEvent{
 				Type: protocol.RuntimeResync, Sequence: 1,
 				Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged},
@@ -134,7 +134,7 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 			}}
 			runtime := &Connection{
 				changes: stub, meta: requestMeta("test"),
-				profile: changefeedProfile(changefeed.FilesChanged, changefeed.SessionsChanged, changefeed.RunsChanged),
+				profile: changefeedProfile(protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged),
 			}
 			if len(test.subscription.Watches) != 0 {
 				runtime.profile.Features = map[string]Feature{
@@ -158,7 +158,7 @@ func TestChangefeedAdapterRefusesAnUnadvertisedTopic(t *testing.T) {
 	t.Parallel()
 	stub := &changeBindingStub{}
 	runtime := &Connection{changes: stub}
-	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []changefeed.Topic{changefeed.FilesChanged}})
+	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}})
 	if err == nil {
 		t.Fatal("unadvertised topic was accepted")
 	}
@@ -170,9 +170,9 @@ func TestChangefeedAdapterRefusesAnUnadvertisedTopic(t *testing.T) {
 func TestChangefeedAdapterRejectsWatchesWithoutFileWatchCapability(t *testing.T) {
 	t.Parallel()
 	stub := &changeBindingStub{}
-	runtime := &Connection{changes: stub, profile: changefeedProfile(changefeed.FilesChanged)}
+	runtime := &Connection{changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged)}
 	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
-		Topics:  []changefeed.Topic{changefeed.FilesChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
 	})
 	if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
@@ -187,11 +187,11 @@ func TestChangefeedAdapterHonorsAdvertisedSubscriptionLimits(t *testing.T) {
 	t.Parallel()
 	stub := &changeBindingStub{}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(changefeed.FilesChanged),
+		changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged),
 	}
 	runtime.profile.Limits.RuntimeSubscription.MaxWatches = 1
 	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
-		Topics:  []changefeed.Topic{changefeed.FilesChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "one", Workspace: "/one"}, {ID: "two", Workspace: "/two"}},
 	})
 	if err == nil {
@@ -208,9 +208,9 @@ func TestChangefeedAdapterRejectsMalformedWireEvent(t *testing.T) {
 		yield(protocol.RuntimeEvent{Type: protocol.RuntimeFilesChanged}, nil)
 	}}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(changefeed.FilesChanged),
+		changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged),
 	}
-	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []changefeed.Topic{changefeed.FilesChanged}})
+	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,12 +228,12 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
-		topic changefeed.Topic
+		topic protocol.RuntimeTopic
 		event protocol.RuntimeEventType
 	}{
-		{name: "models", topic: changefeed.ModelsChanged, event: protocol.RuntimeModelsChanged},
-		{name: "approvals", topic: changefeed.ApprovalsChanged, event: protocol.RuntimeApprovalsChanged},
-		{name: "agent memory", topic: changefeed.AgentMemoryChanged, event: protocol.RuntimeAgentMemoryChanged},
+		{name: "models", topic: protocol.TopicModelsChanged, event: protocol.RuntimeModelsChanged},
+		{name: "approvals", topic: protocol.TopicApprovalsChanged, event: protocol.RuntimeApprovalsChanged},
+		{name: "agent memory", topic: protocol.TopicAgentMemoryChanged, event: protocol.RuntimeAgentMemoryChanged},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 				yield(protocol.RuntimeEvent{Type: test.event, Sequence: 1}, nil)
 			}}
 			runtime := &Connection{changes: stub, profile: changefeedProfile(test.topic)}
-			stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []changefeed.Topic{test.topic}})
+			stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{test.topic}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -250,7 +250,7 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 				if eventErr != nil {
 					t.Fatal(eventErr)
 				}
-				if event.Type != changefeed.EventType(test.topic) || event.Sequence != 1 {
+				if event.Type != protocol.RuntimeEventType(test.topic) || event.Sequence != 1 {
 					t.Fatalf("projected event = %+v, want %s sequence 1", event, test.topic)
 				}
 				return
@@ -263,9 +263,9 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 func TestChangefeedAdapterRejectsAnIncompleteRuntimeStream(t *testing.T) {
 	t.Parallel()
 	runtime := &Connection{
-		changes: &changeBindingStub{}, profile: changefeedProfile(changefeed.FilesChanged),
+		changes: &changeBindingStub{}, profile: changefeedProfile(protocol.TopicFilesChanged),
 	}
-	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []changefeed.Topic{changefeed.FilesChanged}})
+	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -278,9 +278,9 @@ func TestChangefeedAdapterProjectsPlanInvalidation(t *testing.T) {
 		}, nil)
 	}}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(changefeed.PlanChanged),
+		changes: stub, profile: changefeedProfile(protocol.TopicPlanChanged),
 	}
-	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []changefeed.Topic{changefeed.PlanChanged}})
+	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicPlanChanged}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func TestChangefeedAdapterProjectsPlanInvalidation(t *testing.T) {
 	t.Fatal("plan change stream yielded no event")
 }
 
-func changefeedProfile(topics ...changefeed.Topic) Profile {
+func changefeedProfile(topics ...protocol.RuntimeTopic) Profile {
 	profile := Profile{
 		Limits: Limits{RuntimeSubscription: SubscriptionLimits{MaxTopics: 32, MaxWatches: 32}},
 	}

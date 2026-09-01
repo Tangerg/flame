@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 var runtimeRecoveryBackoff = func() retry.Backoff {
@@ -20,37 +21,37 @@ var runtimeRecoveryBackoff = func() retry.Backoff {
 }()
 
 func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
-	if event.Type == changefeed.Resync {
+	if event.Type == protocol.RuntimeResync {
 		a.applyRuntimeResync(event.Topics)
 		return
 	}
 	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.current.ID))
-	a.refreshSkillReader(changefeed.Topic(event.Type) == changefeed.SkillsChanged)
-	a.refreshMCPReader(changefeed.Topic(event.Type) == changefeed.MCPChanged)
-	a.refreshScheduleReader(changefeed.Topic(event.Type) == changefeed.SchedulesChanged)
-	a.refreshKnowledgeReader(changefeed.Topic(event.Type) == changefeed.KnowledgeChanged)
-	a.refreshHooksReader(changefeed.Topic(event.Type) == changefeed.HooksChanged)
-	a.refreshModelReader(changefeed.Topic(event.Type) == changefeed.ModelsChanged)
-	a.refreshApprovalReader(changefeed.Topic(event.Type) == changefeed.ApprovalsChanged)
-	a.refreshAgentMemoryReader(changefeed.Topic(event.Type) == changefeed.AgentMemoryChanged)
+	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
+	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
+	a.refreshScheduleReader(event.Type == protocol.RuntimeSchedulesChanged)
+	a.refreshKnowledgeReader(event.Type == protocol.RuntimeKnowledgeChanged)
+	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
+	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
+	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged)
+	a.refreshAgentMemoryReader(event.Type == protocol.RuntimeAgentMemoryChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
 		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
 	)
 }
 
-func (a *app) applyRuntimeResync(topics []changefeed.Topic) {
-	a.refreshGoalReader(containsTopic(topics, changefeed.GoalsChanged))
-	a.refreshSkillReader(containsTopic(topics, changefeed.SkillsChanged))
-	a.refreshMCPReader(containsTopic(topics, changefeed.MCPChanged))
-	a.refreshScheduleReader(containsTopic(topics, changefeed.SchedulesChanged))
-	a.refreshKnowledgeReader(containsTopic(topics, changefeed.KnowledgeChanged))
-	a.refreshHooksReader(containsTopic(topics, changefeed.HooksChanged))
-	a.refreshModelReader(containsTopic(topics, changefeed.ModelsChanged))
-	a.refreshApprovalReader(containsTopic(topics, changefeed.ApprovalsChanged))
-	a.refreshAgentMemoryReader(containsTopic(topics, changefeed.AgentMemoryChanged))
+func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
+	a.refreshGoalReader(containsTopic(topics, protocol.TopicGoalsChanged))
+	a.refreshSkillReader(containsTopic(topics, protocol.TopicSkillsChanged))
+	a.refreshMCPReader(containsTopic(topics, protocol.TopicMCPChanged))
+	a.refreshScheduleReader(containsTopic(topics, protocol.TopicSchedulesChanged))
+	a.refreshKnowledgeReader(containsTopic(topics, protocol.TopicKnowledgeChanged))
+	a.refreshHooksReader(containsTopic(topics, protocol.TopicHooksChanged))
+	a.refreshModelReader(containsTopic(topics, protocol.TopicModelsChanged))
+	a.refreshApprovalReader(containsTopic(topics, protocol.TopicApprovalsChanged))
+	a.refreshAgentMemoryReader(containsTopic(topics, protocol.TopicAgentMemoryChanged))
 	a.applySessionInvalidation(
-		invalidatesSessionCatalog(changefeed.Event{Type: changefeed.Resync, Topics: topics}),
+		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
 	)
 }
@@ -165,10 +166,10 @@ func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
 }
 
 func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bool {
-	if event.Type == changefeed.Resync {
-		return containsTopic(event.Topics, changefeed.GoalsChanged)
+	if event.Type == protocol.RuntimeResync {
+		return containsTopic(event.Topics, protocol.TopicGoalsChanged)
 	}
-	return changefeed.Topic(event.Type) == changefeed.GoalsChanged &&
+	return event.Type == protocol.RuntimeGoalsChanged &&
 		(len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID))
 }
 
@@ -189,32 +190,32 @@ func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged boo
 }
 
 func invalidatesSessionCatalog(event changefeed.Event) bool {
-	if event.Type == changefeed.Resync {
-		return containsTopic(event.Topics, changefeed.SessionsChanged) ||
-			containsTopic(event.Topics, changefeed.RunsChanged)
+	if event.Type == protocol.RuntimeResync {
+		return containsTopic(event.Topics, protocol.TopicSessionsChanged) ||
+			containsTopic(event.Topics, protocol.TopicRunsChanged)
 	}
-	return event.Type == changefeed.EventType(changefeed.SessionsChanged) ||
-		event.Type == changefeed.EventType(changefeed.RunsChanged)
+	return event.Type == protocol.RuntimeSessionsChanged ||
+		event.Type == protocol.RuntimeRunsChanged
 }
 
-func resyncAffectsSession(topics []changefeed.Topic) bool {
-	return slices.ContainsFunc(topics, func(topic changefeed.Topic) bool {
-		return topic == changefeed.SessionsChanged || topic == changefeed.RunsChanged ||
-			topic == changefeed.PlanChanged || topic == changefeed.GoalsChanged ||
-			topic == changefeed.InterruptsChanged
+func resyncAffectsSession(topics []protocol.RuntimeTopic) bool {
+	return slices.ContainsFunc(topics, func(topic protocol.RuntimeTopic) bool {
+		return topic == protocol.TopicSessionsChanged || topic == protocol.TopicRunsChanged ||
+			topic == protocol.TopicPlanChanged || topic == protocol.TopicGoalsChanged ||
+			topic == protocol.TopicInterruptsChanged
 	})
 }
 
 func invalidationAffectsSession(event changefeed.Event, sessionID, runID string) bool {
-	if event.Type == changefeed.Resync {
+	if event.Type == protocol.RuntimeResync {
 		return resyncAffectsSession(event.Topics)
 	}
-	switch changefeed.Topic(event.Type) {
-	case changefeed.SessionsChanged:
+	switch event.Type {
+	case protocol.RuntimeSessionsChanged:
 		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
-	case changefeed.PlanChanged, changefeed.GoalsChanged:
+	case protocol.RuntimePlanChanged, protocol.RuntimeGoalsChanged:
 		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
-	case changefeed.RunsChanged, changefeed.InterruptsChanged:
+	case protocol.RuntimeRunsChanged, protocol.RuntimeInterruptsChanged:
 		if len(event.SessionIDs) != 0 {
 			return containsString(event.SessionIDs, sessionID)
 		}

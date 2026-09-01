@@ -418,7 +418,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -564,12 +564,12 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	goals := new(goalServiceStub)
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 2), supported: []changefeed.Topic{changefeed.GoalsChanged},
+		applied: make(chan changefeed.Event, 2), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "goal invalidation subscription")
-	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.GoalsChanged {
+	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicGoalsChanged {
 		t.Fatalf("goal subscription = %+v", subscription)
 	}
 	host.Type("/goal")
@@ -607,7 +607,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	}))
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 1,
+		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "goals.changed delivery")
@@ -620,7 +620,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		snapshot.Reason = nil
 	}))
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 2,
+		Type: protocol.RuntimeGoalsChanged, Sequence: 2,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "completing goals.changed delivery")
@@ -651,7 +651,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 	}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
@@ -664,7 +664,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 	goals.readErr <- fmt.Errorf("temporary goal read failure: %w", agent.ErrDisconnected)
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 1,
+		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "goals.changed delivery")
@@ -683,7 +683,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 	}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
@@ -695,7 +695,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 
 	goals.readErr <- agent.ErrIncompatibleRuntime
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 1,
+		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "goals.changed delivery")
@@ -716,7 +716,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 	}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.GoalsChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
@@ -729,7 +729,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 	permanent := errors.New("goal projection rejected")
 	goals.readErr <- permanent
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 1,
+		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "goals.changed delivery")

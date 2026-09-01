@@ -17,7 +17,7 @@ type changeBinding interface {
 	SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest, flameruntime.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)
 }
 
-func (r *Connection) Supports(topic changefeed.Topic) bool {
+func (r *Connection) Supports(topic protocol.RuntimeTopic) bool {
 	return r.profile.SupportsRuntimeTopic(string(topic))
 }
 
@@ -43,11 +43,8 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 		}
 	}
 	wire := protocol.RuntimeSubscribeRequest{
-		Topics:  make([]protocol.RuntimeTopic, 0, len(subscription.Topics)),
+		Topics:  slices.Clone(subscription.Topics),
 		Watches: make([]protocol.WatchSpec, 0, len(subscription.Watches)),
-	}
-	for _, topic := range subscription.Topics {
-		wire.Topics = append(wire.Topics, protocol.RuntimeTopic(topic))
 	}
 	for _, watch := range subscription.Watches {
 		wire.Watches = append(wire.Watches, protocol.WatchSpec{
@@ -85,17 +82,13 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 
 func projectRuntimeEvent(event protocol.RuntimeEvent) changefeed.Event {
 	projected := changefeed.Event{
-		Type: changefeed.EventType(event.Type), Sequence: event.Sequence, WatchID: event.WatchID,
+		Type: event.Type, Sequence: event.Sequence, WatchID: event.WatchID,
 		Paths: slices.Clone(event.Paths), Names: slices.Clone(event.Names), ServerIDs: slices.Clone(event.ServerIDs),
 		ScheduleIDs: slices.Clone(event.ScheduleIDs), SessionIDs: slices.Clone(event.SessionIDs),
-		RunIDs: slices.Clone(event.RunIDs), WatchIDs: slices.Clone(event.WatchIDs),
+		RunIDs: slices.Clone(event.RunIDs), Topics: slices.Clone(event.Topics), WatchIDs: slices.Clone(event.WatchIDs),
 	}
 	if event.Workspace != nil {
 		projected.Workspace = event.Workspace.Path
-	}
-	projected.Topics = make([]changefeed.Topic, 0, len(event.Topics))
-	for _, topic := range event.Topics {
-		projected.Topics = append(projected.Topics, changefeed.Topic(topic))
 	}
 	return projected
 }

@@ -90,7 +90,7 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 
 func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	for _, topic := range []changefeed.Topic{changefeed.KnowledgeChanged, changefeed.HooksChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
 		if !runtime.Supports(topic) {
 			t.Fatalf("embedded runtime did not advertise %s", topic)
 		}
@@ -98,10 +98,10 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 
 	streamContext, cancelStream := context.WithCancel(t.Context())
 	stream, err := runtime.Subscribe(streamContext, changefeed.Subscription{
-		Topics: []changefeed.Topic{
-			changefeed.FilesChanged,
-			changefeed.KnowledgeChanged,
-			changefeed.HooksChanged,
+		Topics: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged,
+			protocol.TopicKnowledgeChanged,
+			protocol.TopicHooksChanged,
 		},
 		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
 	})
@@ -138,7 +138,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	if writeFileErr := os.WriteFile(knowledgePath, []byte("# External knowledge\n"), 0o600); writeFileErr != nil {
 		t.Fatalf("write external knowledge: %v", writeFileErr)
 	}
-	awaitRuntimeInvalidation(t, events, streamErrors, changefeed.KnowledgeChanged)
+	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicKnowledgeChanged)
 	target, err := workspaceapi.NewKnowledgeTarget(protocol.KnowledgeScopeCWD, workspace)
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +159,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	); writeFileErr != nil {
 		t.Fatalf("write external hooks: %v", writeFileErr)
 	}
-	awaitRuntimeInvalidation(t, events, streamErrors, changefeed.HooksChanged)
+	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicHooksChanged)
 	catalog, err := runtime.Hooks().Catalog(t.Context(), workspace)
 	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Inject != "external context" {
 		t.Fatalf("hooks after external invalidation = (%+v, %v)", catalog, err)
@@ -170,7 +170,7 @@ func awaitRuntimeInvalidation(
 	t *testing.T,
 	events <-chan changefeed.Event,
 	streamErrors <-chan error,
-	topic changefeed.Topic,
+	topic protocol.RuntimeTopic,
 ) {
 	t.Helper()
 	timer := time.NewTimer(5 * time.Second)
@@ -178,7 +178,7 @@ func awaitRuntimeInvalidation(
 	for {
 		select {
 		case event := <-events:
-			if event.Type == changefeed.EventType(topic) {
+			if event.Type == protocol.RuntimeEventType(topic) {
 				return
 			}
 		case err := <-streamErrors:
@@ -298,7 +298,7 @@ func requireSessionPortability(t *testing.T, runtime *Connection, sessionID stri
 
 func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) {
 	t.Helper()
-	if !runtime.Supports(changefeed.FilesChanged) {
+	if !runtime.Supports(protocol.TopicFilesChanged) {
 		t.Fatal("embedded runtime did not advertise files.changed")
 	}
 	canonical, err := filepath.EvalSymlinks(path)

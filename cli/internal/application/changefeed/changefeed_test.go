@@ -5,22 +5,24 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
 	t.Parallel()
-	want := []Topic{
-		FilesChanged, SkillsChanged, MCPChanged, SchedulesChanged,
-		SessionsChanged, RunsChanged, PlanChanged, GoalsChanged, InterruptsChanged,
-		KnowledgeChanged, HooksChanged, ModelsChanged, ApprovalsChanged,
-		AgentMemoryChanged,
+	want := []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicSchedulesChanged,
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged,
+		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
+		protocol.TopicAgentMemoryChanged,
 	}
 	got := Topics()
 	if !slices.Equal(got, want) {
 		t.Fatalf("Topics = %v, want %v", got, want)
 	}
 	got[0] = "mutated"
-	if Topics()[0] != FilesChanged {
+	if Topics()[0] != protocol.TopicFilesChanged {
 		t.Fatal("mutating a Topics result rewrote the package inventory")
 	}
 }
@@ -32,10 +34,10 @@ func TestSubscriptionMakesWatchScopeExplicit(t *testing.T) {
 		subscription Subscription
 		want         string
 	}{
-		{name: "valid", subscription: Subscription{Topics: []Topic{FilesChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}}}},
-		{name: "watch without topic", subscription: Subscription{Topics: []Topic{RunsChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}}}, want: "files.changed"},
-		{name: "duplicate topic", subscription: Subscription{Topics: []Topic{FilesChanged, FilesChanged}}, want: "repeats"},
-		{name: "duplicate watch", subscription: Subscription{Topics: []Topic{FilesChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}, {ID: "active", Workspace: "/other"}}}, want: "repeats"},
+		{name: "valid", subscription: Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}}}},
+		{name: "watch without topic", subscription: Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}}}, want: "files.changed"},
+		{name: "duplicate topic", subscription: Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicFilesChanged}}, want: "repeats"},
+		{name: "duplicate watch", subscription: Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, Watches: []Watch{{ID: "active", Workspace: "/workspace"}, {ID: "active", Workspace: "/other"}}}, want: "repeats"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -54,7 +56,7 @@ func TestSubscriptionMakesWatchScopeExplicit(t *testing.T) {
 func TestSubscriptionLimitsPartitionWithoutLosingDeliveryScope(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []Topic{FilesChanged, SessionsChanged, RunsChanged, PlanChanged, InterruptsChanged},
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged},
 		Watches: []Watch{
 			{ID: "first", Workspace: "/first"},
 			{ID: "second", Workspace: "/second"},
@@ -66,19 +68,19 @@ func TestSubscriptionLimitsPartitionWithoutLosingDeliveryScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Subscription{
-		{Topics: []Topic{FilesChanged, SessionsChanged}, Watches: requested.Watches[:2]},
-		{Topics: []Topic{RunsChanged, PlanChanged}},
-		{Topics: []Topic{InterruptsChanged}},
-		{Topics: []Topic{FilesChanged}, Watches: requested.Watches[2:]},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged}, Watches: requested.Watches[:2]},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged, protocol.TopicPlanChanged}},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicInterruptsChanged}},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, Watches: requested.Watches[2:]},
 	}
 	if !slices.EqualFunc(partitions, want, func(got, want Subscription) bool {
 		return slices.Equal(got.Topics, want.Topics) && slices.Equal(got.Watches, want.Watches)
 	}) {
 		t.Fatalf("partitions = %+v, want %+v", partitions, want)
 	}
-	partitions[0].Topics[0] = RunsChanged
+	partitions[0].Topics[0] = protocol.TopicRunsChanged
 	partitions[0].Watches[0].ID = "mutated"
-	if requested.Topics[0] != FilesChanged || requested.Watches[0].ID != "first" {
+	if requested.Topics[0] != protocol.TopicFilesChanged || requested.Watches[0].ID != "first" {
 		t.Fatal("partition returned aliases into the requested subscription")
 	}
 }
@@ -86,7 +88,7 @@ func TestSubscriptionLimitsPartitionWithoutLosingDeliveryScope(t *testing.T) {
 func TestSubscriptionLimitsKeepAnUnboundedRequestWhole(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics:  []Topic{FilesChanged, SessionsChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
 	partitions, err := (SubscriptionLimits{}).Partition(requested)
@@ -102,8 +104,8 @@ func TestSubscriptionLimitsKeepAnUnboundedRequestWhole(t *testing.T) {
 func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []Topic{
-			FilesChanged, SessionsChanged, RunsChanged, KnowledgeChanged, HooksChanged,
+		Topics: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
 		},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
@@ -112,9 +114,9 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 		t.Fatal(err)
 	}
 	want := []Subscription{
-		{Topics: []Topic{FilesChanged, KnowledgeChanged}, Watches: requested.Watches},
-		{Topics: []Topic{FilesChanged, HooksChanged}, Watches: requested.Watches},
-		{Topics: []Topic{SessionsChanged, RunsChanged}},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged}, Watches: requested.Watches},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged}, Watches: requested.Watches},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}},
 	}
 	if !slices.EqualFunc(partitions, want, func(got, want Subscription) bool {
 		return slices.Equal(got.Topics, want.Topics) && slices.Equal(got.Watches, want.Watches)
@@ -126,7 +128,7 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []Topic{FilesChanged, KnowledgeChanged, HooksChanged},
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged},
 		Watches: []Watch{
 			{ID: "first", Workspace: "/first"},
 			{ID: "second", Workspace: "/second"},
@@ -150,7 +152,7 @@ func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *t
 func TestSubscriptionLimitsRejectUnrepresentableWorkspaceObservation(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics:  []Topic{FilesChanged, KnowledgeChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
 	if _, err := (SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}).Partition(requested); err == nil ||
@@ -161,9 +163,9 @@ func TestSubscriptionLimitsRejectUnrepresentableWorkspaceObservation(t *testing.
 
 func TestSubscriptionLimitsPreserveEveryDeliveryInvariant(t *testing.T) {
 	t.Parallel()
-	optional := []Topic{SessionsChanged, RunsChanged, KnowledgeChanged, HooksChanged}
+	optional := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged}
 	for mask := 0; mask < 1<<len(optional); mask++ {
-		topics := []Topic{FilesChanged}
+		topics := []protocol.RuntimeTopic{protocol.TopicFilesChanged}
 		for index, topic := range optional {
 			if mask&(1<<index) != 0 {
 				topics = append(topics, topic)
@@ -243,7 +245,7 @@ func assertPartitionDeliveryInvariants(
 		for _, topic := range workspaceObservedTopics(requested.Topics) {
 			if !slices.ContainsFunc(partitions, func(partition Subscription) bool {
 				return slices.Contains(partition.Watches, watch) &&
-					slices.Contains(partition.Topics, FilesChanged) && slices.Contains(partition.Topics, topic)
+					slices.Contains(partition.Topics, protocol.TopicFilesChanged) && slices.Contains(partition.Topics, topic)
 			}) {
 				t.Fatalf("workspace observation %s × %s was split: %+v", watch.ID, topic, partitions)
 			}
@@ -253,7 +255,7 @@ func assertPartitionDeliveryInvariants(
 
 func TestSubscriptionLimitsRejectInvalidConstraints(t *testing.T) {
 	t.Parallel()
-	requested := Subscription{Topics: []Topic{SessionsChanged}}
+	requested := Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}
 	for _, limits := range []SubscriptionLimits{{MaxTopics: -1}, {MaxWatches: -1}} {
 		if _, err := limits.Partition(requested); err == nil {
 			t.Fatalf("negative limits %+v were accepted", limits)
@@ -263,11 +265,11 @@ func TestSubscriptionLimitsRejectInvalidConstraints(t *testing.T) {
 
 func TestEventDistinguishesInvalidationFromResync(t *testing.T) {
 	t.Parallel()
-	changed := Event{Type: EventType(FilesChanged), Sequence: 1, WatchID: "active", Workspace: "/workspace", Paths: []string{"main.go"}}
+	changed := Event{Type: protocol.RuntimeFilesChanged, Sequence: 1, WatchID: "active", Workspace: "/workspace", Paths: []string{"main.go"}}
 	if err := changed.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	resync := Event{Type: Resync, Sequence: 2, Topics: []Topic{FilesChanged}}
+	resync := Event{Type: protocol.RuntimeResync, Sequence: 2, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}}
 	if err := resync.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +282,7 @@ func TestEventDistinguishesInvalidationFromResync(t *testing.T) {
 func TestEventAcceptsBroadFileInvalidations(t *testing.T) {
 	t.Parallel()
 	event := Event{
-		Type: EventType(FilesChanged), Sequence: 1,
+		Type: protocol.RuntimeFilesChanged, Sequence: 1,
 		Workspace: "/workspace", Paths: []string{"main.go"},
 	}
 	if err := event.Validate(); err != nil {
@@ -295,7 +297,7 @@ func TestEventAcceptsBroadFileInvalidations(t *testing.T) {
 func TestSubscriptionRejectsEventsOutsideItsDeclaredScope(t *testing.T) {
 	t.Parallel()
 	subscription := Subscription{
-		Topics:  []Topic{FilesChanged, SessionsChanged},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
 	tests := []struct {
@@ -305,48 +307,48 @@ func TestSubscriptionRejectsEventsOutsideItsDeclaredScope(t *testing.T) {
 	}{
 		{
 			name: "broad file event", event: Event{
-				Type: EventType(FilesChanged), Sequence: 1,
+				Type: protocol.RuntimeFilesChanged, Sequence: 1,
 				Workspace: "/workspace", Paths: []string{"main.go"},
 			},
 		},
 		{
 			name: "owned watch", event: Event{
-				Type: EventType(FilesChanged), Sequence: 1, WatchID: "active",
+				Type: protocol.RuntimeFilesChanged, Sequence: 1, WatchID: "active",
 				Workspace: "/workspace", Paths: []string{"main.go"},
 			},
 		},
 		{
 			name: "foreign topic", want: "outside the subscription",
-			event: Event{Type: EventType(RunsChanged), Sequence: 1},
+			event: Event{Type: protocol.RuntimeRunsChanged, Sequence: 1},
 		},
 		{
 			name: "foreign watch", want: "outside the subscription",
 			event: Event{
-				Type: EventType(FilesChanged), Sequence: 1, WatchID: "foreign",
+				Type: protocol.RuntimeFilesChanged, Sequence: 1, WatchID: "foreign",
 				Workspace: "/workspace", Paths: []string{"main.go"},
 			},
 		},
 		{
 			name: "watch workspace mismatch", want: "another workspace",
 			event: Event{
-				Type: EventType(FilesChanged), Sequence: 1, WatchID: "active",
+				Type: protocol.RuntimeFilesChanged, Sequence: 1, WatchID: "active",
 				Workspace: "/other", Paths: []string{"main.go"},
 			},
 		},
 		{
 			name: "foreign resync topic", want: "outside the subscription",
-			event: Event{Type: Resync, Sequence: 1, Topics: []Topic{RunsChanged}},
+			event: Event{Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged}},
 		},
 		{
 			name: "foreign resync watch", want: "outside the subscription",
 			event: Event{
-				Type: Resync, Sequence: 1, Topics: []Topic{FilesChanged}, WatchIDs: []string{"foreign"},
+				Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, WatchIDs: []string{"foreign"},
 			},
 		},
 		{
 			name: "watch without file resync", want: "files.changed",
 			event: Event{
-				Type: Resync, Sequence: 1, Topics: []Topic{SessionsChanged}, WatchIDs: []string{"active"},
+				Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}, WatchIDs: []string{"active"},
 			},
 		},
 	}
@@ -366,7 +368,7 @@ func TestSubscriptionRejectsEventsOutsideItsDeclaredScope(t *testing.T) {
 
 func TestPlanChangeIsAFirstClassInvalidation(t *testing.T) {
 	t.Parallel()
-	event := Event{Type: EventType(PlanChanged), Sequence: 1}
+	event := Event{Type: protocol.RuntimePlanChanged, Sequence: 1}
 	if err := event.Validate(); err != nil {
 		t.Fatal(err)
 	}

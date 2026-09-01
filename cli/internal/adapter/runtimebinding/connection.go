@@ -293,7 +293,7 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 		}
 	}
 	for _, topic := range discovery.Capabilities.RuntimeTopics {
-		if !slices.Contains(changefeed.Topics(), changefeed.Topic(topic)) {
+		if !slices.Contains(changefeed.Topics(), topic) {
 			return fmt.Errorf("%w: runtime advertises unsupported change topic %q", agent.ErrIncompatibleRuntime, topic)
 		}
 	}

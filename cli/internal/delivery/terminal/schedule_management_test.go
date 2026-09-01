@@ -284,7 +284,7 @@ func TestWorkspaceReplacementRetiresAPresentedScheduleForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "workspace replacement invalidation")
@@ -339,7 +339,7 @@ func TestScheduleMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -440,12 +440,12 @@ func TestSchedulesChangedRefetchesOnlyTheOpenScheduleReader(t *testing.T) {
 	service := newScheduleServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.SchedulesChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicSchedulesChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Schedules: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "schedule invalidation subscription")
-	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.SchedulesChanged {
+	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicSchedulesChanged {
 		t.Fatalf("schedule subscription = %+v", subscription)
 	}
 	host.Type("/schedules")
@@ -456,7 +456,7 @@ func TestSchedulesChangedRefetchesOnlyTheOpenScheduleReader(t *testing.T) {
 	service.schedules[0].Title = "Updated repository review"
 	service.mu.Unlock()
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SchedulesChanged), Sequence: 1,
+		Type: protocol.RuntimeSchedulesChanged, Sequence: 1,
 		ScheduleIDs: []string{"sch_review"},
 	}
 	awaitSignal(t, source.applied, "schedules.changed delivery")

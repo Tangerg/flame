@@ -282,7 +282,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -343,7 +343,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -548,12 +548,12 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 	service := newMCPServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.MCPChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicMCPChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), MCP: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "MCP invalidation subscription")
-	if len(subscription.Topics) != 1 || subscription.Topics[0] != changefeed.MCPChanged {
+	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicMCPChanged {
 		t.Fatalf("MCP subscription = %+v", subscription)
 	}
 	host.Type("/mcp")
@@ -562,7 +562,7 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 	service.mu.Lock()
 	service.servers[0].Description = "Updated documentation server"
 	service.mu.Unlock()
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.MCPChanged), Sequence: 1, ServerIDs: []string{"docs"}}
+	source.events <- changefeed.Event{Type: protocol.RuntimeMCPChanged, Sequence: 1, ServerIDs: []string{"docs"}}
 	awaitSignal(t, source.applied, "mcp.changed delivery")
 	host.Shows(t, "Updated documentation server")
 	stop()

@@ -63,14 +63,9 @@ func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
 
 func TestRuntimeTopicInventoryHasNoUnreviewedTopics(t *testing.T) {
 	t.Parallel()
-	protocolTopics := protocol.RuntimeTopics()
-	clientTopics := changefeed.Topics()
-	got := make([]changefeed.Topic, 0, len(protocolTopics))
-	for _, topic := range protocolTopics {
-		got = append(got, changefeed.Topic(topic))
-	}
-	if !slices.Equal(got, clientTopics) {
-		t.Fatalf("runtime topic inventory drifted: protocol=%v client=%v", got, clientTopics)
+	protocolTopics, clientTopics := protocol.RuntimeTopics(), changefeed.Topics()
+	if !slices.Equal(protocolTopics, clientTopics) {
+		t.Fatalf("runtime topic inventory drifted: protocol=%v client=%v", protocolTopics, clientTopics)
 	}
 }
 

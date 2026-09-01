@@ -203,12 +203,12 @@ func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
 	hooks := &hookServiceStub{changed: make(chan bool, 1)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{changefeed.HooksChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicHooksChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Changes: source, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "hook change subscription")
-	if !slices.Equal(subscription.Topics, []changefeed.Topic{changefeed.HooksChanged}) {
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicHooksChanged}) {
 		t.Fatalf("hook subscription = %v", subscription.Topics)
 	}
 	host.Type("/hooks")
@@ -218,7 +218,7 @@ func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
 	if err := hooks.SetProjectTrust(t.Context(), "/workspace", true); err != nil {
 		t.Fatal(err)
 	}
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.HooksChanged), Sequence: 1}
+	source.events <- changefeed.Event{Type: protocol.RuntimeHooksChanged, Sequence: 1}
 	awaitValue(t, source.applied, "hook invalidation")
 	host.Shows(t, "project trust true")
 	host.Shows(t, "PreToolUse · active")
@@ -254,7 +254,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")

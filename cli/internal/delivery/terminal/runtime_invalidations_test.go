@@ -30,7 +30,7 @@ type runtimeChangeSourceStub struct {
 	streamClosed <-chan struct{}
 	subscription chan changefeed.Subscription
 	applied      chan changefeed.Event
-	supported    []changefeed.Topic
+	supported    []protocol.RuntimeTopic
 }
 
 type runtimeSubscriptionRegistration struct {
@@ -62,7 +62,7 @@ func installChangedSessionProjection(
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{sessionID},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -197,16 +197,16 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model picker", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
-		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
+		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/model")
 		host.Press(input.Enter)
 		host.Shows(t, "Old model")
 
 		catalog.setModels(protocol.Model{ID: "new", Provider: "mock", DisplayName: "New model"})
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeModelsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed delivery")
 		host.Shows(t, "New model")
 		host.Hides(t, "Old model")
@@ -216,16 +216,16 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model reader", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
-		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
+		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/models")
 		host.Press(input.Enter)
 		host.Shows(t, "Old catalog model")
 
 		catalog.setModels(protocol.Model{ID: "new", Provider: "mock", DisplayName: "New catalog model"})
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeModelsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed delivery")
 		host.Shows(t, "New catalog model")
 		host.Hides(t, "Old catalog model")
@@ -234,10 +234,10 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("model roles", func(t *testing.T) {
 		service := newModelConfigServiceStub()
-		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
+		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/roles")
 		host.Press(input.Enter)
 		host.Shows(t, "inherit the run model")
@@ -250,7 +250,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		}
 		service.roles.Utility = updated
 		service.mu.Unlock()
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeModelsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed role delivery")
 		host.Shows(t, "deepseek/chat")
 		host.Hides(t, "inherit the run model")
@@ -259,10 +259,10 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("providers", func(t *testing.T) {
 		service := newModelConfigServiceStub()
-		source := runtimeResourceChangeSource(changefeed.ModelsChanged)
+		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.ModelsChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/providers")
 		host.Press(input.Enter)
 		host.Shows(t, "api.deepseek.example")
@@ -272,7 +272,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 			"deepseek", "https://new.deepseek.example", "sk****42", protocol.ProviderKeySourceStored,
 		)
 		service.mu.Unlock()
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeModelsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed provider delivery")
 		host.Shows(t, "new.deepseek.example")
 		host.Hides(t, "api.deepseek.example")
@@ -281,10 +281,10 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("approval rules", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
-		source := runtimeResourceChangeSource(changefeed.ApprovalsChanged)
+		source := runtimeResourceChangeSource(protocol.TopicApprovalsChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.ApprovalsChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicApprovalsChanged)
 		host.Type("/rules")
 		host.Press(input.Enter)
 		host.Shows(t, "No remembered approval rules")
@@ -293,7 +293,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 			ID: "rule_external", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
 			Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 		})
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ApprovalsChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeApprovalsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "approvals.changed delivery")
 		host.Shows(t, "rule_external")
 		host.Hides(t, "No remembered approval rules")
@@ -302,10 +302,10 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
-		source := runtimeResourceChangeSource(changefeed.AgentMemoryChanged)
+		source := runtimeResourceChangeSource(protocol.TopicAgentMemoryChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, changefeed.AgentMemoryChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicAgentMemoryChanged)
 		host.Type("/memory project")
 		host.Press(input.Enter)
 		host.Shows(t, "confirm release steps")
@@ -314,7 +314,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		memory.project[0].Content = "confirm externally revised release steps"
 		memory.project[0].UpdatedAt = time.Now()
 		memory.mu.Unlock()
-		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.AgentMemoryChanged), Sequence: 1}
+		source.events <- changefeed.Event{Type: protocol.RuntimeAgentMemoryChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "agentMemory.changed delivery")
 		host.Shows(t, "confirm externally revised release steps")
 		host.Hides(t, "confirm release steps")
@@ -415,7 +415,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 		t.Fatal(updateSessionErr)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -530,7 +530,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitValue(t, source.applied, "same-session invalidation")
@@ -568,7 +568,7 @@ func TestDismissingSessionCenterCancelsCatalogRefresh(t *testing.T) {
 	host.Shows(t, "Sessions · Center")
 
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 	}
 	awaitValue(t, source.applied, "session catalog invalidation")
 	awaitValue(t, runtime.refreshStarted, "session catalog refresh")
@@ -593,27 +593,27 @@ func TestResolveApprovalRuleRequiresAnUnambiguousIdentity(t *testing.T) {
 	}
 }
 
-func runtimeResourceChangeSource(topic changefeed.Topic) *runtimeChangeSourceStub {
+func runtimeResourceChangeSource(topic protocol.RuntimeTopic) *runtimeChangeSourceStub {
 	return &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []changefeed.Topic{topic},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{topic},
 	}
 }
 
-func assertSingleRuntimeTopic(t *testing.T, subscriptions <-chan changefeed.Subscription, topic changefeed.Topic) {
+func assertSingleRuntimeTopic(t *testing.T, subscriptions <-chan changefeed.Subscription, topic protocol.RuntimeTopic) {
 	t.Helper()
 	subscription := awaitValue(t, subscriptions, string(topic)+" subscription")
-	if !slices.Equal(subscription.Topics, []changefeed.Topic{topic}) {
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{topic}) {
 		t.Fatalf("runtime subscription topics = %v, want [%s]", subscription.Topics, topic)
 	}
 }
 
 type partitionedRuntimeChangeSourceStub struct {
-	supported     []changefeed.Topic
+	supported     []protocol.RuntimeTopic
 	registrations chan runtimeSubscriptionRegistration
 }
 
-func (p *partitionedRuntimeChangeSourceStub) Supports(topic changefeed.Topic) bool {
+func (p *partitionedRuntimeChangeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
 	return slices.Contains(p.supported, topic)
 }
 
@@ -650,13 +650,13 @@ func (p *partitionedRuntimeChangeSourceStub) Subscribe(
 	}, nil
 }
 
-func (r *runtimeChangeSourceStub) Supports(topic changefeed.Topic) bool {
+func (r *runtimeChangeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
 	if r.supported != nil {
 		return slices.Contains(r.supported, topic)
 	}
-	return slices.Contains([]changefeed.Topic{
-		changefeed.SessionsChanged, changefeed.RunsChanged,
-		changefeed.PlanChanged, changefeed.InterruptsChanged,
+	return slices.Contains([]protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	}, topic)
 }
 
@@ -808,23 +808,23 @@ func TestRuntimeChangeMonitorBacksOffRepeatedEmptyStreams(t *testing.T) {
 func TestRuntimeChangeMonitorPartitionsTopicsAtTheNegotiatedLimit(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	supported := []changefeed.Topic{
-		changefeed.SessionsChanged,
-		changefeed.RunsChanged,
-		changefeed.PlanChanged,
-		changefeed.InterruptsChanged,
-		changefeed.SkillsChanged,
+	supported := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged,
+		protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged,
+		protocol.TopicInterruptsChanged,
+		protocol.TopicSkillsChanged,
 	}
 	source := &partitionedRuntimeChangeSourceStub{
 		supported:     supported,
 		registrations: make(chan runtimeSubscriptionRegistration, 3),
 	}
-	resyncs := make(chan []changefeed.Topic, 4)
+	resyncs := make(chan []protocol.RuntimeTopic, 4)
 	applied := make(chan changefeed.Event, 3)
 	monitor := runtimeChangeMonitor{
 		source: source, resources: runtimeResourceObservation{plan: true, skills: true},
 		subscriptionLimits: changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1},
-		applyResync: func(topics []changefeed.Topic) error {
+		applyResync: func(topics []protocol.RuntimeTopic) error {
 			resyncs <- slices.Clone(topics)
 			return nil
 		},
@@ -846,14 +846,14 @@ func TestRuntimeChangeMonitorPartitionsTopicsAtTheNegotiatedLimit(t *testing.T) 
 	slices.SortFunc(registrations, func(left, right runtimeSubscriptionRegistration) int {
 		return strings.Compare(string(left.subscription.Topics[0]), string(right.subscription.Topics[0]))
 	})
-	var subscribed []changefeed.Topic
+	var subscribed []protocol.RuntimeTopic
 	for _, registration := range registrations {
 		if len(registration.subscription.Topics) > 2 {
 			t.Fatalf("subscription topics = %v, exceeds negotiated limit", registration.subscription.Topics)
 		}
 		subscribed = append(subscribed, registration.subscription.Topics...)
 		registration.events <- changefeed.Event{
-			Type: changefeed.EventType(registration.subscription.Topics[0]), Sequence: 1,
+			Type: protocol.RuntimeEventType(registration.subscription.Topics[0]), Sequence: 1,
 		}
 	}
 	slices.Sort(subscribed)
@@ -880,18 +880,18 @@ func TestRuntimeChangeMonitorResyncsOnlyThePartitionWithASequenceGap(t *testing.
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []changefeed.Topic{
-			changefeed.SessionsChanged, changefeed.RunsChanged,
-			changefeed.PlanChanged, changefeed.InterruptsChanged,
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 		},
 		registrations: make(chan runtimeSubscriptionRegistration, 2),
 	}
-	resyncs := make(chan []changefeed.Topic, 3)
+	resyncs := make(chan []protocol.RuntimeTopic, 3)
 	monitor := runtimeChangeMonitor{
 		source:             source,
 		resources:          runtimeResourceObservation{plan: true},
 		subscriptionLimits: changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1},
-		applyResync: func(topics []changefeed.Topic) error {
+		applyResync: func(topics []protocol.RuntimeTopic) error {
 			resyncs <- slices.Clone(topics)
 			return nil
 		},
@@ -905,7 +905,7 @@ func TestRuntimeChangeMonitorResyncsOnlyThePartitionWithASequenceGap(t *testing.
 		awaitValue(t, resyncs, "partition initial resync")
 	}
 	first.events <- changefeed.Event{
-		Type: changefeed.EventType(first.subscription.Topics[0]), Sequence: 2,
+		Type: protocol.RuntimeEventType(first.subscription.Topics[0]), Sequence: 2,
 	}
 	gapScope := awaitValue(t, resyncs, "partition gap resync")
 	if !slices.Equal(gapScope, first.subscription.Topics) {
@@ -926,9 +926,9 @@ func TestRuntimeChangeMonitorAssignsTheWorkspaceWatchToOnePartition(t *testing.T
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []changefeed.Topic{
-			changefeed.FilesChanged, changefeed.SessionsChanged,
-			changefeed.RunsChanged, changefeed.PlanChanged, changefeed.InterruptsChanged,
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+			protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 		},
 		registrations: make(chan runtimeSubscriptionRegistration, 5),
 	}
@@ -957,7 +957,7 @@ func TestRuntimeChangeMonitorAssignsTheWorkspaceWatchToOnePartition(t *testing.T
 			continue
 		}
 		watchSubscriptions++
-		if !slices.Equal(registration.subscription.Topics, []changefeed.Topic{changefeed.FilesChanged}) ||
+		if !slices.Equal(registration.subscription.Topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged}) ||
 			!slices.Equal(registration.subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
 			t.Fatalf("file subscription = %+v", registration.subscription)
 		}
@@ -976,9 +976,9 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []changefeed.Topic{
-			changefeed.FilesChanged, changefeed.SessionsChanged,
-			changefeed.KnowledgeChanged, changefeed.HooksChanged,
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
 		},
 		registrations: make(chan runtimeSubscriptionRegistration, 3),
 	}
@@ -1006,7 +1006,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	for range 3 {
 		registrations = append(registrations, awaitValue(t, source.registrations, "authored-resource partition"))
 	}
-	for _, topic := range []changefeed.Topic{changefeed.KnowledgeChanged, changefeed.HooksChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
 		index := slices.IndexFunc(registrations, func(registration runtimeSubscriptionRegistration) bool {
 			return containsTopic(registration.subscription.Topics, topic)
 		})
@@ -1014,7 +1014,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 			t.Fatalf("%s partition is missing", topic)
 		}
 		subscription := registrations[index].subscription
-		if !containsTopic(subscription.Topics, changefeed.FilesChanged) ||
+		if !containsTopic(subscription.Topics, protocol.TopicFilesChanged) ||
 			!slices.Equal(subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
 			t.Fatalf("%s partition lost workspace scope: %+v", topic, subscription)
 		}
@@ -1026,10 +1026,10 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	}
 	fileRegistrations := make([]runtimeSubscriptionRegistration, 0, len(registrations))
 	for _, registration := range registrations {
-		if containsTopic(registration.subscription.Topics, changefeed.FilesChanged) {
+		if containsTopic(registration.subscription.Topics, protocol.TopicFilesChanged) {
 			fileRegistrations = append(fileRegistrations, registration)
 			registration.events <- changefeed.Event{
-				Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 1,
+				Type: protocol.RuntimeFilesChanged, Sequence: 1,
 				WatchID: workspaceWatchID, Workspace: "/workspace", Paths: []string{"main.go"},
 			}
 		}
@@ -1053,7 +1053,7 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 	source := &runtimeChangeSourceStub{
 		events:       make(chan changefeed.Event, 2),
 		subscription: make(chan changefeed.Subscription, 1),
-		supported:    []changefeed.Topic{changefeed.FilesChanged, changefeed.SessionsChanged},
+		supported:    []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged},
 	}
 	var reads atomic.Int32
 	filesApplied := make(chan []workspace.Change, 2)
@@ -1083,7 +1083,7 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 		t.Fatalf("initial file projection = %+v, want empty", initial)
 	}
 	sessionEvent := changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	source.events <- sessionEvent
@@ -1091,7 +1091,7 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 		t.Fatalf("applied event = %+v, want %+v", applied, sessionEvent)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 2,
+		Type: protocol.RuntimeFilesChanged, Sequence: 2,
 		Workspace: "/workspace",
 	}
 	if recovered := awaitValue(t, filesApplied, "recovered git projection"); len(recovered) != 1 || recovered[0].Path != "main.go" {
@@ -1141,7 +1141,7 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	baseline := backend.reads.Load()
 	drainSignals(backend.readSignal)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	select {
@@ -1206,7 +1206,7 @@ func TestSessionChangeSettlementReconcilesItsDeferredInvalidation(t *testing.T) 
 			baseline := counting.reads.Load()
 			drainSignals(counting.readSignal)
 			source.events <- changefeed.Event{
-				Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+				Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 				SessionIDs: []string{"ses_demo_1"},
 			}
 			awaitSignal(t, source.applied, "session invalidation")
@@ -1327,7 +1327,7 @@ func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t 
 	baseline := backend.reads.Load()
 	backend.failures.Store(2)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	host.Shows(t, title)
@@ -1356,9 +1356,9 @@ func TestExternalWorkspaceChangeRebindsTheRuntimeWatch(t *testing.T) {
 	service := &workspacePathRecordingService{workspaceServiceStub: newWorkspaceServiceStub(), paths: make(chan string, 4)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 4),
-		supported: []changefeed.Topic{
-			changefeed.FilesChanged, changefeed.SessionsChanged, changefeed.RunsChanged,
-			changefeed.PlanChanged, changefeed.InterruptsChanged,
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 		},
 	}
 	host, stop := runUIWithRuntimeChangeServices(t, backend, service, source, "ses_demo_1")
@@ -1382,7 +1382,7 @@ func TestExternalWorkspaceChangeRebindsTheRuntimeWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	rebound := awaitSubscription(t, source.subscription, "rebound runtime subscription")
@@ -1446,9 +1446,9 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 	case <-t.Context().Done():
 		t.Fatal("runtime invalidation subscription was not opened")
 	}
-	wantTopics := []changefeed.Topic{
-		changefeed.SessionsChanged, changefeed.RunsChanged,
-		changefeed.PlanChanged, changefeed.InterruptsChanged,
+	wantTopics := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	}
 	if !slices.Equal(subscription.Topics, wantTopics) || len(subscription.Watches) != 0 {
 		t.Fatalf("subscription = %+v", subscription)
@@ -1470,7 +1470,7 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 	baseline := backend.reads.Load()
 	drainSignals(backend.readSignal)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "sessions.changed delivery")
@@ -1480,13 +1480,13 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 		t.Fatal("sessions.changed did not trigger an authoritative session read")
 	}
 
-	for index, topic := range []changefeed.Topic{
-		changefeed.RunsChanged, changefeed.PlanChanged, changefeed.InterruptsChanged,
+	for index, topic := range []protocol.RuntimeTopic{
+		protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	} {
 		baseline = backend.reads.Load()
 		drainSignals(backend.readSignal)
 		event := changefeed.Event{
-			Type: changefeed.EventType(topic), Sequence: uint64(index + 2),
+			Type: protocol.RuntimeEventType(topic), Sequence: uint64(index + 2),
 			SessionIDs: []string{"ses_demo_1"},
 		}
 		source.events <- event
@@ -1515,7 +1515,7 @@ func TestDeletedActiveSessionIsReplacedFromItsWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "deleted-session invalidation")
@@ -1542,7 +1542,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "deleted-session invalidation")
@@ -1612,7 +1612,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1,
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "deleted-session invalidation")
@@ -1654,7 +1654,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 	host.Type("PRESERVED_INVALIDATION_FEEDBACK")
 	drainSignals(backend.readSignal)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.InterruptsChanged), Sequence: 1,
+		Type: protocol.RuntimeInterruptsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "interrupts.changed delivery")
@@ -1720,7 +1720,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 	}
 	drainSignals(backend.readSignal)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.InterruptsChanged), Sequence: 1,
+		Type: protocol.RuntimeInterruptsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "advanced interrupts.changed delivery")
@@ -1773,7 +1773,7 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 	}
 	drainSignals(backend.readSignal)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.InterruptsChanged), Sequence: 1,
+		Type: protocol.RuntimeInterruptsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
 	}
 	awaitSignal(t, source.applied, "interrupts.changed during resume delivery")
@@ -1825,17 +1825,17 @@ func TestRuntimeChangeMonitorTurnsASequenceGapIntoFullResync(t *testing.T) {
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
 	}
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 1}
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.RunsChanged), Sequence: 3}
+	source.events <- changefeed.Event{Type: protocol.RuntimeSessionsChanged, Sequence: 1}
+	source.events <- changefeed.Event{Type: protocol.RuntimeRunsChanged, Sequence: 3}
 	var events []changefeed.Event
-	var resyncs [][]changefeed.Topic
+	var resyncs [][]protocol.RuntimeTopic
 	monitor := runtimeChangeMonitor{
 		source: source, resources: runtimeResourceObservation{plan: true},
 		applyEvent: func(event changefeed.Event) error {
 			events = append(events, event)
 			return nil
 		},
-		applyResync: func(topics []changefeed.Topic) error {
+		applyResync: func(topics []protocol.RuntimeTopic) error {
 			resyncs = append(resyncs, slices.Clone(topics))
 			if len(resyncs) == 2 {
 				cancel()
@@ -1848,9 +1848,9 @@ func TestRuntimeChangeMonitorTurnsASequenceGapIntoFullResync(t *testing.T) {
 		t.Fatalf("events = %+v, want only the contiguous frame before the gap", events)
 	}
 	if len(resyncs) != 2 || !slices.Equal(resyncs[0], resyncs[1]) ||
-		!slices.Equal(resyncs[0], []changefeed.Topic{
-			changefeed.SessionsChanged, changefeed.RunsChanged,
-			changefeed.PlanChanged, changefeed.InterruptsChanged,
+		!slices.Equal(resyncs[0], []protocol.RuntimeTopic{
+			protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 		}) {
 		t.Fatalf("resyncs = %+v", resyncs)
 	}
@@ -1862,14 +1862,14 @@ func TestRuntimeChangeMonitorDetectsASequenceGapOnTheFirstFrame(t *testing.T) {
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 	}
-	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: 2}
-	var resyncs [][]changefeed.Topic
+	source.events <- changefeed.Event{Type: protocol.RuntimeSessionsChanged, Sequence: 2}
+	var resyncs [][]protocol.RuntimeTopic
 	monitor := runtimeChangeMonitor{
 		source: source, resources: runtimeResourceObservation{plan: true},
 		applyEvent: func(changefeed.Event) error {
 			return errors.New("a frame absorbed by gap recovery must not be applied again")
 		},
-		applyResync: func(topics []changefeed.Topic) error {
+		applyResync: func(topics []protocol.RuntimeTopic) error {
 			resyncs = append(resyncs, slices.Clone(topics))
 			if len(resyncs) == 2 {
 				cancel()
@@ -1889,17 +1889,17 @@ func TestRuntimeChangeMonitorRefreshesFilesOnceForASequenceGap(t *testing.T) {
 	service := newWorkspaceServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		supported: []changefeed.Topic{changefeed.FilesChanged},
+		supported: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 2,
+		Type: protocol.RuntimeFilesChanged, Sequence: 2,
 		WatchID: workspaceWatchID, Workspace: "/workspace", Paths: []string{"main.go"},
 	}
 	resyncs := 0
 	monitor := runtimeChangeMonitor{
 		workspace: "/workspace", repository: service, source: source, watchFiles: true,
 		applyFiles: func([]workspace.Change) error { return nil },
-		applyResync: func([]changefeed.Topic) error {
+		applyResync: func([]protocol.RuntimeTopic) error {
 			resyncs++
 			if resyncs == 2 {
 				cancel()
@@ -1919,14 +1919,14 @@ func TestRuntimeChangeMonitorRefreshesFilesForBroadWorkspaceInvalidations(t *tes
 	service := newWorkspaceServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
-		supported: []changefeed.Topic{changefeed.FilesChanged},
+		supported: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 1,
+		Type: protocol.RuntimeFilesChanged, Sequence: 1,
 		Workspace: "/other", Paths: []string{"foreign.go"},
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 2,
+		Type: protocol.RuntimeFilesChanged, Sequence: 2,
 		Workspace: "/workspace", Paths: []string{"main.go"},
 	}
 	applied := 0
@@ -1954,13 +1954,13 @@ func TestRuntimeChangeMonitorTreatsAnUnscopedFileInvalidationAsBroad(t *testing.
 		event changefeed.Event
 		want  bool
 	}{
-		{name: "global broad", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged)}, want: true},
-		{name: "current broad", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), Workspace: "/workspace"}, want: true},
-		{name: "foreign broad", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), Workspace: "/other"}},
-		{name: "current watch", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), WatchID: workspaceWatchID, Workspace: "/workspace"}, want: true},
-		{name: "current watch without workspace", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), WatchID: workspaceWatchID}, want: true},
-		{name: "current watch wrong workspace", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), WatchID: workspaceWatchID, Workspace: "/other"}},
-		{name: "foreign watch", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged), WatchID: "other", Workspace: "/workspace"}},
+		{name: "global broad", event: changefeed.Event{Type: protocol.RuntimeFilesChanged}, want: true},
+		{name: "current broad", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, Workspace: "/workspace"}, want: true},
+		{name: "foreign broad", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, Workspace: "/other"}},
+		{name: "current watch", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, WatchID: workspaceWatchID, Workspace: "/workspace"}, want: true},
+		{name: "current watch without workspace", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, WatchID: workspaceWatchID}, want: true},
+		{name: "current watch wrong workspace", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, WatchID: workspaceWatchID, Workspace: "/other"}},
+		{name: "foreign watch", event: changefeed.Event{Type: protocol.RuntimeFilesChanged, WatchID: "other", Workspace: "/workspace"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1977,10 +1977,10 @@ func TestRuntimeChangeMonitorAppliesAContiguousScopedResync(t *testing.T) {
 	defer cancel()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		supported: []changefeed.Topic{changefeed.SkillsChanged},
+		supported: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}
 	source.events <- changefeed.Event{
-		Type: changefeed.Resync, Sequence: 1, Topics: []changefeed.Topic{changefeed.SkillsChanged},
+		Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}
 	var applied []changefeed.Event
 	monitor := runtimeChangeMonitor{
@@ -1992,8 +1992,8 @@ func TestRuntimeChangeMonitorAppliesAContiguousScopedResync(t *testing.T) {
 		},
 	}
 	_ = monitor.run(ctx)
-	if len(applied) != 1 || applied[0].Type != changefeed.Resync ||
-		!slices.Equal(applied[0].Topics, []changefeed.Topic{changefeed.SkillsChanged}) {
+	if len(applied) != 1 || applied[0].Type != protocol.RuntimeResync ||
+		!slices.Equal(applied[0].Topics, []protocol.RuntimeTopic{protocol.TopicSkillsChanged}) {
 		t.Fatalf("applied events = %+v, want the scoped resync frame", applied)
 	}
 }
@@ -2004,17 +2004,17 @@ func TestRuntimeInvalidationScope(t *testing.T) {
 		event changefeed.Event
 		want  bool
 	}{
-		{name: "foreign session", event: changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), SessionIDs: []string{"other"}}},
-		{name: "current session", event: changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged), SessionIDs: []string{"session"}}, want: true},
-		{name: "plan", event: changefeed.Event{Type: changefeed.EventType(changefeed.PlanChanged)}, want: true},
-		{name: "current goal", event: changefeed.Event{Type: changefeed.EventType(changefeed.GoalsChanged), SessionIDs: []string{"session"}}, want: true},
-		{name: "foreign goal", event: changefeed.Event{Type: changefeed.EventType(changefeed.GoalsChanged), SessionIDs: []string{"other"}}},
-		{name: "foreign run", event: changefeed.Event{Type: changefeed.EventType(changefeed.RunsChanged), RunIDs: []string{"other"}}},
-		{name: "current run", event: changefeed.Event{Type: changefeed.EventType(changefeed.InterruptsChanged), RunIDs: []string{"run"}}, want: true},
-		{name: "files", event: changefeed.Event{Type: changefeed.EventType(changefeed.FilesChanged)}},
-		{name: "session resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.SessionsChanged}}, want: true},
-		{name: "goal resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.GoalsChanged}}, want: true},
-		{name: "schedule resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.SchedulesChanged}}},
+		{name: "foreign session", event: changefeed.Event{Type: protocol.RuntimeSessionsChanged, SessionIDs: []string{"other"}}},
+		{name: "current session", event: changefeed.Event{Type: protocol.RuntimeSessionsChanged, SessionIDs: []string{"session"}}, want: true},
+		{name: "plan", event: changefeed.Event{Type: protocol.RuntimePlanChanged}, want: true},
+		{name: "current goal", event: changefeed.Event{Type: protocol.RuntimeGoalsChanged, SessionIDs: []string{"session"}}, want: true},
+		{name: "foreign goal", event: changefeed.Event{Type: protocol.RuntimeGoalsChanged, SessionIDs: []string{"other"}}},
+		{name: "foreign run", event: changefeed.Event{Type: protocol.RuntimeRunsChanged, RunIDs: []string{"other"}}},
+		{name: "current run", event: changefeed.Event{Type: protocol.RuntimeInterruptsChanged, RunIDs: []string{"run"}}, want: true},
+		{name: "files", event: changefeed.Event{Type: protocol.RuntimeFilesChanged}},
+		{name: "session resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, want: true},
+		{name: "goal resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicGoalsChanged}}, want: true},
+		{name: "schedule resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSchedulesChanged}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -2031,10 +2031,10 @@ func TestRunChangesInvalidateSessionActivityCatalog(t *testing.T) {
 		event changefeed.Event
 		want  bool
 	}{
-		{name: "session change", event: changefeed.Event{Type: changefeed.EventType(changefeed.SessionsChanged)}, want: true},
-		{name: "run change", event: changefeed.Event{Type: changefeed.EventType(changefeed.RunsChanged)}, want: true},
-		{name: "run resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.RunsChanged}}, want: true},
-		{name: "unrelated resync", event: changefeed.Event{Type: changefeed.Resync, Topics: []changefeed.Topic{changefeed.GoalsChanged}}},
+		{name: "session change", event: changefeed.Event{Type: protocol.RuntimeSessionsChanged}, want: true},
+		{name: "run change", event: changefeed.Event{Type: protocol.RuntimeRunsChanged}, want: true},
+		{name: "run resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged}}, want: true},
+		{name: "unrelated resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicGoalsChanged}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

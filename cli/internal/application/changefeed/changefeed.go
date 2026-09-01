@@ -10,56 +10,31 @@ import (
 	"iter"
 	"slices"
 	"strings"
-)
 
-type Topic string
-
-const (
-	FilesChanged       Topic = "files.changed"
-	SkillsChanged      Topic = "skills.changed"
-	MCPChanged         Topic = "mcp.changed"
-	SchedulesChanged   Topic = "schedules.changed"
-	SessionsChanged    Topic = "sessions.changed"
-	RunsChanged        Topic = "runs.changed"
-	PlanChanged        Topic = "plan.changed"
-	GoalsChanged       Topic = "goals.changed"
-	InterruptsChanged  Topic = "interrupts.changed"
-	KnowledgeChanged   Topic = "knowledge.changed"
-	HooksChanged       Topic = "hooks.changed"
-	ModelsChanged      Topic = "models.changed"
-	ApprovalsChanged   Topic = "approvals.changed"
-	AgentMemoryChanged Topic = "agentMemory.changed"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // Topics returns the complete change vocabulary understood by this client.
 // Callers own the returned slice, so subscription policy cannot mutate the
 // package's inventory.
-func Topics() []Topic {
-	return []Topic{
-		FilesChanged,
-		SkillsChanged,
-		MCPChanged,
-		SchedulesChanged,
-		SessionsChanged,
-		RunsChanged,
-		PlanChanged,
-		GoalsChanged,
-		InterruptsChanged,
-		KnowledgeChanged,
-		HooksChanged,
-		ModelsChanged,
-		ApprovalsChanged,
-		AgentMemoryChanged,
+func Topics() []protocol.RuntimeTopic {
+	return []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged,
+		protocol.TopicSkillsChanged,
+		protocol.TopicMCPChanged,
+		protocol.TopicSchedulesChanged,
+		protocol.TopicSessionsChanged,
+		protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged,
+		protocol.TopicGoalsChanged,
+		protocol.TopicInterruptsChanged,
+		protocol.TopicKnowledgeChanged,
+		protocol.TopicHooksChanged,
+		protocol.TopicModelsChanged,
+		protocol.TopicApprovalsChanged,
+		protocol.TopicAgentMemoryChanged,
 	}
 }
-
-func (t Topic) Valid() bool {
-	return slices.Contains(Topics(), t)
-}
-
-type EventType string
-
-const Resync EventType = "resync"
 
 type Watch struct {
 	ID        string
@@ -74,7 +49,7 @@ func (w Watch) Validate() error {
 }
 
 type Subscription struct {
-	Topics  []Topic
+	Topics  []protocol.RuntimeTopic
 	Watches []Watch
 }
 
@@ -117,7 +92,7 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 		return partitions, nil
 	}
 
-	filePartition := slices.Index(subscription.Topics, FilesChanged) / topicLimit
+	filePartition := slices.Index(subscription.Topics, protocol.TopicFilesChanged) / topicLimit
 	remainingWatches := subscription.Watches
 	count := min(watchLimit, len(remainingWatches))
 	partitions[filePartition].Watches = slices.Clone(remainingWatches[:count])
@@ -125,7 +100,7 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 	for len(remainingWatches) > 0 {
 		count = min(watchLimit, len(remainingWatches))
 		partitions = append(partitions, Subscription{
-			Topics:  []Topic{FilesChanged},
+			Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 			Watches: slices.Clone(remainingWatches[:count]),
 		})
 		remainingWatches = remainingWatches[count:]
@@ -135,12 +110,12 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 
 // workspaceObservedTopics are global without a watch, but observe the named
 // workspace's externally-authored files when a watch accompanies them. The
-// runtime wire contract uses FilesChanged as the anchor that makes a watch
+// runtime wire contract uses files.changed as the anchor that makes a watch
 // legal, so a partitioner must keep that anchor and scope beside each topic.
-func workspaceObservedTopics(topics []Topic) []Topic {
-	observed := make([]Topic, 0, 2)
+func workspaceObservedTopics(topics []protocol.RuntimeTopic) []protocol.RuntimeTopic {
+	observed := make([]protocol.RuntimeTopic, 0, 2)
 	for _, topic := range topics {
-		if topic == KnowledgeChanged || topic == HooksChanged {
+		if topic == protocol.TopicKnowledgeChanged || topic == protocol.TopicHooksChanged {
 			observed = append(observed, topic)
 		}
 	}
@@ -149,7 +124,7 @@ func workspaceObservedTopics(topics []Topic) []Topic {
 
 func partitionWorkspaceObservation(
 	subscription Subscription,
-	workspaceTopics []Topic,
+	workspaceTopics []protocol.RuntimeTopic,
 	topicLimit int,
 	watchLimit int,
 ) ([]Subscription, error) {
@@ -162,22 +137,22 @@ func partitionWorkspaceObservation(
 	for _, watches := range watchPartitions {
 		for _, topics := range workspaceTopicPartitions {
 			partitions = append(partitions, Subscription{
-				Topics:  append([]Topic{FilesChanged}, topics.Topics...),
+				Topics:  append([]protocol.RuntimeTopic{protocol.TopicFilesChanged}, topics.Topics...),
 				Watches: slices.Clone(watches),
 			})
 		}
 	}
 
-	unscoped := make([]Topic, 0, len(subscription.Topics))
+	unscoped := make([]protocol.RuntimeTopic, 0, len(subscription.Topics))
 	for _, topic := range subscription.Topics {
-		if topic != FilesChanged && !slices.Contains(workspaceTopics, topic) {
+		if topic != protocol.TopicFilesChanged && !slices.Contains(workspaceTopics, topic) {
 			unscoped = append(unscoped, topic)
 		}
 	}
 	return append(partitions, partitionTopics(unscoped, topicLimit)...), nil
 }
 
-func partitionTopics(topics []Topic, limit int) []Subscription {
+func partitionTopics(topics []protocol.RuntimeTopic, limit int) []Subscription {
 	partitions := make([]Subscription, 0, (len(topics)+limit-1)/limit)
 	for remaining := topics; len(remaining) > 0; {
 		count := min(limit, len(remaining))
@@ -208,9 +183,9 @@ func (s Subscription) Validate() error {
 	if len(s.Topics) == 0 {
 		return errors.New("change subscription has no topics")
 	}
-	seen := make(map[Topic]struct{}, len(s.Topics))
+	seen := make(map[protocol.RuntimeTopic]struct{}, len(s.Topics))
 	for _, topic := range s.Topics {
-		if !topic.Valid() {
+		if !slices.Contains(Topics(), topic) {
 			return fmt.Errorf("change subscription topic %q is invalid", topic)
 		}
 		if _, duplicate := seen[topic]; duplicate {
@@ -218,7 +193,7 @@ func (s Subscription) Validate() error {
 		}
 		seen[topic] = struct{}{}
 	}
-	if len(s.Watches) > 0 && !slices.Contains(s.Topics, FilesChanged) {
+	if len(s.Watches) > 0 && !slices.Contains(s.Topics, protocol.TopicFilesChanged) {
 		return errors.New("file watches require the files.changed topic")
 	}
 	watchIDs := make(map[string]struct{}, len(s.Watches))
@@ -245,18 +220,18 @@ func (s Subscription) ValidateEvent(event Event) error {
 	if err := event.Validate(); err != nil {
 		return err
 	}
-	if event.Type == Resync {
+	if event.Type == protocol.RuntimeResync {
 		return s.validateResyncScope(event)
 	}
 	return s.validateChangeScope(event)
 }
 
 func (s Subscription) validateChangeScope(event Event) error {
-	topic := Topic(event.Type)
+	topic := protocol.RuntimeTopic(event.Type)
 	if !slices.Contains(s.Topics, topic) {
 		return fmt.Errorf("change event topic %q is outside the subscription", topic)
 	}
-	if topic != FilesChanged || event.WatchID == "" {
+	if topic != protocol.TopicFilesChanged || event.WatchID == "" {
 		return nil
 	}
 	watchIndex := slices.IndexFunc(s.Watches, func(watch Watch) bool {
@@ -277,7 +252,7 @@ func (s Subscription) validateResyncScope(event Event) error {
 			return fmt.Errorf("resync topic %q is outside the subscription", topic)
 		}
 	}
-	if len(event.WatchIDs) > 0 && !slices.Contains(event.Topics, FilesChanged) {
+	if len(event.WatchIDs) > 0 && !slices.Contains(event.Topics, protocol.TopicFilesChanged) {
 		return errors.New("resync watch scope requires the files.changed topic")
 	}
 	for _, watchID := range event.WatchIDs {
@@ -289,7 +264,7 @@ func (s Subscription) validateResyncScope(event Event) error {
 }
 
 type Event struct {
-	Type        EventType
+	Type        protocol.RuntimeEventType
 	Sequence    uint64
 	WatchID     string
 	Workspace   string
@@ -299,7 +274,7 @@ type Event struct {
 	ScheduleIDs []string
 	SessionIDs  []string
 	RunIDs      []string
-	Topics      []Topic
+	Topics      []protocol.RuntimeTopic
 	WatchIDs    []string
 }
 
@@ -307,17 +282,17 @@ func (e Event) Validate() error {
 	if e.Sequence == 0 {
 		return errors.New("change event sequence is zero")
 	}
-	if e.Type == Resync {
+	if e.Type == protocol.RuntimeResync {
 		if len(e.Topics) == 0 && len(e.WatchIDs) == 0 {
 			return errors.New("resync event has no affected scope")
 		}
 		return nil
 	}
-	topic := Topic(e.Type)
-	if !topic.Valid() {
+	topic := protocol.RuntimeTopic(e.Type)
+	if !slices.Contains(Topics(), topic) {
 		return fmt.Errorf("change event type %q is invalid", e.Type)
 	}
-	if topic == FilesChanged {
+	if topic == protocol.TopicFilesChanged {
 		// Tool writes are broad invalidations and intentionally carry no watch ID.
 		// Watch-produced signals may add WatchID and Workspace so consumers can
 		// narrow the authoritative read, but neither is required by the protocol.
@@ -331,6 +306,6 @@ func (e Event) Validate() error {
 type EventStream = iter.Seq2[Event, error]
 
 type Source interface {
-	Supports(Topic) bool
+	Supports(protocol.RuntimeTopic) bool
 	Subscribe(context.Context, Subscription) (EventStream, error)
 }

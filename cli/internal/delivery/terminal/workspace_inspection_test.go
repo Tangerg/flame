@@ -143,16 +143,16 @@ func (c changeReaderFunc) Changes(ctx context.Context, path string) ([]workspace
 
 type changeSourceFunc func(context.Context, changefeed.Subscription) (changefeed.EventStream, error)
 
-func (c changeSourceFunc) Supports(topic changefeed.Topic) bool {
-	return topic == changefeed.FilesChanged
+func (c changeSourceFunc) Supports(topic protocol.RuntimeTopic) bool {
+	return topic == protocol.TopicFilesChanged
 }
 
 func (c changeSourceFunc) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {
 	return c(ctx, subscription)
 }
 
-func (c *changeSourceStub) Supports(topic changefeed.Topic) bool {
-	return topic == changefeed.FilesChanged
+func (c *changeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
+	return topic == protocol.TopicFilesChanged
 }
 
 func (c *changeSourceStub) Subscribe(ctx context.Context, _ changefeed.Subscription) (changefeed.EventStream, error) {
@@ -347,7 +347,7 @@ func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *t
 		workspace.Change{Path: "new.go", Status: protocol.FileStatusUntracked},
 	)
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 1,
+		Type: protocol.RuntimeFilesChanged, Sequence: 1,
 		WatchID: workspaceWatchID, Workspace: "/tmp/flame-cli-test", Paths: []string{"new.go"},
 	}
 	host.Shows(t, "2 files")
@@ -363,7 +363,7 @@ func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *t
 	// Sequence 2 was deliberately missed. The monitor must detect the gap and
 	// refetch instead of trusting the event payload as state.
 	source.events <- changefeed.Event{
-		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 3,
+		Type: protocol.RuntimeFilesChanged, Sequence: 3,
 		WatchID: workspaceWatchID, Workspace: "/tmp/flame-cli-test", Paths: []string{"old.go"},
 	}
 	host.Shows(t, "Δ3")
@@ -378,17 +378,17 @@ func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
 			invalidations++
 			return nil
 		},
-		applyResync: func([]changefeed.Topic) error {
+		applyResync: func([]protocol.RuntimeTopic) error {
 			resyncs++
 			return nil
 		},
 	}
 	tracker := changefeed.NewSequenceTracker()
-	topics := []changefeed.Topic{changefeed.SessionsChanged}
+	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged}
 	consume := func(sequence uint64) bool {
 		t.Helper()
 		applied, err := monitor.consumeChangeEvent(t.Context(), topics, false, tracker, changefeed.Event{
-			Type: changefeed.EventType(changefeed.SessionsChanged), Sequence: sequence,
+			Type: protocol.RuntimeSessionsChanged, Sequence: sequence,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -449,7 +449,7 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 	defer cancel()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event), subscription: make(chan changefeed.Subscription, 1),
-		supported: []changefeed.Topic{changefeed.SessionsChanged},
+		supported: []protocol.RuntimeTopic{protocol.TopicSessionsChanged},
 	}
 	read := make(chan struct{}, 1)
 	applied := make(chan []workspace.Change, 1)
@@ -472,7 +472,7 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 	}()
 
 	subscription := <-source.subscription
-	if !slices.Equal(subscription.Topics, []changefeed.Topic{changefeed.SessionsChanged}) || len(subscription.Watches) != 0 {
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicSessionsChanged}) || len(subscription.Watches) != 0 {
 		t.Fatalf("subscription = %+v", subscription)
 	}
 	select {
@@ -498,19 +498,19 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(t *testing.T) {
 	t.Parallel()
 
-	source := &runtimeChangeSourceStub{supported: []changefeed.Topic{
-		changefeed.FilesChanged, changefeed.SessionsChanged,
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
 	}}
 	monitor := runtimeChangeMonitor{
 		source: source, repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
 			return nil, nil
 		}),
 	}
-	if topics := monitor.supportedTopics(); !slices.Equal(topics, []changefeed.Topic{changefeed.SessionsChanged}) {
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, []protocol.RuntimeTopic{protocol.TopicSessionsChanged}) {
 		t.Fatalf("topics without fileWatch = %v", topics)
 	}
 	monitor.watchFiles = true
-	if topics := monitor.supportedTopics(); !slices.Equal(topics, []changefeed.Topic{changefeed.FilesChanged, changefeed.SessionsChanged}) {
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged}) {
 		t.Fatalf("topics with fileWatch = %v", topics)
 	}
 }
@@ -518,21 +518,21 @@ func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(
 func TestWorkspaceMonitorObservesStateOnlyWithPlanProjection(t *testing.T) {
 	t.Parallel()
 
-	source := &runtimeChangeSourceStub{supported: []changefeed.Topic{
-		changefeed.SessionsChanged, changefeed.RunsChanged,
-		changefeed.PlanChanged, changefeed.InterruptsChanged,
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	}}
 	monitor := runtimeChangeMonitor{source: source}
-	withoutPlan := []changefeed.Topic{
-		changefeed.SessionsChanged, changefeed.RunsChanged, changefeed.InterruptsChanged,
+	withoutPlan := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicInterruptsChanged,
 	}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, withoutPlan) {
 		t.Fatalf("topics without plan = %v, want %v", topics, withoutPlan)
 	}
 	monitor.resources.plan = true
-	withPlan := []changefeed.Topic{
-		changefeed.SessionsChanged, changefeed.RunsChanged,
-		changefeed.PlanChanged, changefeed.InterruptsChanged,
+	withPlan := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, withPlan) {
 		t.Fatalf("topics with plan = %v, want %v", topics, withPlan)
@@ -545,18 +545,18 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 	source := &runtimeChangeSourceStub{
 		events:       make(chan changefeed.Event),
 		subscription: make(chan changefeed.Subscription, 1),
-		supported: []changefeed.Topic{
-			changefeed.FilesChanged, changefeed.SessionsChanged,
-			changefeed.KnowledgeChanged, changefeed.HooksChanged,
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
 		},
 	}
 	monitor := runtimeChangeMonitor{
 		workspace: "/workspace", source: source, watchFiles: true,
 		resources: runtimeResourceObservation{knowledge: true, hooks: true},
 	}
-	wantTopics := []changefeed.Topic{
-		changefeed.FilesChanged, changefeed.SessionsChanged,
-		changefeed.KnowledgeChanged, changefeed.HooksChanged,
+	wantTopics := []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
 	}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, wantTopics) {
 		t.Fatalf("authored-resource topics without Git = %v, want %v", topics, wantTopics)
