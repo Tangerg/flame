@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type commandOptionCursor struct {
@@ -75,14 +76,14 @@ func nextCommandToken(value string) (string, string) {
 
 type workspaceDiffSelection struct {
 	path   string
-	mode   workspace.DiffMode
-	format workspace.DiffFormat
+	mode   protocol.DiffMode
+	format protocol.DiffFormat
 	limit  workspace.DiffRowLimit
 }
 
 func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error) {
 	selection := workspaceDiffSelection{
-		mode: workspace.DiffModeWorktree, format: workspace.DiffFormatRaw,
+		mode: protocol.DiffModeWorktree, format: protocol.DiffFormatRaw,
 		limit: workspace.DefaultDiffRowLimit(),
 	}
 	cursor := newCommandOptionCursor(argument)
@@ -102,7 +103,7 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 			}
 			modeSet = true
 			if option == "--base" {
-				selection.mode = workspace.DiffModeBase
+				selection.mode = protocol.DiffModeBase
 			}
 		case "--rows", "--raw":
 			if formatSet {
@@ -110,7 +111,7 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 			}
 			formatSet = true
 			if option == "--rows" {
-				selection.format = workspace.DiffFormatRows
+				selection.format = protocol.DiffFormatRows
 			}
 		case "--limit":
 			rows, parseErr := cursor.PositiveInt(option)
@@ -130,7 +131,7 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 	if err != nil {
 		return workspaceDiffSelection{}, err
 	}
-	if explicit && selection.format != workspace.DiffFormatRows {
+	if explicit && selection.format != protocol.DiffFormatRows {
 		return workspaceDiffSelection{}, errors.New("workspace diff --limit requires --rows")
 	}
 	return selection, nil

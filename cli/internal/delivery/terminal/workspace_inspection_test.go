@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -30,7 +31,7 @@ type workspaceServiceStub struct {
 
 func newWorkspaceServiceStub() *workspaceServiceStub {
 	return &workspaceServiceStub{
-		changes: []workspace.Change{{Path: "main.go", Status: workspace.FileStatusModified}},
+		changes: []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}},
 		calls:   make(map[string]int),
 	}
 }
@@ -237,7 +238,7 @@ func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
 	host.Shows(t, "base · rows · dir with spaces/main.go")
 	request := service.lastDiffRequest()
 	rows, explicit, err := request.RowLimit.Rows()
-	if request.Mode != workspace.DiffModeBase || request.Format != workspace.DiffFormatRows ||
+	if request.Mode != protocol.DiffModeBase || request.Format != protocol.DiffFormatRows ||
 		err != nil || !explicit || rows != 50 || request.Path != "dir with spaces/main.go" {
 		t.Fatalf("diff request = %+v", request)
 	}
@@ -342,8 +343,8 @@ func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *t
 	host.Shows(t, "Workspace changes")
 
 	service.setChanges(
-		workspace.Change{Path: "main.go", Status: workspace.FileStatusModified},
-		workspace.Change{Path: "new.go", Status: workspace.FileStatusUntracked},
+		workspace.Change{Path: "main.go", Status: protocol.FileStatusModified},
+		workspace.Change{Path: "new.go", Status: protocol.FileStatusUntracked},
 	)
 	source.events <- changefeed.Event{
 		Type: changefeed.EventType(changefeed.FilesChanged), Sequence: 1,
@@ -355,9 +356,9 @@ func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *t
 	host.Shows(t, "Δ2")
 
 	service.setChanges(
-		workspace.Change{Path: "main.go", Status: workspace.FileStatusModified},
-		workspace.Change{Path: "new.go", Status: workspace.FileStatusUntracked},
-		workspace.Change{Path: "old.go", Status: workspace.FileStatusDeleted},
+		workspace.Change{Path: "main.go", Status: protocol.FileStatusModified},
+		workspace.Change{Path: "new.go", Status: protocol.FileStatusUntracked},
+		workspace.Change{Path: "old.go", Status: protocol.FileStatusDeleted},
 	)
 	// Sequence 2 was deliberately missed. The monitor must detect the gap and
 	// refetch instead of trusting the event payload as state.
@@ -456,7 +457,7 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 		workspace: "/workspace", source: source, watchFiles: true,
 		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
 			read <- struct{}{}
-			return []workspace.Change{{Path: "main.go", Status: workspace.FileStatusModified}}, nil
+			return []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}}, nil
 		}),
 		applyFiles: func(changes []workspace.Change) error {
 			applied <- changes

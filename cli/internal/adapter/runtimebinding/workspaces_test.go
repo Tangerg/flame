@@ -132,7 +132,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		t.Fatalf("Changes = (%+v, %v)", changes, err)
 	}
 	diff, err := runtime.Diff(t.Context(), workspace.DiffRequest{
-		Workspace: "/workspace", Format: workspace.DiffFormatRows, RowLimit: workspace.DefaultDiffRowLimit(),
+		Workspace: "/workspace", Format: protocol.DiffFormatRows, RowLimit: workspace.DefaultDiffRowLimit(),
 	})
 	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)

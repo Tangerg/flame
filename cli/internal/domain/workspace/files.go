@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type FileType string
@@ -112,14 +114,18 @@ func (f FileContent) Validate() error {
 		return errors.New("file content path is empty")
 	case f.Encoding != "utf-8":
 		return fmt.Errorf("file content encoding %q is unsupported", f.Encoding)
-	case f.TotalLines < 0:
-		return errors.New("file content line count is negative")
-	case f.StartLine < 0 || f.EndLine < 0:
-		return errors.New("file content window is negative")
-	case f.EndLine > 0 && f.StartLine == 0:
-		return errors.New("file content end line has no start line")
-	case f.StartLine > 0 && f.EndLine > 0 && f.EndLine < f.StartLine:
+	}
+	if err := (protocol.FileContent{
+		Path: f.Path, Content: f.Content, Encoding: f.Encoding, TotalLines: f.TotalLines,
+		Truncated: f.Truncated, StartLine: f.StartLine, EndLine: f.EndLine,
+	}).ValidateWire(); err != nil {
+		return fmt.Errorf("file content: %w", err)
+	}
+	switch {
+	case f.EndLine > 0 && f.EndLine < f.StartLine:
 		return errors.New("file content window is reversed")
+	case f.EndLine > f.TotalLines:
+		return errors.New("file content window exceeds the file line count")
 	default:
 		return nil
 	}

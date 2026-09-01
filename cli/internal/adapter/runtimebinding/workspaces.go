@@ -112,7 +112,7 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 	}
 	value, err := r.workspaces.GetWorkspaceDiff(ctx, protocol.GetDiffRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path,
-		Mode: protocol.DiffMode(request.Mode), Format: protocol.DiffFormat(request.Format), Limit: rowLimit,
+		Mode: request.Mode, Format: request.Format, Limit: rowLimit,
 	}, r.callOptions())
 	if err != nil {
 		return workspace.Diff{}, classifyError(err)
@@ -302,7 +302,7 @@ func projectWorkspaceSummary(value protocol.WorkspaceSummary) (workspace.Summary
 
 func projectChange(path string, status protocol.FileStatus, previousPath string, added, removed *int, binary bool) (workspace.Change, error) {
 	result := workspace.Change{
-		Path: path, Status: workspace.FileStatus(status), PreviousPath: previousPath,
+		Path: path, Status: status, PreviousPath: previousPath,
 		Added: cloneInt(added), Removed: cloneInt(removed), Binary: binary,
 	}
 	if err := result.Validate(); err != nil {
@@ -321,7 +321,7 @@ func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 		rows := make([]workspace.DiffRow, 0, len(file.Rows))
 		for _, row := range file.Rows {
 			rows = append(rows, workspace.DiffRow{
-				Type: projectDiffRowType(row.Type), Text: row.Text, LeftLine: row.LeftLine,
+				Type: row.Type, Text: row.Text, LeftLine: row.LeftLine,
 				RightLine: row.RightLine, Code: row.Code,
 			})
 		}
@@ -331,21 +331,6 @@ func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)
 	}
 	return result, nil
-}
-
-func projectDiffRowType(value protocol.DiffRowType) workspace.DiffRowType {
-	switch value {
-	case protocol.DiffRowHunk:
-		return workspace.DiffRowHunk
-	case protocol.DiffRowContext:
-		return workspace.DiffRowContext
-	case protocol.DiffRowAdded:
-		return workspace.DiffRowAdded
-	case protocol.DiffRowDeleted:
-		return workspace.DiffRowDeleted
-	default:
-		return workspace.DiffRowType(value)
-	}
 }
 
 func projectFileType(value protocol.FileEntryType) workspace.FileType {

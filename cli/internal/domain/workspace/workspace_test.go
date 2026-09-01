@@ -3,6 +3,8 @@ package workspace
 import (
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestChangeOwnsItsRenameAndBinaryInvariants(t *testing.T) {
@@ -13,11 +15,11 @@ func TestChangeOwnsItsRenameAndBinaryInvariants(t *testing.T) {
 		change Change
 		want   string
 	}{
-		{name: "text", change: Change{Path: "main.go", Status: FileStatusModified, Added: &added, Removed: &removed}},
-		{name: "rename", change: Change{Path: "new.go", PreviousPath: "old.go", Status: FileStatusRenamed}},
-		{name: "rename missing source", change: Change{Path: "new.go", Status: FileStatusRenamed}, want: "previous path"},
-		{name: "source on modification", change: Change{Path: "new.go", PreviousPath: "old.go", Status: FileStatusModified}, want: "non-renamed"},
-		{name: "binary counts", change: Change{Path: "logo.png", Status: FileStatusModified, Binary: true, Added: &added}, want: "binary"},
+		{name: "text", change: Change{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}},
+		{name: "rename", change: Change{Path: "new.go", PreviousPath: "old.go", Status: protocol.FileStatusRenamed}},
+		{name: "rename missing source", change: Change{Path: "new.go", Status: protocol.FileStatusRenamed}, want: "previousPath"},
+		{name: "source on modification", change: Change{Path: "new.go", PreviousPath: "old.go", Status: protocol.FileStatusModified}, want: "previousPath"},
+		{name: "binary counts", change: Change{Path: "logo.png", Status: protocol.FileStatusModified, Binary: true, Added: &added}, want: "added"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -65,12 +67,12 @@ func TestWorkspaceOwnsResolvedIdentity(t *testing.T) {
 func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	t.Parallel()
 	diff := Diff{Files: []FileDiff{{
-		Change: Change{Path: "main.go", Status: FileStatusModified},
+		Change: Change{Path: "main.go", Status: protocol.FileStatusModified},
 		Rows: []DiffRow{
-			{Type: DiffRowHunk, Text: "@@ -1,2 +1,2 @@"},
-			{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "package main"},
-			{Type: DiffRowDeleted, LeftLine: 2, Code: "var old = true"},
-			{Type: DiffRowAdded, RightLine: 2, Code: "var current = true"},
+			{Type: protocol.DiffRowHunk, Text: "@@ -1,2 +1,2 @@"},
+			{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: "package main"},
+			{Type: protocol.DiffRowDeleted, LeftLine: 2, Code: "var old = true"},
+			{Type: protocol.DiffRowAdded, RightLine: 2, Code: "var current = true"},
 		},
 	}}}
 	if err := diff.Validate(); err != nil {
@@ -94,6 +96,30 @@ func TestReadRequestRefusesAnAmbiguousLineWindow(t *testing.T) {
 	t.Parallel()
 	if _, err := NewReadLineRange(0, 10); err == nil {
 		t.Fatal("line range accepted an end without a positive start")
+	}
+}
+
+func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
+	t.Parallel()
+
+	valid := []FileContent{
+		{Path: "empty.txt", Encoding: "utf-8", TotalLines: 1},
+		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2, EndLine: 3},
+	}
+	for _, content := range valid {
+		if err := content.Validate(); err != nil {
+			t.Errorf("Validate rejected valid content %+v: %v", content, err)
+		}
+	}
+
+	for _, content := range []FileContent{
+		{Path: "empty.txt", Encoding: "utf-8"},
+		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2},
+		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2, EndLine: 4},
+	} {
+		if err := content.Validate(); err == nil {
+			t.Errorf("Validate accepted invalid content %+v", content)
+		}
 	}
 }
 

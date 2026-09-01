@@ -4,44 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-type DiffMode string
-
-const (
-	DiffModeWorktree DiffMode = "worktree"
-	DiffModeBase     DiffMode = "base"
-)
-
-type DiffFormat string
-
-const (
-	DiffFormatRows DiffFormat = "rows"
-	DiffFormatRaw  DiffFormat = "raw"
-)
-
-type FileStatus string
-
-const (
-	FileStatusAdded     FileStatus = "added"
-	FileStatusModified  FileStatus = "modified"
-	FileStatusDeleted   FileStatus = "deleted"
-	FileStatusRenamed   FileStatus = "renamed"
-	FileStatusUntracked FileStatus = "untracked"
-)
-
-func (f FileStatus) Valid() bool {
-	switch f {
-	case FileStatusAdded, FileStatusModified, FileStatusDeleted, FileStatusRenamed, FileStatusUntracked:
-		return true
-	default:
-		return false
-	}
-}
 
 type Change struct {
 	Path         string
-	Status       FileStatus
+	Status       protocol.FileStatus
 	PreviousPath string
 	Added        *int
 	Removed      *int
@@ -49,24 +18,18 @@ type Change struct {
 }
 
 func (c Change) Validate() error {
+	wire := protocol.WorkspaceFileChange{
+		Path: c.Path, Status: c.Status, PreviousPath: c.PreviousPath,
+		Added: c.Added, Removed: c.Removed, Binary: c.Binary,
+	}
 	switch {
 	case strings.TrimSpace(c.Path) == "":
 		return errors.New("changed file path is empty")
-	case !c.Status.Valid():
-		return fmt.Errorf("changed file status %q is invalid", c.Status)
-	case c.Status == FileStatusRenamed && strings.TrimSpace(c.PreviousPath) == "":
-		return errors.New("renamed file has no previous path")
-	case c.Status != FileStatusRenamed && c.PreviousPath != "":
-		return errors.New("non-renamed file has a previous path")
-	case c.Binary && (c.Added != nil || c.Removed != nil):
-		return errors.New("binary file exposes text line counts")
-	case c.Added != nil && *c.Added < 0:
-		return errors.New("added line count is negative")
-	case c.Removed != nil && *c.Removed < 0:
-		return errors.New("removed line count is negative")
-	default:
-		return nil
 	}
+	if err := wire.ValidateWire(); err != nil {
+		return fmt.Errorf("changed file: %w", err)
+	}
+	return nil
 }
 
 func (c Change) Stat() string {
@@ -86,8 +49,8 @@ func (c Change) Stat() string {
 type DiffRequest struct {
 	Workspace string
 	Path      string
-	Mode      DiffMode
-	Format    DiffFormat
+	Mode      protocol.DiffMode
+	Format    protocol.DiffFormat
 	RowLimit  DiffRowLimit
 }
 
@@ -136,33 +99,25 @@ func (d DiffRequest) Validate() error {
 	if strings.TrimSpace(d.Workspace) == "" {
 		return errors.New("workspace diff workspace is empty")
 	}
-	if d.Mode != "" && d.Mode != DiffModeWorktree && d.Mode != DiffModeBase {
-		return fmt.Errorf("workspace diff mode %q is invalid", d.Mode)
-	}
-	if d.Format != "" && d.Format != DiffFormatRows && d.Format != DiffFormatRaw {
-		return fmt.Errorf("workspace diff format %q is invalid", d.Format)
-	}
 	if err := d.RowLimit.Validate(); err != nil {
 		return err
 	}
-	_, explicit, _ := d.RowLimit.Rows()
-	if explicit && d.Format != DiffFormatRows {
-		return errors.New("workspace diff limit requires structured rows")
+	rows, explicit, _ := d.RowLimit.Rows()
+	var limit *int
+	if explicit {
+		limit = &rows
+	}
+	if err := (protocol.GetDiffRequest{
+		Workspace: protocol.WorkspaceRef{Path: d.Workspace}, Path: d.Path,
+		Mode: d.Mode, Format: d.Format, Limit: limit,
+	}).ValidateWire(); err != nil {
+		return fmt.Errorf("workspace diff: %w", err)
 	}
 	return nil
 }
 
-type DiffRowType string
-
-const (
-	DiffRowHunk    DiffRowType = "hunk"
-	DiffRowContext DiffRowType = "context"
-	DiffRowAdded   DiffRowType = "added"
-	DiffRowDeleted DiffRowType = "deleted"
-)
-
 type DiffRow struct {
-	Type      DiffRowType
+	Type      protocol.DiffRowType
 	Text      string
 	LeftLine  int
 	RightLine int
@@ -170,25 +125,10 @@ type DiffRow struct {
 }
 
 func (d DiffRow) Validate() error {
-	switch d.Type {
-	case DiffRowHunk:
-		if d.Text == "" || d.Code != "" || d.LeftLine != 0 || d.RightLine != 0 {
-			return errors.New("diff hunk row has an invalid shape")
-		}
-	case DiffRowContext:
-		if d.Code == "" || d.Text != "" || d.LeftLine <= 0 || d.RightLine <= 0 {
-			return errors.New("diff context row has an invalid shape")
-		}
-	case DiffRowAdded:
-		if d.Code == "" || d.Text != "" || d.LeftLine != 0 || d.RightLine <= 0 {
-			return errors.New("diff addition row has an invalid shape")
-		}
-	case DiffRowDeleted:
-		if d.Code == "" || d.Text != "" || d.LeftLine <= 0 || d.RightLine != 0 {
-			return errors.New("diff deletion row has an invalid shape")
-		}
-	default:
-		return fmt.Errorf("diff row type %q is invalid", d.Type)
+	if err := (protocol.DiffRow{
+		Type: d.Type, Text: d.Text, LeftLine: d.LeftLine, RightLine: d.RightLine, Code: d.Code,
+	}).ValidateWire(); err != nil {
+		return fmt.Errorf("diff row: %w", err)
 	}
 	return nil
 }
@@ -238,15 +178,15 @@ func (d Diff) Text() string {
 		fmt.Fprintf(&output, "diff -- %s (%s)\n", file.Path, file.Status)
 		for _, row := range file.Rows {
 			switch row.Type {
-			case DiffRowHunk:
+			case protocol.DiffRowHunk:
 				output.WriteString(row.Text)
-			case DiffRowAdded:
+			case protocol.DiffRowAdded:
 				output.WriteByte('+')
 				output.WriteString(row.Code)
-			case DiffRowDeleted:
+			case protocol.DiffRowDeleted:
 				output.WriteByte('-')
 				output.WriteString(row.Code)
-			case DiffRowContext:
+			case protocol.DiffRowContext:
 				output.WriteByte(' ')
 				output.WriteString(row.Code)
 			}

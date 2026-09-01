@@ -1064,7 +1064,7 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 			if reads.Add(1) == 1 {
 				return nil, workspace.ErrVersionControlUnavailable
 			}
-			return []workspace.Change{{Path: "main.go", Status: workspace.FileStatusModified}}, nil
+			return []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}}, nil
 		}),
 		applyFiles: func(changes []workspace.Change) error {
 			filesApplied <- slices.Clone(changes)

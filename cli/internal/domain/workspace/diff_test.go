@@ -1,6 +1,10 @@
 package workspace
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 func TestDiffRequestRequiresStructuredFormatForRowLimit(t *testing.T) {
 	t.Parallel()
@@ -9,11 +13,11 @@ func TestDiffRequestRequiresStructuredFormatForRowLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDiffRowLimit: %v", err)
 	}
-	request := DiffRequest{Workspace: "/workspace", Mode: DiffModeWorktree, Format: DiffFormatRaw, RowLimit: limit}
+	request := DiffRequest{Workspace: "/workspace", Mode: protocol.DiffModeWorktree, Format: protocol.DiffFormatRaw, RowLimit: limit}
 	if err := request.Validate(); err == nil {
 		t.Fatal("raw diff accepted a structured row limit")
 	}
-	request.Format = DiffFormatRows
+	request.Format = protocol.DiffFormatRows
 	if err := request.Validate(); err != nil {
 		t.Fatal(err)
 	}
