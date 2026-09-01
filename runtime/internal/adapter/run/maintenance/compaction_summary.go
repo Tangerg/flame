@@ -11,11 +11,14 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 )
 
-const compactionPrompt = `You are compacting the earlier portion of a long coding-agent
+const compactionPrompt = `You are compacting the earlier portion of a long agent
 conversation into a faithful, STRUCTURED summary the agent will read as part of
 its system prompt to continue WITHOUT losing key context. Be specific; quote
 literal identifiers (file paths, function / type names, commands) so they stay
-greppable.
+greppable. Treat every user request to remember, preserve, retain, or recall a
+fact later as a hard retention requirement: record the exact literal value and
+what it denotes. Resolve later references such as "the original marker" back to
+that value; never substitute a later acknowledgement or paraphrase.
 
 Output markdown under EXACTLY these headings (drop a heading only if truly empty):
 
@@ -31,7 +34,8 @@ identifiers (functions, types, symbols) in play; command results worth keeping.
 
 ## Decisions & constraints
 Choices made and WHY; user preferences / constraints stated (style, libraries,
-dos & don'ts); approaches rejected and the reason (so they aren't retried).
+dos & don'ts); exact facts explicitly reserved for later recall; approaches
+rejected and the reason (so they aren't retried).
 
 ## Next steps
 Remaining work + open questions — concrete and ordered.
