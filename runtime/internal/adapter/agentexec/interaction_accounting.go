@@ -132,6 +132,46 @@ func mergeInteractionUsage(
 	}
 }
 
+func advanceProcessUsage(
+	current map[string]accounting.ModelUsage,
+	delta accounting.ModelUsage,
+	expectedCalls uint32,
+) (map[string]accounting.ModelUsage, []accounting.ModelUsage, accounting.ModelUsage, error) {
+	next := maps.Clone(current)
+	if next == nil {
+		next = make(map[string]accounting.ModelUsage)
+	}
+	model := next[delta.Model]
+	if model.Model == "" {
+		model.Model = delta.Model
+	}
+	model.Add(delta.TokenUsage)
+	model.CostUSD += delta.CostUSD
+	model.Calls += delta.Calls
+	if err := model.Validate(); err != nil {
+		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call: %w", err)
+	}
+	next[delta.Model] = model
+	models := make([]accounting.ModelUsage, 0, len(next))
+	for _, usage := range next {
+		models = append(models, usage)
+	}
+	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
+		return strings.Compare(left.Model, right.Model)
+	})
+	total, err := (accounting.Snapshot{Models: models}).Total()
+	if err != nil {
+		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: total model usage: %w", err)
+	}
+	if total.Calls != int(expectedCalls) {
+		return nil, nil, accounting.ModelUsage{}, fmt.Errorf(
+			"agentexec: model call sequence %d differs from accounted calls %d",
+			expectedCalls, total.Calls,
+		)
+	}
+	return next, models, total, nil
+}
+
 func (i *interactionAccounting) restore(
 	usageByProcess map[agent.ProcessID]map[string]accounting.ModelUsage,
 	carriedUsage map[string]accounting.ModelUsage,
@@ -213,59 +253,39 @@ func (i *interactionAccounting) accountModelCall(
 		prepared.sequence != invocation.ModelCallSequence()) {
 		return runs.ModelCallCompleted{}, errors.New("agentexec: model response has no matching prepared context")
 	}
-	usageByModel := i.usageByProcess[processID]
-	if usageByModel == nil {
-		usageByModel = make(map[string]accounting.ModelUsage)
-		i.usageByProcess[processID] = usageByModel
-	}
-	current := usageByModel[delta.Model]
-	if current.Model == "" {
-		current.Model = delta.Model
-	}
-	current.Add(delta.TokenUsage)
-	current.CostUSD += delta.CostUSD
-	current.Calls += delta.Calls
-	if err := current.Validate(); err != nil {
-		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: aggregate model call: %w", err)
-	}
-	usageByModel[delta.Model] = current
-	models := make([]accounting.ModelUsage, 0, len(usageByModel))
-	for _, usage := range usageByModel {
-		models = append(models, usage)
-	}
-	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
-		return strings.Compare(left.Model, right.Model)
-	})
-	total, err := (accounting.Snapshot{Models: models}).Total()
+	nextUsage, models, total, err := advanceProcessUsage(
+		i.usageByProcess[processID], delta, invocation.ModelCallSequence(),
+	)
 	if err != nil {
-		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: total model usage: %w", err)
-	}
-	if total.Calls != int(invocation.ModelCallSequence()) {
-		return runs.ModelCallCompleted{}, fmt.Errorf(
-			"agentexec: model call sequence %d differs from accounted calls %d",
-			invocation.ModelCallSequence(), total.Calls,
-		)
+		return runs.ModelCallCompleted{}, err
 	}
 	modelOutput := response.Output
 	var usage corechat.Usage
 	if response.Metadata != nil {
 		usage = response.Metadata.Usage
 	}
-	if preparedFound {
-		delete(i.preparedContextByProcess, processID)
-	}
+	var calibration *ModelContextTokenCalibration
 	if preparedFound && usage.InputTokens > 0 {
-		calibration, err := NewModelContextTokenCalibration(usage.InputTokens, prepared.estimated)
+		nextCalibration, err := NewModelContextTokenCalibration(usage.InputTokens, prepared.estimated)
 		if err != nil {
 			return runs.ModelCallCompleted{}, err
 		}
-		i.contextByProcess[processID] = calibration
+		calibration = &nextCalibration
 	}
-	return runs.ModelCallCompleted{
+	completed := runs.ModelCallCompleted{
 		CallID: callID, Message: modelOutput.Message.Clone(), TokenUsage: total.TokenUsage,
 		ByModel: slices.Clone(models), CostUSD: total.CostUSD, Steps: total.Calls,
 		ContextTokens: usage.InputTokens,
-	}, nil
+	}
+
+	i.usageByProcess[processID] = nextUsage
+	if preparedFound {
+		delete(i.preparedContextByProcess, processID)
+	}
+	if calibration != nil {
+		i.contextByProcess[processID] = *calibration
+	}
+	return completed, nil
 }
 
 func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) *runs.SegmentUsage {
