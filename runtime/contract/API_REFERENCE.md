@@ -373,7 +373,7 @@ Forbidden on every variant: `durable`.
 | --- | --- | --- |
 | `segment.started` | `run` | — |
 | `segment.progress` | `progress` | — |
-| `segment.finished` | `outcome`, `metrics` | — |
+| `segment.finished` | `outcome`, `metrics`, `contextTokens` | — |
 | `item.started` | `item` | — |
 | `item.delta` | `itemId`, `delta` | — |
 | `item.completed` | `item` | — |
@@ -718,6 +718,7 @@ TypeScript validator from this single registry projection.
 | `ItemListScope` | `runId` | `maxLength(256)` |
 | `StreamEvent` | `itemId` | `identity` |
 | `StreamEvent` | `itemId` | `maxLength(256)` |
+| `StreamEvent` | `contextTokens` | `nonNegative` |
 | `GetPlanRequest` | `sessionId` | `nonEmpty` |
 | `GetPlanRequest` | `sessionId` | `identity` |
 | `GetPlanRequest` | `sessionId` | `maxLength(256)` |

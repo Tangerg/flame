@@ -36,7 +36,7 @@ const (
 //
 //	segment.started     → Run
 //	segment.progress    → Progress
-//	segment.finished    → Outcome, Metrics
+//	segment.finished    → Outcome, Metrics, ContextTokens
 //	item.started    → Item
 //	item.delta      → ItemID, Delta
 //	item.completed  → Item
@@ -51,10 +51,15 @@ type StreamEvent struct {
 	// the run consumed from one field instead of looking for it in whichever
 	// branch of the outcome happens to carry it.
 	Metrics *RunMetrics `json:"metrics,omitempty"`
-	Item    *Item       `json:"item,omitempty"`
-	ItemID  string      `json:"itemId,omitempty"`
-	Delta   *ItemDelta  `json:"delta,omitempty"`
-	Plan    *Plan       `json:"plan,omitempty"`
+	// ContextTokens is the final durable prompt footprint at this segment
+	// boundary. It repeats the latest progress preview because progress is not
+	// replayable: a reconnecting client must recover the same RunRef value from
+	// the authoritative completion frame alone.
+	ContextTokens *int64     `json:"contextTokens,omitempty"`
+	Item          *Item      `json:"item,omitempty"`
+	ItemID        string     `json:"itemId,omitempty"`
+	Delta         *ItemDelta `json:"delta,omitempty"`
+	Plan          *Plan      `json:"plan,omitempty"`
 }
 
 // Authoritative reports whether the event itself is a fact a client may fold.

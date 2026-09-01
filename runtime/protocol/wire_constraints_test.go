@@ -114,6 +114,29 @@ func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	}
 }
 
+func TestSegmentFinishedCarriesFinalContextFootprint(t *testing.T) {
+	t.Parallel()
+
+	completed := SegmentOutcome{Type: SegmentOutcomeType(OutcomeCompleted)}
+	metrics := RunMetrics{}
+	missing := StreamEvent{
+		Type: StreamSegmentFinished, Outcome: &completed, Metrics: &metrics,
+	}
+	assertConstraintField(t, missing.ValidateWire(), "StreamEvent", "contextTokens")
+
+	negative := int64(-1)
+	invalid := missing
+	invalid.ContextTokens = &negative
+	assertConstraintField(t, invalid.ValidateWire(), "StreamEvent", "contextTokens")
+
+	zero := int64(0)
+	valid := missing
+	valid.ContextTokens = &zero
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a complete segment boundary: %v", err)
+	}
+}
+
 func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
 	t.Parallel()
 

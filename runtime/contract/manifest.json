@@ -3186,7 +3186,8 @@
           "tag": "segment.finished",
           "required": [
             "outcome",
-            "metrics"
+            "metrics",
+            "contextTokens"
           ]
         },
         {
@@ -5875,6 +5876,10 @@
         {
           "field": "itemId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "contextTokens",
+          "constraint": "nonNegative"
         }
       ]
     },

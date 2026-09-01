@@ -367,7 +367,7 @@ func registerEventUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.StreamSegmentStarted), Required: []string{"run"}},
 			{Tag: string(protocol.StreamSegmentProgress), Required: []string{"progress"}},
-			{Tag: string(protocol.StreamSegmentFinished), Required: []string{"outcome", "metrics"}},
+			{Tag: string(protocol.StreamSegmentFinished), Required: []string{"outcome", "metrics", "contextTokens"}},
 			{Tag: string(protocol.StreamItemStarted), Required: []string{"item"}},
 			{Tag: string(protocol.StreamItemDelta), Required: []string{"itemId", "delta"}},
 			{Tag: string(protocol.StreamItemCompleted), Required: []string{"item"}},

@@ -1497,7 +1497,7 @@ export interface SteerRunRequest {
 export type StreamEvent =
   | { type: "segment.started"; run: RunRef }
   | { type: "segment.progress"; progress: RunProgress }
-  | { type: "segment.finished"; metrics: RunMetrics; outcome: SegmentOutcome }
+  | { type: "segment.finished"; contextTokens: number; metrics: RunMetrics; outcome: SegmentOutcome }
   | { type: "item.started"; item: Item }
   | { type: "item.delta"; delta: ItemDelta; itemId: string }
   | { type: "item.completed"; item: Item }

@@ -422,8 +422,9 @@ func registerRunValues(s *Shapes) {
 		Constraints: append(resourceIdentity("sessionId"), resourceIdentity("runId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.StreamEvent](),
-		Constraints: resourceIdentity("itemId"),
+		GoType: typeOf[protocol.StreamEvent](),
+		Constraints: append(resourceIdentity("itemId"),
+			FieldConstraint{Field: "contextTokens", Kind: ConstraintNonNegative}),
 	})
 }
 

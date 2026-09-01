@@ -3098,6 +3098,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["expectedSegmentId", "input", "runId"]),
   StreamEvent: allOf([
     object({
+      contextTokens: allOf([integer(), minimum(0)]),
       delta: ref(() => CHECKS.ItemDelta),
       item: ref(() => CHECKS.Item),
       itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3110,6 +3111,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
+        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
         item: absent(),
@@ -3121,6 +3123,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("segment.started"),
       }, ["run", "type"]),
       fields({
+        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
         item: absent(),
@@ -3140,8 +3143,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         progress: absent(),
         run: absent(),
         type: literal("segment.finished"),
-      }, ["metrics", "outcome", "type"]),
+      }, ["contextTokens", "metrics", "outcome", "type"]),
       fields({
+        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
         itemId: absent(),
@@ -3153,6 +3157,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("item.started"),
       }, ["item", "type"]),
       fields({
+        contextTokens: absent(),
         durable: absent(),
         item: absent(),
         metrics: absent(),
@@ -3163,6 +3168,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("item.delta"),
       }, ["delta", "itemId", "type"]),
       fields({
+        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
         itemId: absent(),
@@ -3174,6 +3180,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("item.completed"),
       }, ["item", "type"]),
       fields({
+        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
         item: absent(),

@@ -8757,6 +8757,10 @@
     "StreamEvent": {
       "type": "object",
       "properties": {
+        "contextTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
         "delta": {
           "$ref": "#/$defs/ItemDelta"
         },
@@ -8790,6 +8794,7 @@
       "oneOf": [
         {
           "properties": {
+            "contextTokens": false,
             "delta": false,
             "durable": false,
             "item": false,
@@ -8809,6 +8814,7 @@
         },
         {
           "properties": {
+            "contextTokens": false,
             "delta": false,
             "durable": false,
             "item": false,
@@ -8840,6 +8846,7 @@
             }
           },
           "required": [
+            "contextTokens",
             "metrics",
             "outcome",
             "type"
@@ -8847,6 +8854,7 @@
         },
         {
           "properties": {
+            "contextTokens": false,
             "delta": false,
             "durable": false,
             "itemId": false,
@@ -8866,6 +8874,7 @@
         },
         {
           "properties": {
+            "contextTokens": false,
             "durable": false,
             "item": false,
             "metrics": false,
@@ -8885,6 +8894,7 @@
         },
         {
           "properties": {
+            "contextTokens": false,
             "delta": false,
             "durable": false,
             "itemId": false,
@@ -8904,6 +8914,7 @@
         },
         {
           "properties": {
+            "contextTokens": false,
             "delta": false,
             "durable": false,
             "item": false,

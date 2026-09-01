@@ -3,6 +3,7 @@ package delivery
 import (
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -46,5 +47,17 @@ func TestPresentRunCarriesDurablePromptFootprint(t *testing.T) {
 	value := testsupport.MustRestoreRun(run.Snapshot{ContextTokens: 87_900})
 	if got := presentRun(value).ContextTokens; got != 87_900 {
 		t.Fatalf("presented contextTokens = %d, want 87900", got)
+	}
+}
+
+func TestPresentSegmentFinishedCarriesDurablePromptFootprint(t *testing.T) {
+	completed := run.OutcomeCompleted
+	value := testsupport.MustRestoreRun(run.Snapshot{
+		ContextTokens: 87_900,
+		Outcome:       &completed,
+	})
+	event := presentRunEvent(runs.SegmentFinished{Run: value})
+	if event.ContextTokens == nil || *event.ContextTokens != 87_900 {
+		t.Fatalf("segment.finished contextTokens = %v, want 87900", event.ContextTokens)
 	}
 }

@@ -7841,6 +7841,11 @@
               "tag": "json:\"metrics,omitempty\""
             },
             {
+              "name": "ContextTokens",
+              "type": "*int64",
+              "tag": "json:\"contextTokens,omitempty\""
+            },
+            {
               "name": "Item",
               "type": "*Item",
               "tag": "json:\"item,omitempty\""
