@@ -210,36 +210,39 @@ func (u GoalUsage) IsZero() bool     { return u == (GoalUsage{}) }
 // projection. It is not a mutation surface: RestoreGoal validates and owns every
 // field before the value can enter the CLI domain.
 type GoalSnapshot struct {
-	SessionID    string
-	Objective    string
-	Status       GoalStatus
-	ReasonCode   GoalReasonCode
-	ReasonDetail string
-	Provider     string
-	Model        string
-	Budget       GoalBudget
-	Used         GoalUsage
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	SessionID       string
+	Objective       string
+	Status          GoalStatus
+	ReasonCode      GoalReasonCode
+	ReasonDetail    string
+	Provider        string
+	Model           string
+	ReasoningEffort string
+	Budget          GoalBudget
+	Used            GoalUsage
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Goal struct {
-	sessionID string
-	objective string
-	status    GoalStatus
-	reason    *GoalReason
-	provider  string
-	model     string
-	budget    GoalBudget
-	used      GoalUsage
-	createdAt time.Time
-	updatedAt time.Time
+	sessionID       string
+	objective       string
+	status          GoalStatus
+	reason          *GoalReason
+	provider        string
+	model           string
+	reasoningEffort string
+	budget          GoalBudget
+	used            GoalUsage
+	createdAt       time.Time
+	updatedAt       time.Time
 }
 
 func RestoreGoal(snapshot GoalSnapshot) (Goal, error) {
 	value := Goal{
 		sessionID: snapshot.SessionID, objective: snapshot.Objective, status: snapshot.Status,
-		provider: snapshot.Provider, model: snapshot.Model, budget: snapshot.Budget, used: snapshot.Used,
+		provider: snapshot.Provider, model: snapshot.Model, reasoningEffort: snapshot.ReasoningEffort,
+		budget: snapshot.Budget, used: snapshot.Used,
 		createdAt: canonicalGoalTime(snapshot.CreatedAt), updatedAt: canonicalGoalTime(snapshot.UpdatedAt),
 	}
 	if snapshot.ReasonCode != GoalReasonNone || snapshot.ReasonDetail != "" {
@@ -280,7 +283,7 @@ func (g Goal) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := runtimeprotocol.ValidateModelSelection(g.provider, g.model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(g.provider, g.model, g.reasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
 	problems = append(problems, g.budget.Validate(), g.used.Validate())
@@ -301,7 +304,8 @@ func (g Goal) Validate() error {
 func (g Goal) Snapshot() GoalSnapshot {
 	snapshot := GoalSnapshot{
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
-		Provider: g.provider, Model: g.model, Budget: g.budget, Used: g.used,
+		Provider: g.provider, Model: g.model, ReasoningEffort: g.reasoningEffort,
+		Budget: g.budget, Used: g.used,
 		CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
 	}
 	if g.reason != nil {
@@ -310,15 +314,16 @@ func (g Goal) Snapshot() GoalSnapshot {
 	return snapshot
 }
 
-func (g Goal) SessionID() string    { return g.sessionID }
-func (g Goal) Objective() string    { return g.objective }
-func (g Goal) Status() GoalStatus   { return g.status }
-func (g Goal) Provider() string     { return g.provider }
-func (g Goal) Model() string        { return g.model }
-func (g Goal) Budget() GoalBudget   { return g.budget }
-func (g Goal) Used() GoalUsage      { return g.used }
-func (g Goal) CreatedAt() time.Time { return g.createdAt }
-func (g Goal) UpdatedAt() time.Time { return g.updatedAt }
+func (g Goal) SessionID() string       { return g.sessionID }
+func (g Goal) Objective() string       { return g.objective }
+func (g Goal) Status() GoalStatus      { return g.status }
+func (g Goal) Provider() string        { return g.provider }
+func (g Goal) Model() string           { return g.model }
+func (g Goal) ReasoningEffort() string { return g.reasoningEffort }
+func (g Goal) Budget() GoalBudget      { return g.budget }
+func (g Goal) Used() GoalUsage         { return g.used }
+func (g Goal) CreatedAt() time.Time    { return g.createdAt }
+func (g Goal) UpdatedAt() time.Time    { return g.updatedAt }
 
 func (g Goal) Reason() (GoalReason, bool) {
 	if g.reason == nil {
@@ -335,11 +340,12 @@ func canonicalGoalTime(value time.Time) time.Time {
 }
 
 type StartGoal struct {
-	SessionID string
-	Objective string
-	Provider  string
-	Model     string
-	Budget    GoalBudget
+	SessionID       string
+	Objective       string
+	Provider        string
+	Model           string
+	ReasoningEffort string
+	Budget          GoalBudget
 }
 
 // UpdateGoal revises the objective of the current Goal without replacing its
@@ -392,7 +398,7 @@ func (s StartGoal) Validate() error {
 	if s.Objective != strings.TrimSpace(s.Objective) {
 		return errors.New("start goal: objective must not have surrounding whitespace")
 	}
-	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, s.ReasoningEffort); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	if err := s.Budget.Validate(); err != nil {
@@ -420,10 +426,11 @@ func (s StartGoal) ValidateResult(result Goal) error {
 	if result.Status() != GoalActive {
 		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status(), GoalActive))
 	}
-	if result.Provider() != s.Provider || result.Model() != s.Model {
+	if result.Provider() != s.Provider || result.Model() != s.Model || result.ReasoningEffort() != s.ReasoningEffort {
 		problems = append(problems, fmt.Errorf(
-			"runtime returned model %q/%q, want %q/%q",
-			result.Provider(), result.Model(), s.Provider, s.Model,
+			"runtime returned model selection %q/%q/%q, want %q/%q/%q",
+			result.Provider(), result.Model(), result.ReasoningEffort(),
+			s.Provider, s.Model, s.ReasoningEffort,
 		))
 	}
 	if result.Budget() != s.Budget {

@@ -70,22 +70,23 @@ type storedRule struct {
 }
 
 type runState struct {
-	id           string
-	sessionID    string
-	lineage      agent.RunLineage
-	provider     string
-	model        string
-	limits       agent.RunLimits
-	status       agent.RunStatus
-	active       string
-	segments     map[string]*segmentState
-	script       Script
-	interactions []agent.Interaction
-	answers      map[string]agent.Answer
-	cancel       chan struct{}
-	cancelOnce   sync.Once
-	usage        agent.Usage
-	outcome      agent.Outcome
+	id              string
+	sessionID       string
+	lineage         agent.RunLineage
+	provider        string
+	model           string
+	reasoningEffort string
+	limits          agent.RunLimits
+	status          agent.RunStatus
+	active          string
+	segments        map[string]*segmentState
+	script          Script
+	interactions    []agent.Interaction
+	answers         map[string]agent.Answer
+	cancel          chan struct{}
+	cancelOnce      sync.Once
+	usage           agent.Usage
+	outcome         agent.Outcome
 }
 
 type segmentState struct {

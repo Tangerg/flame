@@ -25,7 +25,7 @@ func (r Run) Validate() error {
 	if !slices.Contains([]RunStatus{RunStatusRunning, RunStatusWaiting, RunStatusFinished}, r.Status) {
 		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
 	}
-	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
 	if r.Status == RunStatusRunning {
@@ -129,7 +129,7 @@ func (r RunLineage) validate(runID string) error {
 
 func (r RunOptions) Validate() error {
 	var problems []error
-	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
 	if err := r.Limits.Validate(); err != nil {

@@ -81,7 +81,7 @@ func (r *Connection) StartGoal(ctx context.Context, start agent.StartGoal) (agen
 	}
 	result, err := r.goals.StartGoal(ctx, protocol.StartGoalRequest{
 		SessionID: start.SessionID, Objective: start.Objective,
-		Provider: start.Provider, Model: start.Model,
+		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort,
 		Budget: goalBudgetToProtocol(start.Budget),
 	}, options)
 	projected, err := projectGoalResult("start goal", start.SessionID, result, err)
@@ -169,7 +169,8 @@ func projectGoal(value protocol.Goal) (agent.Goal, error) {
 	}
 	snapshot := agent.GoalSnapshot{
 		SessionID: value.SessionID, Objective: value.Objective, Status: agent.GoalStatus(value.Status),
-		Provider: value.Provider, Model: value.Model, Budget: budget, Used: used,
+		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
+		Budget: budget, Used: used,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 	if value.Reason != nil {

@@ -86,9 +86,10 @@ type eventRecord struct {
 }
 
 type runOptionsJSON struct {
-	Provider string         `json:"provider,omitzero"`
-	Model    string         `json:"model,omitzero"`
-	Limits   *runLimitsJSON `json:"limits,omitempty"`
+	Provider        string         `json:"provider,omitzero"`
+	Model           string         `json:"model,omitzero"`
+	ReasoningEffort string         `json:"reasoningEffort,omitzero"`
+	Limits          *runLimitsJSON `json:"limits,omitempty"`
 }
 
 type blockFrame struct {
@@ -377,7 +378,8 @@ func cloneFloat64(value *float64) *float64 {
 
 func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
 	return &runOptionsJSON{
-		Provider: options.Provider, Model: options.Model, Limits: encodeRunLimits(options.Limits),
+		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
+		Limits: encodeRunLimits(options.Limits),
 	}
 }
 

@@ -152,8 +152,9 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 		return &protocol.ImportSessionResponse{Session: &protocol.Session{
 			ID: request.Artifact.Session.ID, Title: request.Artifact.Session.Title,
 			Status: protocol.SessionStatusIdle, Provider: request.Artifact.Session.Provider, Model: request.Artifact.Session.Model,
-			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-			CreatedAt: request.Artifact.Session.CreatedAt, UpdatedAt: request.Artifact.Session.UpdatedAt.Add(time.Second),
+			ReasoningEffort: request.Artifact.Session.ReasoningEffort,
+			Workspace:       testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+			CreatedAt:       request.Artifact.Session.CreatedAt, UpdatedAt: request.Artifact.Session.UpdatedAt.Add(time.Second),
 			Favorite: request.Artifact.Session.Favorite, Revision: 1,
 		}}, nil
 	}
@@ -165,13 +166,13 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 		meta:    requestMeta("test"),
 		profile: sessionControlProfile(FeatureSessionExport),
 	}
-	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
+	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","reasoningEffort":"high","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
 	document, err := session.NewDocument(session.JSONFormat, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	imported, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-	if err != nil || imported.ID != "ses_1" {
+	if err != nil || imported.ID != "ses_1" || imported.ReasoningEffort != "high" {
 		t.Fatalf("ImportSession = (%+v, %v)", imported, err)
 	}
 
@@ -193,7 +194,8 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 		Version: protocol.SessionArtifactVersion,
 		Session: protocol.ArtifactSession{
 			ID: "ses_1", Title: "Imported", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
-			Provider: "deepseek", Model: "deep", CreatedAt: createdAt, UpdatedAt: updatedAt, Favorite: true,
+			Provider: "deepseek", Model: "deep", ReasoningEffort: "high",
+			CreatedAt: createdAt, UpdatedAt: updatedAt, Favorite: true,
 		},
 	}
 	body, err := json.Marshal(artifact)
@@ -207,7 +209,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available}
 	valid := protocol.Session{
 		ID: artifact.Session.ID, Title: artifact.Session.Title, Status: protocol.SessionStatusIdle,
-		Provider: artifact.Session.Provider, Model: artifact.Session.Model,
+		Provider: artifact.Session.Provider, Model: artifact.Session.Model, ReasoningEffort: artifact.Session.ReasoningEffort,
 		Workspace: testProtocolWorkspace(artifact.Session.Workspace.Path, artifact.Session.Workspace.Path, protocol.WorkspaceAvailable),
 		CreatedAt: artifact.Session.CreatedAt, UpdatedAt: artifact.Session.UpdatedAt.Add(time.Second),
 		Favorite: artifact.Session.Favorite, Revision: 1,
@@ -221,6 +223,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 		{name: "workspace project root", mutate: func(result *protocol.Session) { result.Workspace.ProjectRoot = "/other" }},
 		{name: "workspace availability", mutate: func(result *protocol.Session) { result.Workspace.Availability = protocol.WorkspaceMissing }},
 		{name: "model", mutate: func(result *protocol.Session) { result.Model = "shallow" }},
+		{name: "reasoning effort", mutate: func(result *protocol.Session) { result.ReasoningEffort = "medium" }},
 		{name: "favorite", mutate: func(result *protocol.Session) { result.Favorite = false }},
 		{name: "created time", mutate: func(result *protocol.Session) { result.CreatedAt = result.CreatedAt.Add(time.Second) }},
 		{name: "updated time moves backward", mutate: func(result *protocol.Session) { result.UpdatedAt = artifact.Session.UpdatedAt.Add(-time.Second) }},

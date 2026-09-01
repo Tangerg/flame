@@ -76,7 +76,8 @@ func projectSession(value protocol.Session) (agent.Session, error) {
 	}
 	status := agent.SessionStatus(value.Status)
 	projected := agent.Session{
-		ID: value.ID, Title: value.Title, Status: status, Provider: value.Provider, Model: value.Model,
+		ID: value.ID, Title: value.Title, Status: status,
+		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Workspace: projectedWorkspace, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 		Favorite: value.Favorite, Revision: value.Revision,
 	}

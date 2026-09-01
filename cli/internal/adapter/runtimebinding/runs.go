@@ -35,7 +35,8 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 	request := protocol.StartRunRequest{
 		SessionID: input.SessionID, Input: content,
 		Provider: input.Options.Provider, Model: input.Options.Model,
-		Limits: projectRunLimitsToWire(input.Options.Limits),
+		ReasoningEffort: input.Options.ReasoningEffort,
+		Limits:          projectRunLimitsToWire(input.Options.Limits),
 	}
 	if generationParamsPresent(input.Options.Generation) {
 		request.Params = &protocol.GenerationParams{

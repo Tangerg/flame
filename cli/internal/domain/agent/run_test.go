@@ -101,9 +101,10 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	options := RunOptions{
-		Provider: "mock", Model: "balanced",
-		Limits:     limits,
-		Generation: GenerationParams{Temperature: &temperature, TopP: &topP, MaxTokens: &maxTokens, Stop: []string{"END"}},
+		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
+		Limits: limits, Generation: GenerationParams{
+			Temperature: &temperature, TopP: &topP, MaxTokens: &maxTokens, Stop: []string{"END"},
+		},
 	}
 	if err := options.Validate(); err != nil {
 		t.Fatal(err)
@@ -112,6 +113,10 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 	options.Generation.Temperature = &bad
 	if err := options.Validate(); err == nil {
 		t.Fatal("invalid temperature was accepted")
+	}
+	options = RunOptions{ReasoningEffort: "high", Limits: UnlimitedRunLimits()}
+	if err := options.Validate(); err == nil {
+		t.Fatal("reasoning effort without a model was accepted")
 	}
 }
 
@@ -133,6 +138,11 @@ func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 	right.Generation.Stop[0] = "STOP"
 	if left.Equal(right) {
 		t.Fatal("different stop sequences are equal")
+	}
+	right = left.Clone()
+	right.ReasoningEffort = "high"
+	if left.Equal(right) {
+		t.Fatal("different reasoning effort is equal")
 	}
 }
 

@@ -49,12 +49,14 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	run := &runState{
 		id: runID, sessionID: in.SessionID,
 		lineage:  agent.RootRunLineage(),
-		provider: in.Options.Provider, model: in.Options.Model, limits: in.Options.Limits, status: agent.RunStatusRunning,
+		provider: in.Options.Provider, model: in.Options.Model, reasoningEffort: in.Options.ReasoningEffort,
+		limits: in.Options.Limits, status: agent.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
 	}
 	run.script = namespaceScript(run.script, run.id)
 	if run.provider == "" {
-		run.provider, run.model = "mock", "balanced"
+		run.provider, run.model = session.meta.Provider, session.meta.Model
+		run.reasoningEffort = session.meta.ReasoningEffort
 	}
 	segment := r.openSegmentLocked(run)
 	r.runs[run.id] = run

@@ -25,6 +25,7 @@ type Run struct {
 	Lineage         RunLineage
 	Provider        string
 	Model           string
+	ReasoningEffort string
 	Status          RunStatus
 	ActiveSegmentID string
 	CreatedAt       time.Time
@@ -89,7 +90,8 @@ func (r Run) Clone() Run {
 // Equal reports whether two run projections carry the same lifecycle fact.
 func (r Run) Equal(other Run) bool {
 	return r.ID == other.ID && r.SessionID == other.SessionID && r.Lineage == other.Lineage && r.Provider == other.Provider &&
-		r.Model == other.Model && r.Status == other.Status && r.ActiveSegmentID == other.ActiveSegmentID &&
+		r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
+		r.Status == other.Status && r.ActiveSegmentID == other.ActiveSegmentID &&
 		r.CreatedAt.Equal(other.CreatedAt) && r.FinishedAt.Equal(other.FinishedAt) &&
 		r.Limits == other.Limits && r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
 		equalRunContracts(r.Contract, other.Contract)
@@ -207,10 +209,11 @@ func (a Attachment) Validate() error {
 }
 
 type RunOptions struct {
-	Provider   string
-	Model      string
-	Limits     RunLimits
-	Generation GenerationParams
+	Provider        string
+	Model           string
+	ReasoningEffort string
+	Limits          RunLimits
+	Generation      GenerationParams
 }
 
 type GenerationParams struct {
@@ -237,7 +240,8 @@ func (r RunOptions) Clone() RunOptions {
 // Equal reports whether two run starts would carry the same complete execution
 // configuration. Optional generation values retain nil-vs-zero semantics.
 func (r RunOptions) Equal(other RunOptions) bool {
-	return r.Provider == other.Provider && r.Model == other.Model && r.Limits == other.Limits &&
+	return r.Provider == other.Provider && r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
+		r.Limits == other.Limits &&
 		equalOptional(r.Generation.Temperature, other.Generation.Temperature) &&
 		equalOptional(r.Generation.MaxTokens, other.Generation.MaxTokens) &&
 		equalOptional(r.Generation.TopP, other.Generation.TopP) &&

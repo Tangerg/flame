@@ -67,6 +67,9 @@ func TestGoalLifecycleValuesRejectAmbiguousState(t *testing.T) {
 	if err := (StartGoal{SessionID: "ses_1", Objective: "finish", Provider: " anthropic", Model: "deep"}).Validate(); err == nil {
 		t.Fatal("non-canonical model selection was accepted")
 	}
+	if err := (StartGoal{SessionID: "ses_1", Objective: "finish", ReasoningEffort: "high", Budget: UnlimitedGoalBudget()}).Validate(); err == nil {
+		t.Fatal("reasoning effort without a model was accepted")
+	}
 }
 
 func TestGoalReasonAndBudgetMustMatchLifecycle(t *testing.T) {
@@ -114,12 +117,12 @@ func TestGoalReasonAndBudgetMustMatchLifecycle(t *testing.T) {
 func TestGoalStartResultMustFulfillTheCommand(t *testing.T) {
 	budget := limitedBudget(t, GoalBudgetLimits{MaxRuns: intLimit(3), MaxCostUSD: floatLimit(1.5), MaxSteps: intLimit(20)})
 	start := StartGoal{
-		SessionID: "ses_1", Objective: "finish", Provider: "anthropic", Model: "deep",
+		SessionID: "ses_1", Objective: "finish", Provider: "anthropic", Model: "deep", ReasoningEffort: "high",
 		Budget: budget,
 	}
 	validSnapshot := GoalSnapshot{
 		SessionID: start.SessionID, Objective: start.Objective, Status: GoalActive,
-		Provider: start.Provider, Model: start.Model, Budget: start.Budget,
+		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort, Budget: start.Budget,
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(),
 	}
 	valid := restoreGoal(t, validSnapshot)
@@ -138,6 +141,7 @@ func TestGoalStartResultMustFulfillTheCommand(t *testing.T) {
 			result.ReasonCode = GoalStoppedByUser
 		}, want: "status"},
 		{name: "model", mutate: func(result *GoalSnapshot) { result.Model = "shallow" }, want: "model"},
+		{name: "reasoning effort", mutate: func(result *GoalSnapshot) { result.ReasoningEffort = "medium" }, want: "model selection"},
 		{name: "budget", mutate: func(result *GoalSnapshot) {
 			result.Budget = limitedBudget(t, GoalBudgetLimits{MaxRuns: intLimit(4)})
 		}, want: "budget"},

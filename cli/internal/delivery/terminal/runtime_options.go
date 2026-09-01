@@ -80,6 +80,7 @@ func (a *app) selectSessionModel(model protocol.Model) {
 		func(updated agent.Session) error {
 			a.setActiveSession(updated)
 			a.options.Provider, a.options.Model = model.Provider, model.ID
+			a.options.ReasoningEffort = ""
 			a.syncOptions("model · " + model.Provider + "/" + model.ID)
 			return nil
 		},

@@ -367,7 +367,11 @@ func optionsLabel(options agent.RunOptions) string {
 
 func modelLabel(options agent.RunOptions) string {
 	if options.Provider != "" && options.Model != "" {
-		return options.Provider + "/" + options.Model
+		label := options.Provider + "/" + options.Model
+		if options.ReasoningEffort != "" {
+			label += " · reasoning " + options.ReasoningEffort
+		}
+		return label
 	}
 	return "runtime default"
 }
@@ -378,6 +382,7 @@ func modelLabel(options agent.RunOptions) string {
 func displayRunOptions(options agent.RunOptions, session agent.Session) agent.RunOptions {
 	if options.Provider == "" && options.Model == "" {
 		options.Provider, options.Model = session.Provider, session.Model
+		options.ReasoningEffort = session.ReasoningEffort
 	}
 	return options
 }

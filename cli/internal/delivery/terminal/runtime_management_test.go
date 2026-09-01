@@ -473,7 +473,7 @@ func (g *goalServiceStub) StartGoal(_ context.Context, start agent.StartGoal) (a
 	at := time.Unix(1, 0).UTC()
 	current, err := agent.RestoreGoal(agent.GoalSnapshot{
 		SessionID: start.SessionID, Objective: start.Objective, Status: agent.GoalActive,
-		Provider: start.Provider, Model: start.Model, Budget: start.Budget,
+		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort, Budget: start.Budget,
 		CreatedAt: at, UpdatedAt: at,
 	})
 	if err != nil {

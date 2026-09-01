@@ -44,6 +44,9 @@ func goalDocument(current agent.Goal, exists bool) readerDocument {
 	model := "runtime default"
 	if current.Provider() != "" {
 		model = current.Provider() + "/" + current.Model()
+		if current.ReasoningEffort() != "" {
+			model += " · reasoning " + current.ReasoningEffort()
+		}
 	}
 	lines = append(lines, "model      "+model)
 	budget := []string{}
@@ -76,7 +79,7 @@ func (a *app) StartGoal(objective string) error {
 	}
 	start := agent.StartGoal{
 		SessionID: a.session.current.ID, Objective: strings.TrimSpace(objective),
-		Provider: a.options.Provider, Model: a.options.Model,
+		Provider: a.options.Provider, Model: a.options.Model, ReasoningEffort: a.options.ReasoningEffort,
 		Budget: agent.UnlimitedGoalBudget(),
 	}
 	if err := start.Validate(); err != nil {

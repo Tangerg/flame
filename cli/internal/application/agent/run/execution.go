@@ -104,12 +104,14 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		ID: opened.RunID, SessionID: invocation.Start.SessionID,
 		Lineage:  agent.RootRunLineage(),
 		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
-		Status: agent.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
+		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
+		Status:          agent.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
 	}
 	if run.Provider == "" {
 		// The runtime default is intentionally opaque to the caller. Validation
 		// permits the pair to be empty.
 		run.Model = ""
+		run.ReasoningEffort = ""
 	}
 	if beginErr := invocation.Renderer.Begin(run, invocation.Start.Options); beginErr != nil {
 		return beginErr

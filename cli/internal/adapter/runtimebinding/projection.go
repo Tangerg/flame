@@ -22,7 +22,8 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
 	}
 	projected := agent.Run{
-		ID: value.ID, SessionID: value.SessionID, Provider: value.Provider, Model: value.Model,
+		ID: value.ID, SessionID: value.SessionID,
+		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Lineage: lineage,
 		Status:  agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,

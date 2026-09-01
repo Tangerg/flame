@@ -80,6 +80,11 @@ func TestSessionEqualityUsesDurableTimeSemantics(t *testing.T) {
 	if session.Equal(equivalent) {
 		t.Fatal("a durable session revision change compared equal")
 	}
+	equivalent = session
+	equivalent.ReasoningEffort = "high"
+	if session.Equal(equivalent) {
+		t.Fatal("a reasoning-effort change compared equal")
+	}
 }
 
 func TestSessionRevisionStaysInsideTheExactJSONEnvelope(t *testing.T) {
@@ -103,6 +108,16 @@ func TestSessionRejectsNonExactIdentity(t *testing.T) {
 	}
 	if err := session.Validate(); err == nil {
 		t.Fatal("Session accepted an identity that requires trimming")
+	}
+}
+
+func TestSessionRejectsReasoningEffortWithoutAModel(t *testing.T) {
+	session := Session{
+		ID: "ses_1", Status: SessionIdle, ReasoningEffort: "high",
+		Workspace: testWorkspace("/tmp/demo"), Revision: 1,
+	}
+	if err := session.Validate(); err == nil {
+		t.Fatal("Session accepted reasoning effort without a provider and model")
 	}
 }
 

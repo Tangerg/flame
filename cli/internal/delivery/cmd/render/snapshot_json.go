@@ -23,16 +23,17 @@ type sessionPageRecord struct {
 }
 
 type sessionFrame struct {
-	ID        string         `json:"id"`
-	Title     string         `json:"title"`
-	Status    string         `json:"status"`
-	Provider  string         `json:"provider"`
-	Model     string         `json:"model,omitempty"`
-	Workspace workspaceFrame `json:"workspace"`
-	CreatedAt time.Time      `json:"createdAt,omitzero"`
-	UpdatedAt time.Time      `json:"updatedAt,omitzero"`
-	Favorite  bool           `json:"favorite,omitempty"`
-	Revision  uint64         `json:"revision"`
+	ID              string         `json:"id"`
+	Title           string         `json:"title"`
+	Status          string         `json:"status"`
+	Provider        string         `json:"provider"`
+	Model           string         `json:"model,omitempty"`
+	ReasoningEffort string         `json:"reasoningEffort,omitempty"`
+	Workspace       workspaceFrame `json:"workspace"`
+	CreatedAt       time.Time      `json:"createdAt,omitzero"`
+	UpdatedAt       time.Time      `json:"updatedAt,omitzero"`
+	Favorite        bool           `json:"favorite,omitempty"`
+	Revision        uint64         `json:"revision"`
 }
 
 type workspaceFrame struct {
@@ -49,6 +50,7 @@ type runFrame struct {
 	RootRunID        string           `json:"rootRunId,omitempty"`
 	Provider         string           `json:"provider,omitempty"`
 	Model            string           `json:"model,omitempty"`
+	ReasoningEffort  string           `json:"reasoningEffort,omitempty"`
 	Status           string           `json:"status"`
 	ActiveSegmentID  string           `json:"activeSegmentId,omitempty"`
 	CreatedAt        time.Time        `json:"createdAt,omitzero"`
@@ -139,7 +141,8 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error
 
 func encodeSession(session agent.Session) sessionFrame {
 	return sessionFrame{
-		ID: session.ID, Title: session.Title, Status: string(session.Status), Provider: session.Provider, Model: session.Model,
+		ID: session.ID, Title: session.Title, Status: string(session.Status),
+		Provider: session.Provider, Model: session.Model, ReasoningEffort: session.ReasoningEffort,
 		Workspace: workspaceFrame{
 			Path: session.Workspace.Path, ProjectRoot: session.Workspace.ProjectRoot,
 			Availability: string(session.Workspace.Availability),
@@ -184,7 +187,7 @@ func encodeRun(run agent.Run) runFrame {
 		ID: run.ID, SessionID: run.SessionID,
 		SpawnedByBlockID: run.Lineage.SpawnedByBlockID(),
 		ParentRunID:      run.Lineage.ParentRunID(), RootRunID: run.Lineage.RootRunID(),
-		Provider: run.Provider, Model: run.Model,
+		Provider: run.Provider, Model: run.Model, ReasoningEffort: run.ReasoningEffort,
 		Status: string(run.Status), ActiveSegmentID: run.ActiveSegmentID,
 		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
 		Usage: *encodeUsage(run.Usage),

@@ -64,6 +64,9 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		if request.SessionID != "ses_1" || len(request.Input) != 1 || request.Input[0].Text != "hello" {
 			t.Fatalf("start request = %+v", request)
 		}
+		if request.Provider != "deepseek" || request.Model != "deepseek-reasoner" || request.ReasoningEffort != "high" {
+			t.Fatalf("start model selection = %+v", request)
+		}
 		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion ||
 			options.RequestMeta.ClientInfo == nil || options.RequestMeta.ClientInfo.Name != clientName {
 			t.Fatalf("start options = %+v", options)
@@ -97,7 +100,9 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_1", Message: agent.Message{Text: "hello"}, Options: agent.RunOptions{Limits: limits},
+		SessionID: "ses_1", Message: agent.Message{Text: "hello"}, Options: agent.RunOptions{
+			Provider: "deepseek", Model: "deepseek-reasoner", ReasoningEffort: "high", Limits: limits,
+		},
 	})
 	if err != nil {
 		t.Fatalf("StartRun: %v", err)

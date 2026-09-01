@@ -231,6 +231,7 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 	if in.Model != nil {
 		candidate.Provider = in.Model.Provider
 		candidate.Model = in.Model.Model
+		candidate.ReasoningEffort = ""
 	}
 	if in.Favorite != nil {
 		candidate.Favorite = *in.Favorite
@@ -266,7 +267,11 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 		title = source.meta.Title + " (fork)"
 	}
 	now := r.now()
-	meta := agent.Session{ID: id, Title: title, Status: agent.SessionIdle, Provider: source.meta.Provider, Model: source.meta.Model, Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1}
+	meta := agent.Session{
+		ID: id, Title: title, Status: agent.SessionIdle,
+		Provider: source.meta.Provider, Model: source.meta.Model, ReasoningEffort: source.meta.ReasoningEffort,
+		Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1,
+	}
 	state := &sessionState{meta: meta}
 	if boundary.plan != nil {
 		state.plan, err = commitInitialPlan(boundary.plan.Content())

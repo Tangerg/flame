@@ -13,13 +13,13 @@ import (
 )
 
 func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
-	session := agent.Session{Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
+	session := agent.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
 		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: workspace.Available,
 	}}
 	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, displayRunOptions(defaultRunOptions(t), session))
 
 	wide := drawStatic(t, banner, 96, 14)
-	for _, want := range []string{"█████ █      ███", "Flame CLI  v1.2.3", "mock/balanced", "/workspace/scope"} {
+	for _, want := range []string{"█████ █      ███", "Flame CLI  v1.2.3", "mock/balanced · reasoning high", "/workspace/scope"} {
 		if !strings.Contains(wide, want) {
 			t.Errorf("wide brand banner does not contain %q:\n%s", want, wide)
 		}

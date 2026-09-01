@@ -204,6 +204,13 @@ func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspac
 	if resultModel != archivedModel {
 		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", resultModel, archivedModel))
 	}
+	if result.ReasoningEffort != archived.ReasoningEffort {
+		problems = append(problems, fmt.Errorf(
+			"runtime returned reasoning effort %q, want %q",
+			result.ReasoningEffort,
+			archived.ReasoningEffort,
+		))
+	}
 	if result.Favorite != archived.Favorite {
 		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, archived.Favorite))
 	}

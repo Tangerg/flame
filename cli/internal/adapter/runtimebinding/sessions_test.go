@@ -340,14 +340,14 @@ func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
 
 	projected, err := projectSession(protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
-		Provider: testSessionProvider, Model: testSessionModel,
+		Provider: testSessionProvider, Model: testSessionModel, ReasoningEffort: "high",
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
 		Revision:  1,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
+	if projected.ReasoningEffort != "high" || projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
 		projected.Workspace.IsAvailable() {
 		t.Fatalf("workspace = %+v", projected.Workspace)
 	}

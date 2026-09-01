@@ -23,22 +23,24 @@ const (
 )
 
 type Session struct {
-	ID        string
-	Title     string
-	Status    SessionStatus
-	Provider  string
-	Model     string
-	Workspace workspace.Workspace
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Favorite  bool
-	Revision  uint64
+	ID              string
+	Title           string
+	Status          SessionStatus
+	Provider        string
+	Model           string
+	ReasoningEffort string
+	Workspace       workspace.Workspace
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Favorite        bool
+	Revision        uint64
 }
 
 // Equal reports whether two session projections carry the same durable state.
 func (s Session) Equal(other Session) bool {
 	return s.ID == other.ID && s.Title == other.Title && s.Status == other.Status &&
-		s.Provider == other.Provider && s.Model == other.Model && s.Workspace == other.Workspace &&
+		s.Provider == other.Provider && s.Model == other.Model && s.ReasoningEffort == other.ReasoningEffort &&
+		s.Workspace == other.Workspace &&
 		s.CreatedAt.Equal(other.CreatedAt) && s.UpdatedAt.Equal(other.UpdatedAt) &&
 		s.Favorite == other.Favorite && s.Revision == other.Revision
 }
@@ -54,7 +56,7 @@ func (s Session) Validate() error {
 	if s.Status != SessionRunning && s.Status != SessionWaiting && s.Status != SessionIdle {
 		problems = append(problems, fmt.Errorf("status %q is invalid", s.Status))
 	}
-	if err := (ModelRef{Provider: s.Provider, Model: s.Model}).Validate(); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, s.ReasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
 	if err := validateCommittedRevision("session", s.Revision); err != nil {
@@ -617,6 +619,9 @@ func (u UpdateSession) ValidateResult(result Session) error {
 	}
 	if u.Model != nil && (result.Provider != u.Model.Provider || result.Model != u.Model.Model) {
 		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", (ModelRef{Provider: result.Provider, Model: result.Model}).String(), u.Model.String()))
+	}
+	if u.Model != nil && result.ReasoningEffort != "" {
+		problems = append(problems, fmt.Errorf("runtime retained reasoning effort %q after changing model", result.ReasoningEffort))
 	}
 	if u.Favorite != nil && result.Favorite != *u.Favorite {
 		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, *u.Favorite))

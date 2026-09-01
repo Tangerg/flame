@@ -425,6 +425,8 @@ func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoa
 		return g.startResult, nil
 	}
 	g.current = activeProtocolGoal()
+	g.current.Provider, g.current.Model = request.Provider, request.Model
+	g.current.ReasoningEffort = request.ReasoningEffort
 	return g.current, nil
 }
 
@@ -466,8 +468,11 @@ func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
 	if _, exists, err := runtime.GetGoal(t.Context(), "ses_1"); err != nil || exists {
 		t.Fatalf("empty GetGoal = (%t, %v)", exists, err)
 	}
-	started, err := runtime.StartGoal(t.Context(), agent.StartGoal{SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3)})
-	if err != nil || started.Status() != agent.GoalActive || stub.last != "start" {
+	started, err := runtime.StartGoal(t.Context(), agent.StartGoal{
+		SessionID: "ses_1", Objective: "finish",
+		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", Budget: limitedGoalBudget(t, 3),
+	})
+	if err != nil || started.Status() != agent.GoalActive || started.ReasoningEffort() != "xhigh" || stub.last != "start" {
 		t.Fatalf("StartGoal = (%+v, %v), last %q", started, err, stub.last)
 	}
 	updated, err := runtime.UpdateGoal(t.Context(), agent.UpdateGoal{SessionID: "ses_1", Objective: "ship"})
