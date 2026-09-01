@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -1274,6 +1275,73 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactProblem", field: "retryAfterSeconds", value: ArtifactProblem{RetryAfterSeconds: -1}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+	}
+}
+
+func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
+	t.Parallel()
+
+	negative, tooManyTools := -1, mcpserver.MaxRemoteToolsPerServer+1
+	negativeBytes := int64(-1)
+	negativeCost, nonFiniteCost := -0.01, math.Inf(1)
+	for _, test := range []struct {
+		shape string
+		field string
+		value WireValidator
+	}{
+		{shape: "Item", field: "droppedMessages", value: Item{DroppedMessages: -1}},
+		{shape: "WorkspaceSummary", field: "sessionCount", value: WorkspaceSummary{SessionCount: -1}},
+		{shape: "FileContent", field: "totalLines", value: FileContent{}},
+		{shape: "FileContent", field: "startLine", value: FileContent{TotalLines: 1, StartLine: -1}},
+		{shape: "FileContent", field: "endLine", value: FileContent{TotalLines: 1, EndLine: -1}},
+		{shape: "FileEntry", field: "sizeBytes", value: FileEntry{SizeBytes: &negativeBytes}},
+		{shape: "FileLine", field: "lineNumber", value: FileLine{}},
+		{shape: "GrepResult", field: "total", value: GrepResult{Total: -1}},
+		{shape: "GrepMatch", field: "lineNumber", value: GrepMatch{}},
+		{shape: "FileDiff", field: "added", value: FileDiff{Added: &negative}},
+		{shape: "WorkspaceFileChange", field: "removed", value: WorkspaceFileChange{Removed: &negative}},
+		{shape: "DiffRow", field: "leftLine", value: DiffRow{LeftLine: -1}},
+		{shape: "UsageBucket", field: "runs", value: UsageBucket{Runs: -1}},
+		{shape: "UsageSummary", field: "sessions", value: UsageSummary{Sessions: -1}},
+		{shape: "UsageSummary", field: "runs", value: UsageSummary{Runs: -1}},
+		{shape: "HookInfo", field: "timeoutMillis", value: HookInfo{TimeoutMillis: -1}},
+		{shape: "HookInfo", field: "timeoutMillis", value: HookInfo{TimeoutMillis: hooks.MaxTimeoutMillis + 1}},
+		{shape: "MCPServerState", field: "toolCount", value: MCPServerState{ToolCount: &negative}},
+		{shape: "MCPServerState", field: "toolCount", value: MCPServerState{ToolCount: &tooManyTools}},
+		{shape: "ModelPricing", field: "inputUsdPerMillionTokens", value: ModelPricing{InputUSDPerMillionTokens: negativeCost}},
+		{shape: "ModelPricing", field: "outputUsdPerMillionTokens", value: ModelPricing{OutputUSDPerMillionTokens: nonFiniteCost}},
+	} {
+		t.Run(test.shape+"."+test.field, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		})
+	}
+}
+
+func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
+	t.Parallel()
+
+	zero, maximumTools := 0, mcpserver.MaxRemoteToolsPerServer
+	zeroBytes := int64(0)
+	for _, value := range []WireValidator{
+		WorkspaceSummary{},
+		FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
+		FileEntry{Type: FileEntryFile, SizeBytes: &zeroBytes},
+		FileLine{LineNumber: 1},
+		GrepResult{},
+		GrepMatch{LineNumber: 1},
+		FileDiff{Status: FileStatusModified, Added: &zero, Removed: &zero},
+		WorkspaceFileChange{Status: FileStatusModified, Added: &zero, Removed: &zero},
+		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "line"},
+		UsageBucket{},
+		UsageSummary{},
+		HookInfo{Event: HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: HookScopeGlobal},
+		MCPServerState{Type: MCPServerConnected, ToolCount: &maximumTools},
+		ModelPricing{},
+	} {
+		if err := value.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected valid %T numeric boundaries: %v", value, err)
+		}
 	}
 }
 

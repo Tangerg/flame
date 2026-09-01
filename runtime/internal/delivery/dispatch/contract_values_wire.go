@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -265,7 +266,9 @@ func registerRunValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Item](),
 		Constraints: append(append(requiredResourceIdentity("id"), requiredResourceIdentity("runId")...),
-			FieldConstraint{Field: "durationMillis", Kind: ConstraintNonNegative}),
+			FieldConstraint{Field: "durationMillis", Kind: ConstraintNonNegative},
+			FieldConstraint{Field: "droppedMessages", Kind: ConstraintNonNegative},
+		),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.InterruptResponse](),
@@ -440,6 +443,34 @@ func registerPlanValues(s *Shapes) {
 
 func registerWorkspaceValues(s *Shapes) {
 	nonEmpty[protocol.WorkspaceRef](s, "path")
+	nonNegative[protocol.WorkspaceSummary](s, "sessionCount")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.FileContent](),
+		Constraints: []FieldConstraint{
+			{Field: "totalLines", Kind: ConstraintPositive},
+			{Field: "startLine", Kind: ConstraintPositive},
+			{Field: "endLine", Kind: ConstraintPositive},
+		},
+	})
+	nonNegative[protocol.FileEntry](s, "sizeBytes")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.FileLine](),
+		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
+	})
+	nonNegative[protocol.GrepResult](s, "total")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.GrepMatch](),
+		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
+	})
+	nonNegative[protocol.FileDiff](s, "added", "removed")
+	nonNegative[protocol.WorkspaceFileChange](s, "added", "removed")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.DiffRow](),
+		Constraints: []FieldConstraint{
+			{Field: "leftLine", Kind: ConstraintPositive},
+			{Field: "rightLine", Kind: ConstraintPositive},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GetDiffRequest](),
 		Constraints: []FieldConstraint{
@@ -472,6 +503,8 @@ func registerWorkspaceValues(s *Shapes) {
 }
 
 func registerUsageValues(s *Shapes) {
+	nonNegative[protocol.UsageBucket](s, "runs")
+	nonNegative[protocol.UsageSummary](s, "sessions", "runs")
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SessionUsageRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.UsageSummaryRequest](),
@@ -489,6 +522,13 @@ func registerSkillValues(s *Shapes) {
 }
 
 func registerHookValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.HookInfo](),
+		Constraints: []FieldConstraint{
+			{Field: "timeoutMillis", Kind: ConstraintNonNegative},
+			{Field: "timeoutMillis", Kind: ConstraintMaximum, Limit: hooks.MaxTimeoutMillis},
+		},
+	})
 	nonEmpty[protocol.SetHookTrustRequest](s, "projectRoot")
 }
 
@@ -498,6 +538,13 @@ func registerApprovalValues(s *Shapes) {
 }
 
 func registerMCPValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.MCPServerState](),
+		Constraints: []FieldConstraint{
+			{Field: "toolCount", Kind: ConstraintNonNegative},
+			{Field: "toolCount", Kind: ConstraintMaximum, Limit: mcpserver.MaxRemoteToolsPerServer},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPServerRequest](), Constraints: mcpServerIdentity("server")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CreateMCPAuthorizationAttemptRequest](), Constraints: mcpServerIdentity("server")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPListToolsRequest](), Constraints: mcpServerIdentity("server")})
@@ -599,6 +646,10 @@ func registerProviderValues(s *Shapes) {
 }
 
 func registerModelValues(s *Shapes) {
+	nonNegative[protocol.ModelPricing](s,
+		"inputUsdPerMillionTokens", "outputUsdPerMillionTokens",
+		"cacheReadUsdPerMillionTokens", "cacheWriteUsdPerMillionTokens",
+	)
 	for _, roleType := range []reflect.Type{
 		typeOf[protocol.UtilityRole](),
 		typeOf[protocol.EmbeddingRole](),

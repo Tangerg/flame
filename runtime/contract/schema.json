@@ -1810,10 +1810,12 @@
           "type": "string"
         },
         "leftLine": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "rightLine": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "text": {
           "type": "string"
@@ -2072,16 +2074,19 @@
           "type": "string"
         },
         "endLine": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "path": {
           "type": "string"
         },
         "startLine": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "totalLines": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "truncated": {
           "type": "boolean"
@@ -2098,7 +2103,8 @@
       "type": "object",
       "properties": {
         "added": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "binary": {
           "type": "boolean"
@@ -2110,7 +2116,8 @@
           "type": "string"
         },
         "removed": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "rows": {
           "type": "array",
@@ -2141,7 +2148,8 @@
           "type": "string"
         },
         "sizeBytes": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "type": {
           "$ref": "#/$defs/FileEntryType"
@@ -2184,7 +2192,8 @@
       "type": "object",
       "properties": {
         "lineNumber": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "text": {
           "type": "string"
@@ -2575,7 +2584,8 @@
       "type": "object",
       "properties": {
         "lineNumber": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "path": {
           "type": "string"
@@ -2623,7 +2633,8 @@
           }
         },
         "total": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -2678,7 +2689,9 @@
           "type": "string"
         },
         "timeoutMillis": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300000
         }
       },
       "required": [
@@ -3021,7 +3034,8 @@
           "format": "date-time"
         },
         "droppedMessages": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "durationMillis": {
           "type": "integer",
@@ -4467,7 +4481,9 @@
           "$ref": "#/$defs/ProblemData"
         },
         "toolCount": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2048
         },
         "type": {
           "$ref": "#/$defs/MCPServerStateType"
@@ -4726,16 +4742,20 @@
       "type": "object",
       "properties": {
         "cacheReadUsdPerMillionTokens": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "cacheWriteUsdPerMillionTokens": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "inputUsdPerMillionTokens": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "outputUsdPerMillionTokens": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         }
       }
     },
@@ -9494,7 +9514,8 @@
           "minimum": 0
         },
         "runs": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -9523,10 +9544,12 @@
           }
         },
         "runs": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "sessions": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "total": {
           "$ref": "#/$defs/ModelUsage"
@@ -9620,7 +9643,8 @@
       "type": "object",
       "properties": {
         "added": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "binary": {
           "type": "boolean"
@@ -9632,7 +9656,8 @@
           "type": "string"
         },
         "removed": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "status": {
           "$ref": "#/$defs/FileStatus"
@@ -9695,7 +9720,8 @@
           "type": "string"
         },
         "sessionCount": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "workspace": {
           "$ref": "#/$defs/WorkspaceInfo"

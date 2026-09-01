@@ -858,6 +858,7 @@ func (i Item) ValidateWire() error {
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
 		optionalNonNegativeNumber("durationMillis", i.DurationMillis),
+		nonNegativeNumber("droppedMessages", i.DroppedMessages),
 		closedEnum("status", string(i.Status), []string{"running", "completed", "incomplete"}, false),
 		closedEnum("type", string(i.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
 		closedEnum("phase", string(i.Phase), []string{"commentary", "finalAnswer"}, true),
@@ -1135,6 +1136,8 @@ func (m MCPEnvironmentChange) ValidateWire() error {
 
 func (m MCPServerState) ValidateWire() error {
 	return collectWireViolations("MCPServerState",
+		optionalNonNegativeNumber("toolCount", m.ToolCount),
+		optionalMaximumNumber("toolCount", m.ToolCount, 2048),
 		closedEnum("type", string(m.Type), []string{"disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "toolCount", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "error", m),
@@ -1623,6 +1626,8 @@ func (a ArtifactContentBlock) ValidateWire() error {
 
 func (d DiffRow) ValidateWire() error {
 	return collectWireViolations("DiffRow",
+		optionalPositiveScalarNumber("leftLine", d.LeftLine),
+		optionalPositiveScalarNumber("rightLine", d.RightLine),
 		closedEnum("type", string(d.Type), []string{"hunk", "context", "added", "deleted"}, false),
 		requiredWhen(wireFieldEquals(d, "type", "hunk"), "text", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "code", d),
@@ -2088,6 +2093,89 @@ func (w WorkspaceRef) ValidateWire() error {
 	)
 }
 
+func (w WorkspaceSummary) ValidateWire() error {
+	return collectWireViolations("WorkspaceSummary",
+		nonNegativeNumber("sessionCount", w.SessionCount),
+	)
+}
+
+func (f FileContent) ValidateWire() error {
+	return collectWireViolations("FileContent",
+		positiveNumber("totalLines", f.TotalLines),
+		optionalPositiveScalarNumber("startLine", f.StartLine),
+		optionalPositiveScalarNumber("endLine", f.EndLine),
+	)
+}
+
+func (f FileEntry) ValidateWire() error {
+	return collectWireViolations("FileEntry",
+		optionalNonNegativeNumber("sizeBytes", f.SizeBytes),
+		closedEnum("type", string(f.Type), []string{"file", "dir", "symlink"}, false),
+	)
+}
+
+func (f FileLine) ValidateWire() error {
+	return collectWireViolations("FileLine",
+		positiveNumber("lineNumber", f.LineNumber),
+	)
+}
+
+func (g GrepResult) ValidateWire() error {
+	return collectWireViolations("GrepResult",
+		nonNegativeNumber("total", g.Total),
+	)
+}
+
+func (g GrepMatch) ValidateWire() error {
+	return collectWireViolations("GrepMatch",
+		positiveNumber("lineNumber", g.LineNumber),
+	)
+}
+
+func (f FileDiff) ValidateWire() error {
+	return collectWireViolations("FileDiff",
+		optionalNonNegativeNumber("added", f.Added),
+		optionalNonNegativeNumber("removed", f.Removed),
+		closedEnum("status", string(f.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
+	)
+}
+
+func (w WorkspaceFileChange) ValidateWire() error {
+	return collectWireViolations("WorkspaceFileChange",
+		optionalNonNegativeNumber("added", w.Added),
+		optionalNonNegativeNumber("removed", w.Removed),
+		closedEnum("status", string(w.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
+	)
+}
+
+func (u UsageBucket) ValidateWire() error {
+	return collectWireViolations("UsageBucket",
+		nonNegativeNumber("runs", u.Runs),
+		nonNegativeNumber("inputTokens", u.InputTokens),
+		nonNegativeNumber("outputTokens", u.OutputTokens),
+		nonNegativeNumber("cacheReadTokens", u.CacheReadTokens),
+		nonNegativeNumber("cacheWriteTokens", u.CacheWriteTokens),
+		nonNegativeNumber("reasoningTokens", u.ReasoningTokens),
+		optionalNonNegativeNumber("costUsd", u.CostUSD),
+	)
+}
+
+func (u UsageSummary) ValidateWire() error {
+	return collectWireViolations("UsageSummary",
+		nonNegativeNumber("sessions", u.Sessions),
+		nonNegativeNumber("runs", u.Runs),
+	)
+}
+
+func (h HookInfo) ValidateWire() error {
+	return collectWireViolations("HookInfo",
+		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
+		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
+		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"}, false),
+		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
+	)
+}
+
 func (m MCPServer) ValidateWire() error {
 	return collectWireViolations("MCPServer",
 		maxLength("name", m.Name, 32),
@@ -2120,6 +2208,15 @@ func (p Provider) ValidateWire() error {
 		optionalIdentity("defaultEmbeddingModel", p.DefaultEmbeddingModel),
 		optionalMaxLength("defaultEmbeddingModel", p.DefaultEmbeddingModel, 256),
 		closedEnum("credentialRequirement", string(p.CredentialRequirement), []string{"apiKeyRequired", "apiKeyOptional"}, false),
+	)
+}
+
+func (m ModelPricing) ValidateWire() error {
+	return collectWireViolations("ModelPricing",
+		nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
+		nonNegativeNumber("outputUsdPerMillionTokens", m.OutputUSDPerMillionTokens),
+		nonNegativeNumber("cacheReadUsdPerMillionTokens", m.CacheReadUSDPerMillionTokens),
+		nonNegativeNumber("cacheWriteUsdPerMillionTokens", m.CacheWriteUSDPerMillionTokens),
 	)
 }
 

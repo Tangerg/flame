@@ -869,8 +869,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   DiffRow: allOf([
     object({
       code: text(),
-      leftLine: integer(),
-      rightLine: integer(),
+      leftLine: allOf([integer(), minimum(1)]),
+      rightLine: allOf([integer(), minimum(1)]),
       text: text(),
       type: ref(() => CHECKS.DiffRowType),
     }, []),
@@ -944,18 +944,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FileContent: object({
     content: text(),
     encoding: text(),
-    endLine: integer(),
+    endLine: allOf([integer(), minimum(1)]),
     path: text(),
-    startLine: integer(),
-    totalLines: integer(),
+    startLine: allOf([integer(), minimum(1)]),
+    totalLines: allOf([integer(), minimum(1)]),
     truncated: flag(),
   }, ["content", "encoding", "path", "totalLines"]),
   FileDiff: object({
-    added: integer(),
+    added: allOf([integer(), minimum(0)]),
     binary: flag(),
     path: text(),
     previousPath: text(),
-    removed: integer(),
+    removed: allOf([integer(), minimum(0)]),
     rows: array(ref(() => CHECKS.DiffRow)),
     status: ref(() => CHECKS.FileStatus),
   }, ["path", "rows", "status"]),
@@ -963,7 +963,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     modifiedAt: text(),
     name: text(),
     path: text(),
-    sizeBytes: integer(),
+    sizeBytes: allOf([integer(), minimum(0)]),
     type: ref(() => CHECKS.FileEntryType),
   }, ["modifiedAt", "name", "path", "type"]),
   FileEntryType: enumOf(["file", "dir", "symlink"]),
@@ -972,7 +972,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     path: text(),
   }, ["lines", "path"]),
   FileLine: object({
-    lineNumber: integer(),
+    lineNumber: allOf([integer(), minimum(1)]),
     text: text(),
   }, ["lineNumber", "text"]),
   FileStatus: enumOf(["added", "modified", "deleted", "renamed", "untracked"]),
@@ -1065,7 +1065,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     steps: allOf([integer(), minimum(0)]),
   }, ["runs", "steps"]),
   GrepMatch: object({
-    lineNumber: integer(),
+    lineNumber: allOf([integer(), minimum(1)]),
     path: text(),
     text: text(),
   }, ["lineNumber", "path", "text"]),
@@ -1077,7 +1077,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["query", "workspace"]),
   GrepResult: object({
     matches: array(ref(() => CHECKS.GrepMatch)),
-    total: integer(),
+    total: allOf([integer(), minimum(0)]),
   }, ["matches", "total"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"]),
@@ -1089,7 +1089,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     matcher: text(),
     scope: ref(() => CHECKS.HookScope),
     source: text(),
-    timeoutMillis: integer(),
+    timeoutMillis: allOf([integer(), minimum(0), maximum(300000)]),
   }, ["active", "event", "scope", "source"]),
   HookScope: enumOf(["global", "project"]),
   HooksListResult: object({
@@ -1201,7 +1201,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       approvalDecision: ref(() => CHECKS.ApprovalDecision),
       content: array(ref(() => CHECKS.ContentBlock)),
       createdAt: text(),
-      droppedMessages: integer(),
+      droppedMessages: allOf([integer(), minimum(0)]),
       durationMillis: allOf([integer(), minimum(0)]),
       error: ref(() => CHECKS.ProblemData),
       finishedAt: text(),
@@ -1697,7 +1697,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPServerState: allOf([
     object({
       error: ref(() => CHECKS.ProblemData),
-      toolCount: integer(),
+      toolCount: allOf([integer(), minimum(0), maximum(2048)]),
       type: ref(() => CHECKS.MCPServerStateType),
     }, []),
     oneOf([
@@ -1770,10 +1770,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     toolUse: flag(),
   }, []),
   ModelPricing: object({
-    cacheReadUsdPerMillionTokens: numeric(),
-    cacheWriteUsdPerMillionTokens: numeric(),
-    inputUsdPerMillionTokens: numeric(),
-    outputUsdPerMillionTokens: numeric(),
+    cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
+    cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
+    inputUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
+    outputUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
   }, []),
   ModelTokenLimits: allOf([
     object({
@@ -3336,14 +3336,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     key: text(),
     outputTokens: allOf([integer(), minimum(0)]),
     reasoningTokens: allOf([integer(), minimum(0)]),
-    runs: integer(),
+    runs: allOf([integer(), minimum(0)]),
   }, ["key"]),
   UsageSummary: object({
     byDay: array(ref(() => CHECKS.UsageBucket)),
     byModel: array(ref(() => CHECKS.UsageBucket)),
     byProvider: array(ref(() => CHECKS.UsageBucket)),
-    runs: integer(),
-    sessions: integer(),
+    runs: allOf([integer(), minimum(0)]),
+    sessions: allOf([integer(), minimum(0)]),
     total: ref(() => CHECKS.ModelUsage),
   }, ["total"]),
   UsageSummaryRequest: object({
@@ -3368,11 +3368,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["results"]),
   WorkspaceAvailability: enumOf(["available", "missing"]),
   WorkspaceFileChange: object({
-    added: integer(),
+    added: allOf([integer(), minimum(0)]),
     binary: flag(),
     path: text(),
     previousPath: text(),
-    removed: integer(),
+    removed: allOf([integer(), minimum(0)]),
     status: ref(() => CHECKS.FileStatus),
   }, ["path", "status"]),
   WorkspaceInfo: object({
@@ -3389,7 +3389,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   WorkspaceSummary: object({
     lastActiveAt: text(),
     name: text(),
-    sessionCount: integer(),
+    sessionCount: allOf([integer(), minimum(0)]),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["name", "sessionCount", "workspace"]),
 };

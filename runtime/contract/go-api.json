@@ -3860,6 +3860,12 @@
               "type": "int",
               "tag": "json:\"endLine,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -3901,6 +3907,12 @@
               "type": "[]DiffRow",
               "tag": "json:\"rows\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -3931,6 +3943,12 @@
               "name": "ModifiedAt",
               "type": "string",
               "tag": "json:\"modifiedAt\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -3968,6 +3986,12 @@
               "name": "Text",
               "type": "string",
               "tag": "json:\"text\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -4394,6 +4418,12 @@
               "type": "string",
               "tag": "json:\"text\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4441,6 +4471,12 @@
               "name": "Total",
               "type": "int",
               "tag": "json:\"total\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -4492,6 +4528,12 @@
               "name": "Active",
               "type": "bool",
               "tag": "json:\"active\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5867,6 +5909,12 @@
               "name": "CacheWriteUSDPerMillionTokens",
               "type": "float64",
               "tag": "json:\"cacheWriteUsdPerMillionTokens,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -8365,6 +8413,12 @@
               "type": "int",
               "tag": "json:\"runs,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -8471,6 +8525,12 @@
               "type": "bool",
               "tag": "json:\"binary,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -8545,6 +8605,12 @@
               "name": "LastActiveAt",
               "type": "*time.Time",
               "tag": "json:\"lastActiveAt,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         }

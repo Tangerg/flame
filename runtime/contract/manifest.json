@@ -5265,6 +5265,10 @@
         {
           "field": "durationMillis",
           "constraint": "nonNegative"
+        },
+        {
+          "field": "droppedMessages",
+          "constraint": "nonNegative"
         }
       ]
     },
@@ -5953,6 +5957,107 @@
       ]
     },
     {
+      "type": "WorkspaceSummary",
+      "rules": [
+        {
+          "field": "sessionCount",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "FileContent",
+      "rules": [
+        {
+          "field": "totalLines",
+          "constraint": "positive"
+        },
+        {
+          "field": "startLine",
+          "constraint": "positive"
+        },
+        {
+          "field": "endLine",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "FileEntry",
+      "rules": [
+        {
+          "field": "sizeBytes",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "FileLine",
+      "rules": [
+        {
+          "field": "lineNumber",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "GrepResult",
+      "rules": [
+        {
+          "field": "total",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "GrepMatch",
+      "rules": [
+        {
+          "field": "lineNumber",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "FileDiff",
+      "rules": [
+        {
+          "field": "added",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "removed",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "WorkspaceFileChange",
+      "rules": [
+        {
+          "field": "added",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "removed",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "DiffRow",
+      "rules": [
+        {
+          "field": "leftLine",
+          "constraint": "positive"
+        },
+        {
+          "field": "rightLine",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
       "type": "GetDiffRequest",
       "rules": [
         {
@@ -6005,6 +6110,28 @@
         {
           "field": "limit",
           "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "UsageBucket",
+      "rules": [
+        {
+          "field": "runs",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "UsageSummary",
+      "rules": [
+        {
+          "field": "sessions",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "runs",
+          "constraint": "nonNegative"
         }
       ]
     },
@@ -6086,6 +6213,19 @@
       ]
     },
     {
+      "type": "HookInfo",
+      "rules": [
+        {
+          "field": "timeoutMillis",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "timeoutMillis",
+          "constraint": "maximum(300000)"
+        }
+      ]
+    },
+    {
       "type": "SetHookTrustRequest",
       "rules": [
         {
@@ -6117,6 +6257,19 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "MCPServerState",
+      "rules": [
+        {
+          "field": "toolCount",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "toolCount",
+          "constraint": "maximum(2048)"
         }
       ]
     },
@@ -6468,6 +6621,27 @@
         {
           "field": "provider",
           "constraint": "maxLength(64)"
+        }
+      ]
+    },
+    {
+      "type": "ModelPricing",
+      "rules": [
+        {
+          "field": "inputUsdPerMillionTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "outputUsdPerMillionTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheReadUsdPerMillionTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheWriteUsdPerMillionTokens",
+          "constraint": "nonNegative"
         }
       ]
     },
