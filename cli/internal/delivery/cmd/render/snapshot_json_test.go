@@ -13,7 +13,7 @@ import (
 func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	t.Parallel()
 	session := agent.Session{
-		ID: "ses_1", Status: agent.SessionIdle,
+		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available},
 		Revision:  1,

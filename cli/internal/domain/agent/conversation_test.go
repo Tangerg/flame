@@ -500,7 +500,7 @@ func TestConversationRejectsPlanFromAnotherSession(t *testing.T) {
 
 func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 	return SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Transcript: []Block{
 			{ID: "same", RunID: "run_old", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "old"},
 			{ID: "same", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "current"},

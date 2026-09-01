@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.SegmentStream, error) {
@@ -63,7 +64,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	r.runOrder = append(r.runOrder, run.id)
 	session.active = run.id
 	session.runs = append(session.runs, run.id)
-	if err := r.setSessionStatusLocked(session, agent.SessionRunning); err != nil {
+	if err := r.setSessionStatusLocked(session, protocol.SessionStatusRunning); err != nil {
 		r.mu.Unlock()
 		return agent.SegmentStream{}, err
 	}
@@ -86,7 +87,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 }
 
 func startRunRevisionChanges(session *sessionState) sessionRevisionChanges {
-	return sessionStatusRevisionChanges(session, agent.SessionRunning).
+	return sessionStatusRevisionChanges(session, protocol.SessionStatusRunning).
 		plus(sessionEventRevisionChange()).
 		plus(sessionEventRevisionChange())
 }
@@ -177,7 +178,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Messa
 	run.interactions = nil
 	run.status = agent.RunStatusRunning
 	segment := r.openSegmentLocked(run)
-	if err := r.setSessionStatusLocked(session, agent.SessionRunning); err != nil {
+	if err := r.setSessionStatusLocked(session, protocol.SessionStatusRunning); err != nil {
 		return agent.SegmentStream{}, err
 	}
 	if err := r.emitLocked(run, agent.SegmentStarted{Run: projectRun(run)}); err != nil {
@@ -194,7 +195,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Messa
 }
 
 func resumeRunRevisionChanges(session *sessionState, message *agent.Message, approvalEvents int) sessionRevisionChanges {
-	changes := sessionStatusRevisionChanges(session, agent.SessionRunning).
+	changes := sessionStatusRevisionChanges(session, protocol.SessionStatusRunning).
 		plus(sessionEventRevisionChange()).
 		plus(sessionEventRevisionChanges(approvalEvents))
 	if message != nil {

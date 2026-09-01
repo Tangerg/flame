@@ -2046,7 +2046,7 @@ func TestClosingTheTerminalCancelsTheOwnedRuntimeRun(t *testing.T) {
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left an active run: %+v", snapshot.Runs)
 	}
-	if snapshot.Session.Status != agent.SessionIdle {
+	if snapshot.Session.Status != protocol.SessionStatusIdle {
 		t.Fatalf("session status = %s, want idle", snapshot.Session.Status)
 	}
 }

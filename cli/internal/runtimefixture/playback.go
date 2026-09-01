@@ -67,7 +67,7 @@ func (r *Runtime) park(run *runState) {
 	}
 	if len(pending) != 0 {
 		revisionChanges = revisionChanges.plus(sessionEventRevisionChange())
-		revisionChanges = revisionChanges.plus(sessionStatusRevisionChanges(r.sessions[run.sessionID], agent.SessionWaiting))
+		revisionChanges = revisionChanges.plus(sessionStatusRevisionChanges(r.sessions[run.sessionID], protocol.SessionStatusWaiting))
 	}
 	if err := r.sessions[run.sessionID].requireRevisionCapacity(revisionChanges); err != nil {
 		r.failSegmentLocked(run, err)
@@ -126,7 +126,7 @@ func (r *Runtime) park(run *runState) {
 		return
 	}
 	run.active = ""
-	if err := r.setSessionStatusLocked(r.sessions[run.sessionID], agent.SessionWaiting); err != nil {
+	if err := r.setSessionStatusLocked(r.sessions[run.sessionID], protocol.SessionStatusWaiting); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -377,7 +377,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	}
 	session := r.sessions[run.sessionID]
 	settlements := r.runningItemSettlementsLocked(run, event.Outcome)
-	revisionChanges := sessionStatusRevisionChanges(session, agent.SessionIdle)
+	revisionChanges := sessionStatusRevisionChanges(session, protocol.SessionStatusIdle)
 	if run.active != "" {
 		if run.segments[run.active] == nil {
 			return errors.New("mock: active run has no segment")
@@ -412,7 +412,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	}
 	session.planAtRun[run.id] = cloneCommittedPlan(session.plan)
 	session.active = ""
-	return r.setSessionStatusLocked(session, agent.SessionIdle)
+	return r.setSessionStatusLocked(session, protocol.SessionStatusIdle)
 }
 
 func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome agent.Outcome) []agent.Block {
@@ -434,7 +434,7 @@ func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome agent.Outc
 	return unsettled
 }
 
-func (r *Runtime) setSessionStatusLocked(session *sessionState, status agent.SessionStatus) error {
+func (r *Runtime) setSessionStatusLocked(session *sessionState, status protocol.SessionStatus) error {
 	if session.meta.Status == status {
 		return nil
 	}

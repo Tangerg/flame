@@ -106,7 +106,7 @@ func TestMockStartRunRevisionExhaustionIsAtomic(t *testing.T) {
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("start after revision exhaustion error = %v", err)
 	}
-	if state.meta.Status != agent.SessionIdle || state.meta.Revision != exactint.Maximum ||
+	if state.meta.Status != protocol.SessionStatusIdle || state.meta.Revision != exactint.Maximum ||
 		state.active != "" || len(state.runs) != 0 || len(state.items) != 0 || len(runtime.runs) != originalRuntimeRuns {
 		t.Fatalf("start exhaustion partially mutated session: meta %+v active %q runs %v items %d runtime runs %d",
 			state.meta, state.active, state.runs, len(state.items), len(runtime.runs))
@@ -172,7 +172,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 		t.Fatalf("park exhaustion stream error = %v", streamErr)
 	}
 	run := runtime.runs[opened.RunID]
-	if state.meta.Status != agent.SessionRunning || run.status != agent.RunStatusRunning ||
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != agent.RunStatusRunning ||
 		len(run.interactions) != 0 || len(run.answers) != 0 || len(state.items) != 1 {
 		t.Fatalf("park exhaustion published partial waiting state: meta %+v run %+v interactions %d answers %d items %d",
 			state.meta, projectRun(run), len(run.interactions), len(run.answers), len(state.items))
@@ -200,7 +200,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 		t.Fatalf("finish exhaustion stream error = %v", streamErr)
 	}
 	run := runtime.runs[opened.RunID]
-	if state.meta.Status != agent.SessionRunning || run.status != agent.RunStatusRunning ||
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != agent.RunStatusRunning ||
 		run.active != opened.SegmentID || run.outcome.Status != "" {
 		t.Fatalf("finish exhaustion partially transitioned session/run: %+v / %+v", state.meta, projectRun(run))
 	}
@@ -800,7 +800,7 @@ func TestInvalidFaultConfigurationDoesNotMutateRunState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 || snapshot.Session.Status != agent.SessionIdle {
+	if len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 || snapshot.Session.Status != protocol.SessionStatusIdle {
 		t.Fatalf("failed start mutated snapshot: %+v", snapshot)
 	}
 }

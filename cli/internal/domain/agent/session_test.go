@@ -75,7 +75,7 @@ func TestSessionEqualityUsesDurableTimeSemantics(t *testing.T) {
 	created := time.Date(2026, time.August, 13, 8, 30, 0, 0, time.FixedZone("source", 8*60*60))
 	updated := created.Add(time.Minute)
 	session := Session{
-		ID: "ses_1", Title: "Review", Status: SessionIdle,
+		ID: "ses_1", Title: "Review", Status: protocol.SessionStatusIdle,
 		Provider: "deepseek", Model: "deepseek-v4-flash",
 		Workspace: testWorkspace("/tmp/demo"), CreatedAt: created, UpdatedAt: updated,
 		Favorite: true, Revision: 3,
@@ -99,7 +99,7 @@ func TestSessionEqualityUsesDurableTimeSemantics(t *testing.T) {
 
 func TestSessionRevisionStaysInsideTheExactJSONEnvelope(t *testing.T) {
 	session := Session{
-		ID: "ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel,
+		ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testWorkspace("/tmp/demo"), Revision: exactint.Maximum,
 	}
 	if err := session.Validate(); err != nil {
@@ -113,7 +113,7 @@ func TestSessionRevisionStaysInsideTheExactJSONEnvelope(t *testing.T) {
 
 func TestSessionRejectsNonExactIdentity(t *testing.T) {
 	session := Session{
-		ID: " ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel,
+		ID: " ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testWorkspace("/tmp/demo"), Revision: 1,
 	}
 	if err := session.Validate(); err == nil {
@@ -123,7 +123,7 @@ func TestSessionRejectsNonExactIdentity(t *testing.T) {
 
 func TestSessionRejectsReasoningEffortWithoutAModel(t *testing.T) {
 	session := Session{
-		ID: "ses_1", Status: SessionIdle, ReasoningEffort: "high",
+		ID: "ses_1", Status: protocol.SessionStatusIdle, ReasoningEffort: "high",
 		Workspace: testWorkspace("/tmp/demo"), Revision: 1,
 	}
 	if err := session.Validate(); err == nil {
@@ -133,7 +133,7 @@ func TestSessionRejectsReasoningEffortWithoutAModel(t *testing.T) {
 
 func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 2},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 2},
 		Transcript: []Block{
 			{ID: "user_1", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockUser, Text: "hello"},
 			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning}},
@@ -159,7 +159,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 
 func TestSessionSnapshotRejectsWaitingWithoutInteractions(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusWaiting})},
 	}
 	if err := snapshot.Validate(); err == nil {
@@ -216,7 +216,7 @@ func TestSessionUpdateResultMustFulfillTheCommand(t *testing.T) {
 		Favorite: &favorite, ExpectedRevision: 4,
 	}
 	valid := Session{
-		ID: "ses_1", Title: title, Status: SessionIdle, Provider: model.Provider, Model: model.Model,
+		ID: "ses_1", Title: title, Status: protocol.SessionStatusIdle, Provider: model.Provider, Model: model.Model,
 		Workspace: testWorkspace(path), Favorite: favorite, Revision: 5,
 	}
 	if err := update.ValidateResult(valid); err != nil {
@@ -250,7 +250,7 @@ func TestSessionUpdateResultMustFulfillTheCommand(t *testing.T) {
 
 func TestSessionCreationAndForkResultsMustFulfillTheCommand(t *testing.T) {
 	created := Session{
-		ID: "ses_new", Title: "Requested", Status: SessionIdle,
+		ID: "ses_new", Title: "Requested", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testWorkspace("/workspace"), Revision: 1,
 	}
@@ -305,7 +305,7 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 		Tool: &ToolCall{Kind: ToolRead, Name: "read", Status: ToolRunning},
 	}
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs:    []Run{root, child},
 		Transcript: []Block{
 			{ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolTask, Name: "delegate_task", Status: ToolRunning}},
@@ -331,7 +331,7 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 
 func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs: []Run{testRootRun(Run{
 			ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished,
 			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 12, OutputTokens: 3},
@@ -356,14 +356,14 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 		{
 			name: "running run with idle session",
 			snapshot: SessionSnapshot{
-				Session: Session{ID: "ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+				Session: Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
 			},
 		},
 		{
 			name: "active run before latest run",
 			snapshot: SessionSnapshot{
-				Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+				Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
 					testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"}),
 					testRootRun(Run{ID: "run_2", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
@@ -374,7 +374,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			name: "waiting child beneath running root",
 			want: "waiting beneath running root",
 			snapshot: SessionSnapshot{
-				Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+				Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
 					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_root"}),
 					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: RunStatusWaiting}),
@@ -385,7 +385,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			name: "running child beneath waiting root",
 			want: "running beneath waiting root",
 			snapshot: SessionSnapshot{
-				Session: Session{ID: "ses_1", Status: SessionWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+				Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
 					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusWaiting}),
 					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: RunStatusRunning, ActiveSegmentID: "seg_child"}),
@@ -407,7 +407,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 
 func TestSessionSnapshotRejectsRunningItemsWithoutAnActiveRun(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session:    Session{ID: "ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
+		Session:    Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
 		Transcript: []Block{{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}}},
 	}
 	if err := snapshot.Validate(); err == nil {
@@ -419,7 +419,7 @@ func TestSessionSnapshotRejectsTransientRunningItems(t *testing.T) {
 	for _, kind := range []BlockKind{BlockAssistant, BlockReasoning} {
 		t.Run(string(kind), func(t *testing.T) {
 			snapshot := SessionSnapshot{
-				Session:    Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
+				Session:    Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
 				Transcript: []Block{{ID: "preview_1", RunID: "run_1", Status: BlockStatusRunning, Kind: kind}},
 				Runs:       []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
 			}
@@ -432,7 +432,7 @@ func TestSessionSnapshotRejectsTransientRunningItems(t *testing.T) {
 
 func TestSessionSnapshotRejectsItemWithoutItsRun(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session:    Session{ID: "ses_1", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
+		Session:    Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
 		Transcript: []Block{{ID: "message_1", RunID: "run_missing", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "orphaned"}},
 	}
 	if err := snapshot.Validate(); err == nil {
@@ -442,7 +442,7 @@ func TestSessionSnapshotRejectsItemWithoutItsRun(t *testing.T) {
 
 func TestConversationRestoresCursorlessAttachmentHead(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Status: SessionRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
 	}
 	stream := SegmentStream{
@@ -477,7 +477,7 @@ func TestSessionSnapshotFindsTheLastDurableAssistantText(t *testing.T) {
 
 func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 	snapshot := SessionSnapshot{
-		Session: Session{ID: "ses_1", Title: "Original", Status: SessionIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
+		Session: Session{ID: "ses_1", Title: "Original", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Transcript: []Block{{
 			ID: "answer_1", RunID: "run_1", Status: BlockStatusCompleted,
 			Kind: BlockAssistant, Text: "done",

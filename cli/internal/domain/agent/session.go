@@ -14,18 +14,10 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-type SessionStatus string
-
-const (
-	SessionRunning SessionStatus = "running"
-	SessionWaiting SessionStatus = "waiting"
-	SessionIdle    SessionStatus = "idle"
-)
-
 type Session struct {
 	ID              string
 	Title           string
-	Status          SessionStatus
+	Status          runtimeprotocol.SessionStatus
 	Provider        string
 	Model           string
 	ReasoningEffort string
@@ -53,7 +45,9 @@ func (s Session) Validate() error {
 	if err := s.Workspace.Validate(); err != nil {
 		problems = append(problems, err)
 	}
-	if s.Status != SessionRunning && s.Status != SessionWaiting && s.Status != SessionIdle {
+	if s.Status != runtimeprotocol.SessionStatusRunning &&
+		s.Status != runtimeprotocol.SessionStatusWaiting &&
+		s.Status != runtimeprotocol.SessionStatusIdle {
 		problems = append(problems, fmt.Errorf("status %q is invalid", s.Status))
 	}
 	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, s.ReasoningEffort); err != nil {
@@ -415,7 +409,7 @@ func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs s
 	active := s.Runs[runs.activeIndex]
 	switch active.Status {
 	case RunStatusRunning:
-		if s.Session.Status != SessionRunning {
+		if s.Session.Status != runtimeprotocol.SessionStatusRunning {
 			return fmt.Errorf("session snapshot: running run has session status %s", s.Session.Status)
 		}
 		if len(s.Interactions) != 0 {
@@ -434,14 +428,14 @@ func (s SessionSnapshot) validateIdleLifecycle(transcript snapshotTranscript) er
 	if len(s.Interactions) != 0 {
 		return errors.New("session snapshot: idle session carries pending interactions")
 	}
-	if s.Session.Status != SessionIdle {
+	if s.Session.Status != runtimeprotocol.SessionStatusIdle {
 		return fmt.Errorf("session snapshot: session status is %s without an active run", s.Session.Status)
 	}
 	return nil
 }
 
 func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapshotTranscript, runs snapshotRuns) error {
-	if s.Session.Status != SessionWaiting {
+	if s.Session.Status != runtimeprotocol.SessionStatusWaiting {
 		return fmt.Errorf("session snapshot: waiting run has session status %s", s.Session.Status)
 	}
 	if err := ValidateInteractions(s.Interactions); err != nil {

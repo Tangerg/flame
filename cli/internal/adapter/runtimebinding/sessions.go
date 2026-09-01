@@ -74,9 +74,8 @@ func projectSession(value protocol.Session) (agent.Session, error) {
 	if err != nil {
 		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)
 	}
-	status := agent.SessionStatus(value.Status)
 	projected := agent.Session{
-		ID: value.ID, Title: value.Title, Status: status,
+		ID: value.ID, Title: value.Title, Status: value.Status,
 		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Workspace: projectedWorkspace, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 		Favorite: value.Favorite, Revision: value.Revision,

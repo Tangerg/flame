@@ -630,7 +630,7 @@ func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 		{ID: "1", Description: "newer plan", Status: protocol.PlanStatusCompleted},
 	}}}
 	return agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1", Status: agent.SessionIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
+		Session: agent.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
 			Path: "/tmp/demo", ProjectRoot: "/tmp/demo", Availability: workspace.Available,
 		}, Revision: 1},
 		Transcript: []agent.Block{

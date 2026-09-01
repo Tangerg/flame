@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type updateWriterStub struct {
@@ -30,7 +31,7 @@ func TestUpdateValidatesTheCommandBeforeMutationAndTheResultAfterward(t *testing
 
 	title := "Renamed"
 	writer.result = agent.Session{
-		ID: "ses_wrong", Title: title, Status: agent.SessionIdle, Revision: 2,
+		ID: "ses_wrong", Title: title, Status: protocol.SessionStatusIdle, Revision: 2,
 		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available},
 	}
 	_, err := Update(t.Context(), writer, agent.UpdateSession{

@@ -223,8 +223,8 @@ func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspac
 	if result.UpdatedAt.Before(archived.UpdatedAt) {
 		problems = append(problems, fmt.Errorf("runtime returned updated time %s before archived time %s", result.UpdatedAt, archived.UpdatedAt))
 	}
-	if result.Status != agent.SessionIdle {
-		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status, agent.SessionIdle))
+	if result.Status != protocol.SessionStatusIdle {
+		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status, protocol.SessionStatusIdle))
 	}
 	return errors.Join(problems...)
 }

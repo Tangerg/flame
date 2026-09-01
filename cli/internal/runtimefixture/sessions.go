@@ -32,7 +32,7 @@ func sessionEventRevisionChanges(count int) sessionRevisionChanges {
 	return sessionRevisionChanges(count)
 }
 
-func sessionStatusRevisionChanges(session *sessionState, status agent.SessionStatus) sessionRevisionChanges {
+func sessionStatusRevisionChanges(session *sessionState, status protocol.SessionStatus) sessionRevisionChanges {
 	if session.meta.Status == status {
 		return 0
 	}
@@ -194,7 +194,7 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 	}
 	now := r.now()
 	session := agent.Session{
-		ID: id, Title: title, Status: agent.SessionIdle,
+		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: defaultProvider, Model: defaultModel,
 		Workspace: availableWorkspace(workspace), CreatedAt: now, UpdatedAt: now, Revision: 1,
 	}
@@ -269,7 +269,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	}
 	now := r.now()
 	meta := agent.Session{
-		ID: id, Title: title, Status: agent.SessionIdle,
+		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: source.meta.Provider, Model: source.meta.Model, ReasoningEffort: source.meta.ReasoningEffort,
 		Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1,
 	}
