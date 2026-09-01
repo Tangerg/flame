@@ -525,11 +525,11 @@ func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 }
 
 func TestRunProfileAcceptsSubagentTrees(t *testing.T) {
-	_, err := projectRunContract(protocol.RunProtocolProfile{
+	_, err := projectRunProtocolProfile(protocol.RunProtocolProfile{
 		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
 	})
 	if err != nil {
-		t.Fatalf("projectRunContract: %v", err)
+		t.Fatalf("projectRunProtocolProfile: %v", err)
 	}
 }
 
@@ -555,12 +555,12 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantContract := &agent.RunContract{
-		RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
-		InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},
+	wantProfile := &protocol.RunProtocolProfile{
+		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||
-		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.Contract, wantContract) {
+		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.ProtocolProfile, wantProfile) {
 		t.Fatalf("projected run = %+v", projected)
 	}
 }

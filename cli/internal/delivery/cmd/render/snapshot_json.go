@@ -198,15 +198,15 @@ func encodeRun(run agent.Run) runFrame {
 	if run.Status == agent.RunStatusFinished {
 		encoded.Outcome = encodeOutcome(run.Outcome)
 	}
-	if run.Contract != nil {
+	if run.ProtocolProfile != nil {
 		encoded.ProtocolProfile = &runContractJSON{
-			RequiredFeatures: make([]string, len(run.Contract.RequiredFeatures)),
-			InterruptTypes:   make([]string, len(run.Contract.InteractionKinds)),
+			RequiredFeatures: make([]string, len(run.ProtocolProfile.RequiredFeatures)),
+			InterruptTypes:   make([]string, len(run.ProtocolProfile.InterruptTypes)),
 		}
-		for index, feature := range run.Contract.RequiredFeatures {
+		for index, feature := range run.ProtocolProfile.RequiredFeatures {
 			encoded.ProtocolProfile.RequiredFeatures[index] = string(feature)
 		}
-		for index, kind := range run.Contract.InteractionKinds {
+		for index, kind := range run.ProtocolProfile.InterruptTypes {
 			encoded.ProtocolProfile.InterruptTypes[index] = string(kind)
 		}
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 func projectRun(value protocol.RunRef) (agent.Run, error) {
-	contract, err := projectRunContract(value.ProtocolProfile)
+	profile, err := projectRunProtocolProfile(value.ProtocolProfile)
 	if err != nil {
 		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
 	}
@@ -28,7 +28,7 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		Status:  agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
 		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
-		Usage: projectUsage(value.Metrics), Contract: &contract,
+		Usage: projectUsage(value.Metrics), ProtocolProfile: profile,
 	}
 	if value.Limits != nil {
 		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{
@@ -60,34 +60,14 @@ func projectRunLineage(value protocol.RunRef) (agent.RunLineage, error) {
 	return agent.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
-func projectRunContract(profile protocol.RunProtocolProfile) (agent.RunContract, error) {
-	contract := agent.RunContract{
-		RequiredFeatures: make([]agent.RunFeature, 0, len(profile.RequiredFeatures)),
-		InteractionKinds: make([]agent.InteractionKind, 0, len(profile.InterruptTypes)),
+func projectRunProtocolProfile(profile protocol.RunProtocolProfile) (*protocol.RunProtocolProfile, error) {
+	if err := protocol.ValidateWireTree(profile); err != nil {
+		return nil, fmt.Errorf("%w: run protocol profile: %v", agent.ErrIncompatibleRuntime, err)
 	}
-	seenFeatures := make(map[protocol.RunProtocolFeature]struct{}, len(profile.RequiredFeatures))
-	for _, feature := range profile.RequiredFeatures {
-		if _, duplicate := seenFeatures[feature]; duplicate {
-			return agent.RunContract{}, fmt.Errorf("%w: duplicate required run feature %q", agent.ErrIncompatibleRuntime, feature)
-		}
-		seenFeatures[feature] = struct{}{}
-		if feature != protocol.RunProtocolFeatureSubagents {
-			return agent.RunContract{}, fmt.Errorf("%w: required run feature %q is unsupported", agent.ErrIncompatibleRuntime, feature)
-		}
-		contract.RequiredFeatures = append(contract.RequiredFeatures, agent.RunFeature(feature))
-	}
-	seen := make(map[protocol.InterruptType]struct{}, len(profile.InterruptTypes))
-	for _, interruptType := range profile.InterruptTypes {
-		if _, duplicate := seen[interruptType]; duplicate {
-			return agent.RunContract{}, fmt.Errorf("%w: duplicate interrupt type %q", agent.ErrIncompatibleRuntime, interruptType)
-		}
-		seen[interruptType] = struct{}{}
-		if !slices.Contains(supportedInterruptTypes(), interruptType) {
-			return agent.RunContract{}, fmt.Errorf("%w: interrupt type %q is unsupported", agent.ErrIncompatibleRuntime, interruptType)
-		}
-		contract.InteractionKinds = append(contract.InteractionKinds, agent.InteractionKind(interruptType))
-	}
-	return contract, nil
+	projected := profile
+	projected.RequiredFeatures = slices.Clone(profile.RequiredFeatures)
+	projected.InterruptTypes = slices.Clone(profile.InterruptTypes)
+	return &projected, nil
 }
 
 func projectUsage(metrics protocol.RunMetrics) agent.Usage {

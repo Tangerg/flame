@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type RunStatus string
@@ -34,7 +36,7 @@ type Run struct {
 	ContextTokens   int64
 	Outcome         Outcome
 	Usage           Usage
-	Contract        *RunContract
+	ProtocolProfile *protocol.RunProtocolProfile
 }
 
 type runLineageKind uint8
@@ -81,10 +83,7 @@ func (r RunLineage) RootRunID() string { return r.rootRunID }
 func (r Run) Clone() Run {
 	r.Outcome = r.Outcome.Clone()
 	r.Usage = r.Usage.Clone()
-	if r.Contract != nil {
-		contract := r.Contract.Clone()
-		r.Contract = &contract
-	}
+	r.ProtocolProfile = cloneRunProtocolProfile(r.ProtocolProfile)
 	return r
 }
 
@@ -96,39 +95,25 @@ func (r Run) Equal(other Run) bool {
 		r.CreatedAt.Equal(other.CreatedAt) && r.FinishedAt.Equal(other.FinishedAt) &&
 		r.Limits == other.Limits && r.ContextTokens == other.ContextTokens &&
 		r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
-		equalRunContracts(r.Contract, other.Contract)
+		equalRunProtocolProfiles(r.ProtocolProfile, other.ProtocolProfile)
 }
 
-type RunFeature string
-
-const RunFeatureSubagents RunFeature = "subagents"
-
-type InteractionKind string
-
-const (
-	InteractionApproval InteractionKind = "approval"
-	InteractionQuestion InteractionKind = "question"
-)
-
-// RunContract is the immutable execution profile negotiated when a run tree
-// was created. A nil contract is reserved for discovery-less test backends.
-type RunContract struct {
-	RequiredFeatures []RunFeature
-	InteractionKinds []InteractionKind
+func cloneRunProtocolProfile(profile *protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
+	if profile == nil {
+		return nil
+	}
+	cloned := *profile
+	cloned.RequiredFeatures = slices.Clone(profile.RequiredFeatures)
+	cloned.InterruptTypes = slices.Clone(profile.InterruptTypes)
+	return &cloned
 }
 
-func (r RunContract) Clone() RunContract {
-	r.RequiredFeatures = slices.Clone(r.RequiredFeatures)
-	r.InteractionKinds = slices.Clone(r.InteractionKinds)
-	return r
-}
-
-func equalRunContracts(left, right *RunContract) bool {
+func equalRunProtocolProfiles(left, right *protocol.RunProtocolProfile) bool {
 	if (left == nil) != (right == nil) {
 		return false
 	}
 	return left == nil || slices.Equal(left.RequiredFeatures, right.RequiredFeatures) &&
-		slices.Equal(left.InteractionKinds, right.InteractionKinds)
+		slices.Equal(left.InterruptTypes, right.InterruptTypes)
 }
 
 type Message struct {

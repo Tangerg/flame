@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
@@ -35,9 +36,9 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		ContextTokens: 32_768,
 		Lineage:       agent.RootRunLineage(),
 		Limits:        agent.UnlimitedRunLimits(),
-		Contract: &agent.RunContract{
-			RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
-			InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},
+		ProtocolProfile: &protocol.RunProtocolProfile{
+			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
 	}
 	var output bytes.Buffer

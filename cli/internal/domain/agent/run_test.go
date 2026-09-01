@@ -13,9 +13,9 @@ import (
 func TestRunLifecycleShape(t *testing.T) {
 	running := runningRun("seg_1")
 	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	running.Contract = &RunContract{
-		RequiredFeatures: []RunFeature{RunFeatureSubagents},
-		InteractionKinds: []InteractionKind{InteractionApproval, InteractionQuestion},
+	running.ProtocolProfile = &runtimeprotocol.RunProtocolProfile{
+		RequiredFeatures: []runtimeprotocol.RunProtocolFeature{runtimeprotocol.RunProtocolFeatureSubagents},
+		InterruptTypes:   []runtimeprotocol.InterruptType{runtimeprotocol.InterruptApproval, runtimeprotocol.InterruptQuestion},
 	}
 	if err := running.Validate(); err != nil {
 		t.Fatal(err)
@@ -37,12 +37,15 @@ func TestRunLifecycleShape(t *testing.T) {
 		t.Fatal("running run with a finish time was accepted")
 	}
 	cloned := running.Clone()
-	cloned.Contract.InteractionKinds[0] = InteractionQuestion
-	if running.Contract.InteractionKinds[0] != InteractionApproval || running.Equal(cloned) {
+	cloned.ProtocolProfile.InterruptTypes[0] = runtimeprotocol.InterruptQuestion
+	if running.ProtocolProfile.InterruptTypes[0] != runtimeprotocol.InterruptApproval || running.Equal(cloned) {
 		t.Fatal("run clone shares its negotiated contract")
 	}
 	invalidContract := running.Clone()
-	invalidContract.Contract.RequiredFeatures = append(invalidContract.Contract.RequiredFeatures, RunFeatureSubagents)
+	invalidContract.ProtocolProfile.RequiredFeatures = append(
+		invalidContract.ProtocolProfile.RequiredFeatures,
+		runtimeprotocol.RunProtocolFeatureSubagents,
+	)
 	if err := invalidContract.Validate(); err == nil {
 		t.Fatal("run accepted a duplicate negotiated feature")
 	}
