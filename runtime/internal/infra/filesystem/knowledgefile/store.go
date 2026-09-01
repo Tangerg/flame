@@ -18,6 +18,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
@@ -153,21 +154,17 @@ func readDocumentAt(ctx context.Context, root *os.Root, doc document) (knowledge
 	if cause := context.Cause(ctx); cause != nil {
 		return knowledge.Entry{}, 0, cause
 	}
-	file, err := root.Open(doc.relative)
+	file, info, err := fileinput.OpenAt(root, doc.relative, 0)
 	if errors.Is(err, os.ErrNotExist) {
 		return emptyEntry(doc), initialMode(doc.scope), nil
+	}
+	if errors.Is(err, fileinput.ErrNotRegular) {
+		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: %q is not a regular file", doc.path)
 	}
 	if err != nil {
 		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: open %q: %w", doc.path, err)
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: inspect %q: %w", doc.path, err)
-	}
-	if !info.Mode().IsRegular() {
-		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: %q is not a regular file", doc.path)
-	}
 	if sizeErr := knowledge.ValidateDocumentSize(info.Size()); sizeErr != nil {
 		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: inspect %q: %w", doc.path, sizeErr)
 	}

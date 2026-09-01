@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -92,12 +93,12 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 	if err != nil {
 		return grepSource{}, false, err
 	}
-	file, err := openRegularFile(
+	file, _, err := fileinput.Open(
 		filepath.Join(search.canonicalRoot, filepath.FromSlash(path)),
 		workspaceapp.MaxGrepFileBytes,
 	)
 	if err != nil {
-		if errors.Is(err, errFileSourceNotRegular) || errors.Is(err, errFileSourceTooLarge) {
+		if errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) {
 			return grepSource{}, false, nil
 		}
 		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)

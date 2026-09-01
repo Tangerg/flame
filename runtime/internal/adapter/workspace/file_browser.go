@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -51,15 +52,15 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if err != nil {
 		return workspaceapp.FileReadResult{}, err
 	}
-	file, err := openRegularFile(
+	file, _, err := fileinput.Open(
 		filepath.Join(canonicalRoot, filepath.FromSlash(relative)),
 		workspaceapp.MaxFileReadSourceBytes,
 	)
 	if err != nil {
 		switch {
-		case errors.Is(err, errFileSourceNotRegular):
+		case errors.Is(err, fileinput.ErrNotRegular):
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrUnsupportedFile, input.Path)
-		case errors.Is(err, errFileSourceTooLarge):
+		case errors.Is(err, fileinput.ErrTooLarge):
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrFileReadTooLarge, input.Path)
 		default:
 			return workspaceapp.FileReadResult{}, err

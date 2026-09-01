@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const maxDocumentBytes int64 = 8 << 20
@@ -73,31 +74,20 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
-	pathInfo, err := os.Stat(path)
+	file, _, err := fileinput.Open(path, maxDocumentBytes)
 	if err != nil {
-		return nil, err
-	}
-	if err := validateDocumentSource(pathInfo); err != nil {
-		return nil, err
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return nil, ErrUnsupportedDocument
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return nil, fmt.Errorf("%w: source exceeds %d bytes", ErrDocumentTooLarge, maxDocumentBytes)
+		default:
+			return nil, err
+		}
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !os.SameFile(pathInfo, info) {
-		return nil, errors.New("lsp: document changed while it was being opened")
-	}
-	if err := validateDocumentSource(info); err != nil {
-		return nil, err
-	}
 	content, err := io.ReadAll(io.LimitReader(contextReader{ctx: ctx, reader: file}, maxDocumentBytes+1))
 	if err != nil {
 		return nil, err
@@ -109,16 +99,6 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 		return nil, ErrUnsupportedDocument
 	}
 	return content, nil
-}
-
-func validateDocumentSource(info os.FileInfo) error {
-	if !info.Mode().IsRegular() {
-		return ErrUnsupportedDocument
-	}
-	if info.Size() > maxDocumentBytes {
-		return fmt.Errorf("%w: %d bytes", ErrDocumentTooLarge, info.Size())
-	}
-	return nil
 }
 
 type contextReader struct {
