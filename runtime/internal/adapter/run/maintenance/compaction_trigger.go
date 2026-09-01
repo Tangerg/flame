@@ -70,7 +70,7 @@ type modelContextFootprint struct {
 	providerMeasured bool
 }
 
-func (m modelContextFootprint) triggerTokens(adjustment int) int {
+func (m modelContextFootprint) budgetTokens(adjustment int) int {
 	if m.providerMeasured {
 		return m.tokens
 	}
@@ -104,7 +104,7 @@ func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Messa
 	if err != nil {
 		return false, false, 0, err
 	}
-	tokenTriggered := footprint.triggerTokens(m.adjustment) >= m.maxTokens
+	tokenTriggered := footprint.budgetTokens(m.adjustment) >= m.maxTokens
 	if m.messageTrigger.reached(saturatedAdd(len(messages), len(m.tail))) {
 		return true, tokenTriggered, footprint.tokens, nil
 	}
@@ -116,7 +116,7 @@ func (m modelContextBudget) exceeded(ctx context.Context, messages []chat.Messag
 	if err != nil {
 		return false, 0, err
 	}
-	return footprint.tokens >= m.maxTokens, footprint.tokens, nil
+	return footprint.budgetTokens(m.adjustment) >= m.maxTokens, footprint.tokens, nil
 }
 
 func (m modelContextBudget) triggerFootprint(ctx context.Context, messages []chat.Message) (modelContextFootprint, error) {

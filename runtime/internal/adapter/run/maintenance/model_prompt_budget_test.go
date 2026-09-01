@@ -86,6 +86,57 @@ func TestModelContextBudgetDoesNotTreatMessageTriggerAsRequestCapacity(t *testin
 	}
 }
 
+func TestModelContextBudgetAppliesEstimateCalibrationToCapacityChecks(t *testing.T) {
+	messages := []chat.Message{
+		chat.NewUserMessage(chat.NewTextPart(strings.Repeat("context", 100))),
+	}
+	rawEstimate := mustEstimateModelContextTokens(t, messages, nil, chat.Options{})
+	tests := []struct {
+		name       string
+		adjustment int
+		maxTokens  int
+		want       bool
+	}{
+		{
+			name:       "positive calibration exposes exceeded capacity",
+			adjustment: 10,
+			maxTokens:  rawEstimate + 5,
+			want:       true,
+		},
+		{
+			name:       "negative calibration avoids false capacity failure",
+			adjustment: -10,
+			maxTokens:  rawEstimate - 5,
+			want:       false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			budget := newModelContextBudget(
+				messageCountTrigger{},
+				test.maxTokens,
+				nil,
+				nil,
+				nil,
+				chat.Options{},
+				test.adjustment,
+				nil,
+			)
+
+			exceeded, measured, err := budget.exceeded(t.Context(), messages)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if exceeded != test.want {
+				t.Fatalf("exceeded = %t, want %t", exceeded, test.want)
+			}
+			if measured != rawEstimate {
+				t.Fatalf("reported estimate = %d, want raw estimate %d", measured, rawEstimate)
+			}
+		})
+	}
+}
+
 func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 	const maximumInputBytes = 384 * 1024
 
