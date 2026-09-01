@@ -3,6 +3,8 @@ package failure
 import (
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
@@ -11,9 +13,9 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	problem := &Problem{
 		Type: "capability_not_negotiated", Detail: "additional declarations required",
 		DocURL: "https://docs.example/capabilities", RetryAfterSeconds: 2,
-		RequiredCapabilities: []CapabilityRequirement{{Kind: RequirementFeature, Name: "subagents"}},
-		ActiveRun:            &ActiveRun{RunID: "run_1", Status: "waiting"},
-		Errors:               []FieldError{{Field: "features", Detail: "subagents is absent"}},
+		RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
+		ActiveRun:            &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusWaiting},
+		Errors:               []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
 	}
 	if err := problem.Validate(); err != nil {
 		t.Fatal(err)
@@ -42,11 +44,11 @@ func TestProblemRejectsMalformedStructuredLeaves(t *testing.T) {
 	tests := []Problem{
 		{},
 		{Type: "rate_limited", RetryAfterSeconds: -1},
-		{Type: "capability_not_negotiated", RequiredCapabilities: []CapabilityRequirement{{Kind: "unknown", Name: "x"}}},
-		{Type: "capability_not_negotiated", RequiredCapabilities: []CapabilityRequirement{{Kind: RequirementFeature}}},
-		{Type: "session_has_active_run", ActiveRun: &ActiveRun{Status: "running"}},
-		{Type: "session_has_active_run", ActiveRun: &ActiveRun{RunID: "run_1", Status: "queued"}},
-		{Type: "invalid_params", Errors: []FieldError{{Field: "provider"}}},
+		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: "unknown", Name: "x"}}},
+		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature}}},
+		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{Status: protocol.RunStatusRunning}},
+		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: "queued"}},
+		{Type: "invalid_params", Errors: []protocol.FieldError{{Field: "provider"}}},
 	}
 	for _, problem := range tests {
 		if err := problem.Validate(); err == nil {

@@ -1,10 +1,11 @@
 // Package failure defines structured failure details shared by the CLI's
 // bounded contexts.
 //
-// A problem is a CLI-owned value object, not the runtime wire type. Adapters
-// translate into it once so agent runs, MCP management, model configuration,
-// terminal presentation, and machine renderers cannot silently disagree about
-// recovery metadata.
+// A problem is a CLI-owned aggregate, not the runtime wire type. It reuses the
+// Runtime's exact recovery leaf values while owning CLI validation and
+// presentation, so agent runs, MCP management, model configuration, terminal
+// presentation, and machine renderers cannot silently disagree about recovery
+// metadata.
 package failure
 
 import (
@@ -16,54 +17,16 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-// RequirementKind names the capability registry that contains a missing
-// capability.
-type RequirementKind string
-
-const (
-	RequirementFeature       RequirementKind = "feature"
-	RequirementInterruptType RequirementKind = "interruptType"
-	RequirementRuntimeTopic  RequirementKind = "runtimeTopic"
-)
-
-func (r RequirementKind) valid() bool {
-	switch r {
-	case RequirementFeature, RequirementInterruptType, RequirementRuntimeTopic:
-		return true
-	default:
-		return false
-	}
-}
-
-// CapabilityRequirement identifies one capability a caller must negotiate.
-type CapabilityRequirement struct {
-	Kind RequirementKind `json:"type"`
-	Name string          `json:"name"`
-}
-
-// ActiveRun identifies the run preventing a conflicting session operation.
-// It is an observation, not a command target; callers re-fetch before acting.
-type ActiveRun struct {
-	RunID  string `json:"runId"`
-	Status string `json:"status"`
-}
-
-// FieldError identifies one invalid input field.
-type FieldError struct {
-	Field  string `json:"field"`
-	Detail string `json:"detail"`
-}
-
 // Problem is a structured failure with the information a client needs to
 // explain the failure and offer an appropriate recovery action.
 type Problem struct {
-	Type                 string                  `json:"type"`
-	Detail               string                  `json:"detail,omitempty"`
-	DocURL               string                  `json:"docUrl,omitempty"`
-	RetryAfterSeconds    int                     `json:"retryAfterSeconds,omitempty"`
-	RequiredCapabilities []CapabilityRequirement `json:"requiredCapabilities,omitempty"`
-	ActiveRun            *ActiveRun              `json:"activeRun,omitempty"`
-	Errors               []FieldError            `json:"errors,omitempty"`
+	Type                 string                                  `json:"type"`
+	Detail               string                                  `json:"detail,omitempty"`
+	DocURL               string                                  `json:"docUrl,omitempty"`
+	RetryAfterSeconds    int                                     `json:"retryAfterSeconds,omitempty"`
+	RequiredCapabilities []runtimeprotocol.CapabilityRequirement `json:"requiredCapabilities,omitempty"`
+	ActiveRun            *runtimeprotocol.ActiveRunRef           `json:"activeRun,omitempty"`
+	Errors               []runtimeprotocol.FieldError            `json:"errors,omitempty"`
 }
 
 // Validate checks the portable structure without copying the runtime's
@@ -76,35 +39,24 @@ func (p Problem) Validate() error {
 	if p.RetryAfterSeconds < 0 {
 		problems = append(problems, errors.New("retry delay is negative"))
 	}
-	seen := make(map[CapabilityRequirement]struct{}, len(p.RequiredCapabilities))
+	seen := make(map[runtimeprotocol.CapabilityRequirement]struct{}, len(p.RequiredCapabilities))
 	for index, requirement := range p.RequiredCapabilities {
-		if !requirement.Kind.valid() {
-			problems = append(problems, fmt.Errorf("required capability %d has invalid kind %q", index+1, requirement.Kind))
-		}
-		if strings.TrimSpace(requirement.Name) == "" {
-			problems = append(problems, fmt.Errorf("required capability %d has an empty name", index+1))
+		if err := requirement.ValidateWire(); err != nil {
+			problems = append(problems, fmt.Errorf("required capability %d: %w", index+1, err))
 		}
 		if _, duplicate := seen[requirement]; duplicate {
-			problems = append(problems, fmt.Errorf("required capability %d duplicates %s:%s", index+1, requirement.Kind, requirement.Name))
+			problems = append(problems, fmt.Errorf("required capability %d duplicates %s:%s", index+1, requirement.Type, requirement.Name))
 		}
 		seen[requirement] = struct{}{}
 	}
 	if p.ActiveRun != nil {
-		if err := runtimeprotocol.ValidateRunID(p.ActiveRun.RunID); err != nil {
+		if err := p.ActiveRun.ValidateWire(); err != nil {
 			problems = append(problems, err)
-		}
-		switch p.ActiveRun.Status {
-		case "running", "waiting", "finished":
-		default:
-			problems = append(problems, fmt.Errorf("active run status %q is invalid", p.ActiveRun.Status))
 		}
 	}
 	for index, field := range p.Errors {
-		if strings.TrimSpace(field.Field) == "" {
-			problems = append(problems, fmt.Errorf("field error %d has an empty field", index+1))
-		}
-		if strings.TrimSpace(field.Detail) == "" {
-			problems = append(problems, fmt.Errorf("field error %d has an empty detail", index+1))
+		if err := field.ValidateWire(); err != nil {
+			problems = append(problems, fmt.Errorf("field error %d: %w", index+1, err))
 		}
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -168,7 +120,7 @@ func (p Problem) String() string {
 	if len(p.RequiredCapabilities) > 0 {
 		required := make([]string, 0, len(p.RequiredCapabilities))
 		for _, capability := range p.RequiredCapabilities {
-			required = append(required, string(capability.Kind)+":"+capability.Name)
+			required = append(required, string(capability.Type)+":"+capability.Name)
 		}
 		parts = append(parts, "requires "+strings.Join(required, ", "))
 	}

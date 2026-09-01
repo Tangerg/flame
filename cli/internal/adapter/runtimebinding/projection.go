@@ -139,19 +139,11 @@ func projectRuntimeProblem(problem *protocol.ProblemData) *failure.Problem {
 	projected := &failure.Problem{
 		Type: problem.Type, Detail: problem.Detail, DocURL: problem.DocURL,
 		RetryAfterSeconds:    problem.RetryAfterSeconds,
-		RequiredCapabilities: make([]failure.CapabilityRequirement, 0, len(problem.RequiredCapabilities)),
-		Errors:               make([]failure.FieldError, 0, len(problem.Errors)),
-	}
-	for _, requirement := range problem.RequiredCapabilities {
-		projected.RequiredCapabilities = append(projected.RequiredCapabilities, failure.CapabilityRequirement{
-			Kind: failure.RequirementKind(requirement.Type), Name: requirement.Name,
-		})
+		RequiredCapabilities: slices.Clone(problem.RequiredCapabilities),
+		Errors:               slices.Clone(problem.Errors),
 	}
 	if problem.ActiveRun != nil {
-		projected.ActiveRun = &failure.ActiveRun{RunID: problem.ActiveRun.RunID, Status: string(problem.ActiveRun.Status)}
-	}
-	for _, field := range problem.Errors {
-		projected.Errors = append(projected.Errors, failure.FieldError{Field: field.Field, Detail: field.Detail})
+		projected.ActiveRun = new(*problem.ActiveRun)
 	}
 	return projected
 }

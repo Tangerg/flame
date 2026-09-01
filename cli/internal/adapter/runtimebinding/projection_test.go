@@ -225,7 +225,7 @@ func TestProjectRuntimeProblemPreservesEveryRecoveryShape(t *testing.T) {
 				RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementRuntimeTopic, Name: "files.changed"}},
 			},
 			assert: func(t *testing.T, problem *failure.Problem) {
-				if len(problem.RequiredCapabilities) != 1 || problem.RequiredCapabilities[0].Kind != failure.RequirementRuntimeTopic || problem.RequiredCapabilities[0].Name != "files.changed" {
+				if len(problem.RequiredCapabilities) != 1 || problem.RequiredCapabilities[0].Type != protocol.RequirementRuntimeTopic || problem.RequiredCapabilities[0].Name != "files.changed" {
 					t.Fatalf("capability problem = %+v", problem)
 				}
 			},
@@ -237,7 +237,7 @@ func TestProjectRuntimeProblemPreservesEveryRecoveryShape(t *testing.T) {
 				ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusWaiting},
 			},
 			assert: func(t *testing.T, problem *failure.Problem) {
-				if problem.ActiveRun == nil || problem.ActiveRun.RunID != "run_1" || problem.ActiveRun.Status != "waiting" {
+				if problem.ActiveRun == nil || problem.ActiveRun.RunID != "run_1" || problem.ActiveRun.Status != protocol.RunStatusWaiting {
 					t.Fatalf("active-run problem = %+v", problem)
 				}
 			},
@@ -267,6 +267,27 @@ func TestProjectRuntimeProblemPreservesEveryRecoveryShape(t *testing.T) {
 			}
 			test.assert(t, projected)
 		})
+	}
+}
+
+func TestProjectRuntimeProblemOwnsRecoveryLeaves(t *testing.T) {
+	t.Parallel()
+
+	source := protocol.ProblemData{
+		Type: protocol.ErrCapabilityNotNeg.Error(),
+		RequiredCapabilities: []protocol.CapabilityRequirement{{
+			Type: protocol.RequirementFeature, Name: "subagents",
+		}},
+		ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusRunning},
+		Errors:    []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
+	}
+	projected := projectRuntimeProblem(&source)
+	projected.RequiredCapabilities[0].Name = "mutated"
+	projected.ActiveRun.RunID = "run_2"
+	projected.Errors[0].Detail = "mutated"
+	if source.RequiredCapabilities[0].Name != "subagents" || source.ActiveRun.RunID != "run_1" ||
+		source.Errors[0].Detail != "subagents is absent" {
+		t.Fatalf("problem projection retained Runtime-owned leaves: source=%+v projected=%+v", source, projected)
 	}
 }
 

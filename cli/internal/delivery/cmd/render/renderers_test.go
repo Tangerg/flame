@@ -300,8 +300,8 @@ func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 		Status: agent.OutcomeFailed,
 		Problem: &failure.Problem{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 2,
-			RequiredCapabilities: []failure.CapabilityRequirement{{Kind: failure.RequirementFeature, Name: "subagents"}},
-			Errors:               []failure.FieldError{{Field: "provider", Detail: "is unavailable"}},
+			RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
+			Errors:               []protocol.FieldError{{Field: "provider", Detail: "is unavailable"}},
 		},
 	}))
 	if err != nil {
