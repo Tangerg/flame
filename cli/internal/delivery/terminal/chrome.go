@@ -191,14 +191,14 @@ func compactTokens(tokens int64) string {
 type activityView struct {
 	theme  kit.Theme
 	glyphs kit.Glyphs
-	items  []agent.PlanItem
+	items  []protocol.PlanStep
 }
 
 func newActivityView(theme kit.Theme, glyphs kit.Glyphs) *activityView {
 	return &activityView{theme: theme, glyphs: glyphs}
 }
 
-func (a *activityView) Set(items []agent.PlanItem) {
+func (a *activityView) Set(items []protocol.PlanStep) {
 	a.items = append(a.items[:0], items...)
 }
 
@@ -240,30 +240,30 @@ func (a *activityView) Draw(view grid.View) {
 		item := a.items[index]
 		mark, label, style := a.glyphs.Free, "pending", a.theme.Muted
 		switch item.Status {
-		case agent.PlanActive:
+		case protocol.PlanStatusInProgress:
 			mark, label, style = a.glyphs.Marker, "active", a.theme.Accent
-		case agent.PlanDone:
+		case protocol.PlanStatusCompleted:
 			mark, label, style = a.glyphs.Taken, "done", a.theme.Success
-		case agent.PlanPending:
+		case protocol.PlanStatusPending:
 		default:
 		}
 		view.Text(0, row, a.glyphs.Vertical, a.theme.Divider)
 		labelWidth := text.Width(label)
 		contentWidth := max(width-labelWidth-4, 1)
-		view.Text(2, row, mark+" "+text.Truncate(item.Title, contentWidth, a.glyphs.Ellipsis), style)
+		view.Text(2, row, mark+" "+text.Truncate(item.Description, contentWidth, a.glyphs.Ellipsis), style)
 		if labelWidth+4 < width {
 			view.Text(width-labelWidth, row, label, style)
 		}
 	}
 }
 
-func activityProgress(items []agent.PlanItem) (done, active int) {
+func activityProgress(items []protocol.PlanStep) (done, active int) {
 	active = -1
 	for index, item := range items {
 		switch item.Status {
-		case agent.PlanDone:
+		case protocol.PlanStatusCompleted:
 			done++
-		case agent.PlanActive:
+		case protocol.PlanStatusInProgress:
 			active = index
 		}
 	}

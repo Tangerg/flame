@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // NDJSON renders one event per line as a JSON object, so
@@ -278,8 +279,8 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		}
 	}
 	if latest, ok := snapshot.LatestRun(); ok && latest.ID == target.ID {
-		if snapshot.Plan != nil {
-			frame.Revision, frame.Plan = snapshot.Plan.Revision(), encodePlan(snapshot.Plan.Items())
+		if snapshot.Plan != nil && snapshot.Plan.State != nil {
+			frame.Revision, frame.Plan = snapshot.Plan.State.Revision, encodePlan(snapshot.Plan.State.Steps)
 		}
 	}
 	if target.Status == agent.RunStatusWaiting {
@@ -322,7 +323,7 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 	case agent.BlockCompleted:
 		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
 	case agent.PlanChanged:
-		return eventRecord{Type: "plan.changed", Revision: event.Plan.Revision(), Plan: encodePlan(event.Plan.Items())}, nil
+		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
 	case agent.RunInterrupted:
 		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(event.Usage)}, nil
 	case agent.RunSuspended:
@@ -527,10 +528,10 @@ func encodeTool(tool *agent.ToolCall) *toolFrame {
 	}
 }
 
-func encodePlan(items []agent.PlanItem) []planFrame {
+func encodePlan(items []protocol.PlanStep) []planFrame {
 	out := make([]planFrame, 0, len(items))
 	for _, it := range items {
-		out = append(out, planFrame{Title: it.Title, Status: string(it.Status)})
+		out = append(out, planFrame{Title: it.Description, Status: string(it.Status)})
 	}
 	return out
 }

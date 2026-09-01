@@ -1,12 +1,15 @@
 package agent
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func testWorkspace(path string) workspace.Workspace {
@@ -18,18 +21,25 @@ const (
 	testSessionModel    = "balanced"
 )
 
-func testPlan(t testing.TB, revision uint64, items []PlanItem) *Plan {
+func testPlan(t testing.TB, revision uint64, steps []protocol.PlanStep) *protocol.Plan {
 	t.Helper()
-	plan, err := NewPlan(revision, items)
-	if err != nil {
+	for index := range steps {
+		if steps[index].ID == "" {
+			steps[index].ID = fmt.Sprintf("step_%d", index+1)
+		}
+	}
+	plan := &protocol.Plan{SessionID: "ses_1", State: &protocol.PlanState{
+		Revision: revision, Steps: steps, UpdatedAt: time.Unix(1, 0).UTC(),
+	}}
+	if err := protocol.ValidateWireTree(*plan); err != nil {
 		t.Fatalf("new test Plan: %v", err)
 	}
-	return &plan
+	return plan
 }
 
-func testPlanChanged(t testing.TB, revision uint64, items []PlanItem) PlanChanged {
+func testPlanChanged(t testing.TB, revision uint64, steps []protocol.PlanStep) PlanChanged {
 	t.Helper()
-	return PlanChanged{Plan: *testPlan(t, revision, items)}
+	return PlanChanged{Plan: *testPlan(t, revision, steps)}
 }
 
 func TestSessionQueryNormalizesLocalFilterIdentity(t *testing.T) {
@@ -128,7 +138,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 			{ID: "user_1", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockUser, Text: "hello"},
 			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning}},
 		},
-		Plan: testPlan(t, 3, []PlanItem{{Title: "inspect", Status: PlanActive}}),
+		Plan: testPlan(t, 3, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusWaiting})},
 		Interactions: []Interaction{Approval{
 			RunID: "run_1", ItemID: "tool_1", Title: "edit", Rememberable: true,
@@ -476,7 +486,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 			ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished,
 			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 5},
 		})},
-		Plan: testPlan(t, 2, []PlanItem{{Title: "inspect", Status: PlanDone}}),
+		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusCompleted}}),
 	}
 	conversation := NewConversation()
 	if err := conversation.RestoreSnapshot(snapshot); err != nil {
@@ -494,9 +504,9 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 	}{
 		{name: "transcript", mutate: func(value *SessionSnapshot) { value.Transcript[0].Text = "changed" }},
 		{name: "plan", mutate: func(value *SessionSnapshot) {
-			items := value.Plan.Items()
-			items[0].Status = PlanActive
-			value.Plan = testPlan(t, value.Plan.Revision(), items)
+			steps := slices.Clone(value.Plan.State.Steps)
+			steps[0].Status = protocol.PlanStatusInProgress
+			value.Plan = testPlan(t, value.Plan.State.Revision, steps)
 		}},
 		{name: "usage", mutate: func(value *SessionSnapshot) { value.Runs[0].Usage.InputTokens++ }},
 		{name: "outcome", mutate: func(value *SessionSnapshot) { value.Runs[0].Outcome.Status = OutcomeCanceled }},

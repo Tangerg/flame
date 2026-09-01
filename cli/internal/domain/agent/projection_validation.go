@@ -276,7 +276,11 @@ func ValidateEvent(event Event) error {
 	case BlockCompleted:
 		return item.Block.validateLifecycle(true)
 	case PlanChanged:
-		return item.Plan.Validate()
+		if err := runtimeprotocol.ValidateWireTree(item.Plan); err != nil {
+			return err
+		}
+		_, err := committedPlanState(&item.Plan)
+		return err
 	case RunInterrupted:
 		return errors.Join(
 			validateSegmentBoundaryContext(item.ContextTokens),
@@ -445,25 +449,6 @@ func (t ToolStatus) blockStatus() BlockStatus {
 	default:
 		return BlockStatusIncomplete
 	}
-}
-
-func validatePlan(items []PlanItem) error {
-	active := 0
-	for i, item := range items {
-		if strings.TrimSpace(item.Title) == "" {
-			return fmt.Errorf("plan item %d has no title", i+1)
-		}
-		if !slices.Contains([]PlanStatus{PlanPending, PlanActive, PlanDone}, item.Status) {
-			return fmt.Errorf("plan item %d has invalid status %q", i+1, item.Status)
-		}
-		if item.Status == PlanActive {
-			active++
-		}
-	}
-	if active > 1 {
-		return errors.New("plan has more than one active item")
-	}
-	return nil
 }
 
 func validateUsageProgress(previous, next Usage) error {

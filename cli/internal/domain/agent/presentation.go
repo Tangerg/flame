@@ -356,21 +356,6 @@ func (t ToolCall) Validate() error {
 	return nil
 }
 
-// PlanStatus is a plan item's state.
-type PlanStatus string
-
-const (
-	PlanPending PlanStatus = "pending"
-	PlanActive  PlanStatus = "active"
-	PlanDone    PlanStatus = "done"
-)
-
-// PlanItem is one step of the run's plan.
-type PlanItem struct {
-	Title  string
-	Status PlanStatus
-}
-
 // OutcomeStatus is how a run ended.
 type OutcomeStatus string
 

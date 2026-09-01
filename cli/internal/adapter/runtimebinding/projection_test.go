@@ -476,8 +476,8 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 			}},
 			assert: func(t *testing.T, event agent.RunEvent) {
 				plan, ok := event.Event.(agent.PlanChanged)
-				items := plan.Plan.Items()
-				if !ok || plan.Plan.Revision() != 2 || len(items) != 1 || items[0].Title != "verify" || items[0].Status != agent.PlanActive {
+				items := plan.Plan.State.Steps
+				if !ok || plan.Plan.State.Revision != 2 || len(items) != 1 || items[0].Description != "verify" || items[0].Status != protocol.PlanStatusInProgress {
 					t.Fatalf("plan.updated = %#v", event.Event)
 				}
 			},

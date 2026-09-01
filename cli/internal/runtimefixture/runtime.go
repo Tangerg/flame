@@ -53,8 +53,8 @@ type Runtime struct {
 type sessionState struct {
 	meta      agent.Session
 	items     []durableItem
-	plan      *agent.Plan
-	planAtRun map[string]*agent.Plan
+	plan      *protocol.Plan
+	planAtRun map[string]*protocol.Plan
 	runs      []string
 	active    string
 }

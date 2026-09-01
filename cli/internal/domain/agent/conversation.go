@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 var (
@@ -31,7 +32,7 @@ func (c ConversationPhase) Valid() bool {
 // from Items; live state is folded from one exact segment stream at a time.
 type Conversation struct {
 	blocks       []Block
-	plan         *Plan
+	plan         *protocol.Plan
 	usage        Usage
 	interactions []Interaction
 	outcome      Outcome
@@ -68,13 +69,13 @@ func NewConversation() *Conversation {
 	}
 }
 
-func (c *Conversation) Blocks() []Block { return cloneBlocks(c.blocks) }
-func (c *Conversation) Plan() *Plan     { return clonePlan(c.plan) }
-func (c *Conversation) PlanItems() []PlanItem {
-	if c.plan == nil {
+func (c *Conversation) Blocks() []Block      { return cloneBlocks(c.blocks) }
+func (c *Conversation) Plan() *protocol.Plan { return clonePlan(c.plan) }
+func (c *Conversation) PlanItems() []protocol.PlanStep {
+	if c.plan == nil || c.plan.State == nil {
 		return nil
 	}
-	return c.plan.Items()
+	return append([]protocol.PlanStep{}, c.plan.State.Steps...)
 }
 func (c *Conversation) Usage() Usage                { return c.usage.Clone() }
 func (c *Conversation) Interactions() []Interaction { return CloneInteractions(c.interactions) }
@@ -208,16 +209,20 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	event := envelope.Event
 	if item, ok := event.(PlanChanged); ok {
-		if c.plan != nil && item.Plan.Revision() == c.plan.Revision() {
-			if !c.plan.Equal(item.Plan) {
-				return false, fmt.Errorf("%w: plan revision %d changed content", ErrEventConflict, item.Plan.Revision())
+		state, stateErr := committedPlanState(&item.Plan)
+		if stateErr != nil {
+			return false, stateErr
+		}
+		if c.plan != nil && c.plan.State != nil && state.Revision == c.plan.State.Revision {
+			if !equalPlans(c.plan, &item.Plan) {
+				return false, fmt.Errorf("%w: plan revision %d changed content", ErrEventConflict, state.Revision)
 			}
 			// The Runtime deliberately repeats the segment's final Plan immediately
 			// before segment.finished. Revision + content are the business identity;
 			// the fence has a distinct transport EventID but folds to the same value.
 			return true, nil
 		}
-		if item.Plan.Revision() <= c.restoredPlanRevision {
+		if state.Revision <= c.restoredPlanRevision {
 			return true, nil
 		}
 	}
@@ -476,11 +481,22 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	if err := c.requireRunRunning(runID, "change the plan"); err != nil {
 		return err
 	}
-	if c.plan != nil && event.Plan.Revision() <= c.plan.Revision() {
-		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, event.Plan.Revision(), c.plan.Revision())
+	if event.Plan.SessionID != c.runs[runID].SessionID {
+		return fmt.Errorf(
+			"%w: plan belongs to session %q, want %q",
+			ErrInvalidTransition,
+			event.Plan.SessionID,
+			c.runs[runID].SessionID,
+		)
 	}
-	plan := event.Plan.Clone()
-	c.plan = &plan
+	state, err := committedPlanState(&event.Plan)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidTransition, err)
+	}
+	if c.plan != nil && c.plan.State != nil && state.Revision <= c.plan.State.Revision {
+		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, state.Revision, c.plan.State.Revision)
+	}
+	c.plan = clonePlan(&event.Plan)
 	return nil
 }
 

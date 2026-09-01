@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
@@ -625,10 +626,9 @@ func TestColdReconciliationKeepsOneShotOutputScopedToItsRun(t *testing.T) {
 
 func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 	t.Helper()
-	plan, err := agent.NewPlan(3, []agent.PlanItem{{Title: "newer plan", Status: agent.PlanDone}})
-	if err != nil {
-		t.Fatalf("new test Plan: %v", err)
-	}
+	plan := protocol.Plan{SessionID: "ses_1", State: &protocol.PlanState{Revision: 3, UpdatedAt: time.Unix(1, 0).UTC(), Steps: []protocol.PlanStep{
+		{ID: "1", Description: "newer plan", Status: protocol.PlanStatusCompleted},
+	}}}
 	return agent.SessionSnapshot{
 		Session: agent.Session{ID: "ses_1", Status: agent.SessionIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
 			Path: "/tmp/demo", ProjectRoot: "/tmp/demo", Availability: workspace.Available,

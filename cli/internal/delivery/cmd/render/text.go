@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // maxToolOutputLines caps how much of a tool's output is shown. A test run that
@@ -117,7 +118,7 @@ func (t *Text) renderEvent(envelope agent.RunEvent) {
 	case agent.BlockCompleted:
 		t.finish(event.Block)
 	case agent.PlanChanged:
-		t.plan(event.Plan.Items())
+		t.plan(event.Plan.State.Steps)
 	case agent.RunInterrupted:
 		for _, interaction := range event.Interactions {
 			t.showInteraction(interaction)
@@ -453,7 +454,7 @@ func (t *Text) diff(d string) {
 	}
 }
 
-func (t *Text) plan(items []agent.PlanItem) {
+func (t *Text) plan(items []protocol.PlanStep) {
 	if len(items) == 0 {
 		return
 	}
@@ -462,15 +463,15 @@ func (t *Text) plan(items []agent.PlanItem) {
 	for _, it := range items {
 		mark := "☐"
 		switch it.Status {
-		case agent.PlanActive:
+		case protocol.PlanStatusInProgress:
 			mark = "▸"
-		case agent.PlanDone:
+		case protocol.PlanStatusCompleted:
 			mark = "☑"
-		case agent.PlanPending:
+		case protocol.PlanStatusPending:
 			// The empty checkbox is already selected.
 		default:
 		}
-		t.line("  " + mark + " " + it.Title)
+		t.line("  " + mark + " " + it.Description)
 	}
 }
 

@@ -181,7 +181,7 @@ type SessionSnapshot struct {
 	Session      Session
 	Transcript   []Block
 	Runs         []Run
-	Plan         *Plan
+	Plan         *runtimeprotocol.Plan
 	Goal         *runtimeprotocol.Goal
 	Interactions []Interaction
 }
@@ -241,8 +241,14 @@ func (s SessionSnapshot) Validate() error {
 		return err
 	}
 	if s.Plan != nil {
-		if err := s.Plan.Validate(); err != nil {
+		if err := runtimeprotocol.ValidateWireTree(*s.Plan); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
+		}
+		if _, err := committedPlanState(s.Plan); err != nil {
+			return fmt.Errorf("session snapshot: %w", err)
+		}
+		if s.Plan.SessionID != s.Session.ID {
+			return fmt.Errorf("session snapshot: plan belongs to session %q, want %q", s.Plan.SessionID, s.Session.ID)
 		}
 	}
 	if s.Goal != nil {
@@ -470,8 +476,8 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	next := NewConversation()
 	next.blocks = cloneBlocks(snapshot.Transcript)
 	next.plan = clonePlan(snapshot.Plan)
-	if next.plan != nil {
-		next.restoredPlanRevision = next.plan.Revision()
+	if next.plan != nil && next.plan.State != nil {
+		next.restoredPlanRevision = next.plan.State.Revision
 	}
 	next.rebuildBlockIndex()
 	for _, run := range snapshot.Runs {

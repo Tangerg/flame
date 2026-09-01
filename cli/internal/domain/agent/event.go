@@ -128,7 +128,7 @@ type CustomEvent struct {
 type BlockCompleted struct{ Block Block }
 
 type PlanChanged struct {
-	Plan Plan
+	Plan runtimeprotocol.Plan
 }
 
 // RunInterrupted closes the current segment and parks the stable logical run.
@@ -205,7 +205,7 @@ func (item BlockCompleted) equal(event Event) bool {
 
 func (item PlanChanged) equal(event Event) bool {
 	other, ok := event.(PlanChanged)
-	return ok && item.Plan.Equal(other.Plan)
+	return ok && equalPlans(&item.Plan, &other.Plan)
 }
 
 func (item RunInterrupted) equal(event Event) bool {
@@ -267,7 +267,7 @@ func CloneEvent(event Event) Event {
 		item.Block = item.Block.Clone()
 		return item
 	case PlanChanged:
-		item.Plan = item.Plan.Clone()
+		item.Plan = *clonePlan(&item.Plan)
 		return item
 	case RunInterrupted:
 		item.Interactions = CloneInteractions(item.Interactions)

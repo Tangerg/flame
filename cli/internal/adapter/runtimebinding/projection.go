@@ -176,32 +176,20 @@ func projectRuntimeProblem(problem *protocol.ProblemData) *failure.Problem {
 	return projected
 }
 
-func projectPlan(plan *protocol.Plan) (*agent.Plan, error) {
+func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 	if plan == nil {
 		return nil, errors.New("plan projection is nil")
+	}
+	if err := protocol.ValidateWireTree(*plan); err != nil {
+		return nil, err
 	}
 	if plan.State == nil {
 		return nil, nil
 	}
-	items := make([]agent.PlanItem, 0, len(plan.State.Steps))
-	for _, value := range plan.State.Steps {
-		var status agent.PlanStatus
-		switch value.Status {
-		case protocol.PlanStatusPending:
-			status = agent.PlanPending
-		case protocol.PlanStatusInProgress:
-			status = agent.PlanActive
-		case protocol.PlanStatusCompleted:
-			status = agent.PlanDone
-		default:
-			return nil, fmt.Errorf("plan item %s has unsupported status %q", value.ID, value.Status)
-		}
-		items = append(items, agent.PlanItem{Title: value.Description, Status: status})
-	}
-	projected, err := agent.NewPlan(plan.State.Revision, items)
-	if err != nil {
-		return nil, err
-	}
+	projected := *plan
+	state := *plan.State
+	state.Steps = slices.Clone(plan.State.Steps)
+	projected.State = &state
 	return &projected, nil
 }
 

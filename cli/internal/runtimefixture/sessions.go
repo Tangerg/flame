@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 var errSessionRevisionExhausted = errors.New("mock: session revision is exhausted")
@@ -274,7 +275,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	}
 	state := &sessionState{meta: meta}
 	if boundary.plan != nil {
-		state.plan, err = commitInitialPlan(boundary.plan.Content())
+		state.plan, err = commitInitialPlan(meta.ID, now, boundary.plan.State.Steps)
 		if err != nil {
 			return agent.Session{}, fmt.Errorf("mock: fork plan: %w", err)
 		}
@@ -330,16 +331,13 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 		_, dropped := droppedSet[item.runID]
 		return dropped
 	})
-	content, err := agent.NewPlanContent(nil)
-	if err != nil {
-		return agent.RollbackResult{}, fmt.Errorf("mock: empty rollback Plan: %w", err)
-	}
+	var steps []protocol.PlanStep
 	if in.ToRunID != "" {
 		if boundary := state.planAtRun[in.ToRunID]; boundary != nil {
-			content = boundary.Content()
+			steps = slices.Clone(boundary.State.Steps)
 		}
 	}
-	plan, err := commitNextPlan(state.plan, content)
+	plan, err := commitNextPlan(state.plan, state.meta.ID, r.now(), steps)
 	if err != nil {
 		return agent.RollbackResult{}, fmt.Errorf("mock: rollback Plan: %w", err)
 	}
@@ -365,7 +363,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 }
 
 type forkBoundary struct {
-	plan *agent.Plan
+	plan *protocol.Plan
 }
 
 // resolveForkBoundary mirrors the runtime's durable boundary rule: an explicit
@@ -433,25 +431,51 @@ func (r *Runtime) seedHistory() {
 		durableItem{runID: run.id, block: agent.Block{ID: "demo_prompt", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockUser, Text: "Why is the cache expiry test flaky?"}},
 		durableItem{runID: run.id, block: agent.Block{ID: "demo_answer", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "The fixed sleep races the janitor. Wait for its sweep signal instead."}},
 	)
-	state.planAtRun = map[string]*agent.Plan{run.id: nil}
+	state.planAtRun = map[string]*protocol.Plan{run.id: nil}
 }
 
-func cloneCommittedPlan(plan *agent.Plan) *agent.Plan {
+func cloneCommittedPlan(plan *protocol.Plan) *protocol.Plan {
 	if plan == nil {
 		return nil
 	}
-	cloned := plan.Clone()
+	cloned := *plan
+	if plan.State != nil {
+		state := *plan.State
+		state.Steps = slices.Clone(plan.State.Steps)
+		cloned.State = &state
+	}
 	return &cloned
 }
 
-func commitInitialPlan(content agent.PlanContent) (*agent.Plan, error) {
-	return commitNextPlan(nil, content)
+func commitInitialPlan(sessionID string, at time.Time, steps []protocol.PlanStep) (*protocol.Plan, error) {
+	return commitNextPlan(nil, sessionID, at, steps)
 }
 
-func commitNextPlan(previous *agent.Plan, content agent.PlanContent) (*agent.Plan, error) {
-	committed, err := agent.CommitNextPlan(previous, content)
-	if err != nil {
+func commitNextPlan(
+	previous *protocol.Plan,
+	sessionID string,
+	at time.Time,
+	steps []protocol.PlanStep,
+) (*protocol.Plan, error) {
+	revision := exactint.First()
+	if previous != nil {
+		if previous.State == nil {
+			return nil, errors.New("mock: previous Plan has no committed state")
+		}
+		current, err := exactint.Restore(previous.State.Revision)
+		if err != nil {
+			return nil, fmt.Errorf("mock: previous Plan revision: %w", err)
+		}
+		revision, err = current.Next()
+		if err != nil {
+			return nil, fmt.Errorf("mock: Plan revision: %w", err)
+		}
+	}
+	committed := &protocol.Plan{SessionID: sessionID, State: &protocol.PlanState{
+		Revision: revision.Value(), Steps: slices.Clone(steps), UpdatedAt: at,
+	}}
+	if err := protocol.ValidateWireTree(*committed); err != nil {
 		return nil, err
 	}
-	return &committed, nil
+	return committed, nil
 }

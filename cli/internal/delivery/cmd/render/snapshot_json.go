@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type sessionSnapshotRecord struct {
@@ -78,11 +79,11 @@ type planSnapshotFrame struct {
 	Items    []planFrame `json:"items"`
 }
 
-func encodePlanSnapshot(plan *agent.Plan) *planSnapshotFrame {
-	if plan == nil {
+func encodePlanSnapshot(plan *protocol.Plan) *planSnapshotFrame {
+	if plan == nil || plan.State == nil {
 		return nil
 	}
-	return &planSnapshotFrame{Revision: plan.Revision(), Items: encodePlan(plan.Items())}
+	return &planSnapshotFrame{Revision: plan.State.Revision, Items: encodePlan(plan.State.Steps)}
 }
 
 type runPageRecord struct {

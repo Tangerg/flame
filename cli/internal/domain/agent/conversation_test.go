@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestConversationFailureRemainsVisibleWhenDerivedIdentityCollides(t *testing.T) {
@@ -405,7 +407,7 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	conversation := NewConversation()
 	snapshot := attachedReconciliationSnapshot(t)
-	plan := snapshot.Plan.Items()
+	plan := snapshot.Plan.State.Steps
 	stream := SegmentStream{RunID: "run_1", SegmentID: "seg_1", HeadEventID: "head", Events: func(func(RunEvent, error) bool) {}}
 	if err := conversation.RestoreAttachedSnapshot(snapshot, stream); err != nil {
 		t.Fatal(err)
@@ -437,16 +439,18 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 		EventID: "new-progress", RunID: "run_1", SegmentID: "seg_1",
 		Event: RunProgress{Usage: &Usage{}},
 	})
+	currentPlan := testPlanChanged(t, 2, plan)
+	currentPlan.Plan.State.UpdatedAt = currentPlan.Plan.State.UpdatedAt.Add(time.Minute)
 	for _, event := range []RunEvent{
-		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []PlanItem{{Title: "older", Status: PlanPending}})},
-		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, plan)},
+		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []protocol.PlanStep{{Description: "older", Status: protocol.PlanStatusPending}})},
+		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: currentPlan},
 	} {
 		accepted, err := conversation.ApplyRunEvent(event)
 		if err != nil || accepted.Applied {
 			t.Fatalf("apply Plan overlap %s = %+v, %v", event.EventID, accepted, err)
 		}
 	}
-	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []PlanItem{{Title: "different", Status: PlanActive}})}
+	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []protocol.PlanStep{{Description: "different", Status: protocol.PlanStatusInProgress}})}
 	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("same-revision plan conflict = %v", err)
 	}
@@ -463,18 +467,34 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	completedTool.Status = ToolOK
 	apply(t, conversation, RunEvent{EventID: "live-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "live", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedTool}}})
 	apply(t, conversation, RunEvent{EventID: "missing-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "missing", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "authoritative"}}})
-	apply(t, conversation, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "done", Status: PlanDone}})})
-	if conversation.Plan() == nil || conversation.Plan().Revision() != 3 || conversation.Checkpoint() != "new-plan" {
+	apply(t, conversation, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "done", Status: protocol.PlanStatusCompleted}})})
+	if conversation.Plan() == nil || conversation.Plan().State.Revision != 3 || conversation.Checkpoint() != "new-plan" {
 		t.Fatalf("reconciled state = plan %+v, checkpoint %q", conversation.Plan(), conversation.Checkpoint())
 	}
-	fence := RunEvent{EventID: "plan-fence", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "done", Status: PlanDone}})}
+	fence := RunEvent{EventID: "plan-fence", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "done", Status: protocol.PlanStatusCompleted}})}
 	accepted, err = conversation.ApplyRunEvent(fence)
 	if err != nil || accepted.Applied {
 		t.Fatalf("final Plan fence = %+v, %v", accepted, err)
 	}
-	conflictingFence := RunEvent{EventID: "plan-fence-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []PlanItem{{Title: "different", Status: PlanDone}})}
+	conflictingFence := RunEvent{EventID: "plan-fence-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "different", Status: protocol.PlanStatusCompleted}})}
 	if _, err := conversation.ApplyRunEvent(conflictingFence); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("conflicting final Plan fence = %v", err)
+	}
+}
+
+func TestConversationRejectsPlanFromAnotherSession(t *testing.T) {
+	conversation := NewConversation()
+	apply(t, conversation, RunEvent{
+		EventID: "start", RunID: "run_1", SegmentID: "seg_1",
+		Event: SegmentStarted{Run: runningRun("seg_1")},
+	})
+	changed := testPlanChanged(t, 1, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}})
+	changed.Plan.SessionID = "ses_other"
+	_, err := conversation.ApplyRunEvent(RunEvent{
+		EventID: "foreign-plan", RunID: "run_1", SegmentID: "seg_1", Event: changed,
+	})
+	if !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("foreign Plan error = %v, want ErrInvalidTransition", err)
 	}
 }
 
@@ -490,7 +510,7 @@ func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
 			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"}),
 		},
-		Plan: testPlan(t, 2, []PlanItem{{Title: "inspect", Status: PlanActive}}),
+		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 	}
 }
 

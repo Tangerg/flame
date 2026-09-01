@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // Step is one scripted action: wait, then either emit an already committed
@@ -26,16 +27,16 @@ type Step struct {
 }
 
 type planReplacementAction struct {
-	content agent.PlanContent
-	err     error
+	steps []protocol.PlanStep
+	err   error
 }
 
 func eventStep(delay time.Duration, event agent.Event) Step {
 	return Emit(delay, event)
 }
 
-func replacePlanStep(delay time.Duration, items []agent.PlanItem) Step {
-	return ReplacePlan(delay, items)
+func replacePlanStep(delay time.Duration, steps []protocol.PlanStep) Step {
+	return ReplacePlan(delay, steps)
 }
 
 // Emit creates a scripted event action. PlanChanged is intentionally rejected:
@@ -47,9 +48,13 @@ func Emit(delay time.Duration, event agent.Event) Step {
 // ReplacePlan creates a scripted whole-list Plan replacement without inventing
 // a revision. The mock Runtime assigns the next durable revision when it plays
 // the step.
-func ReplacePlan(delay time.Duration, items []agent.PlanItem) Step {
-	content, err := agent.NewPlanContent(items)
-	return Step{Delay: delay, plan: &planReplacementAction{content: content, err: err}}
+func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
+	cloned := slices.Clone(steps)
+	err := protocol.ValidateWireTree(protocol.Plan{
+		SessionID: "ses_fixture",
+		State:     &protocol.PlanState{Revision: 1, Steps: cloned},
+	})
+	return Step{Delay: delay, plan: &planReplacementAction{steps: cloned, err: err}}
 }
 
 // Script is one run's worth of events. Prelude plays first; Interactions, when
@@ -144,9 +149,6 @@ func validateSteps(steps []Step, requireFinish bool) error {
 			if step.plan.err != nil {
 				return fmt.Errorf("step %d: %w", i+1, step.plan.err)
 			}
-			if err := step.plan.content.Validate(); err != nil {
-				return fmt.Errorf("step %d: %w", i+1, err)
-			}
 		case step.Event == nil && step.plan == nil:
 			return fmt.Errorf("step %d has no action", i+1)
 		default:
@@ -179,7 +181,7 @@ func cloneSteps(steps []Step) []Step {
 		cloned[i].Event = agent.CloneEvent(cloned[i].Event)
 		if cloned[i].plan != nil {
 			plan := *cloned[i].plan
-			plan.content = plan.content.Clone()
+			plan.steps = slices.Clone(plan.steps)
 			cloned[i].plan = &plan
 		}
 	}
@@ -321,19 +323,19 @@ func newDefaultScenario() defaultScenario {
 
 func (d defaultScenario) prelude() []Step {
 	prelude := make([]Step, 0, 32)
-	prelude = append(prelude, replacePlanStep(beat, []agent.PlanItem{
-		{Title: "Reproduce the flake", Status: agent.PlanActive},
-		{Title: "Find what the test is really waiting for", Status: agent.PlanPending},
-		{Title: "Replace the sleep and re-run", Status: agent.PlanPending},
+	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
+		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusInProgress},
+		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusPending},
+		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusPending},
 	}))
 	prelude = append(prelude, stream("rsn_1", agent.BlockReasoning, d.reasoning)...)
 	prelude = append(prelude, tool("tool_1", agent.ToolShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
 		agent.ToolOK, d.testOutput, "", 3*time.Second+412*time.Millisecond)...)
-	prelude = append(prelude, replacePlanStep(beat, []agent.PlanItem{
-		{Title: "Reproduce the flake", Status: agent.PlanDone},
-		{Title: "Find what the test is really waiting for", Status: agent.PlanDone},
-		{Title: "Replace the sleep and re-run", Status: agent.PlanActive},
+	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
+		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusCompleted},
+		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusCompleted},
+		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusInProgress},
 	}))
 	return append(prelude, stream("msg_1", agent.BlockAssistant, d.explanation)...)
 }

@@ -602,7 +602,7 @@ func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(prompt string) Script {
-		plan := []agent.PlanItem{{Title: prompt + " plan", Status: agent.PlanActive}}
+		plan := []protocol.PlanStep{{ID: "1", Description: prompt + " plan", Status: protocol.PlanStatusInProgress}}
 		delay := time.Duration(0)
 		if prompt == "active" {
 			delay = time.Hour
@@ -641,7 +641,7 @@ func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Plan == nil || snapshot.Plan.Revision() != 1 || len(snapshot.Plan.Items()) != 1 || snapshot.Plan.Items()[0].Title != "boundary plan" {
+	if snapshot.Plan == nil || snapshot.Plan.State == nil || snapshot.Plan.State.Revision != 1 || len(snapshot.Plan.State.Steps) != 1 || snapshot.Plan.State.Steps[0].Description != "boundary plan" {
 		t.Fatalf("fork plan = %+v", snapshot.Plan)
 	}
 	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {

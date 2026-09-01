@@ -143,13 +143,13 @@ func TestStatusKeepsAnUnresolvedWorkbenchProblemAboveRunProgress(t *testing.T) {
 
 func TestActivityViewCentersACompactWindowOnTheActiveStep(t *testing.T) {
 	activity := newActivityView(kit.Dark(), kit.Unicode())
-	activity.Set([]agent.PlanItem{
-		{Title: "Inspect references", Status: agent.PlanDone},
-		{Title: "Define shell", Status: agent.PlanDone},
-		{Title: "Build prompt", Status: agent.PlanPending},
-		{Title: "Refine tools", Status: agent.PlanActive},
-		{Title: "Add responsive tests", Status: agent.PlanPending},
-		{Title: "Run quality gates", Status: agent.PlanPending},
+	activity.Set([]protocol.PlanStep{
+		{Description: "Inspect references", Status: protocol.PlanStatusCompleted},
+		{Description: "Define shell", Status: protocol.PlanStatusCompleted},
+		{Description: "Build prompt", Status: protocol.PlanStatusPending},
+		{Description: "Refine tools", Status: protocol.PlanStatusInProgress},
+		{Description: "Add responsive tests", Status: protocol.PlanStatusPending},
+		{Description: "Run quality gates", Status: protocol.PlanStatusPending},
 	})
 
 	got := drawStatic(t, activity, 44, activity.Measure(44))
@@ -224,7 +224,7 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: workspace.Available,
 	}})
 	activity := newActivityView(theme, glyphs)
-	activity.Set([]agent.PlanItem{{Title: "Inspect", Status: agent.PlanActive}})
+	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
 	status := newStatusView(theme, glyphs)
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
@@ -255,7 +255,7 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: workspace.Available,
 	}})
 	activity := newActivityView(theme, glyphs)
-	activity.Set([]agent.PlanItem{{Title: "HIDDEN_PLAN", Status: agent.PlanActive}})
+	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("TINY_DRAFT")

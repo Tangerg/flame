@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
@@ -35,7 +37,7 @@ func (r *Runtime) playSteps(run *runState, steps []Step) bool {
 				return false
 			}
 		case step.plan != nil:
-			if !r.replacePlan(run, step.plan.content) {
+			if !r.replacePlan(run, step.plan.steps) {
 				return false
 			}
 		default:
@@ -239,19 +241,19 @@ func (r *Runtime) emit(run *runState, event agent.Event) bool {
 	return true
 }
 
-func (r *Runtime) replacePlan(run *runState, content agent.PlanContent) bool {
+func (r *Runtime) replacePlan(run *runState, steps []protocol.PlanStep) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if run.status != agent.RunStatusRunning {
 		return false
 	}
 	session := r.sessions[run.sessionID]
-	plan, err := agent.CommitNextPlan(session.plan, content)
+	plan, err := commitNextPlan(session.plan, session.meta.ID, r.now(), steps)
 	if err != nil {
 		r.failSegmentLocked(run, fmt.Errorf("mock: commit scripted Plan: %w", err))
 		return false
 	}
-	if err := r.emitLocked(run, agent.PlanChanged{Plan: plan}); err != nil {
+	if err := r.emitLocked(run, agent.PlanChanged{Plan: *plan}); err != nil {
 		r.failSegmentLocked(run, err)
 		return false
 	}
@@ -315,8 +317,7 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 	case agent.BlockCompleted:
 		persistBlock(session, run.id, item.Block)
 	case agent.PlanChanged:
-		plan := item.Plan.Clone()
-		session.plan = &plan
+		session.plan = cloneCommittedPlan(&item.Plan)
 	case agent.RunProgress:
 		if item.ContextTokens != nil {
 			run.contextTokens = *item.ContextTokens
@@ -407,7 +408,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	run.active = ""
 	run.interactions = nil
 	if session.planAtRun == nil {
-		session.planAtRun = make(map[string]*agent.Plan)
+		session.planAtRun = make(map[string]*protocol.Plan)
 	}
 	session.planAtRun[run.id] = cloneCommittedPlan(session.plan)
 	session.active = ""
