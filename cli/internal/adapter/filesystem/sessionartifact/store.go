@@ -43,9 +43,10 @@ func (Store) Publish(workspace, title, requestedName string, document session.Do
 	if err != nil {
 		return "", fmt.Errorf("publish session document: %w", err)
 	}
-	if err := syncDirectory(root); err != nil {
-		return "", fmt.Errorf("commit session document: %w", err)
-	}
+	// Move has already published the selected final path. Directory sync is a
+	// crash-durability strengthening step, not a reason to report a false failure
+	// that would make a retry publish another conflict-renamed document.
+	syncCommittedDirectory(root)
 	return finalPath, nil
 }
 
@@ -197,10 +198,10 @@ func stage(root string, body []byte) (path string, err error) {
 	return path, nil
 }
 
-func syncDirectory(path string) error {
+func syncCommittedDirectory(path string) {
 	directory, err := os.Open(path)
 	if err != nil {
-		return err
+		return
 	}
-	return errors.Join(directory.Sync(), directory.Close())
+	_ = errors.Join(directory.Sync(), directory.Close())
 }

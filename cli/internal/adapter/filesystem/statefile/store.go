@@ -143,9 +143,11 @@ func (s Store) Replace(name string, body []byte) error {
 		return fmt.Errorf("replace state snapshot: %w", err)
 	}
 	removeTemporary = false
-	if err := syncDirectory(directory); err != nil {
-		return fmt.Errorf("commit state snapshot: %w", err)
-	}
+	// Rename is the logical commit point. A directory-sync refusal cannot be
+	// returned as an apparent failed replacement after the new state is visible,
+	// because callers would retain an older in-memory fact or retry a committed
+	// mutation. Strengthen crash durability where the filesystem supports it.
+	syncCommittedDirectory(directory)
 	return nil
 }
 
@@ -165,9 +167,7 @@ func (s Store) Remove(name string) error {
 	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	if err := syncDirectory(directory); err != nil {
-		return fmt.Errorf("commit state removal: %w", err)
-	}
+	syncCommittedDirectory(directory)
 	return nil
 }
 
@@ -233,4 +233,8 @@ func syncDirectory(path string) error {
 		return err
 	}
 	return errors.Join(directory.Sync(), directory.Close())
+}
+
+func syncCommittedDirectory(path string) {
+	_ = syncDirectory(path)
 }
