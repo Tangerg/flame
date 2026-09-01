@@ -3,10 +3,11 @@
 # For one project:
 #   cp config/config.example.yaml .flame.yaml
 #
-# Without ./.flame.yaml, Flame reads config.yaml from the OS user config
-# directory under flame/. FLAME_CLI_* environment variables and CLI flags
-# override file values. `flame config path` shows the selected file and `flame
-# config show` prints the merged, validated result.
+# Without .flame.yaml in the selected workspace (`.` or `-C`), Flame reads
+# config.yaml from the OS user config directory under flame/. FLAME_CLI_*
+# environment variables and CLI flags override file values. `flame config path`
+# shows the selected file and `flame config show` prints the merged, validated
+# result.
 #
 # This file configures the CLI consumer only. Provider credentials, custom
 # endpoints, utility/embedding roles, Runtime server, sandbox, MCP, and LSP are

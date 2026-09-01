@@ -83,6 +83,37 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	}
 }
 
+func TestProjectConfigurationFollowsTheSelectedWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	canonical, err := canonicalWorkspacePath(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(canonical, ".flame.yaml")
+	if err := os.WriteFile(path, []byte("provider: workspace-provider\nmodel: workspace-model\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := executeCommand(t, instantRuntime(), "", "-C", workspace, "config", "show")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got settings.Config
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Provider != "workspace-provider" || got.Model != "workspace-model" {
+		t.Fatalf("workspace settings = %+v", got)
+	}
+
+	used, _, err := executeCommand(t, instantRuntime(), "", "-C", workspace, "config", "path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(used) != path {
+		t.Fatalf("workspace configuration path = %q, want %q", strings.TrimSpace(used), path)
+	}
+}
+
 func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
 	t.Setenv("FLAME_CLI_UI_TRANSCRIPT_RETAIN", "77")
 	t.Setenv("FLAME_CLI_UI_TOOL_DETAILS", "true")

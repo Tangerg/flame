@@ -17,7 +17,7 @@ Running without a subcommand opens the Oolong terminal interface. Runtime owns d
 
 CLI preferences and Runtime configuration have separate owners.
 
-- `./.flame.yaml` is the project-local CLI preferences file.
+- `.flame.yaml` in the selected workspace (`.` or `-C`) is the project-local CLI preferences file.
 - The OS user configuration directory provides the default CLI preferences file.
 - `--config` selects an explicit CLI file.
 - `FLAME_CLI_*` variables and flags override file values.

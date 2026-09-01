@@ -67,7 +67,7 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	}
 
 	flags := root.PersistentFlags()
-	flags.String("config", "", "Configuration file (default: ./.flame.yaml or the user config directory)")
+	flags.String("config", "", "Configuration file (default: <workspace>/.flame.yaml or the user config directory)")
 	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
 	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
 	flags.String("max-total-tokens", "", "Maximum cumulative tokens per run (strictly positive; omit for unlimited)")
@@ -102,7 +102,7 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if selectConfigSourceErr := selectConfigSource(v, path); selectConfigSourceErr != nil {
+	if selectConfigSourceErr := selectConfigSource(v, cmd, path); selectConfigSourceErr != nil {
 		return selectConfigSourceErr
 	}
 	if readInConfigErr := v.ReadInConfig(); readInConfigErr != nil {
@@ -157,13 +157,17 @@ func applyRunLimitFlags(v *viper.Viper, cmd *cobra.Command) error {
 	return nil
 }
 
-func selectConfigSource(v *viper.Viper, explicitPath string) error {
+func selectConfigSource(v *viper.Viper, cmd *cobra.Command, explicitPath string) error {
 	if explicitPath != "" {
 		v.SetConfigFile(explicitPath)
 		return nil
 	}
-	const projectConfig = ".flame.yaml"
-	_, err := os.Stat(projectConfig)
+	workspace, err := resolveWorkspace(cmd)
+	if err != nil {
+		return fmt.Errorf("resolve project configuration workspace: %w", err)
+	}
+	projectConfig := filepath.Join(workspace, ".flame.yaml")
+	_, err = os.Stat(projectConfig)
 	switch {
 	case err == nil:
 		v.SetConfigFile(projectConfig)
