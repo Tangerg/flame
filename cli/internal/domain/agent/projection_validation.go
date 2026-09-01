@@ -508,8 +508,6 @@ func validateModelUsageProgress(label string, previous, next ModelUsage) error {
 		return fmt.Errorf("%s cache-write usage regressed", label)
 	case next.ReasoningTokens < previous.ReasoningTokens:
 		return fmt.Errorf("%s reasoning-token usage regressed", label)
-	case previous.CostUSD != nil && next.CostUSD == nil:
-		return fmt.Errorf("%s cost became unknown", label)
 	case previous.CostUSD != nil && next.CostUSD != nil && *next.CostUSD < *previous.CostUSD:
 		return fmt.Errorf("%s cost usage regressed", label)
 	default:

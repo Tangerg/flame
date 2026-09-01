@@ -186,14 +186,19 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	}
 	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
 
-	progressUsage := Usage{InputTokens: 14, OutputTokens: 2}
+	progressUsage := Usage{
+		InputTokens:  14,
+		OutputTokens: 2,
+		ByModel:      map[string]ModelUsage{"mock/balanced": {InputTokens: 14, OutputTokens: 2}},
+	}
+	step := 3
 	contextTokens := int64(16_384)
 	apply(t, conversation, RunEvent{EventID: "progress", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
-		Usage: &progressUsage, ContextTokens: &contextTokens, Activity: "thinking",
+		Step: &step, Usage: &progressUsage, ContextTokens: &contextTokens, Activity: "thinking",
 	}})
 	got := conversation.Usage()
-	if got.InputTokens != 14 || got.OutputTokens != 2 || got.CostUSD == nil || *got.CostUSD != cost ||
-		got.Steps != 2 || got.ByModel["mock/balanced"].InputTokens != 10 {
+	if got.InputTokens != 14 || got.OutputTokens != 2 || got.CostUSD != nil ||
+		got.Steps != step || got.ByModel["mock/balanced"].InputTokens != 14 {
 		t.Fatalf("progress usage = %+v", got)
 	}
 	if conversation.Checkpoint() != "start" {
@@ -203,7 +208,7 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	apply(t, conversation, RunEvent{EventID: "context-after-compaction", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
 		ContextTokens: &compactedContext,
 	}})
-	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != compactedContext {
+	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != compactedContext || runs[0].Usage.Steps != step {
 		t.Fatalf("context-only progress did not update the run: %+v", runs)
 	}
 

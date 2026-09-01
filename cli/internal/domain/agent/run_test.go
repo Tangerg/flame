@@ -229,8 +229,12 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	if err := (Usage{CostUSD: &invalid}).Validate(); err == nil {
 		t.Fatal("NaN cost was accepted")
 	}
-	if err := validateUsageProgress(Usage{CostUSD: &knownZero}, Usage{}); err == nil {
-		t.Fatal("known cumulative cost became unknown")
+	if err := validateUsageProgress(Usage{CostUSD: &knownZero}, Usage{}); err != nil {
+		t.Fatalf("known cumulative cost could not become unknown: %v", err)
+	}
+	regressedCost, priorCost := 0.25, 0.5
+	if err := validateUsageProgress(Usage{CostUSD: &priorCost}, Usage{CostUSD: &regressedCost}); err == nil {
+		t.Fatal("known cumulative cost regressed")
 	}
 	if err := (Usage{Steps: -1}).Validate(); err == nil {
 		t.Fatal("negative step usage was accepted")

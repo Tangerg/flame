@@ -443,17 +443,13 @@ func (c *Conversation) applyRunProgress(runID string, event RunProgress) error {
 	if event.ContextTokens != nil {
 		run.ContextTokens = *event.ContextTokens
 	}
-	if event.Usage == nil {
-		c.runs[runID] = run
-		return nil
+	usage := run.Usage.Clone()
+	if event.Usage != nil {
+		usage = event.Usage.Clone()
+		usage.Steps, usage.Duration = run.Usage.Steps, run.Usage.Duration
 	}
-	usage := event.Usage.Clone()
-	usage.Steps, usage.Duration = run.Usage.Steps, run.Usage.Duration
-	if usage.CostUSD == nil && run.Usage.CostUSD != nil {
-		usage.CostUSD = new(*run.Usage.CostUSD)
-	}
-	if usage.ByModel == nil && run.Usage.ByModel != nil {
-		usage.ByModel = run.Usage.Clone().ByModel
+	if event.Step != nil {
+		usage.Steps = *event.Step
 	}
 	if err := validateUsageProgress(run.Usage, usage); err != nil {
 		return fmt.Errorf("%w: run progress: %w", ErrInvalidTransition, err)
