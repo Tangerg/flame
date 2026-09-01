@@ -12,8 +12,40 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
+
+type ItemReplacement struct {
+	Expected    transcript.Item
+	Replacement transcript.Item
+}
+
+// WaitingSubtreeCancellationCommit is the immutable write-set for canceling a
+// child while its Run tree is waiting.
+type WaitingSubtreeCancellationCommit struct {
+	// CommitID identifies the complete cancellation transaction. A cancellation
+	// that resumes the surviving tree reuses its OpeningCommit identity.
+	CommitID             runtimeidentity.CommitID
+	RootRunID            string
+	TargetRunID          string
+	SessionID            string
+	RootRun              rundomain.Run
+	ExpectedPending      Pending
+	RemainingPending     *Pending
+	Checkpoint           ExecutorCheckpoint
+	TerminalRuns         []rundomain.Run
+	TerminalItems        []ItemReplacement
+	ParentItem           ItemReplacement
+	ConversationMessages []corechat.Message
+	Resume               *rundomain.TreeResumeDraft
+	OpeningEvents        []EventCommit
+}
+
+type WaitingSubtreeCancellationResult struct {
+	TargetRun rundomain.Run
+	RootRun   rundomain.Run
+}
 
 type waitingCancellationValidation struct {
 	commit              WaitingSubtreeCancellationCommit
