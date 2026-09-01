@@ -43,9 +43,9 @@ type storedGoalBudget struct {
 }
 
 type goalUsed struct {
-	Runs    int     `json:"runs"`
-	CostUSD float64 `json:"cost_usd"`
-	Steps   int     `json:"steps"`
+	Runs    int      `json:"runs"`
+	CostUSD *float64 `json:"cost_usd,omitempty"`
+	Steps   int      `json:"steps"`
 }
 
 // Get returns the Session's explicit optional Goal.
@@ -84,7 +84,7 @@ func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Ve
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal budget: %w", err)
 	}
-	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.CostUSD, Steps: snapshot.Used.Steps})
+	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.Cost.OptionalUSD(), Steps: snapshot.Used.Steps})
 	if err != nil {
 		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal used: %w", err)
 	}
@@ -331,12 +331,16 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 	if err := json.Unmarshal([]byte(usedJSON), &used); err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal used: %w", err)
 	}
+	usedCost, err := accounting.CostFromOptional(used.CostUSD)
+	if err != nil {
+		return goal.Goal{}, fmt.Errorf("sqlite: decode goal used cost: %w", err)
+	}
 	value, err := goal.Restore(goal.Snapshot{
 		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
 		ReasonCode: goal.ReasonCode(reasonCode), ReasonDetail: reasonDetail,
 		ModelSelection: selection, Capabilities: capabilities,
 		Budget:        budget,
-		Used:          goal.Usage{Runs: used.Runs, CostUSD: used.CostUSD, Steps: used.Steps},
+		Used:          goal.Usage{Runs: used.Runs, Cost: usedCost, Steps: used.Steps},
 		IncarnationID: incarnationID, Revision: revision,
 		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
 	})

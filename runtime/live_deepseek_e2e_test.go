@@ -192,7 +192,10 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 		t.Fatalf("Goal Runs = %+v, want one completed Run", runs.Data)
 	}
 	assertDeepSeekRun(t, &runs.Data[0])
-	t.Logf("Goal settled after %d steps for $%.6f; final observable state was %s", lastGoal.Used.Steps, lastGoal.Used.CostUSD, lastGoal.Status)
+	if lastGoal.Used.CostUSD == nil {
+		t.Fatal("Goal completed without exact DeepSeek pricing")
+	}
+	t.Logf("Goal settled after %d steps for $%.6f; final observable state was %s", lastGoal.Used.Steps, *lastGoal.Used.CostUSD, lastGoal.Status)
 }
 
 func TestLiveDeepSeekTokenBudgetStopsBeforeFollowUpModelCall(t *testing.T) {

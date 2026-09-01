@@ -275,7 +275,7 @@ func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	if blocked.Status() != StatusBlocked || blocked.Reason().Code() != ReasonRunBudgetReached ||
-		blocked.Used() != (Usage{Runs: 1, CostUSD: 0.25, Steps: 2}) || blocked.Revision() != 2 {
+		blocked.Used() != (Usage{Runs: 1, Cost: goalTestCost(t, 0.25), Steps: 2}) || blocked.Revision() != 2 {
 		t.Fatalf("blocked = %+v", blocked.Snapshot())
 	}
 	if _, err := blocked.Resume(now.Add(2 * time.Second)); !errors.Is(err, ErrBudgetExhausted) {
@@ -310,6 +310,9 @@ func TestRecordRunRequiresPricingForCostLimitedGoal(t *testing.T) {
 		blocked.Used() != (Usage{Runs: 1, Steps: 2}) {
 		t.Fatalf("unpriced Run result = %+v", blocked.Snapshot())
 	}
+	if _, err := blocked.Resume(now.Add(2 * time.Second)); !errors.Is(err, ErrPricingUnavailable) {
+		t.Fatalf("Resume unpriced Goal = %v, want ErrPricingUnavailable", err)
+	}
 
 	active = testGoalAt(t, budget, run.Capabilities{}, now)
 	record.RunID = "run_2"
@@ -318,8 +321,25 @@ func TestRecordRunRequiresPricingForCostLimitedGoal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if continued.Status() != StatusActive || continued.Used() != (Usage{Runs: 1, Steps: 2}) {
+	if continued.Status() != StatusActive || continued.Used() != (Usage{Runs: 1, Cost: goalTestCost(t, 0), Steps: 2}) {
 		t.Fatalf("priced-zero Run result = %+v", continued.Snapshot())
+	}
+
+	active = testGoalAt(t, budget, run.Capabilities{}, now)
+	record.RunID, record.Cost = "run_3", goalTestCost(t, 0.25)
+	continued, err = active.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.RunID, record.Cost, record.CompletedAt = "run_4", accounting.Cost{}, now.Add(2*time.Second)
+	blocked, err = continued.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, priced := blocked.Used().Cost.USD(); blocked.Status() != StatusBlocked ||
+		blocked.Reason().Code() != ReasonPricingUnavailable || priced ||
+		blocked.Used().Runs != 2 || blocked.Used().Steps != 4 {
+		t.Fatalf("mixed-price Run result = %+v", blocked.Snapshot())
 	}
 }
 
@@ -404,10 +424,10 @@ func TestBudgetExceeded(t *testing.T) {
 		limit    BudgetLimit
 		exceeded bool
 	}{
-		{name: "unbounded", budget: UnlimitedBudget(), used: Usage{Runs: 100, CostUSD: 999, Steps: 999}},
+		{name: "unbounded", budget: UnlimitedBudget(), used: Usage{Runs: 100, Cost: goalTestCost(t, 999), Steps: 999}},
 		{name: "under", budget: testBudget(t, BudgetLimits{MaxRuns: intPointer(5)}), used: Usage{Runs: 4}},
 		{name: "runs", budget: testBudget(t, BudgetLimits{MaxRuns: intPointer(5)}), used: Usage{Runs: 5}, limit: BudgetLimitRuns, exceeded: true},
-		{name: "cost", budget: testBudget(t, BudgetLimits{MaxCostUSD: floatPointer(1)}), used: Usage{CostUSD: 1}, limit: BudgetLimitCost, exceeded: true},
+		{name: "cost", budget: testBudget(t, BudgetLimits{MaxCostUSD: floatPointer(1)}), used: Usage{Runs: 1, Cost: goalTestCost(t, 1)}, limit: BudgetLimitCost, exceeded: true},
 		{name: "steps", budget: testBudget(t, BudgetLimits{MaxSteps: intPointer(10)}), used: Usage{Steps: 11}, limit: BudgetLimitSteps, exceeded: true},
 	}
 	for _, test := range tests {

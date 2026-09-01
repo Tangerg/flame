@@ -468,7 +468,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("get Goal: found=%t err=%v", found, err)
 	}
-	if storedGoal.Used() != (goal.Usage{Runs: 1, CostUSD: costUSD, Steps: 4}) ||
+	if storedGoal.Used() != (goal.Usage{Runs: 1, Cost: bootstrapGoalRunCost(t, costUSD), Steps: 4}) ||
 		storedGoal.Status() != goal.StatusPaused ||
 		storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
 		t.Fatalf("Goal after terminal park = %+v", storedGoal)

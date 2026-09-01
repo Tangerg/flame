@@ -92,30 +92,42 @@ func (b Budget) MaxSteps() (int, bool)       { return b.maxSteps, b.stepsLimited
 
 // Usage is the immutable accounting value accumulated across Goal-owned Runs.
 type Usage struct {
-	Runs    int
-	CostUSD float64
-	Steps   int
+	Runs  int
+	Cost  accounting.Cost
+	Steps int
 }
 
 func (u Usage) validate() error {
-	if u.Runs < 0 || u.Steps < 0 || u.CostUSD < 0 ||
-		math.IsNaN(u.CostUSD) || math.IsInf(u.CostUSD, 0) {
-		return errors.New("goal: usage must be finite and non-negative")
+	if u.Runs < 0 || u.Steps < 0 {
+		return errors.New("goal: usage counts must be non-negative")
+	}
+	if err := u.Cost.Validate(); err != nil {
+		return fmt.Errorf("goal: usage cost: %w", err)
+	}
+	if u.Runs == 0 && (u.Steps != 0 || u.Cost != (accounting.Cost{})) {
+		return errors.New("goal: empty usage carries spending")
 	}
 	return nil
 }
 
 func (u Usage) add(record RunRecord) (Usage, error) {
+	if err := u.validate(); err != nil {
+		return Usage{}, err
+	}
 	if u.Runs == math.MaxInt || record.Steps > math.MaxInt-u.Steps {
 		return Usage{}, errors.New("goal: usage counter overflow")
 	}
 	next := Usage{
-		Runs:    u.Runs + 1,
-		CostUSD: u.CostUSD,
-		Steps:   u.Steps + record.Steps,
+		Runs:  u.Runs + 1,
+		Cost:  record.Cost,
+		Steps: u.Steps + record.Steps,
 	}
-	if cost, available := record.Cost.USD(); available {
-		next.CostUSD += cost
+	if u.Runs > 0 {
+		var err error
+		next.Cost, err = u.Cost.Add(record.Cost)
+		if err != nil {
+			return Usage{}, fmt.Errorf("goal: aggregate usage cost: %w", err)
+		}
 	}
 	if err := next.validate(); err != nil {
 		return Usage{}, err
@@ -136,16 +148,25 @@ func (b BudgetLimit) Valid() bool {
 }
 
 func (b Budget) exceeded(u Usage) (BudgetLimit, bool) {
+	cost, priced := u.Cost.USD()
 	switch {
 	case b.runsLimited && u.Runs >= b.maxRuns:
 		return BudgetLimitRuns, true
-	case b.costLimited && u.CostUSD >= b.maxCostUSD:
+	case b.costLimited && priced && cost >= b.maxCostUSD:
 		return BudgetLimitCost, true
 	case b.stepsLimited && u.Steps >= b.maxSteps:
 		return BudgetLimitSteps, true
 	default:
 		return BudgetLimit(""), false
 	}
+}
+
+func (b Budget) pricingUnavailable(u Usage) bool {
+	if !b.costLimited || u.Runs == 0 {
+		return false
+	}
+	_, priced := u.Cost.USD()
+	return !priced
 }
 
 type RunRecord struct {
@@ -201,14 +222,13 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 		return Goal{}, err
 	}
 	if g.status == StatusActive {
-		_, costAvailable := record.Cost.USD()
 		if record.Outcome != run.OutcomeCompleted {
 			next.status = StatusPaused
 			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, record.Outcome.String())
 		} else if limit, exhausted := g.budget.exceeded(next.used); exhausted {
 			next.status = StatusBlocked
 			next.reason, err = newReason(StatusBlocked, reasonForBudgetLimit(limit), "")
-		} else if g.budget.costLimited && !costAvailable {
+		} else if g.budget.pricingUnavailable(next.used) {
 			next.status = StatusBlocked
 			next.reason, err = newReason(StatusBlocked, ReasonPricingUnavailable, "")
 		}

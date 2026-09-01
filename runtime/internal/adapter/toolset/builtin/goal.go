@@ -131,9 +131,9 @@ type budgetView struct {
 }
 
 type usageView struct {
-	Runs    int     `json:"runs"`
-	CostUSD float64 `json:"cost_usd"`
-	Steps   int     `json:"steps"`
+	Runs    int      `json:"runs"`
+	CostUSD *float64 `json:"cost_usd,omitempty"`
+	Steps   int      `json:"steps"`
 }
 
 // NewCreate builds create_goal. It is assembled after the Goal Driver because
@@ -299,7 +299,7 @@ func viewOf(g goalstate.Goal) goalView {
 		Budget:          budgetViewOf(budget),
 		Usage: usageView{
 			Runs:    used.Runs,
-			CostUSD: used.CostUSD,
+			CostUSD: used.Cost.OptionalUSD(),
 			Steps:   used.Steps,
 		},
 		CreatedAt: g.CreatedAt(),

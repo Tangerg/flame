@@ -4359,8 +4359,8 @@
             },
             {
               "name": "CostUSD",
-              "type": "float64",
-              "tag": "json:\"costUsd\""
+              "type": "*float64",
+              "tag": "json:\"costUsd,omitempty\""
             },
             {
               "name": "Steps",

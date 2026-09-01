@@ -116,7 +116,7 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("Get = (%v, %v), want found", found, err)
 	}
-	if got.Used() != (goal.Usage{Runs: 1, CostUSD: 0.25, Steps: 3}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
+	if got.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.25), Steps: 3}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
 		t.Fatalf("goal after idempotent RecordRun = %+v", got)
 	}
 	if err := runs.Delete(t.Context(), record.SessionID, record.RunID); err != nil {
@@ -253,7 +253,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	snapshot := g.Snapshot()
-	snapshot.Used = goal.Usage{Runs: 1, CostUSD: 0.4, Steps: 3}
+	snapshot.Used = goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.4), Steps: 3}
 	g, err = goal.Restore(snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -271,7 +271,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	maxCostUSD, costLimited := budget.MaxCostUSD()
 	if got.Objective() != "ship the feature" || got.Status() != goal.StatusActive ||
 		!runsLimited || maxRuns != 5 || !costLimited || maxCostUSD != 2.5 ||
-		used.Runs != 1 || used.CostUSD != 0.4 || used.Steps != 3 ||
+		used.Runs != 1 || !used.Cost.Equal(goalRunCost(t, 0.4)) || used.Steps != 3 ||
 		gotSelection.Provider() != "anthropic" || gotSelection.Model() != "claude" ||
 		gotSelection.ReasoningEffort() != "high" ||
 		!got.Capabilities().Equal(wantCapabilities) {

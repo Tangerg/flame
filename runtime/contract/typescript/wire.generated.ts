@@ -574,7 +574,7 @@ export interface GoalRequest {
 export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
 export interface GoalUsage {
-  costUsd: number;
+  costUsd?: number;
   runs: number;
   steps: number;
 }

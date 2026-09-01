@@ -845,7 +845,7 @@ func TestDriverAccountsModelBlockedTerminalRun(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	waitTestSessionGoal(t, store, func(g goal.Goal, ok bool) bool {
-		return ok && g.Status() == goal.StatusBlocked && g.Used() == (goal.Usage{Runs: 1, CostUSD: 0.75, Steps: 2})
+		return ok && g.Status() == goal.StatusBlocked && g.Used() == (goal.Usage{Runs: 1, Cost: accountedGoalCost(0.75), Steps: 2})
 	})
 
 	g, _, _ := loadStoredGoal(t.Context(), store, "s1")
@@ -1130,8 +1130,8 @@ func TestDriverAccumulatesCostBudget(t *testing.T) {
 	}
 	waitTestSessionGoal(t, store, func(g goal.Goal, ok bool) bool { return ok && g.Status() == goal.StatusBlocked })
 	g, _, _ := loadStoredGoal(context.Background(), store, "s1")
-	if g.Used().CostUSD != 1.0 {
-		t.Fatalf("used cost = %v, want 1.0", g.Used().CostUSD)
+	if cost, available := g.Used().Cost.USD(); !available || cost != 1.0 {
+		t.Fatalf("used cost = %v, available %t; want 1.0", cost, available)
 	}
 }
 

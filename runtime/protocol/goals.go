@@ -68,11 +68,12 @@ type GoalBudget struct {
 	MaxSteps   *int     `json:"maxSteps,omitempty"`
 }
 
-// GoalUsage is what the loop has spent so far.
+// GoalUsage is what the loop has spent so far. CostUSD is absent when any
+// completed Run could not be priced; a present zero remains an exact total.
 type GoalUsage struct {
-	Runs    int     `json:"runs"`
-	CostUSD float64 `json:"costUsd"`
-	Steps   int     `json:"steps"`
+	Runs    int      `json:"runs"`
+	CostUSD *float64 `json:"costUsd,omitempty"`
+	Steps   int      `json:"steps"`
 }
 
 // StartGoalRequest — goals.start body.

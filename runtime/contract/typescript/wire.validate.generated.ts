@@ -1063,7 +1063,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     costUsd: numeric(),
     runs: integer(),
     steps: integer(),
-  }, ["costUsd", "runs", "steps"]),
+  }, ["runs", "steps"]),
   GrepMatch: object({
     lineNumber: integer(),
     path: text(),

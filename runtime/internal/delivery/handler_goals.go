@@ -117,6 +117,8 @@ func mapGoalErr(err error, method string) error {
 		return fmt.Errorf("%w: no goal for this session", protocol.ErrInvalidParams)
 	case errors.Is(err, goal.ErrBudgetExhausted):
 		return fmt.Errorf("%w: goal budget is exhausted; start a new goal to change it", protocol.ErrInvalidParams)
+	case errors.Is(err, goal.ErrPricingUnavailable):
+		return fmt.Errorf("%w: goal cost is unavailable; start a new goal to restore a cost limit", protocol.ErrInvalidParams)
 	case errors.Is(err, goal.ErrNotResumable):
 		return fmt.Errorf("%w: this goal is not resumable", protocol.ErrInvalidParams)
 	case errors.Is(err, goal.ErrNotEditable):
@@ -177,7 +179,7 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 		Model:           selection.Model(),
 		ReasoningEffort: selection.ReasoningEffort(),
 		Budget:          presentGoalBudget(budget),
-		Used:            protocol.GoalUsage{Runs: used.Runs, CostUSD: used.CostUSD, Steps: used.Steps},
+		Used:            protocol.GoalUsage{Runs: used.Runs, CostUSD: used.Cost.OptionalUSD(), Steps: used.Steps},
 		CreatedAt:       g.CreatedAt(),
 		UpdatedAt:       g.UpdatedAt(),
 	}

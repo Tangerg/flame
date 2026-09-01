@@ -1006,7 +1006,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("goal after terminal found=%v err=%v", found, err)
 	}
-	if got.Used() != (goal.Usage{Runs: 1, CostUSD: 0.25, Steps: 2}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
+	if got.Used() != (goal.Usage{Runs: 1, Cost: segmentTestCost(t, 0.25), Steps: 2}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
 		t.Fatalf("goal after terminal = %+v", got)
 	}
 	var runState string

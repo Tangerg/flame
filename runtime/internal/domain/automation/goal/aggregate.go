@@ -95,6 +95,7 @@ var (
 	ErrInvalid             = errors.New("goal: invalid Goal")
 	ErrInvalidTransition   = errors.New("goal: invalid lifecycle transition")
 	ErrBudgetExhausted     = errors.New("goal: budget exhausted")
+	ErrPricingUnavailable  = errors.New("goal: pricing unavailable")
 	ErrNotResumable        = errors.New("goal: status is not resumable")
 	ErrNotEditable         = errors.New("goal: status is not editable")
 	ErrRunIdentityConflict = errors.New("goal: Run identity conflict")
@@ -261,6 +262,9 @@ func (g Goal) ValidateSnapshot() error {
 		if limit, exhausted := g.budget.exceeded(g.used); exhausted {
 			return fmt.Errorf("%w: active Goal has exhausted %s budget", ErrInvalid, limit)
 		}
+		if g.budget.pricingUnavailable(g.used) {
+			return fmt.Errorf("%w: active Goal has unavailable cost accounting", ErrInvalid)
+		}
 	}
 	return nil
 }
@@ -423,6 +427,9 @@ func (g Goal) Resume(now time.Time) (Goal, error) {
 	if _, exhausted := g.budget.exceeded(g.used); exhausted {
 		return Goal{}, ErrBudgetExhausted
 	}
+	if g.budget.pricingUnavailable(g.used) {
+		return Goal{}, ErrPricingUnavailable
+	}
 	next, err := g.next(now)
 	if err != nil {
 		return Goal{}, err
@@ -442,6 +449,9 @@ func (g Goal) ReviseObjectiveAndResume(objective, incarnationID string, now time
 	}
 	if _, exhausted := g.budget.exceeded(g.used); exhausted {
 		return Goal{}, ErrBudgetExhausted
+	}
+	if g.budget.pricingUnavailable(g.used) {
+		return Goal{}, ErrPricingUnavailable
 	}
 	return g.reviseObjective(objective, incarnationID, true, now)
 }
