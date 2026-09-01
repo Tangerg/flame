@@ -7,6 +7,7 @@ import (
 	"os"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.
@@ -19,7 +20,7 @@ func ExecutableBuildID() (string, error) {
 }
 
 func buildIDFromFile(path string) (string, error) {
-	file, err := os.Open(path)
+	file, _, err := fileinput.Open(path, 0)
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: open executable for build identity: %w", err)
 	}
