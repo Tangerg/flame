@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 // ServerSpec describes how to launch and address one language server.
@@ -33,6 +34,36 @@ type ServerSpec struct {
 	// language applies there (go.mod, package.json). They route workspace-wide
 	// operations (workspace symbol) that aren't anchored to a single file.
 	RootMarkers []string
+}
+
+func (s ServerSpec) validate() error {
+	for _, required := range []struct {
+		name  string
+		value string
+	}{
+		{name: "name", value: s.Name},
+		{name: "command", value: s.Command},
+		{name: "language id", value: s.LanguageID},
+	} {
+		if !validServerField(required.value) {
+			return fmt.Errorf("%s %q is invalid", required.name, required.value)
+		}
+	}
+	for _, extension := range s.Extensions {
+		if len(extension) < 2 || extension[0] != '.' || !validServerField(extension) || strings.ContainsAny(extension, `/\\`) {
+			return fmt.Errorf("file extension %q is invalid", extension)
+		}
+	}
+	for _, marker := range s.RootMarkers {
+		if !validServerField(marker) || marker == "." || marker == ".." || strings.ContainsAny(marker, `/\\`) {
+			return fmt.Errorf("root marker %q must be a direct child name", marker)
+		}
+	}
+	return nil
+}
+
+func validServerField(value string) bool {
+	return value != "" && strings.TrimSpace(value) == value && strings.IndexFunc(value, unicode.IsControl) < 0
 }
 
 // DefaultServers is the built-in server table — the languages flame supports
@@ -71,10 +102,10 @@ func newServerTable(specs []ServerSpec) (*serverTable, error) {
 	specs = slices.Clone(specs)
 	byName := make(map[string]struct{}, len(specs))
 	for i := range specs {
-		name := specs[i].Name
-		if name == "" || strings.TrimSpace(name) != name {
-			return nil, fmt.Errorf("lsp: server %d has an invalid name %q", i+1, name)
+		if err := specs[i].validate(); err != nil {
+			return nil, fmt.Errorf("lsp: server %d: %w", i+1, err)
 		}
+		name := specs[i].Name
 		if _, duplicate := byName[name]; duplicate {
 			return nil, fmt.Errorf("lsp: server name %q is configured more than once", name)
 		}

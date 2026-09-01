@@ -169,6 +169,7 @@ func TestNewServersSnapshotsSpecs(t *testing.T) {
 	specs := []ServerSpec{{
 		Name:        "test",
 		Command:     "test-lsp",
+		LanguageID:  "test",
 		Args:        []string{"before"},
 		Extensions:  []string{".before"},
 		RootMarkers: []string{"before.mod"},
@@ -198,25 +199,45 @@ func TestNewServersRejectsAmbiguousServerRouting(t *testing.T) {
 	}{
 		{
 			name:  "missing server identity",
-			specs: []ServerSpec{{Extensions: []string{".go"}}},
+			specs: []ServerSpec{{Command: "gopls", LanguageID: "go", Extensions: []string{".go"}}},
+		},
+		{
+			name:  "missing command",
+			specs: []ServerSpec{{Name: "go", LanguageID: "go", Extensions: []string{".go"}}},
+		},
+		{
+			name:  "missing language identity",
+			specs: []ServerSpec{{Name: "go", Command: "gopls", Extensions: []string{".go"}}},
 		},
 		{
 			name: "duplicate server identity",
 			specs: []ServerSpec{
-				{Name: "shared", Extensions: []string{".go"}},
-				{Name: "shared", Extensions: []string{".ts"}},
+				{Name: "shared", Command: "first", LanguageID: "go", Extensions: []string{".go"}},
+				{Name: "shared", Command: "second", LanguageID: "typescript", Extensions: []string{".ts"}},
 			},
 		},
 		{
 			name: "case-insensitive extension collision",
 			specs: []ServerSpec{
-				{Name: "first", Extensions: []string{".go"}},
-				{Name: "second", Extensions: []string{".GO"}},
+				{Name: "first", Command: "first-lsp", LanguageID: "go", Extensions: []string{".go"}},
+				{Name: "second", Command: "second-lsp", LanguageID: "other", Extensions: []string{".GO"}},
 			},
 		},
 		{
 			name:  "empty extension",
-			specs: []ServerSpec{{Name: "extensionless", Extensions: []string{""}}},
+			specs: []ServerSpec{{Name: "extensionless", Command: "server", LanguageID: "plain", Extensions: []string{""}}},
+		},
+		{
+			name:  "extension without dot",
+			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", Extensions: []string{"go"}}},
+		},
+		{
+			name:  "empty root marker",
+			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", RootMarkers: []string{""}}},
+		},
+		{
+			name:  "escaping root marker",
+			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", RootMarkers: []string{"../go.mod"}}},
 		},
 	}
 
@@ -420,8 +441,8 @@ func TestWorkspaceSymbolsReportsEveryStartupFailure(t *testing.T) {
 		}
 	}
 	servers := mustNewServers(t, []ServerSpec{
-		{Name: "go", Extensions: []string{".go"}, RootMarkers: []string{"go.mod"}},
-		{Name: "typescript", Extensions: []string{".ts"}, RootMarkers: []string{"package.json"}},
+		{Name: "go", Command: "gopls", LanguageID: "go", Extensions: []string{".go"}, RootMarkers: []string{"go.mod"}},
+		{Name: "typescript", Command: "typescript-language-server", LanguageID: "typescript", Extensions: []string{".ts"}, RootMarkers: []string{"package.json"}},
 	})
 	t.Cleanup(func() { _ = servers.Close() })
 	goErr := errors.New("gopls unavailable")
