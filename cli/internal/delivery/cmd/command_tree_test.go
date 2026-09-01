@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -848,7 +847,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	base := instantRuntime()
 	target := firstSession(t, base)
 	stateDirectory := t.TempDir()
-	authoring, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	authoring, err := openCommandWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -875,7 +874,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if runtime.request.SessionID != target || runtime.request.CommandID == "" {
 		t.Fatalf("delete request = %+v", runtime.request)
 	}
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openCommandWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

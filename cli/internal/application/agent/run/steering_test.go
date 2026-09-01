@@ -122,7 +122,7 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 }
 
 func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func (f *steerFixture) policy(t *testing.T) commandreplay.Policy {
 
 func stagedSteer(t *testing.T) *steerFixture {
 	t.Helper()
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

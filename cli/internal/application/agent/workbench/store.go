@@ -11,14 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/spf13/pathologize"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -135,7 +133,7 @@ type sessionState struct {
 // updates memory only after its durable replacement succeeds.
 type Store struct {
 	mu                sync.Mutex
-	persistence       persistence
+	persistence       Persistence
 	historyCapacity   int
 	stashCapacity     int
 	workspaceCapacity int
@@ -155,21 +153,17 @@ type Store struct {
 
 // OpenMemory constructs an explicitly process-local Store.
 func OpenMemory(config Config) (*Store, error) {
-	return newStore(newMemoryPersistence(), config)
+	return newStore(nil, config)
 }
 
-// OpenDirectory loads an explicitly durable directory-backed Store.
-func OpenDirectory(directory string, config Config) (*Store, error) {
-	storage, err := newDirectoryPersistence(directory)
-	if err != nil {
-		return nil, err
+// Open loads an explicitly durable Store through its filesystem-neutral port.
+func Open(storage Persistence, config Config) (*Store, error) {
+	if storage == nil {
+		return nil, errors.New("workbench persistence is not configured")
 	}
 	store, err := newStore(storage, config)
 	if err != nil {
 		return nil, err
-	}
-	if err := os.MkdirAll(storage.Directory(), 0o700); err != nil {
-		return nil, fmt.Errorf("create workbench directory: %w", err)
 	}
 	if err := store.loadState(); err != nil {
 		return nil, err
@@ -177,10 +171,7 @@ func OpenDirectory(directory string, config Config) (*Store, error) {
 	return store, nil
 }
 
-func newStore(storage persistence, config Config) (*Store, error) {
-	if err := storage.Validate(); err != nil {
-		return nil, err
-	}
+func newStore(storage Persistence, config Config) (*Store, error) {
 	historyCapacity, err := resolveCapacity(config.HistoryCapacity, defaultHistoryCapacity)
 	if err != nil {
 		return nil, fmt.Errorf("history capacity: %w", err)
@@ -547,20 +538,12 @@ type envelope[T any] struct {
 }
 
 func (s *Store) load(name string, value any) error {
-	if !s.persistence.Durable() {
-		return os.ErrNotExist
+	if s.persistence == nil {
+		return fs.ErrNotExist
 	}
-	file, err := os.Open(s.path(name))
+	body, err := s.persistence.Read(name, maximumStateBytes)
 	if err != nil {
 		return err
-	}
-	defer func() { _ = file.Close() }()
-	body, err := io.ReadAll(io.LimitReader(file, maximumStateBytes+1))
-	if err != nil {
-		return fmt.Errorf("read workbench state %q: %w", name, err)
-	}
-	if len(body) > maximumStateBytes {
-		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
 	}
 	var raw envelope[json.RawMessage]
 	if err := decodeStateJSON(body, &raw); err != nil {
@@ -592,36 +575,35 @@ func decodeStateJSON(encoded []byte, value any) error {
 
 func (s *Store) loadOptional(name string, value any) error {
 	err := s.load(name, value)
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	return err
 }
 
 func (s *Store) loadSessionStates() error {
-	if !s.persistence.Durable() {
+	if s.persistence == nil {
 		return nil
 	}
-	directory := s.path("sessions")
-	entries, err := os.ReadDir(directory)
-	if errors.Is(err, os.ErrNotExist) {
+	entries, err := s.persistence.List("sessions")
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+	for _, name := range entries {
+		if filepath.Ext(name) != ".json" {
 			continue
 		}
-		if s.confirmedSessionStateFile(entry.Name()) {
+		if s.confirmedSessionStateFile(name) {
 			continue
 		}
-		state, err := s.loadSessionState(entry.Name())
+		state, err := s.loadSessionState(name)
 		if err != nil {
 			return err
 		}
-		if err := s.restoreSessionState(entry.Name(), state); err != nil {
+		if err := s.restoreSessionState(name, state); err != nil {
 			return err
 		}
 	}
@@ -735,14 +717,10 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	}
 	name := s.sessionStateName(sessionID)
 	if messageEmpty(draft) && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
-		if !s.persistence.Durable() {
+		if s.persistence == nil {
 			return nil
 		}
-		err := os.Remove(s.path(name))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		return nil
+		return s.persistence.Remove(name)
 	}
 	state := sessionState{
 		SessionID: sessionID, Draft: draft.Clone(), PendingRuns: clonePendingRunSlice(pending),
@@ -763,7 +741,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 }
 
 func (s *Store) save(name string, value any) error {
-	if !s.persistence.Durable() {
+	if s.persistence == nil {
 		return nil
 	}
 	encoded, err := json.MarshalIndent(envelope[any]{Version: formatVersion, Value: value}, "", "  ")
@@ -774,56 +752,15 @@ func (s *Store) save(name string, value any) error {
 	if len(encoded) > maximumStateBytes {
 		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
 	}
-	path := s.path(name)
-	directory := filepath.Dir(path)
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return fmt.Errorf("create state directory: %w", err)
-	}
-	temporary, err := os.CreateTemp(directory, ".flame-state-*")
-	if err != nil {
-		return fmt.Errorf("create state snapshot: %w", err)
-	}
-	temporaryName := temporary.Name()
-	removeTemporary := true
-	defer func() {
-		if removeTemporary {
-			_ = os.Remove(temporaryName)
-		}
-	}()
-	if err := temporary.Chmod(0o600); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if _, err := temporary.Write(encoded); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("write state snapshot: %w", err)
-	}
-	if err := temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("sync state snapshot: %w", err)
-	}
-	if err := temporary.Close(); err != nil {
-		return fmt.Errorf("close state snapshot: %w", err)
-	}
-	if err := os.Rename(temporaryName, path); err != nil {
-		return fmt.Errorf("replace state snapshot: %w", err)
-	}
-	removeTemporary = false
-	return nil
+	return s.persistence.Replace(name, encoded)
 }
 
 func (s *Store) remove(name string) error {
-	if !s.persistence.Durable() {
+	if s.persistence == nil {
 		return nil
 	}
-	err := os.Remove(s.path(name))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	return err
+	return s.persistence.Remove(name)
 }
-
-func (s *Store) path(name string) string { return pathologize.Join(s.persistence.Directory(), name) }
 
 func (s *Store) sessionStateName(sessionID string) string {
 	digest := sha256.Sum256([]byte(sessionID))

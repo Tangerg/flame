@@ -47,7 +47,7 @@ func TestDirectoryPersistenceRequiresAnAbsoluteOwnedRoot(t *testing.T) {
 			t.Fatalf("OpenDirectory(%q) unexpectedly succeeded", directory)
 		}
 	}
-	if _, err := newStore(persistence{}, Config{}); err == nil {
+	if _, err := Open(nil, Config{}); err == nil {
 		t.Fatal("zero persistence unexpectedly constructed a Store")
 	}
 }

@@ -597,7 +597,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 
 func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	directory := t.TempDir()
-	store, err := workbench.OpenDirectory(directory, workbench.Config{})
+	store, err := openSessionWorkbench(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,7 +675,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := workbench.OpenDirectory(directory, workbench.Config{})
+	reopened, err := openSessionWorkbench(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -818,7 +818,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 
 	var pending []workbench.PendingRun
 	host.Until(t, "both runtime commands to become durable", func() bool {
-		store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+		store, err := openSessionWorkbench(stateDirectory)
 		if err != nil {
 			return false
 		}
@@ -869,7 +869,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		t.Fatalf("starts after durable recovery = %+v", inputs)
 	}
 
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

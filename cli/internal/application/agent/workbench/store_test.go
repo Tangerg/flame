@@ -98,7 +98,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 	if saveDraftErr := store.SaveDraft(sessionID, want); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	draftPath := store.path(store.sessionStateName(sessionID))
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
 	if removeErr := os.Remove(draftPath); removeErr != nil {
 		t.Fatal(removeErr)
 	}
@@ -137,7 +137,7 @@ func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 	if err := store.SaveDraft(sessionID, draft); err != nil {
 		t.Fatal(err)
 	}
-	draftPath := store.path(store.sessionStateName(sessionID))
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
 	if err := os.Remove(draftPath); err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +320,7 @@ func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	draftPath := store.path(store.sessionStateName(sessionID))
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
 	if err := os.MkdirAll(draftPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +371,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 
-	statePath := store.path(store.sessionStateName(sessionID))
+	statePath := filepath.Join(directory, store.sessionStateName(sessionID))
 	backupPath := statePath + ".backup"
 	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
 		t.Fatal(renameErr)
@@ -862,7 +862,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	}
 	stageDispatchingPendingRun(t, store, command)
 
-	statePath := store.path(store.sessionStateName(command.SessionID))
+	statePath := filepath.Join(directory, store.sessionStateName(command.SessionID))
 	backupPath := statePath + ".backup"
 	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
 		t.Fatal(renameErr)
@@ -925,7 +925,7 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	}
 	stageDispatchingPendingRun(t, store, command)
 
-	statePath := store.path(store.sessionStateName(command.SessionID))
+	statePath := filepath.Join(directory, store.sessionStateName(command.SessionID))
 	backupPath := statePath + ".backup"
 	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
 		t.Fatal(renameErr)

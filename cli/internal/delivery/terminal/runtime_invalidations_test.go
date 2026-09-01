@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
@@ -1552,7 +1551,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

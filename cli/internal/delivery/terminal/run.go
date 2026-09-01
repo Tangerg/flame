@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
@@ -170,7 +171,11 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 	if strings.TrimSpace(directory) == "" {
 		return workbench.OpenMemory(workbench.Config{})
 	}
-	return workbench.OpenDirectory(directory, workbench.Config{})
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		return nil, err
+	}
+	return workbench.Open(persistence, workbench.Config{})
 }
 
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -31,7 +30,7 @@ func (d *deletionRuntimeStub) DeleteSession(context.Context, agent.DeleteSession
 }
 
 func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +73,7 @@ func (d *deletionRuntimeStub) GetSession(context.Context, string) (agent.Session
 }
 
 func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +101,7 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 }
 
 func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +127,7 @@ func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) 
 }
 
 func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +172,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 }
 
 func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +202,7 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 }
 
 func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

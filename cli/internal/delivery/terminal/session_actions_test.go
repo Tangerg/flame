@@ -117,7 +117,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 
 func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := workbench.OpenDirectory(directory, workbench.Config{})
+	store, err := openSessionWorkbench(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
 		t.Fatalf("deleted session read = %v", getSessionErr)
 	}
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
 		t.Fatalf("recovered deletion read = %v", getSessionErr)
 	}
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +478,7 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	)
 	restarted.Shows(t, "Why is the cache expiry test flaky?")
 	restarted.Shows(t, "recovered rollback input · 1 runs removed")
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -893,7 +893,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	host.Type("/steer focus on parsing")
 	host.Press(input.Enter)
 	accepted := awaitSignalValue(t, runtime.committed, "accepted steer before acknowledgement")
-	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -911,7 +911,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	if len(replay.attempts) != 1 || !replay.attempts[0].Equal(accepted) {
 		t.Fatalf("restart steer attempts = %+v", replay.attempts)
 	}
-	reopened, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	reopened, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

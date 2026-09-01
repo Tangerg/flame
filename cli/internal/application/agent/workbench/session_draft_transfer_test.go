@@ -30,7 +30,7 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 
-	sourcePath := store.path(store.sessionStateName(transfer.SourceSessionID))
+	sourcePath := filepath.Join(directory, store.sessionStateName(transfer.SourceSessionID))
 	backupPath := sourcePath + ".backup"
 	if renameErr := os.Rename(sourcePath, backupPath); renameErr != nil {
 		t.Fatal(renameErr)
@@ -69,7 +69,7 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	}
 	assertDraft(t, reopened, transfer.SourceSessionID, transfer.SourceAfter)
 	assertDraft(t, reopened, transfer.DestinationSessionID, transfer.DestinationAfter)
-	if _, err := os.Stat(reopened.path(sessionDraftTransferName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(directory, sessionDraftTransferName)); !os.IsNotExist(err) {
 		t.Fatalf("draft transfer journal survived recovery: %v", err)
 	}
 }
@@ -145,7 +145,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if _, openErr := OpenDirectory(directory, Config{}); openErr == nil || !strings.Contains(openErr.Error(), "source draft changed") {
 		t.Fatalf("open with conflicting draft transfer = %v", openErr)
 	}
-	if removeErr := os.Remove(store.path(sessionDraftTransferName)); removeErr != nil {
+	if removeErr := os.Remove(filepath.Join(directory, sessionDraftTransferName)); removeErr != nil {
 		t.Fatal(removeErr)
 	}
 	reopened, err := OpenDirectory(directory, Config{})

@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
@@ -121,7 +120,7 @@ func awaitStoredDraft(t *testing.T, stateDirectory, sessionID string, want agent
 }
 
 func storedDraft(stateDirectory, sessionID string) (agent.Message, bool, error) {
-	store, err := workbench.OpenDirectory(stateDirectory, workbench.Config{})
+	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
 		return agent.Message{}, false, err
 	}

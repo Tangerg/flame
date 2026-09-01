@@ -81,6 +81,20 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 	})
 }
 
+func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
+	root := moduleRoot(t)
+	walkProduction(t, root, func(relative, path string) {
+		if !strings.HasPrefix(relative, "internal/application/") {
+			return
+		}
+		for _, imported := range imports(t, path) {
+			if imported == "os" {
+				t.Errorf("%s imports os: operating-system IO belongs in an adapter", relative)
+			}
+		}
+	})
+}
+
 func TestPackagePathsDoNotRepeatOwners(t *testing.T) {
 	root := filepath.Join(moduleRoot(t), "internal")
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {

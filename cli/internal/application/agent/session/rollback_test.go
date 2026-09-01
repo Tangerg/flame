@@ -133,7 +133,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	pending := preview.journal(
 		agent.CommandID("cli_11111111111111111111111111111111"), commandreplay.UnprotectedGuard(), now,
 	)
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 	pending := preview.journal(
 		agent.CommandID("cli_22222222222222222222222222222222"), commandreplay.UnprotectedGuard(), now,
 	)
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 				agent.CommandID("cli_33333333333333333333333333333333"),
 				protectedRollbackGuard(t, "idp_original", stagedAt.Add(time.Minute)), stagedAt,
 			)
-			store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+			store, err := openTestWorkbench(t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -296,7 +296,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	pending := preview.journal(
 		agent.CommandID("cli_44444444444444444444444444444444"), commandreplay.UnprotectedGuard(), now,
 	)
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +324,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	pending := preview.journal(
 		agent.CommandID("cli_55555555555555555555555555555555"), commandreplay.UnprotectedGuard(), now,
 	)
-	store, err := workbench.OpenDirectory(t.TempDir(), workbench.Config{})
+	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
