@@ -735,6 +735,7 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 		t.Fatal(err)
 	}
 	compactionSeen := false
+	var boundaryContextTokens *int64
 	for event, eventErr := range events {
 		if eventErr != nil {
 			t.Fatal(eventErr)
@@ -743,8 +744,21 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 			event.Event.Item.Type == protocol.ItemTypeCompaction {
 			compactionSeen = true
 		}
+		if event.RunID == started.RunID && event.Event.Type == protocol.StreamSegmentFinished {
+			if event.Event.ContextTokens == nil {
+				t.Fatalf("Run %s final segment omitted context tokens", started.RunID)
+			}
+			contextTokens := *event.Event.ContextTokens
+			boundaryContextTokens = &contextTokens
+		}
 	}
 	run := f.getCompletedRun(t, started.RunID)
+	if boundaryContextTokens == nil {
+		t.Fatalf("Run %s stream omitted its final segment boundary", started.RunID)
+	}
+	if *boundaryContextTokens != run.ContextTokens {
+		t.Fatalf("Run %s final stream context = %d, cold Run context = %d", started.RunID, *boundaryContextTokens, run.ContextTokens)
+	}
 	return liveTurn{finalText: f.finalAnswer(t, started.RunID), compactionSeen: compactionSeen, run: run}
 }
 
