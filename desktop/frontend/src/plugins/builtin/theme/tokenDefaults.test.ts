@@ -67,4 +67,20 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
       "--density-not-a-property: css=absent ts=1px",
     ]);
   });
+
+  // An image edge exists to separate the picture from what it sits on, so it must be the
+  // one thing the surface is not. Deriving it from the theme's ink made it carry the
+  // accent's chroma — 21% saturation on Tokyo Night — which reads as grime on the border
+  // rather than as a boundary, and dissolves entirely on a surface of the same hue.
+  it("draws image edges in pure ink, never the theme's tinted neutral", () => {
+    expect(declaredInBlock(":root", "--color-media-edge")).toBe("rgb(0 0 0 / 0.1)");
+    expect(declaredInBlock("html.theme-dark", "--color-media-edge")).toBe("rgb(255 255 255 / 0.1)");
+  });
+
+  // The lightbox scrim is near-black in BOTH schemes, so the scheme's own edge would be
+  // black on black for every light-theme reader.
+  it("keeps the scrim's own edge independent of the scheme", () => {
+    expect(declaredInBlock(":root", "--color-media-preview")).toBe("rgb(0 0 0 / 0.9)");
+    expect(declaredInBlock(":root", "--color-on-media")).toBe("#ffffff");
+  });
 });

@@ -19,8 +19,18 @@
 @custom-variant dark (&:where(.theme-dark, .theme-dark *));
 @custom-variant light (&:where(.theme-light, .theme-light *));
 
+/* An image needs its own edge or a light photo dissolves into a light surface. The colour
+   is PURE, never the theme's ink: neutrals here are tinted proportionally to the accent
+   (21% saturation on Tokyo Night), and a tinted outline picks up that hue as a dirty rim. */
 @utility media-edge {
   outline: 1px solid var(--color-media-edge);
+  outline-offset: -1px;
+}
+
+/* For media sitting on the scrim, which is near-black in BOTH schemes — the scheme's own
+   edge would be black on black in light mode, which is no edge at all. */
+@utility media-edge-on-scrim {
+  outline: 1px solid rgb(255 255 255 / 0.1);
   outline-offset: -1px;
 }
 
@@ -62,7 +72,7 @@
   --color-media-canvas: var(--color-media-canvas);
   --color-on-media: var(--color-on-media);
 
-  --color-media-edge: color-mix(in srgb, var(--color-text) 10%, transparent);
+  --color-media-edge: var(--color-media-edge);
 
   --color-field: var(--color-border);
   --color-field-strong: var(--color-border-soft);
@@ -673,6 +683,7 @@ html.theme-dark {
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
+  --color-media-edge: rgb(255 255 255 / 0.1);
 
   --color-text: #e3e5e9;
   --color-text-bright: #ffffff;
@@ -709,6 +720,7 @@ html.theme-dark {
   --app-min-height: 720px;
   --window-controls-gutter: 78px;
   --window-controls-centre: calc(var(--surface-header-height) / 2);
+  --color-media-edge: rgb(0 0 0 / 0.1);
   --color-media-scrim: rgb(0 0 0 / 0.55);
   --color-media-preview: rgb(0 0 0 / 0.9);
   --color-media-canvas: #ffffff;

@@ -236,7 +236,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
                 const { width, height } = event.currentTarget.getBoundingClientRect();
                 if (width > 0 && height > 0) setFittedSize({ src: active.src, width, height });
               }}
-              className="block max-h-[calc(100dvh-8rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain media-edge"
+              className="block max-h-[calc(100dvh-8rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain media-edge-on-scrim"
             />
           </div>
         </div>
