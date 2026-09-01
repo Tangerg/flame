@@ -104,7 +104,7 @@ func retiredBrandInFile(path string) (string, error) {
 
 func retiredBrandExcludedDirectory(relative string) bool {
 	base := filepath.Base(relative)
-	if base == "node_modules" || base == "dist" {
+	if base == ".cache" || base == ".git" || base == "node_modules" || base == "dist" {
 		return true
 	}
 	for _, generated := range generatedProductBrandDirectories {
@@ -113,6 +113,30 @@ func retiredBrandExcludedDirectory(relative string) bool {
 		}
 	}
 	return false
+}
+
+func TestRetiredBrandScanExcludesOnlyGeneratedDirectoryClasses(t *testing.T) {
+	for _, path := range []string{
+		filepath.Join("desktop", ".cache"),
+		filepath.Join("desktop", "frontend", "node_modules"),
+		filepath.Join("desktop", "frontend", "dist"),
+		".git",
+		filepath.Join("desktop", "build", "bin"),
+	} {
+		if !retiredBrandExcludedDirectory(path) {
+			t.Errorf("generated directory %q is included in the product-source scan", path)
+		}
+	}
+	for _, path := range []string{
+		"desktop",
+		filepath.Join("desktop", "build"),
+		filepath.Join("desktop", "frontend", "src"),
+		filepath.Join("runtime", "internal"),
+	} {
+		if retiredBrandExcludedDirectory(path) {
+			t.Errorf("source directory %q is excluded from the product-source scan", path)
+		}
+	}
 }
 
 func retiredBrandExcludedFile(relative string) bool {
