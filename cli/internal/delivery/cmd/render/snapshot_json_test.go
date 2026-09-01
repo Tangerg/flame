@@ -15,7 +15,7 @@ func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	session := agent.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available},
+		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 		Revision:  1,
 	}
 	var output bytes.Buffer

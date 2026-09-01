@@ -2,10 +2,11 @@ package workspace
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ErrVersionControlUnavailable means the workspace has no version-control
@@ -13,21 +14,10 @@ import (
 // failure.
 var ErrVersionControlUnavailable = errors.New("version control unavailable")
 
-type Availability string
-
-const (
-	Available Availability = "available"
-	Missing   Availability = "missing"
-)
-
-func (a Availability) Valid() bool {
-	return a == Available || a == Missing
-}
-
 type Workspace struct {
 	Path         string
 	ProjectRoot  string
-	Availability Availability
+	Availability protocol.WorkspaceAvailability
 }
 
 func (w Workspace) Validate() error {
@@ -40,14 +30,12 @@ func (w Workspace) Validate() error {
 		return errors.New("workspace project root is empty")
 	case !filepath.IsAbs(w.ProjectRoot):
 		return errors.New("workspace project root is not absolute")
-	case !w.Availability.Valid():
-		return fmt.Errorf("workspace availability %q is invalid", w.Availability)
 	default:
-		return nil
+		return (protocol.WorkspaceInfo{Availability: w.Availability}).ValidateWire()
 	}
 }
 
-func (w Workspace) IsAvailable() bool { return w.Availability == Available }
+func (w Workspace) IsAvailable() bool { return w.Availability == protocol.WorkspaceAvailable }
 
 type Summary struct {
 	Workspace  Workspace

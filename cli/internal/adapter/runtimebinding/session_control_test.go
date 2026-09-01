@@ -206,7 +206,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available}
+	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
 	valid := protocol.Session{
 		ID: artifact.Session.ID, Title: artifact.Session.Title, Status: protocol.SessionStatusIdle,
 		Provider: artifact.Session.Provider, Model: artifact.Session.Model, ReasoningEffort: artifact.Session.ReasoningEffort,

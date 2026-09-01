@@ -43,12 +43,12 @@ func TestWorkspaceOwnsResolvedIdentity(t *testing.T) {
 		workspace Workspace
 		want      string
 	}{
-		{name: "available", workspace: Workspace{Path: "/repo/work", ProjectRoot: "/repo", Availability: Available}},
-		{name: "missing", workspace: Workspace{Path: "/gone/work", ProjectRoot: "/gone", Availability: Missing}},
-		{name: "relative path", workspace: Workspace{Path: "work", ProjectRoot: "/repo", Availability: Available}, want: "not absolute"},
-		{name: "empty project root", workspace: Workspace{Path: "/repo", Availability: Available}, want: "project root is empty"},
-		{name: "relative project root", workspace: Workspace{Path: "/repo/work", ProjectRoot: "repo", Availability: Available}, want: "project root is not absolute"},
-		{name: "unknown availability", workspace: Workspace{Path: "/repo", ProjectRoot: "/repo", Availability: "unknown"}, want: "availability"},
+		{name: "available", workspace: Workspace{Path: "/repo/work", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailable}},
+		{name: "missing", workspace: Workspace{Path: "/gone/work", ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing}},
+		{name: "relative path", workspace: Workspace{Path: "work", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailable}, want: "not absolute"},
+		{name: "empty project root", workspace: Workspace{Path: "/repo", Availability: protocol.WorkspaceAvailable}, want: "project root is empty"},
+		{name: "relative project root", workspace: Workspace{Path: "/repo/work", ProjectRoot: "repo", Availability: protocol.WorkspaceAvailable}, want: "project root is not absolute"},
+		{name: "unknown availability", workspace: Workspace{Path: "/repo", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailability("unknown")}, want: "availability"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

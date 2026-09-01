@@ -19,7 +19,7 @@ import (
 func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
 	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
 		Title:     "Architecture review",
-		Workspace: workspace.Workspace{Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: workspace.Available},
+		Workspace: workspace.Workspace{Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 	})
 	header.SetUsage(agent.Usage{InputTokens: 1_234, OutputTokens: 56_789})
 
@@ -48,7 +48,7 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 
 	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
 		Title: "History", Workspace: workspace.Workspace{
-			Path: "/gone/work", ProjectRoot: "/gone", Availability: workspace.Missing,
+			Path: "/gone/work", ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing,
 		},
 	})
 	got := drawStatic(t, header, 72, 2)
@@ -61,7 +61,7 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 
 func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
 	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
-		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: workspace.Available},
+		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: protocol.WorkspaceAvailable},
 	})
 	current := testGoal(t, "ship the release safely")
 	header.SetGoal(&current)
@@ -221,7 +221,7 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	header := newSessionHeader(theme, glyphs, agent.Session{Title: "New session", Workspace: workspace.Workspace{
-		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: workspace.Available,
+		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
@@ -252,7 +252,7 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	transcript := testTranscriptView(t)
 	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
 	header := newSessionHeader(theme, glyphs, agent.Session{Title: "Hidden title", Workspace: workspace.Workspace{
-		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: workspace.Available,
+		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})

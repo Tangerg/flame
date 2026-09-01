@@ -245,7 +245,7 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 }
 
 func availableWorkspace(path string) workspace.Workspace {
-	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: workspace.Available}
+	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
 }
 
 func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.Session, error) {

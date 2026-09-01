@@ -13,7 +13,7 @@ import (
 )
 
 func testWorkspace(path string) workspace.Workspace {
-	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: workspace.Available}
+	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
 }
 
 const (

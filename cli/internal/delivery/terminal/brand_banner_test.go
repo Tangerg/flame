@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/text"
 
@@ -14,7 +15,7 @@ import (
 
 func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
 	session := agent.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
-		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: workspace.Available,
+		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}}
 	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, displayRunOptions(defaultRunOptions(t), session))
 

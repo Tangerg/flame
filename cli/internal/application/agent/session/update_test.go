@@ -32,7 +32,7 @@ func TestUpdateValidatesTheCommandBeforeMutationAndTheResultAfterward(t *testing
 	title := "Renamed"
 	writer.result = agent.Session{
 		ID: "ses_wrong", Title: title, Status: protocol.SessionStatusIdle, Revision: 2,
-		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: workspace.Available},
+		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 	}
 	_, err := Update(t.Context(), writer, agent.UpdateSession{
 		SessionID: "ses_1", Title: &title, ExpectedRevision: 1,

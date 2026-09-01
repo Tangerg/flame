@@ -274,8 +274,11 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 }
 
 func projectWorkspace(value protocol.WorkspaceInfo) (workspace.Workspace, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
+	}
 	result := workspace.Workspace{
-		Path: value.Ref.Path, ProjectRoot: value.ProjectRoot, Availability: workspace.Availability(value.Availability),
+		Path: value.Ref.Path, ProjectRoot: value.ProjectRoot, Availability: value.Availability,
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
