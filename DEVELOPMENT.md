@@ -17,16 +17,24 @@ Breaking changes are authorized. Migrate all in-scope consumers and leave one cu
 5. Repair one ownership boundary and remove the obsolete contract completely.
 6. Search again for retired names and paths.
 7. Run focused checks, then proportionate module checks.
-8. Inspect the full diff and stage explicit paths only.
+8. Inspect the full diff, stage explicit paths only, and commit and push the verified batch before starting another risky batch.
 
 Reference repositories provide evidence, not layouts to copy:
 
 | Reference | Useful evidence |
 | --- | --- |
-| `/Users/tangerg/Desktop/scope` | Framework and provider boundaries, public Go API discipline |
-| `/Users/tangerg/Desktop/study/codex-server` | Protocol lifecycle, interruption, compaction, and recovery |
-| `/Users/tangerg/Desktop/grok-build` | Terminal interaction and presentation density |
-| `/Users/tangerg/Desktop/opencode` | Provider discovery, credential precedence, and endpoints |
+| `/Users/tangerg/Desktop/scope` | Framework and provider ownership, released contracts, strict construction, and public Go API discipline |
+| `/Users/tangerg/Desktop/study/codex-server` | Protocol lifecycle, interruption, steering, compaction bounds, recovery, and integration-test evidence |
+| `/Users/tangerg/Desktop/grok-build` | Terminal hierarchy, interaction feedback, streaming stability, and presentation density |
+| `/Users/tangerg/Desktop/opencode` | Provider discovery, exact identity, credential precedence, endpoint policy, and request lowering |
+
+Reference code is read-only evidence. Do not copy its directory tree, private protocol, compatibility burden, or framework abstractions into Flame without a Flame-owned requirement.
+
+## Dependency discipline
+
+Use released Scope modules and provider libraries. Do not copy their implementations into Flame, add a local `replace`, or preserve a removed Scope API behind a compatibility wrapper. Upgrade the direct module graph first, migrate every breaking contract in the owning batch, run `go mod tidy`, and inspect the selected transitive graph instead of pinning indirect versions without evidence.
+
+An optional provider capability remains separate from the ordinary chat contract. Advertise it only when the concrete provider implements the exact behavior; do not approximate a missing capability in a generic Flame layer.
 
 ## Verification
 
@@ -46,6 +54,10 @@ GOWORK=off go build ./...
 
 Run `go generate ./...` in Runtime when the protocol catalog changes. Run `go mod tidy` only when imports or dependencies change, and inspect any `go.mod`, `go.sum`, or `go.work.sum` changes before keeping them. Always run `git diff --check`.
 
-Use targeted race tests only for changed concurrent ownership. Use real PTY tests only for terminal mode, input decoding, resize, focus, or restoration. The default test suite must remain offline and credential-independent.
+Use targeted race tests only for changed concurrent ownership. Do not invent multi-Runtime, multi-client, or multi-server coverage when the product path has one Runtime and one CLI. Use real PTY tests only for terminal mode, input decoding, resize, focus, or restoration. The default test suite must remain offline and credential-independent.
 
-`runtime/config/config.yaml` may be loaded through production configuration for an explicitly requested bounded live DeepSeek check. Never print or copy its credential.
+Use focused tests for owner invariants and deterministic failure ordering, then exercise real lifecycle slices through the public binding or protocol. The high-value matrix is Goal creation and completion, Plan replacement and update, steer while running, interruption and resume, context compaction, long context, long execution, restart, and recovery. Test hard bounds and malformed inputs at their owner rather than padding the suite with implementation inventories.
+
+`runtime/config/config.yaml` may be loaded through production configuration for an explicitly requested bounded live DeepSeek check. Use the production bootstrap and public binding or protocol, cover both success and provider-error paths, and never print or copy its credential. A scheduled build-cache cleanup is not a product failure; rebuild and continue without investigating it.
+
+Commits and tests are the progress record. Do not add temporary audit reports, completed-plan documents, capability ledgers, or generated inventories to the repository.

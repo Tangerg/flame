@@ -14,6 +14,8 @@ The main aggregate relationships are:
 - Items are durable observable history. Streaming deltas are replaceable previews.
 - Goals and Plans are distinct product concepts with their own invariants and Application workflows.
 
+An aggregate validates its complete initial state, keeps mutable representation private, and exposes intention-revealing queries and legal transitions. Application code coordinates aggregates instead of reproducing their rules with switches over exported fields. Wire payloads, storage records, configuration values, provider messages, and read projections remain strict data because they translate facts rather than own them.
+
 ## Dependency direction
 
 | Ring | Responsibility |
@@ -49,7 +51,9 @@ The active development contract has one current storage shape. A breaking schema
 
 ## Provider and integration boundaries
 
-Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
+Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, request lowering, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
+
+The ordinary chat contract owns complete and streaming calls. Complete-request token counting and other provider-specific capabilities remain separate narrow contracts discovered at the provider boundary. Runtime advertises only exact implemented behavior; it does not guess from a provider name, approximate unavailable behavior, or add optional methods to every client.
 
 MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the external system they translate. A wrapper remains only when it owns policy, translation, confinement, authority, or resource lifecycle.
 
@@ -83,4 +87,4 @@ Keep related behavior in responsibility-named files inside one package. Split a 
 
 ## Verification
 
-Tests protect observable protocol and binding behavior, Domain invariants, Application transaction ordering, strict persistence, recovery, execution lifecycle, and dependency direction. Architecture tests prevent outer dependencies from leaking inward and keep public SDKs at their adapters; they do not freeze private filenames, fields, function inventories, or exact package counts.
+Tests protect observable protocol and binding behavior, Domain invariants, Application transaction ordering, strict persistence, recovery, execution lifecycle, and dependency direction. The primary lifecycle matrix covers Goal, Plan, steer, HITL, interruption and resume, compaction, long context, long execution, provider failure, restart, and recovery through one Runtime. Architecture tests prevent outer dependencies from leaking inward and keep public SDKs at their adapters; they do not freeze private filenames, fields, function inventories, or exact package counts. Multi-client, multi-server, and race scenarios need evidence that Runtime owns that concurrency.

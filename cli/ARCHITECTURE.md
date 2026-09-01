@@ -31,6 +31,8 @@ Application depends on Domain. Adapters and Delivery depend inward on the consum
 
 Domain contains no I/O interfaces and no `context.Context`. A narrow port is declared beside the Application or Delivery behavior that consumes it. Composition supplies the concrete implementation.
 
+CLI Domain types are behavior-rich only for CLI-owned invariants. A draft, queue, replay intent, or selection owner validates its state and exposes legal transitions. Runtime snapshots, protocol values, render rows, and command inputs remain typed data; wrapping them in getters does not create a domain model.
+
 ## Runtime path
 
 The production process opens at most one concrete Runtime, fans its binding adapter into consumer-owned ports, and closes the Runtime once. There is no environment-selected fake, loopback HTTP client, service locator, or alternate product implementation.
@@ -49,6 +51,8 @@ The terminal package owns an explicit UI state tree and cohesive feature control
 
 Oolong owns terminal mode, input decoding, cell measurement, and low-level editing. Flame owns product interaction, including focus, keymaps, mouse press/release matching, overlays, composer behavior, attention signals, and stable stream presentation.
 
+`/Users/tangerg/Desktop/grok-build` is the visual benchmark for information hierarchy, spacing, presentation density, stable streaming, and immediate interaction feedback. Flame keeps its own vocabulary, state ownership, and Oolong primitives. Compare deterministic renders at representative terminal dimensions so visual changes have reviewable evidence instead of subjective claims.
+
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.
 
 ## Local authoring
@@ -59,9 +63,9 @@ Attachments are local path references. Dispatch reopens the current file through
 
 ## Package shape
 
-A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycle, external translation, or terminal mechanism. Related behavior stays in responsibility-named files inside one package. Context namespace directories exist only for several peer packages and contain no facade Go files.
+A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycle, external translation, or terminal mechanism. Related behavior stays in responsibility-named files inside one package. Context namespace directories exist only for several peer packages and contain no facade Go files. A package does not earn a boundary merely because its type has an interface or its workflow has one action.
 
-Do not create packages for individual actions, interfaces, or DTOs. Do not create broad `service`, `manager`, `backend`, `common`, or `helpers` packages.
+Do not create packages for individual actions, interfaces, or DTOs. Merge a single-consumer forwarding package into the consumer unless the package owns an external translation or reusable technical mechanism. Do not create broad `service`, `manager`, `backend`, `common`, or `helpers` packages.
 
 ## Verification
 

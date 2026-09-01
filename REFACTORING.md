@@ -23,12 +23,14 @@ For every package, interface, wrapper, state flag, cache, or alternate API under
 - What externally visible capability disappears if it is removed?
 - Does the replacement reduce concepts, call paths, or synchronization?
 - Which focused test would fail if the change were wrong?
+- Could the owning aggregate answer this question or perform this transition without exposing its fields?
+- Is this type behavior-rich because it owns a rule, or only decorated data with forwarding methods?
 
-Merge ownerless or forwarding-only packages into their real owner. Keep strict codecs, confined filesystem capabilities, protocol boundaries, and rich aggregates when they protect a genuine responsibility, even with one implementation.
+Merge ownerless or forwarding-only packages into their real owner. A package split needs distinct vocabulary, consumers, lifecycle, or external translation; a package merge needs shared ownership and must reduce forwarding without creating a god package. Keep strict codecs, confined filesystem capabilities, protocol boundaries, and rich aggregates when they protect a genuine responsibility, even with one implementation.
 
 ## Change the owner first
 
-Move an invariant onto the Domain type that owns the value or transition. Move I/O ordering and cross-aggregate consistency into an Application use case. Keep SDKs, SQL, filesystems, processes, transports, and terminal frameworks outside those inner policies.
+Move an invariant onto the Domain type that owns the value or transition. Make construction validate the complete initial state, keep mutation private, and replace caller-side field conditionals with intention-revealing methods. Move I/O ordering and cross-aggregate consistency into an Application use case. Keep SDKs, SQL, filesystems, processes, transports, and terminal frameworks outside those inner policies.
 
 Do not introduce a wrapper to break a cycle or preserve the former shape. Reconsider the dependency direction and move the consumer interface to the consuming package.
 
@@ -44,9 +46,10 @@ Prefer responsibility-named files inside a cohesive package. Use a context names
 - Application changes require exact success and failure ordering.
 - Persistence changes require strict round trips and malformed-state rejection.
 - Protocol changes require generation, validation, and binding parity.
-- CLI changes require fresh-root command tests and captured streams.
-- Terminal changes require deterministic state/render tests; use a PTY only for terminal behavior.
+- CLI changes require fresh-root command tests, captured streams, and a real Runtime lifecycle where the boundary changed.
+- Terminal changes require deterministic state/render snapshots at representative dimensions; use a PTY only for terminal behavior.
 - Lifecycle changes require deterministic cancellation and shutdown tests.
+- Goal, Plan, steer, compaction, long-context, long-execution, restart, and recovery changes require focused end-to-end lifecycle coverage.
 - Structural changes require surviving consumer tests and dependency-direction checks.
 
 After each batch, search for retired symbols and paths, run the focused check, run proportionate module checks, inspect the complete diff, and verify that no unrelated path is staged.

@@ -22,6 +22,14 @@ These boundaries express responsibility, not a required directory matrix. A pack
 
 Interfaces belong to consumers. Start with concrete types and extract the smallest interface only to reverse a dependency, isolate an external boundary, or support proven substitution.
 
+## Behavior belongs with the fact
+
+Prefer a behavior-rich aggregate or value object when a fact has identity, legal states, validation, or transitions. The owner validates construction, keeps mutation private, answers domain questions, and performs pure transitions through intention-revealing methods. Application code asks the owner to decide; it does not reproduce the same rules with conditionals over exported fields.
+
+Rich does not mean that every struct needs methods. Protocol payloads, persistence records, provider requests and responses, configuration inputs, and rendering projections are data at their boundaries. They should be strict and typed, but they do not acquire fake domain behavior. I/O, clocks, cancellation, retries, transactions, and cross-aggregate ordering stay outside Domain objects.
+
+Encapsulation is successful when invalid intermediate states disappear and callers need fewer facts to make a decision. It is not successful when getters merely hide fields, a generic manager forwards every method, or one aggregate absorbs unrelated workflows.
+
 ## One execution path
 
 The Go binding and Runtime Protocol enter the same delivery endpoint before capability checks, idempotency, lifecycle control, Application invocation, and result projection. Runtime does not duplicate Scope's process loop, tool loop, scheduler, provider behavior, or checkpoint interpretation.
@@ -38,4 +46,4 @@ Every goroutine and resource has one owner, a stop condition, and a join or clos
 
 Architecture is judged by real consumers, invariants, failure ordering, protocol behavior, persistence, and lifecycle tests. Package counts, file counts, private field inventories, and symmetric trees are not design evidence.
 
-Use the standard library first, then existing mature dependencies. Keep a wrapper only when it owns policy, translation, lifecycle, or authority. Measure before optimizing.
+Use the current module Go version and standard library first, then existing mature dependencies. Keep a wrapper only when it owns policy, translation, lifecycle, or authority. Measure before optimizing.
