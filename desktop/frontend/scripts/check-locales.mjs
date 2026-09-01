@@ -262,6 +262,8 @@ for (const [locale, keys] of catalogs) {
   );
 }
 
+const HOST_LOCALE_CALL = /\.(toLocale(?:Date|Time)?String)\(\s*\)/g;
+
 // Rule 12 — one character, not three periods. See the header for why it earns a gate.
 for (const [locale] of catalogs) {
   for (const [key, value] of valuesOf(`${locale}.ts`)) {
@@ -368,6 +370,18 @@ for (const path of sourceFiles(SRC_DIR)) {
           }
         }
       }
+    }
+  }
+
+  // Rule 13 — the reader's chosen language decides how a date reads, not the machine's.
+  // `Intl` with no locale silently falls back to the HOST, so an app set to Japanese on an
+  // English Mac renders English dates and a 12-hour clock. lib/i18n owns the one answer and
+  // caches its formatters; a call here also builds a fresh one on every render.
+  if (!relative.startsWith("lib/i18n/")) {
+    for (const match of code.matchAll(HOST_LOCALE_CALL)) {
+      failures.push(
+        `${relative}: ${match[1]}() reads the HOST locale — use lib/i18n/relativeTime instead`,
+      );
     }
   }
 

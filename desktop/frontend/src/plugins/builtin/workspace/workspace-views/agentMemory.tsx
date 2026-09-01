@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { formatDay } from "@/lib/i18n/relativeTime";
 import { DataView, EmptyState, Icon, IconButton, PillButton, SectionLabel, TextArea } from "@/ui";
 
 import { useT } from "@/lib/i18n";
@@ -134,7 +135,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
             <OriginBadge origin={item.origin} />
             {item.updatedAt && (
               <span className="truncate text-ui-sm text-fg-faint">
-                {t("agentMemory.updated")} {new Date(item.updatedAt).toLocaleDateString()}
+                {t("agentMemory.updated")} {formatDay(item.updatedAt)}
               </span>
             )}
           </div>

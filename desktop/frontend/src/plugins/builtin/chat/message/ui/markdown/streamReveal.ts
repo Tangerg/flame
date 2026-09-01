@@ -1,6 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motionScale } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
+import type { StreamReveal } from "../../streamReveal";
+
+/**
+ * How text arrives on screen: the reader's stored preference, plus the one case the reader
+ * never chose. `instant` is a RENDER decision — replayed history and anything already
+ * complete has nothing to reveal — so it extends the preference rather than joining it.
+ */
+export type MarkdownReveal = StreamReveal | "instant";
 
 // Characters per second, chosen by how far the reveal has fallen behind the stream.
 const RATE_CRUISE = 40;
@@ -47,9 +55,15 @@ export function pickRate(backlog: number, streaming: boolean): number {
   return RATE_CRUISE;
 }
 
-export function useStreamReveal(rawText: string, enabled: boolean, typewriter = false): string {
-  const reduce = prefersReducedMotion();
-  const active = enabled && !reduce;
+export function useStreamReveal(
+  rawText: string,
+  streaming: boolean,
+  reveal: MarkdownReveal,
+): string {
+  // The closed value travels the whole way rather than arriving as two booleans: the hook
+  // owns what each mode means, and a caller cannot pick a combination that means nothing.
+  const whole = reveal === "instant" || prefersReducedMotion();
+  const active = streaming && !whole;
 
   const initialLen = active ? 0 : rawText.length;
   const [displayLen, setDisplayLen] = useState(initialLen);
@@ -64,10 +78,10 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
   });
 
   const enabledRef = useRef(active);
-  const typewriterRef = useRef(typewriter);
+  const typewriterRef = useRef(reveal === "typewriter");
   useLayoutEffect(() => {
     enabledRef.current = active;
-    typewriterRef.current = typewriter;
+    typewriterRef.current = reveal === "typewriter";
     const state = stateRef.current;
     if (state.rawText !== rawText) {
       state.rawText = rawText;
@@ -76,7 +90,7 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
         state.displayLen = rawText.length;
       }
     }
-  }, [active, rawText, typewriter]);
+  }, [active, rawText, reveal]);
 
   const rafRef = useRef(0);
   const armRef = useRef(() => {});
@@ -162,11 +176,11 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
   }, []);
 
   useEffect(() => {
-    if (reduce) return;
+    if (whole) return;
     armRef.current();
-  }, [rawText, reduce]);
+  }, [rawText, whole]);
 
-  return reduce ? rawText : rawText.slice(0, displayLen);
+  return whole ? rawText : rawText.slice(0, displayLen);
 }
 
 /**

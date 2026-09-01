@@ -1,4 +1,5 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -128,7 +129,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             </PillButton>
             {editor.updatedAt && (
               <span className="ml-auto text-ui-xs text-fg-faint">
-                {t("knowledge.updated")} {new Date(editor.updatedAt).toLocaleString()}
+                {t("knowledge.updated")} {formatDateTime(editor.updatedAt)}
               </span>
             )}
           </div>

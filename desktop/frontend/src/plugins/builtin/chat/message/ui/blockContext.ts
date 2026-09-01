@@ -1,4 +1,4 @@
-import type { MarkdownReveal } from "./markdown/MarkdownMessage";
+import type { MarkdownReveal } from "./markdown/streamReveal";
 
 export interface BlockCtx {
   onSelectTool: (id: string) => void;

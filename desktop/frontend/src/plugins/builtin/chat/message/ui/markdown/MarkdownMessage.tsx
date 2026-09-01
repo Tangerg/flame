@@ -19,13 +19,11 @@ import { rehypeFileRefs } from "./rehypeFileRefs";
 import { rehypeStreamCaret } from "./rehypeStreamCaret";
 import { normalizeMarkdownMath } from "./preprocess";
 import { remarkLiteralUnknownHtml } from "./remarkLiteralUnknownHtml";
-import { useCommitThrottle, useStreamReveal } from "./streamReveal";
+import { useCommitThrottle, useStreamReveal, type MarkdownReveal } from "./streamReveal";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
 import "remark-github-blockquote-alert/alert.css";
 
 const PARSE_COMMIT_MS = 33;
-
-export type MarkdownReveal = "instant" | "smooth" | "typewriter";
 
 type Props = {
   text: string;
@@ -65,11 +63,12 @@ const markdownUrlTransform: NonNullable<
 
 export function MarkdownMessage(props: Props) {
   const { text, reveal } = props;
-  const streaming = reveal === "instant" ? false : !!props.streaming;
+  // The props union already narrows `streaming` to false wherever `reveal` is "instant";
+  // re-deriving it here only hid that the type had settled it.
+  const streaming = props.streaming ?? false;
   const instant = reveal === "instant";
   const rootRef = useRef<HTMLDivElement>(null);
-  const revealed = useStreamReveal(text, streaming, reveal === "typewriter");
-  const display = instant ? text : revealed;
+  const display = useStreamReveal(text, streaming, reveal);
 
   const committed = useCommitThrottle(display, streaming ? PARSE_COMMIT_MS : 0);
 

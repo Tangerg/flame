@@ -1,4 +1,5 @@
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
+import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
 import { Icon, IconButton, PillButton, TextButton } from "@/ui";
 import { copyText } from "@/lib/clipboard";
@@ -98,7 +99,7 @@ const SOURCE_LABEL: Record<PluginErrorSource, string> = {
 
 function ErrorEntry({ err }: { err: PluginError }) {
   const t = useT();
-  const time = new Date(err.timestamp).toLocaleTimeString();
+  const time = formatClock(err.timestamp);
   const copy = () =>
     void copyText(
       `[${SOURCE_LABEL[err.source]}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`,
