@@ -4,6 +4,9 @@ import (
 	"context"
 	"math"
 	"sync"
+	"sync/atomic"
+
+	"github.com/Tangerg/oolong/core/program"
 )
 
 type operationSlot string
@@ -92,6 +95,36 @@ type operationOwner struct {
 	active map[operationSlot]ownedOperation
 	closed bool
 	wg     sync.WaitGroup
+}
+
+// post transfers one background result to the terminal loop. Cancellation may
+// abandon an unclaimed callback, but once the dispatcher claims it the caller
+// waits for that callback to finish so no result can commit after its owner has
+// observed cancellation.
+func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
+	finished := make(chan struct{})
+	var claimed atomic.Bool
+	dispatcher.Post(func() {
+		if claimed.CompareAndSwap(false, true) {
+			fn()
+		}
+		close(finished)
+	})
+	abort := func(err error) error {
+		if claimed.CompareAndSwap(false, true) {
+			return err
+		}
+		<-finished
+		return err
+	}
+	select {
+	case <-finished:
+		return nil
+	case <-ctx.Done():
+		return abort(context.Cause(ctx))
+	case <-dispatcher.Done():
+		return abort(program.ErrStopped)
+	}
 }
 
 func newOperationOwner(parent context.Context) *operationOwner {
