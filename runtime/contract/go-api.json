@@ -2047,6 +2047,10 @@
           "type": "error"
         },
         {
+          "name": "ErrIncompleteModelSelection",
+          "type": "error"
+        },
+        {
           "name": "ErrInternalError",
           "type": "error"
         },
@@ -2183,6 +2187,42 @@
         {
           "name": "RuntimeTopics",
           "signature": "func() []RuntimeTopic"
+        },
+        {
+          "name": "ValidateItemID",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateModelIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateModelSelection",
+          "signature": "func(provider string, model string, reasoningEffort string) error"
+        },
+        {
+          "name": "ValidateProviderIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateReasoningEffortIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateRunEventID",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateRunID",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateSegmentID",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateSessionID",
+          "signature": "func(value string) error"
         },
         {
           "name": "ValidateWireTree",

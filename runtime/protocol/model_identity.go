@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -15,30 +14,26 @@ const (
 
 // ErrIncompleteModelSelection reports a provider/model pair where only one
 // identity was supplied.
-var ErrIncompleteModelSelection = modelref.ErrIncomplete
+var ErrIncompleteModelSelection = runtimeidentity.ErrIncompleteModelSelection
 
 // ValidateProviderIdentity reports whether value is an exact provider identity.
 func ValidateProviderIdentity(value string) error {
-	_, err := modelref.NewProviderIdentity(value)
-	return err
+	return runtimeidentity.ValidateProviderIdentity(value)
 }
 
 // ValidateModelIdentity reports whether value is an exact model identity.
 func ValidateModelIdentity(value string) error {
-	_, err := modelref.NewModelIdentity(value)
-	return err
+	return runtimeidentity.ValidateModelIdentity(value)
 }
 
 // ValidateReasoningEffortIdentity reports whether value is an exact model-owned
 // reasoning-effort identity.
 func ValidateReasoningEffortIdentity(value string) error {
-	_, err := modelref.NewReasoningEffortIdentity(value)
-	return err
+	return runtimeidentity.ValidateReasoningEffortIdentity(value)
 }
 
 // ValidateModelSelection reports whether provider, model, and reasoning effort
 // form an unset or exact complete Runtime model selection.
 func ValidateModelSelection(provider, model, reasoningEffort string) error {
-	_, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
-	return err
+	return runtimeidentity.ValidateModelSelection(provider, model, reasoningEffort)
 }

@@ -3,32 +3,15 @@
 // trims, case-folds, normalizes, or otherwise repairs caller material.
 package resourceid
 
-import (
-	"fmt"
-	"unicode"
-	"unicode/utf8"
-
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-)
+import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 
 type value struct {
 	text string
 }
 
 func parse(kind, text string, maximumCharacters int) (value, error) {
-	if text == "" {
-		return value{}, fmt.Errorf("%s identity is empty", kind)
-	}
-	if !utf8.ValidString(text) {
-		return value{}, fmt.Errorf("%s identity is not valid UTF-8", kind)
-	}
-	if characters := utf8.RuneCountInString(text); characters > maximumCharacters {
-		return value{}, fmt.Errorf("%s identity has %d characters, maximum is %d", kind, characters, maximumCharacters)
-	}
-	for _, character := range text {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return value{}, fmt.Errorf("%s identity contains whitespace or a non-printing character", kind)
-		}
+	if err := runtimeidentity.ValidateResource(kind, text, maximumCharacters); err != nil {
+		return value{}, err
 	}
 	return value{text: text}, nil
 }

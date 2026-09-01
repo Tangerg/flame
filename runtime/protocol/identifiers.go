@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -27,30 +26,25 @@ const MaximumRunEventIDCharacters = runtimeidentity.MaximumEventCharacters
 
 // ValidateSessionID reports whether value is an exact opaque Session identity.
 func ValidateSessionID(value string) error {
-	_, err := resourceid.ParseSession(value)
-	return err
+	return runtimeidentity.ValidateResource("session", value, MaximumResourceIdentityCharacters)
 }
 
 // ValidateRunID reports whether value is an exact opaque Run identity.
 func ValidateRunID(value string) error {
-	_, err := resourceid.ParseRun(value)
-	return err
+	return runtimeidentity.ValidateResource("run", value, MaximumResourceIdentityCharacters)
 }
 
 // ValidateSegmentID reports whether value is an exact opaque Segment identity.
 func ValidateSegmentID(value string) error {
-	_, err := resourceid.ParseSegment(value)
-	return err
+	return runtimeidentity.ValidateResource("segment", value, MaximumResourceIdentityCharacters)
 }
 
 // ValidateItemID reports whether value is an exact opaque Item identity.
 func ValidateItemID(value string) error {
-	_, err := resourceid.ParseItem(value)
-	return err
+	return runtimeidentity.ValidateResource("item", value, MaximumResourceIdentityCharacters)
 }
 
 // ValidateRunEventID reports whether value is an exact opaque Run event identity.
 func ValidateRunEventID(value string) error {
-	_, err := resourceid.ParseEvent(value)
-	return err
+	return runtimeidentity.ValidateResource("event", value, MaximumRunEventIDCharacters)
 }

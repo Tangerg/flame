@@ -8,14 +8,16 @@ package modelref
 
 import (
 	"errors"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ErrIncomplete reports a provider/model pair where only one value was set.
-var ErrIncomplete = errors.New("model selection: provider and model must be set together")
+var ErrIncomplete = runtimeidentity.ErrIncompleteModelSelection
 
 // ErrReasoningEffortWithoutModel reports a reasoning choice that has no exact
 // provider/model identity to interpret its model-owned vocabulary.
-var ErrReasoningEffortWithoutModel = errors.New("model selection: reasoning effort requires provider and model")
+var ErrReasoningEffortWithoutModel = runtimeidentity.ErrReasoningEffortWithoutModel
 
 // ErrUnsupported reports a syntactically valid exact selection the configured
 // Runtime cannot admit.
@@ -78,31 +80,14 @@ func New(provider, model string) (Selection, error) {
 // effort leaves intensity to the selected model's provider default; a non-empty
 // value is interpreted only against that exact model's advertised vocabulary.
 func NewWithReasoningEffort(provider, model, reasoningEffort string) (Selection, error) {
-	if (provider == "") != (model == "") {
-		return Selection{}, ErrIncomplete
-	}
-	if model == "" && reasoningEffort != "" {
-		return Selection{}, ErrReasoningEffortWithoutModel
-	}
-	if model == "" {
-		return Selection{}, nil
-	}
-	providerIdentity, err := NewProviderIdentity(provider)
-	if err != nil {
+	if err := runtimeidentity.ValidateModelSelection(provider, model, reasoningEffort); err != nil {
 		return Selection{}, err
 	}
-	modelIdentity, err := NewModelIdentity(model)
-	if err != nil {
-		return Selection{}, err
-	}
-	var effortIdentity ReasoningEffortIdentity
-	if reasoningEffort != "" {
-		effortIdentity, err = NewReasoningEffortIdentity(reasoningEffort)
-		if err != nil {
-			return Selection{}, err
-		}
-	}
-	return Selection{provider: providerIdentity, model: modelIdentity, reasoningEffort: effortIdentity}, nil
+	return Selection{
+		provider:        ProviderIdentity{value: provider},
+		model:           ModelIdentity{value: model},
+		reasoningEffort: ReasoningEffortIdentity{value: reasoningEffort},
+	}, nil
 }
 
 // Validate documents the zero-or-complete invariant at aggregate boundaries.
