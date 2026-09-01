@@ -35,7 +35,7 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 
 func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 	ollama, err := NewProvider(ProviderSpec{
-		ID: "ollama", Configured: true, CredentialRequirement: APIKeyOptional,
+		ID: "ollama", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
 		EmbeddingCapable: true,
 	})
 	if err != nil {
@@ -49,12 +49,12 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 	}
 
 	if _, err := NewProvider(ProviderSpec{
-		ID: "openai", Configured: true, CredentialRequirement: APIKeyRequired,
+		ID: "openai", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
 	}); err == nil {
 		t.Fatal("required API-key provider was configured without a credential")
 	}
 	if _, err := NewProvider(ProviderSpec{
-		ID: "compatible", Configured: true, CredentialRequirement: APIKeyOptional, RequiresBaseURL: true,
+		ID: "compatible", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional, RequiresBaseURL: true,
 	}); err == nil {
 		t.Fatal("provider was configured without its required endpoint")
 	}
@@ -64,12 +64,12 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := NewProvider(ProviderSpec{
-		ID: "openai", Credential: &credential, Configured: false, CredentialRequirement: APIKeyRequired,
+		ID: "openai", Credential: &credential, Configured: false, CredentialRequirement: protocol.ProviderAPIKeyRequired,
 	}); err == nil {
 		t.Fatal("ready provider was accepted as not configured")
 	}
 	if _, err := NewProvider(ProviderSpec{
-		ID: "ollama", Configured: false, CredentialRequirement: APIKeyOptional,
+		ID: "ollama", Configured: false, CredentialRequirement: protocol.ProviderAPIKeyOptional,
 	}); err == nil {
 		t.Fatal("keyless provider with a built-in endpoint was accepted as not configured")
 	}
@@ -77,7 +77,7 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 	endpoint := "https://gateway.example/v1"
 	partial, err := NewProvider(ProviderSpec{
 		ID: "openai-compatible", BaseURL: &endpoint, Configured: false,
-		CredentialRequirement: APIKeyRequired, RequiresBaseURL: true,
+		CredentialRequirement: protocol.ProviderAPIKeyRequired, RequiresBaseURL: true,
 	})
 	if err != nil {
 		t.Fatal(err)

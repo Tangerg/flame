@@ -169,30 +169,16 @@ type ProviderSpec struct {
 	BaseURL               *string
 	Credential            *Credential
 	Configured            bool
-	CredentialRequirement CredentialRequirement
+	CredentialRequirement runtimeprotocol.ProviderCredentialRequirement
 	RequiresBaseURL       bool
 	EmbeddingCapable      bool
-}
-
-type CredentialRequirement string
-
-const (
-	APIKeyRequired CredentialRequirement = "apiKeyRequired"
-	APIKeyOptional CredentialRequirement = "apiKeyOptional"
-)
-
-func (r CredentialRequirement) Validate() error {
-	if r != APIKeyRequired && r != APIKeyOptional {
-		return fmt.Errorf("provider credential requirement %q is invalid", r)
-	}
-	return nil
 }
 
 type Provider struct {
 	id                    string
 	baseURL               string
 	credential            Credential
-	credentialRequirement CredentialRequirement
+	credentialRequirement runtimeprotocol.ProviderCredentialRequirement
 	requiresBaseURL       bool
 	embeddingCapable      bool
 }
@@ -229,8 +215,10 @@ func (p Provider) Validate() error {
 	if err := runtimeprotocol.ValidateProviderIdentity(p.id); err != nil {
 		return err
 	}
-	if err := p.credentialRequirement.Validate(); err != nil {
-		return fmt.Errorf("provider %s: %w", p.id, err)
+	switch p.credentialRequirement {
+	case runtimeprotocol.ProviderAPIKeyRequired, runtimeprotocol.ProviderAPIKeyOptional:
+	default:
+		return fmt.Errorf("provider %s: credential requirement %q is invalid", p.id, p.credentialRequirement)
 	}
 	if p.baseURL != "" && (p.baseURL != strings.TrimSpace(p.baseURL)) {
 		return fmt.Errorf("provider %s has a non-canonical base URL", p.id)
@@ -249,13 +237,15 @@ func (p Provider) ID() string { return p.id }
 // policies that validated the provider. The wire's configured flag is checked
 // at construction and never becomes a second mutable truth inside the entity.
 func (p Provider) Configured() bool {
-	credentialReady := p.credentialRequirement == APIKeyOptional ||
-		p.credentialRequirement == APIKeyRequired && p.credential != (Credential{})
+	credentialReady := p.credentialRequirement == runtimeprotocol.ProviderAPIKeyOptional ||
+		p.credentialRequirement == runtimeprotocol.ProviderAPIKeyRequired && p.credential != (Credential{})
 	endpointReady := !p.requiresBaseURL || p.baseURL != ""
 	return credentialReady && endpointReady
 }
 
-func (p Provider) RequiresAPIKey() bool { return p.credentialRequirement == APIKeyRequired }
+func (p Provider) RequiresAPIKey() bool {
+	return p.credentialRequirement == runtimeprotocol.ProviderAPIKeyRequired
+}
 
 func (p Provider) RequiresBaseURL() bool { return p.requiresBaseURL }
 

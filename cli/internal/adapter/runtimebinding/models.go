@@ -232,7 +232,7 @@ func projectProvider(value protocol.Provider) (models.Provider, error) {
 	}
 	return models.NewProvider(models.ProviderSpec{
 		ID: value.ID, BaseURL: value.BaseURL, Credential: credential, Configured: value.Configured,
-		CredentialRequirement: models.CredentialRequirement(value.CredentialRequirement),
+		CredentialRequirement: value.CredentialRequirement,
 		RequiresBaseURL:       value.RequiresBaseURL, EmbeddingCapable: value.EmbeddingCapable,
 	})
 }
