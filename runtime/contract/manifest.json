@@ -6577,7 +6577,25 @@
       "rules": [
         {
           "field": "name",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "Skill",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "ManagedSkill",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },
@@ -6586,11 +6604,32 @@
       "rules": [
         {
           "field": "name",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "revision",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^[0-9a-f]{64}$\")"
+        }
+      ]
+    },
+    {
+      "type": "SkillProposal",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "revision",
+          "constraint": "pattern(\"^[0-9a-f]{64}$\")"
+        },
+        {
+          "field": "description",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "instructions",
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

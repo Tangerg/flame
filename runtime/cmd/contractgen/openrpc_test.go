@@ -96,10 +96,11 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		param     string
 		minimum   *int64
 		minLength *int
+		pattern   string
 	}{
 		{method: "sessions.get", param: "sessionId", minLength: new(1)},
 		{method: "runs.start", param: "sessionId", minLength: new(1)},
-		{method: "skills.proposals.approve", param: "revision", minLength: new(1)},
+		{method: "skills.proposals.approve", param: "revision", pattern: "^[0-9a-f]{64}$"},
 		{method: "approval.listRules", param: "sessionId", minLength: new(1)},
 		{method: "schedules.create", param: "instructions", minLength: new(1)},
 		{method: "sessions.update", param: "expectedRevision", minimum: new(int64(1))},
@@ -118,6 +119,9 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		}
 		if !equalOptional(param.Schema.MinLength, test.minLength) {
 			t.Errorf("%s.%s minLength = %v, want %v", test.method, test.param, param.Schema.MinLength, test.minLength)
+		}
+		if test.pattern != "" && param.Schema.Pattern != test.pattern {
+			t.Errorf("%s.%s pattern = %q, want %q", test.method, test.param, param.Schema.Pattern, test.pattern)
 		}
 	}
 	limits := openRPCParam(t, openRPCMethod(t, document, "runs.start"), "limits")

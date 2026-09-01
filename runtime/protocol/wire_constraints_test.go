@@ -249,6 +249,50 @@ func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 	}
 }
 
+func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
+	t.Parallel()
+
+	const revision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	for _, value := range []WireValidator{
+		Skill{Name: "review", Scope: SkillScopeProject},
+		ManagedSkill{Name: "review", Lifecycle: SkillLifecycleActive},
+		SkillProposal{
+			Name: "review", Revision: revision, Scope: SkillScopeUser,
+			Description: "Review code", Instructions: "Inspect the requested code.",
+			Origin: SkillProposalOriginRequested,
+		},
+		SkillProposalRef{Name: "review", Revision: revision, Scope: SkillScopeUser},
+	} {
+		if err := value.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected complete %T: %v", value, err)
+		}
+	}
+
+	for _, test := range []struct {
+		shape string
+		field string
+		value WireValidator
+	}{
+		{shape: "Skill", field: "name", value: Skill{Scope: SkillScopeProject}},
+		{shape: "ManagedSkill", field: "name", value: ManagedSkill{Name: " \t", Lifecycle: SkillLifecycleActive}},
+		{shape: "SkillProposal", field: "revision", value: SkillProposal{
+			Name: "review", Revision: strings.ToUpper(revision), Scope: SkillScopeUser,
+			Description: "Review code", Instructions: "Inspect code.",
+		}},
+		{shape: "SkillProposal", field: "description", value: SkillProposal{
+			Name: "review", Revision: revision, Scope: SkillScopeUser, Instructions: "Inspect code.",
+		}},
+		{shape: "SkillProposal", field: "instructions", value: SkillProposal{
+			Name: "review", Revision: revision, Scope: SkillScopeUser, Description: "Review code",
+		}},
+		{shape: "SkillProposalRef", field: "revision", value: SkillProposalRef{
+			Name: "review", Revision: "short", Scope: SkillScopeUser,
+		}},
+	} {
+		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+	}
+}
+
 func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	t.Parallel()
 

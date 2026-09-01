@@ -51,7 +51,15 @@ const (
 	// resource is progressive-disclosure context, not an arbitrary binary
 	// transport; larger assets must be consumed by a purpose-built tool.
 	MaxSkillResourceBytes = 1 << 20
+
+	// ProposalRevisionPattern is the one canonical text representation of a
+	// content-addressed proposal revision. NewProposalRef always produces this
+	// lowercase SHA-256 form; accepting another spelling would create two wire
+	// identities for the same digest.
+	ProposalRevisionPattern = `^[0-9a-f]{64}$`
 )
+
+var proposalRevisionPattern = regexp.MustCompile(ProposalRevisionPattern)
 
 // Scope identifies the Skill library that owns a proposal or active Skill.
 type Scope string
@@ -143,11 +151,8 @@ func (p ProposalRef) Validate() error {
 	if err := skillspec.ValidateName(p.Name); err != nil {
 		return fmt.Errorf("proposal reference name: %w", err)
 	}
-	if len(p.Revision) != sha256.Size*2 {
-		return errors.New("proposal reference revision must be a SHA-256 digest")
-	}
-	if _, err := hex.DecodeString(p.Revision); err != nil {
-		return fmt.Errorf("proposal reference revision: %w", err)
+	if !proposalRevisionPattern.MatchString(p.Revision) {
+		return errors.New("proposal reference revision must be a lowercase SHA-256 digest")
 	}
 	return nil
 }

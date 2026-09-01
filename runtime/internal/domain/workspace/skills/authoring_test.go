@@ -15,6 +15,11 @@ func TestProposalReferenceBindsExactContent(t *testing.T) {
 	if !ref.Matches(content) || ref.Matches([]byte("different bytes")) {
 		t.Fatal("ProposalRef did not bind the exact proposal content")
 	}
+	uppercase := ref
+	uppercase.Revision = strings.ToUpper(uppercase.Revision)
+	if err := uppercase.Validate(); err == nil {
+		t.Fatal("ProposalRef accepted a non-canonical uppercase revision")
+	}
 }
 
 func TestProposalValidatesMeaningAndSafety(t *testing.T) {

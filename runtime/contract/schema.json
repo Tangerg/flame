@@ -4974,7 +4974,8 @@
           "$ref": "#/$defs/SkillLifecycle"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         }
       },
       "required": [
@@ -8854,7 +8855,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "scope": {
           "$ref": "#/$defs/SkillScope"
@@ -8877,7 +8879,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         }
       },
       "required": [
@@ -8888,13 +8890,16 @@
       "type": "object",
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "instructions": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "origin": {
           "$ref": "#/$defs/SkillProposalOrigin"
@@ -8903,7 +8908,8 @@
           "type": "boolean"
         },
         "revision": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "scope": {
           "$ref": "#/$defs/SkillScope"
@@ -8932,11 +8938,11 @@
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "revision": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[0-9a-f]{64}$"
         },
         "scope": {
           "$ref": "#/$defs/SkillScope"

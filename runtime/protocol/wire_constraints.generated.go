@@ -248,14 +248,14 @@ func (r RuntimeSubscribeRequest) ValidateWire() error {
 
 func (s SkillNameRequest) ValidateWire() error {
 	return collectWireViolations("SkillNameRequest",
-		requiredText("name", s.Name),
+		requiredTextPattern("name", s.Name, "\\S"),
 	)
 }
 
 func (s SkillProposalRef) ValidateWire() error {
 	return collectWireViolations("SkillProposalRef",
-		requiredText("name", s.Name),
-		requiredText("revision", s.Revision),
+		requiredTextPattern("name", s.Name, "\\S"),
+		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
 		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
 	)
 }
@@ -2211,6 +2211,31 @@ func (u UsageSummary) ValidateWire() error {
 	)
 }
 
+func (s Skill) ValidateWire() error {
+	return collectWireViolations("Skill",
+		requiredTextPattern("name", s.Name, "\\S"),
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+	)
+}
+
+func (m ManagedSkill) ValidateWire() error {
+	return collectWireViolations("ManagedSkill",
+		requiredTextPattern("name", m.Name, "\\S"),
+		closedEnum("lifecycle", string(m.Lifecycle), []string{"active", "archived"}, false),
+	)
+}
+
+func (s SkillProposal) ValidateWire() error {
+	return collectWireViolations("SkillProposal",
+		requiredTextPattern("name", s.Name, "\\S"),
+		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
+		requiredTextPattern("description", s.Description, "\\S"),
+		requiredTextPattern("instructions", s.Instructions, "\\S"),
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, true),
+	)
+}
+
 func (m MCPServer) ValidateWire() error {
 	return collectWireViolations("MCPServer",
 		maxLength("name", m.Name, 32),
@@ -2469,12 +2494,6 @@ func (l ListItemsResponse) ValidateWire() error {
 	)
 }
 
-func (m ManagedSkill) ValidateWire() error {
-	return collectWireViolations("ManagedSkill",
-		closedEnum("lifecycle", string(m.Lifecycle), []string{"active", "archived"}, false),
-	)
-}
-
 func (p ProviderCredential) ValidateWire() error {
 	return collectWireViolations("ProviderCredential",
 		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
@@ -2491,19 +2510,6 @@ func (s ServerCapabilities) ValidateWire() error {
 	return collectWireViolations("ServerCapabilities",
 		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
 		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
-	)
-}
-
-func (s Skill) ValidateWire() error {
-	return collectWireViolations("Skill",
-		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
-	)
-}
-
-func (s SkillProposal) ValidateWire() error {
-	return collectWireViolations("SkillProposal",
-		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
-		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, true),
 	)
 }
 

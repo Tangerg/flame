@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -518,8 +519,26 @@ func registerUsageValues(s *Shapes) {
 }
 
 func registerSkillValues(s *Shapes) {
-	nonEmpty[protocol.SkillNameRequest](s, "name")
-	nonEmpty[protocol.SkillProposalRef](s, "name", "revision")
+	const nonBlankText = `\S`
+	skillName := []FieldConstraint{{Field: "name", Kind: ConstraintPattern, Value: nonBlankText}}
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SkillNameRequest](), Constraints: skillName})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.Skill](), Constraints: skillName})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ManagedSkill](), Constraints: skillName})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.SkillProposalRef](),
+		Constraints: append(skillName,
+			FieldConstraint{Field: "revision", Kind: ConstraintPattern, Value: skilldomain.ProposalRevisionPattern},
+		),
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.SkillProposal](),
+		Constraints: []FieldConstraint{
+			{Field: "name", Kind: ConstraintPattern, Value: nonBlankText},
+			{Field: "revision", Kind: ConstraintPattern, Value: skilldomain.ProposalRevisionPattern},
+			{Field: "description", Kind: ConstraintPattern, Value: nonBlankText},
+			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankText},
+		},
+	})
 }
 
 func registerHookValues(s *Shapes) {

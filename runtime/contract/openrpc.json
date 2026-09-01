@@ -2492,7 +2492,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -2555,7 +2555,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -2687,7 +2687,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -2695,7 +2695,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[0-9a-f]{64}$"
           }
         },
         {
@@ -2772,7 +2772,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -2780,7 +2780,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[0-9a-f]{64}$"
           }
         },
         {
