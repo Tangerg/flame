@@ -1268,7 +1268,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		InterruptItemID: pending.Bindings[0].InterruptItemID,
 		MemberID:        pending.Bindings[0].MemberID,
 		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Answers: [][]string{{"continue"}}},
+		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
 	replacements, err := (runs.ResumeClaimCommit{
 		CommitID: testCommitID("run_commit_resume_claim"), Expected: pending, Answers: answers, ClaimedAt: claimedAt,
@@ -1664,7 +1664,7 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		InterruptItemID: pending.Bindings[0].InterruptItemID,
 		MemberID:        pending.Bindings[0].MemberID,
 		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Answers: [][]string{{"continue"}}},
+		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
 	return resumeClaimSQLiteFixture{
 		ctx: ctx, db: database, pending: pending, answers: answers,

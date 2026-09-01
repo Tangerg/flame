@@ -46,6 +46,11 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 		resolutions[1].Decision != approval.Deny {
 		t.Fatalf("Tool approval resolutions = %+v", resolutions)
 	}
+
+	claim.Answers[0].Resolution.Answers = [][]string{{"unexpected"}}
+	if err := claim.Validate(); err == nil || !strings.Contains(err.Error(), "cannot carry question answers") {
+		t.Fatalf("Validate cross-kind resolution error = %v", err)
+	}
 }
 
 func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {

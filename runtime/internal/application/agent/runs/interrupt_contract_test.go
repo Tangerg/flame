@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -236,5 +237,57 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	question.Fields[1].AllowCustom = false
 	if _, err := resolveQuestionResponse(interrupt, response([][]string{{"name"}, {"custom"}})); err == nil {
 		t.Fatal("closed choice accepted custom value")
+	}
+}
+
+func TestInterruptAnswerValidatesKindSpecificResolutionShape(t *testing.T) {
+	approvalRequest := transcript.Interrupt{
+		Kind: interrupt.Approval,
+		Approval: &transcript.Approval{
+			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium", Rememberable: true,
+		},
+	}
+	questionRequest := transcript.Interrupt{
+		Kind: interrupt.Question,
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{
+			Prompt: "Name it", Kind: transcript.QuestionText,
+		}}},
+	}
+
+	tests := []struct {
+		name       string
+		request    transcript.Interrupt
+		resolution interrupt.Resolution
+		want       string
+	}{
+		{
+			name: "approval carries question answers", request: approvalRequest,
+			resolution: interrupt.Resolution{Approved: true, Answers: [][]string{}},
+			want:       "cannot carry question answers",
+		},
+		{
+			name: "denial edits arguments", request: approvalRequest,
+			resolution: interrupt.Resolution{Arguments: `{}`},
+			want:       "denial cannot edit arguments",
+		},
+		{
+			name: "question is not acknowledged", request: questionRequest,
+			resolution: interrupt.Resolution{Answers: [][]string{{"name"}}},
+			want:       "must acknowledge",
+		},
+		{
+			name: "question carries approval fields", request: questionRequest,
+			resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"name"}}, Reason: "no"},
+			want:       "cannot carry approval fields",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			answer := InterruptAnswer{Resolution: test.resolution}
+			err := answer.validateResolution(test.request)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validateResolution error = %v, want containing %q", err, test.want)
+			}
+		})
 	}
 }

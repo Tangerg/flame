@@ -83,6 +83,9 @@ func (r ResumeClaimCommit) Validate() error {
 			answer.RequestID != binding.RequestID {
 			return fmt.Errorf("runs: resume claim answer[%d] differs from its pending boundary", index)
 		}
+		if err := answer.validateResolution(r.Expected.Interrupts[index]); err != nil {
+			return fmt.Errorf("runs: resume claim answer[%d]: %w", index, err)
+		}
 	}
 	if _, err := r.QuestionReplacements(); err != nil {
 		return fmt.Errorf("runs: resume claim question projections: %w", err)
