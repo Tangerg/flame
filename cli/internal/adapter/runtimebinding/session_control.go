@@ -79,13 +79,13 @@ func projectDroppedRun(value protocol.DroppedRun) (agent.DroppedRun, error) {
 	for index, content := range value.UserInput {
 		switch content.Type {
 		case protocol.ContentBlockText:
-			projected.Input = append(projected.Input, agent.InputContent{Kind: agent.InputText, Text: content.Text})
+			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, Text: content.Text})
 		case protocol.ContentBlockImage:
 			data, err := base64.StdEncoding.DecodeString(content.Data)
 			if err != nil {
 				return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s image %d: %w", value.Run.ID, index+1, err)
 			}
-			projected.Input = append(projected.Input, agent.InputContent{Kind: agent.InputImage, MimeType: content.Mime, Data: data})
+			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, MimeType: content.Mime, Data: data})
 		default:
 			return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s content %d has unsupported type %q", value.Run.ID, index+1, content.Type)
 		}

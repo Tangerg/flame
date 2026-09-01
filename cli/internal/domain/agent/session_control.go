@@ -46,17 +46,10 @@ func (r RollbackSession) HistoryOnly() bool {
 	return r.Scope == "" || r.Scope == runtimeprotocol.RestoreHistory
 }
 
-type InputContentKind string
-
-const (
-	InputText  InputContentKind = "text"
-	InputImage InputContentKind = "image"
-)
-
 // InputContent preserves a dropped run's opening input without pretending an
 // inline runtime image is already a local authoring attachment.
 type InputContent struct {
-	Kind     InputContentKind
+	Kind     runtimeprotocol.ContentBlockType
 	Text     string
 	MimeType string
 	Data     []byte
@@ -71,11 +64,11 @@ func (i InputContent) Clone() InputContent {
 
 func (i InputContent) Validate() error {
 	switch i.Kind {
-	case InputText:
+	case runtimeprotocol.ContentBlockText:
 		if strings.TrimSpace(i.Text) == "" || i.MimeType != "" || len(i.Data) != 0 {
 			return errors.New("text input content is malformed")
 		}
-	case InputImage:
+	case runtimeprotocol.ContentBlockImage:
 		if strings.TrimSpace(i.MimeType) == "" || len(i.Data) == 0 || i.Text != "" {
 			return errors.New("image input content is malformed")
 		}
@@ -119,9 +112,9 @@ func (d DroppedRun) OpeningText() (string, int) {
 	images := 0
 	for _, content := range d.Input {
 		switch content.Kind {
-		case InputText:
+		case runtimeprotocol.ContentBlockText:
 			parts = append(parts, content.Text)
-		case InputImage:
+		case runtimeprotocol.ContentBlockImage:
 			images++
 		}
 	}

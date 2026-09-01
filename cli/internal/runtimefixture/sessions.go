@@ -319,7 +319,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 		dropped := agent.DroppedRun{RunID: runID}
 		for _, item := range state.items {
 			if item.runID == runID && item.block.Kind == agent.BlockUser && strings.TrimSpace(item.block.Text) != "" {
-				dropped.Input = append(dropped.Input, agent.InputContent{Kind: agent.InputText, Text: item.block.Text})
+				dropped.Input = append(dropped.Input, agent.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
 				break
 			}
 		}
