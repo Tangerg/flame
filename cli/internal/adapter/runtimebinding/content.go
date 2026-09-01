@@ -34,6 +34,13 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	if causeErr := context.Cause(ctx); causeErr != nil {
 		return nil, causeErr
 	}
+	source, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAttachmentSource(source, maximumBytes); err != nil {
+		return nil, err
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -41,6 +48,16 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
+	opened, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(source, opened) {
+		return nil, errors.New("file changed while it was being opened")
+	}
+	if err := validateAttachmentSource(opened, maximumBytes); err != nil {
+		return nil, err
+	}
 
 	data, err := io.ReadAll(io.LimitReader(contextReader{Context: ctx, Reader: file}, maximumBytes+1))
 	if err != nil {
@@ -53,6 +70,16 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 		return nil, attachmentTooLargeError{maximumBytes: maximumBytes}
 	}
 	return data, nil
+}
+
+func validateAttachmentSource(info os.FileInfo, maximumBytes int64) error {
+	if !info.Mode().IsRegular() {
+		return errors.New("file is not a regular file")
+	}
+	if info.Size() > maximumBytes {
+		return attachmentTooLargeError{maximumBytes: maximumBytes}
+	}
+	return nil
 }
 
 type contextReader struct {

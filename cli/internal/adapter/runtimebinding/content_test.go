@@ -145,6 +145,28 @@ func TestLoadAttachmentFileHonorsCancellation(t *testing.T) {
 	}
 }
 
+func TestLoadAttachmentFileRejectsNonRegularSources(t *testing.T) {
+	directory := t.TempDir()
+	target := filepath.Join(directory, "target.txt")
+	if err := os.WriteFile(target, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(directory, "attachment.txt")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{directory, link} {
+		data, err := loadAttachmentFile(t.Context(), path, 8)
+		if err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Fatalf("loadAttachmentFile(%q) error = %v, want non-regular source", path, err)
+		}
+		if data != nil {
+			t.Fatalf("loadAttachmentFile(%q) data = %q, want nil", path, data)
+		}
+	}
+}
+
 func TestProjectContentCreatesHonestDurableImageReference(t *testing.T) {
 	text, attachments, err := projectContent("item_1", []protocol.ContentBlock{
 		{Type: protocol.ContentBlockText, Text: "hello"},
