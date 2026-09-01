@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
 // parseMCPServers parses the FLAME_MCP_SERVERS env var: a comma-separated list
@@ -81,8 +83,8 @@ func parseMCPServerValue(name, value string) (MCPServer, error) {
 			Args:      fields[1:],
 		}, nil
 	}
-	if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
-		return MCPServer{}, fmt.Errorf("expected http(s):// URL or stdio: prefix, got %q", value)
+	if _, err := httporigin.Parse(value); err != nil {
+		return MCPServer{}, fmt.Errorf("expected HTTP(S) endpoint or stdio: prefix: %w", err)
 	}
 	return MCPServer{
 		Name:      name,

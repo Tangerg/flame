@@ -78,6 +78,11 @@ func TestParseMCPServers(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "http endpoint missing host",
+			in:      "github=https://",
+			wantErr: true,
+		},
+		{
 			name:    "stdio empty command",
 			in:      "fs=stdio:",
 			wantErr: true,
