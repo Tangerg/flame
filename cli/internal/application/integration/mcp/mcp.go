@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
@@ -24,20 +26,6 @@ var (
 	// ErrAuthorizationAttemptNotFound reports an expired or unknown observation target.
 	ErrAuthorizationAttemptNotFound = errors.New("MCP authorization attempt not found")
 )
-
-type Transport string
-
-const (
-	Stdio          Transport = "stdio"
-	StreamableHTTP Transport = "streamableHttp"
-)
-
-func (t Transport) Validate() error {
-	if t != Stdio && t != StreamableHTTP {
-		return fmt.Errorf("MCP transport %q is invalid", t)
-	}
-	return nil
-}
 
 type StateType string
 
@@ -80,7 +68,7 @@ func (s State) Validate() error {
 }
 
 type Connection struct {
-	Transport           Transport
+	Transport           protocol.MCPTransport
 	URL                 string
 	AuthorizationMasked string
 	HeadersMasked       map[string]string
@@ -139,24 +127,23 @@ func (h HandshakeTimeout) String() string {
 }
 
 func (c Connection) Validate() error {
-	if err := c.Transport.Validate(); err != nil {
-		return err
-	}
 	switch c.Transport {
-	case StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		if strings.TrimSpace(c.URL) == "" {
 			return errors.New("HTTP MCP connection URL is empty")
 		}
 		if c.Command != "" || len(c.Args) != 0 || len(c.EnvironmentMasked) != 0 || c.Directory != "" {
 			return errors.New("HTTP MCP connection carries stdio fields")
 		}
-	case Stdio:
+	case protocol.MCPTransportStdio:
 		if strings.TrimSpace(c.Command) == "" {
 			return errors.New("stdio MCP connection command is empty")
 		}
 		if c.URL != "" || c.AuthorizationMasked != "" || len(c.HeadersMasked) != 0 {
 			return errors.New("stdio MCP connection carries HTTP fields")
 		}
+	default:
+		return fmt.Errorf("MCP transport %q is invalid", c.Transport)
 	}
 	if err := validateStringMap("masked MCP headers", c.HeadersMasked); err != nil {
 		return err
@@ -261,7 +248,7 @@ func (e EnvironmentChange) Validate() error {
 }
 
 type ConnectionInput struct {
-	Transport     Transport
+	Transport     protocol.MCPTransport
 	URL           string
 	Authorization *AuthorizationChange
 	Headers       *HeadersChange
@@ -272,11 +259,8 @@ type ConnectionInput struct {
 }
 
 func (c ConnectionInput) Validate() error {
-	if err := c.Transport.Validate(); err != nil {
-		return err
-	}
 	switch c.Transport {
-	case StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		if strings.TrimSpace(c.URL) == "" {
 			return errors.New("HTTP MCP connection input URL is empty")
 		}
@@ -293,7 +277,7 @@ func (c ConnectionInput) Validate() error {
 				return err
 			}
 		}
-	case Stdio:
+	case protocol.MCPTransportStdio:
 		if strings.TrimSpace(c.Command) == "" {
 			return errors.New("stdio MCP connection input command is empty")
 		}
@@ -305,6 +289,8 @@ func (c ConnectionInput) Validate() error {
 				return err
 			}
 		}
+	default:
+		return fmt.Errorf("MCP transport %q is invalid", c.Transport)
 	}
 	return nil
 }
@@ -502,12 +488,12 @@ func (c ConnectionInput) validateCreateResult(result Connection) error {
 		return err
 	}
 	switch c.Transport {
-	case StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		if err := validateMaskedSecret("authorization", c.Authorization, result.AuthorizationMasked); err != nil {
 			return err
 		}
 		return validateMaskedMap("headers", c.Headers, result.HeadersMasked)
-	case Stdio:
+	case protocol.MCPTransportStdio:
 		return validateMaskedMap("environment", c.Environment, result.EnvironmentMasked)
 	default:
 		return nil
@@ -519,7 +505,7 @@ func (c ConnectionInput) validateUpdateResult(result Connection) error {
 		return err
 	}
 	switch c.Transport {
-	case StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		if c.Authorization != nil {
 			if err := validateMaskedSecret("authorization", c.Authorization, result.AuthorizationMasked); err != nil {
 				return err
@@ -528,7 +514,7 @@ func (c ConnectionInput) validateUpdateResult(result Connection) error {
 		if c.Headers != nil {
 			return validateMaskedMap("headers", c.Headers, result.HeadersMasked)
 		}
-	case Stdio:
+	case protocol.MCPTransportStdio:
 		if c.Environment != nil {
 			return validateMaskedMap("environment", c.Environment, result.EnvironmentMasked)
 		}
@@ -542,11 +528,11 @@ func (c ConnectionInput) validateVisibleResult(result Connection) error {
 		problems = append(problems, fmt.Errorf("runtime returned transport %q, want %q", result.Transport, c.Transport))
 	}
 	switch c.Transport {
-	case StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		if result.URL != c.URL {
 			problems = append(problems, fmt.Errorf("runtime returned URL %q, want %q", result.URL, c.URL))
 		}
-	case Stdio:
+	case protocol.MCPTransportStdio:
 		if result.Command != c.Command {
 			problems = append(problems, fmt.Errorf("runtime returned command %q, want %q", result.Command, c.Command))
 		}

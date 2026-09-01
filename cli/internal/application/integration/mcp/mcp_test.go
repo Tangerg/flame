@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 	authorization := AuthorizationChange{Kind: Set, Value: "Bearer secret"}
-	http := ConnectionInput{Transport: StreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization}
+	http := ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization}
 	if err := http.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +21,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 		t.Fatal("HTTP connection carrying a stdio command was accepted")
 	}
 	environment := EnvironmentChange{Kind: Set, Value: map[string]string{"TOKEN": "secret"}}
-	stdio := ConnectionInput{Transport: Stdio, Command: "server", Environment: &environment}
+	stdio := ConnectionInput{Transport: protocol.MCPTransportStdio, Command: "server", Environment: &environment}
 	if err := stdio.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +30,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 		t.Fatal("stdio connection carrying HTTP authorization was accepted")
 	}
 	clear := AuthorizationChange{Kind: Clear}
-	candidate := Candidate{Name: "docs", Connection: ConnectionInput{Transport: StreamableHTTP, URL: "https://mcp.example", Authorization: &clear}}
+	candidate := Candidate{Name: "docs", Connection: ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example", Authorization: &clear}}
 	if err := candidate.Validate(); err == nil {
 		t.Fatal("candidate clearing a nonexistent secret was accepted")
 	}
@@ -37,7 +39,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	count := 2
 	server := Server{
-		Name: "docs", Connection: Connection{Transport: Stdio, Command: "docs-server"},
+		Name: "docs", Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
 		State: State{Type: Connected, ToolCount: &count},
 	}
 	if err := server.Validate(); err != nil {
@@ -82,7 +84,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	candidate := Candidate{
 		Name: "docs", Enabled: true, Description: "Documentation", HandshakeTimeout: timeout,
 		Connection: ConnectionInput{
-			Transport: StreamableHTTP, URL: "https://mcp.example/tools",
+			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
 		},
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
@@ -90,7 +92,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	valid := Server{
 		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
 		Connection: Connection{
-			Transport: StreamableHTTP, URL: candidate.Connection.URL,
+			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
 		},
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
@@ -146,7 +148,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	connectionUpdate := ServerUpdate{
 		Server: candidate.Name,
 		Connection: &ConnectionInput{
-			Transport: StreamableHTTP, URL: candidate.Connection.URL,
+			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
 		},
 	}
@@ -166,14 +168,14 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	stdioCandidate := Candidate{
 		Name: "local", Enabled: false,
 		Connection: ConnectionInput{
-			Transport: Stdio, Command: "mcp-server", Args: []string{"--stdio"},
+			Transport: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
 			Environment: &environment, Directory: "/workspace",
 		},
 	}
 	stdioResult := Server{
 		Name: stdioCandidate.Name,
 		Connection: Connection{
-			Transport: Stdio, Command: "mcp-server", Args: []string{"--stdio"},
+			Transport: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
 			EnvironmentMasked: map[string]string{"TOKEN": "****"}, Directory: "/workspace",
 		},
 		State: State{Type: Disabled},
@@ -191,12 +193,12 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 func TestMCPMutationResultsAcceptRuntimeToolPolicyCanonicalization(t *testing.T) {
 	candidate := Candidate{
 		Name: "docs", Enabled: true,
-		Connection:       ConnectionInput{Transport: Stdio, Command: "docs-server"},
+		Connection:       ConnectionInput{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
 		DisabledTools:    []string{"write", "read"},
 		AutoApproveTools: []string{"search", "fetch"},
 	}
 	result := Server{
-		Name: candidate.Name, Connection: Connection{Transport: Stdio, Command: "docs-server"},
+		Name: candidate.Name, Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
 		DisabledTools: []string{"read", "write"}, AutoApproveTools: []string{"fetch", "search"},
 		State: State{Type: Disconnected},
 	}

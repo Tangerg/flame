@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -59,7 +61,7 @@ func mcpServerDetail(server mcp.Server) string {
 		lines = append(lines, "description  "+server.Description)
 	}
 	switch server.Connection.Transport {
-	case mcp.StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		lines = append(lines, "transport    streamable HTTP", "url          "+server.Connection.URL)
 		if server.Connection.AuthorizationMasked != "" {
 			lines = append(lines, "authorization  "+server.Connection.AuthorizationMasked)
@@ -67,7 +69,7 @@ func mcpServerDetail(server mcp.Server) string {
 		if len(server.Connection.HeadersMasked) > 0 {
 			lines = append(lines, "headers      "+formatMaskedMap(server.Connection.HeadersMasked))
 		}
-	case mcp.Stdio:
+	case protocol.MCPTransportStdio:
 		lines = append(lines, "transport    stdio", "command      "+server.Connection.Command)
 		if len(server.Connection.Args) > 0 {
 			lines = append(lines, "args         "+strings.Join(server.Connection.Args, " "))

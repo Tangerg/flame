@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
@@ -17,7 +18,7 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	application.stack.SetBase(transcript)
 	flow := newMCPFormFlow(mcpFormCreate, mcp.Server{})
 	flow.draft.name = "docs"
-	flow.draft.transport = mcp.StreamableHTTP
+	flow.draft.transport = protocol.MCPTransportStreamableHTTP
 	application.showMCPFormStep(flow)
 	drawRoot(t, &application.stack, 96, 28)
 
@@ -44,14 +45,14 @@ func TestMCPFormFlowRoutesOnlyThroughRelevantConnection(t *testing.T) {
 	tests := []struct {
 		name              string
 		mode              mcpFormMode
-		transport         mcp.Transport
+		transport         protocol.MCPTransport
 		replaceConnection bool
 		want              []mcpFormStep
 	}{
-		{name: "create HTTP", mode: mcpFormCreate, transport: mcp.StreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormHTTP, mcpFormPolicy}},
-		{name: "create stdio", mode: mcpFormCreate, transport: mcp.Stdio, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
-		{name: "update keeping connection", mode: mcpFormUpdate, transport: mcp.StreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormPolicy}},
-		{name: "update replacing connection", mode: mcpFormUpdate, transport: mcp.Stdio, replaceConnection: true, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
+		{name: "create HTTP", mode: mcpFormCreate, transport: protocol.MCPTransportStreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormHTTP, mcpFormPolicy}},
+		{name: "create stdio", mode: mcpFormCreate, transport: protocol.MCPTransportStdio, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
+		{name: "update keeping connection", mode: mcpFormUpdate, transport: protocol.MCPTransportStreamableHTTP, want: []mcpFormStep{mcpFormGeneral, mcpFormPolicy}},
+		{name: "update replacing connection", mode: mcpFormUpdate, transport: protocol.MCPTransportStdio, replaceConnection: true, want: []mcpFormStep{mcpFormGeneral, mcpFormStdio, mcpFormPolicy}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

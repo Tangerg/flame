@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
@@ -34,7 +35,7 @@ func (m *mcpFormFlow) replacesConnection() bool {
 }
 
 func (m *mcpFormFlow) connectionStep() mcpFormStep {
-	if m.draft.transport == mcp.Stdio {
+	if m.draft.transport == protocol.MCPTransportStdio {
 		return mcpFormStdio
 	}
 	return mcpFormHTTP

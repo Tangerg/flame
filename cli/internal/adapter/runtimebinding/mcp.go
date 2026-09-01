@@ -236,7 +236,7 @@ func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
 	return mcp.Server{
 		Name: value.Name, Description: value.Description,
 		Connection: mcp.Connection{
-			Transport: mcp.Transport(value.Connection.Type), URL: value.Connection.URL,
+			Transport: value.Connection.Type, URL: value.Connection.URL,
 			AuthorizationMasked: value.Connection.AuthorizationMasked,
 			HeadersMasked:       maps.Clone(value.Connection.HeadersMasked),
 			Command:             value.Connection.Command, Args: slices.Clone(value.Connection.Args),
@@ -286,7 +286,7 @@ func mcpHandshakeTimeoutFromWire(timeout protocol.MCPHandshakeTimeout) (mcp.Hand
 
 func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConnectionInput {
 	projected := protocol.MCPConnectionInput{
-		Type: protocol.MCPTransport(connection.Transport), URL: connection.URL,
+		Type: connection.Transport, URL: connection.URL,
 		Command: connection.Command, Args: slices.Clone(connection.Args), Dir: connection.Directory,
 	}
 	if connection.Authorization != nil {

@@ -93,7 +93,7 @@ func newMCPServiceStub() *mcpServiceStub {
 	return &mcpServiceStub{
 		servers: []mcp.Server{{
 			Name: "docs", Description: "Documentation", HandshakeTimeout: timeout,
-			Connection: mcp.Connection{Transport: mcp.StreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
+			Connection: mcp.Connection{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
 			State:      mcp.State{Type: mcp.Connected, ToolCount: &count},
 		}},
 		created: make(chan mcp.Candidate, 1), probed: make(chan mcp.Candidate, 1),
@@ -474,7 +474,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "MCP candidate is reachable · probe-docs")
 	probed := awaitValue(t, service.probed, "MCP candidate probe")
-	if probed.Name != "probe-docs" || probed.Connection.Transport != mcp.StreamableHTTP ||
+	if probed.Name != "probe-docs" || probed.Connection.Transport != protocol.MCPTransportStreamableHTTP ||
 		probed.Connection.URL != "https://probe.example/tools" {
 		t.Fatalf("probed MCP candidate = %+v", probed)
 	}
@@ -533,7 +533,7 @@ func TestMCPStdioWizardKeepsEveryFieldVisibleAndSecretsMasked(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "local-tools · disconnected")
 	created := <-service.created
-	if created.Connection.Transport != mcp.Stdio || created.Connection.Command != "local-mcp" ||
+	if created.Connection.Transport != protocol.MCPTransportStdio || created.Connection.Command != "local-mcp" ||
 		!slices.Equal(created.Connection.Args, []string{"--stdio"}) || created.Connection.Directory != "/tmp" ||
 		created.Connection.Environment == nil || created.Connection.Environment.Value["TOKEN"] != "MCP_STDIO_SECRET" ||
 		!slices.Equal(created.DisabledTools, []string{"read"}) {

@@ -200,7 +200,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer secret"}
 	candidate := mcp.Candidate{
 		Name: "new-docs", Enabled: true,
-		Connection: mcp.ConnectionInput{Transport: mcp.StreamableHTTP, URL: "https://new.example/tools", Authorization: &authorization},
+		Connection: mcp.ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://new.example/tools", Authorization: &authorization},
 	}
 	if _, createServerErr := runtime.CreateServer(t.Context(), candidate); createServerErr != nil {
 		t.Fatal(createServerErr)
@@ -280,7 +280,7 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	candidate := mcp.Candidate{
 		Name: "docs", Enabled: true, Description: "Documentation",
 		Connection: mcp.ConnectionInput{
-			Transport: mcp.StreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization,
+			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization,
 		},
 	}
 	createResult := wireMCPServerFromCandidate(projectMCPCandidate(candidate))

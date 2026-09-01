@@ -542,7 +542,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	candidate := mcp.Candidate{
 		Name: "integration-docs", Enabled: false, Description: "Integration MCP",
 		Connection: mcp.ConnectionInput{
-			Transport: mcp.StreamableHTTP, URL: "https://mcp.example/tools",
+			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
 		},
 		HandshakeTimeout: timeout, DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
@@ -564,7 +564,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	update := mcp.ServerUpdate{
 		Server: candidate.Name, Description: &description, HandshakeTimeout: &updatedTimeout,
 		Connection: &mcp.ConnectionInput{
-			Transport: mcp.StreamableHTTP, URL: candidate.Connection.URL,
+			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
 		},
 	}

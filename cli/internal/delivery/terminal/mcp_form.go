@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
@@ -29,7 +30,7 @@ type mcpFormDraft struct {
 	enabled           bool
 	description       string
 	replaceConnection bool
-	transport         mcp.Transport
+	transport         protocol.MCPTransport
 	url               string
 	authorizationMode formChange
 	authorization     string
@@ -47,7 +48,7 @@ type mcpFormDraft struct {
 
 func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 	draft := mcpFormDraft{
-		enabled: true, replaceConnection: true, transport: mcp.StreamableHTTP,
+		enabled: true, replaceConnection: true, transport: protocol.MCPTransportStreamableHTTP,
 		authorizationMode: formChangeKeep, headersMode: formChangeKeep, environmentMode: formChangeKeep,
 	}
 	if mode != mcpFormUpdate {
@@ -143,7 +144,7 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 	connection := mcp.ConnectionInput{Transport: m.transport}
 	switch connection.Transport {
-	case mcp.StreamableHTTP:
+	case protocol.MCPTransportStreamableHTTP:
 		connection.URL = strings.TrimSpace(m.url)
 		authorization, err := mcpAuthorizationChange(m.authorizationMode, m.authorization)
 		if err != nil {
@@ -155,7 +156,7 @@ func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 			return mcp.ConnectionInput{}, err
 		}
 		connection.Headers = headers
-	case mcp.Stdio:
+	case protocol.MCPTransportStdio:
 		connection.Command = strings.TrimSpace(m.command)
 		arguments, err := parseMCPArguments(m.arguments)
 		if err != nil {
@@ -173,9 +174,6 @@ func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 }
 
 func (m mcpFormDraft) validateSelections() error {
-	if err := m.transport.Validate(); err != nil {
-		return err
-	}
 	for _, change := range []formChange{m.authorizationMode, m.headersMode, m.environmentMode} {
 		if err := change.Validate(); err != nil {
 			return err
@@ -306,8 +304,8 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		if flow.mode == mcpFormUpdate {
 			transportLabel = "Replacement transport"
 		}
-		transport := &headless.Select[mcp.Transport]{Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2}
-		transport.SetOptions([]headless.Option[mcp.Transport]{{Label: "Streamable HTTP", Value: mcp.StreamableHTTP}, {Label: "stdio process", Value: mcp.Stdio}})
+		transport := &headless.Select[protocol.MCPTransport]{Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2}
+		transport.SetOptions([]headless.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}})
 		fields = append(fields, transport)
 	case mcpFormHTTP:
 		textField("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
