@@ -38,8 +38,10 @@ var (
 type RunNode struct {
 	ID              string
 	SpawnedByItemID string    // non-empty: a child Run
+	RootRunID       string    // non-empty: the root that owns this child Run
 	CreatedAt       time.Time // wall-clock Run order
 	MessageMark     int       // conversation message watermark; -1 when unknown
+	Terminal        bool      // whether the complete root tree can become portable
 }
 
 // IsRoot reports whether the Run opens an execution rather than representing a
@@ -57,8 +59,9 @@ func TimelineFromRuns(runs []run.Run) Timeline {
 	for i, current := range runs {
 		lineage := current.Lineage()
 		nodes[i] = RunNode{
-			ID: current.ID(), SpawnedByItemID: lineage.SpawnedByItemID,
+			ID: current.ID(), SpawnedByItemID: lineage.SpawnedByItemID, RootRunID: lineage.RootRunID,
 			CreatedAt: current.CreatedAt(), MessageMark: current.MessageMark(),
+			Terminal: current.State().IsTerminal(),
 		}
 	}
 	return nodes
@@ -103,6 +106,15 @@ type Boundary struct {
 	BoundaryTime    time.Time
 }
 
+// PortableBoundary is a stable prefix that can seed another Session. A root
+// Run and every child it spawned become portable as one unit, so RunIDs and the
+// message watermark always describe the same complete trees.
+type PortableBoundary struct {
+	KeepMessageMark int
+	KeepRunID       string
+	RunIDs          []string
+}
+
 // DroppedRunIDs returns the dropped timeline node ids in boundary order.
 func (b Boundary) DroppedRunIDs() []string {
 	ids := make([]string, len(b.Dropped))
@@ -118,19 +130,102 @@ func (b Boundary) DroppedRunIDs() []string {
 // runID with [ErrNotRoot] (rollback addresses root runs only; fork passes
 // false). An unknown runID is [ErrRunNotFound].
 func (t Timeline) BoundaryAt(runID string, requireRoot bool) (Boundary, error) {
+	nodes, err := t.ordered()
+	if err != nil {
+		return Boundary{}, err
+	}
+	return boundaryAtOrdered(nodes, runID, requireRoot)
+}
+
+// PortableBoundaryAt resolves a forkable prefix. A root and its child Runs are
+// admitted only when the entire tree is terminal. An empty runID chooses the
+// latest portable tree; an explicit non-portable target is ErrRunNotFound.
+func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
+	nodes, err := t.ordered()
+	if err != nil {
+		return PortableBoundary{}, err
+	}
+	if runID != "" {
+		if _, err := resourceid.ParseRun(runID); err != nil {
+			return PortableBoundary{}, fmt.Errorf("timeline portable boundary: %w", err)
+		}
+	}
+
+	portable := make([]RunNode, 0, len(nodes))
+	targetPortable := runID == ""
+	for start := 0; start < len(nodes); {
+		if !nodes[start].IsRoot() {
+			return PortableBoundary{}, fmt.Errorf("timeline starts a Run tree with child %q", nodes[start].ID)
+		}
+		end := start + 1
+		for end < len(nodes) && !nodes[end].IsRoot() {
+			if nodes[end].RootRunID != nodes[start].ID {
+				return PortableBoundary{}, fmt.Errorf(
+					"timeline child Run %q belongs to root %q, not preceding root %q",
+					nodes[end].ID, nodes[end].RootRunID, nodes[start].ID,
+				)
+			}
+			end++
+		}
+		complete := true
+		for _, node := range nodes[start:end] {
+			complete = complete && node.Terminal
+		}
+		if complete {
+			portable = append(portable, nodes[start:end]...)
+			if slices.ContainsFunc(nodes[start:end], func(node RunNode) bool { return node.ID == runID }) {
+				targetPortable = true
+			}
+		}
+		start = end
+	}
+	if !targetPortable {
+		return PortableBoundary{}, ErrRunNotFound
+	}
+	if len(portable) == 0 {
+		return PortableBoundary{}, nil
+	}
+	if runID == "" {
+		runID = portable[len(portable)-1].ID
+	}
+	boundary, err := boundaryAtOrdered(portable, runID, false)
+	if err != nil {
+		return PortableBoundary{}, err
+	}
+	kept := portable[:len(portable)-len(boundary.Dropped)]
+	runIDs := make([]string, len(kept))
+	for index, node := range kept {
+		runIDs[index] = node.ID
+	}
+	return PortableBoundary{
+		KeepMessageMark: boundary.KeepMessageMark,
+		KeepRunID:       boundary.KeepRunID,
+		RunIDs:          runIDs,
+	}, nil
+}
+
+func (t Timeline) ordered() ([]RunNode, error) {
 	nodes := slices.Clone([]RunNode(t))
 	for index, node := range nodes {
 		if _, err := resourceid.ParseRun(node.ID); err != nil {
-			return Boundary{}, fmt.Errorf("timeline Run[%d]: %w", index, err)
+			return nil, fmt.Errorf("timeline Run[%d]: %w", index, err)
 		}
 		if node.SpawnedByItemID != "" {
 			if _, err := resourceid.ParseItem(node.SpawnedByItemID); err != nil {
-				return Boundary{}, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
+				return nil, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
 			}
+			if _, err := resourceid.ParseRun(node.RootRunID); err != nil {
+				return nil, fmt.Errorf("timeline Run[%d] root lineage: %w", index, err)
+			}
+		} else if node.RootRunID != "" {
+			return nil, fmt.Errorf("timeline root Run[%d] carries child root lineage %q", index, node.RootRunID)
 		}
 	}
 	slices.SortStableFunc(nodes, func(a, b RunNode) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	return nodes, nil
+}
 
+func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundary, error) {
 	if runID == "" {
 		return Boundary{Dropped: nodes}, nil
 	}

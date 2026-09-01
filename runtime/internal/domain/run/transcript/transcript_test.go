@@ -2,6 +2,7 @@ package transcript_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,8 +13,11 @@ func root(id string, atUnix int64, mark int) transcript.RunNode {
 	return transcript.RunNode{ID: id, CreatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark}
 }
 
-func sub(id, spawnedByItem string, atUnix int64, mark int) transcript.RunNode {
-	return transcript.RunNode{ID: id, SpawnedByItemID: spawnedByItem, CreatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark}
+func sub(id, spawnedByItem, rootRunID string, atUnix int64, mark int) transcript.RunNode {
+	return transcript.RunNode{
+		ID: id, SpawnedByItemID: spawnedByItem, RootRunID: rootRunID,
+		CreatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark,
+	}
 }
 
 func runIDs(ns []transcript.RunNode) []string {
@@ -36,7 +40,7 @@ func TestBoundaryAt(t *testing.T) {
 		root("R3", 4, 9),
 		root("R1", 1, 2),
 		root("R2", 3, 6),
-		sub("S1", "item_r1", 2, 4),
+		sub("S1", "item_r1", "R1", 2, 4),
 	}
 	timeline := transcript.Timeline(nodes)
 
@@ -84,5 +88,36 @@ func TestBoundaryAt(t *testing.T) {
 	// BoundaryAt must not mutate the caller's slice order.
 	if nodes[0].ID != "R3" {
 		t.Fatalf("input slice was reordered: %v", runIDs(nodes))
+	}
+}
+
+func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
+	nodes := transcript.Timeline{
+		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: 2, Terminal: true},
+		{ID: "run_1_child", SpawnedByItemID: "item_1", RootRunID: "run_1", CreatedAt: time.Unix(2, 0), MessageMark: 4, Terminal: true},
+		{ID: "run_2", CreatedAt: time.Unix(3, 0), MessageMark: -1},
+		{ID: "run_2_child", SpawnedByItemID: "item_2", RootRunID: "run_2", CreatedAt: time.Unix(4, 0), MessageMark: 5, Terminal: true},
+	}
+
+	boundary, err := nodes.PortableBoundaryAt("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if boundary.KeepMessageMark != 4 || boundary.KeepRunID != "run_1_child" ||
+		!slices.Equal(boundary.RunIDs, []string{"run_1", "run_1_child"}) {
+		t.Fatalf("portable boundary = %+v", boundary)
+	}
+	if _, err := nodes.PortableBoundaryAt("run_2_child"); !errors.Is(err, transcript.ErrRunNotFound) {
+		t.Fatalf("active-tree child error = %v, want ErrRunNotFound", err)
+	}
+}
+
+func TestPortableBoundaryAtRejectsAChildOutsideItsRootTree(t *testing.T) {
+	nodes := transcript.Timeline{
+		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: 2, Terminal: true},
+		{ID: "run_child", SpawnedByItemID: "item_1", RootRunID: "run_other", CreatedAt: time.Unix(2, 0), MessageMark: 4, Terminal: true},
+	}
+	if _, err := nodes.PortableBoundaryAt(""); err == nil {
+		t.Fatal("PortableBoundaryAt accepted a child from another Run tree")
 	}
 }

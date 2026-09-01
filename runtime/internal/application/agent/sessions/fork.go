@@ -47,68 +47,19 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 			return ForkBoundary{}, fmt.Errorf("sessions: fork boundary: %w", err)
 		}
 	}
-	ordered := slices.Clone(runs)
-	slices.SortStableFunc(ordered, func(a, b run.Run) int {
-		return a.CreatedAt().Compare(b.CreatedAt())
-	})
-	for _, run := range ordered {
+	for _, run := range runs {
 		if run.State().IsTerminal() && (run.MessageMark() < 0 || run.MessageMark() > len(msgs)) {
 			return ForkBoundary{}, fmt.Errorf("sessions: terminal run %q has invalid message watermark %d", run.ID(), run.MessageMark())
 		}
 	}
-
-	// A root Run and the child Runs it spawned are one Run boundary. A terminal
-	// child inside an active root does not make that active Run portable, so
-	// include a group only when every run in it is terminal.
-	terminal := make([]transcript.RunNode, 0, len(ordered))
-	targetTerminal := fromRunID == ""
-	for start := 0; start < len(ordered); {
-		if ordered[start].Lineage().IsChild() {
-			return ForkBoundary{}, fmt.Errorf("sessions: run timeline starts a group with child Run %q", ordered[start].ID())
-		}
-		end := start + 1
-		for end < len(ordered) && ordered[end].Lineage().IsChild() {
-			end++
-		}
-		stable := true
-		for _, run := range ordered[start:end] {
-			stable = stable && run.State().IsTerminal()
-		}
-		if stable {
-			for _, run := range ordered[start:end] {
-				terminal = append(terminal, transcript.RunNode{
-					ID: run.ID(), SpawnedByItemID: run.Lineage().SpawnedByItemID,
-					CreatedAt: run.CreatedAt(), MessageMark: run.MessageMark(),
-				})
-				if run.ID() == fromRunID {
-					targetTerminal = true
-				}
-			}
-		}
-		start = end
-	}
-	if !targetTerminal {
-		return ForkBoundary{}, transcript.ErrRunNotFound
-	}
-	if len(terminal) == 0 {
-		return ForkBoundary{}, nil
-	}
-	if fromRunID == "" {
-		fromRunID = terminal[len(terminal)-1].ID
-	}
-	b, err := transcript.Timeline(terminal).BoundaryAt(fromRunID, false)
+	boundary, err := transcript.TimelineFromRuns(runs).PortableBoundaryAt(fromRunID)
 	if err != nil {
 		return ForkBoundary{}, err
 	}
-	kept := terminal[:len(terminal)-len(b.Dropped)]
-	runIDs := make([]string, len(kept))
-	for index, node := range kept {
-		runIDs[index] = node.ID
-	}
 	return ForkBoundary{
-		Messages: slices.Clone(msgs[:b.KeepMessageMark]),
-		RunIDs:   runIDs,
-		RunID:    b.KeepRunID,
+		Messages: slices.Clone(msgs[:boundary.KeepMessageMark]),
+		RunIDs:   boundary.RunIDs,
+		RunID:    boundary.KeepRunID,
 	}, nil
 }
 
