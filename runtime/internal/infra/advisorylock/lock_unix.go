@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"golang.org/x/sys/unix"
 )
 
@@ -32,7 +33,7 @@ func tryFileMode(file *os.File, mode int) (*Lease, error) {
 }
 
 func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
-	file, err := os.Open(directory)
+	file, _, err := fileinput.OpenDirectory(directory)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
 }
 
 func tryDirectory(directory string) (*Lease, error) {
-	file, err := os.Open(directory)
+	file, _, err := fileinput.OpenDirectory(directory)
 	if err != nil {
 		return nil, err
 	}

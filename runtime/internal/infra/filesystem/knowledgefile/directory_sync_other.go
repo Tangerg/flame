@@ -5,10 +5,12 @@ package knowledgefile
 import (
 	"errors"
 	"os"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func syncCommittedDirectory(root *os.Root, path string) {
-	directory, err := root.Open(path)
+	directory, _, err := fileinput.OpenDirectoryAt(root, path)
 	if err != nil {
 		return
 	}

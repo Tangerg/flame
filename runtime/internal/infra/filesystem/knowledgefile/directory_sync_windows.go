@@ -5,11 +5,12 @@ package knowledgefile
 import (
 	"os"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"golang.org/x/sys/windows"
 )
 
 func syncCommittedDirectory(root *os.Root, path string) {
-	directory, err := root.Open(path)
+	directory, _, err := fileinput.OpenDirectoryAt(root, path)
 	if err != nil {
 		return
 	}

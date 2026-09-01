@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"golang.org/x/sys/windows"
 )
 
@@ -88,7 +89,7 @@ func directoryLease(ctx context.Context, directory string, nonblocking bool) (*L
 }
 
 func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking bool) (windows.Handle, error) {
-	directoryHandle, err := os.Open(directory)
+	directoryHandle, _, err := fileinput.OpenDirectory(directory)
 	if err != nil {
 		return 0, err
 	}

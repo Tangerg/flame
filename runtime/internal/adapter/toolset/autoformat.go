@@ -298,7 +298,7 @@ func writeFormattedFile(path string, data []byte, source os.FileInfo) error {
 	// The replacement is already committed. Directory sync strengthens crash
 	// durability where supported, but a refusal cannot turn a successful format
 	// into an apparent failure that might overwrite a later user edit on retry.
-	if directory, openErr := os.Open(filepath.Dir(path)); openErr == nil {
+	if directory, _, openErr := fileinput.OpenDirectory(filepath.Dir(path)); openErr == nil {
 		_ = errors.Join(directory.Sync(), directory.Close())
 	}
 	return nil
