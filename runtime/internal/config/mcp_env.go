@@ -19,6 +19,7 @@ func parseMCPServers(raw string) ([]MCPServer, error) {
 	}
 	parts := strings.Split(raw, ",")
 	out := make([]MCPServer, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
@@ -33,11 +34,15 @@ func parseMCPServers(raw string) ([]MCPServer, error) {
 		if name == "" || value == "" {
 			return nil, fmt.Errorf("entry %q: name and value must be non-empty", p)
 		}
+		if _, duplicate := seen[name]; duplicate {
+			return nil, fmt.Errorf("entry %q: server %q is configured more than once", p, name)
+		}
 
 		srv, err := parseMCPServerValue(name, value)
 		if err != nil {
 			return nil, fmt.Errorf("entry %q: %w", p, err)
 		}
+		seen[name] = struct{}{}
 		out = append(out, srv)
 	}
 	if len(out) == 0 {

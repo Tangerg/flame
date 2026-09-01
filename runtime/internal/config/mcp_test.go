@@ -81,6 +81,11 @@ func TestParseMCPServers(t *testing.T) {
 			in:      "fs=stdio:",
 			wantErr: true,
 		},
+		{
+			name:    "duplicate name",
+			in:      "shared=https://one.example, shared=stdio:other-server",
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range cases {
