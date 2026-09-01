@@ -236,7 +236,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 		t.Fatalf("StartAuthorization = (%+v, %v)", attempt, err)
 	}
 	attempt, err = runtime.GetAuthorization(t.Context(), attempt.Reference())
-	if err != nil || attempt.Status != mcp.AuthorizationSucceeded || attempt.FinishedAt == nil {
+	if err != nil || attempt.Status != protocol.MCPAuthorizationAttemptSucceeded || attempt.FinishedAt == nil {
 		t.Fatalf("GetAuthorization = (%+v, %v)", attempt, err)
 	}
 	if len(stub.actions) != 8 {

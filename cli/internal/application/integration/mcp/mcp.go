@@ -608,19 +608,10 @@ func (t Tool) Validate() error {
 	return nil
 }
 
-type AuthorizationStatus string
-
-const (
-	AuthorizationPending   AuthorizationStatus = "pending"
-	AuthorizationSucceeded AuthorizationStatus = "succeeded"
-	AuthorizationFailed    AuthorizationStatus = "failed"
-	AuthorizationCanceled  AuthorizationStatus = "canceled"
-)
-
 type AuthorizationAttempt struct {
 	ID         string
 	Server     string
-	Status     AuthorizationStatus
+	Status     protocol.MCPAuthorizationAttemptStatusType
 	Problem    *failure.Problem
 	CreatedAt  time.Time
 	FinishedAt *time.Time
@@ -646,15 +637,15 @@ func (a AuthorizationAttempt) Validate() error {
 		return errors.New("MCP authorization attempt identity is incomplete")
 	}
 	switch a.Status {
-	case AuthorizationPending:
+	case protocol.MCPAuthorizationAttemptPending:
 		if a.Problem != nil || a.FinishedAt != nil {
 			return errors.New("pending MCP authorization carries a terminal result")
 		}
-	case AuthorizationSucceeded, AuthorizationCanceled:
+	case protocol.MCPAuthorizationAttemptSucceeded, protocol.MCPAuthorizationAttemptCanceled:
 		if a.Problem != nil || a.FinishedAt == nil {
 			return fmt.Errorf("%s MCP authorization has an invalid terminal result", a.Status)
 		}
-	case AuthorizationFailed:
+	case protocol.MCPAuthorizationAttemptFailed:
 		if a.Problem == nil || a.FinishedAt == nil {
 			return errors.New("failed MCP authorization requires a problem and finish time")
 		}
@@ -670,7 +661,9 @@ func (a AuthorizationAttempt) Validate() error {
 	return nil
 }
 
-func (a AuthorizationAttempt) Pending() bool { return a.Status == AuthorizationPending }
+func (a AuthorizationAttempt) Pending() bool {
+	return a.Status == protocol.MCPAuthorizationAttemptPending
+}
 
 func (a AuthorizationAttempt) Reference() AuthorizationReference {
 	return AuthorizationReference{ID: a.ID, Server: a.Server}

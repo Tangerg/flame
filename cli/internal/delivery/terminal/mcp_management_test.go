@@ -187,7 +187,7 @@ func (m *mcpServiceStub) ReconnectServer(_ context.Context, server string) error
 }
 
 func (m *mcpServiceStub) StartAuthorization(_ context.Context, server string) (mcp.AuthorizationAttempt, error) {
-	return mcp.AuthorizationAttempt{ID: "auth_1", Server: server, Status: mcp.AuthorizationPending, CreatedAt: m.now}, nil
+	return mcp.AuthorizationAttempt{ID: "auth_1", Server: server, Status: protocol.MCPAuthorizationAttemptPending, CreatedAt: m.now}, nil
 }
 
 func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error) {
@@ -199,7 +199,7 @@ func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationRefe
 	}
 	finished := m.now.Add(time.Second)
 	return mcp.AuthorizationAttempt{
-		ID: "auth_1", Server: "docs", Status: mcp.AuthorizationSucceeded,
+		ID: "auth_1", Server: "docs", Status: protocol.MCPAuthorizationAttemptSucceeded,
 		CreatedAt: m.now, FinishedAt: &finished,
 	}, nil
 }
@@ -218,7 +218,7 @@ func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAb
 		t.Fatal(err)
 	}
 	observed, err := observer.observe(t.Context(), initial)
-	if err != nil || observed.Status != mcp.AuthorizationSucceeded || service.authReads.Load() != 3 {
+	if err != nil || observed.Status != protocol.MCPAuthorizationAttemptSucceeded || service.authReads.Load() != 3 {
 		t.Fatalf("observe after transient failures = (%+v, %v), reads %d", observed, err, service.authReads.Load())
 	}
 

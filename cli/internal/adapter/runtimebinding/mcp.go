@@ -325,7 +325,7 @@ func projectMCPAuthorizationResult(
 		return mcp.AuthorizationAttempt{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	attempt := mcp.AuthorizationAttempt{
-		ID: result.ID, Server: result.Server, Status: mcp.AuthorizationStatus(result.Status.Type),
+		ID: result.ID, Server: result.Server, Status: result.Status.Type,
 		Problem: projectRuntimeProblem(result.Status.Error), CreatedAt: result.CreatedAt,
 		FinishedAt: clonePointer(result.FinishedAt),
 	}
