@@ -87,6 +87,9 @@ func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
 	t.Setenv("FLAME_CLI_UI_TRANSCRIPT_RETAIN", "77")
 	t.Setenv("FLAME_CLI_UI_TOOL_DETAILS", "true")
 	t.Setenv("FLAME_CLI_APPROVAL_REMEMBER", "project")
+	t.Setenv("FLAME_CLI_RUN_MAX_TOTAL_TOKENS", "24000")
+	t.Setenv("FLAME_CLI_RUN_MAX_STEPS", "9")
+	t.Setenv("FLAME_CLI_RUN_MAX_BUDGET_USD", "1.25")
 	out, _, err := executeCommand(t, instantRuntime(), "", "config", "show")
 	if err != nil {
 		t.Fatal(err)
@@ -95,8 +98,34 @@ func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.UI.TranscriptRetain != 77 || !got.UI.ToolDetails || got.Approval.Remember != "project" {
+	if got.UI.TranscriptRetain != 77 || !got.UI.ToolDetails || got.Approval.Remember != "project" ||
+		got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 24000 ||
+		got.Run.MaxSteps == nil || *got.Run.MaxSteps != 9 ||
+		got.Run.MaxBudgetUSD == nil || *got.Run.MaxBudgetUSD != 1.25 {
 		t.Fatalf("environment settings = %+v", got)
+	}
+}
+
+func TestConfigurationRunLimitPrecedenceIsFileEnvironmentFlag(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "flame.yaml")
+	if err := os.WriteFile(path, []byte("run:\n  max-total-tokens: 12000\n  max-steps: 4\n  max-budget-usd: 0.5\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_CLI_RUN_MAX_TOTAL_TOKENS", "24000")
+	t.Setenv("FLAME_CLI_RUN_MAX_STEPS", "8")
+	t.Setenv("FLAME_CLI_RUN_MAX_BUDGET_USD", "1.5")
+	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "--max-steps", "12", "config", "show")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got settings.Config
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 24000 ||
+		got.Run.MaxSteps == nil || *got.Run.MaxSteps != 12 ||
+		got.Run.MaxBudgetUSD == nil || *got.Run.MaxBudgetUSD != 1.5 {
+		t.Fatalf("effective run limits = %+v", got.Run)
 	}
 }
 

@@ -59,6 +59,12 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	v.SetEnvPrefix("FLAME_CLI")
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
+	for _, binding := range runLimitFlagBindings {
+		// Optional pointer settings have no default value and their flags are
+		// applied only when changed. Bind them explicitly so Viper includes
+		// environment-only values in the key set handed to UnmarshalExact.
+		v.MustBindEnv(binding.key)
+	}
 
 	flags := root.PersistentFlags()
 	flags.String("config", "", "Configuration file (default: ./.flame.yaml or the user config directory)")
