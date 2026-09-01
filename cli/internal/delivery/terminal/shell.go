@@ -9,9 +9,35 @@ import (
 const (
 	transcriptPaneKey  = "transcript"
 	promptPaneKey      = "prompt"
-	compactShellHeight = 8
-	compactShellWidth  = 12
+	shortShellHeight   = 16
+	minimalShellHeight = 8
+	minimalShellWidth  = 12
 )
+
+type shellDensity uint8
+
+const (
+	shellDensityNormal shellDensity = iota + 1
+	shellDensityShort
+	shellDensityMinimal
+)
+
+func densityForShell(width, height int) shellDensity {
+	switch {
+	case height < minimalShellHeight || width < minimalShellWidth:
+		return shellDensityMinimal
+	case height <= shortShellHeight:
+		return shellDensityShort
+	default:
+		return shellDensityNormal
+	}
+}
+
+func (d shellDensity) hidesOptionalPanes() bool {
+	return d == shellDensityShort || d == shellDensityMinimal
+}
+
+func (d shellDensity) usesMinimalPrompt() bool { return d == shellDensityMinimal }
 
 type shellView struct {
 	rows       *headless.Container
@@ -21,7 +47,7 @@ type shellView struct {
 	activity   *activityView
 	queue      *queueView
 	status     *statusView
-	compact    bool
+	density    shellDensity
 }
 
 func newShellView(
@@ -34,9 +60,9 @@ func newShellView(
 ) *shellView {
 	shell := &shellView{
 		transcript: transcript, prompt: prompt, header: header,
-		activity: activity, queue: queue, status: status,
+		activity: activity, queue: queue, status: status, density: shellDensityNormal,
 	}
-	rows := headless.NewContainer(layout.Down, shell.items(false)...)
+	rows := headless.NewContainer(layout.Down, shell.items(shellDensityNormal)...)
 	keys := headless.DefaultContainerKeys()
 	keys.Bind(headless.FocusNext, input.Chord{Code: input.Character, Rune: ' '})
 	rows.Keys = keys
@@ -47,7 +73,7 @@ func newShellView(
 
 func (s *shellView) Draw(frame headless.Frame) {
 	width, height := frame.Size()
-	s.setCompact(height < compactShellHeight || width < compactShellWidth)
+	s.setDensity(densityForShell(width, height))
 	s.rows.Draw(frame)
 }
 
@@ -63,25 +89,27 @@ func (s *shellView) FocusPrompt() bool { return s.focus(promptPaneKey) }
 
 func (s *shellView) SetTranscript(transcript *transcriptView) {
 	s.transcript = transcript
-	s.rows.Set(s.items(s.compact)...)
+	s.rows.Set(s.items(s.density)...)
 }
 
-func (s *shellView) setCompact(compact bool) {
-	if s.compact == compact {
+func (s *shellView) setDensity(density shellDensity) {
+	if s.density == density {
 		return
 	}
-	s.compact = compact
-	s.prompt.SetCompact(compact)
-	s.rows.Set(s.items(compact)...)
+	s.density = density
+	s.prompt.SetCompact(density.usesMinimalPrompt())
+	s.rows.Set(s.items(density)...)
 }
 
-func (s *shellView) items(compact bool) []headless.Item {
+func (s *shellView) items(density shellDensity) []headless.Item {
 	headerSize := layout.Measured(0, 2)
 	activitySize := layout.Measured(0, activityMaxRows)
 	queueSize := layout.Measured(0, queueMaxRows)
 	promptSize := layout.Measured(4, 9)
-	if compact {
+	if density.hidesOptionalPanes() {
 		headerSize, activitySize, queueSize = layout.Fixed(0), layout.Fixed(0), layout.Fixed(0)
+	}
+	if density.usesMinimalPrompt() {
 		promptSize = layout.Fixed(1)
 	}
 	return []headless.Item{

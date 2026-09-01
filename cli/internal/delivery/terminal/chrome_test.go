@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -263,8 +264,8 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs), prompt)
 	shell.Focus(true)
 
-	tiny := drawRoot(t, shell, 20, compactShellHeight-1)
-	if !shell.compact || !prompt.compact {
+	tiny := drawRoot(t, shell, 20, minimalShellHeight-1)
+	if !shell.density.usesMinimalPrompt() || !prompt.compact {
 		t.Fatal("tiny shell did not enter compact layout")
 	}
 	for _, want := range []string{"VISIBLE", "TINY_DRAFT", "rea"} {
@@ -279,12 +280,47 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}
 
 	normal := drawRoot(t, shell, 96, 28)
-	if shell.compact || prompt.compact {
+	if shell.density.usesMinimalPrompt() || prompt.compact {
 		t.Fatal("resized shell did not leave compact layout")
 	}
 	for _, want := range []string{"/hidden/workspace", "HIDDEN_PLAN", "TINY_DRAFT", "shift+enter"} {
 		if !strings.Contains(normal, want) {
 			t.Errorf("restored shell does not contain %q:\n%s", want, normal)
+		}
+	}
+}
+
+func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
+	bindings, err := configuredKeyBindings(settings.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	theme, glyphs := kit.Dark(), kit.Unicode()
+	transcript := testTranscriptView(t)
+	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
+	header := newSessionHeader(theme, glyphs, agent.Session{Title: "HIDDEN_TITLE", Workspace: workspace.Workspace{
+		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
+	}})
+	activity := newActivityView(theme, glyphs)
+	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
+	queue := newQueueView(theme, glyphs)
+	queue.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{Message: agent.Message{Text: "HIDDEN_QUEUE"}}}})
+	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
+	composer.Editor().Keys = bindings.editor
+	composer.Editor().SetText("VISIBLE_DRAFT")
+	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	shell := newShellView(header, transcript, activity, queue, newStatusView(theme, glyphs), prompt)
+	shell.Focus(true)
+
+	short := drawRoot(t, shell, 96, 16)
+	for _, want := range []string{"VISIBLE_TRANSCRIPT", "VISIBLE_DRAFT", "shift+enter"} {
+		if !strings.Contains(short, want) {
+			t.Errorf("short shell does not contain %q:\n%s", want, short)
+		}
+	}
+	for _, hidden := range []string{"/hidden/workspace", "HIDDEN_PLAN", "HIDDEN_QUEUE"} {
+		if strings.Contains(short, hidden) {
+			t.Errorf("short shell retained optional pane %q:\n%s", hidden, short)
 		}
 	}
 }
@@ -311,7 +347,7 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 		t.Fatal("test could not focus the transcript")
 	}
 
-	drawRoot(t, shell, 20, compactShellHeight-1)
+	drawRoot(t, shell, 20, minimalShellHeight-1)
 	if !shell.TranscriptFocused() {
 		t.Fatal("entering compact layout moved focus away from the transcript")
 	}
