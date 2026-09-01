@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func newTestStore(t *testing.T) (*Store, string) {
@@ -139,12 +141,12 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	}
 
 	invalidSource := t.TempDir()
-	if _, err := readSourceAlternates(invalidSource); !errors.Is(err, errSourceNotRegular) {
-		t.Fatalf("readSourceAlternates(directory) error = %v, want errSourceNotRegular", err)
+	if _, err := readSourceAlternates(invalidSource); !errors.Is(err, fileinput.ErrNotRegular) {
+		t.Fatalf("readSourceAlternates(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	invalidDestination := filepath.Join(t.TempDir(), "copy")
-	if err := copyFile(invalidSource, invalidDestination, maxSourceIndexBytes); !errors.Is(err, errSourceNotRegular) {
-		t.Fatalf("copyFile(directory) error = %v, want errSourceNotRegular", err)
+	if err := copyFile(invalidSource, invalidDestination, maxSourceIndexBytes); !errors.Is(err, fileinput.ErrNotRegular) {
+		t.Fatalf("copyFile(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	if _, err := os.Stat(invalidDestination); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("invalid copy destination stat error = %v, want os.ErrNotExist", err)

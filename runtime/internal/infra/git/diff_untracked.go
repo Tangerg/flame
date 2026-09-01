@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const maxUntrackedDiffPaths = 10_000
@@ -49,8 +51,11 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 	if !info.Mode().IsRegular() {
 		return 0, true, nil
 	}
-	file, err := os.Open(path)
+	file, _, err := fileinput.Open(path, 0)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrNotRegular) {
+			return 0, true, nil
+		}
 		return 0, false, fmt.Errorf("git: open untracked file %q: %w", rel, err)
 	}
 	defer func() { _ = file.Close() }()

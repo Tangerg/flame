@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
@@ -228,21 +229,18 @@ func (seed sourceRepositorySeed) copyIndex() error {
 	if err != nil {
 		return fmt.Errorf("checkpoint: discover source index: %w", err)
 	}
-	if _, err := os.Stat(sourceIndex); errors.Is(err, os.ErrNotExist) {
+	if err := copyFile(sourceIndex, filepath.Join(seed.gitDir, "index"), maxSourceIndexBytes); errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("checkpoint: inspect source index: %w", err)
-	}
-	if err := copyFile(sourceIndex, filepath.Join(seed.gitDir, "index"), maxSourceIndexBytes); err != nil {
 		return fmt.Errorf("checkpoint: copy source index: %w", err)
 	}
 	return nil
 }
 
 func readSourceAlternates(path string) ([]byte, error) {
-	file, err := openBoundedRegularFile(path, maxSourceAlternatesBytes)
+	file, _, err := fileinput.Open(path, maxSourceAlternatesBytes)
 	if err != nil {
-		return nil, err
+		return nil, checkpointSourceError(err)
 	}
 	defer func() { _ = file.Close() }()
 	data, err := io.ReadAll(io.LimitReader(file, maxSourceAlternatesBytes+1))
