@@ -112,6 +112,7 @@ type sessionStores struct {
 	history     *runsapp.ConversationHistory
 	plan        *sqlite.PlanStore
 	approvals   *sqlite.ApprovalRuleStore
+	modes       *sqlite.PermissionModeStore
 	toolResults *sqlite.ToolResultStore
 	childStarts *sqlite.ChildRunStartReservationStore
 	goals       *sqlite.GoalStore
@@ -139,6 +140,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		history:     runsapp.NewConversationHistory(sqlite.NewMessageStore(db), nil),
 		plan:        plan,
 		approvals:   approvals,
+		modes:       sqlite.NewPermissionModeStore(db),
 		toolResults: sqlite.NewToolResultStore(db),
 		childStarts: sqlite.NewChildRunStartReservationStore(db),
 		goals:       sqlite.NewGoalStore(db),
@@ -146,7 +148,8 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	ss.SessionStores = persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
-		Approvals: ss.approvals, ToolResults: ss.toolResults, ChildRunStarts: ss.childStarts, Goals: ss.goals,
+		ApprovalRules: ss.approvals, PermissionModes: ss.modes, ToolResults: ss.toolResults,
+		ChildRunStarts: ss.childStarts, Goals: ss.goals,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
@@ -752,6 +755,11 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 			t.Fatalf("seed approval %s: %v", rule.ID, err)
 		}
 	}
+	if err := ss.modes.PutMode(ctx, "ses_A", approval.SessionMode{
+		Mode: approval.ModePlan, RestoreMode: approval.ModeBalanced,
+	}); err != nil {
+		t.Fatalf("seed permission mode: %v", err)
+	}
 
 	if err := ss.ApplyRestore(ctx, sessions.RestorePlan{
 		Session: bootstrapRestoreReplacement(
@@ -785,6 +793,9 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	}
 	if ids[sessionRule.ID] || !ids[projectRule.ID] || !ids[globalRule.ID] || len(ids) != 2 {
 		t.Fatalf("approvals after restore = %v, want project+global only", ids)
+	}
+	if state, found, err := ss.modes.LookupMode(ctx, "ses_A"); err != nil || found {
+		t.Fatalf("permission mode after restore = %+v, found=%t, err=%v; want Runtime default", state, found, err)
 	}
 }
 

@@ -71,6 +71,11 @@ func (m *memoryModeStore) PutMode(_ context.Context, sessionID string, state app
 	return nil
 }
 
+func (m *memoryModeStore) DeleteSession(_ context.Context, sessionID string) error {
+	delete(m.states, sessionID)
+	return nil
+}
+
 func TestPlanModeIsSessionScopedAndRestoresEntryMode(t *testing.T) {
 	modes := &memoryModeStore{states: make(map[string]approval.SessionMode)}
 	policy, err := NewRuntimePolicy(approval.ModeBalanced, nil, modes, nil)

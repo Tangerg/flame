@@ -28,6 +28,11 @@ func (m *modeStore) PutMode(_ context.Context, sessionID string, state approval.
 	return nil
 }
 
+func (m *modeStore) DeleteSession(_ context.Context, sessionID string) error {
+	delete(m.states, sessionID)
+	return nil
+}
+
 type planReader struct{ steps []plandomain.Step }
 
 func (p planReader) State(context.Context, string) (plandomain.Current, error) {

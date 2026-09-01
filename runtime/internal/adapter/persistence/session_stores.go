@@ -28,7 +28,8 @@ type SessionStores struct {
 	executorCheckpoints *ExecutorCheckpointStore
 	history             *runsapp.ConversationHistory
 	plan                planProjection
-	approvals           approvalRuleCleaner
+	approvalRules       sessionStateCleaner
+	permissionModes     sessionStateCleaner
 	toolResults         *sqlitestore.ToolResultStore
 	childRunStarts      childRunStartReservationCleaner
 	goals               goalStore
@@ -44,7 +45,8 @@ type SessionStoresConfig struct {
 	ExecutorCheckpoints *ExecutorCheckpointStore
 	History             *runsapp.ConversationHistory
 	Plan                planProjection
-	Approvals           approvalRuleCleaner
+	ApprovalRules       sessionStateCleaner
+	PermissionModes     sessionStateCleaner
 	ToolResults         *sqlitestore.ToolResultStore
 	ChildRunStarts      childRunStartReservationCleaner
 	Goals               goalStore
@@ -66,7 +68,9 @@ type planProjection interface {
 	DeleteSession(ctx context.Context, sessionID string) error
 }
 
-type approvalRuleCleaner interface {
+// sessionStateCleaner is the lifecycle port shared by projections whose rows
+// cannot outlive or leak across a complete Session replacement.
+type sessionStateCleaner interface {
 	DeleteSession(ctx context.Context, sessionID string) error
 }
 
@@ -95,7 +99,8 @@ func NewSessionStores(cfg SessionStoresConfig) *SessionStores {
 		executorCheckpoints: cfg.ExecutorCheckpoints,
 		history:             cfg.History,
 		plan:                cfg.Plan,
-		approvals:           cfg.Approvals,
+		approvalRules:       cfg.ApprovalRules,
+		permissionModes:     cfg.PermissionModes,
 		toolResults:         cfg.ToolResults,
 		childRunStarts:      cfg.ChildRunStarts,
 		goals:               cfg.Goals,
@@ -426,8 +431,13 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	if err := s.runs.DeleteForSession(ctx, sessionID); err != nil {
 		return err
 	}
-	if s.approvals != nil {
-		if err := s.approvals.DeleteSession(ctx, sessionID); err != nil {
+	if s.approvalRules != nil {
+		if err := s.approvalRules.DeleteSession(ctx, sessionID); err != nil {
+			return err
+		}
+	}
+	if s.permissionModes != nil {
+		if err := s.permissionModes.DeleteSession(ctx, sessionID); err != nil {
 			return err
 		}
 	}

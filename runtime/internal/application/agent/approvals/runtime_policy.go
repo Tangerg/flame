@@ -44,6 +44,7 @@ func NewRuntimePolicy(
 type ModeStore interface {
 	LookupMode(ctx context.Context, sessionID string) (state approval.SessionMode, found bool, err error)
 	PutMode(ctx context.Context, sessionID string, state approval.SessionMode) error
+	DeleteSession(ctx context.Context, sessionID string) error
 }
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call

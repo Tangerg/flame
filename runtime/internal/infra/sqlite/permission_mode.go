@@ -55,3 +55,19 @@ func (p *PermissionModeStore) PutMode(ctx context.Context, sessionID string, sta
 	}
 	return nil
 }
+
+// DeleteSession removes the explicit permission state owned by one Session.
+// Session restore uses this before reseeding portable material: permission
+// policy is local Runtime state and is deliberately not inherited from the
+// Session that an imported archive replaces.
+func (p *PermissionModeStore) DeleteSession(ctx context.Context, sessionID string) error {
+	if err := validateSessionResource("delete Session permission mode", sessionID); err != nil {
+		return err
+	}
+	if _, err := conn(ctx, p.db).ExecContext(ctx,
+		`DELETE FROM session_permission_modes WHERE session_id = ?`, sessionID,
+	); err != nil {
+		return fmt.Errorf("sqlite: delete session permission mode: %w", err)
+	}
+	return nil
+}
