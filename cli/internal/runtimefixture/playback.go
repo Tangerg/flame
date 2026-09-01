@@ -180,7 +180,7 @@ func approvalCompletionEvents(run *runState, answers []agent.InterruptAnswer) []
 		if answer.ArgumentOverride != nil {
 			tool.ArgumentsJSON = answer.ArgumentOverride.JSON()
 		}
-		if answer.Decision == agent.ApprovalDeny {
+		if answer.Decision == protocol.ApprovalDeny {
 			tool.Status = agent.ToolError
 			tool.Output = strings.TrimSpace(answer.Reason)
 			if tool.Output == "" {

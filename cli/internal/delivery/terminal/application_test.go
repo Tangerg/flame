@@ -830,7 +830,7 @@ func TestRejectedApprovalResumePreservesTheReviewAndUsesANewIdentity(t *testing.
 		t.Fatalf("resume attempts = %+v", attempts)
 	}
 	answer, ok := attempts[1].Answers[0].Answer.(agent.ApprovalAnswer)
-	if !ok || answer.Decision != agent.ApprovalDeny || answer.Reason != "KEEP_REJECTED_REVIEW" {
+	if !ok || answer.Decision != protocol.ApprovalDeny || answer.Reason != "KEEP_REJECTED_REVIEW" {
 		t.Fatalf("retried approval answer = %#v", attempts[1].Answers[0].Answer)
 	}
 	stop()
@@ -1193,7 +1193,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			{
 				ItemID: agent.InteractionItemID(snapshot.Interactions[0]),
 				Answer: agent.ApprovalAnswer{
-					Decision: agent.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
+					Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 				},
 			},
 			{
@@ -1228,7 +1228,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			t.Fatalf("resume attempt %d answers = %+v", index+1, attempt.Answers)
 		}
 		approval, ok := attempt.Answers[0].Answer.(agent.ApprovalAnswer)
-		if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != protocol.RememberProject ||
+		if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberProject ||
 			approval.ArgumentOverride == nil ||
 			string(approval.ArgumentOverride.JSON()) != `{"command":"go test -race ./...","count":20}` {
 			t.Fatalf("resume attempt %d approval = %#v", index+1, attempt.Answers[0].Answer)
@@ -1294,7 +1294,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		CommandID: "cli_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", RunID: opened.RunID,
 		Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(waiting.Interactions[0]),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 		}},
 	}
 	continued, err := base.ResumeRun(t.Context(), command)
@@ -1371,7 +1371,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		CommandID: "cli_fefefefefefefefefefefefefefefefe", RunID: opened.RunID,
 		Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(waiting.Interactions[0]),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 		}},
 	}
 	stateDirectory := t.TempDir()
@@ -1542,7 +1542,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		CommandID: agent.CommandID("cli_99999999999999999999999999999999"), RunID: opened.RunID,
 		Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(snapshot.Interactions[0]),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}},
 	}
 	stateDirectory := t.TempDir()
@@ -3703,7 +3703,7 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 	host.Shows(t, "complete")
 	provided := <-answers
 	answer, ok := provided[0].Answer.(agent.ApprovalAnswer)
-	if !ok || answer.Decision != agent.ApprovalDeny || answer.Reason != "keep the generated fixture" {
+	if !ok || answer.Decision != protocol.ApprovalDeny || answer.Reason != "keep the generated fixture" {
 		t.Fatalf("denial answer = %#v", provided[0].Answer)
 	}
 
@@ -3744,7 +3744,7 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalDeny || answer.Remember != protocol.RememberSession ||
+	if answer.Decision != protocol.ApprovalDeny || answer.Remember != protocol.RememberSession ||
 		answer.Reason != "preserve generated fixtures" || answer.ArgumentOverride != nil {
 		t.Fatalf("remembered denial = %+v", answer)
 	}
@@ -3761,17 +3761,17 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 	tests := []struct {
 		name     string
 		moves    int
-		decision agent.ApprovalDecision
+		decision protocol.ApprovalDecision
 		remember protocol.RememberScopeKind
 	}{
-		{name: "allow once", decision: agent.ApprovalApprove},
-		{name: "allow session", moves: 1, decision: agent.ApprovalApprove, remember: protocol.RememberSession},
-		{name: "allow project", moves: 2, decision: agent.ApprovalApprove, remember: protocol.RememberProject},
-		{name: "allow global", moves: 3, decision: agent.ApprovalApprove, remember: protocol.RememberGlobal},
-		{name: "deny once", moves: 4, decision: agent.ApprovalDeny},
-		{name: "deny session", moves: 5, decision: agent.ApprovalDeny, remember: protocol.RememberSession},
-		{name: "deny project", moves: 6, decision: agent.ApprovalDeny, remember: protocol.RememberProject},
-		{name: "deny global", moves: 7, decision: agent.ApprovalDeny, remember: protocol.RememberGlobal},
+		{name: "allow once", decision: protocol.ApprovalApprove},
+		{name: "allow session", moves: 1, decision: protocol.ApprovalApprove, remember: protocol.RememberSession},
+		{name: "allow project", moves: 2, decision: protocol.ApprovalApprove, remember: protocol.RememberProject},
+		{name: "allow global", moves: 3, decision: protocol.ApprovalApprove, remember: protocol.RememberGlobal},
+		{name: "deny once", moves: 4, decision: protocol.ApprovalDeny},
+		{name: "deny session", moves: 5, decision: protocol.ApprovalDeny, remember: protocol.RememberSession},
+		{name: "deny project", moves: 6, decision: protocol.ApprovalDeny, remember: protocol.RememberProject},
+		{name: "deny global", moves: 7, decision: protocol.ApprovalDeny, remember: protocol.RememberGlobal},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -3801,7 +3801,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 			for range test.moves {
 				host.Press(input.Down)
 			}
-			if test.decision == agent.ApprovalDeny {
+			if test.decision == protocol.ApprovalDeny {
 				host.Press(input.Tab)
 				host.Type("matrix feedback")
 			}
@@ -3814,10 +3814,10 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 			if answer.Decision != test.decision || answer.Remember != test.remember {
 				t.Fatalf("approval answer = %+v, want decision %q and scope %q", answer, test.decision, test.remember)
 			}
-			if test.decision == agent.ApprovalDeny && answer.Reason != "matrix feedback" {
+			if test.decision == protocol.ApprovalDeny && answer.Reason != "matrix feedback" {
 				t.Fatalf("denial reason = %q", answer.Reason)
 			}
-			if test.decision == agent.ApprovalApprove && answer.Reason != "" {
+			if test.decision == protocol.ApprovalApprove && answer.Reason != "" {
 				t.Fatalf("approval retained denial feedback: %q", answer.Reason)
 			}
 			rules, err := backend.ListApprovalRules(t.Context(), firstRuntimeSession(t, backend))
@@ -3838,8 +3838,8 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 	}
 }
 
-func approvalRuleDecision(decision agent.ApprovalDecision) protocol.ApprovalRuleDecision {
-	if decision == agent.ApprovalApprove {
+func approvalRuleDecision(decision protocol.ApprovalDecision) protocol.ApprovalRuleDecision {
+	if decision == protocol.ApprovalApprove {
 		return protocol.ApprovalRuleDecisionAllow
 	}
 	return protocol.ApprovalRuleDecisionDeny
@@ -3915,7 +3915,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalApprove || answer.Remember != protocol.RememberSession ||
+	if answer.Decision != protocol.ApprovalApprove || answer.Remember != protocol.RememberSession ||
 		answer.ArgumentOverride == nil ||
 		string(answer.ArgumentOverride.JSON()) != `{"command":"echo safe","timeout":45}` {
 		t.Fatalf("edited approval answer = %+v", answer)
@@ -3962,7 +3962,7 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalApprove || answer.ArgumentOverride != nil {
+	if answer.Decision != protocol.ApprovalApprove || answer.ArgumentOverride != nil {
 		t.Fatalf("canceled argument edit leaked into approval answer: %+v", answer)
 	}
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -4004,7 +4004,7 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalDeny || answer.Reason != "KEEP_RESIZE_FEEDBACK" {
+	if answer.Decision != protocol.ApprovalDeny || answer.Reason != "KEEP_RESIZE_FEEDBACK" {
 		t.Fatalf("restored approval answer = %+v", answer)
 	}
 
@@ -4040,7 +4040,7 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalApprove || answer.Remember != "" {
+	if answer.Decision != protocol.ApprovalApprove || answer.Remember != "" {
 		t.Fatalf("one-shot approval answer = %+v", answer)
 	}
 
@@ -4646,7 +4646,7 @@ func approvalWidthScript(string) runtimefixture.Script {
 			message := "Approval was not denied at current width"
 			if len(answers) == 1 {
 				answer, ok := answers[0].Answer.(agent.ApprovalAnswer)
-				if ok && answer.Decision == agent.ApprovalDeny {
+				if ok && answer.Decision == protocol.ApprovalDeny {
 					message = "Approval denied at current width"
 				}
 			}

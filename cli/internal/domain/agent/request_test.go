@@ -3,6 +3,8 @@ package agent
 import (
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestStartRunValidation(t *testing.T) {
@@ -49,7 +51,7 @@ func TestStartRunEqualUsesTheCompleteMutationFingerprint(t *testing.T) {
 
 func TestResumeRunRequiresCompleteUniqueSet(t *testing.T) {
 	request := ResumeRun{RunID: "run_1", Answers: []InterruptAnswer{
-		{ItemID: "a", Answer: ApprovalAnswer{Decision: ApprovalApprove}},
+		{ItemID: "a", Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove}},
 		{ItemID: "q", Answer: QuestionAnswer{Values: [][]string{{"yes"}}}},
 	}}
 	if err := request.Validate(); err != nil {
@@ -59,7 +61,7 @@ func TestResumeRunRequiresCompleteUniqueSet(t *testing.T) {
 	if err := request.Validate(); err == nil {
 		t.Fatal("duplicate interrupt was accepted")
 	}
-	request.Answers = []InterruptAnswer{{ItemID: " a", Answer: ApprovalAnswer{Decision: ApprovalApprove}}}
+	request.Answers = []InterruptAnswer{{ItemID: " a", Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove}}}
 	if err := request.Validate(); err == nil {
 		t.Fatal("resume accepted an item identity that requires trimming")
 	}

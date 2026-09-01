@@ -65,7 +65,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 		t.Fatalf("waiting current Run = %+v, %t", current, ok)
 	}
 	acceptedQuestions, err := conversation.RecordAcceptedInteractionAnswers([]InterruptAnswer{
-		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: ApprovalApprove}},
+		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove}},
 		{ItemID: question.ItemID, Answer: QuestionAnswer{Values: [][]string{{"A"}}}},
 	})
 	if err != nil {

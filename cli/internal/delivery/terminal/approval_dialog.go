@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -42,7 +43,7 @@ func (a approvalDecisionDraft) answer(action approvalAction, override *agent.Too
 	if !ok {
 		return agent.ApprovalAnswer{}, false
 	}
-	if decision.Decision == agent.ApprovalDeny {
+	if decision.Decision == protocol.ApprovalDeny {
 		decision.Reason = strings.TrimSpace(a.reason)
 		if decision.Reason == "" {
 			decision.Reason = "denied by the user in the terminal"

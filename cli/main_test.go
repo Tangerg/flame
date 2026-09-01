@@ -566,7 +566,7 @@ func mixedInteractionPTYAnswersMatch(provided []agent.InterruptAnswer) bool {
 		return false
 	}
 	approval, ok := provided[0].Answer.(agent.ApprovalAnswer)
-	if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != protocol.RememberProject ||
+	if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberProject ||
 		approval.ArgumentOverride == nil ||
 		string(approval.ArgumentOverride.JSON()) != `{"command":"go test ./...","count":2}` {
 		return false

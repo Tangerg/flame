@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
@@ -900,7 +901,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 					Command: agent.ResumeRun{
 						CommandID: "cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", RunID: approval.RunID,
 						Answers: []agent.InterruptAnswer{{
-							ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+							ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 						}},
 					},
 					Interactions: []agent.Interaction{approval},

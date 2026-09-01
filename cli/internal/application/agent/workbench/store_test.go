@@ -187,7 +187,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	resume := PendingResume{
 		Command: agent.ResumeRun{
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
-			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}},
+			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
@@ -404,7 +404,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	resume := PendingResume{
 		Command: agent.ResumeRun{
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
-			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}},
+			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
@@ -1296,7 +1296,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 			Answers: []agent.InterruptAnswer{{
 				ItemID: approval.ItemID,
 				Answer: agent.ApprovalAnswer{
-					Decision: agent.ApprovalApprove, ArgumentOverride: override,
+					Decision: protocol.ApprovalApprove, ArgumentOverride: override,
 				},
 			}},
 		},
@@ -1305,7 +1305,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
-	pending.Command.Answers[0].Answer = agent.ApprovalAnswer{Decision: agent.ApprovalApprove}
+	pending.Command.Answers[0].Answer = agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}
 	pending.Interactions[0] = agent.Approval{RunID: "mutated"}
 
 	reopened, err := OpenDirectory(directory, Config{})
@@ -1318,7 +1318,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 		t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
 	}
 	answer, ok := restored.Command.Answers[0].Answer.(agent.ApprovalAnswer)
-	if !ok || answer.Decision != agent.ApprovalApprove || answer.ArgumentOverride == nil ||
+	if !ok || answer.Decision != protocol.ApprovalApprove || answer.ArgumentOverride == nil ||
 		string(answer.ArgumentOverride.JSON()) != `{"path":"generated/fixture.go"}` {
 		t.Fatalf("restored pending answer = %#v", restored.Command.Answers[0].Answer)
 	}
@@ -1348,7 +1348,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	pending := PendingResume{
 		Command: agent.ResumeRun{
 			CommandID: agent.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
-			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove}}},
+			Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}}},
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
@@ -1361,7 +1361,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 
 	changedAnswer := clonePendingResume(pending)
 	changedAnswer.Command.Answers[0].Answer = agent.ApprovalAnswer{
-		Decision: agent.ApprovalDeny, Reason: "not this command",
+		Decision: protocol.ApprovalDeny, Reason: "not this command",
 	}
 	if err := store.StagePendingResume("ses_1", changedAnswer); err == nil {
 		t.Fatal("same resume identity accepted a different answer")
@@ -1402,7 +1402,7 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 			CommandID: "cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{
 				ItemID: approval.ItemID,
-				Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
+				Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 			}},
 		},
 		Interactions: []agent.Interaction{approval},
@@ -1450,7 +1450,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 			RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{
 				ItemID: approval.ItemID,
-				Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
+				Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 			}},
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
@@ -1486,7 +1486,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 			CommandID: agent.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1",
 			Answers: []agent.InterruptAnswer{
 				{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{
-					Decision: agent.ApprovalDeny, Remember: protocol.RememberProject, Reason: "protect generated output",
+					Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "protect generated output",
 				}},
 				{ItemID: question.ItemID, Answer: agent.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
 			},
@@ -1505,7 +1505,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 		t.Fatalf("restored mixed resume = %+v, present = %t", restored, ok)
 	}
 	approvalAnswer, ok := restored.Command.Answers[0].Answer.(agent.ApprovalAnswer)
-	if !ok || approvalAnswer.Decision != agent.ApprovalDeny || approvalAnswer.Remember != protocol.RememberProject ||
+	if !ok || approvalAnswer.Decision != protocol.ApprovalDeny || approvalAnswer.Remember != protocol.RememberProject ||
 		approvalAnswer.Reason != "protect generated output" {
 		t.Fatalf("restored approval answer = %#v", restored.Command.Answers[0].Answer)
 	}

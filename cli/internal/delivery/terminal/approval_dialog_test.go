@@ -89,17 +89,17 @@ func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
 	tests := []struct {
 		name     string
 		action   approvalAction
-		decision agent.ApprovalDecision
+		decision protocol.ApprovalDecision
 		remember protocol.RememberScopeKind
 	}{
-		{name: "allow once", action: approvalAllowOnce, decision: agent.ApprovalApprove},
-		{name: "allow session", action: approvalAllowSession, decision: agent.ApprovalApprove, remember: protocol.RememberSession},
-		{name: "allow project", action: approvalAllowProject, decision: agent.ApprovalApprove, remember: protocol.RememberProject},
-		{name: "allow global", action: approvalAllowGlobal, decision: agent.ApprovalApprove, remember: protocol.RememberGlobal},
-		{name: "deny once", action: approvalDenyOnce, decision: agent.ApprovalDeny},
-		{name: "deny session", action: approvalDenySession, decision: agent.ApprovalDeny, remember: protocol.RememberSession},
-		{name: "deny project", action: approvalDenyProject, decision: agent.ApprovalDeny, remember: protocol.RememberProject},
-		{name: "deny global", action: approvalDenyGlobal, decision: agent.ApprovalDeny, remember: protocol.RememberGlobal},
+		{name: "allow once", action: approvalAllowOnce, decision: protocol.ApprovalApprove},
+		{name: "allow session", action: approvalAllowSession, decision: protocol.ApprovalApprove, remember: protocol.RememberSession},
+		{name: "allow project", action: approvalAllowProject, decision: protocol.ApprovalApprove, remember: protocol.RememberProject},
+		{name: "allow global", action: approvalAllowGlobal, decision: protocol.ApprovalApprove, remember: protocol.RememberGlobal},
+		{name: "deny once", action: approvalDenyOnce, decision: protocol.ApprovalDeny},
+		{name: "deny session", action: approvalDenySession, decision: protocol.ApprovalDeny, remember: protocol.RememberSession},
+		{name: "deny project", action: approvalDenyProject, decision: protocol.ApprovalDeny, remember: protocol.RememberProject},
+		{name: "deny global", action: approvalDenyGlobal, decision: protocol.ApprovalDeny, remember: protocol.RememberGlobal},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -251,8 +251,10 @@ func ValidateAnswer(interaction Interaction, answer Answer) error {
 }
 
 func (a ApprovalAnswer) Validate() error {
-	if !slices.Contains([]ApprovalDecision{ApprovalApprove, ApprovalDeny}, a.Decision) {
-		return fmt.Errorf("approval answer: decision %q is invalid", a.Decision)
+	if err := (runtimeprotocol.InterruptResponseValue{
+		Type: runtimeprotocol.InterruptResponseApproval, Decision: a.Decision,
+	}).ValidateWire(); err != nil {
+		return fmt.Errorf("approval answer: %w", err)
 	}
 	if a.Remember != "" {
 		if err := (runtimeprotocol.RememberScope{Scope: a.Remember}).ValidateWire(); err != nil {
@@ -260,7 +262,7 @@ func (a ApprovalAnswer) Validate() error {
 		}
 	}
 	if a.ArgumentOverride != nil {
-		if a.Decision != ApprovalApprove {
+		if a.Decision != runtimeprotocol.ApprovalApprove {
 			return errors.New("approval answer: denied tool carries an argument override")
 		}
 		if err := a.ArgumentOverride.Validate(); err != nil {

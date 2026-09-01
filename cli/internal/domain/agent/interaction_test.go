@@ -42,14 +42,14 @@ func TestQuestionAcceptReturnsAnOwnedDurableFact(t *testing.T) {
 
 func TestApprovalHonorsRememberable(t *testing.T) {
 	approval := runningApproval("a_1", "shell")
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: protocol.RememberProject}); err == nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}); err == nil {
 		t.Fatal("unrememberable approval was remembered")
 	}
 	approval.Rememberable = true
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: protocol.RememberProject}); err != nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalDeny, Remember: protocol.RememberSession}); err != nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberSession}); err != nil {
 		t.Fatalf("remembered denial was rejected: %v", err)
 	}
 }
@@ -61,7 +61,7 @@ func TestApprovalAnswerOwnsOnlyApprovedArgumentOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approved := ApprovalAnswer{Decision: ApprovalApprove, ArgumentOverride: override}
+	approved := ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override}
 	if err := ValidateAnswer(approval, approved); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestApprovalAnswerOwnsOnlyApprovedArgumentOverrides(t *testing.T) {
 		t.Fatal("approval answer did not deep-clone its argument override")
 	}
 	denied := approved
-	denied.Decision = ApprovalDeny
+	denied.Decision = protocol.ApprovalDeny
 	if err := ValidateAnswer(approval, denied); err == nil {
 		t.Fatal("denied approval retained an argument override")
 	}

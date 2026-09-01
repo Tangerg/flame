@@ -280,15 +280,8 @@ func (Question) isInteraction() {}
 
 type Answer interface{ isAnswer() }
 
-type ApprovalDecision string
-
-const (
-	ApprovalApprove ApprovalDecision = "approve"
-	ApprovalDeny    ApprovalDecision = "deny"
-)
-
 type ApprovalAnswer struct {
-	Decision         ApprovalDecision
+	Decision         protocol.ApprovalDecision
 	Remember         protocol.RememberScopeKind
 	Reason           string
 	ArgumentOverride *ToolArgumentOverride

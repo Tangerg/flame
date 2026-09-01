@@ -146,7 +146,7 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 	switch answer := value.Answer.(type) {
 	case agent.ApprovalAnswer:
 		response.Response.Type = protocol.InterruptResponseApproval
-		response.Response.Decision = protocol.ApprovalDecision(answer.Decision)
+		response.Response.Decision = answer.Decision
 		response.Response.Reason = answer.Reason
 		if answer.ArgumentOverride != nil {
 			arguments, err := answer.ArgumentOverride.Object()

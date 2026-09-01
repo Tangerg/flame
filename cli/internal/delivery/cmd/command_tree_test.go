@@ -1016,7 +1016,7 @@ func resumeProjectApproval(t *testing.T, runtime Runtime, runID string, interrup
 	stream, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
 		RunID: runID, Answers: []agent.InterruptAnswer{{
 			ItemID: interrupted.ItemID,
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberProject},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
 		}},
 	})
 	if err != nil {

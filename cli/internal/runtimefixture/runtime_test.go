@@ -298,7 +298,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	originalRules := len(runtime.rules)
 
 	_, err = runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: opened.RunID, Answers: []agent.InterruptAnswer{{
-		ItemID: agent.InteractionItemID(interaction), Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
+		ItemID: agent.InteractionItemID(interaction), Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 	}}})
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("resume after revision exhaustion error = %v", err)
@@ -416,7 +416,7 @@ func resumeApprovedRun(t *testing.T, runtime *Runtime, opened agent.SegmentStrea
 		RunID: opened.RunID,
 		Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(interaction),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberProject},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
 		}},
 	})
 	if err != nil {
@@ -723,7 +723,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 	drain(t, opened, conversation)
 	interaction := conversation.Interactions()[0]
 	continued, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: opened.RunID, Answers: []agent.InterruptAnswer{{
-		ItemID: agent.InteractionItemID(interaction), Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove},
+		ItemID: agent.InteractionItemID(interaction), Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 	}}})
 	if err != nil {
 		t.Fatal(err)
@@ -769,7 +769,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 	continued, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
 		RunID: opened.RunID, Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(interaction),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, ArgumentOverride: override},
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override},
 		}},
 	})
 	if err != nil {

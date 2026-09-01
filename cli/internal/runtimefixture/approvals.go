@@ -113,18 +113,18 @@ func (r *Runtime) rememberedAnswerLocked(run *runState, approval agent.Approval)
 	return agent.ApprovalAnswer{}, false
 }
 
-func approvalRuleDecision(decision agent.ApprovalDecision) protocol.ApprovalRuleDecision {
-	if decision == agent.ApprovalApprove {
+func approvalRuleDecision(decision protocol.ApprovalDecision) protocol.ApprovalRuleDecision {
+	if decision == protocol.ApprovalApprove {
 		return protocol.ApprovalRuleDecisionAllow
 	}
 	return protocol.ApprovalRuleDecisionDeny
 }
 
-func approvalDecision(decision protocol.ApprovalRuleDecision) agent.ApprovalDecision {
+func approvalDecision(decision protocol.ApprovalRuleDecision) protocol.ApprovalDecision {
 	if decision == protocol.ApprovalRuleDecisionAllow {
-		return agent.ApprovalApprove
+		return protocol.ApprovalApprove
 	}
-	return agent.ApprovalDeny
+	return protocol.ApprovalDeny
 }
 
 func ruleApplies(rule storedRule, sessionID, workspace string) bool {

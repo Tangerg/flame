@@ -72,28 +72,28 @@ func defaultApprovalAction(scope protocol.RememberScopeKind) approvalAction {
 func (a approvalAction) Answer() (agent.ApprovalAnswer, bool) {
 	switch a {
 	case approvalAllowSession:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberSession}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}, true
 	case approvalAllowProject:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberProject}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}, true
 	case approvalAllowGlobal:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberGlobal}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberGlobal}, true
 	case approvalAllowOnce:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}, true
 	case approvalDenySession:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberSession}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberSession}, true
 	case approvalDenyProject:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberProject}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject}, true
 	case approvalDenyGlobal:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberGlobal}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal}, true
 	case approvalDenyOnce:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny}, true
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}, true
 	default:
 		return agent.ApprovalAnswer{}, false
 	}
 }
 
 func approvalActionFromAnswer(answer agent.ApprovalAnswer) approvalAction {
-	if answer.Decision == agent.ApprovalDeny {
+	if answer.Decision == protocol.ApprovalDeny {
 		switch answer.Remember {
 		case protocol.RememberSession:
 			return approvalDenySession

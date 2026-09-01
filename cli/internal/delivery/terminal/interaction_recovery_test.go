@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -158,7 +159,7 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 	restoreStateDirectory()
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
-	if answer := <-answers; answer.Decision != agent.ApprovalApprove {
+	if answer := <-answers; answer.Decision != protocol.ApprovalApprove {
 		t.Fatalf("retried approval answer = %+v", answer)
 	}
 	stop()

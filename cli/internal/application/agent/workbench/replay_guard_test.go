@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
@@ -42,7 +44,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 		Command: agent.ResumeRun{
 			CommandID: "cli_99999999999999999999999999999999", RunID: approval.RunID,
 			Answers: []agent.InterruptAnswer{{
-				ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+				ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 			}},
 		},
 		Interactions: []agent.Interaction{approval}, Replay: resumeGuard,

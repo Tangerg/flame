@@ -79,7 +79,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 				}[sessionID]),
 				RunID: approval.RunID,
 				Answers: []agent.InterruptAnswer{{
-					ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+					ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 				}},
 			},
 			Interactions: []agent.Interaction{approval},

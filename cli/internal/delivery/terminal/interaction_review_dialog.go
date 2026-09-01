@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -142,7 +143,7 @@ func summarizeInteraction(item agent.Interaction, answer agent.Answer) string {
 	case agent.Approval:
 		provided, _ := answer.(agent.ApprovalAnswer)
 		decision := "allow once"
-		if provided.Decision == agent.ApprovalDeny {
+		if provided.Decision == protocol.ApprovalDeny {
 			decision = "deny once"
 			if provided.Remember != "" {
 				decision = "deny for " + string(provided.Remember)

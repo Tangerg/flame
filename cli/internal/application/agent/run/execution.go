@@ -438,10 +438,10 @@ func unattendedAnswers(interactions []agent.Interaction, approveAll bool, sessio
 
 func approvalAnswer(approveAll bool) agent.ApprovalAnswer {
 	if approveAll {
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove}
+		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}
 	}
 	return agent.ApprovalAnswer{
-		Decision: agent.ApprovalDeny,
+		Decision: protocol.ApprovalDeny,
 		Reason:   "declined: this run is unattended (rerun with --approve-all to allow it)",
 	}
 }

@@ -22,7 +22,7 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recordErr := review.Record(agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberSession}); recordErr != nil {
+	if recordErr := review.Record(agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}); recordErr != nil {
 		t.Fatal(recordErr)
 	}
 	if !review.Advance() {
@@ -84,7 +84,7 @@ func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testin
 		}},
 	}
 	responses := []agent.InterruptAnswer{
-		{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberSession}},
+		{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}},
 		{ItemID: question.ItemID, Answer: agent.QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},
 	}
 	review, err := restoreInteractionReview([]agent.Interaction{approval, question}, responses)
@@ -120,7 +120,7 @@ func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 		[]agent.InterruptAnswer{{
 			ItemID: approval.ItemID,
 			Answer: agent.ApprovalAnswer{
-				Decision: agent.ApprovalApprove, ArgumentOverride: override,
+				Decision: protocol.ApprovalApprove, ArgumentOverride: override,
 			},
 		}},
 	)
@@ -139,7 +139,7 @@ func TestInteractionSummaryDisclosesRememberedDenial(t *testing.T) {
 	t.Parallel()
 	approval := agent.Approval{Title: "Delete generated file"}
 	answer := agent.ApprovalAnswer{
-		Decision: agent.ApprovalDeny, Remember: protocol.RememberProject, Reason: "preserve fixtures",
+		Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "preserve fixtures",
 	}
 	got := summarizeInteraction(approval, answer)
 	for _, want := range []string{"deny for project", "preserve fixtures"} {

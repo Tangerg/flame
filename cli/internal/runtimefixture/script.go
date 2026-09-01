@@ -391,7 +391,7 @@ func (d defaultScenario) script() Script {
 		}},
 		Continue: func(answers []agent.InterruptAnswer) []Step {
 			approval, ok := answers[0].Answer.(agent.ApprovalAnswer)
-			if ok && approval.Decision == agent.ApprovalApprove {
+			if ok && approval.Decision == protocol.ApprovalApprove {
 				return approved
 			}
 			return denied

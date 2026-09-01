@@ -1,6 +1,10 @@
 package agent
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 func TestResumeRunEqualityIncludesCompleteDecisionValue(t *testing.T) {
 	override, err := ParseToolArgumentOverride([]byte(`{"command":"go test ./..."}`))
@@ -11,7 +15,7 @@ func TestResumeRunEqualityIncludesCompleteDecisionValue(t *testing.T) {
 	resume := ResumeRun{
 		CommandID: CommandID("cli_77777777777777777777777777777777"), RunID: "run_1", Message: &message,
 		Answers: []InterruptAnswer{
-			{ItemID: "approval", Answer: ApprovalAnswer{Decision: ApprovalApprove, ArgumentOverride: override}},
+			{ItemID: "approval", Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override}},
 			{ItemID: "question", Answer: QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},
 		},
 	}
@@ -20,7 +24,7 @@ func TestResumeRunEqualityIncludesCompleteDecisionValue(t *testing.T) {
 	}
 
 	changed := resume.Clone()
-	changed.Answers[0].Answer = ApprovalAnswer{Decision: ApprovalDeny, Reason: "unsafe"}
+	changed.Answers[0].Answer = ApprovalAnswer{Decision: protocol.ApprovalDeny, Reason: "unsafe"}
 	if resume.Equal(changed) {
 		t.Fatal("resume equality ignored an approval decision")
 	}

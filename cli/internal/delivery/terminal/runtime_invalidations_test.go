@@ -1668,7 +1668,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 		t.Fatalf("approval responses = %+v", provided)
 	}
 	answer, ok := provided[0].Answer.(agent.ApprovalAnswer)
-	if !ok || answer.Decision != agent.ApprovalDeny || answer.Reason != "PRESERVED_INVALIDATION_FEEDBACK" {
+	if !ok || answer.Decision != protocol.ApprovalDeny || answer.Reason != "PRESERVED_INVALIDATION_FEEDBACK" {
 		t.Fatalf("preserved approval answer = %#v", provided[0].Answer)
 	}
 	stop()

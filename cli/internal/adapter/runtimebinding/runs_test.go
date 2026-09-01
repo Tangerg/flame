@@ -169,7 +169,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	if _, err := runtime.StartRun(t.Context(), request); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{CommandID: commandID, RunID: "run_1", Answers: []agent.InterruptAnswer{{ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny}}}}); err != nil {
+	if _, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{CommandID: commandID, RunID: "run_1", Answers: []agent.InterruptAnswer{{ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{CommandID: commandID, RunID: "run_1"}); err != nil {
@@ -204,7 +204,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 				_, err := runtime.ResumeRun(ctx, agent.ResumeRun{
 					RunID: "run_1", Message: &message,
 					Answers: []agent.InterruptAnswer{{
-						ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+						ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 					}},
 				})
 				return err
@@ -332,7 +332,7 @@ func TestRunAdaptersRejectMismatchedAcknowledgements(t *testing.T) {
 	}, meta: requestMeta("test")}
 
 	stream, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: "run_1", Answers: []agent.InterruptAnswer{{
-		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 	}}})
 	requireRuntimeContractViolation(t, err)
 	receipt, accepted := agent.AcceptedMutationReceipt(err)
@@ -363,7 +363,7 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 	}
 
 	resumed, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: "run_1", Answers: []agent.InterruptAnswer{{
-		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: agent.ApprovalDeny},
+		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 	}}})
 	requireRuntimeContractViolation(t, err)
 	receipt, accepted = agent.AcceptedMutationReceipt(err)
@@ -416,7 +416,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		RunID: "run_1", Answers: []agent.InterruptAnswer{{
 			ItemID: "item_approval",
 			Answer: agent.ApprovalAnswer{
-				Decision: agent.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
+				Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 			},
 		}},
 	})
@@ -441,7 +441,7 @@ func TestProjectAnswerMapsRememberedDenial(t *testing.T) {
 	projected, err := projectAnswer(agent.InterruptAnswer{
 		ItemID: "item_denial",
 		Answer: agent.ApprovalAnswer{
-			Decision: agent.ApprovalDeny, Remember: protocol.RememberGlobal, Reason: "protect generated files",
+			Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal, Reason: "protect generated files",
 		},
 	})
 	if err != nil {
