@@ -7,7 +7,7 @@ import {
   projectConversationHits,
   projectRecalledMemories,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { recallToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function MemoryRecallPreview({ tool }: ToolPreviewProps) {
@@ -83,7 +83,9 @@ function StoredToolResultPreview({ tool }: ToolPreviewProps) {
 export const recallPreviews = definePlugin({
   name: "flame.builtin.recall-previews",
   setup(ctx) {
-    for (const preview of recallToolPreviews({
+    // Searching the agent's own history: project memory and earlier conversations. Two
+    // shapes, one family — both answer "here is what I already knew".
+    for (const preview of toolPreviews({
       search_memory: MemoryRecallPreview,
       search_conversations: ConversationRecallPreview,
       read_tool_result: StoredToolResultPreview,

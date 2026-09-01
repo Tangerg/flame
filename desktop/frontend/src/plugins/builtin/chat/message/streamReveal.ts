@@ -1,6 +1,5 @@
-// Owned by the context that RENDERS the reveal — `blockContext.textReveal` is this
-// context's type, and the transcript must be able to read the preference with no other
-// plugin installed.
+// Read directly, not through a port: a preference with a default must be readable with no
+// other plugin installed, or the transcript cannot render until the settings pane loads.
 
 import { z } from "zod";
 import { create } from "zustand";

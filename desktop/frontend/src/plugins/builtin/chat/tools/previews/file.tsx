@@ -3,7 +3,7 @@ import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/Previe
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useFileToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
-import { fileToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 const MAX_FILE_LINES = 40;
@@ -35,7 +35,7 @@ function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
 export const file = definePlugin({
   name: "flame.builtin.file",
   setup(ctx) {
-    for (const preview of fileToolPreview(FilePreview)) {
+    for (const preview of toolPreviews({ read: FilePreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

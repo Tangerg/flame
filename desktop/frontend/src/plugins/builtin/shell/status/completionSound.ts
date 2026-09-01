@@ -1,7 +1,5 @@
-// Owned by the context that PLAYS the chime, not by the pane that toggles it. A preference
-// with a default has to be readable with nothing installed — routing this through the
-// settings context's port made the notifier refuse to run unless that pane's plugin had
-// loaded first, which is a load order the notifier has no reason to care about.
+// Read directly, not through a port: a preference with a default must be readable with no
+// other plugin installed, or the chime cannot fire until the settings pane loads.
 
 import { z } from "zod";
 import { create } from "zustand";

@@ -11,14 +11,9 @@ import type { ZodType } from "zod";
 export const discardOlderVersions = () => undefined as never;
 
 /**
- * The one rehydration policy, because localStorage is a trust boundary and every store
- * crossed it slightly differently: four spellings of parse-or-default, one of them checking
- * a boolean by hand through a cast, one dropping the warning, one dropping the
- * `undefined` guard. A payload that fails to parse boots the defaults and says so, once.
- *
- * `project` exists for the stores whose durable shape is not their live shape — the dock
- * persists session scopes as tuples and rebuilds a Map — so those keep the shared policy
- * instead of hand-rolling it around their own transform.
+ * localStorage is a trust boundary: a payload that fails to parse boots the defaults and
+ * says so once. `project` is for stores whose durable shape differs from their live one —
+ * the dock persists session scopes as tuples and rebuilds a Map.
  */
 export function rehydrateOrDefault<Persisted, Restored extends object = Persisted & object>(
   storageKey: string,

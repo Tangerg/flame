@@ -151,10 +151,7 @@ if (bypasses.length > 0) {
   console.error("test-only accessor and redundant port installation; do not preserve a bypass.");
   process.exit(1);
 }
-// A guard that examined nothing reports the same "OK" as a guard that examined
-// everything — `check-circular` did exactly that, on an empty graph, for its whole
-// existence. The floor is far below today's count: it catches a broken walk or a moved
-// tree, not ordinary growth.
+// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
 const MIN_SOURCES_EXAMINED = 500;
 if (sources.length < MIN_SOURCES_EXAMINED) {
   console.error(

@@ -4,7 +4,7 @@ import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectGlobPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { globToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
@@ -35,7 +35,7 @@ function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const globPreview = definePlugin({
   name: "flame.builtin.glob-preview",
   setup(ctx) {
-    for (const preview of globToolPreview(GlobPreview)) {
+    for (const preview of toolPreviews({ glob: GlobPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

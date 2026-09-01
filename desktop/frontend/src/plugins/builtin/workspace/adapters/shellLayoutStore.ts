@@ -1,7 +1,3 @@
-// How wide the two flanks are and whether the drawer is collapsed. Sits beside the dock
-// store because one port reads both: the drawer, the dock's tab set and the dock's width
-// are the same layout decision seen from three angles.
-//
 // The dock width is a RATIO, never a px measure: the px changes with every window resize,
 // and CSS re-derives it from the ratio with no React render (`lib/shellGeometry`).
 

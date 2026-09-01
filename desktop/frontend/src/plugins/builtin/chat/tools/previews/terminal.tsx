@@ -3,7 +3,7 @@ import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/Previe
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
-import { shellToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 
 function TerminalResult({ tool, onOpenView }: ToolPreviewProps) {
   return (
@@ -33,7 +33,9 @@ function StopShellPreview(props: ToolPreviewProps) {
 export const shellPreview = definePlugin({
   name: "flame.builtin.shell",
   setup(ctx) {
-    for (const preview of shellToolPreviews({
+    // Backgrounding is an ARGUMENT of `shell` (run_in_background), not a tool of its own —
+    // read_shell_output / stop_shell are how you then read and stop it.
+    for (const preview of toolPreviews({
       shell: ShellCommandPreview,
       read_shell_output: ShellOutputPreview,
       stop_shell: StopShellPreview,

@@ -351,9 +351,7 @@ try {
   process.exit(2);
 }
 
-// The same floor `check-circular` carries, for the same reason and off the same graph: an
-// empty or truncated madge result makes every rule below vacuously true, and the run still
-// prints OK. This proves module resolution worked before any conclusion is drawn.
+// An empty or truncated graph makes every rule below vacuously true, and still prints OK.
 const MIN_MODULES = 600;
 const MIN_EDGES = 1000;
 const moduleCount = Object.keys(graph).length;

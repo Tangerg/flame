@@ -36,11 +36,11 @@ const BASE_PX = {
   composerFooterEnd: 8,
 } as const;
 
-export function isUiDensity(value: unknown): value is UiDensity {
+function isUiDensity(value: unknown): value is UiDensity {
   return typeof value === "string" && (UI_DENSITY_MODES as readonly string[]).includes(value);
 }
 
-export function normalizeUiDensity(value: unknown): UiDensity {
+function normalizeUiDensity(value: unknown): UiDensity {
   return isUiDensity(value) ? value : DEFAULT_UI_DENSITY;
 }
 

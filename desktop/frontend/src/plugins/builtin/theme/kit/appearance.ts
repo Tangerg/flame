@@ -1,7 +1,5 @@
-// The theme context's own vocabulary. `Scheme` and `VisualStyleMotion` are NOT here: those
-// are published down to rings that cannot import a plugin (`lib/motion` reads the motion,
-// `lib/highlight` reads the scheme), so they belong to the publication seam in
-// `lib/appearance`. Everything below is read only by this context and the pane that edits it.
+// `Scheme` and `VisualStyleMotion` deliberately live in `lib/appearance` instead: rings
+// that cannot import a plugin read them off the painter's publication seam.
 
 export type ColorThemeId = string;
 export type VisualStyleId = string;

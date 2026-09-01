@@ -8,7 +8,6 @@ import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { APPEARANCE_PANE } from "../kit/panes";
 import { installBrowserFontAvailability } from "./adapters/browserFontAvailability";
-import { installAppearancePreferencesPort } from "./adapters/uiAppearancePreferences";
 
 const AppearancePane = lazy(() =>
   import("./ui/AppearancePane").then(({ AppearancePane }) => ({ default: AppearancePane })),
@@ -17,7 +16,6 @@ const AppearancePane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.appearance",
   setup(ctx) {
-    const disposePreferences = installAppearancePreferencesPort();
     const disposeFonts = installBrowserFontAvailability();
     registerSettingsPane(ctx, {
       id: APPEARANCE_PANE,
@@ -28,9 +26,6 @@ export default definePlugin({
       order: 0,
       component: AppearancePane,
     });
-    ctx.cleanup(() => {
-      disposeFonts();
-      disposePreferences();
-    });
+    ctx.cleanup(disposeFonts);
   },
 });

@@ -4,7 +4,7 @@ import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectToolSearchGroups } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { toolSearchPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function ToolSearchPreview({ tool }: ToolPreviewProps) {
@@ -43,7 +43,7 @@ function ToolSearchPreview({ tool }: ToolPreviewProps) {
 export const toolSearchPreviewPlugin = definePlugin({
   name: "flame.builtin.tool-search-preview",
   setup(ctx) {
-    for (const preview of toolSearchPreview(ToolSearchPreview)) {
+    for (const preview of toolPreviews({ search_tools: ToolSearchPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

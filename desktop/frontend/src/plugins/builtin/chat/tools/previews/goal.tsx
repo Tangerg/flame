@@ -4,7 +4,7 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { Badge } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { projectGoalToolPreview } from "../application/specialisedPreviewProjections";
-import { goalToolPreviews } from "../application/toolPreviewContributions";
+import { toolPreviews } from "../application/toolPreviewContributions";
 import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function GoalStatePreview({ tool }: ToolPreviewProps) {
@@ -65,7 +65,7 @@ function GoalOutcomePreview({ tool }: ToolPreviewProps) {
 export const goalPreviews = definePlugin({
   name: "flame.builtin.goal-previews",
   setup(ctx) {
-    for (const preview of goalToolPreviews({
+    for (const preview of toolPreviews({
       create_goal: CreatedGoalPreview,
       get_goal: CurrentGoalPreview,
       report_goal_outcome: GoalOutcomePreview,

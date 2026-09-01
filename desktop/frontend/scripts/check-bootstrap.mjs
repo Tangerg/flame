@@ -43,11 +43,9 @@ function expect(condition, message) {
 }
 
 // ── 1. The persisted-preference key ───────────────────────────────────────────
-// Read from the NAMED constant, not from `name:`'s literal: the key is stated three times
-// (the pre-paint script, the store, the warning a corrupt payload prints), so the store
-// holds it once and everything else reads that. A regex for the inline literal silently
-// resolved to `undefined` the moment it stopped being inline — which is a guard comparing
-// a string to nothing and calling it agreement.
+// Read from the NAMED constant, not `name:`'s literal: a regex for the inline literal
+// resolves to `undefined` the moment it stops being inline, which is a guard comparing a
+// string to nothing and calling it agreement.
 const htmlStorageKey = html.match(/localStorage\.getItem\("([^"]+)"\)/)?.[1];
 const storeName = store.match(/APPEARANCE_STORAGE_KEY\s*=\s*"([^"]+)"/)?.[1];
 expect(

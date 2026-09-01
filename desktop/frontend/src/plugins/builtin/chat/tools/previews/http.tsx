@@ -11,7 +11,7 @@ import {
   projectFetchedPage,
   projectHttpPreview,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { httpToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { CODE_PREVIEW_CLASS, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function statusTone(status: number): Tone | undefined {
@@ -91,7 +91,7 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const httpPreviews = definePlugin({
   name: "flame.builtin.http-previews",
   setup(ctx) {
-    for (const preview of httpToolPreviews({
+    for (const preview of toolPreviews({
       http_request: HttpRequestPreview,
       web_fetch: WebFetchPreview,
     })) {

@@ -5,7 +5,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectSkillPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
-import { skillToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
@@ -76,7 +76,7 @@ function SkillProposalPreview(props: ToolPreviewProps) {
 export const skillPreview = definePlugin({
   name: "flame.builtin.skill-preview",
   setup(ctx) {
-    for (const preview of skillToolPreviews({
+    for (const preview of toolPreviews({
       list_skills: SkillCatalogPreview,
       load_skill: LoadedSkillPreview,
       read_skill_resource: SkillResourcePreview,

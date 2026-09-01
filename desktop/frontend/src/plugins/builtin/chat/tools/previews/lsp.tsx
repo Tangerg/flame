@@ -5,7 +5,7 @@ import { cn } from "@/lib/classNames";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
-import { lspToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
@@ -107,7 +107,9 @@ function LspPreview(props: ToolPreviewProps) {
 export const lspPreviews = definePlugin({
   name: "flame.builtin.lsp-previews",
   setup(ctx) {
-    for (const preview of lspToolPreview(LspPreview)) {
+    // `diagnostics` is an OPERATION of `lsp`, not a separate tool, so the preview reads
+    // the operation to decide which face to wear.
+    for (const preview of toolPreviews({ lsp: LspPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

@@ -79,11 +79,9 @@ const LAZY_FEATURES = [
     ],
     ceiling: 200_000,
   },
-  // Every built-in workspace view. Named one by one rather than matched by a
-  // pattern: the list IS the coverage proof, so adding a view and forgetting to
-  // register it here fails as "missing chunk" instead of passing on a shorter
-  // list nobody notices. The bodies are small individually — what this guards is
-  // the barrel, which used to pull all twenty onto the startup path at once.
+  // Named one by one rather than pattern-matched: the list IS the coverage proof, so a
+  // view added without registering it here fails as "missing chunk" rather than passing
+  // quietly. What this guards is the barrel, which pulled all twenty onto startup.
   {
     label: "workspace views",
     prefixes: [

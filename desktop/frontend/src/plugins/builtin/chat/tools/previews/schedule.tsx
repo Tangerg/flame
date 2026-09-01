@@ -8,7 +8,7 @@ import {
   projectDeletedScheduleId,
   projectSchedulePreviews,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { scheduleToolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function ScheduleRows({ tool }: ToolPreviewProps) {
@@ -83,7 +83,7 @@ function DeletedSchedulePreview({ tool }: ToolPreviewProps) {
 export const schedulePreview = definePlugin({
   name: "flame.builtin.schedule-preview",
   setup(ctx) {
-    for (const preview of scheduleToolPreviews({
+    for (const preview of toolPreviews({
       create_schedule: CreatedSchedulePreview,
       list_schedules: ScheduleListPreview,
       delete_schedule: DeletedSchedulePreview,

@@ -1,11 +1,8 @@
-// The call path every wire method takes, separated from the table of methods that take it.
-//
-// Four things happen between a caller and the socket, and none of them is visible in a
-// binding line like `call("sessions.get", { sessionId })`: a capability preflight that
-// refuses locally what the server has already said it cannot do, an idempotency key drawn
-// from a durable journal so a retry is the SAME command rather than a second one, a
-// mutation promise that carries that key and a `retry`, and cursor auto-paging. Reading
-// them next to six hundred lines of binding is how a change to one of them goes unreviewed.
+// Four things happen between a caller and the socket that a binding line like
+// `call("sessions.get", { sessionId })` does not show: a capability preflight that refuses
+// locally what the server said it cannot do, an idempotency key from the durable journal so
+// a retry is the SAME command, a mutation promise carrying that key and a `retry`, and
+// cursor auto-paging.
 
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";

@@ -1,13 +1,7 @@
-// The eager half of every built-in workspace view: id, title, icon, order, badge.
-//
-// Bodies load on demand. A user sees at most one or two of these at a time, but a static
-// barrel put all twenty on the startup path — the largest of them render diffs, terminals
-// and skill catalogues, none of which the first paint needs. The metadata has to stay eager
-// (the tab strip, the dock destination list and the command palette all enumerate views
-// before any is opened), so it lives here and the component arrives through `lazy`.
-//
-// `WorkspaceViewBody` already mounts each view inside Suspense, which is what makes a
-// LazyExoticComponent a drop-in `ComponentType` here. Badges are the exception — see
+// The eager half of every built-in workspace view. Metadata must stay eager — the tab
+// strip, dock destination list and command palette enumerate views before any is opened —
+// so it lives here and the body arrives through `lazy`, which `WorkspaceViewBody`'s
+// Suspense boundary makes a drop-in `ComponentType`. Badges are the exception; see
 // `tabBadges`.
 
 import { lazy } from "react";

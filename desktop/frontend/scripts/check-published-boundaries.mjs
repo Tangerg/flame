@@ -272,11 +272,8 @@ for (const file of files(SRC)) {
 
   if (
     !isTest &&
-    // Keyed on "declares a plugin", not on the filename: `index.ts` was the shape when
-    // every plugin sat in its own folder, and it silently stopped covering forty roots
-    // that live beside their siblings (`sidebar/footer.tsx`, `chat/tools/previews/*`,
-    // `workspace/events.ts`). A guard that only watches one naming convention protects
-    // whoever follows it, which is not who needs protecting.
+    // Keyed on "declares a plugin", not on `index.ts`: that filename was the shape when
+    // every plugin had its own folder, and it missed forty roots sitting beside siblings.
     /plugins\/builtin\/.+\.(ts|tsx)$/.test(rel) &&
     /\bdefinePlugin\(/.test(text) &&
     // Any argument list, any suffix: dropping the disposer leaks the same way whether
@@ -488,11 +485,9 @@ for (const file of files(SRC)) {
     });
   }
 
-  // Written as "every application ring, minus the one that may", not as a list of the
-  // three contexts that had offended: a list names who was caught, so a context added
-  // tomorrow is unguarded by default and nobody notices. The `runtime` context is the
-  // exemption because capability negotiation IS the wire's vocabulary — projecting it into
-  // a second spelling would give one fact two names.
+  // Every application ring minus the one that may, not a list of the contexts that had
+  // offended — a list leaves whatever is added tomorrow unguarded. `runtime` is exempt
+  // because capability negotiation IS the wire's vocabulary.
   if (
     !isTest &&
     /plugins\/builtin\/(?!runtime\/).+\/application\/.+\.(ts|tsx)$/.test(rel) &&
@@ -545,11 +540,9 @@ for (const file of files(SRC)) {
     });
   }
 
-  // A public surface publishes what its context OWNS. Re-exporting someone else's fact
-  // gives that fact a second path, and the second path lies about who depends on whom:
-  // `agent/public/viewState` forwarded thirteen `plugins/sdk/types` shapes, so sixty-one
-  // files read as depending on the agent context while depending on a contract below it.
-  // Consumers can reach the real owner themselves — that is what makes it the owner.
+  // A public surface publishes what its context OWNS. Re-exporting another owner's fact
+  // gives it a second path, and that path lies about who depends on whom: sixty-one files
+  // read as depending on `agent` while depending on a `plugins/sdk` type below it.
   const publicAt = rel.indexOf("/public/");
   if (!isTest && /^plugins\/builtin\/.+\/public\/.+\.(ts|tsx)$/.test(rel)) {
     const contextRoot = rel.slice(0, publicAt);
@@ -573,10 +566,7 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-// A guard that examined nothing reports the same "OK" as a guard that examined
-// everything. `check-circular` did exactly that for its whole existence, on an empty
-// graph. These floors are deliberately far below today's count — they catch a broken
-// walk or a moved tree, not ordinary growth.
+// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
 const MIN_FILES_EXAMINED = 700;
 if (examined < MIN_FILES_EXAMINED) {
   console.error(

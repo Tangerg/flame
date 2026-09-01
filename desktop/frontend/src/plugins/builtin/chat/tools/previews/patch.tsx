@@ -5,7 +5,7 @@ import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/public/patchResult";
-import { applyPatchToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { FilePath } from "@/ui";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
@@ -65,7 +65,7 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const applyPatchPreview = definePlugin({
   name: "flame.builtin.apply-patch-preview",
   setup(ctx) {
-    for (const preview of applyPatchToolPreview({ apply_patch: ApplyPatchPreview })) {
+    for (const preview of toolPreviews({ apply_patch: ApplyPatchPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

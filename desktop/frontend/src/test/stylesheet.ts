@@ -1,9 +1,6 @@
 // Reading `globals.css` as text, for the suites that check what it declares against the
-// TypeScript that overwrites it at runtime.
-//
-// Shared because the mirrors have more than one owner: the ladders belong to `lib`, the
-// palette and the visual style belong to the theme context, and a context's suite may not
-// reach into another's files to borrow a helper.
+// TypeScript that overwrites it at runtime. Shared because the mirrors have more than one
+// owner and a context's suite may not borrow a helper from another's files.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

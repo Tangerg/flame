@@ -124,10 +124,7 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-// A guard that examined nothing reports the same "OK" as a guard that examined
-// everything — `check-circular` did exactly that, on an empty graph, for its whole
-// existence. The floor is far below today's count: it catches a broken walk or a moved
-// tree, not ordinary growth.
+// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
 const MIN_FILES_EXAMINED = 500;
 if (examined < MIN_FILES_EXAMINED) {
   console.error(

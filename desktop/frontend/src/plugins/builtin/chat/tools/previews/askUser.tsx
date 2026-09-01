@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectAskUserAnswer } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
-import { askUserToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function AskUserPreview({ tool }: ToolPreviewProps) {
@@ -27,7 +27,7 @@ function AskUserPreview({ tool }: ToolPreviewProps) {
 export const askUserPreview = definePlugin({
   name: "flame.builtin.ask-user-preview",
   setup(ctx) {
-    for (const preview of askUserToolPreview(AskUserPreview)) {
+    for (const preview of toolPreviews({ ask_user: AskUserPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

@@ -1,69 +1,67 @@
+// Grouped the way the pane's sections read them. There is no port between here and the
+// theme context: this pane exists to edit that context's preference, it already imports
+// that context's vocabulary, and a port nothing ever substitutes is indirection, not
+// inversion — it restated the same thirteen fields a third and fourth time.
+
 import { resolveThemeScheme } from "@/plugins/builtin/theme/public/scheme";
-import type { ColorThemeId } from "@/plugins/builtin/theme/public/appearance";
-import { appearancePreferences, type CustomTheme } from "./ports/preferences";
+import { editAppearance, useAppearance } from "@/plugins/builtin/theme/public/appearance";
 
 export function useThemePreference() {
-  return {
-    theme: appearancePreferences().useTheme(),
-    setTheme: appearancePreferences().useSetTheme(),
-  };
+  return { theme: useAppearance((s) => s.theme), setTheme: editAppearance().setTheme };
 }
 
 export function useAccentPreference() {
-  const theme = appearancePreferences().useTheme();
   return {
-    accent: appearancePreferences().useAccent(),
-    setAccent: appearancePreferences().useSetAccent(),
-    scheme: resolveThemeScheme(theme),
+    accent: useAppearance((s) => s.accent),
+    setAccent: editAppearance().setAccent,
+    scheme: resolveThemeScheme(useAppearance((s) => s.theme)),
   };
 }
 
-export function useCustomThemePreference(): {
-  theme: ColorThemeId;
-  customTheme: CustomTheme;
-  setCustomTheme: (patch: Partial<CustomTheme>) => void;
-} {
+export function useCustomThemePreference() {
   return {
-    theme: appearancePreferences().useTheme(),
-    customTheme: appearancePreferences().useCustomTheme(),
-    setCustomTheme: appearancePreferences().useSetCustomTheme(),
+    theme: useAppearance((s) => s.theme),
+    customTheme: useAppearance((s) => s.customTheme),
+    setCustomTheme: editAppearance().setCustomTheme,
   };
 }
 
 export function useContrastPreference() {
   return {
-    contrast: appearancePreferences().useContrast(),
-    setContrast: appearancePreferences().useSetContrast(),
+    contrast: useAppearance((s) => s.contrast),
+    setContrast: editAppearance().setContrast,
   };
 }
 
 export function useAccentTintPreference() {
   return {
-    accentTint: appearancePreferences().useAccentTint(),
-    setAccentTint: appearancePreferences().useSetAccentTint(),
+    accentTint: useAppearance((s) => s.accentTint),
+    setAccentTint: editAppearance().setAccentTint,
   };
 }
 
 export function useFontPreferences() {
+  const edit = editAppearance();
   return {
-    uiFont: appearancePreferences().useUiFont(),
-    codeFont: appearancePreferences().useCodeFont(),
-    fontSize: appearancePreferences().useFontSize(),
-    fontSmoothing: appearancePreferences().useFontSmoothing(),
-    setUiFont: appearancePreferences().useSetUiFont(),
-    setCodeFont: appearancePreferences().useSetCodeFont(),
-    setFontSize: appearancePreferences().useSetFontSize(),
-    setFontSmoothing: appearancePreferences().useSetFontSmoothing(),
+    uiFont: useAppearance((s) => s.uiFont),
+    codeFont: useAppearance((s) => s.codeFont),
+    fontSize: useAppearance((s) => s.fontSize),
+    fontSmoothing: useAppearance((s) => s.fontSmoothing),
+    setUiFont: edit.setUiFont,
+    setCodeFont: edit.setCodeFont,
+    setFontSize: edit.setFontSize,
+    setFontSmoothing: edit.setFontSmoothing,
   };
 }
 
 export function useShapeMotionPreferences() {
+  const edit = editAppearance();
   return {
-    density: appearancePreferences().useDensity(),
-    setDensity: appearancePreferences().useSetDensity(),
-    radiusScale: appearancePreferences().useRadiusScale(),
-    motionScale: appearancePreferences().useMotionScale(),
-    setRadiusScale: appearancePreferences().useSetRadiusScale(),
-    setMotionScale: appearancePreferences().useSetMotionScale(),
+    density: useAppearance((s) => s.density),
+    radiusScale: useAppearance((s) => s.radiusScale),
+    motionScale: useAppearance((s) => s.motionScale),
+    setDensity: edit.setDensity,
+    setRadiusScale: edit.setRadiusScale,
+    setMotionScale: edit.setMotionScale,
   };
 }

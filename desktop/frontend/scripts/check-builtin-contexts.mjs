@@ -107,9 +107,7 @@ function findCycles(edges) {
 }
 
 const graph = readMadgeGraph();
-// The same floor `check-circular` carries, for the same reason and off the same graph: an
-// empty or truncated madge result makes every rule below vacuously true, and the run still
-// prints OK. This proves module resolution worked before any conclusion is drawn.
+// An empty or truncated graph makes every rule below vacuously true, and still prints OK.
 const MIN_MODULES = 600;
 const MIN_EDGES = 1000;
 const moduleCount = Object.keys(graph).length;
@@ -140,12 +138,9 @@ for (const [file, deps] of Object.entries(graph)) {
   }
 }
 
-// A context must not CONTAIN a context. When it does, the two share a directory prefix and
-// read as one place, while every guard here treats them as strangers: `workspace` could not
-// touch `workspace/events`, and `workspace/session-navigation`'s own test could not reach
-// the dock store it existed to drive. Either the outer folder is a context or it is a
-// namespace of them — `chat` and `settings` show the namespace shape, `agent` and
-// `workspace` the context shape.
+// A context must not CONTAIN a context: they share a directory prefix and read as one
+// place, while every rule here treats them as strangers. A folder is either a context
+// (`agent`, `workspace`) or a namespace of them (`chat`, `settings`), never both.
 const nested = [];
 for (const outer of contextRoots) {
   for (const inner of contextRoots) {

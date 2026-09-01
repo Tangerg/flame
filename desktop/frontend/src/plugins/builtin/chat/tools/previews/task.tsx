@@ -4,7 +4,7 @@ import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
-import { delegationToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function TaskPreview({ tool, onOpenView }: ToolPreviewProps) {
@@ -30,7 +30,7 @@ function TaskPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const taskPreview = definePlugin({
   name: "flame.builtin.task-preview",
   setup(ctx) {
-    for (const preview of delegationToolPreview(TaskPreview)) {
+    for (const preview of toolPreviews({ delegate_task: TaskPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

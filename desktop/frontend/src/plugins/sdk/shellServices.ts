@@ -1,13 +1,7 @@
-// The plugin that provides the shell's Services.
-//
-// One plugin rather than four: the reason any of these changes is the same one —
-// the app shell grew a capability — and splitting a tiny provider per
-// contract buys indirection, not cohesion. The consumers are still decoupled;
-// each declares only the contract it uses, which is the property that matters.
-//
-// WORKSPACE is the exception, and provided by the workspace context instead: its
-// state is a context aggregate, and reaching one from here would invert the
-// platform's direction.
+// One plugin rather than four: these change for the same reason, and a provider per
+// contract buys indirection, not cohesion — consumers still declare only what they use.
+// WORKSPACE is provided by the workspace context instead: its state is a context
+// aggregate, and reaching one from here would invert the platform's direction.
 
 import { definePlugin } from "dougong";
 import { addLocaleBundle } from "@/lib/i18n";
