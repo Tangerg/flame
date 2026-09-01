@@ -483,6 +483,13 @@ func optionalTextPattern(field, value, pattern string) FieldError {
 	return requiredTextPattern(field, value, pattern)
 }
 
+func optionalTextPointerPattern(field string, value *string, pattern string) FieldError {
+	if value == nil {
+		return FieldError{}
+	}
+	return requiredTextPattern(field, *value, pattern)
+}
+
 // nonEmptyProperties rejects an empty object map. nil remains a valid omission;
 // a present empty map is rejected by the same length check after decoding.
 func nonEmptyProperties[Value any](field string, values map[string]Value) FieldError {

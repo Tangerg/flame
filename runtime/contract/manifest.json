@@ -7320,7 +7320,7 @@
         },
         {
           "field": "content",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "content",
@@ -7345,7 +7345,7 @@
         },
         {
           "field": "content",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "content",
@@ -7358,7 +7358,7 @@
       "rules": [
         {
           "field": "content",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "content",

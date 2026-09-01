@@ -730,6 +730,7 @@ func registerAuthoringContextValues(s *Shapes) {
 }
 
 func registerAgentMemoryValues(s *Shapes) {
+	const nonBlankContent = `\S`
 	agentMemoryItemIdentity := func(field string) []FieldConstraint {
 		return []FieldConstraint{
 			{Field: field, Kind: ConstraintNonEmpty},
@@ -748,21 +749,21 @@ func registerAgentMemoryValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryItem](),
 		Constraints: append(append(agentMemoryItemIdentity("id"), resourceIdentity("sessionId")...), []FieldConstraint{
-			{Field: "content", Kind: ConstraintNonEmpty},
+			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
 			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
 		}...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryUpdateRequest](),
 		Constraints: append(agentMemoryItemIdentity("id"), []FieldConstraint{
-			{Field: "content", Kind: ConstraintNonEmpty},
+			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
 			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
 		}...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryAddRequest](),
 		Constraints: []FieldConstraint{
-			{Field: "content", Kind: ConstraintNonEmpty},
+			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
 			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
 		},
 	})

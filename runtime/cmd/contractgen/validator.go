@@ -312,7 +312,10 @@ func constraintCheck(
 	case dispatch.ConstraintPattern:
 		validatorName := "requiredTextPattern"
 		if leaf.Type.Kind() == reflect.Pointer {
-			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer pattern", shape, selector))
+			if !leaf.Optional {
+				panic(fmt.Sprintf("contractgen: %s.%s uses unsupported required pointer pattern", shape, selector))
+			}
+			validatorName = "optionalTextPointerPattern"
 		} else if leaf.Optional {
 			validatorName = "optionalTextPattern"
 		}

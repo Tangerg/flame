@@ -328,7 +328,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
   AgentMemoryAddRequest: allOf([
     object({
-      content: allOf([text(), minLength(1), maxLength(4096)]),
+      content: allOf([text(), maxLength(4096), pattern("\\S")]),
       scope: ref(() => CHECKS.AgentMemoryScope),
       workspace: ref(() => CHECKS.WorkspaceRef),
     }, ["content", "scope"]),
@@ -349,7 +349,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   AgentMemoryItem: allOf([
     object({
-      content: allOf([text(), minLength(1), maxLength(4096)]),
+      content: allOf([text(), maxLength(4096), pattern("\\S")]),
       createdAt: text(),
       day: text(),
       id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
@@ -405,7 +405,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentMemoryStatus: enumOf(["active", "pending"]),
   AgentMemoryUpdateRequest: allOf([
     object({
-      content: allOf([text(), minLength(1), maxLength(4096)]),
+      content: allOf([text(), maxLength(4096), pattern("\\S")]),
       id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
       pinned: flag(),
     }, ["id"]),

@@ -535,7 +535,7 @@ func (a AgentMemoryUpdateRequest) ValidateWire() error {
 		requiredText("id", a.ID),
 		maxLength("id", a.ID, 36),
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-		optionalText("content", a.Content),
+		optionalTextPointerPattern("content", a.Content, "\\S"),
 		optionalMaxLength("content", a.Content, 4096),
 		requiredAnyWhen(true, []string{"content", "pinned"}, a),
 	)
@@ -551,7 +551,7 @@ func (a AgentMemoryItemRequest) ValidateWire() error {
 
 func (a AgentMemoryAddRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryAddRequest",
-		requiredText("content", a.Content),
+		requiredTextPattern("content", a.Content, "\\S"),
 		maxLength("content", a.Content, 4096),
 		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
 		requiredWhen(wireFieldEquals(a, "scope", "project"), "workspace", a),
@@ -1768,7 +1768,7 @@ func (a AgentMemoryItem) ValidateWire() error {
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		identity("sessionId", a.SessionID),
 		maxLength("sessionId", a.SessionID, 256),
-		requiredText("content", a.Content),
+		requiredTextPattern("content", a.Content, "\\S"),
 		maxLength("content", a.Content, 4096),
 		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
 		closedEnum("origin", string(a.Origin), []string{"auto", "user"}, false),

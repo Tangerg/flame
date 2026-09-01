@@ -26,6 +26,10 @@ type validatorOuterFixture struct {
 	Search string `json:"search,omitempty"`
 }
 
+type validatorOptionalTextFixture struct {
+	Content *string `json:"content,omitempty"`
+}
+
 func TestValueConstraintsFollowFlattenedEmbedding(t *testing.T) {
 	t.Parallel()
 
@@ -95,6 +99,19 @@ func TestObjectAlternativePresenceStaysOneRule(t *testing.T) {
 	want := `requiredAnyWhen(true, []string{"alpha", "beta"}, v)`
 	if !slices.Equal(checks, []string{want}) {
 		t.Fatalf("object checks = %v, want one alternative-presence check %q", checks, want)
+	}
+}
+
+func TestOptionalTextPointerPatternPreservesOmission(t *testing.T) {
+	t.Parallel()
+
+	shape := reflect.TypeFor[validatorOptionalTextFixture]()
+	checks := validatorChecks(shape, []dispatch.FieldConstraint{{
+		Field: "content", Kind: dispatch.ConstraintPattern, Value: `\S`,
+	}}, dispatch.UnionSpec{}, nil)
+	want := `optionalTextPointerPattern("content", v.Content, "\\S")`
+	if !slices.Contains(checks, want) {
+		t.Fatalf("optional pointer pattern checks = %v, want %q", checks, want)
 	}
 }
 

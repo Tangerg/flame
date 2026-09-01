@@ -892,14 +892,14 @@ TypeScript validator from this single registry projection.
 | `AgentMemoryItem` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryItem` | `sessionId` | `identity` |
 | `AgentMemoryItem` | `sessionId` | `maxLength(256)` |
-| `AgentMemoryItem` | `content` | `nonEmpty` |
+| `AgentMemoryItem` | `content` | `pattern("\\S")` |
 | `AgentMemoryItem` | `content` | `maxLength(4096)` |
 | `AgentMemoryUpdateRequest` | `id` | `nonEmpty` |
 | `AgentMemoryUpdateRequest` | `id` | `maxLength(36)` |
 | `AgentMemoryUpdateRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
-| `AgentMemoryUpdateRequest` | `content` | `nonEmpty` |
+| `AgentMemoryUpdateRequest` | `content` | `pattern("\\S")` |
 | `AgentMemoryUpdateRequest` | `content` | `maxLength(4096)` |
-| `AgentMemoryAddRequest` | `content` | `nonEmpty` |
+| `AgentMemoryAddRequest` | `content` | `pattern("\\S")` |
 | `AgentMemoryAddRequest` | `content` | `maxLength(4096)` |
 | `Schedule` | `id` | `nonEmpty` |
 | `Schedule` | `id` | `identity` |
