@@ -20,9 +20,10 @@ func NewUtilityRoleStore(db *sql.DB) *UtilityRoleStore {
 	return &UtilityRoleStore{store: newRoleStore(db, "utility_role", "utility role")}
 }
 
-// LoadUtilityRole returns the stored role, or its zero value when unset (no
-// row yet) — the caller then runs maintenance on the main Run model.
-func (u *UtilityRoleStore) LoadUtilityRole(ctx context.Context) (modelref.Selection, error) {
+// LoadUtilityRole returns the stored role and whether its row exists. A present
+// zero role is an explicit choice to inherit the main Run model; absence permits
+// first-run configuration seeding.
+func (u *UtilityRoleStore) LoadUtilityRole(ctx context.Context) (modelref.Selection, bool, error) {
 	return u.store.load(ctx)
 }
 

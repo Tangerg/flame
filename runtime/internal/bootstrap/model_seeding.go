@@ -51,17 +51,17 @@ func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 // over the config file. An empty / identical-to-main UtilityModel seeds
 // nothing (maintenance then runs on the main model).
 func SeedUtilityRole(ctx context.Context, store UtilityRoleStore, cfg config.Settings) error {
-	role, err := store.LoadUtilityRole(ctx)
+	_, present, err := store.LoadUtilityRole(ctx)
 	if err != nil {
 		return err
 	}
-	if role.Configured() {
+	if present {
 		return nil
 	}
 	if cfg.UtilityModel == "" || cfg.UtilityModel == cfg.Model {
 		return nil
 	}
-	role, err = modelref.New(cfg.Provider, cfg.UtilityModel)
+	role, err := modelref.New(cfg.Provider, cfg.UtilityModel)
 	if err != nil {
 		return err
 	}

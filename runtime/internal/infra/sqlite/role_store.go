@@ -21,21 +21,21 @@ func newRoleStore(db *sql.DB, table, label string) *roleStore {
 	return &roleStore{db: db, table: table, label: label}
 }
 
-func (r *roleStore) load(ctx context.Context) (modelref.Selection, error) {
+func (r *roleStore) load(ctx context.Context) (modelref.Selection, bool, error) {
 	query := fmt.Sprintf("SELECT provider, model FROM %s WHERE id = 1", r.table)
 	var provider, model string
 	err := conn(ctx, r.db).QueryRowContext(ctx, query).Scan(&provider, &model)
 	if errors.Is(err, sql.ErrNoRows) {
-		return modelref.Selection{}, nil
+		return modelref.Selection{}, false, nil
 	}
 	if err != nil {
-		return modelref.Selection{}, fmt.Errorf("sqlite: load %s: %w", r.label, err)
+		return modelref.Selection{}, false, fmt.Errorf("sqlite: load %s: %w", r.label, err)
 	}
 	role, err := modelref.New(provider, model)
 	if err != nil {
-		return modelref.Selection{}, fmt.Errorf("sqlite: decode %s: %w", r.label, err)
+		return modelref.Selection{}, false, fmt.Errorf("sqlite: decode %s: %w", r.label, err)
 	}
-	return role, nil
+	return role, true, nil
 }
 
 func (r *roleStore) save(ctx context.Context, role modelref.Selection) error {

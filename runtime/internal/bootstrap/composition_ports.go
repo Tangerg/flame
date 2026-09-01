@@ -71,7 +71,7 @@ type Transactor func(ctx context.Context, fn func(context.Context) error) error
 // sqlite-backed implementation. A nil store disables persistence — the role
 // stays in-process only. Consumed by bootstrap + the capabilities coordinator.
 type UtilityRoleStore interface {
-	LoadUtilityRole(ctx context.Context) (modelref.Selection, error)
+	LoadUtilityRole(ctx context.Context) (modelref.Selection, bool, error)
 	SaveUtilityRole(ctx context.Context, role modelref.Selection) error
 }
 

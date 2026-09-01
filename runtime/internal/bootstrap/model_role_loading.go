@@ -10,7 +10,7 @@ import (
 // utilityRoleLoader is the boot-time load view of the utility-role store.
 // Persistence after startup belongs to the model-role application use case.
 type utilityRoleLoader interface {
-	LoadUtilityRole(ctx context.Context) (modelref.Selection, error)
+	LoadUtilityRole(ctx context.Context) (modelref.Selection, bool, error)
 }
 
 // loadUtilityRole reads the persisted startup assignment. Runtime mutation and
@@ -18,7 +18,7 @@ type utilityRoleLoader interface {
 func loadUtilityRole(ctx context.Context, loader utilityRoleLoader) (modelref.Selection, error) {
 	var role modelref.Selection
 	if loader != nil {
-		loaded, err := loader.LoadUtilityRole(ctx)
+		loaded, _, err := loader.LoadUtilityRole(ctx)
 		if err != nil {
 			return modelref.Selection{}, fmt.Errorf("bootstrap: load utility role: %w", err)
 		}

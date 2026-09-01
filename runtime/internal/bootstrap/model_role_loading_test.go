@@ -38,9 +38,9 @@ type fakeUtilityRoleLoader struct {
 	calls int
 }
 
-func (f *fakeUtilityRoleLoader) LoadUtilityRole(context.Context) (modelref.Selection, error) {
+func (f *fakeUtilityRoleLoader) LoadUtilityRole(context.Context) (modelref.Selection, bool, error) {
 	f.calls++
-	return f.role, nil
+	return f.role, true, nil
 }
 
 type fakeEmbeddingRoleLoader struct {
