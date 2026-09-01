@@ -11,6 +11,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 )
 
@@ -69,6 +72,7 @@ func (a AuthoredWatcher) Watch(
 	if slices.Contains(resources, workspaceapp.AuthoredHooks) {
 		targets = append(targets, fileobservation.Target{
 			Key: authoredHooksKey, Path: filepath.Join(a.hooksHome, ".flame", "hooks.json"),
+			MaxBytes: domainhooks.MaxConfigurationFileBytes,
 		})
 		for _, scope := range scopes {
 			directories, err := directoriesRootToLeaf(scope.ProjectRoot, scope.Workspace)
@@ -78,6 +82,7 @@ func (a AuthoredWatcher) Watch(
 			for _, directory := range directories {
 				targets = append(targets, fileobservation.Target{
 					Key: authoredHooksKey, Path: filepath.Join(directory, ".flame", "hooks.json"),
+					MaxBytes: domainhooks.MaxConfigurationFileBytes,
 				})
 			}
 		}
@@ -147,13 +152,14 @@ func (a AuthoredWatcher) skillTreeTargets(scopes []workspaceapp.AuthoredScope, r
 	if a.skillsHome != "" {
 		targets = append(targets, fileobservation.TreeTarget{
 			Key: authoredSkillsKey, Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
+			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	for _, scope := range scopes {
 		targets = append(targets, fileobservation.TreeTarget{
 			Key:  authoredSkillsKey,
 			Path: promptsource.ProjectSkillDir(scope.ProjectRoot), Boundary: scope.ProjectRoot,
-			FileName: skillspec.SkillFile,
+			FileName: skillspec.SkillFile, MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	return targets
@@ -169,6 +175,7 @@ func cleanOptionalPath(path string) string {
 func knowledgeTarget(root string) fileobservation.Target {
 	return fileobservation.Target{
 		Key: authoredKnowledgeKey, Path: filepath.Join(root, "FLAME.md"), Boundary: root,
+		MaxBytes: knowledge.MaxDocumentBytes,
 	}
 }
 

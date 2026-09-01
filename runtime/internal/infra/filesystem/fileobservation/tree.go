@@ -11,17 +11,20 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 // TreeTarget identifies one bounded directory tree and the exact filename
 // whose contents define its observable projection. Other files and directory
-// metadata are deliberately ignored.
+// metadata are deliberately ignored. MaxBytes is required and bounds content
+// hashing for each matching file.
 type TreeTarget struct {
 	Key      string
 	Path     string
 	Boundary string
 	FileName string
+	MaxBytes int64
 }
 
 // WatchTrees observes a dynamic set of exact files below each target. It
@@ -59,6 +62,7 @@ type treeTarget struct {
 	path             string
 	physicalBoundary string
 	fileName         string
+	maxBytes         int64
 }
 
 func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
@@ -67,6 +71,7 @@ func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
 		name     string
 		path     string
 		fileName string
+		maxBytes int64
 	}
 	seen := make(map[targetKey]struct{}, len(targets))
 	for index, candidate := range targets {
@@ -79,8 +84,11 @@ func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
 		if candidate.FileName == "" || filepath.Base(candidate.FileName) != candidate.FileName {
 			return nil, fmt.Errorf("observe trees: target %d filename must be one path element", index)
 		}
+		if candidate.MaxBytes <= 0 {
+			return nil, fmt.Errorf("observe trees: target %d byte limit must be positive", index)
+		}
 		path := filepath.Clean(candidate.Path)
-		identity := targetKey{name: candidate.Key, path: path, fileName: candidate.FileName}
+		identity := targetKey{name: candidate.Key, path: path, fileName: candidate.FileName, maxBytes: candidate.MaxBytes}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
@@ -97,7 +105,8 @@ func canonicalTreeTargets(targets []TreeTarget) ([]treeTarget, error) {
 			boundary = resolved
 		}
 		out = append(out, treeTarget{
-			key: candidate.Key, path: path, physicalBoundary: boundary, fileName: candidate.FileName,
+			key: candidate.Key, path: path, physicalBoundary: boundary,
+			fileName: candidate.FileName, maxBytes: candidate.MaxBytes,
 		})
 	}
 	return out, nil
@@ -262,7 +271,7 @@ func scanTree(candidate treeTarget) (treeSnapshot, []string, error) {
 			return relErr
 		}
 		logical := filepath.Join(candidate.path, relative)
-		value, resolved, relErr := fingerprintTreeFile(logical, path, candidate.physicalBoundary)
+		value, resolved, relErr := fingerprintTreeFile(logical, path, candidate.physicalBoundary, candidate.maxBytes)
 		if relErr != nil {
 			return relErr
 		}
@@ -282,7 +291,7 @@ func scanTree(candidate treeTarget) (treeSnapshot, []string, error) {
 	return snapshot, directories, nil
 }
 
-func fingerprintTreeFile(logical, physical, boundary string) (fingerprint, string, error) {
+func fingerprintTreeFile(logical, physical, boundary string, maxBytes int64) (fingerprint, string, error) {
 	resolved, err := pathidentity.Resolve("", physical)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe trees: resolve file %q: %w", logical, err)
@@ -307,7 +316,15 @@ func fingerprintTreeFile(logical, physical, boundary string) (fingerprint, strin
 		encoder.fileInfo(fingerprintFieldTreeInfo, info)
 		return encoder.sum(), resolved, nil
 	}
-	file, err := os.Open(resolved)
+	if info.Size() > maxBytes {
+		encoder := newFingerprintEncoder()
+		encoder.field(fingerprintFieldLogicalPath, logical)
+		encoder.field(fingerprintFieldPhysicalPath, resolved)
+		encoder.fileInfo(fingerprintFieldTreeInfo, info)
+		encoder.state(fingerprintStateTooLarge)
+		return encoder.sum(), resolved, nil
+	}
+	file, _, err := fileinput.Open(resolved, maxBytes)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe trees: open %q: %w", logical, err)
 	}

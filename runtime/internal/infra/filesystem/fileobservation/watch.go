@@ -15,6 +15,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
@@ -24,11 +25,13 @@ const retryDelay = 500 * time.Millisecond
 // Target is one exact path and its caller-owned classification key. Boundary,
 // when non-empty, prevents a symlink target outside that physical root from
 // being read or watched. This mirrors filesystem consumers that confine aliases
-// to a selected scope.
+// to a selected scope. MaxBytes is required and bounds content hashing; larger
+// files remain observable through their metadata without being read.
 type Target struct {
 	Key      string
 	Path     string
 	Boundary string
+	MaxBytes int64
 }
 
 // Observation owns one live exact-path observation and can accept selected
@@ -73,13 +76,15 @@ type target struct {
 	key              string
 	path             string
 	physicalBoundary string
+	maxBytes         int64
 }
 
 func canonicalTargets(targets []Target) ([]target, error) {
 	out := make([]target, 0, len(targets))
 	type targetKey struct {
-		name string
-		path string
+		name     string
+		path     string
+		maxBytes int64
 	}
 	seen := make(map[targetKey]struct{}, len(targets))
 	for index, candidate := range targets {
@@ -89,8 +94,11 @@ func canonicalTargets(targets []Target) ([]target, error) {
 		if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
 			return nil, fmt.Errorf("observe files: target %d path must be absolute", index)
 		}
+		if candidate.MaxBytes <= 0 {
+			return nil, fmt.Errorf("observe files: target %d byte limit must be positive", index)
+		}
 		path := filepath.Clean(candidate.Path)
-		identity := targetKey{name: candidate.Key, path: path}
+		identity := targetKey{name: candidate.Key, path: path, maxBytes: candidate.MaxBytes}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
@@ -106,7 +114,9 @@ func canonicalTargets(targets []Target) ([]target, error) {
 			}
 			boundary = resolved
 		}
-		out = append(out, target{key: candidate.Key, path: path, physicalBoundary: boundary})
+		out = append(out, target{
+			key: candidate.Key, path: path, physicalBoundary: boundary, maxBytes: candidate.MaxBytes,
+		})
 	}
 	return out, nil
 }
@@ -310,17 +320,24 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe files: inspect target %q: %w", physical, err)
 	}
-	encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 	if physicalInfo.Mode().IsRegular() {
-		file, openErr := os.Open(physical)
+		if physicalInfo.Size() > candidate.maxBytes {
+			encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
+			encoder.state(fingerprintStateTooLarge)
+			return encoder.sum(), physical, nil
+		}
+		file, opened, openErr := fileinput.Open(physical, candidate.maxBytes)
 		if openErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}
+		encoder.fileInfo(fingerprintFieldPhysicalInfo, opened)
 		copyErr := encoder.content(file)
 		closeErr := file.Close()
 		if copyErr != nil || closeErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, closeErr))
 		}
+	} else {
+		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 	}
 	return encoder.sum(), physical, nil
 }

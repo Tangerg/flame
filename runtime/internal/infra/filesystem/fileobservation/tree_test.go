@@ -11,7 +11,7 @@ func TestWatchTreesObservesDynamicExactFiles(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "skills")
 	events := make(chan []string, 8)
 	watcher, err := WatchTrees([]TreeTarget{{
-		Key: "skills", Path: root, Boundary: filepath.Dir(root), FileName: "SKILL.md",
+		Key: "skills", Path: root, Boundary: filepath.Dir(root), FileName: "SKILL.md", MaxBytes: testMaxBytes,
 	}}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestWatchTreesAcceptsOnlyExactCommittedFiles(t *testing.T) {
 	}
 	events := make(chan []string, 4)
 	watcher, err := WatchTrees([]TreeTarget{{
-		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
+		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxBytes: testMaxBytes,
 	}}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestWatchTreesIgnoresNonProjectionFiles(t *testing.T) {
 	root := t.TempDir()
 	events := make(chan []string, 2)
 	watcher, err := WatchTrees([]TreeTarget{{
-		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
+		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxBytes: testMaxBytes,
 	}}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestWatchTreesDoesNotWedgeOnNonRegularProjectionPath(t *testing.T) {
 	root := t.TempDir()
 	events := make(chan []string, 4)
 	watcher, err := WatchTrees([]TreeTarget{{
-		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
+		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxBytes: testMaxBytes,
 	}}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatal(err)

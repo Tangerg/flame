@@ -7,11 +7,13 @@ import (
 	"time"
 )
 
+const testMaxBytes int64 = 1 << 20
+
 func TestWatchObservesMissingParentsReplacementAndRemoval(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "nested", ".flame", "hooks.json")
 	events := make(chan []string, 8)
-	watcher, err := Watch([]Target{{Key: "hooks", Path: target}}, func(keys []string) { events <- keys })
+	watcher, err := Watch([]Target{{Key: "hooks", Path: target, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatalf("watch missing target: %v", err)
 	}
@@ -51,7 +53,9 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	events := make(chan []string, 8)
-	watcher, err := Watch([]Target{{Key: "knowledge", Path: alias, Boundary: root}}, func(keys []string) {
+	watcher, err := Watch([]Target{{
+		Key: "knowledge", Path: alias, Boundary: root, MaxBytes: testMaxBytes,
+	}}, func(keys []string) {
 		events <- keys
 	})
 	if err != nil {
@@ -89,8 +93,8 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	}
 	events := make(chan []string, 4)
 	watcher, err := Watch([]Target{
-		{Key: "knowledge", Path: first, Boundary: filepath.Dir(first)},
-		{Key: "knowledge", Path: second, Boundary: filepath.Dir(second)},
+		{Key: "knowledge", Path: first, Boundary: filepath.Dir(first), MaxBytes: testMaxBytes},
+		{Key: "knowledge", Path: second, Boundary: filepath.Dir(second), MaxBytes: testMaxBytes},
 	}, func(keys []string) { events <- keys })
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +124,9 @@ func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	events := make(chan []string, 2)
-	watcher, err := Watch([]Target{{Key: "knowledge", Path: target, Boundary: root}}, func(keys []string) {
+	watcher, err := Watch([]Target{{
+		Key: "knowledge", Path: target, Boundary: root, MaxBytes: testMaxBytes,
+	}}, func(keys []string) {
 		events <- keys
 	})
 	if err != nil {
@@ -142,6 +148,26 @@ func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 		t.Fatalf("metadata-only noise published %v", keys)
 	case <-time.After(300 * time.Millisecond):
 	}
+}
+
+func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "FLAME.md")
+	if err := os.WriteFile(target, []byte("oversized"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan []string, 2)
+	watcher, err := Watch([]Target{{
+		Key: "knowledge", Path: target, Boundary: root, MaxBytes: 1,
+	}}, func(keys []string) { events <- keys })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = watcher.Close() }()
+	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "knowledge")
 }
 
 func assertObservedKey(t *testing.T, events <-chan []string, want string) {

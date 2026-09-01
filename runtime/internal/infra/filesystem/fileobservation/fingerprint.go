@@ -32,6 +32,7 @@ const (
 	fingerprintStateUnresolved      fingerprintState = "unresolved"
 	fingerprintStateOutsideBoundary fingerprintState = "outside-boundary"
 	fingerprintStateMissingTarget   fingerprintState = "missing-target"
+	fingerprintStateTooLarge        fingerprintState = "too-large"
 )
 
 // fingerprintEncoder preserves every field boundary before hashing. This is
