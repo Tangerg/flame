@@ -26,7 +26,7 @@
       "properties": {
         "path": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "scope": {
           "$ref": "#/$defs/AgentDocScope"
@@ -6665,21 +6665,21 @@
         },
         "body": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "description": {
           "type": "string"
         },
         "name": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "scope": {
           "$ref": "#/$defs/RecipeScope"
         },
         "source": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         }
       },
       "required": [

@@ -7168,7 +7168,7 @@
       "rules": [
         {
           "field": "path",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },
@@ -7177,15 +7177,15 @@
       "rules": [
         {
           "field": "name",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "body",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "source",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

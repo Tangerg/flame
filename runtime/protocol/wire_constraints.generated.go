@@ -2286,16 +2286,16 @@ func (k KnowledgeEntry) ValidateWire() error {
 
 func (a AgentDoc) ValidateWire() error {
 	return collectWireViolations("AgentDoc",
-		requiredText("path", a.Path),
+		requiredTextPattern("path", a.Path, "\\S"),
 		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
 	)
 }
 
 func (r Recipe) ValidateWire() error {
 	return collectWireViolations("Recipe",
-		requiredText("name", r.Name),
-		requiredText("body", r.Body),
-		requiredText("source", r.Source),
+		requiredTextPattern("name", r.Name, "\\S"),
+		requiredTextPattern("body", r.Body, "\\S"),
+		requiredTextPattern("source", r.Source, "\\S"),
 		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
 	)
 }

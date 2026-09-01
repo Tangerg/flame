@@ -240,9 +240,9 @@ func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 		field string
 		value WireValidator
 	}{
-		{shape: "AgentDoc", field: "path", value: AgentDoc{Scope: AgentDocScopeHome}},
+		{shape: "AgentDoc", field: "path", value: AgentDoc{Path: " \t", Scope: AgentDocScopeHome}},
 		{shape: "Recipe", field: "name", value: Recipe{Body: "body", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
-		{shape: "Recipe", field: "body", value: Recipe{Name: "review", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
+		{shape: "Recipe", field: "body", value: Recipe{Name: "review", Body: " \n\t", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
 		{shape: "Recipe", field: "source", value: Recipe{Name: "review", Body: "body", Scope: RecipeScopeGlobal}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)

@@ -871,10 +871,10 @@ TypeScript validator from this single registry projection.
 | `InvokeToolRequest` | `name` | `nonEmpty` |
 | `KnowledgeEntry` | `revision` | `nonEmpty` |
 | `UpdateKnowledgeRequest` | `expectedRevision` | `nonEmpty` |
-| `AgentDoc` | `path` | `nonEmpty` |
-| `Recipe` | `name` | `nonEmpty` |
-| `Recipe` | `body` | `nonEmpty` |
-| `Recipe` | `source` | `nonEmpty` |
+| `AgentDoc` | `path` | `pattern("\\S")` |
+| `Recipe` | `name` | `pattern("\\S")` |
+| `Recipe` | `body` | `pattern("\\S")` |
+| `Recipe` | `source` | `pattern("\\S")` |
 | `AgentMemoryItemRequest` | `id` | `nonEmpty` |
 | `AgentMemoryItemRequest` | `id` | `maxLength(36)` |
 | `AgentMemoryItemRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |

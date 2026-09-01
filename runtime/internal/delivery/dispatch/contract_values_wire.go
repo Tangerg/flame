@@ -695,8 +695,19 @@ func registerKnowledgeValues(s *Shapes) {
 }
 
 func registerAuthoringContextValues(s *Shapes) {
-	nonEmpty[protocol.AgentDoc](s, "path")
-	nonEmpty[protocol.Recipe](s, "name", "body", "source")
+	const nonBlankText = `\S`
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.AgentDoc](),
+		Constraints: []FieldConstraint{{Field: "path", Kind: ConstraintPattern, Value: nonBlankText}},
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.Recipe](),
+		Constraints: []FieldConstraint{
+			{Field: "name", Kind: ConstraintPattern, Value: nonBlankText},
+			{Field: "body", Kind: ConstraintPattern, Value: nonBlankText},
+			{Field: "source", Kind: ConstraintPattern, Value: nonBlankText},
+		},
+	})
 }
 
 func registerAgentMemoryValues(s *Shapes) {
