@@ -45,6 +45,7 @@ func wireWorkspaceError(err error) error {
 	case errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrInvalidFileRange),
 		errors.Is(err, workspaceapp.ErrFileReadTooLarge),
+		errors.Is(err, workspaceapp.ErrInvalidFileListPath),
 		errors.Is(err, workspaceapp.ErrInvalidFileGlob),
 		errors.Is(err, workspaceapp.ErrGrepQueryMissing),
 		errors.Is(err, workspaceapp.ErrInvalidGrepQuery),

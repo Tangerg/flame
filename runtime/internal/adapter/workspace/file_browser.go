@@ -22,6 +22,8 @@ func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.F
 			return nil, workspaceapp.ErrFileListTooLarge
 		case errors.Is(err, ErrInvalidGlob):
 			return nil, workspaceapp.ErrInvalidFileGlob
+		case errors.Is(err, errInvalidListPath):
+			return nil, workspaceapp.ErrInvalidFileListPath
 		default:
 			return nil, err
 		}

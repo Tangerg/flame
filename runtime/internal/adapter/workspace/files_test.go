@@ -130,6 +130,19 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 	}
 }
 
+func TestFileBrowserRejectsMissingAndNonDirectoryListPaths(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, selected := range []string{"missing", "file.txt"} {
+		_, err := (FileBrowser{}).List(t.Context(), root, workspaceapp.FileListOptions{Path: selected})
+		if !errors.Is(err, workspaceapp.ErrInvalidFileListPath) {
+			t.Errorf("List(%q) error = %v, want ErrInvalidFileListPath", selected, err)
+		}
+	}
+}
+
 func TestListFiles_ScopedToSubdir(t *testing.T) {
 	root := buildTree(t)
 	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Path: "sub"})

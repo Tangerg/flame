@@ -30,6 +30,9 @@ var (
 	// ErrInvalidGlob distinguishes malformed match syntax from a valid pattern
 	// that simply has no matching files.
 	ErrInvalidGlob = errors.New("workspace: invalid file glob")
+	// errInvalidListPath reports a missing or non-directory selected listing
+	// root. Permission and I/O failures remain operational errors.
+	errInvalidListPath = errors.New("workspace: invalid file listing path")
 )
 
 // maxListEntries is a safety boundary, not a silent result cap. Crossing it
@@ -56,6 +59,9 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	sub := path.Clean(filepath.ToSlash(opts.Path))
 	if sub == "." || sub == "/" {
 		sub = ""
+	}
+	if err := validateListDirectory(root, sub); err != nil {
+		return nil, err
 	}
 	if opts.Glob != "" {
 		if _, err := matchGlob(opts.Glob, ""); err != nil {
@@ -139,11 +145,28 @@ func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnore
 }
 
 func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
+	source, err := os.Stat(directory)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("inspect listing path %q: %w", directory, err)
+	}
+	if !source.IsDir() {
+		return nil, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, directory)
+	}
 	dir, err := os.Open(directory)
 	if err != nil {
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
 	defer func() { _ = dir.Close() }()
+	opened, err := dir.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("inspect opened listing path %q: %w", directory, err)
+	}
+	if !opened.IsDir() || !os.SameFile(source, opened) {
+		return nil, fmt.Errorf("%w: %q changed while it was being opened", errInvalidListPath, directory)
+	}
 
 	// Read one sentinel entry beyond the contract limit. os.ReadDir(directory)
 	// would materialize an unbounded directory before the safety policy had a
@@ -156,6 +179,24 @@ func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
 		return nil, fmt.Errorf("%w: more than %d entries in %q", ErrListingTooLarge, limit, directory)
 	}
 	return children, nil
+}
+
+func validateListDirectory(root, sub string) error {
+	directory := root
+	if sub != "" {
+		directory = filepath.Join(root, filepath.FromSlash(sub))
+	}
+	info, err := os.Stat(directory)
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
+	}
+	if err != nil {
+		return fmt.Errorf("inspect listing path %q: %w", directory, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%w: %q is not a directory", errInvalidListPath, directory)
+	}
+	return nil
 }
 
 // walkFiles is the non-repo fallback: a filesystem walk under root/sub that

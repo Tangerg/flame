@@ -230,6 +230,18 @@ func TestWorkspaceListFilesRejectsSymlinkDirectoryEscape(t *testing.T) {
 	}
 }
 
+func TestWorkspaceListFilesRejectsNonDirectoryPath(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandler(root)
+
+	if _, err := s.ListWorkspaceFiles(context.Background(), protocol.ListFilesRequest{Path: "file.txt"}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("list file path error = %v, want ErrInvalidParams", err)
+	}
+}
+
 func TestWorkspaceReadFileRejectsSymlinkEscape(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
