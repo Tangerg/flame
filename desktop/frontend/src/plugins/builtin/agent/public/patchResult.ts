@@ -1,47 +1,38 @@
+import { patchToolResult } from "@/plugins/sdk";
+import type { ChangeStatus } from "@flame/runtime-contract/wire";
+
 export interface PatchChange {
   path: string;
-  status: "added" | "deleted" | "modified" | "moved";
+  status: ChangeStatus;
   from?: string;
 }
 
-const PATCH_STATUSES = new Set<PatchChange["status"]>(["added", "deleted", "modified", "moved"]);
+const PATCH_STATUSES: ReadonlySet<string> = new Set<ChangeStatus>([
+  "added",
+  "deleted",
+  "modified",
+  "moved",
+]);
 
 /**
- * Parse the persisted result of one `apply_patch` ToolCall.
+ * The persisted result of one `apply_patch` ToolCall.
  *
- * This is shared Agent language because both the central Narrative and the
- * right-side Run Summary consume the same durable receipt. Invalid or legacy
- * shapes produce no facts; callers must not replace them with current worktree
- * state, which belongs to a different scope and point in time.
+ * Shared Agent language because the central Narrative and the right-side Run Summary read
+ * the same durable receipt. An entry the contract does not describe is dropped, not the
+ * whole receipt; callers must not substitute current worktree state, which belongs to a
+ * different scope and point in time.
  */
 export function projectPatchChanges(result: string | undefined): PatchChange[] {
-  const changes = jsonRecord(result)?.changes;
+  const changes = patchToolResult(result)?.changes;
   if (!Array.isArray(changes)) return [];
-  return changes.flatMap((value): PatchChange[] => {
-    const change = record(value);
-    const path = text(change.path);
-    const status = text(change.status) as PatchChange["status"];
-    if (!path || !PATCH_STATUSES.has(status)) return [];
-    const from = text(change.from);
-    return [{ path, status, ...(status === "moved" && from ? { from } : {}) }];
+  return changes.flatMap((change): PatchChange[] => {
+    if (!change?.path || !PATCH_STATUSES.has(change.status)) return [];
+    return [
+      {
+        path: change.path,
+        status: change.status,
+        ...(change.status === "moved" && change.from ? { from: change.from } : {}),
+      },
+    ];
   });
-}
-
-function jsonRecord(value: string | undefined): Record<string, unknown> | undefined {
-  if (!value) return undefined;
-  try {
-    return record(JSON.parse(value));
-  } catch {
-    return undefined;
-  }
-}
-
-function record(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function text(value: unknown): string {
-  return typeof value === "string" ? value : "";
 }

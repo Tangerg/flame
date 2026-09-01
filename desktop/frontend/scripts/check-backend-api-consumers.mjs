@@ -16,6 +16,7 @@ const EVENT_ADAPTER_PATH = resolve(
   ROOT,
   "src/plugins/builtin/workspace/adapters/runtimeWorkspaceEvents.ts",
 );
+const TOOL_RESULT_PATH = resolve(ROOT, "src/plugins/sdk/toolResult.ts");
 const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
@@ -26,6 +27,22 @@ const sidecarEndpoints = new Set(
     .map((endpoint) => endpoint.name),
 );
 const runtimeTopics = new Set(manifest.runtimeTopics.map((topic) => topic.type));
+
+// Every tool result the Runtime declares a schema for must have a reader in
+// `plugins/sdk/toolResult.ts`, which is the one place those shapes are read through the
+// generated types — so a renamed property is a compile error rather than an empty preview.
+// The property names themselves are NOT checked here: an earlier attempt did, and passed a
+// deliberate `hits` -> `matches` rename because `matches` appears in the tree for unrelated
+// reasons. Generic names make that test look like coverage it does not have.
+const schema = JSON.parse(
+  readFileSync(resolve(ROOT, "../../runtime/contract/schema.json"), "utf8"),
+);
+const declaredResultTypes = new Set(
+  manifest.toolResultPresentations.map((presentation) => presentation.schema.$ref.split("/").pop()),
+);
+for (const type of declaredResultTypes) {
+  if (!schema.$defs[type]) throw new Error(`manifest names ${type}, absent from schema.json`);
+}
 
 const compiler = new API({ cwd: ROOT });
 let compilerClosed = false;
@@ -134,6 +151,7 @@ for (const [operation, consumers] of operationConsumers) {
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
 
 checkRuntimeTopics(errors);
+checkToolResultReaders(errors);
 if (errors.length > 0) fail(errors);
 
 const callCount =
@@ -141,7 +159,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size}/${operations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites)`,
+  `check-backend-api-consumers: ${operations.size}/${operations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader`,
 );
 
 function creditMaterializedOperationConsumers(methods, consumersByOperation, targetErrors) {
@@ -366,6 +384,30 @@ function isProductSource(sourcePath) {
   if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(sourcePath)) return false;
   if (/\.generated\.[cm]?[jt]s$/.test(sourcePath)) return false;
   return true;
+}
+
+function checkToolResultReaders(targetErrors) {
+  const source = program.getSourceFile(TOOL_RESULT_PATH);
+  if (!source) {
+    targetErrors.push("TypeScript did not load the tool-result reader");
+    return;
+  }
+  const read = new Set();
+  visit(source, (node) => {
+    if (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)) {
+      read.add(node.typeName.text);
+    }
+  });
+  for (const type of declaredResultTypes) {
+    if (read.has(type)) continue;
+    targetErrors.push(
+      `${relative(ROOT, TOOL_RESULT_PATH)} has no reader for ${type}, declared by the Runtime for ` +
+        manifest.toolResultPresentations
+          .filter((p) => p.schema.$ref.endsWith(type))
+          .map((p) => p.toolName)
+          .join(", "),
+    );
+  }
 }
 
 function checkRuntimeTopics(targetErrors) {

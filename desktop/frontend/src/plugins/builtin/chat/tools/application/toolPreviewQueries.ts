@@ -1,7 +1,7 @@
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { useWorkspaceFileHead, useWorkspaceGrep } from "@/plugins/builtin/workspace/public/queries";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import { parseJsonResult } from "./toolResultParsing";
+import { searchToolResult } from "@/plugins/sdk";
 
 export function useFileToolPreview(tool: ToolCall, maxLines: number) {
   const workspace = useActiveSessionWorkspace();
@@ -21,17 +21,12 @@ interface GrepPreviewRow {
 // The runtime projects every grep output mode into one `hits` envelope, so nothing here
 // has to guess which mode produced the rows.
 function inlineGrepRows(result: string | undefined): GrepPreviewRow[] | undefined {
-  const hits = parseJsonResult(result)?.hits;
+  const hits = searchToolResult(result)?.hits;
   if (!Array.isArray(hits)) return undefined;
-  return hits.map((hit) => {
-    const record = typeof hit === "object" && hit !== null ? (hit as Record<string, unknown>) : {};
-    const path = String(record.path ?? "");
-    const line = record.lineNumber;
-    return {
-      loc: typeof line === "number" ? `${path}:${line}` : path,
-      text: String(record.snippet ?? ""),
-    };
-  });
+  return hits.map((hit) => ({
+    loc: hit?.lineNumber === undefined ? (hit?.path ?? "") : `${hit.path}:${hit.lineNumber}`,
+    text: hit?.snippet ?? "",
+  }));
 }
 
 export function useGrepToolPreview(tool: ToolCall, maxMatches: number) {

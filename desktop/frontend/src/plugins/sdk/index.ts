@@ -16,6 +16,12 @@ export {
   useInstalledPlugins,
 } from "./kernel";
 export { COMMANDS, CONFIG, I18N, WINDOW, WORKSPACE } from "./services";
+export {
+  commandToolResult,
+  patchToolResult,
+  searchToolResult,
+  webSearchToolResult,
+} from "./toolResult";
 export type {
   AmbientShell,
   CommandsService,

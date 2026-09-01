@@ -1,3 +1,4 @@
+import { searchToolResult, webSearchToolResult } from "@/plugins/sdk";
 import { parseJsonResult, resultLines } from "./toolResultParsing";
 
 export interface SkillPreviewEntry {
@@ -43,32 +44,26 @@ export function projectAskUserAnswer(result: string | undefined): string {
 }
 
 export function projectGlobPreview(result: string | undefined): GlobPreviewModel {
-  const hits = parseJsonResult(result)?.hits;
+  const hits = searchToolResult(result)?.hits;
   if (!Array.isArray(hits)) return { paths: [] };
-  return { paths: hits.map(hitPath).filter((path) => path.length > 0) };
+  return { paths: hits.map((hit) => hit?.path ?? "").filter((path) => path.length > 0) };
 }
 
 export function projectWebSearchPreview(result: string | undefined): WebSearchPreviewResult[] {
-  const arr = parseJsonResult(result)?.results;
-  if (!Array.isArray(arr)) return [];
-  return arr.flatMap((entry) => {
-    const result = record(entry);
-    const url = typeof result.url === "string" ? result.url : "";
-    if (!url) return [];
-    return [
-      {
-        url,
-        domain: domainOf(url),
-        title: typeof result.title === "string" && result.title ? result.title : url,
-        snippet: typeof result.snippet === "string" ? result.snippet : "",
-      },
-    ];
-  });
-}
-
-function hitPath(hit: unknown): string {
-  if (typeof hit === "string") return hit;
-  return String(record(hit).path ?? "");
+  const results = webSearchToolResult(result)?.results;
+  if (!Array.isArray(results)) return [];
+  return results.flatMap((hit) =>
+    hit?.url
+      ? [
+          {
+            url: hit.url,
+            domain: domainOf(hit.url),
+            title: hit.title || hit.url,
+            snippet: hit.snippet ?? "",
+          },
+        ]
+      : [],
+  );
 }
 
 function record(value: unknown): Record<string, unknown> {

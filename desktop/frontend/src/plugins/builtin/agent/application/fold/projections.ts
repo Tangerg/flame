@@ -1,3 +1,9 @@
+import {
+  commandToolResult,
+  patchToolResult,
+  searchToolResult,
+  webSearchToolResult,
+} from "@/plugins/sdk";
 import type {
   AgentItem,
   AgentItemStatus,
@@ -88,7 +94,7 @@ function asArrayLength(v: unknown): number | undefined {
 }
 
 function editChanges(result: unknown): unknown[] {
-  const changes = asRecord(result)?.changes;
+  const changes = patchToolResult(result)?.changes;
   return Array.isArray(changes) ? changes : [];
 }
 
@@ -222,9 +228,9 @@ function categoryFields(
       // history hydration, reconnect and non-streaming runtimes all render from here.
       // `item.delta{toolOutput}` is only a live preview — absent output MUST omit the key
       // so that preview stands until completed reconciles it.
-      const merged = asString(result?.output) ?? asString(tool.result);
+      const merged = asString(commandToolResult(tool.result)?.output) ?? asString(tool.result);
       return {
-        exitCode: asNumber(result?.exitCode),
+        exitCode: asNumber(commandToolResult(tool.result)?.exitCode),
         ...(asString(tool.arguments?.command) !== undefined
           ? { command: asString(tool.arguments?.command) }
           : {}),
@@ -246,7 +252,7 @@ function categoryFields(
       // The runtime folds grep and glob into one `hits` envelope. The raw result rides
       // along so previews render the call's own rows instead of re-querying.
       return {
-        hits: asArrayLength(result?.hits),
+        hits: asArrayLength(searchToolResult(tool.result)?.hits),
         ...(tool.result !== undefined
           ? {
               result: typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result),
@@ -255,7 +261,7 @@ function categoryFields(
       };
     case "webSearch":
       return {
-        hits: asArrayLength(result?.results),
+        hits: asArrayLength(webSearchToolResult(tool.result)?.results),
         ...(tool.result !== undefined
           ? { result: typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result) }
           : {}),
