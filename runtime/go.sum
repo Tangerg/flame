@@ -11,8 +11,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0/go.mod h1:7dCRMLwisfRH3dB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260901055034-eafa16163058 h1:BGcvVYwebGn3VqFVsyqXJJUc7iBnIZd4Vm271YOaC+w=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260901055034-eafa16163058/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
+github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260901093719-c384f2da61bb h1:qRHujH56ITsyFe+hTFlrqRCuUMWk35D9deuUlPwqUSs=
+github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260901093719-c384f2da61bb/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/scope/a2a v0.14.0 h1:DdggcVhndsNggV+RU4f2UHaef6Si2oXXGrPYhh+AykY=
 github.com/Tangerg/scope/a2a v0.14.0/go.mod h1:8/WyG4vK/dv5ivCJtF0d/ufFiJ8IQMTVlVKipWwQIok=
 github.com/Tangerg/scope/agent v0.14.0 h1:F8NeUhEk6GZRM1NP16WY8Bo23oVw80WhzYGBnFnQ868=
