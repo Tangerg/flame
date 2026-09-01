@@ -799,12 +799,46 @@ func (o OpeningCommit) validateEvents() error {
 		if err := commit.Validate(); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
+		if err := o.validateEventOwner(commit); err != nil {
+			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
+		}
 		if commit.State != StateUnchanged ||
 			(len(commit.Items) == 0 && len(commit.ConversationMessages) == 0) {
 			return fmt.Errorf("runs: opening event[%d] has no transcript or conversation projection", index)
 		}
 	}
 	return nil
+}
+
+func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
+	if o.Admit != nil {
+		if commit.SessionID != o.Admit.SessionID {
+			return errors.New("event Session differs from admitted Run")
+		}
+		if commit.RunID == o.Admit.RunID {
+			if commit.SegmentID != o.Admit.SegmentID {
+				return errors.New("admitted Run event belongs to another Segment")
+			}
+			return nil
+		}
+		lineage := o.Admit.Lineage()
+		if lineage.IsChild() && commit.RunID == lineage.ParentRunID {
+			return nil
+		}
+		return errors.New("event belongs to a Run outside the admission")
+	}
+	if commit.SessionID != o.Resume.SessionID {
+		return errors.New("event Session differs from resumed tree")
+	}
+	for _, resumed := range o.Resume.Runs {
+		if commit.RunID == resumed.RunID {
+			if commit.SegmentID != resumed.SegmentID {
+				return errors.New("resumed Run event belongs to another Segment")
+			}
+			return nil
+		}
+	}
+	return errors.New("event belongs to a Run outside the resumed tree")
 }
 
 // TreeBarrierCommit is the one durable write-set produced when any executor

@@ -203,3 +203,58 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		t.Fatalf("ordinary admission into an existing Session: %v", err)
 	}
 }
+
+func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
+	createdAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
+	item := func(runID, itemID string) transcript.Item {
+		return testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: "session", RunID: runID, ID: itemID, OccurredAt: createdAt,
+		})
+	}
+	root := run.Draft{
+		RunID: "run_root", SessionID: "session", SegmentID: "segment_root", CreatedAt: createdAt,
+	}
+	foreign := EventCommit{
+		RunID: "run_foreign", SessionID: "session", SegmentID: "segment_foreign",
+		Items: []transcript.Item{item("run_foreign", "item_foreign")},
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_foreign_event"), Admit: &root, Events: []EventCommit{foreign},
+	}).Validate(); err == nil {
+		t.Fatal("root OpeningCommit accepted an event for another Run")
+	}
+
+	child := run.Draft{
+		RunID: "run_child", SessionID: "session", SegmentID: "segment_child",
+		SpawnedByItemID: "item_spawn", ParentRunID: root.RunID, RootRunID: root.RunID, CreatedAt: createdAt,
+	}
+	parentEvent := EventCommit{
+		RunID: root.RunID, SessionID: "session", SegmentID: root.SegmentID,
+		Items: []transcript.Item{item(root.RunID, "item_parent")},
+	}
+	childEvent := EventCommit{
+		RunID: child.RunID, SessionID: "session", SegmentID: child.SegmentID,
+		Items: []transcript.Item{item(child.RunID, "item_child")},
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_child_events"), Admit: &child,
+		Events: []EventCommit{parentEvent, childEvent},
+	}).Validate(); err != nil {
+		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
+	}
+
+	resume := run.TreeResumeDraft{
+		RootRunID: root.RunID, SessionID: "session", ResumedAt: createdAt,
+		Runs: []run.ResumeDraft{{RunID: root.RunID, SegmentID: "segment_resumed"}},
+	}
+	wrongSegment := EventCommit{
+		RunID: root.RunID, SessionID: "session", SegmentID: "segment_stale",
+		Items: []transcript.Item{item(root.RunID, "item_resumed")},
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_stale_resume_event"), Resume: &resume,
+		Events: []EventCommit{wrongSegment},
+	}).Validate(); err == nil {
+		t.Fatal("resumed OpeningCommit accepted an event for a stale Segment")
+	}
+}
