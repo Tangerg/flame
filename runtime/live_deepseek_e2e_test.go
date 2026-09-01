@@ -488,7 +488,7 @@ func resolveLiveConfigDirectory(t *testing.T) string {
 	t.Helper()
 	directory := os.Getenv(liveConfigDirectoryEnvironment)
 	if directory == "" {
-		directory = filepath.Join("..", "config")
+		directory = "config"
 	}
 	resolved, err := filepath.Abs(directory)
 	if err != nil {
