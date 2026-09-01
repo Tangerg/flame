@@ -21,44 +21,50 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-// Every built-in tool's VERB. A row states the act before the thing acted on, so these are
-// the label and the identifying argument is the detail — one glance answers "doing what, to
-// what" without decoding a glyph. A tool the runtime added and this table has not heard of
-// keeps its wire name as the thing, under a generic verb.
-const TOOL_LABEL_KEYS = new Map([
-  ["shell", "tool.label.shell"],
-  ["read_shell_output", "tool.label.readShellOutput"],
-  ["stop_shell", "tool.label.stopShell"],
-  ["read", "tool.label.read"],
-  ["edit", "tool.label.edit"],
-  ["write", "tool.label.write"],
-  ["apply_patch", "tool.label.applyPatch"],
-  ["grep", "tool.label.grep"],
-  ["glob", "tool.label.glob"],
-  ["lsp", "tool.label.lsp"],
-  ["web_search", "tool.label.webSearch"],
-  ["web_fetch", "tool.label.webFetch"],
-  ["http_request", "tool.label.httpRequest"],
-  ["list_skills", "tool.label.listSkills"],
-  ["load_skill", "tool.label.loadSkill"],
-  ["read_skill_resource", "tool.label.readSkillResource"],
-  ["propose_skill", "tool.label.proposeSkill"],
-  ["delegate_task", "tool.label.delegateTask"],
-  ["ask_user", "tool.label.askUser"],
-  ["enter_plan_mode", "tool.label.enterPlanMode"],
-  ["set_plan", "tool.label.setPlan"],
-  ["exit_plan_mode", "tool.label.exitPlanMode"],
-  ["search_memory", "tool.label.searchMemory"],
-  ["search_conversations", "tool.label.searchConversations"],
-  ["search_tools", "tool.label.searchTools"],
-  ["read_tool_result", "tool.label.readToolResult"],
-  ["list_schedules", "tool.label.listSchedules"],
-  ["create_schedule", "tool.label.createSchedule"],
-  ["delete_schedule", "tool.label.deleteSchedule"],
-  ["create_goal", "tool.label.createGoal"],
-  ["get_goal", "tool.label.getGoal"],
-  ["report_goal_outcome", "tool.label.reportGoalOutcome"],
+// Every built-in tool's VERB, in the two tenses a transcript needs. A row states the act
+// before the thing acted on, so the verb is the label and the identifying argument is the
+// detail — one glance answers "doing what, to what" without decoding a glyph. The tense is
+// what separates a call in flight from one that finished: without it a row reads the same
+// while it is deciding, working and done, and only a dot ever says which.
+//
+// A tool this build has never heard of takes the generic entry; its own wire name is then
+// the thing being acted on.
+const TOOL_VERB_IDS = new Map([
+  ["shell", "shell"],
+  ["read_shell_output", "readShellOutput"],
+  ["stop_shell", "stopShell"],
+  ["read", "read"],
+  ["edit", "edit"],
+  ["write", "write"],
+  ["apply_patch", "applyPatch"],
+  ["grep", "grep"],
+  ["glob", "glob"],
+  ["lsp", "lsp"],
+  ["web_search", "webSearch"],
+  ["web_fetch", "webFetch"],
+  ["http_request", "httpRequest"],
+  ["list_skills", "listSkills"],
+  ["load_skill", "loadSkill"],
+  ["read_skill_resource", "readSkillResource"],
+  ["propose_skill", "proposeSkill"],
+  ["delegate_task", "delegateTask"],
+  ["ask_user", "askUser"],
+  ["enter_plan_mode", "enterPlanMode"],
+  ["set_plan", "setPlan"],
+  ["exit_plan_mode", "exitPlanMode"],
+  ["search_memory", "searchMemory"],
+  ["search_conversations", "searchConversations"],
+  ["search_tools", "searchTools"],
+  ["read_tool_result", "readToolResult"],
+  ["list_schedules", "listSchedules"],
+  ["create_schedule", "createSchedule"],
+  ["delete_schedule", "deleteSchedule"],
+  ["create_goal", "createGoal"],
+  ["get_goal", "getGoal"],
+  ["report_goal_outcome", "reportGoalOutcome"],
 ]);
+
+const GENERIC_VERB_ID = "generic";
 
 // `path` is the runtime's own spelling, which ApprovalSubject reads too, so a rename cannot
 // drift these apart silently.
@@ -70,8 +76,14 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 ];
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
-  const labelKey = TOOL_LABEL_KEYS.get(tool.name);
-  const verb: ToolDetail = { kind: "text", value: t(labelKey ?? "tool.label.generic") };
+  const labelKey = TOOL_VERB_IDS.get(tool.name);
+  // Only a call still in flight is being done; a refusal and a failure are both over, and
+  // wording either as ongoing would keep the row claiming work that has stopped.
+  const tense = tool.status === "running" ? "doing" : "done";
+  const verb: ToolDetail = {
+    kind: "text",
+    value: t(`tool.${tense}.${labelKey ?? GENERIC_VERB_ID}`),
+  };
   const command = text(tool.command);
   // Prose outranks the verb; an argument does not. A shell call's `fn` is the model's own
   // account of what the run is FOR, which no table can restate — but everywhere else `fn` is

@@ -1365,6 +1365,23 @@ for (const theme of ["light", "dark"] as const) {
           .filter({ hasText: "specialisedPreviewProjections.ts" })
           .click();
       }
+      // Lay every turn out ONCE before judging the frame. `content-visibility` holds an
+      // off-screen turn at its estimated height until it has rendered, and
+      // `contain-intrinsic-size: auto` then remembers the real one — so the transcript's
+      // total height depends on which turns happened to get rendering time. Under a full
+      // suite that set differs run to run and the frame settles STABLY at a different
+      // offset, which is why asserting the resting scroll position cannot catch it.
+      await page.evaluate(async () => {
+        const scroller = document.querySelector(".msg-scroll-viewport");
+        if (!scroller) return;
+        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+        for (let top = 0; top <= scroller.scrollHeight; top += scroller.clientHeight) {
+          scroller.scrollTop = top;
+          await frame();
+          await frame();
+        }
+      });
+
       // Put the transcript where it belongs BEFORE the clock stops, rather than
       // waiting to see where it lands. Ready only means the tree is mounted;
       // use-stick-to-bottom then eases the scroll with Date.now(), and the

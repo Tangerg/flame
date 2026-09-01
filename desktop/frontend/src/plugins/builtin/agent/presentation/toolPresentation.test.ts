@@ -41,7 +41,7 @@ describe("toolPresentation", () => {
   // same shell line at two different truncations.
   it("drops a detail that repeats the label", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "pnpm test", command: "pnpm test" }))).toEqual({
-      label: { kind: "text", value: "Shell" },
+      label: { kind: "text", value: "Ran" },
       detail: { kind: "text", value: "pnpm test" },
     });
     expect(
@@ -59,7 +59,7 @@ describe("toolPresentation", () => {
     expect(
       toolIntent(t, tool({ name: "apply_patch", fn: "runtime/store.go", fnKind: "path" })),
     ).toEqual({
-      label: { kind: "text", value: "Apply patch" },
+      label: { kind: "text", value: "Applied patch" },
       detail: { kind: "path", value: "runtime/store.go" },
     });
   });
@@ -75,28 +75,39 @@ describe("toolPresentation", () => {
     expect(
       toolIntent(t, tool({ name: "set_plan", fn: "set_plan", step: "Write the fix" })),
     ).toEqual({
-      label: { kind: "text", value: "Update the plan" },
+      label: { kind: "text", value: "Updated the plan" },
       detail: { kind: "text", value: "Write the fix" },
     });
   });
 
   it("keeps a command verbatim even when it reads like a tool name", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "grep" })).detail?.value).toBe("grep");
-    expect(toolIntent(t, tool({ name: "shell", fn: "shell" })).label.value).toBe("Shell");
+    expect(toolIntent(t, tool({ name: "shell", fn: "shell" })).label.value).toBe("Ran");
+  });
+
+  // A row must not read the same while a call is deciding, working and done. Codex says
+  // "Reading file" then "Read file"; without the pair only the status dot carries the state.
+  it("words a call in flight as ongoing and a settled one as finished", () => {
+    const reading = tool({ name: "read", fn: "src/App.tsx", fnKind: "path", status: "running" });
+    expect(toolIntent(t, reading).label.value).toBe("Reading");
+    expect(toolIntent(t, { ...reading, status: "ok" }).label.value).toBe("Read");
+    // A refusal and a failure are both OVER, however they ended.
+    expect(toolIntent(t, { ...reading, status: "denied" }).label.value).toBe("Read");
+    expect(toolIntent(t, { ...reading, status: "err" }).label.value).toBe("Read");
   });
 
   // A tool this build has never heard of still reads as an act on a thing: the generic verb
   // says an unlisted tool ran, and its wire name IS the thing it names.
   it("gives a tool it has no verb for the generic one", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
-      label: { kind: "text", value: "Tool" },
+      label: { kind: "text", value: "Used tool" },
       detail: { kind: "text", value: "acme_docs" },
     });
   });
 
   it("ignores malformed args while keeping the tool label", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs", args: "{" }))).toEqual({
-      label: { kind: "text", value: "Tool" },
+      label: { kind: "text", value: "Used tool" },
       detail: { kind: "text", value: "acme_docs" },
     });
   });

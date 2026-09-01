@@ -152,15 +152,20 @@
     monospace;
 
   --animate-sweep: flame-sweep calc(1300ms * var(--motion-scale)) linear infinite;
-  --animate-shimmer: flame-shimmer calc(1400ms * var(--motion-scale)) linear infinite;
+  --animate-shimmer: flame-shimmer calc(4000ms * var(--motion-scale)) linear infinite;
   --animate-pulse-dot: flame-pulse calc(1600ms * var(--motion-scale)) ease-in-out infinite;
   --animate-rise-in: flame-rise-in calc(140ms * var(--motion-scale)) cubic-bezier(0.3, 0, 0, 1);
 }
 
+/* A CADENCE, not a loop: the sweep takes the first quarter and the text rests muted for the
+   other three. This label stays on screen for as long as the turn runs — minutes, on a long
+   one — and a band travelling across it without pause is the kind of motion a reader ends up
+   working to ignore. One pass every four seconds reads as a pulse instead. */
 @keyframes flame-shimmer {
   0% {
     background-position: -200% 0;
   }
+  25%,
   100% {
     background-position: 200% 0;
   }
