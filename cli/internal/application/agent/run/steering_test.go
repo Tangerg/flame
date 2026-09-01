@@ -75,8 +75,8 @@ func TestRecoverRefusesToGuessAtOrAfterTheReplayDeadline(t *testing.T) {
 			runtime := new(steerRuntimeStub)
 			fixture.now = pending.Replay().Until().Add(offset)
 			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
-			if err == nil {
-				t.Fatal("expired replay unexpectedly succeeded")
+			if !errors.Is(err, ErrSteerReplayUnavailable) {
+				t.Fatalf("expired replay error = %v, want ErrSteerReplayUnavailable", err)
 			}
 			if len(runtime.requests) != 0 {
 				t.Fatalf("expired replay reached runtime: %+v", runtime.requests)
@@ -85,6 +85,52 @@ func TestRecoverRefusesToGuessAtOrAfterTheReplayDeadline(t *testing.T) {
 				t.Fatalf("expired pending steer = %+v, found %t", durable, found)
 			}
 		})
+	}
+}
+
+func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
+	fixture := stagedSteer(t)
+	expired := fixture.pending
+	secondStagedAt := expired.StagedAt().Add(45 * time.Minute)
+	guard, err := fixture.policy(t).NewGuardAt(secondStagedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondCommand := agent.SteerRun{
+		CommandID: "cli_44444444444444444444444444444444",
+		RunID:     "run_2",
+		SegmentID: "seg_2",
+		Message:   agent.Message{Text: "recover safely"},
+	}
+	second, err := workbench.NewPendingSteer("ses_2", secondCommand, secondStagedAt, guard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondSource := agent.Message{Text: "/steer recover safely"}
+	if err := fixture.store.SaveDraft(second.SessionID(), secondSource); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.store.StagePendingSteer(second, secondSource); err != nil {
+		t.Fatal(err)
+	}
+
+	fixture.now = expired.StagedAt().Add(90 * time.Minute)
+	runtime := new(steerRuntimeStub)
+	err = RecoverSteers(
+		t.Context(), runtime, fixture.store, fixture.policy(t), retry.ImmediateBackoff(),
+	)
+	if !errors.Is(err, ErrSteerReplayUnavailable) {
+		t.Fatalf("recovery error = %v, want deferred expired steer", err)
+	}
+	if len(runtime.requests) != 1 || !runtime.requests[0].Equal(second.Command()) {
+		t.Fatalf("safely replayable requests = %+v, want second steer", runtime.requests)
+	}
+	if durable, found := fixture.store.PendingSteer(expired.SessionID()); !found ||
+		!durable.Command().Equal(expired.Command()) {
+		t.Fatalf("expired steer = %+v, found %t", durable, found)
+	}
+	if _, found := fixture.store.PendingSteer(second.SessionID()); found {
+		t.Fatal("replayed second steer remains pending")
 	}
 }
 

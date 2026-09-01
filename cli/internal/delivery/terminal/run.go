@@ -111,6 +111,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 			if prepared.rollbackRecovery != nil {
 				active.reportSessionRollbackRecovery(*prepared.rollbackRecovery)
 			}
+			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
 			return headless.NewRoot(active)
 		},
 		Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible},
@@ -143,6 +144,11 @@ type preparedSession struct {
 	draft            agent.Message
 	editor           *draftEditor
 	rollbackRecovery *workbench.SessionRollbackRecovery
+	recoveryIssues   sessionCommandRecovery
+}
+
+type sessionCommandRecovery struct {
+	steer error
 }
 
 func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
@@ -161,10 +167,16 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
 	}
-	if err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile); err != nil {
+	recovery, err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile)
+	if err != nil {
 		return preparedSession{}, err
 	}
-	return openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
+	prepared, err := openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
+	if err != nil {
+		return preparedSession{}, err
+	}
+	prepared.recoveryIssues = recovery
+	return prepared, nil
 }
 
 func openSessionWorkbench(directory string) (*workbench.Store, error) {
@@ -206,23 +218,27 @@ func recoverSessionCommands(
 	runtime Runtime,
 	authoring *workbench.Store,
 	profile *runtimebinding.Profile,
-) error {
+) (sessionCommandRecovery, error) {
+	recovery := sessionCommandRecovery{}
 	if err := session.RecoverDeletions(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
-		return fmt.Errorf("recover session deletions: %w", err)
+		return sessionCommandRecovery{}, fmt.Errorf("recover session deletions: %w", err)
 	}
 	if err := runworkflow.RecoverSteers(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
-		return fmt.Errorf("recover steer commands: %w", err)
+		if !errors.Is(err, runworkflow.ErrSteerReplayUnavailable) {
+			return sessionCommandRecovery{}, fmt.Errorf("recover steer commands: %w", err)
+		}
+		recovery.steer = fmt.Errorf("recover steer commands: %w", err)
 	}
 	if err := session.RecoverRollbacks(
 		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
 	); err != nil {
-		return fmt.Errorf("recover session rollbacks: %w", err)
+		return sessionCommandRecovery{}, fmt.Errorf("recover session rollbacks: %w", err)
 	}
-	return nil
+	return recovery, nil
 }
 
 func openPreparedSession(

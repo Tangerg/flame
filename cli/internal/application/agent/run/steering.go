@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
@@ -15,6 +16,11 @@ import (
 type steerRuntime interface {
 	SteerRun(context.Context, agent.SteerRun) error
 }
+
+// ErrSteerReplayUnavailable reports a durable steer whose outcome can no
+// longer be queried safely from the Runtime replay store. Recovery preserves
+// the journal and its attachments for explicit user reconciliation.
+var ErrSteerReplayUnavailable = errors.New("steer replay guarantee is unavailable")
 
 // StageSteer atomically transfers the source draft's attachments into a durable
 // command journal before delivery can begin.
@@ -93,7 +99,9 @@ func DeliverSteer(
 
 // RecoverSteers replays every unsettled command only while the same runtime
 // idempotency namespace still guarantees its original response. Definitive
-// refusals atomically return attachments to the durable session draft.
+// refusals atomically return attachments to the durable session draft. Commands
+// outside that guarantee remain journaled while recovery continues for other
+// sessions, then return [ErrSteerReplayUnavailable] for user-visible health.
 func RecoverSteers(
 	ctx context.Context,
 	runtime steerRuntime,
@@ -104,12 +112,11 @@ func RecoverSteers(
 	if authoring == nil {
 		return errors.New("CLI workbench is unavailable")
 	}
+	var deferredSessions []string
 	for _, pending := range authoring.PendingSteers() {
 		if !policy.Replayable(pending.Replay()) {
-			return fmt.Errorf(
-				"recover steer command for session %s: replay guarantee expired or belongs to another runtime",
-				pending.SessionID(),
-			)
+			deferredSessions = append(deferredSessions, pending.SessionID())
+			continue
 		}
 		result, err := DeliverSteer(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
@@ -135,5 +142,12 @@ func RecoverSteers(
 			return errors.New("steer settlement returned an invalid outcome")
 		}
 	}
-	return nil
+	if len(deferredSessions) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"%w for sessions %s: guarantee expired or belongs to another runtime",
+		ErrSteerReplayUnavailable,
+		strings.Join(deferredSessions, ", "),
+	)
 }
