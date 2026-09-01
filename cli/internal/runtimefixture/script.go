@@ -385,7 +385,7 @@ func (d defaultScenario) script() Script {
 				Status: agent.ToolRunning, Path: "internal/store/cache_test.go", Diff: d.diff,
 			},
 			Diff:         d.diff,
-			Risk:         agent.ApprovalRiskMedium,
+			Risk:         protocol.ApprovalRiskMedium,
 			RuleHint:     "edit:internal/store/cache_test.go",
 			Rememberable: true,
 		}},

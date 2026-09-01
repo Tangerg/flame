@@ -88,7 +88,11 @@ func (a Approval) Validate() error {
 			problems = append(problems, errors.New("tool is not running"))
 		}
 	}
-	if a.Risk != "" && !slices.Contains([]ApprovalRisk{ApprovalRiskLow, ApprovalRiskMedium, ApprovalRiskHigh}, a.Risk) {
+	if a.Risk != "" && !slices.Contains([]runtimeprotocol.ApprovalRisk{
+		runtimeprotocol.ApprovalRiskLow,
+		runtimeprotocol.ApprovalRiskMedium,
+		runtimeprotocol.ApprovalRiskHigh,
+	}, a.Risk) {
 		problems = append(problems, fmt.Errorf("risk %q is invalid", a.Risk))
 	}
 	if err := errors.Join(problems...); err != nil {

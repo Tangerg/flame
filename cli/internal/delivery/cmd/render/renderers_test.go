@@ -259,7 +259,7 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 	tool := encodeBlock(agent.Block{
 		ID: "tool", RunID: "run_1", Status: agent.BlockStatusIncomplete, Kind: agent.BlockTool,
 		Tool: &agent.ToolCall{
-			Kind: agent.ToolShell, Name: "shell", Status: agent.ToolError, Safety: agent.ToolSafetyExec,
+			Kind: agent.ToolShell, Name: "shell", Status: agent.ToolError, Safety: protocol.SafetyClassExec,
 			StartedAt: started, FinishedAt: finished,
 			Problem: &failure.Problem{Type: "provider_error", RetryAfterSeconds: 2},
 		},

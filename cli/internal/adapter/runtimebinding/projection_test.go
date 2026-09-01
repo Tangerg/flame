@@ -29,7 +29,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 		t.Fatalf("projectTool: %v", err)
 	}
 	if tool.Kind != agent.ToolShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
-		tool.Safety != agent.ToolSafetyExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
+		tool.Safety != protocol.SafetyClassExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 || tool.Duration != 1250*time.Millisecond ||
 		!json.Valid(tool.ArgumentsJSON) || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
 		!json.Valid(tool.ResultJSON) || !bytes.Contains(tool.ResultJSON, []byte(`"output":"ok"`)) {
@@ -369,7 +369,7 @@ func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
 	approval := interaction.(agent.Approval)
 	if approval.Tool == nil || approval.Tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(approval.Tool.ArgumentsJSON, []byte(`"source":"approval"`)) ||
-		approval.Risk != agent.ApprovalRiskHigh || approval.Detail != "creates a shared event" || !approval.Rememberable {
+		approval.Risk != protocol.ApprovalRiskHigh || approval.Detail != "creates a shared event" || !approval.Rememberable {
 		t.Fatalf("approval = %+v", approval)
 	}
 }
@@ -650,7 +650,7 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 	approval, ok := snapshot.Interactions[0].(agent.Approval)
 	itemTool := snapshot.Transcript[0].Tool
 	if !ok || itemTool == nil || approval.Tool == nil ||
-		itemTool.Safety != agent.ToolSafetyExec || !itemTool.StartedAt.Equal(startedAt) ||
+		itemTool.Safety != protocol.SafetyClassExec || !itemTool.StartedAt.Equal(startedAt) ||
 		approval.Tool.Safety != "" || !approval.Tool.StartedAt.IsZero() ||
 		!bytes.Equal(itemTool.ArgumentsJSON, approval.Tool.ArgumentsJSON) {
 		t.Fatalf("snapshot = %+v", snapshot)

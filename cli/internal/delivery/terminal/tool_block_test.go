@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
@@ -191,7 +192,7 @@ func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 	started := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	presentation := presentShellTool(agent.ToolCall{
 		Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolOK,
-		Safety: agent.ToolSafetyExec, StartedAt: started, FinishedAt: started.Add(2 * time.Second),
+		Safety: protocol.SafetyClassExec, StartedAt: started, FinishedAt: started.Add(2 * time.Second),
 	})
 	if len(presentation.Sections) == 0 || presentation.Sections[0].Title != "Execution" ||
 		!strings.Contains(presentation.Sections[0].Text, "safety   exec") ||

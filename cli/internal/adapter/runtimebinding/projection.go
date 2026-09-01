@@ -185,7 +185,7 @@ func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
 		}
 		approval := agent.Approval{
 			RunID: value.RunID, ItemID: value.ItemID, Title: "Approve " + tool.Name, Detail: value.Payload.Reason,
-			Tool: &tool, Risk: agent.ApprovalRisk(value.Payload.Risk), Rememberable: value.Payload.Rememberable,
+			Tool: &tool, Risk: value.Payload.Risk, Rememberable: value.Payload.Rememberable,
 		}
 		if err := approval.Validate(); err != nil {
 			return nil, err

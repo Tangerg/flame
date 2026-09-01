@@ -193,7 +193,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	arguments := decodeToolArgumentsMaterial(argumentsJSON)
 	tool := agent.ToolCall{
 		Kind: kindForTool(value.Name), Name: value.Name, Summary: arguments.summary(value.Name),
-		Safety:    agent.ToolSafetyClass(projection.safety),
+		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
 		Command: arguments.command(),
 		Path:    arguments.path(),

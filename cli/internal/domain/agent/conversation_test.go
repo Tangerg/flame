@@ -41,7 +41,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}
 	approval := interrupts[0].(Approval)
 	startedApprovalTool := approval.Tool.Clone()
-	startedApprovalTool.Safety = ToolSafetyExec
+	startedApprovalTool.Safety = protocol.SafetyClassExec
 	startedApprovalTool.StartedAt = time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
 	apply(t, conversation, RunEvent{EventID: "approval-start", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{
 		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &startedApprovalTool,

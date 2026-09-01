@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // Errors a [Runtime] reports by identity rather than by message, mirroring the
@@ -199,16 +200,6 @@ const (
 	ToolCanceled ToolStatus = "canceled"
 )
 
-// ToolSafetyClass is the runtime-classified mutation boundary of a tool call.
-type ToolSafetyClass string
-
-const (
-	ToolSafetySafe    ToolSafetyClass = "safe"
-	ToolSafetyWrite   ToolSafetyClass = "write"
-	ToolSafetyExec    ToolSafetyClass = "exec"
-	ToolSafetyNetwork ToolSafetyClass = "network"
-)
-
 // ToolKind is a terminal-relevant semantic category assigned by a runtime
 // adapter. Delivery adapters switch on this closed projection, never on a
 // provider's tool name.
@@ -235,7 +226,7 @@ type ToolCall struct {
 	Name       string
 	Summary    string
 	Status     ToolStatus
-	Safety     ToolSafetyClass
+	Safety     protocol.SafetyClass
 	StartedAt  time.Time
 	FinishedAt time.Time
 	Command    string
@@ -308,7 +299,7 @@ func (t ToolCall) Validate() error {
 		problems = append(problems, fmt.Errorf("status %q is invalid", t.Status))
 	}
 	switch t.Safety {
-	case "", ToolSafetySafe, ToolSafetyWrite, ToolSafetyExec, ToolSafetyNetwork:
+	case "", protocol.SafetyClassSafe, protocol.SafetyClassWrite, protocol.SafetyClassExec, protocol.SafetyClassNetwork:
 	default:
 		problems = append(problems, fmt.Errorf("safety class %q is invalid", t.Safety))
 	}

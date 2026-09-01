@@ -230,14 +230,6 @@ func (r RunOptions) Equal(other RunOptions) bool {
 // Interaction is a closed interrupt payload.
 type Interaction interface{ isInteraction() }
 
-type ApprovalRisk string
-
-const (
-	ApprovalRiskLow    ApprovalRisk = "low"
-	ApprovalRiskMedium ApprovalRisk = "medium"
-	ApprovalRiskHigh   ApprovalRisk = "high"
-)
-
 type Approval struct {
 	RunID        string
 	ItemID       string
@@ -245,7 +237,7 @@ type Approval struct {
 	Detail       string
 	Tool         *ToolCall
 	Diff         string
-	Risk         ApprovalRisk
+	Risk         protocol.ApprovalRisk
 	RuleHint     string
 	Rememberable bool
 }
