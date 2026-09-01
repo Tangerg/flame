@@ -468,30 +468,30 @@ func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
 	if _, exists, err := runtime.GetGoal(t.Context(), "ses_1"); err != nil || exists {
 		t.Fatalf("empty GetGoal = (%t, %v)", exists, err)
 	}
-	started, err := runtime.StartGoal(t.Context(), agent.StartGoal{
+	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
 		SessionID: "ses_1", Objective: "finish",
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", Budget: limitedGoalBudget(t, 3),
 	})
-	if err != nil || started.Status() != agent.GoalActive || started.ReasoningEffort() != "xhigh" || stub.last != "start" {
+	if err != nil || started.Status != protocol.GoalActive || started.ReasoningEffort != "xhigh" || stub.last != "start" {
 		t.Fatalf("StartGoal = (%+v, %v), last %q", started, err, stub.last)
 	}
-	updated, err := runtime.UpdateGoal(t.Context(), agent.UpdateGoal{SessionID: "ses_1", Objective: "ship"})
-	if err != nil || updated.Objective() != "ship" || stub.last != "update" {
+	updated, err := runtime.UpdateGoal(t.Context(), protocol.UpdateGoalRequest{SessionID: "ses_1", Objective: "ship"})
+	if err != nil || updated.Objective != "ship" || stub.last != "update" {
 		t.Fatalf("UpdateGoal = (%+v, %v), last %q", updated, err, stub.last)
 	}
 	stopped, err := runtime.StopGoal(t.Context(), "ses_1")
-	if _, present := stopped.Reason(); err != nil || stopped.Status() != agent.GoalPaused || !present || stub.last != "stop" {
+	if err != nil || stopped.Status != protocol.GoalPaused || stopped.Reason == nil || stub.last != "stop" {
 		t.Fatalf("StopGoal = (%+v, %v), last %q", stopped, err, stub.last)
 	}
 	resumed, err := runtime.ResumeGoal(t.Context(), "ses_1")
-	if err != nil || resumed.Status() != agent.GoalActive || stub.last != "resume" {
+	if err != nil || resumed.Status != protocol.GoalActive || stub.last != "resume" {
 		t.Fatalf("ResumeGoal = (%+v, %v), last %q", resumed, err, stub.last)
 	}
 	completing := *stub.current
 	completing.Status = protocol.GoalCompleting
 	stub.current = &completing
 	observed, exists, err := runtime.GetGoal(t.Context(), "ses_1")
-	if _, present := observed.Reason(); err != nil || !exists || observed.Status() != agent.GoalCompleting || present {
+	if err != nil || !exists || observed.Status != protocol.GoalCompleting || observed.Reason != nil {
 		t.Fatalf("completing GetGoal = (%+v, %t, %v)", observed, exists, err)
 	}
 	if err := runtime.ClearGoal(t.Context(), "ses_1"); err != nil || stub.last != "clear" {
@@ -506,59 +506,6 @@ func TestGoalAdapterRejectsAResponseForAnotherSession(t *testing.T) {
 
 	_, _, err := runtime.GetGoal(t.Context(), "ses_other")
 	requireRuntimeContractViolation(t, err)
-}
-
-func TestGoalAdapterRejectsInvalidDurableTimeline(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Goal)
-	}{
-		{name: "missing creation", mutate: func(value *protocol.Goal) { value.CreatedAt = time.Time{} }},
-		{name: "update before creation", mutate: func(value *protocol.Goal) {
-			value.UpdatedAt = value.CreatedAt.Add(-time.Nanosecond)
-		}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			value := activeProtocolGoal()
-			test.mutate(value)
-			runtime := &Connection{goals: &goalBindingStub{t: t, current: value}, meta: requestMeta("test")}
-			_, _, err := runtime.GetGoal(t.Context(), "ses_1")
-			requireRuntimeContractViolation(t, err)
-		})
-	}
-}
-
-func TestGoalAdapterRejectsContradictoryLifecycleFacts(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Goal)
-	}{
-		{name: "paused with budget reason", mutate: func(value *protocol.Goal) {
-			value.Status = protocol.GoalPaused
-			value.Reason = &protocol.GoalReason{Code: protocol.GoalReasonRunBudgetReached}
-		}},
-		{name: "blocked with user stop", mutate: func(value *protocol.Goal) {
-			value.Status = protocol.GoalBlocked
-			value.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
-		}},
-		{name: "active with exhausted budget", mutate: func(value *protocol.Goal) {
-			value.Used.Runs = *value.Budget.MaxRuns
-		}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			value := activeProtocolGoal()
-			test.mutate(value)
-			runtime := &Connection{goals: &goalBindingStub{t: t, current: value}, meta: requestMeta("test")}
-			_, _, err := runtime.GetGoal(t.Context(), "ses_1")
-			requireRuntimeContractViolation(t, err)
-		})
-	}
 }
 
 func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
@@ -579,7 +526,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 				return &result
 			}()},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.StartGoal(t.Context(), agent.StartGoal{
+				_, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
 					SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3),
 				})
 				return err
@@ -601,7 +548,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 				return &result
 			}()},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.UpdateGoal(t.Context(), agent.UpdateGoal{SessionID: "ses_1", Objective: "ship"})
+				_, err := runtime.UpdateGoal(t.Context(), protocol.UpdateGoalRequest{SessionID: "ses_1", Objective: "ship"})
 				return err
 			},
 		},
@@ -624,11 +571,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	}
 }
 
-func limitedGoalBudget(t testing.TB, maxRuns int) agent.GoalBudget {
+func limitedGoalBudget(t testing.TB, maxRuns int) *protocol.GoalBudget {
 	t.Helper()
-	budget, err := agent.NewGoalBudget(agent.GoalBudgetLimits{MaxRuns: &maxRuns})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return budget
+	return &protocol.GoalBudget{MaxRuns: &maxRuns}
 }

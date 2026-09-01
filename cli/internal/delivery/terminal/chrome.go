@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/text"
@@ -26,7 +27,7 @@ type sessionHeader struct {
 	glyphs       kit.Glyphs
 	session      agent.Session
 	usage        agent.Usage
-	goal         agent.Goal
+	goal         protocol.Goal
 	goalPresent  bool
 	changes      int
 	changesKnown bool
@@ -40,9 +41,9 @@ func (s *sessionHeader) SetSession(session agent.Session) { s.session = session 
 
 func (s *sessionHeader) SetUsage(usage agent.Usage) { s.usage = usage.Clone() }
 
-func (s *sessionHeader) SetGoal(current *agent.Goal) {
+func (s *sessionHeader) SetGoal(current *protocol.Goal) {
 	if current == nil {
-		s.goal, s.goalPresent = agent.Goal{}, false
+		s.goal, s.goalPresent = protocol.Goal{}, false
 		return
 	}
 	s.goal, s.goalPresent = *current, true
@@ -97,16 +98,16 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 		return
 	}
 	width, _ := view.Size()
-	state := string(s.goal.Status())
+	state := string(s.goal.Status)
 	prefix := "[Goal: " + state + "]"
 	style := s.theme.Accent
-	switch s.goal.Status() {
-	case agent.GoalPaused:
+	switch s.goal.Status {
+	case protocol.GoalPaused:
 		style = s.theme.Warning
-	case agent.GoalBlocked:
+	case protocol.GoalBlocked:
 		style = s.theme.Danger
 	}
-	right := goalUsageLabel(s.goal.Used())
+	right := goalUsageLabel(s.goal.Used)
 	rightWidth := text.Width(right)
 	available := width
 	if rightWidth > 0 && rightWidth < width {
@@ -119,20 +120,24 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 	x := view.Text(0, 0, text.Truncate(prefix, available, s.glyphs.Ellipsis), style)
 	remaining := available - x
 	if remaining > 2 {
-		view.Text(x, 0, "  "+text.Truncate(s.goal.Objective(), remaining-2, s.glyphs.Ellipsis), s.theme.Muted)
+		view.Text(x, 0, "  "+text.Truncate(s.goal.Objective, remaining-2, s.glyphs.Ellipsis), s.theme.Muted)
 	}
 }
 
-func goalUsageLabel(used agent.GoalUsage) string {
+func goalUsageLabel(used protocol.GoalUsage) string {
 	parts := make([]string, 0, 3)
-	if used.Runs() > 0 {
-		parts = append(parts, countedNoun(used.Runs(), "run"))
+	if used.Runs > 0 {
+		parts = append(parts, countedNoun(used.Runs, "run"))
 	}
-	if used.Steps() > 0 {
-		parts = append(parts, countedNoun(used.Steps(), "step"))
+	if used.Steps > 0 {
+		parts = append(parts, countedNoun(used.Steps, "step"))
 	}
-	if used.CostUSD() > 0 {
-		parts = append(parts, "$"+strconv.FormatFloat(used.CostUSD(), 'f', 4, 64))
+	if used.CostUSD != nil {
+		if *used.CostUSD > 0 {
+			parts = append(parts, "$"+strconv.FormatFloat(*used.CostUSD, 'f', 4, 64))
+		}
+	} else if used.Runs > 0 {
+		parts = append(parts, "cost unavailable")
 	}
 	return strings.Join(parts, "  ")
 }

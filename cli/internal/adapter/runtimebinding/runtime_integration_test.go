@@ -44,7 +44,7 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 
 func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID string) {
 	t.Helper()
-	start := agent.StartGoal{
+	start := protocol.StartGoalRequest{
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing", Budget: limitedGoalBudget(t, 3),
 	}
@@ -52,29 +52,29 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	if err != nil {
 		t.Fatalf("StartGoal: %v", err)
 	}
-	if validateResultErr := start.ValidateResult(started); validateResultErr != nil {
-		t.Fatalf("started goal: %v", validateResultErr)
+	if started.Status != protocol.GoalActive || started.Objective != start.Objective {
+		t.Fatalf("started goal: %+v", started)
 	}
-	update := agent.UpdateGoal{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
+	update := protocol.UpdateGoalRequest{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
 	updated, err := runtime.UpdateGoal(t.Context(), update)
 	if err != nil {
 		t.Fatalf("UpdateGoal: %v", err)
 	}
-	if validateResultErr := update.ValidateResult(updated); validateResultErr != nil {
-		t.Fatalf("updated goal: %v", validateResultErr)
+	if updated.Objective != update.Objective {
+		t.Fatalf("updated goal: %+v", updated)
 	}
 	stopped, err := runtime.StopGoal(t.Context(), sessionID)
 	if err != nil {
 		t.Fatalf("StopGoal: %v", err)
 	}
-	if stopped.Status() == agent.GoalActive {
+	if stopped.Status == protocol.GoalActive {
 		t.Fatalf("stopped goal remained active: %+v", stopped)
 	}
 	resumed, err := runtime.ResumeGoal(t.Context(), sessionID)
 	if err != nil {
 		t.Fatalf("ResumeGoal: %v", err)
 	}
-	if resumed.Status() != agent.GoalActive {
+	if resumed.Status != protocol.GoalActive {
 		t.Fatalf("resumed goal = %+v", resumed)
 	}
 	if _, err := runtime.StopGoal(t.Context(), sessionID); err != nil {

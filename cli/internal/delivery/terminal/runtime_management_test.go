@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -439,14 +440,14 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 
 type goalServiceStub struct {
 	mu         sync.Mutex
-	current    *agent.Goal
+	current    *protocol.Goal
 	reads      atomic.Int32
 	writes     atomic.Int32
 	readErr    chan error
 	readSignal chan struct{}
 }
 
-func (g *goalServiceStub) GetGoal(context.Context, string) (agent.Goal, bool, error) {
+func (g *goalServiceStub) GetGoal(context.Context, string) (protocol.Goal, bool, error) {
 	g.reads.Add(1)
 	select {
 	case g.readSignal <- struct{}{}:
@@ -454,52 +455,45 @@ func (g *goalServiceStub) GetGoal(context.Context, string) (agent.Goal, bool, er
 	}
 	select {
 	case err := <-g.readErr:
-		return agent.Goal{}, false, err
+		return protocol.Goal{}, false, err
 	default:
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return agent.Goal{}, false, nil
+		return protocol.Goal{}, false, nil
 	}
 	return *g.current, true, nil
 }
 
-func (g *goalServiceStub) StartGoal(_ context.Context, start agent.StartGoal) (agent.Goal, error) {
+func (g *goalServiceStub) StartGoal(_ context.Context, start protocol.StartGoalRequest) (protocol.Goal, error) {
 	g.writes.Add(1)
-	if err := start.Validate(); err != nil {
-		return agent.Goal{}, err
+	if err := start.ValidateWire(); err != nil {
+		return protocol.Goal{}, err
 	}
 	at := time.Unix(1, 0).UTC()
-	current, err := agent.RestoreGoal(agent.GoalSnapshot{
-		SessionID: start.SessionID, Objective: start.Objective, Status: agent.GoalActive,
+	current := protocol.Goal{
+		SessionID: start.SessionID, Objective: start.Objective, Status: protocol.GoalActive,
 		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort, Budget: start.Budget,
 		CreatedAt: at, UpdatedAt: at,
-	})
-	if err != nil {
-		return agent.Goal{}, err
 	}
 	g.set(current)
 	return current, nil
 }
 
-func (g *goalServiceStub) UpdateGoal(_ context.Context, update agent.UpdateGoal) (agent.Goal, error) {
+func (g *goalServiceStub) UpdateGoal(_ context.Context, update protocol.UpdateGoalRequest) (protocol.Goal, error) {
 	g.writes.Add(1)
-	if err := update.Validate(); err != nil {
-		return agent.Goal{}, err
+	if err := update.ValidateWire(); err != nil {
+		return protocol.Goal{}, err
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return agent.Goal{}, errors.New("no goal")
+		return protocol.Goal{}, errors.New("no goal")
 	}
-	snapshot := g.current.Snapshot()
-	snapshot.Objective = update.Objective
-	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := agent.RestoreGoal(snapshot)
-	if err != nil {
-		return agent.Goal{}, err
-	}
+	current := *g.current
+	current.Objective = update.Objective
+	current.UpdatedAt = current.UpdatedAt.Add(time.Nanosecond)
 	g.current = &current
 	return current, nil
 }
@@ -512,77 +506,59 @@ func (g *goalServiceStub) ClearGoal(context.Context, string) error {
 	return nil
 }
 
-func (g *goalServiceStub) StopGoal(context.Context, string) (agent.Goal, error) {
+func (g *goalServiceStub) StopGoal(context.Context, string) (protocol.Goal, error) {
 	g.writes.Add(1)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return agent.Goal{}, errors.New("no goal")
+		return protocol.Goal{}, errors.New("no goal")
 	}
-	snapshot := g.current.Snapshot()
-	snapshot.Status = agent.GoalPaused
-	snapshot.ReasonCode = agent.GoalStoppedByUser
-	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := agent.RestoreGoal(snapshot)
-	if err != nil {
-		return agent.Goal{}, err
-	}
+	current := *g.current
+	current.Status = protocol.GoalPaused
+	current.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
+	current.UpdatedAt = current.UpdatedAt.Add(time.Nanosecond)
 	g.current = &current
 	return current, nil
 }
 
-func (g *goalServiceStub) ResumeGoal(context.Context, string) (agent.Goal, error) {
+func (g *goalServiceStub) ResumeGoal(context.Context, string) (protocol.Goal, error) {
 	g.writes.Add(1)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.current == nil {
-		return agent.Goal{}, errors.New("no goal")
+		return protocol.Goal{}, errors.New("no goal")
 	}
-	snapshot := g.current.Snapshot()
-	snapshot.Status = agent.GoalActive
-	snapshot.ReasonCode = agent.GoalReasonNone
-	snapshot.ReasonDetail = ""
-	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	current, err := agent.RestoreGoal(snapshot)
-	if err != nil {
-		return agent.Goal{}, err
-	}
+	current := *g.current
+	current.Status = protocol.GoalActive
+	current.Reason = nil
+	current.UpdatedAt = current.UpdatedAt.Add(time.Nanosecond)
 	g.current = &current
 	return current, nil
 }
 
-func (g *goalServiceStub) set(current agent.Goal) {
+func (g *goalServiceStub) set(current protocol.Goal) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.current = &current
 }
 
-func testGoal(t testing.TB, objective string) agent.Goal {
+func testGoal(t testing.TB, objective string) protocol.Goal {
 	t.Helper()
 	at := time.Unix(1, 0).UTC()
-	current, err := agent.RestoreGoal(agent.GoalSnapshot{
-		SessionID: "ses_demo_1", Objective: objective, Status: agent.GoalActive,
-		Budget: agent.UnlimitedGoalBudget(), CreatedAt: at, UpdatedAt: at,
-	})
-	if err != nil {
-		t.Fatal(err)
+	return protocol.Goal{
+		SessionID: "ses_demo_1", Objective: objective, Status: protocol.GoalActive,
+		CreatedAt: at, UpdatedAt: at,
 	}
+}
+
+func reviseGoal(t testing.TB, current protocol.Goal, revise func(*protocol.Goal)) protocol.Goal {
+	t.Helper()
+	revise(&current)
+	current.UpdatedAt = current.UpdatedAt.Add(time.Nanosecond)
 	return current
 }
 
-func reviseGoal(t testing.TB, current agent.Goal, revise func(*agent.GoalSnapshot)) agent.Goal {
-	t.Helper()
-	snapshot := current.Snapshot()
-	revise(&snapshot)
-	snapshot.UpdatedAt = snapshot.UpdatedAt.Add(time.Nanosecond)
-	revised, err := agent.RestoreGoal(snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return revised
-}
-
-func goalPointer(current agent.Goal) *agent.Goal { return &current }
+func goalPointer(current protocol.Goal) *protocol.Goal { return &current }
 
 func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	goals := new(goalServiceStub)
@@ -625,10 +601,9 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if err != nil || !exists {
 		t.Fatalf("goal = (%+v, %t, %v)", current, exists, err)
 	}
-	goals.set(reviseGoal(t, current, func(snapshot *agent.GoalSnapshot) {
-		snapshot.Status = agent.GoalBlocked
-		snapshot.ReasonCode = agent.GoalBlockedByModel
-		snapshot.ReasonDetail = "needs clarification"
+	goals.set(reviseGoal(t, current, func(snapshot *protocol.Goal) {
+		snapshot.Status = protocol.GoalBlocked
+		snapshot.Reason = &protocol.GoalReason{Code: protocol.GoalReasonBlockedByModel, Detail: "needs clarification"}
 	}))
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
@@ -640,10 +615,9 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	if goals.reads.Load() <= baseline {
 		t.Fatal("goals.changed did not refetch the goal")
 	}
-	goals.set(reviseGoal(t, current, func(snapshot *agent.GoalSnapshot) {
-		snapshot.Status = agent.GoalCompleting
-		snapshot.ReasonCode = agent.GoalReasonNone
-		snapshot.ReasonDetail = ""
+	goals.set(reviseGoal(t, current, func(snapshot *protocol.Goal) {
+		snapshot.Status = protocol.GoalCompleting
+		snapshot.Reason = nil
 	}))
 	source.events <- changefeed.Event{
 		Type: changefeed.EventType(changefeed.GoalsChanged), Sequence: 2,
@@ -661,7 +635,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		t.Fatalf("goal mutations after settlement command = %d, want %d", writes, baselineWrites)
 	}
 	settling, exists, err := goals.GetGoal(t.Context(), "ses_demo_1")
-	if err != nil || !exists || settling.Status() != agent.GoalCompleting {
+	if err != nil || !exists || settling.Status != protocol.GoalCompleting {
 		t.Fatalf("goal after rejected settlement command = (%+v, %t, %v)", settling, exists, err)
 	}
 	host.Type("/goal-clear")
@@ -815,7 +789,7 @@ type blockingGoalMutationService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID string) (agent.Goal, error) {
+func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
 	select {
 	case b.started <- struct{}{}:
 	default:
@@ -828,7 +802,7 @@ func (b *blockingGoalMutationService) StopGoal(ctx context.Context, sessionID st
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return agent.Goal{}, context.Cause(ctx)
+		return protocol.Goal{}, context.Cause(ctx)
 	}
 }
 

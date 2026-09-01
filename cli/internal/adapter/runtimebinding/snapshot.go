@@ -141,10 +141,7 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		}
 	}
 	if read.goal != nil {
-		projected, projectGoalErr := projectGoal(*read.goal)
-		if projectGoalErr != nil {
-			return agent.SessionSnapshot{}, projectGoalErr
-		}
+		projected := cloneGoal(*read.goal)
 		snapshot.Goal = &projected
 	}
 	if active, ok := snapshot.ActiveRun(); ok && active.Status == agent.RunStatusWaiting {

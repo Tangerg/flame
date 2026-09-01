@@ -131,8 +131,8 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Goal == nil || snapshot.Goal.SessionID() != "ses_1" ||
-		snapshot.Goal.Objective() != goal.Objective {
+	if snapshot.Goal == nil || snapshot.Goal.SessionID != "ses_1" ||
+		snapshot.Goal.Objective != goal.Objective {
 		t.Fatalf("projected Goal = %+v, want %q", snapshot.Goal, goal.Objective)
 	}
 

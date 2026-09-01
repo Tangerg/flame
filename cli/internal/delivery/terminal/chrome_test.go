@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -74,6 +75,12 @@ func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
 	header.SetGoal(nil)
 	if got := drawStatic(t, header, 72, header.Measure(72)); strings.Contains(got, "Goal:") {
 		t.Fatalf("cleared goal remained in header:\n%s", got)
+	}
+}
+
+func TestGoalUsageLabelDoesNotPresentPartialCostAsTotal(t *testing.T) {
+	if got := goalUsageLabel(protocol.GoalUsage{Runs: 2, Steps: 3}); !strings.Contains(got, "cost unavailable") {
+		t.Fatalf("unknown Goal cost label = %q", got)
 	}
 }
 

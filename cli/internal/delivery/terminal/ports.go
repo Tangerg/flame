@@ -77,12 +77,12 @@ type MCPManagement interface {
 }
 
 type Goals interface {
-	GetGoal(context.Context, string) (agent.Goal, bool, error)
-	StartGoal(context.Context, agent.StartGoal) (agent.Goal, error)
-	UpdateGoal(context.Context, agent.UpdateGoal) (agent.Goal, error)
+	GetGoal(context.Context, string) (protocol.Goal, bool, error)
+	StartGoal(context.Context, protocol.StartGoalRequest) (protocol.Goal, error)
+	UpdateGoal(context.Context, protocol.UpdateGoalRequest) (protocol.Goal, error)
 	ClearGoal(context.Context, string) error
-	StopGoal(context.Context, string) (agent.Goal, error)
-	ResumeGoal(context.Context, string) (agent.Goal, error)
+	StopGoal(context.Context, string) (protocol.Goal, error)
+	ResumeGoal(context.Context, string) (protocol.Goal, error)
 }
 
 type Skills interface {

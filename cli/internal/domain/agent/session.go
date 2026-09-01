@@ -182,7 +182,7 @@ type SessionSnapshot struct {
 	Transcript   []Block
 	Runs         []Run
 	Plan         *Plan
-	Goal         *Goal
+	Goal         *runtimeprotocol.Goal
 	Interactions []Interaction
 }
 
@@ -246,13 +246,13 @@ func (s SessionSnapshot) Validate() error {
 		}
 	}
 	if s.Goal != nil {
-		if err := s.Goal.Validate(); err != nil {
+		if err := s.Goal.ValidateWire(); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
 		}
-		if s.Goal.SessionID() != s.Session.ID {
+		if s.Goal.SessionID != s.Session.ID {
 			return fmt.Errorf(
 				"session snapshot: goal belongs to session %q, want %q",
-				s.Goal.SessionID(), s.Session.ID,
+				s.Goal.SessionID, s.Session.ID,
 			)
 		}
 	}
