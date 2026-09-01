@@ -321,7 +321,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     status: ref(() => CHECKS.RunStatus),
   }, ["runId", "status"]),
   AgentDoc: object({
-    path: text(),
+    path: allOf([text(), minLength(1)]),
     scope: ref(() => CHECKS.AgentDocScope),
     title: text(),
   }, ["path", "scope"]),
@@ -2491,11 +2491,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["instanceId", "status"]),
   Recipe: object({
     argumentHint: text(),
-    body: text(),
+    body: allOf([text(), minLength(1)]),
     description: text(),
-    name: text(),
+    name: allOf([text(), minLength(1)]),
     scope: ref(() => CHECKS.RecipeScope),
-    source: text(),
+    source: allOf([text(), minLength(1)]),
   }, ["body", "name", "scope", "source"]),
   RecipeScope: enumOf(["project", "global"]),
   RememberScope: object({

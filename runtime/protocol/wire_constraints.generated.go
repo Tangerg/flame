@@ -2284,6 +2284,22 @@ func (k KnowledgeEntry) ValidateWire() error {
 	)
 }
 
+func (a AgentDoc) ValidateWire() error {
+	return collectWireViolations("AgentDoc",
+		requiredText("path", a.Path),
+		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
+	)
+}
+
+func (r Recipe) ValidateWire() error {
+	return collectWireViolations("Recipe",
+		requiredText("name", r.Name),
+		requiredText("body", r.Body),
+		requiredText("source", r.Source),
+		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
+	)
+}
+
 func (a AgentMemoryItem) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItem",
 		requiredText("id", a.ID),
@@ -2416,12 +2432,6 @@ func (s SubscriptionLimits) ValidateWire() error {
 	)
 }
 
-func (a AgentDoc) ValidateWire() error {
-	return collectWireViolations("AgentDoc",
-		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
-	)
-}
-
 func (a ApprovalModeResult) ValidateWire() error {
 	return collectWireViolations("ApprovalModeResult",
 		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
@@ -2468,12 +2478,6 @@ func (m ManagedSkill) ValidateWire() error {
 func (p ProviderCredential) ValidateWire() error {
 	return collectWireViolations("ProviderCredential",
 		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
-	)
-}
-
-func (r Recipe) ValidateWire() error {
-	return collectWireViolations("Recipe",
-		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
 	)
 }
 

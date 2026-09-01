@@ -152,7 +152,7 @@ func ValidateRecipeCascade(recipes []Recipe) error {
 	perScope := make(map[RecipeScope]int, 2)
 	total := 0
 	for index, recipe := range recipes {
-		if strings.TrimSpace(recipe.Name) == "" || strings.TrimSpace(recipe.Source) == "" {
+		if strings.TrimSpace(recipe.Name) == "" || strings.TrimSpace(recipe.Body) == "" || strings.TrimSpace(recipe.Source) == "" {
 			return fmt.Errorf("%w: recipe %d is incomplete", ErrInvalidPromptSource, index)
 		}
 		switch recipe.Scope {

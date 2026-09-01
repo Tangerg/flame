@@ -7164,6 +7164,32 @@
       ]
     },
     {
+      "type": "AgentDoc",
+      "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "Recipe",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "body",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "source",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
       "type": "AgentMemoryItemRequest",
       "rules": [
         {

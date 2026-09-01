@@ -223,6 +223,32 @@ func TestKnowledgeTargetIsUnambiguous(t *testing.T) {
 	}
 }
 
+func TestAuthoringContextOutputsAreComplete(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []WireValidator{
+		AgentDoc{Path: "/repo/AGENTS.md", Scope: AgentDocScopeProjectRoot},
+		Recipe{Name: "review", Body: "Review $ARGUMENTS", Scope: RecipeScopeProject, Source: "/repo/review.md"},
+	} {
+		if err := value.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected complete %T: %v", value, err)
+		}
+	}
+
+	for _, test := range []struct {
+		shape string
+		field string
+		value WireValidator
+	}{
+		{shape: "AgentDoc", field: "path", value: AgentDoc{Scope: AgentDocScopeHome}},
+		{shape: "Recipe", field: "name", value: Recipe{Body: "body", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
+		{shape: "Recipe", field: "body", value: Recipe{Name: "review", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
+		{shape: "Recipe", field: "source", value: Recipe{Name: "review", Body: "body", Scope: RecipeScopeGlobal}},
+	} {
+		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+	}
+}
+
 func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	t.Parallel()
 

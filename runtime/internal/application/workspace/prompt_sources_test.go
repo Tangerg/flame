@@ -78,4 +78,9 @@ func TestRecipeCascadeContract(t *testing.T) {
 	if err := ValidateRecipeCascade(overfull); !errors.Is(err, ErrPromptSourceTooLarge) {
 		t.Fatalf("overfull error = %v, want ErrPromptSourceTooLarge", err)
 	}
+	if err := ValidateRecipeCascade([]Recipe{{
+		Name: "empty", Body: " \n\t", Scope: RecipeScopeGlobal, Source: "/home/empty.md",
+	}}); !errors.Is(err, ErrInvalidPromptSource) {
+		t.Fatalf("blank body error = %v, want ErrInvalidPromptSource", err)
+	}
 }

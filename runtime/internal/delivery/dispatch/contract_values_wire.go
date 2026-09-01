@@ -40,6 +40,7 @@ func registerValueConstraints(s *Shapes) {
 	registerModelValues(s)
 	registerToolValues(s)
 	registerKnowledgeValues(s)
+	registerAuthoringContextValues(s)
 	registerAgentMemoryValues(s)
 	registerScheduleValues(s)
 	registerGoalValues(s)
@@ -691,6 +692,11 @@ func registerToolValues(s *Shapes) {
 func registerKnowledgeValues(s *Shapes) {
 	nonEmpty[protocol.KnowledgeEntry](s, "revision")
 	nonEmpty[protocol.UpdateKnowledgeRequest](s, "expectedRevision")
+}
+
+func registerAuthoringContextValues(s *Shapes) {
+	nonEmpty[protocol.AgentDoc](s, "path")
+	nonEmpty[protocol.Recipe](s, "name", "body", "source")
 }
 
 func registerAgentMemoryValues(s *Shapes) {
