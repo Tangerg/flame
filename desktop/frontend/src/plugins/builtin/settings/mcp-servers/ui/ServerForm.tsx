@@ -12,18 +12,7 @@ import {
 } from "../application/mcpServerConfig";
 import { useT } from "@/lib/i18n";
 import { LinesField } from "./ServerFormFields";
-import {
-  editRetainedValue,
-  type MCPServerDraft,
-  initialMCPServerDraft,
-  isMCPServerDraftValid,
-  mcpAuthorizationNeedsDisposition,
-  mcpEnvironmentNeedsDisposition,
-  mcpHeadersNeedDisposition,
-  mcpServerInputFromDraft,
-  retainedValueText,
-  setRetainedValueCleared,
-} from "../application/mcpServerDraft";
+import { MCPServerEdit, type MCPServerFields } from "../application/mcpServerDraft";
 import { ToolControls } from "./ToolControls";
 import { useAsyncFeedback } from "../../kit";
 
@@ -41,7 +30,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   const test = useTestMCPServer();
   const isEdit = server !== undefined;
 
-  const [draft, setDraft] = useState<MCPServerDraft>(() => initialMCPServerDraft(server));
+  const [edit, setEdit] = useState<MCPServerEdit>(() => MCPServerEdit.of(server));
+  const draft = edit.fields;
 
   const [saving, setSaving] = useState(false);
   const materialGeneration = useMCPServerMutationMaterialGeneration();
@@ -51,16 +41,16 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   const hasHeadersStored = Object.keys(server?.headersMasked ?? {}).length > 0;
   const hasEnvironmentStored = Object.keys(server?.envMasked ?? {}).length > 0;
 
-  const updateDraft = <K extends keyof MCPServerDraft>(key: K, value: MCPServerDraft[K]) => {
-    setDraft((current) => ({ ...current, [key]: value }));
+  const updateDraft = <K extends keyof MCPServerFields>(key: K, value: MCPServerFields[K]) => {
+    setEdit((current) => current.with(key, value));
   };
 
-  const buildInput = () => mcpServerInputFromDraft(draft, server);
+  const buildInput = () => edit.toInput();
 
-  const needsAuthorizationDisposition = mcpAuthorizationNeedsDisposition(draft, server);
-  const needsHeadersDisposition = mcpHeadersNeedDisposition(draft, server);
-  const needsEnvironmentDisposition = mcpEnvironmentNeedsDisposition(draft, server);
-  const valid = isMCPServerDraftValid(draft, server);
+  const needsAuthorizationDisposition = edit.authorizationNeedsDisposition;
+  const needsHeadersDisposition = edit.headersNeedDisposition;
+  const needsEnvironmentDisposition = edit.environmentNeedsDisposition;
+  const valid = edit.isValid;
 
   const onSave = async () => {
     setSaving(true);
@@ -134,8 +124,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
           />
           <LinesField
             label={t("mcp.form.env")}
-            value={retainedValueText(draft.environment)}
-            onChange={(value) => updateDraft("environment", editRetainedValue(value))}
+            value={draft.environment.text}
+            onChange={(value) => updateDraft("environment", draft.environment.edited(value))}
             placeholder={
               hasEnvironmentStored ? t("mcp.form.env.keep") : t("mcp.form.env.placeholder")
             }
@@ -146,7 +136,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
               <Switch
                 checked={draft.environment.disposition === "clear"}
                 onCheckedChange={(value) =>
-                  updateDraft("environment", setRetainedValueCleared(value))
+                  updateDraft("environment", draft.environment.cleared(value))
                 }
                 ariaLabel={t("mcp.form.env.clear")}
               />
@@ -175,8 +165,10 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
           <TextField
             type="password"
             aria-label={t("mcp.form.auth.aria")}
-            value={retainedValueText(draft.authorization)}
-            onChange={(e) => updateDraft("authorization", editRetainedValue(e.target.value))}
+            value={draft.authorization.text}
+            onChange={(e) =>
+              updateDraft("authorization", draft.authorization.edited(e.target.value))
+            }
             placeholder={hasAuthStored ? t("mcp.form.auth.keep") : t("mcp.form.auth.placeholder")}
           />
           {hasAuthStored && (
@@ -185,7 +177,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
               <Switch
                 checked={draft.authorization.disposition === "clear"}
                 onCheckedChange={(value) =>
-                  updateDraft("authorization", setRetainedValueCleared(value))
+                  updateDraft("authorization", draft.authorization.cleared(value))
                 }
                 ariaLabel={t("mcp.form.auth.clear")}
               />
@@ -196,8 +188,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
           )}
           <LinesField
             label={t("mcp.form.headers")}
-            value={retainedValueText(draft.headers)}
-            onChange={(value) => updateDraft("headers", editRetainedValue(value))}
+            value={draft.headers.text}
+            onChange={(value) => updateDraft("headers", draft.headers.edited(value))}
             placeholder={
               hasHeadersStored ? t("mcp.form.headers.keep") : t("mcp.form.headers.placeholder")
             }
@@ -207,7 +199,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
               <span>{t("mcp.form.headers.clear")}</span>
               <Switch
                 checked={draft.headers.disposition === "clear"}
-                onCheckedChange={(value) => updateDraft("headers", setRetainedValueCleared(value))}
+                onCheckedChange={(value) => updateDraft("headers", draft.headers.cleared(value))}
                 ariaLabel={t("mcp.form.headers.clear")}
               />
             </label>
@@ -247,9 +239,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             server={server.name}
             disabledTools={draft.disabledTools}
             autoApproveTools={draft.autoApproveTools}
-            onChange={(next) => {
-              setDraft((current) => ({ ...current, ...next }));
-            }}
+            onChange={(next) => setEdit((current) => current.withToolSelection(next))}
           />
         </div>
       )}

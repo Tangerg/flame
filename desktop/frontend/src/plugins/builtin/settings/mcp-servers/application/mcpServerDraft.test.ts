@@ -1,31 +1,33 @@
 import { describe, expect, it } from "vitest";
 import type { MCPServerSettings } from "./mcpServerQueries";
-import {
-  editRetainedValue,
-  initialMCPServerDraft,
-  isMCPServerDraftValid,
-  mcpServerInputFromDraft,
-  retainedValueText,
-  setRetainedValueCleared,
-} from "./mcpServerDraft";
+import { MCPServerEdit, RetainedValue, type MCPServerFields } from "./mcpServerDraft";
+
+/** Folds a partial form state onto an edit through the public transition, so these stay
+ *  tests of the model rather than of an object literal shaped like it. */
+function editWith(fields: Partial<MCPServerFields>, server?: MCPServerSettings): MCPServerEdit {
+  return Object.entries(fields).reduce<MCPServerEdit>(
+    (edit, [key, value]) => edit.with(key as keyof MCPServerFields, value as never),
+    MCPServerEdit.of(server),
+  );
+}
 
 describe("mcpServerDraft", () => {
   it("builds stdio config input from the form draft", () => {
-    const input = mcpServerInputFromDraft({
+    const input = editWith({
       name: " git ",
       transport: "stdio",
       description: " repository tools ",
       command: " npx ",
       args: " -y\n@modelcontextprotocol/server-git\n\n",
-      environment: editRetainedValue("TOKEN=a=b\nEMPTY_KEY\n"),
+      environment: RetainedValue.preserved().edited("TOKEN=a=b\nEMPTY_KEY\n"),
       dir: " /repo ",
       url: "",
-      authorization: setRetainedValueCleared(false),
-      headers: setRetainedValueCleared(false),
+      authorization: RetainedValue.preserved().cleared(false),
+      headers: RetainedValue.preserved().cleared(false),
       timeoutSec: "30",
       disabledTools: ["danger"],
       autoApproveTools: ["status"],
-    });
+    }).toInput();
 
     expect(input).toMatchObject({
       name: "git",
@@ -46,21 +48,21 @@ describe("mcpServerDraft", () => {
   // the setter takes the string and stores nothing — so the variable disappeared
   // between the form and the wire with no error anywhere.
   it("carries an environment variable whose name is an inherited member", () => {
-    const input = mcpServerInputFromDraft({
+    const input = editWith({
       name: "srv",
       transport: "stdio",
       description: "",
       command: "run",
       args: "",
-      environment: editRetainedValue("__proto__=polluted\nconstructor=c\nKEEP=1"),
+      environment: RetainedValue.preserved().edited("__proto__=polluted\nconstructor=c\nKEEP=1"),
       dir: "",
       url: "",
-      authorization: setRetainedValueCleared(false),
-      headers: setRetainedValueCleared(false),
+      authorization: RetainedValue.preserved().cleared(false),
+      headers: RetainedValue.preserved().cleared(false),
       timeoutSec: "",
       disabledTools: [],
       autoApproveTools: [],
-    });
+    }).toInput();
 
     expect(Object.keys(input.env ?? {}).sort()).toEqual(["KEEP", "__proto__", "constructor"]);
     expect(Object.getPrototypeOf(input.env)).toBe(Object.prototype);
@@ -80,24 +82,24 @@ describe("mcpServerDraft", () => {
       url: "https://example.com/mcp",
       authorizationMasked: "********",
     };
-    const input = mcpServerInputFromDraft(
+    const input = editWith(
       {
         name: " cloud ",
         transport: "streamableHttp",
         description: "",
         command: "",
         args: "",
-        environment: setRetainedValueCleared(false),
+        environment: RetainedValue.preserved().cleared(false),
         dir: "",
         url: " https://example.com/mcp ",
-        authorization: editRetainedValue("   "),
-        headers: editRetainedValue("X-Trace=abc=123\nBare\n"),
+        authorization: RetainedValue.preserved().edited("   "),
+        headers: RetainedValue.preserved().edited("X-Trace=abc=123\nBare\n"),
         timeoutSec: "",
         disabledTools: [],
         autoApproveTools: [],
       },
       server,
-    );
+    ).toInput();
 
     expect(input).toMatchObject({
       name: "cloud",
@@ -113,7 +115,7 @@ describe("mcpServerDraft", () => {
   });
 
   it("initializes editable text fields from an existing server", () => {
-    const draft = initialMCPServerDraft({
+    const draft = MCPServerEdit.of({
       id: "fs",
       name: "fs",
       desc: "",
@@ -131,7 +133,7 @@ describe("mcpServerDraft", () => {
       autoApproveTools: ["read"],
     });
 
-    expect(draft).toMatchObject({
+    expect(draft.fields).toMatchObject({
       name: "fs",
       transport: "stdio",
       command: "node",
@@ -159,21 +161,15 @@ describe("mcpServerDraft", () => {
       url: "https://old.example/mcp",
       authorizationMasked: "********",
     };
-    const draft = {
-      ...initialMCPServerDraft(server),
-      url: "https://new.example/mcp",
-    };
+    const draft = editWith({ url: "https://new.example/mcp" }, server);
 
-    expect(isMCPServerDraftValid(draft, server)).toBe(false);
-    const cleared = { ...draft, authorization: setRetainedValueCleared(true) };
-    expect(isMCPServerDraftValid(cleared, server)).toBe(true);
+    expect(draft.isValid).toBe(false);
+    const cleared = draft.with("authorization", RetainedValue.preserved().cleared(true));
+    expect(cleared.isValid).toBe(true);
     expect(
-      isMCPServerDraftValid(
-        { ...draft, authorization: editRetainedValue("Bearer replacement") },
-        server,
-      ),
+      draft.with("authorization", RetainedValue.preserved().edited("Bearer replacement")).isValid,
     ).toBe(true);
-    expect(mcpServerInputFromDraft(cleared, server).authorization).toBe(null);
+    expect(cleared.toInput().authorization).toBe(null);
   });
 
   it("requires explicit dispositions for stored headers when the HTTP origin changes", () => {
@@ -190,18 +186,15 @@ describe("mcpServerDraft", () => {
       url: "https://old.example/mcp",
       headersMasked: { "X-API-Key": "********" },
     };
-    const draft = { ...initialMCPServerDraft(server), url: "https://new.example/mcp" };
+    const draft = editWith({ url: "https://new.example/mcp" }, server);
 
-    expect(isMCPServerDraftValid(draft, server)).toBe(false);
-    const cleared = { ...draft, headers: setRetainedValueCleared(true) };
-    expect(isMCPServerDraftValid(cleared, server)).toBe(true);
+    expect(draft.isValid).toBe(false);
+    const cleared = draft.with("headers", RetainedValue.preserved().cleared(true));
+    expect(cleared.isValid).toBe(true);
     expect(
-      isMCPServerDraftValid(
-        { ...draft, headers: editRetainedValue("X-API-Key=replacement") },
-        server,
-      ),
+      draft.with("headers", RetainedValue.preserved().edited("X-API-Key=replacement")).isValid,
     ).toBe(true);
-    expect(mcpServerInputFromDraft(cleared, server).headers).toBe(null);
+    expect(cleared.toInput().headers).toBe(null);
   });
 
   it("preserves stored environment only for an unchanged stdio process target", () => {
@@ -220,58 +213,54 @@ describe("mcpServerDraft", () => {
       dir: "/repo",
       envMasked: { API_KEY: "********" },
     };
-    const unchanged = initialMCPServerDraft(server);
+    const unchanged = MCPServerEdit.of(server);
 
-    expect(isMCPServerDraftValid(unchanged, server)).toBe(true);
-    expect(mcpServerInputFromDraft(unchanged, server).env).toBeUndefined();
+    expect(unchanged.isValid).toBe(true);
+    expect(unchanged.toInput().env).toBeUndefined();
 
-    const changed = { ...unchanged, args: "other.js" };
-    expect(isMCPServerDraftValid(changed, server)).toBe(false);
-    const cleared = { ...changed, environment: setRetainedValueCleared(true) };
-    expect(isMCPServerDraftValid(cleared, server)).toBe(true);
-    expect(mcpServerInputFromDraft(cleared, server).env).toBe(null);
+    const changed = unchanged.with("args", "other.js");
+    expect(changed.isValid).toBe(false);
+    const cleared = changed.with("environment", RetainedValue.preserved().cleared(true));
+    expect(cleared.isValid).toBe(true);
+    expect(cleared.toInput().env).toBe(null);
     expect(
-      mcpServerInputFromDraft(
-        { ...changed, environment: editRetainedValue("API_KEY=replacement") },
-        server,
-      ).env,
+      changed.with("environment", RetainedValue.preserved().edited("API_KEY=replacement")).toInput()
+        .env,
     ).toEqual({ API_KEY: "replacement" });
   });
 
   it("validates the active transport's required field", () => {
-    const base = initialMCPServerDraft();
+    const stdio = (fields: Partial<MCPServerFields>) =>
+      editWith({ name: "git", command: "npx", ...fields }).isValid;
 
-    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx" })).toBe(true);
-    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "0" })).toBe(
-      false,
-    );
-    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "1.5" })).toBe(
-      false,
-    );
-    expect(isMCPServerDraftValid({ ...base, name: "git", command: "npx", timeoutSec: "15" })).toBe(
-      true,
-    );
-    expect(isMCPServerDraftValid({ ...base, name: "git", command: "" })).toBe(false);
+    expect(stdio({})).toBe(true);
+    expect(stdio({ timeoutSec: "0" })).toBe(false);
+    expect(stdio({ timeoutSec: "1.5" })).toBe(false);
+    expect(stdio({ timeoutSec: "15" })).toBe(true);
+    expect(stdio({ command: "" })).toBe(false);
     expect(
-      isMCPServerDraftValid({
-        ...base,
+      editWith({
         name: "cloud",
         transport: "streamableHttp",
         url: "https://example.com/mcp",
-      }),
+      }).isValid,
     ).toBe(true);
   });
 
+  // A credential the user has not touched must read as "leave it alone", never as "erase
+  // it" — the two are one keystroke apart in a form and unrecoverable apart on the server.
   it("models retained values as one explicit disposition", () => {
-    const replacement = editRetainedValue("  secret  ");
-    expect(replacement).toEqual({ disposition: "replace", text: "  secret  " });
-    expect(retainedValueText(replacement)).toBe("  secret  ");
+    const replacement = RetainedValue.preserved().edited("  secret  ");
+    expect(replacement.disposition).toBe("replace");
+    expect(replacement.text).toBe("  secret  ");
 
-    const cleared = setRetainedValueCleared(true);
-    expect(cleared).toEqual({ disposition: "clear" });
-    expect(retainedValueText(cleared)).toBe("");
+    const cleared = RetainedValue.preserved().cleared(true);
+    expect(cleared.disposition).toBe("clear");
+    expect(cleared.text).toBe("");
+    expect(cleared.submittedText()).toBe(null);
 
-    expect(editRetainedValue("   ")).toEqual({ disposition: "preserve" });
-    expect(setRetainedValueCleared(false)).toEqual({ disposition: "preserve" });
+    expect(RetainedValue.preserved().edited("   ").disposition).toBe("preserve");
+    expect(RetainedValue.preserved().cleared(false).disposition).toBe("preserve");
+    expect(RetainedValue.preserved().submittedText()).toBeUndefined();
   });
 });
