@@ -142,6 +142,19 @@ func TestStatusKeepsAnUnresolvedWorkbenchProblemAboveRunProgress(t *testing.T) {
 	}
 }
 
+func TestStatusProjectsMultilineTextIntoItsSingleRow(t *testing.T) {
+	status := newStatusView(kit.Dark(), kit.Unicode())
+	status.active("reading\nprovider\tresponse\x00")
+	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "reading provider response") {
+		t.Fatalf("multiline progress was not projected as one readable row:\n%s", got)
+	}
+
+	status.setProblem("workbench\nstate\tfailed\x00")
+	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "workbench state failed") {
+		t.Fatalf("multiline problem was not projected as one readable row:\n%s", got)
+	}
+}
+
 func TestActivityViewCentersACompactWindowOnTheActiveStep(t *testing.T) {
 	activity := newActivityView(kit.Dark(), kit.Unicode())
 	activity.Set([]protocol.PlanStep{

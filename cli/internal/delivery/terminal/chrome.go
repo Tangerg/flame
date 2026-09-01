@@ -314,12 +314,12 @@ func (s *statusView) Draw(view grid.View) {
 		return
 	}
 	if s.problem != "" {
-		kit.Label{Text: s.problem, Style: s.theme.Danger, Ellipsis: s.glyphs.Ellipsis}.Draw(view)
+		kit.Label{Text: statusLineText(s.problem), Style: s.theme.Danger, Ellipsis: s.glyphs.Ellipsis}.Draw(view)
 		return
 	}
 	if s.busy {
 		s.status.Theme, s.status.Glyphs = s.theme, s.glyphs
-		s.status.Doing, s.status.Elapsed = s.doing, s.elapsed
+		s.status.Doing, s.status.Elapsed = statusLineText(s.doing), s.elapsed
 		right := joinStatusLabels(
 			contextLabel(s.contextTokens),
 			runningDescendantsLabel(s.glyphs, s.runningDescendants),
@@ -343,7 +343,7 @@ func (s *statusView) Draw(view grid.View) {
 	case agent.OutcomeFailed, agent.OutcomeLost:
 		style = s.theme.Danger
 	}
-	left := s.doing
+	left := statusLineText(s.doing)
 	if right == "" || text.Width(right)+2 >= width {
 		kit.Label{Text: left, Style: style, Ellipsis: s.glyphs.Ellipsis}.Draw(view)
 		return
@@ -378,6 +378,13 @@ func joinStatusLabels(labels ...string) string {
 		joined += label
 	}
 	return joined
+}
+
+// statusLineText projects arbitrary failure and progress text into the single
+// row the shell reserves. Collapsing logical whitespace before Printable drops
+// terminal controls without joining words that arrived on separate lines.
+func statusLineText(value string) string {
+	return text.Printable(strings.Join(strings.Fields(value), " "))
 }
 
 func contextLabel(contextTokens int64) string {
