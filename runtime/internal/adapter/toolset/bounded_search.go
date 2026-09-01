@@ -132,7 +132,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	entries, err := workspaceadapter.ListFiles(ctx, root, workspaceadapter.ListFilesOptions{
+	entries, err := workspaceadapter.ListFiles(ctx, root, workspaceapp.FileListOptions{
 		Path: path, Glob: request.Pattern, Recursive: true,
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	material := runtimeSearchFramingBytes
 	retain := true
 	for _, entry := range entries {
-		if entry.Kind != workspaceadapter.EntryFile {
+		if entry.Kind != workspaceapp.FileEntryFile {
 			continue
 		}
 		response.Total++

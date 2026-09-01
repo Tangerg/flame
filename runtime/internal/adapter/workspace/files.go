@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
@@ -22,45 +22,6 @@ import (
 // repo's own .gitignore as authority); outside a repo it's a filesystem walk
 // that skips a backstop set of heavy build/vcs dirs. This package owns Git
 // interaction so callers depend only on listing behavior.
-
-// EntryKind is a listed entry's type: file, directory, or symbolic link.
-type EntryKind string
-
-const (
-	EntryFile    EntryKind = "file"
-	EntryDir     EntryKind = "dir"
-	EntrySymlink EntryKind = "symlink"
-)
-
-// FileEntry is one inspected entry, path relative to the workspace root
-// (slash-separated). It owns the file facts needed by every listing consumer;
-// callers don't need a second, potentially inconsistent stat pass.
-type FileEntry struct {
-	Path       string
-	Name       string
-	Kind       EntryKind
-	SizeBytes  int64
-	ModifiedAt time.Time
-}
-
-// OrderKey is the stable ordering and pagination identity for a listing.
-// Directories sort before non-directories; paths break ties deterministically.
-func (f FileEntry) OrderKey() string {
-	class := "1"
-	if f.Kind == EntryDir {
-		class = "0"
-	}
-	return class + ":" + f.Path
-}
-
-// ListFilesOptions controls one listing. Path is a root-relative subdirectory
-// already confined by the caller; empty selects the root.
-type ListFilesOptions struct {
-	Path           string
-	Glob           string
-	Recursive      bool
-	IncludeIgnored bool
-}
 
 var (
 	// ErrListingTooLarge asks the caller to narrow Path or Glob instead of
@@ -91,7 +52,7 @@ var backstopExclude = map[string]bool{
 // immediate children (files + dirs) of opts.Path, for a lazy file tree.
 // The complete, deterministically ordered result is returned for use-case
 // pagination. Oversized trees fail explicitly with ErrListingTooLarge.
-func ListFiles(ctx context.Context, root string, opts ListFilesOptions) ([]FileEntry, error) {
+func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
 	sub := path.Clean(filepath.ToSlash(opts.Path))
 	if sub == "." || sub == "/" {
 		sub = ""
@@ -144,7 +105,7 @@ func ListFiles(ctx context.Context, root string, opts ListFilesOptions) ([]FileE
 	return levelEntries(root, files, sub)
 }
 
-func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnored bool) ([]FileEntry, error) {
+func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -156,7 +117,7 @@ func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnore
 	if err != nil {
 		return nil, err
 	}
-	entries := make([]FileEntry, 0, len(children))
+	entries := make([]workspaceapp.FileEntry, 0, len(children))
 	for _, child := range children {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -241,8 +202,8 @@ func walkFiles(ctx context.Context, root, sub string, includeIgnored bool) ([]st
 }
 
 // recursiveFiles turns flat candidate paths into inspected file entries.
-func recursiveFiles(root string, files []string, glob, sub string) ([]FileEntry, error) {
-	out := make([]FileEntry, 0, len(files))
+func recursiveFiles(root string, files []string, glob, sub string) ([]workspaceapp.FileEntry, error) {
+	out := make([]workspaceapp.FileEntry, 0, len(files))
 	for _, f := range files {
 		if glob != "" {
 			candidate, ok := listingRelativePath(f, sub)
@@ -282,7 +243,7 @@ func listingRelativePath(file, sub string) (string, bool) {
 // levelEntries derives the immediate children of sub from the flat candidate
 // paths: direct files become file entries, and any deeper path contributes its
 // first path segment as a dir entry (deduped). Dirs sort before files.
-func levelEntries(root string, files []string, sub string) ([]FileEntry, error) {
+func levelEntries(root string, files []string, sub string) ([]workspaceapp.FileEntry, error) {
 	prefix := ""
 	if sub != "" {
 		prefix = sub + "/"
@@ -307,7 +268,7 @@ func levelEntries(root string, files []string, sub string) ([]FileEntry, error) 
 		}
 		children = append(children, f)
 	}
-	entries := make([]FileEntry, 0, len(children))
+	entries := make([]workspaceapp.FileEntry, 0, len(children))
 	for _, child := range children {
 		entry, exists, err := inspectEntry(root, child)
 		if err != nil {
@@ -321,25 +282,25 @@ func levelEntries(root string, files []string, sub string) ([]FileEntry, error) 
 	return entries, nil
 }
 
-func inspectEntry(root, rel string) (FileEntry, bool, error) {
+func inspectEntry(root, rel string) (workspaceapp.FileEntry, bool, error) {
 	info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
 	if errors.Is(err, os.ErrNotExist) {
 		// git ls-files includes tracked deletions. They are not current workspace
 		// entries, so omit them from the filesystem view.
-		return FileEntry{}, false, nil
+		return workspaceapp.FileEntry{}, false, nil
 	}
 	if err != nil {
-		return FileEntry{}, false, fmt.Errorf("inspect %q: %w", rel, err)
+		return workspaceapp.FileEntry{}, false, fmt.Errorf("inspect %q: %w", rel, err)
 	}
 
-	kind := EntryFile
+	kind := workspaceapp.FileEntryFile
 	switch {
 	case info.Mode()&os.ModeSymlink != 0:
-		kind = EntrySymlink
+		kind = workspaceapp.FileEntrySymlink
 	case info.IsDir():
-		kind = EntryDir
+		kind = workspaceapp.FileEntryDir
 	}
-	return FileEntry{
+	return workspaceapp.FileEntry{
 		Path:       rel,
 		Name:       path.Base(rel),
 		Kind:       kind,
@@ -348,8 +309,8 @@ func inspectEntry(root, rel string) (FileEntry, bool, error) {
 	}, true, nil
 }
 
-func sortFileEntries(entries []FileEntry) {
-	slices.SortFunc(entries, func(a, b FileEntry) int {
+func sortFileEntries(entries []workspaceapp.FileEntry) {
+	slices.SortFunc(entries, func(a, b workspaceapp.FileEntry) int {
 		return strings.Compare(a.OrderKey(), b.OrderKey())
 	})
 }

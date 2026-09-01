@@ -44,7 +44,8 @@ type FileEntry struct {
 	ModifiedAt time.Time
 }
 
-func (f FileEntry) orderKey() string {
+// OrderKey is the stable ordering and pagination identity for a listing.
+func (f FileEntry) OrderKey() string {
 	class := "1"
 	if f.Kind == FileEntryDir {
 		class = "0"
@@ -431,7 +432,7 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %w", ErrPageLimit, err)
 	}
-	slices.SortFunc(entries, func(a, b FileEntry) int { return cmp.Compare(a.orderKey(), b.orderKey()) })
+	slices.SortFunc(entries, func(a, b FileEntry) int { return cmp.Compare(a.OrderKey(), b.OrderKey()) })
 	anchor, err := pagination.Decode(cursor, fileListPageNamespace, filters)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %w", ErrPageCursor, err)
@@ -442,7 +443,7 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 		}
 		start := len(entries)
 		for index, entry := range entries {
-			if candidate := entry.orderKey(); candidate >= anchor[0] {
+			if candidate := entry.OrderKey(); candidate >= anchor[0] {
 				start = index
 				if candidate == anchor[0] {
 					start++
@@ -457,7 +458,7 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 	if end == len(entries) {
 		return page, "", nil
 	}
-	nextCursor, err := pagination.Encode(fileListPageNamespace, filters, []string{entries[end-1].orderKey()})
+	nextCursor, err := pagination.Encode(fileListPageNamespace, filters, []string{entries[end-1].OrderKey()})
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %w", ErrPageCursor, err)
 	}

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
 // buildTree lays out a small non-git tree under t.TempDir() for the walk path
@@ -32,7 +34,7 @@ func buildTree(t *testing.T) string {
 	return root
 }
 
-func paths(entries []FileEntry) []string {
+func paths(entries []workspaceapp.FileEntry) []string {
 	out := make([]string, len(entries))
 	for i, e := range entries {
 		out[i] = e.Path
@@ -42,7 +44,7 @@ func paths(entries []FileEntry) []string {
 
 func TestListFiles_RecursiveSkipsBackstop(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{Recursive: true})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +59,7 @@ func TestListFiles_RecursiveSkipsBackstop(t *testing.T) {
 
 func TestListFiles_IncludeIgnoredSurfacesBackstop(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{Recursive: true, IncludeIgnored: true})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,15 +73,15 @@ func TestListFiles_IncludeIgnoredSurfacesBackstop(t *testing.T) {
 
 func TestListFiles_OneLevelDirsThenFiles(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Root level: the `sub` dir (dirs sort first) then the `a.txt` file.
-	if len(got) != 2 || got[0].Kind != EntryDir || got[0].Name != "sub" {
+	if len(got) != 2 || got[0].Kind != workspaceapp.FileEntryDir || got[0].Name != "sub" {
 		t.Fatalf("level[0] = %+v, want dir sub", got)
 	}
-	if got[1].Kind != EntryFile || got[1].Name != "a.txt" {
+	if got[1].Kind != workspaceapp.FileEntryFile || got[1].Name != "a.txt" {
 		t.Fatalf("level[1] = %+v, want file a.txt", got[1])
 	}
 }
@@ -93,7 +95,7 @@ func TestListFiles_OneLevelIncludesEmptyDirectoryWithoutDescending(t *testing.T)
 		t.Fatal(err)
 	}
 
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +112,7 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 		}
 	}
 
-	for _, options := range []ListFilesOptions{
+	for _, options := range []workspaceapp.FileListOptions{
 		{IncludeIgnored: true},
 		{Recursive: true, IncludeIgnored: true},
 	} {
@@ -130,7 +132,7 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 
 func TestListFiles_ScopedToSubdir(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{Path: "sub"})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Path: "sub"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +145,7 @@ func TestListFiles_ScopedToSubdir(t *testing.T) {
 
 func TestListFiles_GlobFilters(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{Glob: "**/*.go"})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Glob: "**/*.go"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +172,7 @@ func TestListFilesGlobUsesDoublestarRelativeToSelectedPath(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{
 		Path: "project", Glob: "src/**/*.ts",
 	})
 	if err != nil {
@@ -187,7 +189,7 @@ func TestListFilesGlobUsesDoublestarRelativeToSelectedPath(t *testing.T) {
 func TestListFilesRejectsInvalidGlob(t *testing.T) {
 	t.Parallel()
 
-	_, err := ListFiles(context.Background(), t.TempDir(), ListFilesOptions{Glob: "["})
+	_, err := ListFiles(context.Background(), t.TempDir(), workspaceapp.FileListOptions{Glob: "["})
 	if !errors.Is(err, ErrInvalidGlob) {
 		t.Fatalf("ListFiles() error = %v, want ErrInvalidGlob", err)
 	}
@@ -198,11 +200,11 @@ func TestListFilesInspectsMetadataAndSymlinks(t *testing.T) {
 	if err := os.Symlink("a.txt", filepath.Join(root, "a-link")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	got, err := ListFiles(context.Background(), root, ListFilesOptions{Recursive: true})
+	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var file, link FileEntry
+	var file, link workspaceapp.FileEntry
 	for _, entry := range got {
 		switch entry.Path {
 		case "a.txt":
@@ -211,10 +213,10 @@ func TestListFilesInspectsMetadataAndSymlinks(t *testing.T) {
 			link = entry
 		}
 	}
-	if file.Kind != EntryFile || file.SizeBytes != 1 || file.ModifiedAt.IsZero() {
+	if file.Kind != workspaceapp.FileEntryFile || file.SizeBytes != 1 || file.ModifiedAt.IsZero() {
 		t.Fatalf("file metadata = %+v", file)
 	}
-	if link.Kind != EntrySymlink {
+	if link.Kind != workspaceapp.FileEntrySymlink {
 		t.Fatalf("symlink metadata = %+v", link)
 	}
 }
@@ -224,7 +226,7 @@ func TestListFilesHonorsCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := ListFiles(ctx, t.TempDir(), ListFilesOptions{Recursive: true, IncludeIgnored: true})
+	_, err := ListFiles(ctx, t.TempDir(), workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("ListFiles() error = %v, want context.Canceled", err)
 	}

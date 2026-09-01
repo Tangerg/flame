@@ -16,9 +16,7 @@ import (
 type FileBrowser struct{}
 
 func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
-	entries, err := ListFiles(ctx, root, ListFilesOptions{
-		Path: options.Path, Glob: options.Glob, Recursive: options.Recursive, IncludeIgnored: options.IncludeIgnored,
-	})
+	entries, err := ListFiles(ctx, root, options)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrListingTooLarge):
@@ -29,18 +27,7 @@ func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.F
 			return nil, err
 		}
 	}
-	out := make([]workspaceapp.FileEntry, 0, len(entries))
-	for _, entry := range entries {
-		kind, ok := fileEntryKind(entry.Kind)
-		if !ok {
-			return nil, fmt.Errorf("workspace: unsupported file entry kind %q", entry.Kind)
-		}
-		out = append(out, workspaceapp.FileEntry{
-			Path: entry.Path, Name: entry.Name, Kind: kind,
-			SizeBytes: entry.SizeBytes, ModifiedAt: entry.ModifiedAt,
-		})
-	}
-	return out, nil
+	return entries, nil
 }
 
 func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.FileReadPlan) (_ workspaceapp.FileReadResult, err error) {
@@ -118,18 +105,5 @@ func workspaceReadBudget(requested int) (int, error) {
 		return workspaceapp.DefaultFileReadBytes, nil
 	default:
 		return min(requested, workspaceapp.MaxFileReadBytes), nil
-	}
-}
-
-func fileEntryKind(kind EntryKind) (workspaceapp.FileEntryKind, bool) {
-	switch kind {
-	case EntryFile:
-		return workspaceapp.FileEntryFile, true
-	case EntryDir:
-		return workspaceapp.FileEntryDir, true
-	case EntrySymlink:
-		return workspaceapp.FileEntrySymlink, true
-	default:
-		return "", false
 	}
 }

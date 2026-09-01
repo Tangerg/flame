@@ -25,7 +25,7 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	if input.Pattern == nil || input.Limit <= 0 || input.Limit > workspaceapp.MaxGrepLimit {
 		return workspaceapp.GrepResult{}, workspaceapp.ErrInvalidGrepQuery
 	}
-	entries, err := ListFiles(ctx, root, ListFilesOptions{Path: input.Path, Recursive: true})
+	entries, err := ListFiles(ctx, root, workspaceapp.FileListOptions{Path: input.Path, Recursive: true})
 	if err != nil {
 		if errors.Is(err, ErrListingTooLarge) {
 			return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
@@ -64,8 +64,8 @@ type workspaceGrep struct {
 	collectMatches  bool
 }
 
-func (search *workspaceGrep) scanEntry(entry FileEntry) error {
-	if entry.Kind != EntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
+func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
+	if entry.Kind != workspaceapp.FileEntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
 		return nil
 	}
 	if cause := context.Cause(search.ctx); cause != nil {
