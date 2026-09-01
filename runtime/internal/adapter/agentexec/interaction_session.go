@@ -383,20 +383,7 @@ func (i *interactionSession) commitAppliedSteers(
 }
 
 func (i *interactionSession) startWorkers() {
-	i.lifetime.workers.Add(1)
-	go func() {
-		defer i.lifetime.workers.Done()
-		i.await()
-	}()
-	i.lifetime.reconcilers.Add(2)
-	go func() {
-		defer i.lifetime.reconcilers.Done()
-		i.reconcileUnknownEffects()
-	}()
-	go func() {
-		defer i.lifetime.reconcilers.Done()
-		i.reconcileExecutionState()
-	}()
+	i.lifetime.start(i.await, i.reconcileUnknownEffects, i.reconcileExecutionState)
 }
 
 func (i *interactionSession) failStart() {

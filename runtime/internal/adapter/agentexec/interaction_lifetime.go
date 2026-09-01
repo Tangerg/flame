@@ -47,6 +47,31 @@ func newInteractionLifetime(parent context.Context) interactionLifetime {
 	}
 }
 
+// start registers the complete session worker set before any worker can run.
+// A Process may already be terminal when observation begins, so its awaiter is
+// allowed to stop and join reconciliation immediately without racing a later
+// WaitGroup registration.
+func (i *interactionLifetime) start(
+	await func(),
+	reconcileUnknownEffects func(),
+	reconcileExecutionState func(),
+) {
+	i.workers.Add(1)
+	i.reconcilers.Add(2)
+	go func() {
+		defer i.reconcilers.Done()
+		reconcileUnknownEffects()
+	}()
+	go func() {
+		defer i.reconcilers.Done()
+		reconcileExecutionState()
+	}()
+	go func() {
+		defer i.workers.Done()
+		await()
+	}()
+}
+
 func (i *interactionLifetime) ownerCause() error { return context.Cause(i.owner) }
 
 func (i *interactionLifetime) beginRelease() {
