@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a
@@ -112,31 +113,20 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return hooksFile{}, false, cause
 	}
-	pathInfo, err := os.Stat(path)
+	handle, _, err := fileinput.Open(path, domainhooks.MaxConfigurationFileBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return hooksFile{}, false, nil
 	}
-	if err != nil {
-		return hooksFile{}, false, err
+	if errors.Is(err, fileinput.ErrNotRegular) {
+		return hooksFile{}, false, errors.New("not a regular file")
 	}
-	if err := validateHooksSource(pathInfo); err != nil {
-		return hooksFile{}, false, err
+	if errors.Is(err, fileinput.ErrTooLarge) {
+		return hooksFile{}, false, domainhooks.ValidateConfigurationFileSize(domainhooks.MaxConfigurationFileBytes + 1)
 	}
-	handle, err := os.Open(path)
 	if err != nil {
 		return hooksFile{}, false, err
 	}
 	defer func() { _ = handle.Close() }()
-	info, err := handle.Stat()
-	if err != nil {
-		return hooksFile{}, false, err
-	}
-	if !os.SameFile(pathInfo, info) {
-		return hooksFile{}, false, errors.New("configuration changed while it was being opened")
-	}
-	if err := validateHooksSource(info); err != nil {
-		return hooksFile{}, false, err
-	}
 	data, err := io.ReadAll(io.LimitReader(
 		hooksContextReader{ctx: ctx, reader: handle},
 		domainhooks.MaxConfigurationFileBytes+1,
@@ -176,13 +166,6 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 		}
 	}
 	return file, true, nil
-}
-
-func validateHooksSource(info os.FileInfo) error {
-	if !info.Mode().IsRegular() {
-		return errors.New("not a regular file")
-	}
-	return domainhooks.ValidateConfigurationFileSize(info.Size())
 }
 
 type hooksContextReader struct {

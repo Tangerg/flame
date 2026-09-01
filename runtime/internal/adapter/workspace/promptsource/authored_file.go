@@ -2,39 +2,35 @@ package promptsource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	pathInfo, err := os.Stat(path)
+	file, _, err := fileinput.Open(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
 	if err != nil {
-		return nil, fmt.Errorf("stat %q: %w", path, err)
-	}
-	if err := validateAuthoredPromptSource(path, pathInfo); err != nil {
-		return nil, err
-	}
-	file, err := os.Open(path)
-	if err != nil {
+		switch {
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return nil, fmt.Errorf("%w: %q is not a regular file", workspaceapp.ErrInvalidPromptSource, path)
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return nil, fmt.Errorf(
+				"%s: %w",
+				path,
+				workspaceapp.ValidateAuthoredPromptDocumentSize(workspaceapp.MaxAuthoredPromptDocumentBytes+1),
+			)
+		case errors.Is(err, fileinput.ErrChanged):
+			return nil, fmt.Errorf("%w: %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, path)
+		}
 		return nil, fmt.Errorf("open %q: %w", path, err)
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("stat %q: %w", path, err)
-	}
-	if !os.SameFile(pathInfo, info) {
-		return nil, fmt.Errorf("%w: %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, path)
-	}
-	if err := validateAuthoredPromptSource(path, info); err != nil {
-		return nil, err
-	}
 	document, err := io.ReadAll(io.LimitReader(
 		promptContextReader{ctx: ctx, reader: file},
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
@@ -46,16 +42,6 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return document, nil
-}
-
-func validateAuthoredPromptSource(path string, info os.FileInfo) error {
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("%w: %q is not a regular file", workspaceapp.ErrInvalidPromptSource, path)
-	}
-	if err := workspaceapp.ValidateAuthoredPromptDocumentSize(info.Size()); err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	return nil
 }
 
 type promptContextReader struct {
