@@ -27,7 +27,8 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		Lineage: lineage,
 		Status:  agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
-		Limits: agent.UnlimitedRunLimits(), Usage: projectUsage(value.Metrics), Contract: &contract,
+		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
+		Usage: projectUsage(value.Metrics), Contract: &contract,
 	}
 	if value.Limits != nil {
 		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{

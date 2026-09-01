@@ -542,6 +542,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 			Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", CreatedAt: created,
 		},
 		ActiveSegmentID: "seg_child",
+		ContextTokens:   32_768,
 		ProtocolProfile: protocol.RunProtocolProfile{
 			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
@@ -558,7 +559,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 		RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
 		InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},
 	}
-	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" ||
+	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||
 		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.Contract, wantContract) {
 		t.Fatalf("projected run = %+v", projected)
 	}

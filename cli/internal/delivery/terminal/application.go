@@ -612,7 +612,11 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	case agent.ConversationRunning:
 		a.execution.following = true
 		a.execution.clock.start(projection.conversation.Usage().Duration, time.Now())
-		a.status.active("reconnected")
+		active, ok := snapshot.ActiveRun()
+		if !ok {
+			return errors.New("reconcile run snapshot: running conversation has no active run")
+		}
+		a.showRecoveredRunStatus("reconnected", active)
 	case agent.ConversationWaiting:
 		a.execution.following = false
 		if a.dialogs.interactionReview == nil {
@@ -650,12 +654,13 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 		}
 		a.status.note("waiting for your answers")
 	case agent.ConversationRunning:
-		if _, ok := snapshot.ActiveRun(); !ok {
+		active, ok := snapshot.ActiveRun()
+		if !ok {
 			a.fail(errors.New("session snapshot has a running conversation without an active run"))
 			return
 		}
 		a.execution.clock.start(a.execution.conversation.Usage().Duration, time.Now())
-		a.status.active("reconnecting")
+		a.showRecoveredRunStatus("reconnecting", active)
 		a.followRecoveredSession()
 	case agent.ConversationIdle:
 		if a.execution.conversation.Outcome().Status != "" {
@@ -664,6 +669,14 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 	default:
 		a.fail(errors.New("session snapshot has an unknown conversation phase"))
 	}
+}
+
+func (a *app) showRecoveredRunStatus(activity string, run agent.Run) {
+	progress := agent.RunProgress{Activity: activity}
+	if run.ContextTokens > 0 {
+		progress.ContextTokens = new(run.ContextTokens)
+	}
+	a.status.progress(progress)
 }
 
 func displayTitle(session agent.Session) string {

@@ -429,10 +429,14 @@ func (c *Conversation) applyRunProgress(runID string, event RunProgress) error {
 	if err := c.requireRunRunning(runID, "report progress"); err != nil {
 		return err
 	}
+	run := c.runs[runID]
+	if event.ContextTokens != nil {
+		run.ContextTokens = *event.ContextTokens
+	}
 	if event.Usage == nil {
+		c.runs[runID] = run
 		return nil
 	}
-	run := c.runs[runID]
 	usage := event.Usage.Clone()
 	usage.Steps, usage.Duration = run.Usage.Steps, run.Usage.Duration
 	if usage.CostUSD == nil && run.Usage.CostUSD != nil {

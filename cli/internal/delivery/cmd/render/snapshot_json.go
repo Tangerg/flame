@@ -56,6 +56,7 @@ type runFrame struct {
 	CreatedAt        time.Time        `json:"createdAt,omitzero"`
 	FinishedAt       time.Time        `json:"finishedAt,omitzero"`
 	Limits           *runLimitsJSON   `json:"limits,omitempty"`
+	ContextTokens    int64            `json:"contextTokens,omitempty"`
 	Outcome          *outcomeJSON     `json:"outcome,omitempty"`
 	Usage            usageJSON        `json:"usage"`
 	ProtocolProfile  *runContractJSON `json:"protocolProfile,omitempty"`
@@ -190,7 +191,7 @@ func encodeRun(run agent.Run) runFrame {
 		Provider: run.Provider, Model: run.Model, ReasoningEffort: run.ReasoningEffort,
 		Status: string(run.Status), ActiveSegmentID: run.ActiveSegmentID,
 		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
-		Usage: *encodeUsage(run.Usage),
+		ContextTokens: run.ContextTokens, Usage: *encodeUsage(run.Usage),
 	}
 	encoded.Limits = encodeRunLimits(run.Limits)
 	if run.Status == agent.RunStatusFinished {

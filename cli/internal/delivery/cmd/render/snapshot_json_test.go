@@ -32,8 +32,9 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 	run := agent.Run{
 		ID: "run_1", SessionID: "session_1", Status: agent.RunStatusRunning, ActiveSegmentID: "segment_1",
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		Lineage: agent.RootRunLineage(),
-		Limits:  agent.UnlimitedRunLimits(),
+		ContextTokens: 32_768,
+		Lineage:       agent.RootRunLineage(),
+		Limits:        agent.UnlimitedRunLimits(),
 		Contract: &agent.RunContract{
 			RequiredFeatures: []agent.RunFeature{agent.RunFeatureSubagents},
 			InteractionKinds: []agent.InteractionKind{agent.InteractionApproval, agent.InteractionQuestion},
@@ -44,7 +45,8 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`"reasoningEffort":"xhigh"`, `"protocolProfile"`, `"requiredFeatures":["subagents"]`, `"interruptTypes":["approval","question"]`,
+		`"reasoningEffort":"xhigh"`, `"contextTokens":32768`, `"protocolProfile"`,
+		`"requiredFeatures":["subagents"]`, `"interruptTypes":["approval","question"]`,
 	} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("run JSON omitted %s: %s", want, output.String())

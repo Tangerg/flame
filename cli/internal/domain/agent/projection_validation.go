@@ -48,6 +48,9 @@ func (r Run) Validate() error {
 	if err := r.Limits.Validate(); err != nil {
 		problems = append(problems, err)
 	}
+	if r.ContextTokens < 0 {
+		problems = append(problems, errors.New("context tokens cannot be negative"))
+	}
 	if r.Status == RunStatusFinished {
 		if err := r.Outcome.Validate(); err != nil {
 			problems = append(problems, err)

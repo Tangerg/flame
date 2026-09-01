@@ -308,6 +308,13 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 	case agent.PlanChanged:
 		plan := item.Plan.Clone()
 		session.plan = &plan
+	case agent.RunProgress:
+		if item.ContextTokens != nil {
+			run.contextTokens = *item.ContextTokens
+		}
+		if item.Usage != nil {
+			run.usage = item.Usage.Clone()
+		}
 	case agent.RunInterrupted:
 		r.closeSegmentLocked(segment)
 	case agent.RunFinished:

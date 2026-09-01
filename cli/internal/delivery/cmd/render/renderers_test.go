@@ -32,13 +32,17 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 }
 
 func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
+	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
 	unlimited, err := json.Marshal(encodeRunOptions(agent.RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high", Limits: agent.UnlimitedRunLimits(),
+		Generation: agent.GenerationParams{
+			Temperature: &temperature, MaxTokens: &maxTokens, TopP: &topP, Stop: []string{"END"},
+		},
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(unlimited), `{"provider":"mock","model":"balanced","reasoningEffort":"high"}`; got != want {
+	if got, want := string(unlimited), `{"provider":"mock","model":"balanced","reasoningEffort":"high","params":{"temperature":0.7,"maxTokens":2048,"topP":0.9,"stop":["END"]}}`; got != want {
 		t.Fatalf("unlimited options = %s, want %s", got, want)
 	}
 
@@ -281,9 +285,11 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 	frame := encodeRun(agent.Run{
 		ID: "run_1", SessionID: "ses_1", Status: agent.RunStatusFinished,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		CreatedAt: created, FinishedAt: finished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		ContextTokens: 32_768,
+		CreatedAt:     created, FinishedAt: finished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 	})
-	if frame.ReasoningEffort != "xhigh" || !frame.CreatedAt.Equal(created) || !frame.FinishedAt.Equal(finished) {
+	if frame.ReasoningEffort != "xhigh" || frame.ContextTokens != 32_768 ||
+		!frame.CreatedAt.Equal(created) || !frame.FinishedAt.Equal(finished) {
 		t.Fatalf("run frame = %+v", frame)
 	}
 }

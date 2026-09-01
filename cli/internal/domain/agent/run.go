@@ -31,6 +31,7 @@ type Run struct {
 	CreatedAt       time.Time
 	FinishedAt      time.Time
 	Limits          RunLimits
+	ContextTokens   int64
 	Outcome         Outcome
 	Usage           Usage
 	Contract        *RunContract
@@ -93,7 +94,8 @@ func (r Run) Equal(other Run) bool {
 		r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
 		r.Status == other.Status && r.ActiveSegmentID == other.ActiveSegmentID &&
 		r.CreatedAt.Equal(other.CreatedAt) && r.FinishedAt.Equal(other.FinishedAt) &&
-		r.Limits == other.Limits && r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
+		r.Limits == other.Limits && r.ContextTokens == other.ContextTokens &&
+		r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
 		equalRunContracts(r.Contract, other.Contract)
 }
 

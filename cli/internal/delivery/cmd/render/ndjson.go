@@ -86,10 +86,18 @@ type eventRecord struct {
 }
 
 type runOptionsJSON struct {
-	Provider        string         `json:"provider,omitzero"`
-	Model           string         `json:"model,omitzero"`
-	ReasoningEffort string         `json:"reasoningEffort,omitzero"`
-	Limits          *runLimitsJSON `json:"limits,omitempty"`
+	Provider        string                `json:"provider,omitzero"`
+	Model           string                `json:"model,omitzero"`
+	ReasoningEffort string                `json:"reasoningEffort,omitzero"`
+	Limits          *runLimitsJSON        `json:"limits,omitempty"`
+	Params          *generationParamsJSON `json:"params,omitempty"`
+}
+
+type generationParamsJSON struct {
+	Temperature *float64 `json:"temperature,omitempty"`
+	MaxTokens   *int64   `json:"maxTokens,omitempty"`
+	TopP        *float64 `json:"topP,omitempty"`
+	Stop        []string `json:"stop,omitempty"`
 }
 
 type blockFrame struct {
@@ -377,9 +385,20 @@ func cloneFloat64(value *float64) *float64 {
 }
 
 func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
+	options = options.Clone()
 	return &runOptionsJSON{
 		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
-		Limits: encodeRunLimits(options.Limits),
+		Limits: encodeRunLimits(options.Limits), Params: encodeGenerationParams(options.Generation),
+	}
+}
+
+func encodeGenerationParams(params agent.GenerationParams) *generationParamsJSON {
+	if params.Temperature == nil && params.MaxTokens == nil && params.TopP == nil && len(params.Stop) == 0 {
+		return nil
+	}
+	return &generationParamsJSON{
+		Temperature: params.Temperature, MaxTokens: params.MaxTokens, TopP: params.TopP,
+		Stop: slices.Clone(params.Stop),
 	}
 }
 

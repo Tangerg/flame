@@ -58,6 +58,11 @@ func TestRunRejectsNonExactExecutionIdentity(t *testing.T) {
 	if err := run.Validate(); err == nil {
 		t.Fatal("Run accepted an active segment identity that requires trimming")
 	}
+	run = runningRun("seg_1")
+	run.ContextTokens = -1
+	if err := run.Validate(); err == nil {
+		t.Fatal("Run accepted negative context tokens")
+	}
 }
 
 func TestRunLineageRequiresExplicitRootOrValidChild(t *testing.T) {

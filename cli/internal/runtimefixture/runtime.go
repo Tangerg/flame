@@ -77,6 +77,7 @@ type runState struct {
 	model           string
 	reasoningEffort string
 	limits          agent.RunLimits
+	contextTokens   int64
 	status          agent.RunStatus
 	active          string
 	segments        map[string]*segmentState

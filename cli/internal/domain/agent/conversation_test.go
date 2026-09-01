@@ -170,7 +170,10 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
 
 	progressUsage := Usage{InputTokens: 14, OutputTokens: 2}
-	apply(t, conversation, RunEvent{EventID: "progress", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{Usage: &progressUsage, Activity: "thinking"}})
+	contextTokens := int64(16_384)
+	apply(t, conversation, RunEvent{EventID: "progress", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
+		Usage: &progressUsage, ContextTokens: &contextTokens, Activity: "thinking",
+	}})
 	got := conversation.Usage()
 	if got.InputTokens != 14 || got.OutputTokens != 2 || got.CostUSD == nil || *got.CostUSD != cost ||
 		got.Steps != 2 || got.ByModel["mock/balanced"].InputTokens != 10 {
@@ -179,10 +182,23 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	if conversation.Checkpoint() != "start" {
 		t.Fatalf("ephemeral progress advanced checkpoint to %q", conversation.Checkpoint())
 	}
+	compactedContext := int64(4_096)
+	apply(t, conversation, RunEvent{EventID: "context-after-compaction", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
+		ContextTokens: &compactedContext,
+	}})
+	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != compactedContext {
+		t.Fatalf("context-only progress did not update the run: %+v", runs)
+	}
 
 	regressed := Usage{InputTokens: 13, OutputTokens: 2}
-	if _, err := conversation.ApplyRunEvent(RunEvent{EventID: "regression", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{Usage: &regressed}}); !errors.Is(err, ErrInvalidTransition) {
+	invalidContext := int64(99_999)
+	if _, err := conversation.ApplyRunEvent(RunEvent{EventID: "regression", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
+		Usage: &regressed, ContextTokens: &invalidContext,
+	}}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("regressing progress error = %v", err)
+	}
+	if got := conversation.Runs()[0].ContextTokens; got != compactedContext {
+		t.Fatalf("rejected progress changed context tokens to %d", got)
 	}
 }
 

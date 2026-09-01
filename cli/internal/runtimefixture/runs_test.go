@@ -45,6 +45,36 @@ func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	}
 }
 
+func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
+	runtime := New()
+	contextTokens := int64(12_345)
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{
+			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens, Usage: &agent.Usage{InputTokens: 40}}),
+			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+		}}
+	}
+	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID})
+	}()
+	for event, streamErr := range opened.Events {
+		if streamErr != nil {
+			t.Fatal(streamErr)
+		}
+		if _, progress := event.Event.(agent.RunProgress); progress {
+			break
+		}
+	}
+	got, err := runtime.GetRun(t.Context(), opened.RunID)
+	if err != nil || got.ContextTokens != contextTokens || got.Usage.InputTokens != 40 {
+		t.Fatalf("GetRun after progress = %+v, %v", got, err)
+	}
+}
+
 func TestRunCatalogDoesNotRetainDeletedSessionRuns(t *testing.T) {
 	runtime := New()
 	if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
