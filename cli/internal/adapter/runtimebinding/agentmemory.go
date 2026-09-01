@@ -29,9 +29,12 @@ func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]a
 	if err != nil {
 		return nil, err
 	}
-	request := protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScope(validated.Scope)}
-	if validated.Scope == agent.MemoryProject {
+	request := protocol.AgentMemoryListRequest{Scope: validated.Scope}
+	if validated.Scope == protocol.AgentMemoryScopeProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return nil, err
 	}
 	result, err := r.agentMemory.ListAgentMemory(ctx, request, r.callOptions())
 	if err != nil {
@@ -59,22 +62,18 @@ func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]a
 	return items, nil
 }
 
-func (a *AgentMemory) Review(ctx context.Context, id string, decision agent.MemoryReviewDecision) error {
+func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.AgentMemoryReviewDecision) error {
 	r := a.runtime
 	id = strings.TrimSpace(id)
-	if id == "" {
-		return errors.New("review agent memory: id is empty")
-	}
-	if err := decision.Validate(); err != nil {
+	request := protocol.AgentMemoryReviewRequest{ID: id, Decision: decision}
+	if err := request.ValidateWire(); err != nil {
 		return err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return err
 	}
-	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, protocol.AgentMemoryReviewRequest{
-		ID: id, Decision: protocol.AgentMemoryReviewDecision(decision),
-	}, options))
+	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, request, options))
 }
 
 func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
@@ -107,14 +106,15 @@ func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (agen
 func (a *AgentMemory) Delete(ctx context.Context, id string) error {
 	r := a.runtime
 	id = strings.TrimSpace(id)
-	if id == "" {
-		return errors.New("delete agent memory: id is empty")
+	request := protocol.AgentMemoryItemRequest{ID: id}
+	if err := request.ValidateWire(); err != nil {
+		return err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return err
 	}
-	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, protocol.AgentMemoryItemRequest{ID: id}, options))
+	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, request, options))
 }
 
 func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
@@ -131,9 +131,12 @@ func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, conten
 	if err != nil {
 		return agent.MemoryItem{}, err
 	}
-	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScope(validated.Scope), Content: content}
-	if validated.Scope == agent.MemoryProject {
+	request := protocol.AgentMemoryAddRequest{Scope: validated.Scope, Content: content}
+	if validated.Scope == protocol.AgentMemoryScopeProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return agent.MemoryItem{}, err
 	}
 	result, err := r.agentMemory.AddAgentMemory(ctx, request, options)
 	item, err := projectAgentMemoryResult("add agent memory", "", validated.Scope, result, err)
@@ -150,7 +153,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarg
 	if err := target.Validate(); err != nil {
 		return agent.MemoryTarget{}, err
 	}
-	if target.Scope != agent.MemoryProject {
+	if target.Scope != protocol.AgentMemoryScopeProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
@@ -162,7 +165,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarg
 
 func projectAgentMemoryResult(
 	operation, expectedID string,
-	expectedScope agent.MemoryScope,
+	expectedScope protocol.AgentMemoryScope,
 	result *protocol.AgentMemoryItem,
 	err error,
 ) (agent.MemoryItem, error) {
@@ -187,8 +190,8 @@ func projectAgentMemoryResult(
 
 func projectAgentMemoryItem(value protocol.AgentMemoryItem) agent.MemoryItem {
 	return agent.MemoryItem{
-		ID: value.ID, Scope: agent.MemoryScope(value.Scope), Content: value.Content,
-		Origin: agent.MemoryOrigin(value.Origin), Status: agent.MemoryStatus(value.Status), Pinned: value.Pinned,
+		ID: value.ID, Scope: value.Scope, Content: value.Content,
+		Origin: value.Origin, Status: value.Status, Pinned: value.Pinned,
 		SessionID: value.SessionID, Day: value.Day, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 }

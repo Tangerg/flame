@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (a *app) ShowAgentMemory(argument string) error {
@@ -145,12 +146,12 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 
 func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 	action, verb := "Reject", "rejecting"
-	decision := agent.MemoryReject
+	decision := protocol.AgentMemoryReviewReject
 	if approve {
-		action, verb, decision = "Approve", "approving", agent.MemoryApprove
+		action, verb, decision = "Approve", "approving", protocol.AgentMemoryReviewApprove
 	}
 	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item agent.MemoryItem) {
-		if item.Status != agent.MemoryPending {
+		if item.Status != protocol.AgentMemoryStatusPending {
 			a.message("only pending agent memory can be reviewed · " + item.ID)
 			return
 		}
@@ -227,13 +228,13 @@ func resolveAgentMemory(items []agent.MemoryItem, identity string) (agent.Memory
 func parseAgentMemoryTarget(argument, workspace string) (agent.MemoryTarget, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" {
-		argument = string(agent.MemoryProject)
+		argument = string(protocol.AgentMemoryScopeProject)
 	}
 	scope, err := agent.ParseMemoryScope(argument)
 	if err != nil {
 		return agent.MemoryTarget{}, err
 	}
-	if scope == agent.MemoryUser {
+	if scope == protocol.AgentMemoryScopeUser {
 		workspace = ""
 	}
 	return agent.NewMemoryTarget(scope, workspace)
@@ -241,7 +242,7 @@ func parseAgentMemoryTarget(argument, workspace string) (agent.MemoryTarget, err
 
 func parseAgentMemoryIdentity(argument, workspace string) (agent.MemoryTarget, string, error) {
 	fields := strings.Fields(argument)
-	scope, identity := agent.MemoryProject, ""
+	scope, identity := protocol.AgentMemoryScopeProject, ""
 	switch len(fields) {
 	case 1:
 		identity = fields[0]
@@ -254,7 +255,7 @@ func parseAgentMemoryIdentity(argument, workspace string) (agent.MemoryTarget, s
 	default:
 		return agent.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
 	}
-	if scope == agent.MemoryUser {
+	if scope == protocol.AgentMemoryScopeUser {
 		workspace = ""
 	}
 	target, err := agent.NewMemoryTarget(scope, workspace)
@@ -317,7 +318,7 @@ func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPat
 	return nil
 }
 
-func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision agent.MemoryReviewDecision) {
+func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision protocol.AgentMemoryReviewDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
@@ -329,7 +330,7 @@ func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision a
 				return
 			}
 			outcome := "rejected"
-			if decision == agent.MemoryApprove {
+			if decision == protocol.AgentMemoryReviewApprove {
 				outcome = "approved"
 			}
 			a.message("agent memory " + outcome + " · " + reviewed)

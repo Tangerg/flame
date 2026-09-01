@@ -6,86 +6,43 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// MemoryScope is the durable partition that owns a memory item.
-type MemoryScope string
-
-const (
-	MemoryProject MemoryScope = "project"
-	MemoryUser    MemoryScope = "user"
-)
-
-func ParseMemoryScope(value string) (MemoryScope, error) {
-	scope := MemoryScope(strings.TrimSpace(value))
-	if err := scope.Validate(); err != nil {
+func ParseMemoryScope(value string) (protocol.AgentMemoryScope, error) {
+	scope := protocol.AgentMemoryScope(strings.TrimSpace(value))
+	workspace := ""
+	if scope == protocol.AgentMemoryScopeProject {
+		workspace = string(filepath.Separator)
+	}
+	if _, err := NewMemoryTarget(scope, workspace); err != nil {
 		return "", err
 	}
 	return scope, nil
 }
 
-func (s MemoryScope) Validate() error {
-	if s != MemoryProject && s != MemoryUser {
-		return fmt.Errorf("agent memory scope must be project or user, got %q", s)
-	}
-	return nil
-}
-
 // MemoryTarget couples a scope to exactly the workspace context it requires.
 type MemoryTarget struct {
-	Scope     MemoryScope
+	Scope     protocol.AgentMemoryScope
 	Workspace string
 }
 
-func NewMemoryTarget(scope MemoryScope, workspace string) (MemoryTarget, error) {
+func NewMemoryTarget(scope protocol.AgentMemoryScope, workspace string) (MemoryTarget, error) {
 	target := MemoryTarget{Scope: scope, Workspace: strings.TrimSpace(workspace)}
 	return target, target.Validate()
 }
 
 func (t MemoryTarget) Validate() error {
-	if err := t.Scope.Validate(); err != nil {
-		return err
+	var workspace *protocol.WorkspaceRef
+	if t.Workspace != "" {
+		workspace = &protocol.WorkspaceRef{Path: t.Workspace}
 	}
-	switch t.Scope {
-	case MemoryProject:
-		if t.Workspace == "" {
-			return errors.New("project agent memory requires a workspace")
-		}
-		if !filepath.IsAbs(t.Workspace) {
-			return errors.New("project agent memory workspace is not absolute")
-		}
-	case MemoryUser:
-		if t.Workspace != "" {
-			return errors.New("user agent memory does not belong to a workspace")
-		}
+	if err := protocol.ValidateWireTree(protocol.AgentMemoryListRequest{Scope: t.Scope, Workspace: workspace}); err != nil {
+		return fmt.Errorf("agent memory target: %w", err)
 	}
-	return nil
-}
-
-type MemoryOrigin string
-
-const (
-	MemoryAutomatic MemoryOrigin = "auto"
-	MemoryAuthored  MemoryOrigin = "user"
-)
-
-func (o MemoryOrigin) Validate() error {
-	if o != MemoryAutomatic && o != MemoryAuthored {
-		return fmt.Errorf("unknown agent memory origin %q", o)
-	}
-	return nil
-}
-
-type MemoryStatus string
-
-const (
-	MemoryActive  MemoryStatus = "active"
-	MemoryPending MemoryStatus = "pending"
-)
-
-func (s MemoryStatus) Validate() error {
-	if s != MemoryActive && s != MemoryPending {
-		return fmt.Errorf("unknown agent memory status %q", s)
+	if t.Scope == protocol.AgentMemoryScopeProject && !filepath.IsAbs(t.Workspace) {
+		return errors.New("project agent memory workspace is not absolute")
 	}
 	return nil
 }
@@ -93,10 +50,10 @@ func (s MemoryStatus) Validate() error {
 // MemoryItem is one stable, addressable fact together with its review provenance.
 type MemoryItem struct {
 	ID        string
-	Scope     MemoryScope
+	Scope     protocol.AgentMemoryScope
 	Content   string
-	Origin    MemoryOrigin
-	Status    MemoryStatus
+	Origin    protocol.AgentMemoryOrigin
+	Status    protocol.AgentMemoryStatus
 	Pinned    bool
 	SessionID string
 	Day       string
@@ -105,43 +62,18 @@ type MemoryItem struct {
 }
 
 func (i MemoryItem) Validate() error {
-	if strings.TrimSpace(i.ID) == "" {
-		return errors.New("agent memory item id is empty")
-	}
-	if err := i.Scope.Validate(); err != nil {
-		return fmt.Errorf("agent memory item %s: %w", i.ID, err)
-	}
-	if strings.TrimSpace(i.Content) == "" {
-		return fmt.Errorf("agent memory item %s has empty content", i.ID)
-	}
-	if err := i.Origin.Validate(); err != nil {
-		return fmt.Errorf("agent memory item %s: %w", i.ID, err)
-	}
-	if err := i.Status.Validate(); err != nil {
-		return fmt.Errorf("agent memory item %s: %w", i.ID, err)
-	}
-	if i.Origin == MemoryAuthored && i.Status != MemoryActive {
-		return fmt.Errorf("agent memory item %s: user-authored memory must be active", i.ID)
+	if err := (protocol.AgentMemoryItem{
+		ID: i.ID, Scope: i.Scope, Content: i.Content, Origin: i.Origin, Status: i.Status,
+		Pinned: i.Pinned, SessionID: i.SessionID, Day: i.Day,
+		CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
+	}).ValidateWire(); err != nil {
+		return err
 	}
 	if i.CreatedAt.IsZero() || i.UpdatedAt.IsZero() {
 		return fmt.Errorf("agent memory item %s has incomplete timestamps", i.ID)
 	}
 	if i.UpdatedAt.Before(i.CreatedAt) {
 		return fmt.Errorf("agent memory item %s was updated before creation", i.ID)
-	}
-	return nil
-}
-
-type MemoryReviewDecision string
-
-const (
-	MemoryApprove MemoryReviewDecision = "approve"
-	MemoryReject  MemoryReviewDecision = "reject"
-)
-
-func (r MemoryReviewDecision) Validate() error {
-	if r != MemoryApprove && r != MemoryReject {
-		return fmt.Errorf("agent memory review decision must be approve or reject, got %q", r)
 	}
 	return nil
 }
@@ -154,16 +86,7 @@ type MemoryPatch struct {
 }
 
 func (p MemoryPatch) Validate() error {
-	if strings.TrimSpace(p.ID) == "" {
-		return errors.New("agent memory patch id is empty")
-	}
-	if p.Content == nil && p.Pinned == nil {
-		return errors.New("agent memory patch has no changes")
-	}
-	if p.Content != nil && strings.TrimSpace(*p.Content) == "" {
-		return errors.New("agent memory content is empty")
-	}
-	return nil
+	return (protocol.AgentMemoryUpdateRequest{ID: p.ID, Content: p.Content, Pinned: p.Pinned}).ValidateWire()
 }
 
 func (p MemoryPatch) ValidateResult(result MemoryItem) error {
@@ -207,10 +130,10 @@ func (t MemoryTarget) ValidateAddResult(content string, result MemoryItem) error
 	if result.Content != content {
 		problems = append(problems, fmt.Errorf("runtime returned content %q, want %q", result.Content, content))
 	}
-	if result.Origin != MemoryAuthored || result.Status != MemoryActive {
+	if result.Origin != protocol.AgentMemoryOriginUser || result.Status != protocol.AgentMemoryStatusActive {
 		problems = append(problems, fmt.Errorf(
 			"runtime returned %s/%s provenance, want %s/%s",
-			result.Origin, result.Status, MemoryAuthored, MemoryActive,
+			result.Origin, result.Status, protocol.AgentMemoryOriginUser, protocol.AgentMemoryStatusActive,
 		))
 	}
 	if err := errors.Join(problems...); err != nil {

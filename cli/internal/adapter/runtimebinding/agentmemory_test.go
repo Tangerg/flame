@@ -10,6 +10,12 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+const (
+	adapterMemoryIDOne   = "mem_00000000000000000000000000000001"
+	adapterMemoryIDTwo   = "mem_00000000000000000000000000000002"
+	adapterMemoryIDOther = "mem_000000000000000000000000000000ff"
+)
+
 type agentMemoryBindingStub struct {
 	t            *testing.T
 	actions      []string
@@ -41,7 +47,7 @@ func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request prot
 		return a.listed, nil
 	}
 	return &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{{
-		ID: "mem_1", Scope: request.Scope, Content: "durable fact", Origin: protocol.AgentMemoryOriginAuto,
+		ID: adapterMemoryIDOne, Scope: request.Scope, Content: "durable fact", Origin: protocol.AgentMemoryOriginAuto,
 		Status: protocol.AgentMemoryStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
 	}}}, nil
 }
@@ -49,7 +55,7 @@ func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request prot
 func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	now := time.Now()
 	valid := protocol.AgentMemoryItem{
-		ID: "mem_1", Scope: protocol.AgentMemoryScopeProject, Content: "fact",
+		ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeProject, Content: "fact",
 		Origin: protocol.AgentMemoryOriginAuto, Status: protocol.AgentMemoryStatusPending,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -60,7 +66,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}{
 		{name: "nil list", nilList: true},
 		{name: "wrong scope", listed: &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{{
-			ID: "mem_1", Scope: protocol.AgentMemoryScopeUser, Content: "fact",
+			ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeUser, Content: "fact",
 			Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 			CreatedAt: now, UpdatedAt: now,
 		}}}},
@@ -77,7 +83,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := agent.NewMemoryTarget(agent.MemoryProject, "/workspace")
+			target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -123,7 +129,7 @@ func (a *agentMemoryBindingStub) AddAgentMemory(_ context.Context, request proto
 	if a.addResult != nil {
 		return a.addResult, nil
 	}
-	return a.item("mem_2", request.Scope, request.Content, false), nil
+	return a.item(adapterMemoryIDTwo, request.Scope, request.Content, false), nil
 }
 
 func (a *agentMemoryBindingStub) item(id string, scope protocol.AgentMemoryScope, content string, pinned bool) *protocol.AgentMemoryItem {
@@ -159,36 +165,36 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		}},
 		meta: requestMeta("test"),
 	}}
-	project, err := agent.NewMemoryTarget(agent.MemoryProject, "/workspace")
+	project, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := adapter.Items(t.Context(), project)
-	if err != nil || len(items) != 1 || items[0].Status != agent.MemoryPending {
+	if err != nil || len(items) != 1 || items[0].Status != protocol.AgentMemoryStatusPending {
 		t.Fatalf("Items = (%+v, %v)", items, err)
 	}
-	user, err := agent.NewMemoryTarget(agent.MemoryUser, "")
+	user, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, itemsErr := adapter.Items(t.Context(), user); itemsErr != nil {
 		t.Fatal(itemsErr)
 	}
-	if reviewErr := adapter.Review(t.Context(), "mem_1", agent.MemoryApprove); reviewErr != nil {
+	if reviewErr := adapter.Review(t.Context(), adapterMemoryIDOne, protocol.AgentMemoryReviewApprove); reviewErr != nil {
 		t.Fatal(reviewErr)
 	}
 	content, pinned := "edited", true
-	updated, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: "mem_1", Content: &content, Pinned: &pinned})
+	updated, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
 	if _, err := adapter.Add(t.Context(), user, "authored"); err != nil {
 		t.Fatal(err)
 	}
-	if err := adapter.Delete(t.Context(), "mem_1"); err != nil {
+	if err := adapter.Delete(t.Context(), adapterMemoryIDOne); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"review:mem_1:approve", "update:mem_1", "add:user", "delete:mem_1"}
+	want := []string{"review:" + adapterMemoryIDOne + ":approve", "update:" + adapterMemoryIDOne, "add:user", "delete:" + adapterMemoryIDOne}
 	if len(stub.actions) != len(want) {
 		t.Fatalf("actions = %v, want %v", stub.actions, want)
 	}
@@ -203,11 +209,11 @@ func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	result := protocol.AgentMemoryItem{
-		ID: "mem_other", Scope: protocol.AgentMemoryScopeProject, Content: "edited",
+		ID: adapterMemoryIDOther, Scope: protocol.AgentMemoryScopeProject, Content: "edited",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	_, err := projectAgentMemoryResult("update agent memory", "mem_1", "", &result, nil)
+	_, err := projectAgentMemoryResult("update agent memory", adapterMemoryIDOne, "", &result, nil)
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -215,12 +221,12 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	wrongUpdate := protocol.AgentMemoryItem{
-		ID: "mem_1", Scope: protocol.AgentMemoryScopeProject, Content: "ignored",
+		ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeProject, Content: "ignored",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, Pinned: true,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	wrongAdd := protocol.AgentMemoryItem{
-		ID: "mem_2", Scope: protocol.AgentMemoryScopeUser, Content: "ignored",
+		ID: adapterMemoryIDTwo, Scope: protocol.AgentMemoryScopeUser, Content: "ignored",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -234,7 +240,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			stub: &agentMemoryBindingStub{updateResult: &wrongUpdate},
 			invoke: func(adapter *AgentMemory) error {
 				content, pinned := "edited", true
-				_, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: "mem_1", Content: &content, Pinned: &pinned})
+				_, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
 				return err
 			},
 		},
@@ -242,7 +248,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			name: "add content",
 			stub: &agentMemoryBindingStub{addResult: &wrongAdd},
 			invoke: func(adapter *AgentMemory) error {
-				target, err := agent.NewMemoryTarget(agent.MemoryUser, "")
+				target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 				if err != nil {
 					return err
 				}

@@ -225,7 +225,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil || knowledgeService == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := agent.NewMemoryTarget(agent.MemoryUser, "")
+	userTarget, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
