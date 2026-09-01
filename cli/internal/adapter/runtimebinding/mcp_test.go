@@ -194,7 +194,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0)}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
 	servers, err := runtime.Servers(t.Context())
-	if err != nil || len(servers) != 1 || servers[0].State.Type != mcp.Connected || servers[0].Connection.AuthorizationMasked == "" {
+	if err != nil || len(servers) != 1 || servers[0].State.Type != protocol.MCPServerConnected || servers[0].Connection.AuthorizationMasked == "" {
 		t.Fatalf("Servers = (%+v, %v)", servers, err)
 	}
 	authorization := mcp.AuthorizationChange{Kind: mcp.Set, Value: "Bearer secret"}

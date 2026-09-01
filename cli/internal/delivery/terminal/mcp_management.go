@@ -97,7 +97,7 @@ func mcpServerDetail(server mcp.Server) string {
 }
 
 func mcpStateLabel(state mcp.State) string {
-	if state.Type == mcp.Connected && state.ToolCount != nil {
+	if state.Type == protocol.MCPServerConnected && state.ToolCount != nil {
 		return fmt.Sprintf("connected · %d tools", *state.ToolCount)
 	}
 	return string(state.Type)

@@ -94,7 +94,7 @@ func newMCPServiceStub() *mcpServiceStub {
 		servers: []mcp.Server{{
 			Name: "docs", Description: "Documentation", HandshakeTimeout: timeout,
 			Connection: mcp.Connection{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
-			State:      mcp.State{Type: mcp.Connected, ToolCount: &count},
+			State:      mcp.State{Type: protocol.MCPServerConnected, ToolCount: &count},
 		}},
 		created: make(chan mcp.Candidate, 1), probed: make(chan mcp.Candidate, 1),
 		updated: make(chan mcp.ServerUpdate, 1),
@@ -121,7 +121,7 @@ func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate
 		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
 		Connection:    mcp.Connection{Transport: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Directory: candidate.Connection.Directory},
 		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
-		State: mcp.State{Type: mcp.Disconnected},
+		State: mcp.State{Type: protocol.MCPServerDisconnected},
 	}
 	m.mu.Lock()
 	m.servers = append(m.servers, server)
@@ -143,9 +143,9 @@ func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate
 		}
 		if update.Enabled != nil {
 			if *update.Enabled {
-				server.State = mcp.State{Type: mcp.Disconnected}
+				server.State = mcp.State{Type: protocol.MCPServerDisconnected}
 			} else {
-				server.State = mcp.State{Type: mcp.Disabled}
+				server.State = mcp.State{Type: protocol.MCPServerDisabled}
 			}
 		}
 		return server.Clone(), nil

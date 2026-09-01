@@ -40,7 +40,7 @@ func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	count := 2
 	server := Server{
 		Name: "docs", Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
-		State: State{Type: Connected, ToolCount: &count},
+		State: State{Type: protocol.MCPServerConnected, ToolCount: &count},
 	}
 	if err := server.Validate(); err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
 		},
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
-		State: State{Type: Disconnected},
+		State: State{Type: protocol.MCPServerDisconnected},
 	}
 	if err := candidate.ValidateResult(valid); err != nil {
 		t.Fatalf("valid create result: %v", err)
@@ -111,7 +111,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		{name: "URL", mutate: func(result *Server) { result.Connection.URL = "https://other.example" }, want: "URL"},
 		{name: "authorization", mutate: func(result *Server) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
 		{name: "headers", mutate: func(result *Server) { result.Connection.HeadersMasked = nil }, want: "headers"},
-		{name: "enabled", mutate: func(result *Server) { result.State.Type = Disabled }, want: "enabled"},
+		{name: "enabled", mutate: func(result *Server) { result.State.Type = protocol.MCPServerDisabled }, want: "enabled"},
 		{name: "disabled tools", mutate: func(result *Server) { result.DisabledTools = nil }, want: "disabled tools"},
 	} {
 		t.Run("create "+test.name, func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}
 	updated := valid.Clone()
 	updated.Description, updated.HandshakeTimeout = description, updatedTimeout
-	updated.DisabledTools, updated.State = disabledTools, State{Type: Disabled}
+	updated.DisabledTools, updated.State = disabledTools, State{Type: protocol.MCPServerDisabled}
 	if err := update.ValidateResult(updated); err != nil {
 		t.Fatalf("valid update result: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			Transport: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
 			EnvironmentMasked: map[string]string{"TOKEN": "****"}, Directory: "/workspace",
 		},
-		State: State{Type: Disabled},
+		State: State{Type: protocol.MCPServerDisabled},
 	}
 	if err := stdioCandidate.ValidateResult(stdioResult); err != nil {
 		t.Fatalf("valid stdio result: %v", err)
@@ -200,7 +200,7 @@ func TestMCPMutationResultsAcceptRuntimeToolPolicyCanonicalization(t *testing.T)
 	result := Server{
 		Name: candidate.Name, Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
 		DisabledTools: []string{"read", "write"}, AutoApproveTools: []string{"fetch", "search"},
-		State: State{Type: Disconnected},
+		State: State{Type: protocol.MCPServerDisconnected},
 	}
 	if err := candidate.ValidateResult(result); err != nil {
 		t.Fatalf("canonical create result: %v", err)

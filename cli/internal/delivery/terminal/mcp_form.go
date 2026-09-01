@@ -55,7 +55,7 @@ func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 		return draft
 	}
 	draft.name = server.Name
-	if server.State.Type == mcp.Disabled {
+	if server.State.Type == protocol.MCPServerDisabled {
 		draft.enabled = false
 	}
 	draft.description = server.Description
@@ -107,7 +107,7 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 	}
 	update := mcp.ServerUpdate{Server: original.Name}
 	enabled := m.enabled
-	if enabled != (original.State.Type != mcp.Disabled) {
+	if enabled != (original.State.Type != protocol.MCPServerDisabled) {
 		update.Enabled = &enabled
 	}
 	description := strings.TrimSpace(m.description)

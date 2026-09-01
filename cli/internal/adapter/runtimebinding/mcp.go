@@ -245,7 +245,7 @@ func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
 		HandshakeTimeout: timeout, DisabledTools: slices.Clone(value.DisabledTools),
 		AutoApproveTools: slices.Clone(value.AutoApproveTools),
 		State: mcp.State{
-			Type: mcp.StateType(value.Status.Type), ToolCount: clonePointer(value.Status.ToolCount),
+			Type: value.Status.Type, ToolCount: clonePointer(value.Status.ToolCount),
 			Problem: projectRuntimeProblem(value.Status.Error),
 		},
 	}, nil

@@ -27,34 +27,23 @@ var (
 	ErrAuthorizationAttemptNotFound = errors.New("MCP authorization attempt not found")
 )
 
-type StateType string
-
-const (
-	Disabled     StateType = "disabled"
-	Disconnected StateType = "disconnected"
-	Connecting   StateType = "connecting"
-	Connected    StateType = "connected"
-	Failed       StateType = "failed"
-	NeedsAuth    StateType = "needsAuth"
-)
-
 type State struct {
-	Type      StateType
+	Type      protocol.MCPServerStateType
 	ToolCount *int
 	Problem   *failure.Problem
 }
 
 func (s State) Validate() error {
 	switch s.Type {
-	case Disabled, Disconnected, Connecting:
+	case protocol.MCPServerDisabled, protocol.MCPServerDisconnected, protocol.MCPServerConnecting:
 		if s.ToolCount != nil || s.Problem != nil {
 			return fmt.Errorf("MCP %s state carries foreign data", s.Type)
 		}
-	case Connected:
+	case protocol.MCPServerConnected:
 		if s.ToolCount == nil || *s.ToolCount < 0 || s.Problem != nil {
 			return errors.New("connected MCP state requires a non-negative tool count and no problem")
 		}
-	case Failed, NeedsAuth:
+	case protocol.MCPServerFailed, protocol.MCPServerNeedsAuth:
 		if s.ToolCount != nil || s.Problem == nil {
 			return fmt.Errorf("MCP %s state requires only a problem", s.Type)
 		}
@@ -476,7 +465,7 @@ func (s ServerUpdate) ValidateResult(result Server) error {
 }
 
 func validateEnabledResult(enabled bool, state State) error {
-	disabled := state.Type == Disabled
+	disabled := state.Type == protocol.MCPServerDisabled
 	if disabled == enabled {
 		return fmt.Errorf("runtime returned state %q for enabled=%t", state.Type, enabled)
 	}
