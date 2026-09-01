@@ -374,6 +374,43 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 	}
 }
 
+func TestAgentMemoryUpdateRequiresAtLeastOneChange(t *testing.T) {
+	t.Parallel()
+
+	id := agentMemoryWireItemID('1')
+	content := "edited"
+	pinned := true
+	for _, request := range []AgentMemoryUpdateRequest{
+		{ID: id, Content: &content},
+		{ID: id, Pinned: &pinned},
+		{ID: id, Content: &content, Pinned: &pinned},
+	} {
+		if err := request.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected update with changes: %v", err)
+		}
+	}
+	assertConstraintField(t, (AgentMemoryUpdateRequest{ID: id}).ValidateWire(), "AgentMemoryUpdateRequest", "content|pinned")
+}
+
+func TestUserAuthoredAgentMemoryCanOnlyBeActive(t *testing.T) {
+	t.Parallel()
+
+	base := AgentMemoryItem{
+		ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: "fact",
+		Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
+	}
+	if err := base.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected active user memory: %v", err)
+	}
+	pending := base
+	pending.Status = AgentMemoryStatusPending
+	assertConstraintField(t, pending.ValidateWire(), "AgentMemoryItem", "status")
+	pending.Origin = AgentMemoryOriginAuto
+	if err := pending.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected pending automatic memory: %v", err)
+	}
+}
+
 func TestOutputCollectionWireConstraints(t *testing.T) {
 	t.Parallel()
 

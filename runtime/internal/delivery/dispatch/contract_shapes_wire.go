@@ -716,6 +716,19 @@ func registerObjectConstraints(s *Shapes) {
 			}},
 		})
 	}
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.AgentMemoryUpdateRequest](),
+		Rules:  []ConditionalRule{{RequiredAny: []string{"content", "pinned"}}},
+	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.AgentMemoryItem](),
+		Rules: []ConditionalRule{{
+			When: []delivery.FieldCondition{{
+				Field: "origin", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryOriginUser),
+			}},
+			AllowedValues: []AllowedValueSet{{Field: "status", Values: []string{string(protocol.AgentMemoryStatusActive)}}},
+		}},
+	})
 
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),

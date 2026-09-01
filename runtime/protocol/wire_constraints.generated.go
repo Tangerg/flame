@@ -537,6 +537,7 @@ func (a AgentMemoryUpdateRequest) ValidateWire() error {
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		optionalText("content", a.Content),
 		optionalMaxLength("content", a.Content, 4096),
+		requiredAnyWhen(true, []string{"content", "pinned"}, a),
 	)
 }
 
@@ -1760,6 +1761,22 @@ func (f FileDiff) ValidateWire() error {
 	)
 }
 
+func (a AgentMemoryItem) ValidateWire() error {
+	return collectWireViolations("AgentMemoryItem",
+		requiredText("id", a.ID),
+		maxLength("id", a.ID, 36),
+		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
+		identity("sessionId", a.SessionID),
+		maxLength("sessionId", a.SessionID, 256),
+		requiredText("content", a.Content),
+		maxLength("content", a.Content, 4096),
+		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
+		closedEnum("origin", string(a.Origin), []string{"auto", "user"}, false),
+		closedEnum("status", string(a.Status), []string{"active", "pending"}, false),
+		allowedValuesWhen(wireFieldEquals(a, "origin", "user"), "status", a, []string{"active"}),
+	)
+}
+
 func (m MCPAuthorizationAttempt) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
@@ -2322,21 +2339,6 @@ func (r Recipe) ValidateWire() error {
 		requiredTextPattern("body", r.Body, "\\S"),
 		requiredTextPattern("source", r.Source, "\\S"),
 		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
-	)
-}
-
-func (a AgentMemoryItem) ValidateWire() error {
-	return collectWireViolations("AgentMemoryItem",
-		requiredText("id", a.ID),
-		maxLength("id", a.ID, 36),
-		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-		identity("sessionId", a.SessionID),
-		maxLength("sessionId", a.SessionID, 256),
-		requiredText("content", a.Content),
-		maxLength("content", a.Content, 4096),
-		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
-		closedEnum("origin", string(a.Origin), []string{"auto", "user"}, false),
-		closedEnum("status", string(a.Status), []string{"active", "pending"}, false),
 	)
 }
 

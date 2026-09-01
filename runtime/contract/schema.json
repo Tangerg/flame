@@ -156,6 +156,29 @@
         "scope",
         "status",
         "updatedAt"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "user"
+              }
+            },
+            "required": [
+              "origin"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "active"
+                ]
+              }
+            }
+          }
+        }
       ]
     },
     "AgentMemoryItemRequest": {
@@ -302,6 +325,22 @@
       },
       "required": [
         "id"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "content"
+              ]
+            },
+            {
+              "required": [
+                "pinned"
+              ]
+            }
+          ]
+        }
       ]
     },
     "AppliedChange": {

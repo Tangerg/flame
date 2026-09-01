@@ -347,18 +347,28 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
-  AgentMemoryItem: object({
-    content: allOf([text(), minLength(1), maxLength(4096)]),
-    createdAt: text(),
-    day: text(),
-    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
-    origin: ref(() => CHECKS.AgentMemoryOrigin),
-    pinned: flag(),
-    scope: ref(() => CHECKS.AgentMemoryScope),
-    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    status: ref(() => CHECKS.AgentMemoryStatus),
-    updatedAt: text(),
-  }, ["content", "createdAt", "id", "origin", "pinned", "scope", "status", "updatedAt"]),
+  AgentMemoryItem: allOf([
+    object({
+      content: allOf([text(), minLength(1), maxLength(4096)]),
+      createdAt: text(),
+      day: text(),
+      id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+      origin: ref(() => CHECKS.AgentMemoryOrigin),
+      pinned: flag(),
+      scope: ref(() => CHECKS.AgentMemoryScope),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      status: ref(() => CHECKS.AgentMemoryStatus),
+      updatedAt: text(),
+    }, ["content", "createdAt", "id", "origin", "pinned", "scope", "status", "updatedAt"]),
+    ifThen(
+      fields({
+        origin: literal("user"),
+      }, ["origin"]),
+      fields({
+        status: enumOf(["active"]),
+      }, []),
+    ),
+  ]),
   AgentMemoryItemRequest: object({
     id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["id"]),
@@ -393,11 +403,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["decision", "id"]),
   AgentMemoryScope: enumOf(["project", "user"]),
   AgentMemoryStatus: enumOf(["active", "pending"]),
-  AgentMemoryUpdateRequest: object({
-    content: allOf([text(), minLength(1), maxLength(4096)]),
-    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
-    pinned: flag(),
-  }, ["id"]),
+  AgentMemoryUpdateRequest: allOf([
+    object({
+      content: allOf([text(), minLength(1), maxLength(4096)]),
+      id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+      pinned: flag(),
+    }, ["id"]),
+    anyOf([fields({}, ["content"]), fields({}, ["pinned"])]),
+  ]),
   AppliedChange: object({
     from: text(),
     path: text(),

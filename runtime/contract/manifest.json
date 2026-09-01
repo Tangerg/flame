@@ -4394,6 +4394,39 @@
       ]
     },
     {
+      "type": "AgentMemoryUpdateRequest",
+      "rules": [
+        {
+          "requiredAny": [
+            "content",
+            "pinned"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "AgentMemoryItem",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "origin",
+              "operator": "equals",
+              "value": "user"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "status",
+              "values": [
+                "active"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "type": "MCPAuthorizationAttempt",
       "rules": [
         {
