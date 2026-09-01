@@ -134,7 +134,7 @@ func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) 
 	}
 }
 
-func TestRunNowRecordsAcceptedRunAfterRequestCancellation(t *testing.T) {
+func TestRunNowCarriesAcceptedRunFactThroughRequestCancellation(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"})}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -149,51 +149,37 @@ func TestRunNowRecordsAcceptedRunAfterRequestCancellation(t *testing.T) {
 	if _, err := firing.RunNow(ctx, "sch_1"); err != nil {
 		t.Fatalf("RunNow: %v", err)
 	}
-	if store.recordedID != "sch_1" || !store.recordedAt.Equal(now) {
-		t.Fatalf("recorded = (%q, %v), want (sch_1, %v)", store.recordedID, store.recordedAt, now)
+	if len(runner.requests) != 1 {
+		t.Fatalf("run requests = %d, want one", len(runner.requests))
 	}
-	if store.recordCtxErr != nil {
-		t.Fatalf("record context error = %v, want live post-accept context", store.recordCtxErr)
+	record, ok := runner.requests[0].ManualRecord()
+	if !ok || record.ScheduleID() != "sch_1" || !record.RanAt().Equal(now) {
+		t.Fatalf("manual Run record = (%+v, %t), want sch_1 at %v", record, ok, now)
 	}
 	if len(notices) != 1 || notices[0].Resource != invalidation.Schedules ||
 		!slices.Equal(notices[0].ScheduleIDs, []string{"sch_1"}) {
-		t.Fatalf("post-record invalidations = %+v, want schedules/sch_1", notices)
+		t.Fatalf("run-now invalidations = %+v, want schedules/sch_1", notices)
 	}
 }
 
-func TestRunNowDoesNotRecordCancellationAbortedRun(t *testing.T) {
+func TestRunNowDoesNotPublishCancellationAbortedRun(t *testing.T) {
 	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"})}
 	ctx, cancel := context.WithCancel(context.Background())
 	runner := cancelingScheduledRunStarter{cancel: cancel, succeed: false}
+	var notices []invalidation.Notice
 	firing := mustFiring(t, FiringDependencies{
 		Store: store, RunStarter: &runner,
+		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
 
 	if _, err := firing.RunNow(ctx, "sch_1"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("RunNow error = %v, want context.Canceled", err)
 	}
-	if store.recordedID != "" {
-		t.Fatalf("recorded id = %q, want none", store.recordedID)
-	}
-}
-
-func TestRunNowRecordFailureDoesNotPublishSchedule(t *testing.T) {
-	store := &runNowStore{
-		schedule:  mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"}),
-		recordErr: errors.New("record failed"),
-	}
-	runner := &cancelingScheduledRunStarter{cancel: func() {}, succeed: true}
-	var notices []invalidation.Notice
-	firing := mustFiring(t, FiringDependencies{
-		Store: store, RunStarter: runner,
-		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
-	})
-
-	if _, err := firing.RunNow(t.Context(), "sch_1"); err == nil {
-		t.Fatal("RunNow error = nil, want record failure")
+	if len(runner.requests) != 1 {
+		t.Fatalf("run requests = %d, want one aborted attempt", len(runner.requests))
 	}
 	if len(notices) != 0 {
-		t.Fatalf("failed record invalidations = %+v, want none", notices)
+		t.Fatalf("aborted Run invalidations = %+v, want none", notices)
 	}
 }
 
@@ -330,13 +316,9 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 }
 
 type runNowStore struct {
-	schedule     schedule.Schedule
-	created      schedule.Schedule
-	updated      schedule.Schedule
-	recordedID   string
-	recordedAt   time.Time
-	recordCtxErr error
-	recordErr    error
+	schedule schedule.Schedule
+	created  schedule.Schedule
+	updated  schedule.Schedule
 }
 
 func (r *runNowStore) ListPage(ctx context.Context, _ time.Time, _ string, _ int) ([]schedule.Schedule, error) {
@@ -360,10 +342,6 @@ func (r *runNowStore) Due(context.Context, time.Time, int) ([]schedule.Schedule,
 func (r *runNowStore) Claim(context.Context, schedule.Claim) (bool, error) { return false, nil }
 func (r *runNowStore) Pending(context.Context, int) ([]schedule.Occurrence, error) {
 	return nil, nil
-}
-func (r *runNowStore) RecordRun(ctx context.Context, record schedule.RunRecord) error {
-	r.recordedID, r.recordedAt, r.recordCtxErr = record.ScheduleID(), record.RanAt(), ctx.Err()
-	return r.recordErr
 }
 
 // TestRunWorkerNoOpWithoutScheduling ensures a disabled schedule capability

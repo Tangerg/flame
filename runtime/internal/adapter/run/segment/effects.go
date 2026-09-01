@@ -35,11 +35,12 @@ type SessionStore interface {
 	Save(ctx context.Context, expectedRevision uint64, replacement session.Session) error
 }
 
-// ScheduleFiringStore confirms the durable occurrence that owns a scheduled
-// run. The confirmation shares the opening transaction with run admission, so
-// an accepted occurrence and its Run cannot diverge across a crash.
-type ScheduleFiringStore interface {
+// ScheduleStore commits the schedule fact owned by a Run opening. Cron
+// occurrences are accepted and manual LastRunAt records are advanced through
+// the same transaction as admission, so neither can diverge from its Run.
+type ScheduleStore interface {
 	Accept(ctx context.Context, acceptance schedule.Acceptance) error
+	RecordRun(ctx context.Context, record schedule.RunRecord) error
 }
 
 // GoalRunRecorder records the budget charge for a terminal goal-owned Run. It
@@ -227,7 +228,7 @@ type Config struct {
 	Interrupts          InterruptStore
 	ResumeClaims        ResumeClaimStore
 	Sessions            SessionStore
-	ScheduleFirings     ScheduleFiringStore
+	Schedules           ScheduleStore
 	GoalRuns            GoalRunRecorder
 	Transcript          TranscriptStore
 	ItemReplacer        ItemReplacer
@@ -249,7 +250,7 @@ type Effects struct {
 	interrupts          InterruptStore
 	resumeClaims        ResumeClaimStore
 	sessions            SessionStore
-	scheduleFirings     ScheduleFiringStore
+	schedules           ScheduleStore
 	goalRuns            GoalRunRecorder
 	transcript          TranscriptStore
 	itemReplacer        ItemReplacer
@@ -279,7 +280,7 @@ const runsegmentTracerName = "scope/flame/segment"
 
 // New returns the durable Run-segment effects. Every dependency needed by the
 // supported write-sets is validated here; optional product capabilities remain
-// explicit through ScheduleFirings, GoalRuns, and ToolResults.
+// explicit through Schedules, GoalRuns, and ToolResults.
 func New(cfg Config) (*Effects, error) {
 	required := []struct {
 		name  string
@@ -309,7 +310,7 @@ func New(cfg Config) (*Effects, error) {
 		name  string
 		value any
 	}{
-		{"schedule firing store", cfg.ScheduleFirings},
+		{"schedule store", cfg.Schedules},
 		{"goal run recorder", cfg.GoalRuns},
 		{"tool result store", cfg.ToolResults},
 	}
@@ -322,7 +323,7 @@ func New(cfg Config) (*Effects, error) {
 		interrupts:          cfg.Interrupts,
 		resumeClaims:        cfg.ResumeClaims,
 		sessions:            cfg.Sessions,
-		scheduleFirings:     cfg.ScheduleFirings,
+		schedules:           cfg.Schedules,
 		goalRuns:            cfg.GoalRuns,
 		transcript:          cfg.Transcript,
 		itemReplacer:        cfg.ItemReplacer,

@@ -3,6 +3,7 @@ package schedules
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
@@ -27,7 +28,8 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 		ID: "sch_1", Instructions: "summarize", ModelSelection: mustScheduleSelection("p", "m"),
 	})
 
-	request, err := schedule.ManualRunRequest(scheduled)
+	ranAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	request, err := schedule.ManualRunRequest(scheduled, "ses_manual", "run_manual", ranAt)
 	if err != nil {
 		t.Fatalf("ManualRunRequest: %v", err)
 	}
@@ -41,8 +43,15 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	if runStarter.cmd.DefaultWorkspacePath != "/default" || runStarter.cmd.NewSessionTitle != "" {
 		t.Fatalf("command defaults = %+v", runStarter.cmd)
 	}
+	if runStarter.cmd.NewSessionID != "ses_manual" || runStarter.cmd.RunID != "run_manual" || runStarter.cmd.ScheduleFiring != "" {
+		t.Fatalf("manual schedule identities = %+v", runStarter.cmd)
+	}
 	if len(runStarter.cmd.Input) != 1 || runStarter.cmd.Input[0].Text != "summarize" || runStarter.cmd.ModelSelection.Provider() != "p" || runStarter.cmd.ModelSelection.Model() != "m" {
 		t.Fatalf("command mapping = %+v", runStarter.cmd)
+	}
+	if runStarter.cmd.ManualScheduleRun == nil || runStarter.cmd.ManualScheduleRun.ScheduleID() != "sch_1" ||
+		!runStarter.cmd.ManualScheduleRun.RanAt().Equal(ranAt) {
+		t.Fatalf("manual schedule Run fact = %+v", runStarter.cmd.ManualScheduleRun)
 	}
 	<-runStarter.canceled
 }

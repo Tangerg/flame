@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -767,6 +768,41 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	}
 }
 
+func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
+	createdAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	scheduled, err := schedule.New("sch_manual", schedule.Draft{
+		Instructions: "scheduled work", Cron: "@daily",
+	}, createdAt)
+	if err != nil {
+		t.Fatalf("new Schedule: %v", err)
+	}
+	record, err := scheduled.RecordRun(createdAt.Add(time.Second))
+	if err != nil {
+		t.Fatalf("manual Run record: %v", err)
+	}
+	executor := &fakeExecutor{}
+	effects := &fakeEffects{}
+	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_manual", ExecutorID: "turn_1"}}
+	coordinator := newUseCaseCoordinator(executor, control, new(fakeRunSessions), effects)
+
+	result, err := coordinator.Start(t.Context(), StartCommand{
+		RunID: "run_manual", NewSessionID: "ses_manual", ManualScheduleRun: &record,
+		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
+		ModelSelection: mustUseCaseSelection("provider", "model"),
+		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
+	})
+	if err != nil {
+		t.Fatalf("Start manual schedule: %v", err)
+	}
+	consumeEvents(result.Events)
+	opening := effects.opening()
+	if opening.InitialSession == nil || opening.ManualScheduleRun == nil ||
+		opening.ManualScheduleRun.ScheduleID() != scheduled.ID() ||
+		!opening.ManualScheduleRun.RanAt().Equal(record.RanAt()) || opening.ScheduleFiring != "" {
+		t.Fatalf("manual schedule opening = %+v", opening)
+	}
+}
+
 func TestStartSeedsExecutorFromConversationAndCurrentUserMessage(t *testing.T) {
 	exec := &fakeExecutor{}
 	effects := &fakeEffects{}
@@ -916,12 +952,23 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	}
 }
 
-func TestStartRejectsPartialScheduledIdentityBeforeSideEffects(t *testing.T) {
+func TestStartRejectsPartialScheduleOwnershipBeforeSideEffects(t *testing.T) {
+	createdAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	scheduled, err := schedule.New("sch_manual", schedule.Draft{Instructions: "review", Cron: "@daily"}, createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manualRecord, err := scheduled.RecordRun(createdAt.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, command := range []StartCommand{
 		{RunID: "run_1"},
 		{NewSessionID: "ses_1"},
 		{ScheduleFiring: "sch_test:1000"},
 		{RunID: "run_1", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000", SessionID: "ses_existing"},
+		{ManualScheduleRun: &manualRecord},
+		{RunID: "run_manual", NewSessionID: "ses_manual", ScheduleFiring: "sch_test:1000", ManualScheduleRun: &manualRecord},
 	} {
 		t.Run("partial", func(t *testing.T) {
 			exec := &fakeExecutor{}

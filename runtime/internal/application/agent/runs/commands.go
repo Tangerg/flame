@@ -98,11 +98,12 @@ func invalidInputBlock(index int, field, detail string, cause error) error {
 
 // StartCommand is the complete input for starting a Run.
 type StartCommand struct {
-	// RunID and NewSessionID are set only by a durable scheduled occurrence.
+	// RunID and NewSessionID are set only by a durable schedule invocation.
 	// They make re-dispatch after a crash resume the same logical run/session.
 	RunID                string
 	NewSessionID         string
 	ScheduleFiring       string
+	ManualScheduleRun    *schedule.RunRecord
 	SessionID            string
 	DefaultWorkspacePath string
 	NewSessionTitle      string
@@ -120,11 +121,10 @@ type StartCommand struct {
 	GoalIncarnationID string
 }
 
-// ValidateScheduledIdentity ensures the three stable identifiers supplied by a
-// scheduler travel as one capability. Ordinary starts leave all three empty.
-// Keeping this at the command boundary prevents a future caller from creating
-// a caller-chosen Session or Run without the occurrence that makes retries
-// safe.
+// ValidateScheduledIdentity ensures a schedule origin is exactly one durable
+// occurrence or one aggregate-owned manual Run fact. Ordinary starts carry
+// neither. Keeping this at the command boundary prevents callers from mixing
+// schedule ownership with an unrelated Session or partial retry identities.
 func (s StartCommand) ValidateScheduledIdentity() error {
 	if s.SessionID != "" {
 		if _, err := resourceid.ParseSession(s.SessionID); err != nil {
@@ -132,6 +132,24 @@ func (s StartCommand) ValidateScheduledIdentity() error {
 		}
 	}
 	scheduled := s.RunID != "" || s.NewSessionID != "" || s.ScheduleFiring != ""
+	if s.ManualScheduleRun != nil {
+		if err := s.ManualScheduleRun.Validate(); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+		}
+		if s.ScheduleFiring != "" || s.SessionID != "" {
+			return fmt.Errorf("%w: manual schedule run cannot carry occurrence or existing-session identity", ErrInvalidScheduledStart)
+		}
+		if s.RunID == "" || s.NewSessionID == "" {
+			return fmt.Errorf("%w: run ID and new session ID are required for a manual schedule run", ErrInvalidScheduledStart)
+		}
+		if _, err := resourceid.ParseRun(s.RunID); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+		}
+		if _, err := resourceid.ParseSession(s.NewSessionID); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
+		}
+		return nil
+	}
 	if !scheduled {
 		return nil
 	}

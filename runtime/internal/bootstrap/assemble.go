@@ -272,7 +272,7 @@ func buildAssemblyCore(
 		Tx:                  segment.Transactor(cfg.Transactor),
 	}
 	if cfg.ScheduleStore != nil {
-		runSegmentConfig.ScheduleFirings = cfg.ScheduleStore
+		runSegmentConfig.Schedules = cfg.ScheduleStore
 	}
 	if cfg.GoalStore != nil {
 		runSegmentConfig.GoalRuns = cfg.GoalStore

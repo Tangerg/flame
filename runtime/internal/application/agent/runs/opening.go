@@ -110,6 +110,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
 		ScheduleFiring:     cmd.ScheduleFiring,
+		ManualScheduleRun:  cmd.ManualScheduleRun,
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,

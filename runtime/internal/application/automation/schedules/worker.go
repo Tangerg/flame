@@ -19,8 +19,6 @@ var workerTracer = otel.Tracer("scope/flame/schedule")
 
 const workerTick = time.Minute
 
-const manualRunRecordTimeout = 5 * time.Second
-
 // workerBatchSize bounds the durable work admitted by one ticker pass. Pending
 // work is oldest-first; newly due schedules are claimed and dispatched together
 // so shutdown cannot materialize an unbounded backlog that never reaches Run

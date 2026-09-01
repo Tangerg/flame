@@ -20,6 +20,7 @@ const (
 	liveDeepSeekEnvironment        = "FLAME_LIVE_DEEPSEEK"
 	liveConfigDirectoryEnvironment = "FLAME_LIVE_CONFIG_DIR"
 	liveGoalMarker                 = "LIVE_GOAL_PLAN_OK"
+	liveScheduleMarker             = "LIVE_SCHEDULE_RUN_OK"
 	liveSteerMarker                = "LIVE_STEER_APPLIED"
 	liveHITLMarker                 = "LIVE_HITL_RESUMED"
 	liveCrashRecoveryMarker        = "LIVE_CRASH_RECOVERY_OK"
@@ -31,6 +32,101 @@ const (
 	liveCrashStateEnvironment      = "FLAME_LIVE_CRASH_STATE"
 	liveCrashToolMarkerEnvironment = "FLAME_LIVE_CRASH_TOOL_MARKER"
 )
+
+func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
+	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
+	created, err := fixture.runtime.CreateSchedule(fixture.ctx, protocol.CreateScheduleRequest{
+		Title:        "Live DeepSeek Schedule E2E",
+		Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.",
+		Workspace:    &protocol.WorkspaceRef{Path: fixture.workspace},
+		Cron:         "0 0 1 1 *",
+	}, flameruntime.CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Revision != 1 || created.LastRunAt != nil || created.NextRunAt == nil {
+		t.Fatalf("created Schedule = %+v, want pristine revision one", created)
+	}
+
+	options := flameruntime.CommandOptions{IdempotencyKey: "live-deepseek-manual-schedule"}
+	started, err := fixture.runtime.RunScheduleNow(
+		fixture.ctx,
+		protocol.RunScheduleNowRequest{ID: created.ID},
+		options,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := fixture.runtime.RunScheduleNow(
+		fixture.ctx,
+		protocol.RunScheduleNowRequest{ID: created.ID},
+		options,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *replayed != *started {
+		t.Fatalf("replayed Schedule Run = %+v, want %+v", replayed, started)
+	}
+
+	var completed *protocol.RunRef
+	for completed == nil {
+		current, getErr := fixture.runtime.GetRun(
+			fixture.ctx,
+			protocol.GetRunRequest{RunID: started.RunID},
+			flameruntime.CallOptions{},
+		)
+		if getErr != nil {
+			t.Fatal(getErr)
+		}
+		switch current.Status {
+		case protocol.RunStatusRunning:
+		case protocol.RunStatusFinished:
+			if current.Outcome == nil || current.Outcome.Type != protocol.OutcomeCompleted {
+				t.Fatalf("manual Schedule Run = %+v, want completed", current)
+			}
+			completed = current
+		default:
+			t.Fatalf("manual Schedule Run = %+v, want running or completed", current)
+		}
+		if completed == nil {
+			select {
+			case <-fixture.ctx.Done():
+				t.Fatal(fixture.ctx.Err())
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}
+	if completed.SessionID != started.SessionID {
+		t.Fatalf("Run Session = %q, want %q", completed.SessionID, started.SessionID)
+	}
+	assertDeepSeekRun(t, completed)
+	if answer := fixture.finalAnswer(t, started.RunID); strings.TrimSpace(answer) != liveScheduleMarker {
+		t.Fatalf("manual Schedule answer = %q, want %q", answer, liveScheduleMarker)
+	}
+	if _, err := fixture.runtime.GetSession(
+		fixture.ctx,
+		protocol.GetSessionRequest{SessionID: started.SessionID},
+		flameruntime.CallOptions{},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	schedules, err := fixture.runtime.ListSchedules(fixture.ctx, protocol.PageQuery{}, flameruntime.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(schedules.Data) != 1 {
+		t.Fatalf("Schedules = %+v, want one", schedules.Data)
+	}
+	current := schedules.Data[0]
+	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt == nil {
+		t.Fatalf("Schedule after manual Run = %+v, want one committed Run fact", current)
+	}
+	if current.NextRunAt == nil || !current.NextRunAt.Equal(*created.NextRunAt) {
+		t.Fatalf("Schedule next cursor = %v, want unchanged %v", current.NextRunAt, created.NextRunAt)
+	}
+}
 
 func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)

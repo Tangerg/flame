@@ -438,17 +438,23 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
-	if opening.ScheduleFiring == "" {
+	if opening.ScheduleFiring == "" && opening.ManualScheduleRun == nil {
 		return nil
 	}
-	if e.scheduleFirings == nil {
-		return errors.New("segment: schedule-firing persistence is unavailable")
+	if e.schedules == nil {
+		return errors.New("segment: schedule persistence is unavailable")
+	}
+	if opening.ManualScheduleRun != nil {
+		if err := e.schedules.RecordRun(ctx, *opening.ManualScheduleRun); err != nil {
+			return fmt.Errorf("segment: record manual schedule Run: %w", err)
+		}
+		return nil
 	}
 	acceptance, err := schedule.NewAcceptance(opening.ScheduleFiring, opening.Admit.RunID)
 	if err != nil {
 		return fmt.Errorf("segment: form scheduled occurrence acceptance: %w", err)
 	}
-	if err := e.scheduleFirings.Accept(ctx, acceptance); err != nil {
+	if err := e.schedules.Accept(ctx, acceptance); err != nil {
 		return fmt.Errorf("segment: accept scheduled occurrence: %w", err)
 	}
 	return nil

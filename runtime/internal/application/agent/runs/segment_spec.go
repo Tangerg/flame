@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -26,6 +27,7 @@ type segmentSpec struct {
 	InitialSession     *session.Session
 	SessionReplacement *SessionReplacement
 	ScheduleFiring     string
+	ManualScheduleRun  *schedule.RunRecord
 	CreatedAt          time.Time
 	OpeningUserText    string
 	Input              []transcript.ContentBlock

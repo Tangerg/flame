@@ -40,7 +40,7 @@ type ApprovalRuleStore interface {
 }
 
 // ScheduleStore is the composition-root union shared by schedule management,
-// run-now firing, and the due worker. The consumers retain their narrower
+// firing, and Run opening effects. The consumers retain their narrower
 // application-owned ports.
 type ScheduleStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)

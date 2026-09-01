@@ -61,6 +61,7 @@ type OpeningCommit struct {
 	InitialSession     *session.Session
 	SessionReplacement *SessionReplacement
 	ScheduleFiring     string
+	ManualScheduleRun  *schedule.RunRecord
 	Events             []EventCommit
 }
 
@@ -739,7 +740,7 @@ func (o OpeningCommit) Validate() error {
 		if err := o.validateAdmission(); err != nil {
 			return err
 		}
-	} else if o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" {
+	} else if o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil {
 		return errors.New("runs: resumed opening carries fresh-run facts")
 	}
 	return o.validateEvents()
@@ -765,6 +766,14 @@ func (o OpeningCommit) validateAdmission() error {
 	if o.ScheduleFiring != "" {
 		if err := schedule.ValidateOccurrenceID(o.ScheduleFiring); err != nil {
 			return fmt.Errorf("runs: opening schedule firing: %w", err)
+		}
+	}
+	if o.ManualScheduleRun != nil {
+		if err := o.ManualScheduleRun.Validate(); err != nil {
+			return fmt.Errorf("runs: opening manual schedule Run: %w", err)
+		}
+		if o.ScheduleFiring != "" {
+			return errors.New("runs: opening mixes scheduled occurrence and manual schedule Run")
 		}
 	}
 	return nil

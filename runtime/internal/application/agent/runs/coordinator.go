@@ -484,6 +484,7 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 		opening.InitialSession = spec.InitialSession
 		opening.SessionReplacement = spec.SessionReplacement
 		opening.ScheduleFiring = spec.ScheduleFiring
+		opening.ManualScheduleRun = spec.ManualScheduleRun
 	}
 	openings := make([]routeOpening, 0, len(ordered))
 	for _, route := range ordered {

@@ -12,7 +12,6 @@ import (
 // RunNowStore is the on-demand firing persistence slice.
 type RunNowStore interface {
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
-	RecordRun(ctx context.Context, record schedule.RunRecord) error
 }
 
 // FiringStore joins the independently consumed run-now and worker slices for
@@ -76,9 +75,9 @@ func (f *Firing) Available() bool {
 	return f != nil && f.runNowStore != nil
 }
 
-// RunNow starts one off-cycle schedule firing and records it without advancing
-// the cron cursor. Once accepted, recording outlives request cancellation so a
-// durable LastRunAt fact cannot be lost after a client disconnect.
+// RunNow starts one off-cycle schedule firing without advancing the cron
+// cursor. The request carries its aggregate-owned Run record into the same
+// transaction as Run opening, so success and LastRunAt cannot diverge.
 func (f *Firing) RunNow(ctx context.Context, id string) (StartedRun, error) {
 	if !f.Available() {
 		return StartedRun{}, ErrUnavailable
@@ -90,23 +89,13 @@ func (f *Firing) RunNow(ctx context.Context, id string) (StartedRun, error) {
 	if err != nil {
 		return StartedRun{}, err
 	}
-	record, err := scheduled.RecordRun(f.now())
-	if err != nil {
-		return StartedRun{}, fmt.Errorf("schedules: form run-now record for %q: %w", id, err)
-	}
-	request, err := schedule.ManualRunRequest(scheduled)
+	request, err := schedule.ManualRunRequest(scheduled, f.newSessionID(), f.newRunID(), f.now())
 	if err != nil {
 		return StartedRun{}, err
 	}
 	startedRun, err := Fire(ctx, f.runStarter, request)
 	if err != nil {
 		return StartedRun{}, err
-	}
-
-	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), manualRunRecordTimeout)
-	defer cancel()
-	if err := f.runNowStore.RecordRun(writeCtx, record); err != nil {
-		return StartedRun{}, fmt.Errorf("schedules: record run-now for %q: %w", id, err)
 	}
 	f.invalidations.Notify(invalidation.ForSchedules(id))
 	return startedRun, nil

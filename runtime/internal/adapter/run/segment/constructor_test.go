@@ -35,8 +35,8 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 }
 
 func mustNewEffects(cfg Config) *Effects {
-	if nilDependency(cfg.ScheduleFirings) {
-		cfg.ScheduleFirings = nil
+	if nilDependency(cfg.Schedules) {
+		cfg.Schedules = nil
 	}
 	if nilDependency(cfg.GoalRuns) {
 		cfg.GoalRuns = nil

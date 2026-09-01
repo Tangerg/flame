@@ -147,12 +147,16 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	if request.OccurrenceID() != occurrence.ID() || request.SessionID() != "ses_due" || request.RunID() != "run_due" {
 		t.Fatalf("durable RunRequest identities were not preserved")
 	}
-	manual, err := ManualRunRequest(edited)
+	manual, err := ManualRunRequest(edited, "ses_manual", "run_manual", dueAt)
 	if err != nil {
 		t.Fatalf("ManualRunRequest: %v", err)
 	}
-	if manual.OccurrenceID() != "" || manual.SessionID() != "" || manual.RunID() != "" {
-		t.Fatalf("manual request invented durable identity: %+v", manual)
+	if manual.OccurrenceID() != "" || manual.SessionID() != "ses_manual" || manual.RunID() != "run_manual" {
+		t.Fatalf("manual request durable identity = (%q, %q, %q)", manual.OccurrenceID(), manual.SessionID(), manual.RunID())
+	}
+	manualRecord, ok := manual.ManualRecord()
+	if !ok || manualRecord.ScheduleID() != edited.ID() || !manualRecord.RanAt().Equal(dueAt) {
+		t.Fatalf("manual request Run record = (%+v, %t)", manualRecord, ok)
 	}
 
 	snapshot := occurrence.Snapshot()

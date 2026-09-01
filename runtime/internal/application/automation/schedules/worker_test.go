@@ -191,10 +191,12 @@ type cancelingScheduledRunStarter struct {
 	cancel             context.CancelFunc
 	succeed            bool
 	startedScheduleIDs []string
+	requests           []schedule.RunRequest
 }
 
 func (c *cancelingScheduledRunStarter) StartScheduledRun(ctx context.Context, request schedule.RunRequest) (StartedRun, error) {
 	c.startedScheduleIDs = append(c.startedScheduleIDs, request.ScheduleID())
+	c.requests = append(c.requests, request)
 	c.cancel()
 	if !c.succeed {
 		return StartedRun{}, ctx.Err()
