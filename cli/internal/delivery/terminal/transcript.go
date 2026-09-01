@@ -50,8 +50,7 @@ type transcriptView struct {
 	textStreams      map[string]*liveText
 	pendingQuestions map[string]trackedQuestion
 	toolViews        []trackedToolView
-	runEntries       map[string][]headless.BlockID
-	runLineages      map[string]agent.RunLineage
+	history          transcriptHistory
 	activeToolGroup  *trackedToolGroup
 	images           *terminalImagePresenter
 	contentLease     *transcriptContentLease
@@ -216,8 +215,7 @@ func newTranscriptView(
 		clipboard: clipboard, entries: make(map[headless.BlockID]*transcriptEntry),
 		tools: make(map[string]liveTool), textStreams: make(map[string]*liveText),
 		pendingQuestions: make(map[string]trackedQuestion),
-		runEntries:       make(map[string][]headless.BlockID),
-		runLineages:      make(map[string]agent.RunLineage),
+		history:          newTranscriptHistory(),
 		keys:             transcriptKeys(),
 		contentLease:     newTranscriptContentLease(),
 	}
@@ -676,7 +674,7 @@ func (t *transcriptView) Apply(event agent.Event, registry *extensions.Registry)
 
 func (t *transcriptView) ApplyRunEvent(envelope agent.RunEvent, registry *extensions.Registry) error {
 	if started, ok := envelope.Event.(agent.SegmentStarted); ok {
-		t.runLineages[started.Run.ID] = started.Run.Lineage
+		t.history.Observe(started.Run)
 	}
 	return t.apply(envelope.RunID, envelope.Event, registry)
 }
@@ -731,7 +729,7 @@ func (t *transcriptView) appendCustom(runID string, event agent.CustomEvent, reg
 		t.sealToolGroup()
 		for _, block := range rendered {
 			id := t.append(block)
-			t.trackRunEntry(runID, id)
+			t.history.Append(runID, id)
 		}
 		return nil
 	}
@@ -756,14 +754,14 @@ func (t *transcriptView) begin(block agent.Block) error {
 		return fmt.Errorf("terminal transcript: block %s is already a live tool", block.ID)
 	}
 	t.sealToolGroup()
-	speaker := t.speakerFor(block)
+	speaker := t.history.Speaker(block)
 	live := &liveText{
 		runID: block.RunID, kind: block.Kind, text: agent.NewStreamedText(block.Text),
 		block: &markdownBlock{theme: t.theme, speaker: speaker},
 	}
 	live.stream.SetLook(t.lookFor(block.Kind))
 	live.id = t.place(live.block, false)
-	t.trackRunEntry(block.RunID, live.id)
+	t.history.Append(block.RunID, live.id)
 	t.textStreams[key] = live
 	if block.Text != "" {
 		t.updateLiveText(live, block.Text)
@@ -832,7 +830,7 @@ func (t *transcriptView) completeStream(block agent.Block) error {
 	delete(t.textStreams, key)
 	for _, image := range block.Images {
 		id := t.append(t.presentImage(image))
-		t.trackRunEntry(block.RunID, id)
+		t.history.Append(block.RunID, id)
 	}
 	t.refreshSearch()
 	return nil
@@ -976,7 +974,7 @@ func (t *transcriptView) appendCompleted(block agent.Block, registry *extensions
 			}
 		}
 		id := t.place(item, !isPendingQuestion)
-		t.trackRunEntry(block.RunID, id)
+		t.history.Append(block.RunID, id)
 		if isPendingQuestion {
 			t.pendingQuestions[key] = trackedQuestion{runID: block.RunID, id: id, block: question}
 		}
@@ -1018,7 +1016,7 @@ func (t *transcriptView) beginTool(block agent.Block, registry *extensions.Regis
 			mutable.SetExpanded(t.details)
 		}
 		id := t.place(item, false)
-		t.trackRunEntry(block.RunID, id)
+		t.history.Append(block.RunID, id)
 		live.ids = append(live.ids, id)
 		if isMutable {
 			tracked := trackedTool{id: id, block: mutable}
@@ -1047,7 +1045,7 @@ func (t *transcriptView) addGroupedTool(runID string, tool *toolBlock) *trackedT
 		block.Add(tool)
 		group = &trackedToolGroup{runID: runID, block: block}
 		group.id = t.place(block, false)
-		t.trackRunEntry(runID, group.id)
+		t.history.Append(runID, group.id)
 		t.toolViews = append(t.toolViews, trackedToolView{id: group.id, block: block})
 		t.activeToolGroup = group
 		return group
@@ -1083,7 +1081,7 @@ func (t *transcriptView) present(block agent.Block, registry *extensions.Registr
 		if presenter.Kind == block.Kind {
 			return presentSafely(presenter, BlockPresentation{
 				Theme: t.theme, Glyphs: t.glyphs, Look: t.look, Syntax: t.syntax,
-				Tools: registry.Values(ToolPresenters), Speaker: t.speakerFor(block), Image: t.presentImage,
+				Tools: registry.Values(ToolPresenters), Speaker: t.history.Speaker(block), Image: t.presentImage,
 			}, block)
 		}
 	}
@@ -1159,14 +1157,7 @@ func (t *transcriptView) DiscardExcess() {
 			delete(t.pendingQuestions, key)
 		}
 	}
-	for runID, ids := range t.runEntries {
-		ids = slices.DeleteFunc(ids, func(id headless.BlockID) bool { return id < first })
-		if len(ids) == 0 {
-			delete(t.runEntries, runID)
-		} else {
-			t.runEntries[runID] = ids
-		}
-	}
+	t.history.DiscardBefore(first)
 	if t.hasSelected && t.selected < first {
 		t.hasSelected = false
 		t.ensureSelection()
@@ -1196,8 +1187,7 @@ func (t *transcriptView) Reset() {
 	clear(t.tools)
 	clear(t.pendingQuestions)
 	clear(t.entries)
-	clear(t.runEntries)
-	clear(t.runLineages)
+	t.history.Reset()
 	t.activeToolGroup = nil
 	t.hasSelected = false
 	t.pointerGesture.cancel()
@@ -1205,53 +1195,18 @@ func (t *transcriptView) Reset() {
 }
 
 func (t *transcriptView) SetRuns(runs []agent.Run) {
-	clear(t.runLineages)
-	for _, run := range runs {
-		t.runLineages[run.ID] = run.Lineage
-	}
-}
-
-func (t *transcriptView) speakerFor(block agent.Block) string {
-	lineage, known := t.runLineages[block.RunID]
-	if !known || lineage.IsRoot() {
-		switch block.Kind {
-		case agent.BlockUser:
-			return "you"
-		case agent.BlockReasoning:
-			return "thinking"
-		default:
-			return "flame"
-		}
-	}
-	identity := shortIdentity(block.RunID)
-	switch block.Kind {
-	case agent.BlockUser:
-		return "subagent input · " + identity
-	case agent.BlockReasoning:
-		return "subagent thinking · " + identity
-	default:
-		return "subagent · " + identity
-	}
-}
-
-func (t *transcriptView) trackRunEntry(runID string, id headless.BlockID) {
-	if runID == "" {
-		return
-	}
-	t.runEntries[runID] = append(t.runEntries[runID], id)
+	t.history.ReplaceRuns(runs)
 }
 
 func (t *transcriptView) JumpToRun(runID string) bool {
 	first := t.content.FirstBlock()
 	last := first + blockOffset(t.content.Len())
-	for _, id := range t.runEntries[runID] {
-		if id < first || id >= last {
-			continue
-		}
-		t.selectEntry(id, true)
-		return true
+	id, ok := t.history.FirstRetained(runID, first, last)
+	if !ok {
+		return false
 	}
-	return false
+	t.selectEntry(id, true)
+	return true
 }
 
 func blockOffset(index int) headless.BlockID {

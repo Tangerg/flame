@@ -48,8 +48,8 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 	}, registry); err != nil {
 		t.Fatal(err)
 	}
-	if len(view.runEntries["run_1"]) != 1 {
-		t.Fatalf("custom event entries = %+v", view.runEntries)
+	if view.content.Len() != 1 || !view.JumpToRun("run_1") {
+		t.Fatalf("custom event was not retained for its run: content = %d", view.content.Len())
 	}
 	drawn := drawRoot(t, view, 48, 6)
 	if !strings.Contains(drawn, "trace") || !strings.Contains(drawn, `"span":"abc"`) {
@@ -332,8 +332,8 @@ func TestStreamedAssistantCompletionAppendsInlineImages(t *testing.T) {
 	if err := view.ApplyRunEvent(agent.RunEvent{RunID: "run_1", Event: agent.BlockCompleted{Block: completed}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if view.content.Len() != 2 || len(view.runEntries["run_1"]) != 2 {
-		t.Fatalf("streamed image entries = content %d, run entries %+v", view.content.Len(), view.runEntries)
+	if view.content.Len() != 2 || !view.JumpToRun("run_1") {
+		t.Fatalf("streamed image completion was not retained for its run: content = %d", view.content.Len())
 	}
 	drawn := drawRoot(t, view, 48, 8)
 	if !strings.Contains(drawn, "Generated chart") || !strings.Contains(drawn, "chart.png") {
