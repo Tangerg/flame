@@ -291,6 +291,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		cutoff:         cutoff,
 		older:          trimmed[:cutoff],
 		recent:         trimmed[cutoff:],
+		inputTokens:    inputTokens,
 	}, nil
 }
 

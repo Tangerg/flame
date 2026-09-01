@@ -695,14 +695,15 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 	}
 }
 
-func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *testing.T) {
+func TestOptionalModelContextCompactionHonorsLifecycleVetoWithoutBlockingCall(t *testing.T) {
 	store := newCompactionTestStore()
-	const sessionID = "session:veto"
+	const sessionID = "session:optional-veto"
 	history := completeContextTurns()
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	client, err := chatclient.New(newTextStubModel("must not run"), chatclient.Config{})
+	model := newTextStubModel("must not run")
+	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -711,6 +712,44 @@ func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *tes
 		constClient(client),
 		nil,
 		CompactionPolicyValues{MaxMessages: intPointer(len(history)), KeepRecent: intPointer(2)},
+	)
+	request := durableContextRequest(t, sessionID, history, 0, func(context.Context) bool { return false })
+
+	result, err := compactor.CompactModelContext(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Changed() || result.Summarized() || !reflect.DeepEqual(result.Messages(), history) {
+		t.Fatalf("vetoed optional compaction changed context: %#v", result.Messages())
+	}
+	if store.rewrites != 0 || len(model.requests) != 0 {
+		t.Fatalf("vetoed optional compaction side effects = rewrites:%d summaries:%d", store.rewrites, len(model.requests))
+	}
+}
+
+func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *testing.T) {
+	store := newCompactionTestStore()
+	const sessionID = "session:required-veto"
+	history := completeContextTurns()
+	if err := store.Write(t.Context(), sessionID, history...); err != nil {
+		t.Fatal(err)
+	}
+	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
+	threshold := mustEstimateModelContextTokens(
+		t,
+		append(cloneMessages(instructions), history...),
+		nil,
+		chat.Options{},
+	)
+	compactor := mustNewCompactor(t,
+		store,
+		nil,
+		nil,
+		CompactionPolicyValues{
+			MaxMessages: intPointer(len(history) + 1),
+			MaxTokens:   intPointer(threshold),
+			KeepRecent:  intPointer(2),
+		},
 	)
 	request := durableContextRequest(t, sessionID, history, 0, func(context.Context) bool { return false })
 
