@@ -15,7 +15,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -154,18 +153,6 @@ type countingObservationModel struct {
 
 func (*countingObservationModel) CountInputTokens(context.Context, *chat.Request) (int64, error) {
 	return 123, nil
-}
-
-type countingInteractionChatResolver struct {
-	InteractionChatResolver
-	counter modeladapter.InputTokenCounter
-}
-
-func (c countingInteractionChatResolver) ResolveInputTokenCounter(
-	context.Context,
-	modelref.Selection,
-) (modeladapter.InputTokenCounter, error) {
-	return c.counter, nil
 }
 
 func TestInteractionExecutorCarriesProviderInputCountingIntoEveryMainCallReduction(t *testing.T) {
@@ -1453,11 +1440,11 @@ func newObservedTestInteractionExecutor(
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := InteractionChatResolver(staticInteractionChatResolver(client))
-	if counter, ok := model.(modeladapter.InputTokenCounter); ok {
-		resolver = countingInteractionChatResolver{InteractionChatResolver: resolver, counter: counter}
+	var counter modeladapter.InputTokenCounter
+	if modelCounter, ok := model.(modeladapter.InputTokenCounter); ok {
+		counter = modelCounter
 	}
-	extra.ChatResolver = resolver
+	extra.ChatResolver = interactionChatResolver(client, counter)
 	extra.Lifetime = t.Context()
 	extra.ImplementationIdentity = "interaction-observation-test-build"
 	extra.ConfigurationIdentity = "interaction-observation-test-config"

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -136,9 +137,9 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 	var resolved []modelref.Selection
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime: t.Context(),
-		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (*chatclient.Client, error) {
+		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
-			return &client, nil
+			return modeladapter.NewResolvedChat(&client, nil)
 		}),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -156,30 +157,37 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		executor.config.ConfigurationIdentity != "" {
 		t.Fatal("Interaction executor retained duplicate raw identity configuration")
 	}
-	got, err := executor.resolveClient(t.Context(), testDefaultSelection())
-	if err != nil || got != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
-		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got, err, resolved, &client, testDefaultSelection())
+	got, err := executor.resolveChat(t.Context(), testDefaultSelection())
+	if err != nil || got.Client() != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
+		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got.Client(), err, resolved, &client, testDefaultSelection())
 	}
-	if _, err := executor.resolveClient(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
+	if _, err := executor.resolveChat(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
 		t.Fatalf("second exact-default resolution = (%v, %#v), want a fresh resolver call", err, resolved)
 	}
-	if _, err := executor.resolveClient(t.Context(), modelref.Selection{}); err == nil {
+	if _, err := executor.resolveChat(t.Context(), modelref.Selection{}); err == nil {
 		t.Fatal("resolve implicit selection succeeded, want exact-selection error")
 	}
 }
 
-type interactionChatResolverFunc func(context.Context, modelref.Selection) (*chatclient.Client, error)
+type interactionChatResolverFunc func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error)
 
 func (i interactionChatResolverFunc) ResolveChat(
 	ctx context.Context,
 	selection modelref.Selection,
-) (*chatclient.Client, error) {
+) (modeladapter.ResolvedChat, error) {
 	return i(ctx, selection)
 }
 
 func staticInteractionChatResolver(client chatclient.Client) InteractionChatResolver {
-	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (*chatclient.Client, error) {
-		return &client, nil
+	return interactionChatResolver(client, nil)
+}
+
+func interactionChatResolver(
+	client chatclient.Client,
+	counter modeladapter.InputTokenCounter,
+) InteractionChatResolver {
+	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error) {
+		return modeladapter.NewResolvedChat(&client, counter)
 	})
 }
 

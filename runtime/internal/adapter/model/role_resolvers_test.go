@@ -11,13 +11,13 @@ import (
 )
 
 type recordingChatResolver struct {
-	resolve func(modelref.Selection) (*chatclient.Client, error)
+	resolve func(modelref.Selection) (ResolvedChat, error)
 }
 
 func (r recordingChatResolver) ResolveChat(
 	_ context.Context,
 	selection modelref.Selection,
-) (*chatclient.Client, error) {
+) (ResolvedChat, error) {
 	return r.resolve(selection)
 }
 
@@ -31,12 +31,12 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	selection := mustRoleSelection(t, "anthropic", "claude-test")
 	client := newTestChatClient(t)
 	calls := 0
-	resolver := recordingChatResolver{resolve: func(got modelref.Selection) (*chatclient.Client, error) {
+	resolver := recordingChatResolver{resolve: func(got modelref.Selection) (ResolvedChat, error) {
 		calls++
 		if got != selection {
 			t.Fatalf("selection = %#v, want %#v", got, selection)
 		}
-		return client, nil
+		return mustResolvedChat(t, client, nil), nil
 	}}
 	resolve := LiveUtilityClient(resolver, selection, staticRoleSource{})
 
@@ -53,12 +53,12 @@ func TestLiveUtilityClientFallsBackThroughResolver(t *testing.T) {
 	utilitySelection := mustRoleSelection(t, "openai", "utility-model")
 	client := newTestChatClient(t)
 	var resolved []modelref.Selection
-	resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (*chatclient.Client, error) {
+	resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (ResolvedChat, error) {
 		resolved = append(resolved, selection)
 		if selection == utilitySelection {
-			return nil, errors.New("utility provider unavailable")
+			return ResolvedChat{}, errors.New("utility provider unavailable")
 		}
-		return client, nil
+		return mustResolvedChat(t, client, nil), nil
 	}}
 	resolve := LiveUtilityClient(resolver, mainSelection, staticRoleSource{selection: utilitySelection})
 
@@ -88,4 +88,13 @@ func newTestChatClient(t testing.TB) *chatclient.Client {
 		t.Fatal(err)
 	}
 	return &client
+}
+
+func mustResolvedChat(t testing.TB, client *chatclient.Client, counter InputTokenCounter) ResolvedChat {
+	t.Helper()
+	resolved, err := NewResolvedChat(client, counter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
 }

@@ -297,11 +297,10 @@ func buildOpenAICompatibleModel(spec ClientSpec, opts chat.Options) (chat.Model,
 	})
 }
 
-// BuildClient wires a *chatclient.Client for one provider+model from the provider catalog:
-// it picks the model adapter, plugs in the model id, api key, and optional base
-// URL. A provider that requires a base URL (a compatible endpoint provider or Azure)
-// errors when one isn't supplied. Pricing is a separate accounting concern, so
-// the constructed client carries no pricing hook.
+// buildModel selects and configures one provider model from the catalog. A
+// provider that requires a base URL errors when one is not supplied. Pricing is
+// a separate accounting concern, so the constructed model carries no pricing
+// hook.
 func buildModel(spec ClientSpec) (chat.Model, error) {
 	if err := spec.validate(); err != nil {
 		return nil, err
@@ -328,26 +327,20 @@ func buildModel(spec ClientSpec) (chat.Model, error) {
 	return classifyModelFailures(model), nil
 }
 
-func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
+// BuildChat constructs one provider model and projects both its ordinary chat
+// client and its optional complete-request token counter. Capability discovery
+// must happen on this exact model instance so callers never resolve credentials
+// or build a provider twice for one interaction.
+func BuildChat(spec ClientSpec) (*chatclient.Client, InputTokenCounter, error) {
 	model, err := buildModel(spec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("llm: chat client: %w", err)
+		return nil, nil, fmt.Errorf("llm: chat client: %w", err)
 	}
-	return &client, nil
-}
-
-// BuildInputTokenCounter resolves the provider's optional exact
-// complete-request counter without adding it to chatclient's call contract.
-func BuildInputTokenCounter(spec ClientSpec) (InputTokenCounter, bool, error) {
-	model, err := buildModel(spec)
-	if err != nil {
-		return nil, false, err
-	}
-	counter, ok := model.(InputTokenCounter)
-	return counter, ok, nil
+	counter, _ := model.(InputTokenCounter)
+	return &client, counter, nil
 }

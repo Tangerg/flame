@@ -13,10 +13,34 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-// InputTokenCounter is the narrow optional model capability consumed by
-// model-context budgeting. It is separate from ordinary chat resolution.
+// InputTokenCounter is the narrow optional provider capability consumed by
+// model-context budgeting and discovered alongside ordinary chat resolution.
 type InputTokenCounter interface {
 	CountInputTokens(context.Context, *corechat.Request) (int64, error)
+}
+
+// ResolvedChat is one immutable provider-model construction projected through
+// the capabilities Runtime consumes. Its client and optional token counter
+// always share the same underlying model and credential snapshot.
+type ResolvedChat struct {
+	client            *chatclient.Client
+	inputTokenCounter InputTokenCounter
+}
+
+// NewResolvedChat validates and freezes one resolved chat construction.
+func NewResolvedChat(client *chatclient.Client, counter InputTokenCounter) (ResolvedChat, error) {
+	if client == nil {
+		return ResolvedChat{}, errors.New("model: resolved chat client is nil")
+	}
+	return ResolvedChat{client: client, inputTokenCounter: counter}, nil
+}
+
+// Client returns the ordinary chat projection.
+func (r ResolvedChat) Client() *chatclient.Client { return r.client }
+
+// InputTokenCounter returns the optional complete-request counting projection.
+func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
+	return r.inputTokenCounter, r.inputTokenCounter != nil
 }
 
 // CredentialLookup is the model-client construction view of the provider
@@ -40,30 +64,20 @@ func NewChatResolver(providers CredentialLookup) *ChatResolver {
 	return &ChatResolver{providers: providers}
 }
 
-// ResolveChat returns the chat client for selection, building it from the
-// provider's registry configuration. Required authentication fails as invalid
-// credentials; optional-key providers may resolve without a registry row.
-func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (*chatclient.Client, error) {
+// ResolveChat builds one provider model from the registry configuration and
+// returns all capabilities Runtime consumes from that exact instance. Required
+// authentication fails as invalid credentials; optional-key providers may
+// resolve without a registry row.
+func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
 	spec, err := c.resolveClientSpec(ctx, selection)
 	if err != nil {
-		return nil, err
+		return ResolvedChat{}, err
 	}
-	return llm.BuildClient(spec)
-}
-
-// ResolveInputTokenCounter returns the provider's optional complete-request
-// counting capability for model-context budgeting. Ordinary chat resolution
-// does not gain a second call surface.
-func (c *ChatResolver) ResolveInputTokenCounter(
-	ctx context.Context,
-	selection modelref.Selection,
-) (InputTokenCounter, error) {
-	spec, err := c.resolveClientSpec(ctx, selection)
+	client, counter, err := llm.BuildChat(spec)
 	if err != nil {
-		return nil, err
+		return ResolvedChat{}, err
 	}
-	counter, _, err := llm.BuildInputTokenCounter(spec)
-	return counter, err
+	return NewResolvedChat(client, counter)
 }
 
 func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelref.Selection) (llm.ClientSpec, error) {

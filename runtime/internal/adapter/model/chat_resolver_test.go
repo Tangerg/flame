@@ -37,17 +37,17 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro"))
-	if err != nil || c == nil {
-		t.Fatalf("ResolveChat after configure: client=%v err=%v", c, err)
+	resolved, err := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro"))
+	if err != nil || resolved.Client() == nil {
+		t.Fatalf("ResolveChat after configure: client=%v err=%v", resolved.Client(), err)
 	}
 	// Client construction is cheap and immutable. Re-resolving deliberately
 	// avoids a process-lifetime cache retaining old credential generations.
-	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2 == c {
+	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2.Client() == resolved.Client() {
 		t.Error("resolver retained a process-lifetime client")
 	}
 	// A different model on the same provider builds a distinct client.
-	if c3, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-flash")); c3 == c {
+	if c3, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-flash")); c3.Client() == resolved.Client() {
 		t.Error("different model should resolve a distinct client")
 	}
 }
@@ -61,9 +61,9 @@ func TestChatResolverBuildsOptionalCredentialProviderWithoutRegistryRow(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewChatResolver(sqlitestore.NewProviderStore(db)).ResolveChat(t.Context(), selection)
-	if err != nil || client == nil {
-		t.Fatalf("ResolveChat optional credential provider = %v, %v", client, err)
+	resolved, err := NewChatResolver(sqlitestore.NewProviderStore(db)).ResolveChat(t.Context(), selection)
+	if err != nil || resolved.Client() == nil {
+		t.Fatalf("ResolveChat optional credential provider = %v, %v", resolved.Client(), err)
 	}
 }
 

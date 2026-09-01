@@ -97,7 +97,7 @@ func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
 	}
 }
 
-func TestBuildClient_DeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
+func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	var calls atomic.Int32
 	var secondRequest struct {
 		Messages []map[string]any `json:"messages"`
@@ -120,9 +120,9 @@ func TestBuildClient_DeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := BuildClient(mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
+	client, _, err := BuildChat(mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
 	if err != nil {
-		t.Fatalf("BuildClient: %v", err)
+		t.Fatalf("BuildChat: %v", err)
 	}
 	firstUser := chat.NewUserMessage(chat.NewTextPart("first"))
 	first, err := client.Call(t.Context(), &chat.Request{Messages: []chat.Message{firstUser}})
@@ -150,7 +150,7 @@ func TestBuildClient_DeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}
 }
 
-func TestBuildClientGoogleUsesConfiguredEndpoint(t *testing.T) {
+func TestBuildChatGoogleUsesConfiguredEndpoint(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -166,9 +166,9 @@ func TestBuildClientGoogleUsesConfiguredEndpoint(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := BuildClient(mustClientSpec(t, ProviderGoogle, google.ModelGemini36Flash, "test-key", server.URL))
+	client, _, err := BuildChat(mustClientSpec(t, ProviderGoogle, google.ModelGemini36Flash, "test-key", server.URL))
 	if err != nil {
-		t.Fatalf("BuildClient: %v", err)
+		t.Fatalf("BuildChat: %v", err)
 	}
 	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("route this request")))
 	if err != nil {
@@ -220,27 +220,27 @@ func TestQueries(t *testing.T) {
 	}
 }
 
-// TestBuildClient covers the construction guards + a successful build (the
+// TestBuildChat covers the construction guards + a successful build (the
 // adapter constructs a client without touching the network — no key validation
 // until a call is made).
-func TestBuildClient(t *testing.T) {
+func TestBuildChat(t *testing.T) {
 	// Unknown provider → error.
 	if _, err := NewClientSpec("nope", "x", NoClientCredential()); err == nil {
 		t.Error("unknown provider must error")
 	}
 	// A requiresBaseURL provider without a base URL → error naming the gap.
-	if _, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "")); err == nil {
+	if _, _, err := BuildChat(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "")); err == nil {
 		t.Error("openai-compatible without base URL must error")
 	} else if !strings.Contains(err.Error(), "base URL") {
 		t.Errorf("error should mention the base URL: %v", err)
 	}
 	// A named vendor builds a non-nil client.
-	c, err := BuildClient(mustClientSpec(t, ProviderAnthropic, "claude-3-5-haiku-20241022", "test-key", ""))
+	c, _, err := BuildChat(mustClientSpec(t, ProviderAnthropic, "claude-3-5-haiku-20241022", "test-key", ""))
 	if err != nil || c == nil {
 		t.Fatalf("build anthropic: client=%v err=%v", c, err)
 	}
 	// A requiresBaseURL provider WITH a base URL builds.
-	if _, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "https://gateway.example.com/v1")); err != nil {
+	if _, _, err := BuildChat(mustClientSpec(t, ProviderOpenAICompatible, "x", "k", "https://gateway.example.com/v1")); err != nil {
 		t.Errorf("openai-compatible with base URL: %v", err)
 	}
 }
@@ -278,7 +278,7 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 			t.Errorf("base URL %q was accepted", invalid)
 		}
 	}
-	if _, err := BuildClient(ClientSpec{}); err == nil {
+	if _, _, err := BuildChat(ClientSpec{}); err == nil {
 		t.Fatal("zero ClientSpec was accepted")
 	}
 }
@@ -295,7 +295,7 @@ func TestProviderEndpointPolicyResolvesCatalogDefaultOnce(t *testing.T) {
 	if endpoint.sdkBaseURL() != defaultOllamaOpenAIBaseURL {
 		t.Fatalf("resolved endpoint = %q, want %q", endpoint.sdkBaseURL(), defaultOllamaOpenAIBaseURL)
 	}
-	if _, err := BuildClient(mustClientSpec(t, ProviderOllama, "local-model", "", "")); err != nil {
+	if _, _, err := BuildChat(mustClientSpec(t, ProviderOllama, "local-model", "", "")); err != nil {
 		t.Fatalf("catalog-default Ollama client: %v", err)
 	}
 	ollamaProfile, _ := LookupProvider(ProviderOllama)
@@ -329,15 +329,11 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 	}))
 	t.Cleanup(server.Close)
 
-	direct, err := BuildClient(mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, "test-key", server.URL))
+	direct, counter, err := BuildChat(mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, "test-key", server.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
-	counter, supported, err := BuildInputTokenCounter(mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, "test-key", server.URL))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !supported {
+	if counter == nil {
 		t.Fatal("direct OpenAI client did not expose Responses input token counting")
 	}
 	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("measure me")))
@@ -353,11 +349,11 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 		t.Fatalf("direct Responses Call = %#v, %v; requests=%d", response, err, responseRequests.Load())
 	}
 
-	_, supported, err = BuildInputTokenCounter(mustClientSpec(t, ProviderOpenAICompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
+	_, counter, err = BuildChat(mustClientSpec(t, ProviderOpenAICompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if supported {
+	if counter != nil {
 		t.Fatal("OpenAI-compatible client advertised the native Responses count endpoint")
 	}
 }

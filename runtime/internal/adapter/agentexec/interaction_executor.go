@@ -33,7 +33,6 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -48,14 +47,10 @@ const (
 	interactionDoomLoopThreshold     = 3
 )
 
-// InteractionChatResolver resolves the exact model client selected by a Run.
-// Resolution happens during staging and must not invoke the model.
+// InteractionChatResolver resolves one exact provider construction selected by
+// a Run. Resolution happens during staging and must not invoke the model.
 type InteractionChatResolver interface {
-	ResolveChat(ctx context.Context, selection modelref.Selection) (*chatclient.Client, error)
-}
-
-type interactionInputTokenCounterResolver interface {
-	ResolveInputTokenCounter(ctx context.Context, selection modelref.Selection) (modeladapter.InputTokenCounter, error)
+	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
 }
 
 // RestoreScopeValidator verifies the host facts a durable executor checkpoint
@@ -269,14 +264,12 @@ func (i *InteractionExecutor) assembleInteraction(
 	start runs.RootExecutionStart,
 ) (*interactionSession, error) {
 	start.InterruptKinds = slices.Clone(start.InterruptKinds)
-	client, err := i.resolveClient(ctx, start.ModelSelection)
+	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
 		return nil, err
 	}
-	counter, err := i.resolveInputTokenCounter(ctx, start.ModelSelection)
-	if err != nil {
-		return nil, err
-	}
+	client := resolved.Client()
+	counter, _ := resolved.InputTokenCounter()
 	maxModelCalls, err := i.maxModelCalls(start)
 	if err != nil {
 		return nil, err
@@ -1037,39 +1030,24 @@ func (i *InteractionExecutor) RequestRootCancellation(
 	return nil
 }
 
-func (i *InteractionExecutor) resolveClient(
+func (i *InteractionExecutor) resolveChat(
 	ctx context.Context,
 	selection modelref.Selection,
-) (*chatclient.Client, error) {
+) (modeladapter.ResolvedChat, error) {
 	if err := selection.Validate(); err != nil {
-		return nil, fmt.Errorf("agentexec: Interaction model selection: %w", err)
+		return modeladapter.ResolvedChat{}, fmt.Errorf("agentexec: Interaction model selection: %w", err)
 	}
 	if !selection.Configured() {
-		return nil, errors.New("agentexec: Interaction requires an exact model selection")
+		return modeladapter.ResolvedChat{}, errors.New("agentexec: Interaction requires an exact model selection")
 	}
-	client, err := i.config.ChatResolver.ResolveChat(ctx, selection)
+	resolved, err := i.config.ChatResolver.ResolveChat(ctx, selection)
 	if err != nil {
-		return nil, fmt.Errorf("agentexec: resolve Interaction chat client: %w", err)
+		return modeladapter.ResolvedChat{}, fmt.Errorf("agentexec: resolve Interaction chat: %w", err)
 	}
-	if client == nil {
-		return nil, errors.New("agentexec: Interaction chat resolver returned nil")
+	if resolved.Client() == nil {
+		return modeladapter.ResolvedChat{}, errors.New("agentexec: Interaction chat resolver returned an invalid result")
 	}
-	return client, nil
-}
-
-func (i *InteractionExecutor) resolveInputTokenCounter(
-	ctx context.Context,
-	selection modelref.Selection,
-) (ModelContextInputTokenCounter, error) {
-	resolver, ok := i.config.ChatResolver.(interactionInputTokenCounterResolver)
-	if !ok {
-		return nil, nil
-	}
-	counter, err := resolver.ResolveInputTokenCounter(ctx, selection)
-	if err != nil {
-		return nil, fmt.Errorf("agentexec: resolve Interaction input token counter: %w", err)
-	}
-	return counter, nil
+	return resolved, nil
 }
 
 func (i *InteractionExecutor) maxModelCalls(start runs.RootExecutionStart) (uint32, error) {

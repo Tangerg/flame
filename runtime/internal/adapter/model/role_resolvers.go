@@ -19,7 +19,7 @@ type RoleSource interface {
 // configuration snapshot. The utility role adapter depends only on that
 // behavior, not on ChatResolver's registry implementation.
 type ChatClientResolver interface {
-	ResolveChat(context.Context, modelref.Selection) (*chatclient.Client, error)
+	ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error)
 }
 
 // LiveUtilityClient resolves the optional specialized role on every use. When
@@ -37,15 +37,15 @@ func LiveUtilityClient(
 				selection = role
 			}
 		}
-		client, err := resolver.ResolveChat(ctx, selection)
-		if err == nil && client != nil {
-			return client
+		resolved, err := resolver.ResolveChat(ctx, selection)
+		if err == nil && resolved.Client() != nil {
+			return resolved.Client()
 		}
 		if selection == mainSelection {
 			return nil
 		}
-		client, _ = resolver.ResolveChat(ctx, mainSelection)
-		return client
+		resolved, _ = resolver.ResolveChat(ctx, mainSelection)
+		return resolved.Client()
 	}
 }
 
