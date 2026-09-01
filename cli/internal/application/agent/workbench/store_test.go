@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
@@ -219,7 +220,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 }
 
 func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
-	for _, phase := range []string{"intent saved", "stash saved", "source retired"} {
+	for _, phase := range []string{"intent saved", "stash saved", "source retired", "source retired before stash survived"} {
 		t.Run(phase, func(t *testing.T) {
 			directory := t.TempDir()
 			store, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
@@ -250,7 +251,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 					t.Fatal(saveErr)
 				}
 			}
-			if phase == "source retired" {
+			if phase == "source retired" || phase == "source retired before stash survived" {
 				if saveSessionStateErr := store.saveSessionState(sessionID, agent.Message{}, nil); saveSessionStateErr != nil {
 					t.Fatal(saveSessionStateErr)
 				}
@@ -275,6 +276,49 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				t.Fatalf("stashes after idempotent reopen = %+v", stashes)
 			}
 		})
+	}
+}
+
+func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testing.T) {
+	directory := t.TempDir()
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failing := &removeFailurePersistence{Persistence: persistence, name: stashTransferName}
+	store, err := Open(failing, Config{Random: bytes.NewReader([]byte("12345678"))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	draft := agent.Message{Text: "same text must not become the old owner again"}
+	if err := store.SaveDraft(sessionID, draft); err != nil {
+		t.Fatal(err)
+	}
+	failing.enabled = true
+	if _, err := store.StashDraft(sessionID, draft); err == nil || !strings.Contains(err.Error(), "requires reopen") {
+		t.Fatalf("stash cleanup error = %v", err)
+	}
+	if err := store.SaveDraft(sessionID, draft); err == nil || !strings.Contains(err.Error(), "requires reopen") {
+		t.Fatalf("new identical draft was not fenced: %v", err)
+	}
+	if _, found, err := store.Draft(sessionID); err != nil || found {
+		t.Fatalf("committed source draft = found %t, error %v", found, err)
+	}
+	if _, err := Open(failing, Config{}); err == nil {
+		t.Fatal("reopen accepted a stash journal it could not retire")
+	}
+
+	failing.enabled = false
+	reopened, err := Open(persistence, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stashes := reopened.Stashes(); len(stashes) != 1 || !stashes[0].Message.Equal(draft) {
+		t.Fatalf("recovered stashes = %+v", stashes)
+	}
+	if err := reopened.SaveDraft(sessionID, draft); err != nil {
+		t.Fatalf("write after recovery = %v", err)
 	}
 }
 

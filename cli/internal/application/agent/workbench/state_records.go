@@ -269,10 +269,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	}
 	name := s.sessionStateName(sessionID)
 	if messageEmpty(draft) && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
-		if s.persistence == nil {
-			return nil
-		}
-		return s.persistence.Remove(name)
+		return s.remove(name)
 	}
 	state := sessionState{
 		SessionID: sessionID, Draft: draft.Clone(), PendingRuns: clonePendingRunSlice(pending),
@@ -293,6 +290,9 @@ func (s *Store) saveSessionStateRecordUnfenced(
 }
 
 func (s *Store) save(name string, value any) error {
+	if s.writeBarrier != nil {
+		return s.writeBarrier
+	}
 	if s.persistence == nil {
 		return nil
 	}
@@ -308,10 +308,23 @@ func (s *Store) save(name string, value any) error {
 }
 
 func (s *Store) remove(name string) error {
+	if s.writeBarrier != nil {
+		return s.writeBarrier
+	}
 	if s.persistence == nil {
 		return nil
 	}
 	return s.persistence.Remove(name)
+}
+
+func (s *Store) blockWrites(cause error) error {
+	if s.writeBarrier == nil {
+		s.writeBarrier = fmt.Errorf(
+			"workbench persistence requires reopen after an incomplete transaction: %w",
+			cause,
+		)
+	}
+	return s.writeBarrier
 }
 
 func (s *Store) sessionStateName(sessionID string) string {

@@ -134,6 +134,7 @@ type Store struct {
 	pendingSteers     map[string]PendingSteer
 	sessionDeletions  map[string]PendingSessionDeletion
 	draftTransfer     *DraftTransfer
+	writeBarrier      error
 }
 
 // OpenMemory constructs an explicitly process-local Store.
@@ -320,7 +321,10 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 		return Stash{}, fmt.Errorf("save stash transfer: %w", err)
 	}
 	if err := s.save("stashes.json", next); err != nil {
-		_ = s.remove(stashTransferName)
+		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
+			failure := errors.Join(err, fmt.Errorf("retire prompt stash transfer: %w", cleanupErr))
+			return Stash{}, s.blockWrites(failure)
+		}
 		return Stash{}, err
 	}
 	if err := s.saveSessionState(sessionID, agent.Message{}, s.pendingRuns[sessionID]); err != nil {
@@ -336,26 +340,30 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 			// Re-publish the intended stash so a surviving journal always describes
 			// a forward-recoverable state rather than reviving a rolled-back move.
 			if restoreErr := s.save("stashes.json", next); restoreErr != nil {
-				return Stash{}, errors.Join(
+				failure := errors.Join(
 					fmt.Errorf("clear session draft: %w", err),
 					fmt.Errorf("remove stash transfer: %w", cleanupErr),
 					fmt.Errorf("restore recoverable stash: %w", restoreErr),
 				)
+				return Stash{}, s.blockWrites(failure)
 			}
 			s.stashes = next
-			return Stash{}, errors.Join(
+			failure := errors.Join(
 				fmt.Errorf("clear session draft: %w", err),
 				fmt.Errorf("remove stash transfer: %w", cleanupErr),
 			)
+			return Stash{}, s.blockWrites(failure)
 		}
 		return Stash{}, fmt.Errorf("clear session draft: %w", err)
 	}
 	s.stashes = next
 	delete(s.drafts, sessionID)
 	// Once the source draft is absent, the transfer is committed. A stale
-	// journal is harmless: recovery sees no matching source owner and only
-	// retries this cleanup.
-	_ = s.remove(stashTransferName)
+	// journal must not survive while new authoring writes are accepted: a later
+	// identical draft has the same value but is not the old source owner.
+	if err := s.remove(stashTransferName); err != nil {
+		return Stash{}, s.blockWrites(fmt.Errorf("retire prompt stash transfer: %w", err))
+	}
 	return cloneStash(stash), nil
 }
 
@@ -371,7 +379,7 @@ func (s *Store) recoverStashTransfer() error {
 		return err
 	}
 	current, present := s.drafts[transfer.SessionID]
-	if present && current.Equal(transfer.Draft) {
+	if !present || current.Equal(transfer.Draft) {
 		index := slices.IndexFunc(s.stashes, func(stash Stash) bool { return stash.ID == transfer.Stash.ID })
 		switch {
 		case index >= 0 && !stashEqual(s.stashes[index], transfer.Stash):
@@ -383,16 +391,19 @@ func (s *Store) recoverStashTransfer() error {
 			}
 			s.stashes = next
 		}
-		if err := s.saveSessionState(transfer.SessionID, agent.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
-			return fmt.Errorf("retire recovered session draft: %w", err)
+		if present {
+			if err := s.saveSessionState(transfer.SessionID, agent.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
+				return fmt.Errorf("retire recovered session draft: %w", err)
+			}
+			delete(s.drafts, transfer.SessionID)
 		}
-		delete(s.drafts, transfer.SessionID)
 	}
-	// The move is already complete when the source is absent, and a newer draft
-	// means the old intent no longer owns that session value. Either state makes
-	// replay unnecessary; cleanup is best-effort because the journal is
-	// idempotent under both conditions.
-	_ = s.remove(stashTransferName)
+	// A newer draft supersedes a merely staged transfer. An absent source proves
+	// the transfer crossed its retirement boundary, so the journal remains
+	// authoritative for restoring a destination lost by a crash.
+	if err := s.remove(stashTransferName); err != nil {
+		return fmt.Errorf("retire recovered prompt stash transfer: %w", err)
+	}
 	return nil
 }
 
