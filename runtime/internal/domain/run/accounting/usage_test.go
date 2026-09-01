@@ -169,7 +169,25 @@ func TestCostPreservesPricingAvailability(t *testing.T) {
 	if _, ok := partial.USD(); ok {
 		t.Fatal("aggregate with an unpriced component was reported as priced")
 	}
-	if err := unpriced.ValidateAdvanceFrom(pricedZero); err == nil {
-		t.Fatal("cumulative pricing availability was allowed to disappear")
+	if err := unpriced.ValidateAdvanceFrom(pricedZero); err != nil {
+		t.Fatalf("priced aggregate could not become unavailable: %v", err)
+	}
+	if err := pricedZero.ValidateAdvanceFrom(unpriced); err == nil {
+		t.Fatal("unavailable aggregate became exact")
+	}
+	if err := mustCost(t, 0.5).ValidateAdvanceFrom(mustCost(t, 1)); err == nil {
+		t.Fatal("priced aggregate regressed")
+	}
+}
+
+func TestTotalsAllowPricingToBecomeUnavailableWithoutLosingUsage(t *testing.T) {
+	priced := 0.25
+	previous := Totals{InputTokens: 10, CostUSD: &priced}
+	next := Totals{InputTokens: 20}
+	if err := next.ValidateAdvanceFrom(previous); err != nil {
+		t.Fatalf("ValidateAdvanceFrom: %v", err)
+	}
+	if err := previous.ValidateAdvanceFrom(next); err == nil {
+		t.Fatal("unknown cumulative pricing became exact")
 	}
 }

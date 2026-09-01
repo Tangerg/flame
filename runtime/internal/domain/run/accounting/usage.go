@@ -272,7 +272,9 @@ func (c Cost) Equal(other Cost) bool {
 	return c.available == other.available && (!c.available || c.usd == other.usd)
 }
 
-// ValidateAdvanceFrom rejects cost erasure or regression.
+// ValidateAdvanceFrom proves that c can be the cumulative result after
+// previous. Pricing may become unavailable when a later component is
+// unpriced, but an unavailable aggregate can never become exact again.
 func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	if err := previous.Validate(); err != nil {
 		return fmt.Errorf("previous cost: %w", err)
@@ -280,7 +282,8 @@ func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	if err := c.Validate(); err != nil {
 		return fmt.Errorf("next cost: %w", err)
 	}
-	if c.available != previous.available || (c.available && c.usd < previous.usd) {
+	if (!previous.available && c.available) ||
+		(previous.available && c.available && c.usd < previous.usd) {
 		return errors.New("accounting: cumulative cost regressed")
 	}
 	return nil

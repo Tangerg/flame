@@ -518,6 +518,42 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 	}
 }
 
+func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing.T) {
+	priced := 0.25
+	config := testReducerConfig()
+	config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+		Usage: &accounting.Usage{Total: accounting.Totals{
+			InputTokens: 10,
+			CostUSD:     &priced,
+		}},
+		Steps: 1,
+	})
+
+	reducer := newReducer(config)
+	progress := mustReduce(t, reducer, UsageReported{
+		TokenUsage: accounting.TokenUsage{PromptTokens: 20},
+		Steps:      2,
+	})
+	event := progress[len(progress)-1].Event.(SegmentProgressed)
+	if event.Progress.Usage == nil || event.Progress.Usage.Total.InputTokens != 20 ||
+		event.Progress.Usage.Total.CostUSD != nil {
+		t.Fatalf("progress usage = %+v, want tokens retained with unknown cost", event.Progress.Usage)
+	}
+
+	finished := mustReduce(t, reducer, SegmentEnded{
+		Reason: run.OutcomeCompleted,
+		Usage: &SegmentUsage{
+			Tokens: accounting.TokenUsage{PromptTokens: 20},
+			Steps:  2,
+		},
+	})
+	record := finished[len(finished)-1].Event.(SegmentFinished).Run
+	usage, reported := record.Metrics().Usage()
+	if !reported || usage.Total.InputTokens != 20 || usage.Total.CostUSD != nil {
+		t.Fatalf("terminal usage = %+v, reported %t; want tokens retained with unknown cost", usage, reported)
+	}
+}
+
 func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 	t.Run("step regression", func(t *testing.T) {
 		config := testReducerConfig()
