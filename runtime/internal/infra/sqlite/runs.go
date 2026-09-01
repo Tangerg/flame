@@ -60,7 +60,8 @@ func NewRunStore(db *sql.DB) *RunStore {
 
 // Admit records draft as the session's active (running) Run. It returns
 // [rundomain.ErrSessionBusy] when the partial unique index rejects the INSERT —
-// the session already has a non-terminal Run — and
+// the session already has a non-terminal Run — or when an unfinished workspace
+// rollback owns this Session or its working tree, and
 // [rundomain.ErrIdentityConflict] when the Run ID is already taken, since the
 // caller may supply one.
 func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
@@ -80,6 +81,13 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	// after admission, and the way to guarantee that is to have nothing able to
 	// change it.
 	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		pendingWorkspaceMutation, err := r.pendingWorkspaceMutation(ctx, draft.SessionID)
+		if err != nil {
+			return err
+		}
+		if pendingWorkspaceMutation {
+			return rundomain.ErrSessionBusy
+		}
 		if lineage.IsChild() {
 			if err := r.validateChildPlacement(
 				ctx,
@@ -93,7 +101,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 				return err
 			}
 		}
-		_, err := conn(ctx, r.db).ExecContext(ctx,
+		_, err = conn(ctx, r.db).ExecContext(ctx,
 			`INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id, max_total_tokens, max_steps, max_budget_usd,
@@ -119,6 +127,29 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		}
 		return nil
 	})
+}
+
+// pendingWorkspaceMutation reports whether a recoverable destructive mutation
+// still owns either this Session or the canonical working tree recorded on it.
+// The check shares the admission transaction, so completing an intent and
+// admitting the next Run have one serial order across Runtime processes.
+func (r *RunStore) pendingWorkspaceMutation(ctx context.Context, sessionID string) (bool, error) {
+	var pending bool
+	if err := conn(ctx, r.db).QueryRowContext(ctx,
+		`SELECT EXISTS (
+			SELECT 1
+			  FROM pending_workspace_mutations AS pending
+			 WHERE pending.session_id = ?
+			    OR pending.cwd = (
+				SELECT workspace_path FROM sessions WHERE id = ?
+			    )
+		)`,
+		sessionID,
+		sessionID,
+	).Scan(&pending); err != nil {
+		return false, fmt.Errorf("sqlite: inspect pending workspace mutation: %w", err)
+	}
+	return pending, nil
 }
 
 // validateChildPlacement proves immutable Run-to-Run topology before inserting

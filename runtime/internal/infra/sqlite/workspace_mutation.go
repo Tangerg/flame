@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -47,11 +48,25 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
 		return err
 	}
-	_, err := w.db.ExecContext(ctx,
-		`INSERT OR REPLACE INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES (?, ?, ?, ?)`,
-		m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory)
+	result, err := w.db.ExecContext(ctx,
+		`INSERT OR REPLACE INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
+		 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?
+		   FROM sessions
+		   JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
+		  WHERE sessions.id = ? AND sessions.workspace_path = ?`,
+		m.RestoreHistory,
+		m.ToRunID,
+		m.SessionID,
+		m.CWD)
 	if err != nil {
 		return fmt.Errorf("sqlite: record workspace mutation: %w", err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect workspace mutation record: %w", err)
+	}
+	if changed != 1 {
+		return errors.New("sqlite: workspace mutation has no matching Run boundary")
 	}
 	return nil
 }

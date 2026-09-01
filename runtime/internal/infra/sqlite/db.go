@@ -65,7 +65,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 // schemaEpoch identifies the one storage shape this build understands. It is an
 // epoch rather than a version because nothing connects two values: a database
 // stamped with any other number is refused, never upgraded.
-const schemaEpoch = 98
+const schemaEpoch = 99
 
 func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 	var epoch int
@@ -331,11 +331,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		// spans Git and SQLite. The intent is logged before the tree is touched and
 		// cleared after every requested effect commits. A surviving row is re-driven
 		// at boot. session_id keys it — the mutation slot admits at most one
-		// in-flight rollback per session. created_at is operational metadata only.
+		// in-flight rollback per session. Its restrictive owners preserve boot
+		// recovery inputs, while Run admission treats its Session and cwd as busy.
+		// created_at is operational metadata only.
 		`CREATE TABLE IF NOT EXISTS pending_workspace_mutations (
-			session_id     TEXT    PRIMARY KEY,
+			session_id     TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE RESTRICT,
 			cwd            TEXT    NOT NULL,
-			to_run_id      TEXT    NOT NULL,
+			to_run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE RESTRICT,
 			restore_history INTEGER NOT NULL,
 			created_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 		)`,
