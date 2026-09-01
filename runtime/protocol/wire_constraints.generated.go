@@ -497,6 +497,9 @@ func (u UsageSummaryRequest) ValidateWire() error {
 func (g GetKnowledgeRequest) ValidateWire() error {
 	return collectWireViolations("GetKnowledgeRequest",
 		closedEnum("scope", string(g.Scope), []string{"cwd", "projectRoot", "home"}, false),
+		forbiddenWhen(wireFieldEquals(g, "scope", "home"), "workspace", g),
+		requiredWhen(wireFieldEquals(g, "scope", "cwd"), "workspace", g),
+		requiredWhen(wireFieldEquals(g, "scope", "projectRoot"), "workspace", g),
 	)
 }
 
@@ -504,6 +507,9 @@ func (u UpdateKnowledgeRequest) ValidateWire() error {
 	return collectWireViolations("UpdateKnowledgeRequest",
 		requiredText("expectedRevision", u.ExpectedRevision),
 		closedEnum("scope", string(u.Scope), []string{"cwd", "projectRoot", "home"}, false),
+		forbiddenWhen(wireFieldEquals(u, "scope", "home"), "workspace", u),
+		requiredWhen(wireFieldEquals(u, "scope", "cwd"), "workspace", u),
+		requiredWhen(wireFieldEquals(u, "scope", "projectRoot"), "workspace", u),
 	)
 }
 

@@ -194,6 +194,35 @@ func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
 	)
 }
 
+func TestKnowledgeTargetIsUnambiguous(t *testing.T) {
+	t.Parallel()
+
+	workspace := &WorkspaceRef{Path: "/repo"}
+	for _, request := range []WireValidator{
+		GetKnowledgeRequest{Scope: KnowledgeScopeCWD, Workspace: workspace},
+		GetKnowledgeRequest{Scope: KnowledgeScopeProjectRoot, Workspace: workspace},
+		GetKnowledgeRequest{Scope: KnowledgeScopeHome},
+		UpdateKnowledgeRequest{Scope: KnowledgeScopeCWD, Workspace: workspace, ExpectedRevision: "rev-1"},
+		UpdateKnowledgeRequest{Scope: KnowledgeScopeHome, ExpectedRevision: "rev-1"},
+	} {
+		if err := request.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected valid target %T: %v", request, err)
+		}
+	}
+
+	for _, test := range []struct {
+		shape   string
+		request WireValidator
+	}{
+		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeCWD}},
+		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeProjectRoot}},
+		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeHome, Workspace: workspace}},
+		{shape: "UpdateKnowledgeRequest", request: UpdateKnowledgeRequest{Scope: KnowledgeScopeHome, Workspace: workspace, ExpectedRevision: "rev-1"}},
+	} {
+		assertConstraintField(t, test.request.ValidateWire(), test.shape, "workspace")
+	}
+}
+
 func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	t.Parallel()
 

@@ -3761,6 +3761,88 @@
       ]
     },
     {
+      "type": "GetKnowledgeRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "home"
+            }
+          ],
+          "forbidden": [
+            "workspace"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "cwd"
+            }
+          ],
+          "required": [
+            "workspace"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "projectRoot"
+            }
+          ],
+          "required": [
+            "workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "UpdateKnowledgeRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "home"
+            }
+          ],
+          "forbidden": [
+            "workspace"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "cwd"
+            }
+          ],
+          "required": [
+            "workspace"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "projectRoot"
+            }
+          ],
+          "required": [
+            "workspace"
+          ]
+        }
+      ]
+    },
+    {
       "type": "ReadFileRequest",
       "rules": [
         {

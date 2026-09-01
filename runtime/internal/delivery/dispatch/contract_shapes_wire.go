@@ -533,6 +533,23 @@ func registerObjectConstraints(s *Shapes) {
 	}
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.HookInfo](), Rules: hookRules})
 
+	knowledgeTargetRules := []ConditionalRule{{
+		When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeHome)}},
+		Forbidden: []string{"workspace"},
+	}, {
+		When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeCWD)}},
+		Required: []string{"workspace"},
+	}, {
+		When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeProjectRoot)}},
+		Required: []string{"workspace"},
+	}}
+	for _, target := range []reflect.Type{
+		typeOf[protocol.GetKnowledgeRequest](),
+		typeOf[protocol.UpdateKnowledgeRequest](),
+	} {
+		s.constraint(ObjectConstraintSpec{GoType: target, Rules: knowledgeTargetRules})
+	}
+
 	// A file end line is meaningful only as the end of a window that starts at
 	// an explicit line. Structured-diff row budgets likewise have no meaning on
 	// the raw patch branch.

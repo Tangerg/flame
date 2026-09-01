@@ -1069,10 +1069,32 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     path: allOf([text(), minLength(1)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["path", "workspace"]),
-  GetKnowledgeRequest: object({
-    scope: ref(() => CHECKS.KnowledgeScope),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["scope"]),
+  GetKnowledgeRequest: allOf([
+    object({
+      scope: ref(() => CHECKS.KnowledgeScope),
+      workspace: ref(() => CHECKS.WorkspaceRef),
+    }, ["scope"]),
+    ifThen(
+      fields({
+        scope: literal("home"),
+      }, ["scope"]),
+      fields({
+        workspace: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        scope: literal("cwd"),
+      }, ["scope"]),
+      fields({}, ["workspace"]),
+    ),
+    ifThen(
+      fields({
+        scope: literal("projectRoot"),
+      }, ["scope"]),
+      fields({}, ["workspace"]),
+    ),
+  ]),
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -3386,12 +3408,34 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     objective: text(),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
-  UpdateKnowledgeRequest: object({
-    content: text(),
-    expectedRevision: allOf([text(), minLength(1)]),
-    scope: ref(() => CHECKS.KnowledgeScope),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["content", "expectedRevision", "scope"]),
+  UpdateKnowledgeRequest: allOf([
+    object({
+      content: text(),
+      expectedRevision: allOf([text(), minLength(1)]),
+      scope: ref(() => CHECKS.KnowledgeScope),
+      workspace: ref(() => CHECKS.WorkspaceRef),
+    }, ["content", "expectedRevision", "scope"]),
+    ifThen(
+      fields({
+        scope: literal("home"),
+      }, ["scope"]),
+      fields({
+        workspace: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        scope: literal("cwd"),
+      }, ["scope"]),
+      fields({}, ["workspace"]),
+    ),
+    ifThen(
+      fields({
+        scope: literal("projectRoot"),
+      }, ["scope"]),
+      fields({}, ["workspace"]),
+    ),
+  ]),
   UpdateMCPServerRequest: object({
     autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
