@@ -258,3 +258,40 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		t.Fatal("resumed OpeningCommit accepted an event for a stale Segment")
 	}
 }
+
+func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
+	createdAt := time.Date(2026, 8, 15, 2, 3, 4, 0, time.UTC)
+	openingItem := testsupport.MustRestoreItem(testsupport.ItemInput{
+		SessionID: "session", RunID: "run_root", ID: "item_opening", OccurredAt: createdAt,
+	})
+	admission := run.Draft{
+		RunID: "run_root", SessionID: "session", SegmentID: "segment_root", CreatedAt: createdAt,
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_opening_parent"), Admit: &admission,
+		Events: []EventCommit{{
+			RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
+			CommitID: testCommitID("run_commit_opening_nested"), Items: []transcript.Item{openingItem},
+		}},
+	}).Validate(); err == nil {
+		t.Fatal("OpeningCommit accepted a nested top-level event identity")
+	}
+
+	pending := testApprovalPending("member_root", createdAt)
+	waiting := runForPending(pending)
+	checkpoint := testExecutorCheckpoint()
+	root, _ := pending.RootContinuation()
+	checkpoint.ModelSelection = root.ModelSelection
+	checkpoint.Limits = root.Limits
+	checkpoint.Capabilities = pending.Capabilities
+	barrier := TreeBarrierCommit{
+		CommitID: testCommitID("run_commit_barrier_parent"), Pending: pending, Checkpoint: checkpoint,
+		Runs: []EventCommit{{
+			RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
+			CommitID: testCommitID("run_commit_barrier_nested"), State: StateSuspend, Run: &waiting,
+		}},
+	}
+	if err := barrier.Validate(); err == nil {
+		t.Fatal("TreeBarrierCommit accepted a nested top-level event identity")
+	}
+}

@@ -202,7 +202,8 @@ type EventCommit struct {
 	// CommitID is the stable identity of one immutable top-level CommitEvent
 	// write-set. Persistence records it inside that transaction, allowing a lost
 	// COMMIT receipt to be reconciled without treating another Segment or write
-	// attempt as success. Nested opening/barrier projections may leave it empty;
+	// attempt as success. Nested opening and tree-barrier projections must leave
+	// it empty because their parent commit owns the complete transaction identity;
 	// the top-level CommitEvent port boundary requires it.
 	CommitID runtimeidentity.CommitID
 	State    StateChange

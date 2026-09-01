@@ -93,6 +93,9 @@ func (t treeBarrierValidator) validateRuns() error {
 }
 
 func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) error {
+	if !runCommit.CommitID.IsZero() {
+		return fmt.Errorf("runs: tree barrier Run[%d] carries a top-level event commit identity", index)
+	}
 	if err := runCommit.Validate(); err != nil {
 		return fmt.Errorf("runs: tree barrier Run[%d]: %w", index, err)
 	}

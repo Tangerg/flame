@@ -121,6 +121,9 @@ func (o OpeningCommit) validateAdmission() error {
 
 func (o OpeningCommit) validateEvents() error {
 	for index, commit := range o.Events {
+		if !commit.CommitID.IsZero() {
+			return fmt.Errorf("runs: opening event[%d] carries a top-level event commit identity", index)
+		}
 		if err := commit.Validate(); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
