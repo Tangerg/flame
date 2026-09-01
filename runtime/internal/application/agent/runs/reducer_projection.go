@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -258,7 +259,11 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		commit.CommitID = newRunCommitID()
 		if outcome, terminal := e.Run.Outcome(); terminal {
 			commit.Outcome = outcome
-			commit.GoalRun = r.goalTurn(e.Run)
+			goalRun, err := r.goalTurn(e.Run)
+			if err != nil {
+				return reduction{}, err
+			}
+			commit.GoalRun = goalRun
 		}
 	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
@@ -276,10 +281,10 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	return reduction{Event: event, Commit: eventCommit, Nudge: nudge}, nil
 }
 
-func (r *reducer) goalTurn(run run.Run) *goal.RunRecord {
+func (r *reducer) goalTurn(run run.Run) (*goal.RunRecord, error) {
 	outcome, terminal := run.Outcome()
 	if r.cfg.GoalIncarnationID == "" || !terminal {
-		return nil
+		return nil, nil
 	}
 	record := &goal.RunRecord{
 		SessionID:     r.cfg.SessionID,
@@ -292,8 +297,18 @@ func (r *reducer) goalTurn(run run.Run) *goal.RunRecord {
 		record.CompletedAt = r.now()
 	}
 	record.Steps = run.Metrics().Steps()
-	if usage, reported := run.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-		record.CostUSD = *usage.Total.CostUSD
+	cost, err := costFromRunMetrics(run.Metrics())
+	if err != nil {
+		return nil, fmt.Errorf("runs: project Goal Run cost: %w", err)
 	}
-	return record
+	record.Cost = cost
+	return record, nil
+}
+
+func costFromRunMetrics(metrics run.Metrics) (accounting.Cost, error) {
+	usage, reported := metrics.Usage()
+	if !reported {
+		return accounting.Cost{}, nil
+	}
+	return accounting.CostFromOptional(usage.Total.CostUSD)
 }

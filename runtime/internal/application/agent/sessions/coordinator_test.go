@@ -340,9 +340,13 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	if applied.CheckpointRootID != "member_1" || !appliedRoot.FinishedAt().Equal(finishedAt) || appliedRoot.MessageMark() != 1 {
 		t.Fatalf("terminal plan = %+v", applied)
 	}
-	if applied.GoalRun == nil || applied.GoalRun.SessionID != "ses_1" ||
+	if applied.GoalRun == nil {
+		t.Fatalf("terminal Goal Run = %+v", applied.GoalRun)
+	}
+	goalCost, goalCostAvailable := applied.GoalRun.Cost.USD()
+	if applied.GoalRun.SessionID != "ses_1" ||
 		applied.GoalRun.IncarnationID != "lease_1" || applied.GoalRun.RunID != "run_1" ||
-		applied.GoalRun.Outcome != run.OutcomeLost || applied.GoalRun.CostUSD != costUSD ||
+		applied.GoalRun.Outcome != run.OutcomeLost || !goalCostAvailable || goalCost != costUSD ||
 		applied.GoalRun.Steps != 4 || !applied.GoalRun.CompletedAt.Equal(finishedAt) {
 		t.Fatalf("terminal Goal Run = %+v", applied.GoalRun)
 	}

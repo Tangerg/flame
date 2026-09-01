@@ -32,6 +32,15 @@ func bootstrapSession(id, title, cwd string) session.Session {
 	return testsupport.MustRestoreSession(session.Snapshot{ID: id, Title: title, Workspace: testsupport.MustWorkspace(cwd)})
 }
 
+func bootstrapGoalRunCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
+
 func insertBootstrapSession(t *testing.T, store *sqlite.SessionStore, value session.Session) {
 	t.Helper()
 	if err := store.Insert(t.Context(), value); err != nil {
@@ -447,7 +456,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 
 	goalRun := goal.RunRecord{
 		SessionID: "ses_A", IncarnationID: incarnationID, RunID: terminal.ID(),
-		Outcome: outcome, CostUSD: costUSD, Steps: 4, CompletedAt: finishedAt,
+		Outcome: outcome, Cost: bootstrapGoalRunCost(t, costUSD), Steps: 4, CompletedAt: finishedAt,
 	}
 	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
 		Runs: []run.Run{terminal}, CheckpointRootID: memberID, GoalRun: &goalRun,

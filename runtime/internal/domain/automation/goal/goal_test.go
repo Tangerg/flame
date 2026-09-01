@@ -10,9 +10,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
+
+func goalTestCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
 
 func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.FixedZone("offset", 8*60*60))
@@ -258,7 +268,7 @@ func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
 	active := testGoalAt(t, testBudget(t, BudgetLimits{MaxRuns: intPointer(1)}), run.Capabilities{}, now)
 	record := RunRecord{
 		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 2, CompletedAt: now.Add(time.Second),
+		Outcome: run.OutcomeCompleted, Cost: goalTestCost(t, 0.25), Steps: 2, CompletedAt: now.Add(time.Second),
 	}
 	blocked, err := active.RecordRun(record)
 	if err != nil {
@@ -283,6 +293,36 @@ func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
 	}
 }
 
+func TestRecordRunRequiresPricingForCostLimitedGoal(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	budget := testBudget(t, BudgetLimits{MaxCostUSD: floatPointer(1)})
+	record := RunRecord{
+		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
+		Outcome: run.OutcomeCompleted, Steps: 2, CompletedAt: now.Add(time.Second),
+	}
+
+	active := testGoalAt(t, budget, run.Capabilities{}, now)
+	blocked, err := active.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked.Status() != StatusBlocked || blocked.Reason().Code() != ReasonPricingUnavailable ||
+		blocked.Used() != (Usage{Runs: 1, Steps: 2}) {
+		t.Fatalf("unpriced Run result = %+v", blocked.Snapshot())
+	}
+
+	active = testGoalAt(t, budget, run.Capabilities{}, now)
+	record.RunID = "run_2"
+	record.Cost = goalTestCost(t, 0)
+	continued, err := active.RecordRun(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if continued.Status() != StatusActive || continued.Used() != (Usage{Runs: 1, Steps: 2}) {
+		t.Fatalf("priced-zero Run result = %+v", continued.Snapshot())
+	}
+}
+
 func TestRecordRunPreservesPriorModelReport(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, testBudget(t, BudgetLimits{MaxRuns: intPointer(1)}), run.Capabilities{}, now)
@@ -292,7 +332,7 @@ func TestRecordRunPreservesPriorModelReport(t *testing.T) {
 	}
 	accounted, err := blocked.RecordRun(RunRecord{
 		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 2, CompletedAt: now.Add(2 * time.Second),
+		Outcome: run.OutcomeCompleted, Cost: goalTestCost(t, 0.25), Steps: 2, CompletedAt: now.Add(2 * time.Second),
 	})
 	if err != nil {
 		t.Fatal(err)

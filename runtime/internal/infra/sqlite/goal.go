@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 // GoalStore is the SQLite persistence adapter for autonomous goals: one row per session, the
@@ -137,6 +138,10 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 		return fmt.Errorf("sqlite: record Goal Run: %w", err)
 	}
 	return RunInTx(ctx, g.db, func(ctx context.Context) error {
+		var costUSD any
+		if value, available := record.Cost.USD(); available {
+			costUSD = value
+		}
 		res, err := conn(ctx, g.db).ExecContext(ctx,
 			`INSERT INTO goal_runs(run_id, session_id, incarnation_id, outcome, cost_usd, steps, completed_at)
 			 SELECT run_id, session_id, goal_incarnation_id, outcome, ?, steps, finished_at
@@ -145,7 +150,7 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 			    AND goal_incarnation_id = ? AND outcome = ?
 			    AND steps = ? AND finished_at = ?
 			 ON CONFLICT(run_id) DO NOTHING`,
-			record.CostUSD,
+			costUSD,
 			record.RunID, record.SessionID, runStateTerminal.databaseValue(),
 			record.IncarnationID, record.Outcome.String(), record.Steps,
 			record.CompletedAt.UTC().UnixNano())
@@ -189,7 +194,7 @@ func (g *GoalStore) validateExistingRun(ctx context.Context, record goal.RunReco
 		sessionID     string
 		incarnationID string
 		outcome       string
-		costUSD       float64
+		costUSD       sql.NullFloat64
 		steps         int
 		completedAt   int64
 	)
@@ -208,8 +213,16 @@ func (g *GoalStore) validateExistingRun(ctx context.Context, record goal.RunReco
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect existing Goal Run %q: %w", record.RunID, err)
 	}
+	var costPointer *float64
+	if costUSD.Valid {
+		costPointer = &costUSD.Float64
+	}
+	storedCost, err := accounting.CostFromOptional(costPointer)
+	if err != nil {
+		return fmt.Errorf("sqlite: decode existing Goal Run %q cost: %w", record.RunID, err)
+	}
 	if sessionID == record.SessionID && incarnationID == record.IncarnationID &&
-		outcome == record.Outcome.String() && costUSD == record.CostUSD &&
+		outcome == record.Outcome.String() && storedCost.Equal(record.Cost) &&
 		steps == record.Steps && completedAt == record.CompletedAt.UTC().UnixNano() {
 		return nil
 	}

@@ -392,12 +392,12 @@ func validateRecoveryGoalRuns(records []goal.RunRecord, lostByID map[string]rund
 		if !found || !terminal {
 			return fmt.Errorf("runs: recovery commit Goal Run names unowned Run %q", record.RunID)
 		}
-		cost := 0.0
-		if usage, reported := run.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-			cost = *usage.Total.CostUSD
+		cost, err := costFromRunMetrics(run.Metrics())
+		if err != nil {
+			return fmt.Errorf("runs: recovery commit Goal Run %q cost: %w", run.ID(), err)
 		}
 		if record.SessionID != run.SessionID() || record.IncarnationID != run.GoalIncarnationID() ||
-			record.Outcome != outcome || record.CostUSD != cost ||
+			record.Outcome != outcome || !record.Cost.Equal(cost) ||
 			record.Steps != run.Metrics().Steps() || !record.CompletedAt.Equal(run.FinishedAt()) {
 			return fmt.Errorf("runs: recovery commit Goal Run differs from lost Run %q", run.ID())
 		}

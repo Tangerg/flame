@@ -460,9 +460,10 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 		t.Fatalf("Goal Runs = %+v, want one", store.commit.GoalRuns)
 	}
 	goalRun := store.commit.GoalRuns[0]
+	goalCost, goalCostAvailable := goalRun.Cost.USD()
 	if goalRun.SessionID != run.SessionID() || goalRun.IncarnationID != run.GoalIncarnationID() ||
 		goalRun.RunID != run.ID() || goalRun.Outcome != rundomain.OutcomeLost ||
-		goalRun.CostUSD != cost || goalRun.Steps != run.Metrics().Steps() ||
+		!goalCostAvailable || goalCost != cost || goalRun.Steps != run.Metrics().Steps() ||
 		!goalRun.CompletedAt.Equal(finishedAt) {
 		t.Fatalf("Goal Run = %+v", goalRun)
 	}

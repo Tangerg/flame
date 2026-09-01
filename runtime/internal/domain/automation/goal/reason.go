@@ -18,6 +18,7 @@ const (
 	ReasonRunBudgetReached       ReasonCode = "runBudgetReached"
 	ReasonCostBudgetReached      ReasonCode = "costBudgetReached"
 	ReasonStepBudgetReached      ReasonCode = "stepBudgetReached"
+	ReasonPricingUnavailable     ReasonCode = "pricingUnavailable"
 	ReasonBlockedByModel         ReasonCode = "blockedByModel"
 )
 
@@ -33,6 +34,7 @@ func (r ReasonCode) Valid() bool {
 		ReasonRunBudgetReached,
 		ReasonCostBudgetReached,
 		ReasonStepBudgetReached,
+		ReasonPricingUnavailable,
 		ReasonBlockedByModel:
 		return true
 	default:
@@ -75,7 +77,7 @@ func newReason(status Status, code ReasonCode, detail string) (Reason, error) {
 		}
 	case StatusBlocked:
 		switch code {
-		case ReasonRunBudgetReached, ReasonCostBudgetReached, ReasonStepBudgetReached:
+		case ReasonRunBudgetReached, ReasonCostBudgetReached, ReasonStepBudgetReached, ReasonPricingUnavailable:
 			if detail != "" {
 				return Reason{}, fmt.Errorf("%w: reason %q must not carry detail", ErrInvalid, code)
 			}

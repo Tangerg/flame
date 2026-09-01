@@ -55,6 +55,7 @@ const (
 	GoalReasonRunBudgetReached       GoalReasonCode = "runBudgetReached"
 	GoalReasonCostBudgetReached      GoalReasonCode = "costBudgetReached"
 	GoalReasonStepBudgetReached      GoalReasonCode = "stepBudgetReached"
+	GoalReasonPricingUnavailable     GoalReasonCode = "pricingUnavailable"
 	GoalReasonBlockedByModel         GoalReasonCode = "blockedByModel"
 )
 

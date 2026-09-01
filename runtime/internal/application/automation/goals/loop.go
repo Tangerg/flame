@@ -301,11 +301,14 @@ func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
 	if err != nil {
 		return
 	}
-	span.SetAttributes(
+	attributes := []attribute.KeyValue{
 		attribute.String("run.outcome", outcome.String()),
-		attribute.Float64("goal.cost_usd", runCost(finished)),
 		attribute.Int("goal.steps", runSteps(finished)),
-	)
+	}
+	if cost, available := runCost(finished); available {
+		attributes = append(attributes, attribute.Float64("goal.cost_usd", cost))
+	}
+	span.SetAttributes(attributes...)
 }
 
 func (d *Driver) refreshOwnedGoal(ctx context.Context, current *goal.Goal) (bool, error) {
@@ -426,11 +429,11 @@ func outcomeOf(run *run.Run) (run.Outcome, error) {
 	return outcome, nil
 }
 
-func runCost(run *run.Run) float64 {
+func runCost(run *run.Run) (float64, bool) {
 	if usage, reported := run.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-		return *usage.Total.CostUSD
+		return *usage.Total.CostUSD, true
 	}
-	return 0
+	return 0, false
 }
 
 func runSteps(run *run.Run) int { return run.Metrics().Steps() }

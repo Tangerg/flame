@@ -1054,7 +1054,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     code: ref(() => CHECKS.GoalReasonCode),
     detail: text(),
   }, ["code"]),
-  GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "blockedByModel"]),
+  GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"]),
   GoalRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),

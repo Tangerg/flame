@@ -480,7 +480,7 @@ func (f *fakeRuns) emitScriptedRun(
 			if outcome != nil && cmd.GoalIncarnationID != "" {
 				if err := f.store.RecordRun(context.WithoutCancel(ctx), goal.RunRecord{
 					SessionID: cmd.SessionID, IncarnationID: cmd.GoalIncarnationID, RunID: runID,
-					Outcome: *outcome, CostUSD: cost, Steps: script.steps, CompletedAt: time.Now(),
+					Outcome: *outcome, Cost: accountedGoalCost(cost), Steps: script.steps, CompletedAt: time.Now(),
 				}); err != nil {
 					f.t.Errorf("record terminal Goal Run: %v", err)
 				}
@@ -1926,3 +1926,11 @@ func limitedGoalBudget(t *testing.T, limits goal.BudgetLimits) goal.Budget {
 func goalIntLimit(value int) *int { return &value }
 
 func goalCostLimit(value float64) *float64 { return &value }
+
+func accountedGoalCost(value float64) accounting.Cost {
+	cost, err := accounting.NewCost(value)
+	if err != nil {
+		panic(err)
+	}
+	return cost
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -277,15 +278,23 @@ func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {
 	if err := record.Validate(); err != nil {
 		return fmt.Errorf("sessions: terminal plan Goal Run: %w", err)
 	}
-	costUSD := 0.0
-	if usage, reported := run.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-		costUSD = *usage.Total.CostUSD
+	cost, err := goalRunCost(run.Metrics())
+	if err != nil {
+		return fmt.Errorf("sessions: terminal plan Goal Run cost: %w", err)
 	}
 	outcome, terminal := run.Outcome()
 	if !terminal || record.SessionID != run.SessionID() || record.IncarnationID != run.GoalIncarnationID() ||
-		record.RunID != run.ID() || record.Outcome != outcome || record.CostUSD != costUSD ||
+		record.RunID != run.ID() || record.Outcome != outcome || !record.Cost.Equal(cost) ||
 		record.Steps != run.Metrics().Steps() || !record.CompletedAt.Equal(run.FinishedAt()) {
 		return fmt.Errorf("sessions: terminal plan Goal Run differs from Run %q", run.ID())
 	}
 	return nil
+}
+
+func goalRunCost(metrics rundomain.Metrics) (accounting.Cost, error) {
+	usage, reported := metrics.Usage()
+	if !reported {
+		return accounting.Cost{}, nil
+	}
+	return accounting.CostFromOptional(usage.Total.CostUSD)
 }

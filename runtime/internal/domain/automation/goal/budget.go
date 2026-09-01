@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 // Budget is the immutable cross-Run spending policy. Its zero value is invalid;
@@ -110,8 +111,11 @@ func (u Usage) add(record RunRecord) (Usage, error) {
 	}
 	next := Usage{
 		Runs:    u.Runs + 1,
-		CostUSD: u.CostUSD + record.CostUSD,
+		CostUSD: u.CostUSD,
 		Steps:   u.Steps + record.Steps,
+	}
+	if cost, available := record.Cost.USD(); available {
+		next.CostUSD += cost
 	}
 	if err := next.validate(); err != nil {
 		return Usage{}, err
@@ -149,7 +153,7 @@ type RunRecord struct {
 	IncarnationID string
 	RunID         string
 	Outcome       run.Outcome
-	CostUSD       float64
+	Cost          accounting.Cost
 	Steps         int
 	CompletedAt   time.Time
 }
@@ -167,8 +171,8 @@ func (r RunRecord) Validate() error {
 	if _, ok := run.ParseOutcome(r.Outcome.String()); !ok {
 		return fmt.Errorf("goal: Run has unknown outcome %q", r.Outcome)
 	}
-	if r.CostUSD < 0 || math.IsNaN(r.CostUSD) || math.IsInf(r.CostUSD, 0) {
-		return errors.New("goal: Run cost must be a finite non-negative number")
+	if err := r.Cost.Validate(); err != nil {
+		return fmt.Errorf("goal: Run cost: %w", err)
 	}
 	if r.Steps < 0 {
 		return errors.New("goal: Run steps must not be negative")
@@ -197,12 +201,16 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 		return Goal{}, err
 	}
 	if g.status == StatusActive {
+		_, costAvailable := record.Cost.USD()
 		if record.Outcome != run.OutcomeCompleted {
 			next.status = StatusPaused
 			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, record.Outcome.String())
 		} else if limit, exhausted := g.budget.exceeded(next.used); exhausted {
 			next.status = StatusBlocked
 			next.reason, err = newReason(StatusBlocked, reasonForBudgetLimit(limit), "")
+		} else if g.budget.costLimited && !costAvailable {
+			next.status = StatusBlocked
+			next.reason, err = newReason(StatusBlocked, ReasonPricingUnavailable, "")
 		}
 		if err != nil {
 			return Goal{}, err

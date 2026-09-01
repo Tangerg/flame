@@ -53,9 +53,17 @@ func unwrittenVersion(t *testing.T, sessionID string) goal.Version {
 	return current.Version()
 }
 
+func goalRunCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
+
 func persistTerminalGoalRun(t *testing.T, store *sqlite.RunStore, record goal.RunRecord) {
 	t.Helper()
-	cost := record.CostUSD
 	outcome := record.Outcome
 	value := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: record.SessionID, ID: record.RunID,
@@ -63,7 +71,7 @@ func persistTerminalGoalRun(t *testing.T, store *sqlite.RunStore, record goal.Ru
 		Outcome:           &outcome,
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 			Steps: record.Steps,
-			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}},
+			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: record.Cost.OptionalUSD()}},
 		}),
 		CreatedAt: record.CompletedAt.Add(-time.Second), FinishedAt: record.CompletedAt,
 		UpdatedAt: record.CompletedAt, MessageMark: 0,
@@ -87,7 +95,7 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 	}
 	record := goal.RunRecord{
 		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run_goal_run",
-		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 3, CompletedAt: now.Add(time.Minute),
+		Outcome: run.OutcomeCompleted, Cost: goalRunCost(t, 0.25), Steps: 3, CompletedAt: now.Add(time.Minute),
 	}
 	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
 		t.Fatalf("ownerless RecordRun = %v, want ErrRunIdentityConflict", recordRunErr)
@@ -116,6 +124,47 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 	}
 	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
 		t.Fatalf("RecordRun after owner deletion = %v, want ErrRunIdentityConflict", recordRunErr)
+	}
+}
+
+func TestGoalStorePreservesUnavailableRunPricing(t *testing.T) {
+	store, sessions, runs := newGoalRunStores(t)
+	const sessionID = "ses_unpriced_goal_run"
+	seedSession(t, sessions, sessionID)
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	g, err := goal.New(
+		sessionID,
+		"finish safely",
+		testReasoningSelection(t, "private", "served-alias", ""),
+		limitedBudget(t, goal.BudgetLimits{MaxCostUSD: costLimit(1)}),
+		run.Capabilities{},
+		"lease_unpriced_goal_run",
+		now,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, applied, saveErr := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); saveErr != nil || !applied {
+		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
+	}
+	record := goal.RunRecord{
+		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run_unpriced_goal_run",
+		Outcome: run.OutcomeCompleted, Steps: 2, CompletedAt: now.Add(time.Minute),
+	}
+	persistTerminalGoalRun(t, runs, record)
+	if err := store.RecordRun(t.Context(), record); err != nil {
+		t.Fatalf("RecordRun: %v", err)
+	}
+	if err := store.RecordRun(t.Context(), record); err != nil {
+		t.Fatalf("repeat RecordRun: %v", err)
+	}
+	got, found, err := readGoal(t.Context(), store, sessionID)
+	if err != nil || !found {
+		t.Fatalf("Get = (%v, %v), want found", found, err)
+	}
+	if got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonPricingUnavailable ||
+		got.Used() != (goal.Usage{Runs: 1, Steps: 2}) {
+		t.Fatalf("Goal after unpriced Run = %+v", got.Snapshot())
 	}
 }
 

@@ -222,6 +222,8 @@ func presentGoalReason(reason goal.Reason) (*protocol.GoalReason, error) {
 		code = protocol.GoalReasonCostBudgetReached
 	case goal.ReasonStepBudgetReached:
 		code = protocol.GoalReasonStepBudgetReached
+	case goal.ReasonPricingUnavailable:
+		code = protocol.GoalReasonPricingUnavailable
 	case goal.ReasonBlockedByModel:
 		code = protocol.GoalReasonBlockedByModel
 	default:

@@ -28,6 +28,7 @@ func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 		{goal.ReasonRunBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonRunBudgetReached},
 		{goal.ReasonCostBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonCostBudgetReached},
 		{goal.ReasonStepBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonStepBudgetReached},
+		{goal.ReasonPricingUnavailable, goal.StatusBlocked, "", protocol.GoalReasonPricingUnavailable},
 		{goal.ReasonBlockedByModel, goal.StatusBlocked, "safe context", protocol.GoalReasonBlockedByModel},
 	}
 

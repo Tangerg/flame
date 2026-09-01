@@ -83,7 +83,10 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 		CheckpointRootID: root.MemberID, ResumeClaimed: p.resumeClaimed,
 	}
 	if rootRun.GoalIncarnationID() != "" {
-		record := terminalGoalRun(rootRun)
+		record, err := terminalGoalRun(rootRun)
+		if err != nil {
+			return TerminalPlan{}, rundomain.Run{}, err
+		}
 		plan.GoalRun = &record
 	}
 	if err := plan.Validate(); err != nil {
@@ -398,7 +401,7 @@ func (p parkedRunTerminalization) terminalConversationMessages() ([]corechat.Mes
 	return appended, nil
 }
 
-func terminalGoalRun(root rundomain.Run) goal.RunRecord {
+func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
 	outcome, _ := root.Outcome()
 	record := goal.RunRecord{
 		SessionID:     root.SessionID(),
@@ -408,8 +411,10 @@ func terminalGoalRun(root rundomain.Run) goal.RunRecord {
 		Steps:         root.Metrics().Steps(),
 		CompletedAt:   root.FinishedAt(),
 	}
-	if usage, reported := root.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-		record.CostUSD = *usage.Total.CostUSD
+	cost, err := goalRunCost(root.Metrics())
+	if err != nil {
+		return goal.RunRecord{}, fmt.Errorf("sessions: terminal Goal Run cost: %w", err)
 	}
-	return record
+	record.Cost = cost
+	return record, nil
 }

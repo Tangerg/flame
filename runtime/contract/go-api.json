@@ -1020,6 +1020,11 @@
           "value": "\"costBudgetReached\""
         },
         {
+          "name": "GoalReasonPricingUnavailable",
+          "type": "GoalReasonCode",
+          "value": "\"pricingUnavailable\""
+        },
+        {
           "name": "GoalReasonRunBudgetReached",
           "type": "GoalReasonCode",
           "value": "\"runBudgetReached\""

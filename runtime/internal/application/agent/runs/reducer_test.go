@@ -65,7 +65,7 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	if combined.CommitID != commit.CommitID {
 		t.Fatalf("combined terminal identity = %q, want %q", combined.CommitID, commit.CommitID)
 	}
-	want := goal.RunRecord{SessionID: "ses_1", IncarnationID: "goal_lease", RunID: "run_1", Outcome: run.OutcomeCompleted, CostUSD: 0.75, Steps: 1, CompletedAt: config.Now()}
+	want := goal.RunRecord{SessionID: "ses_1", IncarnationID: "goal_lease", RunID: "run_1", Outcome: run.OutcomeCompleted, Cost: mustReducerCost(t, 0.75), Steps: 1, CompletedAt: config.Now()}
 	if got := *commit.GoalRun; got != want {
 		t.Fatalf("GoalRun = %+v", got)
 	}

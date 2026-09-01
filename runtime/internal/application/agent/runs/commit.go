@@ -455,13 +455,13 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 	if err := record.Validate(); err != nil {
 		return fmt.Errorf("runs: terminal Goal Run: %w", err)
 	}
-	costUSD := 0.0
-	if usage, ok := value.Metrics().Usage(); ok && usage.Total.CostUSD != nil {
-		costUSD = *usage.Total.CostUSD
+	cost, err := costFromRunMetrics(value.Metrics())
+	if err != nil {
+		return fmt.Errorf("runs: terminal Goal Run cost: %w", err)
 	}
 	outcome, ok := value.Outcome()
 	if !ok || record.SessionID != value.SessionID() || record.IncarnationID != value.GoalIncarnationID() ||
-		record.RunID != value.ID() || record.Outcome != outcome || record.CostUSD != costUSD ||
+		record.RunID != value.ID() || record.Outcome != outcome || !record.Cost.Equal(cost) ||
 		record.Steps != value.Metrics().Steps() || !record.CompletedAt.Equal(value.FinishedAt()) {
 		return fmt.Errorf("runs: Goal Run differs from terminal Run %q", value.ID())
 	}

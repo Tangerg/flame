@@ -565,7 +565,7 @@ export interface GoalReason {
   detail?: string;
 }
 
-export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "runBudgetReached" | "costBudgetReached" | "stepBudgetReached" | "blockedByModel";
+export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "runBudgetReached" | "costBudgetReached" | "stepBudgetReached" | "pricingUnavailable" | "blockedByModel";
 
 export interface GoalRequest {
   sessionId: string;
@@ -1707,7 +1707,7 @@ export const WIRE_ENUMS = {
   FeedbackRating: ["positive", "negative"],
   FileEntryType: ["file", "dir", "symlink"],
   FileStatus: ["added", "modified", "deleted", "renamed", "untracked"],
-  GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "blockedByModel"],
+  GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"],
   GoalStatus: ["active", "paused", "blocked", "completing"],
   HealthStatus: ["ok", "degraded", "unhealthy"],
   HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"],
