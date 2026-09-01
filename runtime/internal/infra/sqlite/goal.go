@@ -139,9 +139,16 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 	return RunInTx(ctx, g.db, func(ctx context.Context) error {
 		res, err := conn(ctx, g.db).ExecContext(ctx,
 			`INSERT INTO goal_runs(run_id, session_id, incarnation_id, outcome, cost_usd, steps, completed_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)
+			 SELECT run_id, session_id, goal_incarnation_id, outcome, ?, steps, finished_at
+			   FROM runs
+			  WHERE run_id = ? AND session_id = ? AND state = ?
+			    AND goal_incarnation_id = ? AND outcome = ?
+			    AND steps = ? AND finished_at = ?
 			 ON CONFLICT(run_id) DO NOTHING`,
-			record.RunID, record.SessionID, record.IncarnationID, record.Outcome.String(), record.CostUSD, record.Steps, record.CompletedAt.UTC().UnixNano())
+			record.CostUSD,
+			record.RunID, record.SessionID, runStateTerminal.databaseValue(),
+			record.IncarnationID, record.Outcome.String(), record.Steps,
+			record.CompletedAt.UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: record Goal Run: %w", err)
 		}
@@ -192,6 +199,12 @@ func (g *GoalStore) validateExistingRun(ctx context.Context, record goal.RunReco
 		  WHERE run_id = ?`,
 		record.RunID,
 	).Scan(&sessionID, &incarnationID, &outcome, &costUSD, &steps, &completedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf(
+			"%w: Run %q has no matching terminal accounting owner",
+			goal.ErrRunIdentityConflict, record.RunID,
+		)
+	}
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect existing Goal Run %q: %w", record.RunID, err)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -20,12 +21,18 @@ import (
 
 func newGoalStore(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore) {
 	t.Helper()
+	goals, sessions, _ := newGoalRunStores(t)
+	return goals, sessions
+}
+
+func newGoalRunStores(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore, *sqlite.RunStore) {
+	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return sqlite.NewGoalStore(db), sqlite.NewSessionStore(db)
+	return sqlite.NewGoalStore(db), sqlite.NewSessionStore(db), sqlite.NewRunStore(db)
 }
 
 func readGoal(ctx context.Context, store *sqlite.GoalStore, sessionID string) (goal.Goal, bool, error) {
@@ -46,8 +53,28 @@ func unwrittenVersion(t *testing.T, sessionID string) goal.Version {
 	return current.Version()
 }
 
+func persistTerminalGoalRun(t *testing.T, store *sqlite.RunStore, record goal.RunRecord) {
+	t.Helper()
+	cost := record.CostUSD
+	outcome := record.Outcome
+	value := testsupport.MustRestoreRun(run.Snapshot{
+		SessionID: record.SessionID, ID: record.RunID,
+		GoalIncarnationID: record.IncarnationID,
+		Outcome:           &outcome,
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+			Steps: record.Steps,
+			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}},
+		}),
+		CreatedAt: record.CompletedAt.Add(-time.Second), FinishedAt: record.CompletedAt,
+		UpdatedAt: record.CompletedAt, MessageMark: 0,
+	})
+	if err := store.Restore(t.Context(), value); err != nil {
+		t.Fatalf("persist terminal Goal Run: %v", err)
+	}
+}
+
 func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
-	store, sessions := newGoalStore(t)
+	store, sessions, runs := newGoalRunStores(t)
 	const sessionID = "ses_goal_run"
 	seedSession(t, sessions, sessionID)
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
@@ -62,6 +89,10 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run_goal_run",
 		Outcome: run.OutcomeCompleted, CostUSD: 0.25, Steps: 3, CompletedAt: now.Add(time.Minute),
 	}
+	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
+		t.Fatalf("ownerless RecordRun = %v, want ErrRunIdentityConflict", recordRunErr)
+	}
+	persistTerminalGoalRun(t, runs, record)
 	if recordRunErr := store.RecordRun(t.Context(), record); recordRunErr != nil {
 		t.Fatalf("RecordRun: %v", recordRunErr)
 	}
@@ -79,6 +110,12 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 	}
 	if got.Used() != (goal.Usage{Runs: 1, CostUSD: 0.25, Steps: 3}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
 		t.Fatalf("goal after idempotent RecordRun = %+v", got)
+	}
+	if err := runs.Delete(t.Context(), record.SessionID, record.RunID); err != nil {
+		t.Fatalf("delete terminal Run: %v", err)
+	}
+	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
+		t.Fatalf("RecordRun after owner deletion = %v, want ErrRunIdentityConflict", recordRunErr)
 	}
 }
 
@@ -399,7 +436,7 @@ func TestGoalStoreRejectsMissingSession(t *testing.T) {
 }
 
 func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
-	store, sessions := newGoalStore(t)
+	store, sessions, runs := newGoalRunStores(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	g, _ := goal.New(sessionID, "obj", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease", time.Unix(0, 0))
@@ -410,6 +447,7 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run-reusable-after-delete",
 		Outcome: run.OutcomeCompleted, CompletedAt: time.Unix(1, 0),
 	}
+	persistTerminalGoalRun(t, runs, record)
 	if err := store.RecordRun(t.Context(), record); err != nil {
 		t.Fatalf("record old Goal Run: %v", err)
 	}
@@ -419,6 +457,9 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 	}
 	if _, ok, err := readGoal(t.Context(), store, sessionID); err != nil || ok {
 		t.Fatalf("goal after session delete = present=%v err=%v, want false/nil", ok, err)
+	}
+	if err := runs.DeleteForSession(t.Context(), sessionID); err != nil {
+		t.Fatalf("delete old Session Runs: %v", err)
 	}
 
 	// Reusing the same ids proves the old idempotency ledger row was owned by and
@@ -430,6 +471,7 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 	}
 	record.IncarnationID = recreated.IncarnationID()
 	record.CompletedAt = time.Unix(3, 0)
+	persistTerminalGoalRun(t, runs, record)
 	if err := store.RecordRun(t.Context(), record); err != nil {
 		t.Fatalf("reuse terminal identity after session deletion: %v", err)
 	}

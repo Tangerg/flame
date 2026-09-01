@@ -65,7 +65,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 // schemaEpoch identifies the one storage shape this build understands. It is an
 // epoch rather than a version because nothing connects two values: a database
 // stamped with any other number is refused, never upgraded.
-const schemaEpoch = 97
+const schemaEpoch = 98
 
 func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 	var epoch int
@@ -510,9 +510,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 		)`,
 		// One immutable row per terminal goal-owned Run. This is not a cache of
 		// Goal.Used: it is the idempotency identity that lets terminal Run state
-		// and cross-Run budget accounting commit as one fact.
+		// and cross-Run budget accounting commit as one fact. The Run foreign key
+		// keeps that technical tombstone through ordinary Goal replacement while
+		// pruning it when rollback or Session replacement removes the Run itself.
 		`CREATE TABLE IF NOT EXISTS goal_runs (
-				run_id       TEXT    PRIMARY KEY,
+				run_id       TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 				session_id   TEXT    NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
 				incarnation_id     TEXT    NOT NULL,
 			outcome      TEXT    NOT NULL,
