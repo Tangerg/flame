@@ -184,7 +184,7 @@ func TestModelConfigurationRejectsMutationIdentityDrift(t *testing.T) {
 	}
 	_, err = runtime.SetRole(t.Context(), role)
 	requireRuntimeContractViolation(t, err)
-	change := models.ValueChange{Kind: models.ClearValue}
+	change := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	_, err = runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
 	requireRuntimeContractViolation(t, err)
 }
@@ -202,8 +202,8 @@ func TestModelConfigurationRejectsPartialRoleProjection(t *testing.T) {
 
 func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
-	setBaseURL := models.ValueChange{Kind: models.SetValue, Value: "https://new.example"}
-	setAPIKey := models.ValueChange{Kind: models.SetValue, Value: "stored-secret"}
+	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://new.example"}
+	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "stored-secret"}
 	update := models.UpdateProvider{Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey}
 	valid := func() protocol.Provider {
 		baseURL := setBaseURL.Value
@@ -247,7 +247,7 @@ func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
 
 func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 	t.Parallel()
-	clear := models.ValueChange{Kind: models.ClearValue}
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	result := protocol.Provider{
 		ID: "deepseek", Credential: &protocol.ProviderCredential{Masked: "en****ey", Source: protocol.ProviderKeySourceEnv},
 		Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
@@ -365,8 +365,8 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 	if err != nil || len(providers) != 1 || !providers[0].Configured() {
 		t.Fatalf("Providers = (%+v, %v)", providers, err)
 	}
-	secret := models.ValueChange{Kind: models.SetValue, Value: "secret"}
-	clear := models.ValueChange{Kind: models.ClearValue}
+	secret := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "secret"}
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	if _, updateProviderErr := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", BaseURL: &clear, APIKey: &secret}); updateProviderErr != nil {
 		t.Fatal(updateProviderErr)
 	}

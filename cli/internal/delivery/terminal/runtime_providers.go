@@ -247,10 +247,10 @@ func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 	}
 	switch mode {
 	case formChangeSet:
-		change := &models.ValueChange{Kind: models.SetValue, Value: value}
+		change := &models.ValueChange{Kind: runtimeprotocol.ProviderConfigSet, Value: value}
 		return change, change.Validate()
 	case formChangeClear:
-		change := &models.ValueChange{Kind: models.ClearValue}
+		change := &models.ValueChange{Kind: runtimeprotocol.ProviderConfigClear}
 		return change, change.Validate()
 	case formChangeKeep:
 		return nil, nil

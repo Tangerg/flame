@@ -336,7 +336,7 @@ func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing
 	host.Press(input.Enter)
 	host.Shows(t, "provider updated · deepseek")
 	update := <-service.updates
-	if update.BaseURL != nil || update.APIKey == nil || update.APIKey.Kind != models.SetValue || update.APIKey.Value != secret {
+	if update.BaseURL != nil || update.APIKey == nil || update.APIKey.Kind != protocol.ProviderConfigSet || update.APIKey.Value != secret {
 		t.Fatalf("provider update = %+v", update)
 	}
 	stop()
@@ -363,7 +363,7 @@ func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "provider updated · deepseek")
 	update := awaitValue(t, service.updates, "environment provider override")
-	if update.APIKey == nil || update.APIKey.Kind != models.SetValue || update.APIKey.Value != "STORED_PROVIDER_OVERRIDE" {
+	if update.APIKey == nil || update.APIKey.Kind != protocol.ProviderConfigSet || update.APIKey.Value != "STORED_PROVIDER_OVERRIDE" {
 		t.Fatalf("provider update = %+v", update)
 	}
 	stop()
@@ -398,7 +398,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	host.Type("ROTATED_PROVIDER_KEY")
 	host.Press(input.Enter)
 	update := awaitValue(t, service.started, "provider update mutation")
-	if update.Provider != "deepseek" || update.APIKey == nil || update.APIKey.Kind != models.SetValue {
+	if update.Provider != "deepseek" || update.APIKey == nil || update.APIKey.Kind != protocol.ProviderConfigSet {
 		t.Fatalf("provider update = %+v", update)
 	}
 

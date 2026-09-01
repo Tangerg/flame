@@ -165,11 +165,11 @@ func validateProviderUpdate(update models.UpdateProvider, result models.Provider
 	if change := update.BaseURL; change != nil {
 		baseURL, present := result.BaseURL()
 		switch change.Kind {
-		case models.SetValue:
+		case protocol.ProviderConfigSet:
 			if !present || baseURL != change.Value {
 				problems = append(problems, fmt.Errorf("runtime returned base URL %q (present %v), want %q", baseURL, present, change.Value))
 			}
-		case models.ClearValue:
+		case protocol.ProviderConfigClear:
 			if present {
 				problems = append(problems, fmt.Errorf("runtime retained base URL %q after clearing it", baseURL))
 			}
@@ -178,7 +178,7 @@ func validateProviderUpdate(update models.UpdateProvider, result models.Provider
 	if change := update.APIKey; change != nil {
 		credential, configured := result.Credential()
 		switch change.Kind {
-		case models.SetValue:
+		case protocol.ProviderConfigSet:
 			if !configured || !credential.Stored() {
 				problems = append(problems, fmt.Errorf(
 					"runtime returned configured=%v source=%q after setting a stored key",
@@ -189,7 +189,7 @@ func validateProviderUpdate(update models.UpdateProvider, result models.Provider
 			if configured && credential.Exposes(change.Value) {
 				problems = append(problems, errors.New("runtime exposed the raw API key instead of a mask"))
 			}
-		case models.ClearValue:
+		case protocol.ProviderConfigClear:
 			// Clearing a stored key may reveal a read-only environment fallback,
 			// but the effective credential must no longer claim stored ownership.
 			if configured && credential.Stored() {
@@ -241,8 +241,8 @@ func projectProviderChange(change *models.ValueChange) *protocol.ProviderConfigC
 	if change == nil {
 		return nil
 	}
-	projected := &protocol.ProviderConfigChange{Type: protocol.ProviderConfigChangeType(change.Kind)}
-	if change.Kind == models.SetValue {
+	projected := &protocol.ProviderConfigChange{Type: change.Kind}
+	if change.Kind == protocol.ProviderConfigSet {
 		value := change.Value
 		projected.Value = &value
 	}

@@ -22,7 +22,7 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	if _, err := NewConfiguredRole(UtilityRole, " deepseek", "chat"); err == nil {
 		t.Fatal("non-canonical role was constructed")
 	}
-	secret := ValueChange{Kind: SetValue, Value: "secret"}
+	secret := ValueChange{Kind: protocol.ProviderConfigSet, Value: "secret"}
 	update := UpdateProvider{Provider: "deepseek", APIKey: &secret}
 	if err := update.Validate(); err != nil {
 		t.Fatal(err)

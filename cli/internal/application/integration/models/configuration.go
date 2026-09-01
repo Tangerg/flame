@@ -257,25 +257,18 @@ func (p Provider) Credential() (Credential, bool) {
 
 func (p Provider) BaseURL() (string, bool) { return p.baseURL, p.baseURL != "" }
 
-type ChangeKind string
-
-const (
-	SetValue   ChangeKind = "set"
-	ClearValue ChangeKind = "clear"
-)
-
 type ValueChange struct {
-	Kind  ChangeKind
+	Kind  runtimeprotocol.ProviderConfigChangeType
 	Value string
 }
 
 func (v ValueChange) Validate() error {
 	switch v.Kind {
-	case SetValue:
+	case runtimeprotocol.ProviderConfigSet:
 		if strings.TrimSpace(v.Value) == "" {
 			return errors.New("set change value is empty")
 		}
-	case ClearValue:
+	case runtimeprotocol.ProviderConfigClear:
 		if v.Value != "" {
 			return errors.New("clear change carries a value")
 		}

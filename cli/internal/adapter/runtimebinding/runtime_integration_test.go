@@ -356,8 +356,8 @@ func configureIntegrationRuntime(t *testing.T) {
 
 func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 	t.Helper()
-	setBaseURL := models.ValueChange{Kind: models.SetValue, Value: "https://provider.integration.test"}
-	setAPIKey := models.ValueChange{Kind: models.SetValue, Value: "integration-stored-key"}
+	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://provider.integration.test"}
+	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "integration-stored-key"}
 	configured, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey,
 	})
@@ -370,7 +370,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 		t.Fatalf("configured provider = %+v", configured)
 	}
 
-	clear := models.ValueChange{Kind: models.ClearValue}
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	fallback, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
 		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
 	})
