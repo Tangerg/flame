@@ -70,9 +70,13 @@ func NewServers(lifetime context.Context, specs []ServerSpec) (*Servers, error) 
 	if lifetime == nil {
 		return nil, errors.New("lsp: lifetime is required")
 	}
+	table, err := newServerTable(specs)
+	if err != nil {
+		return nil, err
+	}
 	return &Servers{
 		lifetime: lifetime,
-		table:    newServerTable(specs),
+		table:    table,
 		launch:   startClient,
 		clients:  map[serverClientKey]*client{},
 		starting: map[serverClientKey]*clientStart{},

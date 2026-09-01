@@ -191,6 +191,45 @@ func TestNewServersRequiresLifetime(t *testing.T) {
 	}
 }
 
+func TestNewServersRejectsAmbiguousServerRouting(t *testing.T) {
+	tests := []struct {
+		name  string
+		specs []ServerSpec
+	}{
+		{
+			name:  "missing server identity",
+			specs: []ServerSpec{{Extensions: []string{".go"}}},
+		},
+		{
+			name: "duplicate server identity",
+			specs: []ServerSpec{
+				{Name: "shared", Extensions: []string{".go"}},
+				{Name: "shared", Extensions: []string{".ts"}},
+			},
+		},
+		{
+			name: "case-insensitive extension collision",
+			specs: []ServerSpec{
+				{Name: "first", Extensions: []string{".go"}},
+				{Name: "second", Extensions: []string{".GO"}},
+			},
+		},
+		{
+			name:  "empty extension",
+			specs: []ServerSpec{{Name: "extensionless", Extensions: []string{""}}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			servers, err := NewServers(t.Context(), test.specs)
+			if err == nil || servers != nil {
+				t.Fatalf("NewServers = (%v, %v), want nil servers and an error", servers, err)
+			}
+		})
+	}
+}
+
 func TestServersShareConcurrentStartup(t *testing.T) {
 	servers := mustNewServers(t, nil)
 	t.Cleanup(func() { _ = servers.Close() })

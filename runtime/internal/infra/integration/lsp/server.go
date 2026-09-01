@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -66,9 +67,18 @@ type serverTable struct {
 	byExt map[string]ServerSpec
 }
 
-func newServerTable(specs []ServerSpec) *serverTable {
+func newServerTable(specs []ServerSpec) (*serverTable, error) {
 	specs = slices.Clone(specs)
+	byName := make(map[string]struct{}, len(specs))
 	for i := range specs {
+		name := specs[i].Name
+		if name == "" || strings.TrimSpace(name) != name {
+			return nil, fmt.Errorf("lsp: server %d has an invalid name %q", i+1, name)
+		}
+		if _, duplicate := byName[name]; duplicate {
+			return nil, fmt.Errorf("lsp: server name %q is configured more than once", name)
+		}
+		byName[name] = struct{}{}
 		specs[i].Args = slices.Clone(specs[i].Args)
 		specs[i].Extensions = slices.Clone(specs[i].Extensions)
 		specs[i].RootMarkers = slices.Clone(specs[i].RootMarkers)
@@ -76,10 +86,22 @@ func newServerTable(specs []ServerSpec) *serverTable {
 	byExt := make(map[string]ServerSpec, len(specs))
 	for _, spec := range specs {
 		for _, ext := range spec.Extensions {
-			byExt[strings.ToLower(ext)] = spec
+			canonical := strings.ToLower(ext)
+			if canonical == "" {
+				return nil, fmt.Errorf("lsp: server %q has an empty file extension", spec.Name)
+			}
+			if owner, duplicate := byExt[canonical]; duplicate {
+				return nil, fmt.Errorf(
+					"lsp: file extension %q is assigned to both %q and %q",
+					ext,
+					owner.Name,
+					spec.Name,
+				)
+			}
+			byExt[canonical] = spec
 		}
 	}
-	return &serverTable{specs: specs, byExt: byExt}
+	return &serverTable{specs: specs, byExt: byExt}, nil
 }
 
 // forFile returns the server that handles path's extension.
