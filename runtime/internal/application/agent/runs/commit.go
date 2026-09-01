@@ -740,13 +740,21 @@ func (o OpeningCommit) Validate() error {
 		if err := o.validateAdmission(); err != nil {
 			return err
 		}
-	} else if o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil {
-		return errors.New("runs: resumed opening carries fresh-run facts")
+	} else {
+		if err := o.Resume.Validate(); err != nil {
+			return fmt.Errorf("runs: opening resume: %w", err)
+		}
+		if o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil {
+			return errors.New("runs: resumed opening carries fresh-run facts")
+		}
 	}
 	return o.validateEvents()
 }
 
 func (o OpeningCommit) validateAdmission() error {
+	if err := o.Admit.Validate(); err != nil {
+		return fmt.Errorf("runs: opening admission: %w", err)
+	}
 	if o.InitialSession != nil {
 		if err := o.InitialSession.Validate(); err != nil {
 			return fmt.Errorf("runs: opening initial Session: %w", err)

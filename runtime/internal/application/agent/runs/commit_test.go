@@ -144,3 +144,30 @@ func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 		t.Fatal("EventCommit accepted progress from another Segment")
 	}
 }
+
+func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
+	createdAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
+	invalidAdmission := run.Draft{
+		RunID: "run_1", SessionID: "session", CreatedAt: createdAt,
+	}
+	invalidResume := run.TreeResumeDraft{
+		RootRunID: "run_1", SessionID: "session", ResumedAt: createdAt,
+	}
+	for _, test := range []struct {
+		name    string
+		opening OpeningCommit
+	}{
+		{name: "admission", opening: OpeningCommit{
+			CommitID: testCommitID("run_commit_invalid_admission"), Admit: &invalidAdmission,
+		}},
+		{name: "resume", opening: OpeningCommit{
+			CommitID: testCommitID("run_commit_invalid_resume"), Resume: &invalidResume,
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.opening.Validate(); err == nil {
+				t.Fatalf("OpeningCommit accepted an invalid %s action", test.name)
+			}
+		})
+	}
+}

@@ -236,7 +236,9 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 	runState := &fakeRunState{}
 	tx := &fakeTx{}
 	effects := testEffects(stores, Config{State: runState, Tx: tx.run})
-	draft := run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open"}
+	draft := run.Draft{
+		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: time.Unix(1, 0).UTC(),
+	}
 
 	err := effects.CommitOpening(context.Background(), runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_opening"), Admit: &draft,
