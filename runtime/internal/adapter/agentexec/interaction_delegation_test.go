@@ -433,9 +433,8 @@ func (o *orderedSiblingDelegateModel) Call(
 func (o *orderedSiblingDelegateModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	response, err := o.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(o.Call(ctx, request))
 }
 
 func TestInteractionExecutorProjectsNestedDelegateLineageExactlyOnce(t *testing.T) {

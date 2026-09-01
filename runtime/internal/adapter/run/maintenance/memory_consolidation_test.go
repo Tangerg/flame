@@ -129,8 +129,8 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 		t.Fatalf("model calls = %d, want extraction + curation", len(model.requests))
 	}
 	for index, request := range model.requests {
-		if request.Options.MaxTokens == nil || *request.Options.MaxTokens != defaultMemoryCurationMaxTokens {
-			t.Errorf("model request %d MaxTokens = %v, want %d", index, request.Options.MaxTokens, defaultMemoryCurationMaxTokens)
+		if request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != defaultMemoryCurationMaxTokens {
+			t.Errorf("model request %d MaxOutputTokens = %v, want %d", index, request.Options.MaxOutputTokens, defaultMemoryCurationMaxTokens)
 		}
 	}
 	curationPrompt := model.requests[1].Messages[1].Text()

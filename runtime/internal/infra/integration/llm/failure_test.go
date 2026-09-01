@@ -51,7 +51,7 @@ func TestClassifyModelFailuresPreservesOptionalInputTokenCountingCapability(t *t
 		}),
 	}
 	classified := classifyModelFailures(model)
-	counter, ok := classified.(modelInputTokenCounter)
+	counter, ok := classified.(InputTokenCounter)
 	if !ok {
 		t.Fatal("classification stripped input token counting")
 	}

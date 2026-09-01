@@ -235,7 +235,7 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 
 func namedDirectTool(t *testing.T, root, name string) toolcontract.Tool {
 	t.Helper()
-	for _, candidate := range directTools(root) {
+	for _, candidate := range mustDirectTools(t, root) {
 		if candidate.Definition().Name == name {
 			return candidate
 		}

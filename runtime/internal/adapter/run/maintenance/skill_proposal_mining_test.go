@@ -156,8 +156,8 @@ func TestSkillMinerSubmitsUserProposalWithMinedProvenance(t *testing.T) {
 	if len(proposals.proposals) != 1 {
 		t.Fatalf("expected one proposal, got %d", len(proposals.proposals))
 	}
-	if len(model.requests) != 1 || model.requests[0].Options.MaxTokens == nil || *model.requests[0].Options.MaxTokens != skillMiningOutputTokens {
-		t.Fatalf("skill mining MaxTokens = %#v, want %d", model.requests, skillMiningOutputTokens)
+	if len(model.requests) != 1 || model.requests[0].Options.MaxOutputTokens == nil || *model.requests[0].Options.MaxOutputTokens != skillMiningOutputTokens {
+		t.Fatalf("skill mining MaxOutputTokens = %#v, want %d", model.requests, skillMiningOutputTokens)
 	}
 	proposal := proposals.proposals[0]
 	if proposal.Name != "run-project-tests" {

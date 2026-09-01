@@ -60,7 +60,7 @@ func CompleteAuxiliary(ctx context.Context, client *chatclient.Client, prompt Au
 	response, err := client.Call(callCtx, &chat.Request{Messages: []chat.Message{
 		chat.NewSystemMessage(prompt.SystemPrompt),
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
-	}, Options: chat.Options{MaxTokens: &prompt.MaxOutputTokens}})
+	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}})
 	if err != nil {
 		return "", err
 	}

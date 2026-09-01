@@ -423,16 +423,13 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta
 	if err != nil {
 		return
 	}
-	response := parsed.Response()
-	if response.Output == nil || response.Output.Message == nil {
-		return
-	}
-	for _, part := range response.Output.Message.Parts {
+	response := parsed.ResponseDelta()
+	for _, part := range response.Parts {
 		var payload runs.ExecutionFact
 		switch part.Kind {
-		case corechat.PartText:
+		case corechat.PartDeltaText:
 			payload = runs.MessageDelta{Text: part.Text}
-		case corechat.PartReasoning:
+		case corechat.PartDeltaReasoning:
 			payload = runs.ReasoningDelta{Text: part.Text}
 		default:
 			continue

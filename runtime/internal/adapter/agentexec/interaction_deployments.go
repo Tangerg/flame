@@ -53,10 +53,11 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	client *chatclient.Client,
+	counter ModelContextInputTokenCounter,
 	maxModelCalls uint32,
 ) (*interactionDeploymentSet, error) {
 	builder, err := i.newInteractionDeploymentBuilder(
-		ctx, session, start, client, maxModelCalls,
+		ctx, session, start, client, counter, maxModelCalls,
 	)
 	if err != nil {
 		return nil, err
@@ -69,6 +70,7 @@ type interactionDeploymentBuilder struct {
 	session           *interactionSession
 	start             runs.RootExecutionStart
 	client            *chatclient.Client
+	counter           ModelContextInputTokenCounter
 	maxModelCalls     uint32
 	delegation        effectiveInteractionDelegation
 	maxDepth          uint32
@@ -83,6 +85,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	client *chatclient.Client,
+	counter ModelContextInputTokenCounter,
 	maxModelCalls uint32,
 ) (*interactionDeploymentBuilder, error) {
 	instructions, err := interactionInstructionContext(start.WorkingContext)
@@ -94,7 +97,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		return nil, err
 	}
 	builder := &interactionDeploymentBuilder{
-		executor: i, session: session, start: start, client: client,
+		executor: i, session: session, start: start, client: client, counter: counter,
 		maxModelCalls: maxModelCalls, delegation: i.policy.delegation,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
@@ -165,23 +168,23 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	}
 	var contextReducer interaction.ModelContextReducer
 	if i.executor.config.ModelContextCompactor != nil {
-		var counter ModelContextInputTokenCounter
-		if i.client.SupportsInputTokenCounting() {
-			counter = i.client
-		}
 		contextReducer = newInteractionModelContextReducer(
 			i.executor.config.ModelContextCompactor,
 			i.executor.config.ModelContextState,
 			i.session,
 			i.start,
 			i.instructions,
-			counter,
+			i.counter,
 		)
+	}
+	responseMode := interaction.ModelResponseComplete
+	if i.executor.config.StreamModelResponses {
+		responseMode = interaction.ModelResponseStream
 	}
 	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{
 		Client: i.client, Tools: visible, DeferredTools: deferred,
 		MaxConcurrentToolCalls: i.executor.policy.maxConcurrentToolCalls,
-		StreamModelResponses:   i.executor.config.StreamModelResponses,
+		ResponseMode:           responseMode,
 		ModelContextReducer:    contextReducer,
 	})
 	if err != nil {

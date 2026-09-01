@@ -268,7 +268,7 @@ func (r *Resolver) cwdFor(ctx context.Context) string {
 	return executionctx.CWD(ctx, r.defaultCWD)
 }
 
-func (r *Resolver) toolsForCWD(cwd string) cwdTools {
+func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 	return buildCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
 
@@ -289,7 +289,10 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
 	cwd := r.cwdFor(ctx)
-	localTools := r.toolsForCWD(cwd)
+	localTools, err := r.toolsForCWD(cwd)
+	if err != nil {
+		return manifestBuilder{}, err
+	}
 	var tools manifestBuilder
 	tools.direct(localTools.readSearch...)
 	tools.direct(localTools.applyPatch)

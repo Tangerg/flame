@@ -1,7 +1,6 @@
 package llm
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -202,7 +201,7 @@ type buildFunc func(spec ClientSpec, opts chat.Options) (chat.Model, error)
 // newProviderCatalog rejects duplicate identities and incomplete integrations.
 var providers = mustProviderCatalog(
 	// Direct vendor wire adapters (base URL optional — defaults to the vendor endpoint).
-	bundledProvider(ProviderAnthropic, defaultAnthropicModel, "ANTHROPIC_API_KEY", buildAnthropicCountingModel),
+	bundledProvider(ProviderAnthropic, defaultAnthropicModel, "ANTHROPIC_API_KEY", buildAnthropicModel),
 	bundledProvider(ProviderOpenAI, defaultOpenAIModel, "OPENAI_API_KEY", buildOpenAIResponsesModel).
 		withEmbedding(bundledModels(defaultOpenAIEmbeddingModel), buildOpenAIEmbeddingModel),
 	bundledProvider(ProviderGoogle, google.ModelGemini36Flash, "GOOGLE_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
@@ -211,46 +210,46 @@ var providers = mustProviderCatalog(
 
 	// OpenAI-compatible vendors — each adapter encodes its own endpoint.
 	bundledProvider(ProviderMoonshot, moonshot.ModelK3, "MOONSHOT_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return moonshot.NewOpenAIChat(moonshot.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return moonshot.NewChat(moonshot.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderDeepSeek, deepseek.ModelV4Flash, "DEEPSEEK_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return deepseek.NewOpenAIChat(deepseek.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return deepseek.NewChat(deepseek.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderAlibaba, alibaba.ModelQwen37Plus, "ALIBABA_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return alibaba.NewOpenAIChat(alibaba.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return alibaba.NewChat(alibaba.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}).withEmbedding(bundledModels(alibaba.ModelEmbeddingV4), buildAlibabaEmbeddingModel),
 	bundledProvider(ProviderFireworks, fireworks.ModelGPTOSS20B, "FIREWORKS_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return fireworks.NewOpenAIChat(fireworks.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return fireworks.NewChat(fireworks.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderGroq, groq.ModelGPTOSS20B, "GROQ_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return groq.NewOpenAIChat(groq.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return groq.NewChat(groq.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderHuggingface, huggingface.ModelGPTOSS120B, "HUGGINGFACE_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return huggingface.NewOpenAIChat(huggingface.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return huggingface.NewChat(huggingface.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderMinimax, minimax.ModelM3, "MINIMAX_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return minimax.NewOpenAIChat(minimax.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return minimax.NewChat(minimax.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderMistral, mistral.ModelSmall, "MISTRAL_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
 		return mistral.NewChat(mistral.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}).withEmbedding(bundledModels(mistral.ModelEmbed), buildMistralEmbeddingModel),
 	bundledProvider(ProviderOpenRouter, openrouter.ModelAuto, "OPENROUTER_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return openrouter.NewOpenAIChat(openrouter.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return openrouter.NewChat(openrouter.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderPerplexity, perplexity.ModelSonar, "PERPLEXITY_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewOpenAIChat(perplexity.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return perplexity.NewChat(perplexity.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderTogether, together.ModelRnj1Instruct, "TOGETHER_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return together.NewOpenAIChat(together.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return together.NewChat(together.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderXAI, xai.ModelGrok45, "XAI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return xai.NewOpenAIChat(xai.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return xai.NewChat(xai.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderXiaomi, xiaomi.ModelV25Pro, "XIAOMI_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return xiaomi.NewOpenAIChat(xiaomi.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return xiaomi.NewChat(xiaomi.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}),
 	bundledProvider(ProviderZhipu, zhipu.ModelGLM52, "ZHIPU_API_KEY", func(s ClientSpec, o chat.Options) (chat.Model, error) {
-		return zhipu.NewOpenAIChat(zhipu.OpenAIChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+		return zhipu.NewChat(zhipu.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
 	}).withEmbedding(bundledModels(zhipu.ModelEmbedding3), buildZhipuEmbeddingModel),
 
 	// Local daemon (base URL defaults to localhost; model id is user-pulled —
@@ -270,29 +269,11 @@ var providers = mustProviderCatalog(
 		withChatModels(anthropicEndpointModels()),
 )
 
-type anthropicCountingModel struct {
-	*anthropic.Chat
-}
-
-var _ modelInputTokenCounter = (*anthropicCountingModel)(nil)
-
-func (a *anthropicCountingModel) CountInputTokens(ctx context.Context, request *chat.Request) (int64, error) {
-	return a.CountMessageInputTokens(ctx, request)
-}
-
-func buildAnthropicCountingModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
-	model, err := newAnthropicModel(spec, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &anthropicCountingModel{Chat: model}, nil
-}
-
 func buildAnthropicCompatibleModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
-	return newAnthropicModel(spec, opts)
+	return buildAnthropicModel(spec, opts)
 }
 
-func newAnthropicModel(spec ClientSpec, opts chat.Options) (*anthropic.Chat, error) {
+func buildAnthropicModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
 	return anthropic.NewChat(anthropic.ChatConfig{
 		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,
@@ -301,7 +282,7 @@ func newAnthropicModel(spec ClientSpec, opts chat.Options) (*anthropic.Chat, err
 }
 
 func buildOpenAIResponsesModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
-	return openai.NewResponsesChat(openai.ChatConfig{
+	return openai.NewResponses(openai.ResponsesConfig{
 		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,
 		BaseURL:        spec.sdkBaseURL(),
@@ -321,7 +302,7 @@ func buildOpenAICompatibleModel(spec ClientSpec, opts chat.Options) (chat.Model,
 // URL. A provider that requires a base URL (a compatible endpoint provider or Azure)
 // errors when one isn't supplied. Pricing is a separate accounting concern, so
 // the constructed client carries no pricing hook.
-func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
+func buildModel(spec ClientSpec) (chat.Model, error) {
 	if err := spec.validate(); err != nil {
 		return nil, err
 	}
@@ -344,10 +325,29 @@ func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("llm: build %s model: %w", spec.provider, err)
 	}
+	return classifyModelFailures(model), nil
+}
 
-	client, err := chatclient.New(classifyModelFailures(model), chatclient.Config{})
+func BuildClient(spec ClientSpec) (*chatclient.Client, error) {
+	model, err := buildModel(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("llm: chat client: %w", err)
 	}
 	return &client, nil
+}
+
+// BuildInputTokenCounter resolves the provider's optional exact
+// complete-request counter without adding it to chatclient's call contract.
+func BuildInputTokenCounter(spec ClientSpec) (InputTokenCounter, bool, error) {
+	model, err := buildModel(spec)
+	if err != nil {
+		return nil, false, err
+	}
+	counter, ok := model.(InputTokenCounter)
+	return counter, ok, nil
 }

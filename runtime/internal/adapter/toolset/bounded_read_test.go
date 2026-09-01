@@ -20,7 +20,7 @@ func TestRuntimeReadRefusesOversizedFileBeforeMaterialization(t *testing.T) {
 	if err := os.WriteFile(path, []byte(strings.Repeat("x", testMaxRuntimeReadFileBytes+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := callTextTool(t.Context(), directTools(dir)[0], `{"path":"oversized.txt"}`)
+	_, err := callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"oversized.txt"}`)
 	if err == nil || !strings.Contains(err.Error(), "8 MiB") {
 		t.Fatalf("read oversized file error = %v, want explicit 8 MiB refusal", err)
 	}
@@ -33,7 +33,7 @@ func TestRuntimeReadReturnsOnlyCompleteLinesWithinDefaultBudget(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "large.txt"), []byte(first+"\n"+second), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := callTextTool(t.Context(), directTools(dir)[0], `{"path":"large.txt"}`)
+	body, err := callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"large.txt"}`)
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestRuntimeReadReturnsOnlyCompleteLinesWithinDefaultBudget(t *testing.T) {
 			len(response.Content), response.StartLine, response.EndLine, response.TotalLines, response.Truncated,
 		)
 	}
-	body, err = callTextTool(t.Context(), directTools(dir)[0], `{"path":"large.txt","start_line":2,"max_lines":1}`)
+	body, err = callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"large.txt","start_line":2,"max_lines":1}`)
 	if err != nil {
 		t.Fatalf("read continuation: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestRuntimeReadPreservesPreCanceledContext(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err := callTextTool(ctx, directTools(dir)[0], `{"path":"file.txt"}`)
+	_, err := callTextTool(ctx, mustDirectTools(t, dir)[0], `{"path":"file.txt"}`)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("read error = %v, want context.Canceled", err)
 	}
@@ -80,7 +80,7 @@ func TestRuntimeReadNormalizesBOMAndCRLFWithoutLosingTrailingLine(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(dir, "windows.txt"), []byte("\xef\xbb\xbffirst\r\nsecond\r\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := callTextTool(t.Context(), directTools(dir)[0], `{"path":"windows.txt"}`)
+	body, err := callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"windows.txt"}`)
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestRuntimeReadRejectsUnpageableLineAndInvalidUTF8(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "file.txt"), test.content, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err := callTextTool(t.Context(), directTools(dir)[0], `{"path":"file.txt"}`)
+			_, err := callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"file.txt"}`)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("read error = %v, want %q", err, test.want)
 			}
@@ -121,7 +121,7 @@ func TestRuntimeReadDoesNotChargeUTF8BOMToLineBudget(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("\xef\xbb\xbf"+line), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	body, err := callTextTool(t.Context(), directTools(dir)[0], `{"path":"file.txt"}`)
+	body, err := callTextTool(t.Context(), mustDirectTools(t, dir)[0], `{"path":"file.txt"}`)
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}

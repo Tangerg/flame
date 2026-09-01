@@ -5,6 +5,7 @@ import (
 	"iter"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -35,9 +36,8 @@ func (*delegatingStubModel) Call(_ context.Context, request *chat.Request) (*cha
 func (d *delegatingStubModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	response, err := d.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(d.Call(ctx, request))
 }
 
 // nestedDelegatingStub drives root → child → grandchild, proving that each
@@ -74,9 +74,8 @@ func (*nestedDelegatingStub) Call(_ context.Context, request *chat.Request) (*ch
 func (n *nestedDelegatingStub) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	response, err := n.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(n.Call(ctx, request))
 }
 
 func hasToolMessage(messages []chat.Message) bool {

@@ -557,7 +557,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
 	requestedOutput := modelInfo.Limits.MaxOutputTokens
-	options := chat.Options{MaxTokens: &requestedOutput}
+	options := chat.Options{MaxOutputTokens: &requestedOutput}
 	rawEstimate, err := estimateModelContextTokens(
 		append(cloneMessages(instructions), history...),
 		nil,

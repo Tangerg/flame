@@ -24,7 +24,7 @@ var ollamaUnauthenticatedHTTPClient = &http.Client{
 // ownership without importing Ollama's server repository into the Runtime.
 func buildOllamaChatModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
 	apiKey, httpClient := ollamaProtocolAuthentication(spec)
-	return openaiprotocol.NewCompatibleChat(openaiprotocol.ChatConfig{
+	return openaiprotocol.NewCompatibleChatCompletions(openaiprotocol.ChatCompletionsConfig{
 		APIKey:         apiKey,
 		DefaultOptions: opts,
 		BaseURL:        ollamaOpenAIBaseURL(spec.sdkBaseURL()),

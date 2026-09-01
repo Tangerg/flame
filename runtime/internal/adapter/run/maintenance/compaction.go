@@ -80,9 +80,9 @@ func (c *Compactor) tokenTrigger(limits modelref.TokenLimits, options chat.Optio
 		effectiveLimits = c.policy.fallbackLimits
 	}
 	reservation := modelref.OutputReservation{}
-	if options.MaxTokens != nil {
+	if options.MaxOutputTokens != nil {
 		var err error
-		reservation, err = modelref.NewOutputReservation(*options.MaxTokens)
+		reservation, err = modelref.NewOutputReservation(*options.MaxOutputTokens)
 		if err != nil {
 			return 0, err
 		}

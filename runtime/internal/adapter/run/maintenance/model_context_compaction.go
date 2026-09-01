@@ -260,13 +260,13 @@ func semanticMessagePrefix(candidate, durable []chat.Message) (int, bool, string
 			rightPart := right.Parts[partIndex]
 			if !semanticPartEqual(leftPart, rightPart) {
 				return 0, false, fmt.Sprintf(
-					"message[%d].part[%d] kind=%s/%s text_equal=%t signature_equal=%t media_equal=%t tool_call_equal=%t tool_result_equal=%t",
+					"message[%d].part[%d] kind=%s/%s text_equal=%t reasoning_state_equal=%t media_equal=%t tool_call_equal=%t tool_result_equal=%t",
 					index,
 					partIndex,
 					leftPart.Kind,
 					rightPart.Kind,
 					leftPart.Text == rightPart.Text,
-					slices.Equal(leftPart.Signature, rightPart.Signature),
+					slices.Equal(leftPart.ReasoningState, rightPart.ReasoningState),
 					reflect.DeepEqual(leftPart.Media, rightPart.Media),
 					reflect.DeepEqual(leftPart.ToolCall, rightPart.ToolCall),
 					semanticToolResultEqual(leftPart.ToolResult, rightPart.ToolResult),

@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -175,11 +176,8 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 func (l *longContextModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) {
-		response, err := l.Call(ctx, request)
-		yield(response, err)
-	}
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(l.Call(ctx, request))
 }
 
 func (l *longContextModel) Snapshot() (

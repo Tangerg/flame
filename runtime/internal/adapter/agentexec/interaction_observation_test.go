@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -152,6 +154,18 @@ type countingObservationModel struct {
 
 func (*countingObservationModel) CountInputTokens(context.Context, *chat.Request) (int64, error) {
 	return 123, nil
+}
+
+type countingInteractionChatResolver struct {
+	InteractionChatResolver
+	counter modeladapter.InputTokenCounter
+}
+
+func (c countingInteractionChatResolver) ResolveInputTokenCounter(
+	context.Context,
+	modelref.Selection,
+) (modeladapter.InputTokenCounter, error) {
+	return c.counter, nil
 }
 
 func TestInteractionExecutorCarriesProviderInputCountingIntoEveryMainCallReduction(t *testing.T) {
@@ -1354,19 +1368,18 @@ func (streamingObservationModel) Call(context.Context, *chat.Request) (*chat.Res
 	return nil, errors.New("unexpected synchronous model call")
 }
 
-func (s streamingObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) {
+func (s streamingObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
 		defer close(s.streamed)
 		for index := range s.chunks {
-			message := chat.NewAssistantMessage(chat.NewTextPart("x"))
-			response := &chat.Response{Output: &chat.Output{Message: &message}}
+			delta := &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("x")}}
 			if index == s.chunks-1 {
-				response.Metadata = &chat.ResponseMetadata{
+				delta.Metadata = &chat.ResponseMetadata{
 					Model: "test-model", Usage: chat.Usage{InputTokens: 5, OutputTokens: 2},
 				}
-				response.Output.FinishReason = chat.FinishReasonStop
+				delta.FinishReason = chat.FinishReasonStop
 			}
-			if !yield(response, nil) {
+			if !yield(delta, nil) {
 				return
 			}
 		}
@@ -1440,7 +1453,11 @@ func newObservedTestInteractionExecutor(
 	if err != nil {
 		t.Fatal(err)
 	}
-	extra.ChatResolver = staticInteractionChatResolver(client)
+	resolver := InteractionChatResolver(staticInteractionChatResolver(client))
+	if counter, ok := model.(modeladapter.InputTokenCounter); ok {
+		resolver = countingInteractionChatResolver{InteractionChatResolver: resolver, counter: counter}
+	}
+	extra.ChatResolver = resolver
 	extra.Lifetime = t.Context()
 	extra.ImplementationIdentity = "interaction-observation-test-build"
 	extra.ConfigurationIdentity = "interaction-observation-test-config"

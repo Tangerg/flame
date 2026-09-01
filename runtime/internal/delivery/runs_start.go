@@ -129,9 +129,9 @@ func generationOptionsFromWire(in *protocol.GenerationParams) *corechat.Options 
 		return nil
 	}
 	return &corechat.Options{
-		Temperature: in.Temperature,
-		MaxTokens:   in.MaxTokens,
-		TopP:        in.TopP,
-		Stop:        slices.Clone(in.Stop),
+		Temperature:     in.Temperature,
+		MaxOutputTokens: in.MaxTokens,
+		TopP:            in.TopP,
+		Stop:            slices.Clone(in.Stop),
 	}
 }

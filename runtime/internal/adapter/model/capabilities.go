@@ -91,7 +91,7 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	}
 	maxTokens := minimumProbeOutputTokens
 	_, err = client.Call(ctx, &chat.Request{
-		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart(providerProbePrompt))}, Options: chat.Options{MaxTokens: &maxTokens},
+		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart(providerProbePrompt))}, Options: chat.Options{MaxOutputTokens: &maxTokens},
 	})
 	return err
 }

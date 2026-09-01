@@ -8,6 +8,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -18,8 +19,8 @@ func (f failingTitleModel) Call(context.Context, *chat.Request) (*chat.Response,
 	return nil, f.err
 }
 
-func (f failingTitleModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) { yield(nil, f.err) }
+func (f failingTitleModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(nil, f.err)
 }
 
 func TestSanitizeTitle(t *testing.T) {

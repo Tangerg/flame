@@ -238,8 +238,8 @@ func TestGenerationOptionsFromWire(t *testing.T) {
 	if opts == nil || opts.Temperature == nil || *opts.Temperature != 0.7 {
 		t.Fatalf("Temperature = %v, want 0.7", opts)
 	}
-	if opts.MaxTokens == nil || *opts.MaxTokens != 1024 {
-		t.Fatalf("MaxTokens = %v, want 1024", opts.MaxTokens)
+	if opts.MaxOutputTokens == nil || *opts.MaxOutputTokens != 1024 {
+		t.Fatalf("MaxOutputTokens = %v, want 1024", opts.MaxOutputTokens)
 	}
 	if opts.TopP == nil || *opts.TopP != 0.9 {
 		t.Fatalf("TopP = %v, want 0.9", opts.TopP)

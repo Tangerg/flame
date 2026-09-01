@@ -79,17 +79,6 @@ type observedInteractionModel struct {
 	session *interactionSession
 }
 
-type observedInteractionCountingModel struct {
-	*observedInteractionModel
-}
-
-func (o *observedInteractionCountingModel) CountInputTokens(
-	ctx context.Context,
-	request *corechat.Request,
-) (int64, error) {
-	return o.inner.CountInputTokens(ctx, request)
-}
-
 func (o *observedInteractionModel) Call(
 	ctx context.Context,
 	request *corechat.Request,
@@ -134,8 +123,8 @@ func (o *observedInteractionModel) Call(
 func (o *observedInteractionModel) Stream(
 	ctx context.Context,
 	request *corechat.Request,
-) iter.Seq2[*corechat.Response, error] {
-	return func(yield func(*corechat.Response, error) bool) {
+) iter.Seq2[*corechat.ResponseDelta, error] {
+	return func(yield func(*corechat.ResponseDelta, error) bool) {
 		invocation, attempt, callID, err := o.begin(ctx)
 		if err != nil {
 			yield(nil, err)
@@ -160,14 +149,14 @@ func (o *observedInteractionModel) Stream(
 				return
 			}
 		}
-		response := accumulated.Response()
-		if response == nil {
+		response, responseErr := accumulated.Response()
+		if responseErr != nil {
 			yield(nil, o.finishFailedStream(
 				ctx,
 				invocation,
 				attempt,
 				callID,
-				errors.New("agentexec: model stream completed without a response"),
+				responseErr,
 			))
 			return
 		}
@@ -868,11 +857,7 @@ func newObservedInteractionClient(
 	session *interactionSession,
 ) (*chatclient.Client, error) {
 	observed := &observedInteractionModel{inner: inner, session: session}
-	var model corechat.Model = observed
-	if inner.SupportsInputTokenCounting() {
-		model = &observedInteractionCountingModel{observedInteractionModel: observed}
-	}
-	client, err := chatclient.New(model, chatclient.Config{Streamer: observed})
+	client, err := chatclient.New(observed, chatclient.Config{Streamer: observed})
 	if err != nil {
 		return nil, err
 	}

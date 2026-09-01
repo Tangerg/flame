@@ -95,7 +95,7 @@ func TestInteractionExecutorRejectsOutputAboveSelectedModelLimit(t *testing.T) {
 	maxTokens := int64(272_001)
 	start := interactionTestStart()
 	start.ModelSelection = selection
-	start.Options = &chat.Options{MaxTokens: &maxTokens}
+	start.Options = &chat.Options{MaxOutputTokens: &maxTokens}
 
 	err = executor.ValidateRootStart(start)
 	if !errors.Is(err, runs.ErrInvalidRunOptions) {

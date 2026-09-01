@@ -31,7 +31,10 @@ func NewDiagnosticRegistry() DiagnosticRegistry { return DiagnosticRegistry{} }
 type DiagnosticRegistry struct{}
 
 func (DiagnosticRegistry) List(context.Context) ([]tool.Tool, error) {
-	chatTools := directTools("")
+	chatTools, err := directTools(".")
+	if err != nil {
+		return nil, err
+	}
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(chatTools))
 	for _, candidate := range chatTools {
@@ -65,7 +68,11 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name, arguments stri
 		span.SetStatus(codes.Error, err.Error())
 		return tool.Result{}, err
 	}
-	for _, candidate := range directTools(root) {
+	direct, err := directTools(root)
+	if err != nil {
+		return tool.Result{}, err
+	}
+	for _, candidate := range direct {
 		if candidate.Definition().Name != name {
 			continue
 		}

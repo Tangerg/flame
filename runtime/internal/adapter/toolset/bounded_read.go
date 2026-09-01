@@ -22,11 +22,19 @@ type runtimeReadExecutor struct {
 	next fs.Reader
 }
 
-func newRuntimeReadTool(root string, reader fs.Reader) *fs.ReadTool {
+func newRuntimeReadTool(root string, reader fs.Reader) (*fs.ReadTool, error) {
 	if reader == nil {
-		reader = fs.NewLocalExecutor(root)
+		executor, err := fs.NewLocalExecutor(root)
+		if err != nil {
+			return nil, fmt.Errorf("toolset: construct read executor: %w", err)
+		}
+		reader = executor
 	}
-	return fs.NewReadTool(runtimeReadExecutor{next: reader})
+	tool, err := fs.NewReadTool(runtimeReadExecutor{next: reader})
+	if err != nil {
+		return nil, fmt.Errorf("toolset: construct read tool: %w", err)
+	}
+	return tool, nil
 }
 
 func (r runtimeReadExecutor) Read(ctx context.Context, input fs.ReadInput) (fs.ReadOutput, error) {

@@ -92,9 +92,8 @@ func (c *cancelableDelegateModel) Call(
 func (c *cancelableDelegateModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	response, err := c.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(c.Call(ctx, request))
 }
 
 type waitingDelegateModel struct {
@@ -136,9 +135,8 @@ func (w *waitingDelegateModel) Call(
 func (w *waitingDelegateModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	response, err := w.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(w.Call(ctx, request))
 }
 
 func (w *waitingDelegateModel) Calls() int {

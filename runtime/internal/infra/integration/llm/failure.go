@@ -14,7 +14,10 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type modelInputTokenCounter interface {
+// InputTokenCounter is the optional complete-request counting capability of a
+// provider model. It stays separate from chatclient, whose contract owns only
+// complete and streaming model calls.
+type InputTokenCounter interface {
 	CountInputTokens(context.Context, *chat.Request) (int64, error)
 }
 
@@ -28,7 +31,7 @@ type failureModel struct {
 func classifyModelFailures(model chat.Model) chat.Model {
 	classified := failureModel{model: model}
 	streamer, streams := model.(chat.Streamer)
-	counter, counts := model.(modelInputTokenCounter)
+	counter, counts := model.(InputTokenCounter)
 	switch {
 	case streams && counts:
 		return failureStreamingCountingModel{
@@ -54,13 +57,13 @@ type failureStreamingModel struct {
 	streamer chat.Streamer
 }
 
-func (f failureStreamingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.Response, error] {
+func (f failureStreamingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return classifyModelStream(f.streamer.Stream(ctx, request))
 }
 
 type failureCountingModel struct {
 	failureModel
-	counter modelInputTokenCounter
+	counter InputTokenCounter
 }
 
 func (f failureCountingModel) CountInputTokens(ctx context.Context, request *chat.Request) (int64, error) {
@@ -73,15 +76,15 @@ type failureStreamingCountingModel struct {
 	streamer chat.Streamer
 }
 
-func (f failureStreamingCountingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.Response, error] {
+func (f failureStreamingCountingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return classifyModelStream(f.streamer.Stream(ctx, request))
 }
 
-func classifyModelStream(sequence iter.Seq2[*chat.Response, error]) iter.Seq2[*chat.Response, error] {
+func classifyModelStream(sequence iter.Seq2[*chat.ResponseDelta, error]) iter.Seq2[*chat.ResponseDelta, error] {
 	if sequence == nil {
 		return nil
 	}
-	return func(yield func(*chat.Response, error) bool) {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
 		for response, err := range sequence {
 			if !yield(response, classifyModelError(err)) {
 				return

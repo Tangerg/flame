@@ -20,10 +20,17 @@ import (
 // directTools is the small, read-only capability set valid without an agent
 // process. Keep this list explicit: being available to a model does not make a
 // tool valid for a client-driven call.
-func directTools(root string) []toolcontract.Tool {
-	executor := fs.NewLocalExecutor(root)
+func directTools(root string) ([]toolcontract.Tool, error) {
+	executor, err := fs.NewLocalExecutor(root)
+	if err != nil {
+		return nil, fmt.Errorf("toolset: construct direct filesystem executor: %w", err)
+	}
+	readTool, err := newRuntimeReadTool(root, executor)
+	if err != nil {
+		return nil, err
+	}
 	search := newRuntimeSearchTools(root)
-	return []toolcontract.Tool{newRuntimeReadTool(root, executor), search.glob, search.grep}
+	return []toolcontract.Tool{readTool, search.glob, search.grep}, nil
 }
 
 // normalizeDirectArguments validates the direct-call protocol's paths and

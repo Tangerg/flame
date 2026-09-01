@@ -386,11 +386,8 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 	}
 }
 
-func (l *lifecycleModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) {
-		response, err := l.Call(ctx, request)
-		yield(response, err)
-	}
+func (l *lifecycleModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(l.Call(ctx, request))
 }
 
 type noMaintenance struct{}

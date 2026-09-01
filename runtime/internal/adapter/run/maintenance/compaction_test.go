@@ -150,7 +150,7 @@ func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
 			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
 			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
 		}),
-		chat.Options{MaxTokens: &requestedOutput},
+		chat.Options{MaxOutputTokens: &requestedOutput},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -283,8 +283,8 @@ func TestCompactor_Compacts(t *testing.T) {
 	if res.Summary() != "BULLETS" {
 		t.Fatalf("summary = %q, want BULLETS", res.Summary())
 	}
-	if len(model.requests) != 1 || model.requests[0].Options.MaxTokens == nil || *model.requests[0].Options.MaxTokens != compactionSummaryOutputTokens {
-		t.Fatalf("compaction MaxTokens = %#v, want %d", model.requests, compactionSummaryOutputTokens)
+	if len(model.requests) != 1 || model.requests[0].Options.MaxOutputTokens == nil || *model.requests[0].Options.MaxOutputTokens != compactionSummaryOutputTokens {
+		t.Fatalf("compaction MaxOutputTokens = %#v, want %d", model.requests, compactionSummaryOutputTokens)
 	}
 	before, afterCount := res.MessageCounts()
 	if before != total || afterCount != 5 {
@@ -850,7 +850,6 @@ func (t *textStubModel) Call(_ context.Context, request *chat.Request) (*chat.Re
 	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 }
 
-func (t *textStubModel) Stream(ctx context.Context, req *chat.Request) iter.Seq2[*chat.Response, error] {
-	resp, err := t.Call(ctx, req)
-	return func(yield func(*chat.Response, error) bool) { yield(resp, err) }
+func (t *textStubModel) Stream(ctx context.Context, req *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(t.Call(ctx, req))
 }

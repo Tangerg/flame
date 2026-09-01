@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/scope/tools/fs"
 )
 
 func TestPathLockUsesOneCanonicalMutationIdentity(t *testing.T) {
@@ -21,13 +19,13 @@ func TestPathLockUsesOneCanonicalMutationIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	executor := fs.NewLocalExecutor(cwd)
-	read := fs.NewReadTool(executor)
+	executor := mustLocalExecutor(t, cwd)
+	read := mustReadTool(t, executor)
 	readPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mutation := withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor))
+	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
 	mutationPaths, err := resolvedMutationPaths(
 		mutation,
 		mustTestInvocation(t, mutation, patchArguments(t, "real.txt", "content", "next")),
@@ -52,13 +50,13 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 		t.Skipf("create symlink: %v", err)
 	}
 
-	executor := fs.NewLocalExecutor(cwd)
-	read := fs.NewReadTool(executor)
+	executor := mustLocalExecutor(t, cwd)
+	read := mustReadTool(t, executor)
 	realPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mutation := withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor))
+	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
 	aliasPaths, err := resolvedMutationPaths(
 		mutation,
 		mustTestInvocation(t, mutation, patchArguments(t, "alias.txt", "content", "next")),
@@ -74,7 +72,7 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 
 func TestPathLockKeepsMultiFilePatchExclusive(t *testing.T) {
 	cwd := t.TempDir()
-	tool := withPathLock(fs.NewApplyPatchTool(fs.NewLocalExecutor(cwd)), newPathLocker(), cwd)
+	tool := withPathLock(mustApplyPatchTool(t, mustLocalExecutor(t, cwd)), newPathLocker(), cwd)
 	policy, ok, err := toolcontract.Capability[concurrentTool](tool)
 	if err != nil || !ok {
 		t.Fatal("path-locked apply_patch does not expose concurrency policy")
@@ -100,7 +98,7 @@ func TestAssembledFileToolStillReportsWhatItMutates(t *testing.T) {
 		t.Fatal(err)
 	}
 	assembled := guardedMutation(
-		fs.NewApplyPatchTool(fs.NewLocalExecutor(cwd)),
+		mustApplyPatchTool(t, mustLocalExecutor(t, cwd)),
 		nil,
 		newReadTracker(),
 		newPathLocker(),

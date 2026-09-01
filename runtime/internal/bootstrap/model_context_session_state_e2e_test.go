@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -329,11 +330,8 @@ func (g *goalAndPlanLongContextModel) Call(
 func (g *goalAndPlanLongContextModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) {
-		response, err := g.Call(ctx, request)
-		yield(response, err)
-	}
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(g.Call(ctx, request))
 }
 
 func (g *goalAndPlanLongContextModel) recordCheck(update func(*goalAndPlanStateChecks)) {
@@ -404,11 +402,8 @@ func (p *planChangingLongContextModel) Call(
 func (p *planChangingLongContextModel) Stream(
 	ctx context.Context,
 	request *chat.Request,
-) iter.Seq2[*chat.Response, error] {
-	return func(yield func(*chat.Response, error) bool) {
-		response, err := p.Call(ctx, request)
-		yield(response, err)
-	}
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(p.Call(ctx, request))
 }
 
 func (p *planChangingLongContextModel) Snapshot() (

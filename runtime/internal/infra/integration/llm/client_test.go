@@ -333,14 +333,18 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !direct.SupportsInputTokenCounting() {
+	counter, supported, err := BuildInputTokenCounter(mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, "test-key", server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !supported {
 		t.Fatal("direct OpenAI client did not expose Responses input token counting")
 	}
 	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("measure me")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	count, err := direct.CountInputTokens(t.Context(), request)
+	count, err := counter.CountInputTokens(t.Context(), request)
 	if err != nil || count != 73 || countRequests.Load() != 1 {
 		t.Fatalf("direct CountInputTokens = %d, %v; requests=%d", count, err, countRequests.Load())
 	}
@@ -349,45 +353,11 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 		t.Fatalf("direct Responses Call = %#v, %v; requests=%d", response, err, responseRequests.Load())
 	}
 
-	compatible, err := BuildClient(mustClientSpec(t, ProviderOpenAICompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
+	_, supported, err = BuildInputTokenCounter(mustClientSpec(t, ProviderOpenAICompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if compatible.SupportsInputTokenCounting() {
+	if supported {
 		t.Fatal("OpenAI-compatible client advertised the native Responses count endpoint")
-	}
-}
-
-func TestDirectAnthropicCountsWhileCompatibleDoesNotAssumeTheNativeEndpoint(t *testing.T) {
-	var countRequests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if !strings.HasSuffix(request.URL.Path, "/messages/count_tokens") {
-			t.Errorf("path = %q, want /messages/count_tokens", request.URL.Path)
-		}
-		countRequests.Add(1)
-		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"input_tokens":61}`))
-	}))
-	t.Cleanup(server.Close)
-
-	direct, err := BuildClient(mustClientSpec(t, ProviderAnthropic, defaultAnthropicModel, "test-key", server.URL))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !direct.SupportsInputTokenCounting() {
-		t.Fatal("direct Anthropic client did not expose Messages input token counting")
-	}
-	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("measure me")))
-	count, err := direct.CountInputTokens(t.Context(), request)
-	if err != nil || count != 61 || countRequests.Load() != 1 {
-		t.Fatalf("direct CountInputTokens = %d, %v; requests=%d", count, err, countRequests.Load())
-	}
-
-	compatible, err := BuildClient(mustClientSpec(t, ProviderAnthropicCompatible, "compatible-model", "test-key", "https://gateway.example/v1"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if compatible.SupportsInputTokenCounting() {
-		t.Fatal("Anthropic-compatible client advertised the native Messages count endpoint")
 	}
 }

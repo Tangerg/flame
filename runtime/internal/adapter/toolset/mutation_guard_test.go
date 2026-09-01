@@ -13,14 +13,14 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	"github.com/Tangerg/scope/tools/fs"
 )
 
-func guardedPatchTools(dir string, format bool) (toolcontract.Tool, toolcontract.Tool) {
+func guardedPatchTools(t testing.TB, dir string, format bool) (toolcontract.Tool, toolcontract.Tool) {
+	t.Helper()
 	tracker := newReadTracker()
-	executor := fs.NewLocalExecutor(dir)
-	read := withReadTracking(newRuntimeReadTool(dir, executor), tracker, dir)
-	mutation := toolcontract.Tool(withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor)))
+	executor := mustLocalExecutor(t, dir)
+	read := withReadTracking(mustRuntimeReadTool(t, dir, executor), tracker, dir)
+	mutation := toolcontract.Tool(withApplyPatchMutationPaths(mustApplyPatchTool(t, executor)))
 	if format {
 		mutation = withAutoFormat(mutation, dir)
 	}
@@ -78,7 +78,7 @@ func TestMutationGuardRequiresReadBeforeChangingExistingFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, mutation := guardedPatchTools(dir, false)
+	_, mutation := guardedPatchTools(t, dir, false)
 	out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", before, strings.ReplaceAll(before, "Foo", "Bar")))
 	if err != nil {
 		t.Fatalf("apply patch: %v", err)
@@ -97,7 +97,7 @@ func TestMutationRecordingReportsOnlyAppliedChanges(t *testing.T) {
 	if err := os.WriteFile(path, []byte("before\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	read, mutation := guardedPatchTools(dir, false)
+	read, mutation := guardedPatchTools(t, dir, false)
 	var recorded []string
 	ctx := WithMutationRecorder(t.Context(), func(paths []string) {
 		recorded = append(recorded, paths...)
@@ -130,7 +130,7 @@ func TestMutationGuardRefreshesReadStampAfterPatch(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	read, mutation := guardedPatchTools(dir, false)
+	read, mutation := guardedPatchTools(t, dir, false)
 	if _, err := callTextTool(t.Context(), read, `{"path":"foo.go"}`); err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestMutationGuardRefreshesStampAfterAutoFormat(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	read, mutation := guardedPatchTools(dir, true)
+	read, mutation := guardedPatchTools(t, dir, true)
 	if _, err := callTextTool(t.Context(), read, `{"path":"data.json"}`); err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestMutationGuardDetectsStaleRead(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	read, mutation := guardedPatchTools(dir, false)
+	read, mutation := guardedPatchTools(t, dir, false)
 	if _, err := callTextTool(t.Context(), read, `{"path":"foo.go"}`); err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestMutationGuardDetectsStaleRead(t *testing.T) {
 
 func TestMutationGuardAllowsCreatingNewFile(t *testing.T) {
 	dir := t.TempDir()
-	_, mutation := guardedPatchTools(dir, false)
+	_, mutation := guardedPatchTools(t, dir, false)
 	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "new.txt", "", "hello\n")); err != nil || strings.Contains(out, "must read") {
 		t.Fatalf("new-file patch = %q, %v", out, err)
 	}
@@ -214,7 +214,7 @@ func TestMutationGuardForgetsDeletedFileBeforeExternalRecreation(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	read, mutation := guardedPatchTools(dir, false)
+	read, mutation := guardedPatchTools(t, dir, false)
 	if _, err := callTextTool(t.Context(), read, `{"path":"foo.txt"}`); err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestReadTrackingRejectsAFileChangedAfterReadBeforeStamp(t *testing.T) {
 		t.Fatal(err)
 	}
 	tracker := newReadTracker()
-	base := fs.NewReadTool(fs.NewLocalExecutor(dir))
+	base := mustReadTool(t, mustLocalExecutor(t, dir))
 	readFinished := make(chan struct{})
 	release := make(chan struct{})
 	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
@@ -289,7 +289,7 @@ func TestReadTrackingRejectsSameContentReplacementDuringRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	tracker := newReadTracker()
-	base := newRuntimeReadTool(dir, fs.NewLocalExecutor(dir))
+	base := mustRuntimeReadTool(t, dir, mustLocalExecutor(t, dir))
 	readFinished := make(chan struct{})
 	release := make(chan struct{})
 	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
@@ -326,10 +326,10 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	}
 	tracker := newReadTracker()
 	locker := newPathLocker()
-	executor := fs.NewLocalExecutor(dir)
+	executor := mustLocalExecutor(t, dir)
 	readStarted := make(chan struct{})
 	releaseRead := make(chan struct{})
-	baseRead := fs.NewReadTool(executor)
+	baseRead := mustReadTool(t, executor)
 	blockingRead := decorateCall(baseRead, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 		out, err := baseRead.Call(ctx, invocation)
 		close(readStarted)
@@ -338,7 +338,7 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	})
 	read := withPathLock(withReadTracking(blockingRead, tracker, dir), locker, dir)
 	mutation := withPathLock(withMutationGuard(
-		withApplyPatchMutationPaths(fs.NewApplyPatchTool(executor)),
+		withApplyPatchMutationPaths(mustApplyPatchTool(t, executor)),
 		tracker,
 		dir,
 	), locker, dir)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"iter"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -22,7 +23,6 @@ func (r *replyStub) Call(_ context.Context, _ *chat.Request) (*chat.Response, er
 	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 }
 
-func (r *replyStub) Stream(ctx context.Context, req *chat.Request) iter.Seq2[*chat.Response, error] {
-	resp, err := r.Call(ctx, req)
-	return func(yield func(*chat.Response, error) bool) { yield(resp, err) }
+func (r *replyStub) Stream(ctx context.Context, req *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(r.Call(ctx, req))
 }

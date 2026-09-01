@@ -80,7 +80,9 @@ func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInt
 	if !treeLimits.Valid() {
 		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
 	}
-	budget, err := agent.NewBudget(childSteps, childEffects, childSignals)
+	budget, err := agent.NewBudget(agent.BudgetConfig{
+		Steps: childSteps, Effects: childEffects, Signals: childSignals,
+	})
 	if err != nil {
 		return effectiveInteractionDelegation{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
 	}
@@ -122,11 +124,9 @@ func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budge
 		base.Signals > math.MaxUint64/scale {
 		return agent.Budget{}, errors.New("agentexec: delegated subtree budget overflows")
 	}
-	budget, err := agent.NewBudget(
-		base.Steps*scale,
-		base.Effects*scale,
-		base.Signals*scale,
-	)
+	budget, err := agent.NewBudget(agent.BudgetConfig{
+		Steps: base.Steps * scale, Effects: base.Effects * scale, Signals: base.Signals * scale,
+	})
 	if err != nil {
 		return agent.Budget{}, fmt.Errorf("agentexec: delegated subtree budget: %w", err)
 	}

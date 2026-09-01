@@ -5,6 +5,7 @@ import (
 	"iter"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -19,9 +20,8 @@ func (r *recordingModel) Call(_ context.Context, request *chat.Request) (*chat.R
 	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 }
 
-func (r *recordingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.Response, error] {
-	response, err := r.Call(ctx, request)
-	return func(yield func(*chat.Response, error) bool) { yield(response, err) }
+func (r *recordingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(r.Call(ctx, request))
 }
 
 func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
@@ -49,8 +49,8 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	if model.request.Messages[1].Role != chat.RoleUser || model.request.Messages[1].Text() != "input" {
 		t.Fatalf("user message = %#v", model.request.Messages[1])
 	}
-	if model.request.Options.MaxTokens == nil || *model.request.Options.MaxTokens != 123 {
-		t.Fatalf("MaxTokens = %v, want 123", model.request.Options.MaxTokens)
+	if model.request.Options.MaxOutputTokens == nil || *model.request.Options.MaxOutputTokens != 123 {
+		t.Fatalf("MaxOutputTokens = %v, want 123", model.request.Options.MaxOutputTokens)
 	}
 }
 

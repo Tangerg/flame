@@ -1,6 +1,8 @@
 package toolset
 
 import (
+	"fmt"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
@@ -24,25 +26,36 @@ type cwdTools struct {
 	applyPatch toolcontract.Tool
 }
 
-func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker) cwdTools {
-	fsExec := fs.NewLocalExecutor(cwd)
+func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker) (cwdTools, error) {
+	fsExec, err := fs.NewLocalExecutor(cwd)
+	if err != nil {
+		return cwdTools{}, fmt.Errorf("toolset: construct filesystem executor: %w", err)
+	}
 	searchTools := newRuntimeSearchTools(cwd)
+	readTool, err := newRuntimeReadTool(cwd, fsExec)
+	if err != nil {
+		return cwdTools{}, err
+	}
+	applyPatchTool, err := fs.NewApplyPatchTool(fsExec)
+	if err != nil {
+		return cwdTools{}, fmt.Errorf("toolset: construct apply-patch tool: %w", err)
+	}
 
 	// Guard stack, innermost → outermost: auto-format the applied
 	// change; diagnostics type-check it; read/staleness guard gates before the
 	// change and refreshes the read stamp after; per-path lock serializes
 	// concurrent mutations to the same file; path guard refuses protected dirs.
-	applyPatch := guardedMutation(fs.NewApplyPatchTool(fsExec), ci, tracker, locker, cwd)
+	applyPatch := guardedMutation(applyPatchTool, ci, tracker, locker, cwd)
 
 	families := cwdTools{
 		readSearch: []toolcontract.Tool{
-			withPathLock(withReadTracking(newRuntimeReadTool(cwd, fsExec), tracker, cwd), locker, cwd),
+			withPathLock(withReadTracking(readTool, tracker, cwd), locker, cwd),
 			searchTools.glob,
 			searchTools.grep,
 		},
 		applyPatch: applyPatch,
 	}
-	return families
+	return families, nil
 }
 
 func guardedMutation(tool toolcontract.Tool, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker, cwd string) toolcontract.Tool {

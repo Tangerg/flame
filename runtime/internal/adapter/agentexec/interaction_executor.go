@@ -54,6 +54,10 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelref.Selection) (*chatclient.Client, error)
 }
 
+type interactionInputTokenCounterResolver interface {
+	ResolveInputTokenCounter(ctx context.Context, selection modelref.Selection) (modeladapter.InputTokenCounter, error)
+}
+
 // RestoreScopeValidator verifies the host facts a durable executor checkpoint
 // cannot prove for itself. It must not mutate or recreate the workspace.
 type RestoreScopeValidator interface {
@@ -205,7 +209,7 @@ func validateModelOutputReservation(
 	selection modelref.Selection,
 	options *corechat.Options,
 ) error {
-	if options == nil || options.MaxTokens == nil {
+	if options == nil || options.MaxOutputTokens == nil {
 		return nil
 	}
 	limits, found, err := modeladapter.LookupTokenLimits(selection)
@@ -215,7 +219,7 @@ func validateModelOutputReservation(
 	if !found {
 		return nil
 	}
-	reservation, err := modelref.NewOutputReservation(*options.MaxTokens)
+	reservation, err := modelref.NewOutputReservation(*options.MaxOutputTokens)
 	if err != nil {
 		return fmt.Errorf("%w: %w", runs.ErrInvalidRunOptions, err)
 	}
@@ -269,6 +273,10 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, err
 	}
+	counter, err := i.resolveInputTokenCounter(ctx, start.ModelSelection)
+	if err != nil {
+		return nil, err
+	}
 	maxModelCalls, err := i.maxModelCalls(start)
 	if err != nil {
 		return nil, err
@@ -279,7 +287,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, fmt.Errorf("agentexec: observe Interaction client: %w", err)
 	}
 	deployments, err := i.buildInteractionDeployments(
-		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observedClient, maxModelCalls,
+		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observedClient, counter, maxModelCalls,
 	)
 	if err != nil {
 		return nil, err
@@ -1047,6 +1055,21 @@ func (i *InteractionExecutor) resolveClient(
 		return nil, errors.New("agentexec: Interaction chat resolver returned nil")
 	}
 	return client, nil
+}
+
+func (i *InteractionExecutor) resolveInputTokenCounter(
+	ctx context.Context,
+	selection modelref.Selection,
+) (ModelContextInputTokenCounter, error) {
+	resolver, ok := i.config.ChatResolver.(interactionInputTokenCounterResolver)
+	if !ok {
+		return nil, nil
+	}
+	counter, err := resolver.ResolveInputTokenCounter(ctx, selection)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: resolve Interaction input token counter: %w", err)
+	}
+	return counter, nil
 }
 
 func (i *InteractionExecutor) maxModelCalls(start runs.RootExecutionStart) (uint32, error) {
