@@ -1,7 +1,9 @@
 package sessions
 
 import (
+	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -10,6 +12,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+type usageRunReaderStub struct{ runs []run.Run }
+
+func (s usageRunReaderStub) ListRuns(context.Context, string) ([]run.Run, error) {
+	return s.runs, nil
+}
 
 func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 30, 0, 0, time.FixedZone("test", 8*60*60))
@@ -35,6 +43,15 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 }
 
 func usd(v float64) *float64 { return &v }
+
+func mustUsageCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
 
 func finishedRun(t *testing.T, provider, model string, at time.Time, usage accounting.Usage) run.Run {
 	t.Helper()
@@ -62,9 +79,12 @@ func TestFoldRunFoldsAllDimensions(t *testing.T) {
 	byProvider := map[string]*usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
 	byDay := map[string]*usageAccumulator{}
-	foldRun(run, time.Time{}, &total, byProvider, byModel, byDay, false)
+	if err := foldRun(run, time.Time{}, &total, byProvider, byModel, byDay, false); err != nil {
+		t.Fatal(err)
+	}
 
-	if total.runs != 1 || total.tokens.InputTokens != 100 || total.cost != 1.5 {
+	cost, costAvailable := total.cost.USD()
+	if total.runs != 1 || total.tokens.InputTokens != 100 || !costAvailable || cost != 1.5 {
 		t.Fatalf("total = %+v", total)
 	}
 	if byProvider["anthropic"] == nil || byProvider["anthropic"].tokens.OutputTokens != 40 {
@@ -87,7 +107,9 @@ func TestFoldRunPrefersByModelSplit(t *testing.T) {
 		},
 	})
 	byModel := map[string]*usageAccumulator{}
-	foldRun(run, time.Time{}, nil, nil, byModel, nil, false)
+	if err := foldRun(run, time.Time{}, nil, nil, byModel, nil, false); err != nil {
+		t.Fatal(err)
+	}
 
 	if len(byModel) != 2 {
 		t.Fatalf("expected 2 model buckets, got %+v", byModel)
@@ -100,12 +122,18 @@ func TestFoldRunPrefersByModelSplit(t *testing.T) {
 func TestFoldRunSkipsUnfinishedAndOld(t *testing.T) {
 	total := usageAccumulator{}
 
-	foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil, false)
+	if err := foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil, false); err != nil {
+		t.Fatal(err)
+	}
 	noUsage := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed})
-	foldRun(noUsage, time.Time{}, &total, nil, nil, nil, false)
+	if err := foldRun(noUsage, time.Time{}, &total, nil, nil, nil, false); err != nil {
+		t.Fatal(err)
+	}
 	old := finishedRun(t, "anthropic", "m", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		accounting.Usage{Total: accounting.Totals{InputTokens: 99}})
-	foldRun(old, time.Now().UTC().AddDate(0, 0, -1), &total, nil, nil, nil, false)
+	if err := foldRun(old, time.Now().UTC().AddDate(0, 0, -1), &total, nil, nil, nil, false); err != nil {
+		t.Fatal(err)
+	}
 
 	if total.runs != 0 {
 		t.Errorf("expected nothing folded, got runs=%d tokens=%d", total.runs, total.tokens.InputTokens)
@@ -120,7 +148,9 @@ func TestFoldRunQualifiesSummaryModelsWithTheirProvider(t *testing.T) {
 		},
 	})
 	byModel := map[string]*usageAccumulator{}
-	foldRun(current, time.Time{}, nil, nil, byModel, nil, true)
+	if err := foldRun(current, time.Time{}, nil, nil, byModel, nil, true); err != nil {
+		t.Fatal(err)
+	}
 	if byModel["openai-compatible/shared-model"] == nil || byModel["shared-model"] != nil {
 		t.Fatalf("summary model buckets = %+v", byModel)
 	}
@@ -128,23 +158,75 @@ func TestFoldRunQualifiesSummaryModelsWithTheirProvider(t *testing.T) {
 
 func TestAccumulatorOmitsCostWhenUnpriced(t *testing.T) {
 	a := usageAccumulator{}
-	a.add(accounting.Totals{InputTokens: 10})
+	if err := a.addRun(accounting.Totals{InputTokens: 10}); err != nil {
+		t.Fatal(err)
+	}
 	if got := a.usage(); got.CostUSD != nil {
 		t.Errorf("CostUSD = %v, want nil", *got.CostUSD)
 	}
-	a.add(accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)})
-	if got := a.usage(); got.CostUSD == nil || *got.CostUSD != 0.3 {
-		t.Errorf("CostUSD = %v, want 0.3", got.CostUSD)
+	if err := a.addRun(accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.usage(); got.CostUSD != nil {
+		t.Errorf("CostUSD = %v, want nil after an unpriced component", *got.CostUSD)
+	}
+
+	priced := usageAccumulator{}
+	if err := priced.addRun(accounting.Totals{CostUSD: usd(0)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := priced.addRun(accounting.Totals{CostUSD: usd(0.3)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := priced.usage(); got.CostUSD == nil || *got.CostUSD != 0.3 {
+		t.Errorf("priced CostUSD = %v, want 0.3", got.CostUSD)
+	}
+}
+
+func TestSessionUsageDoesNotPresentKnownPartialCostAsTotal(t *testing.T) {
+	now := time.Now().UTC()
+	reporter := NewUsageReporter(UsageDependencies{Runs: usageRunReaderStub{runs: []run.Run{
+		finishedRun(t, "private", "served-alias", now, accounting.Usage{
+			Total: accounting.Totals{InputTokens: 10},
+		}),
+		finishedRun(t, "private", "served-alias", now.Add(time.Second), accounting.Usage{
+			Total: accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)},
+		}),
+	}}})
+	report, err := reporter.Session(t.Context(), "session-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Total.InputTokens != 15 || report.Total.CostUSD != nil {
+		t.Fatalf("Session usage = %+v, want 15 input tokens with unknown total cost", report.Total)
+	}
+	model := report.ByModel["served-alias"]
+	if model.InputTokens != 15 || model.CostUSD != nil {
+		t.Fatalf("model usage = %+v, want 15 input tokens with unknown total cost", model)
 	}
 }
 
 func TestBucketsBySpendRanksByCostDesc(t *testing.T) {
 	m := map[string]*usageAccumulator{
-		"cheap": {tokens: accounting.Totals{InputTokens: 1}, cost: 0.1, hasCost: true},
-		"dear":  {tokens: accounting.Totals{InputTokens: 1}, cost: 9, hasCost: true},
+		"cheap": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), costObserved: true},
+		"dear":  {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 9), costObserved: true},
 	}
 	out := bucketsBySpend(m)
 	if out[0].Key != "dear" {
 		t.Errorf("expected dear first (spend-ranked), got %+v", out)
+	}
+}
+
+func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
+	a := usageAccumulator{}
+	if err := a.addRun(accounting.Totals{InputTokens: math.MaxInt64, CostUSD: usd(math.MaxFloat64)}); err != nil {
+		t.Fatal(err)
+	}
+	before := a
+	if err := a.addRun(accounting.Totals{InputTokens: 1, CostUSD: usd(math.MaxFloat64)}); err == nil {
+		t.Fatal("overflowing aggregate was accepted")
+	}
+	if a != before {
+		t.Fatalf("failed aggregation mutated accumulator: before=%+v after=%+v", before, a)
 	}
 }

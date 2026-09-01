@@ -3,6 +3,8 @@ package sessions
 import (
 	"cmp"
 	"context"
+	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -80,8 +82,10 @@ func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageRep
 	}
 	total := usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
-	for _, run := range runs {
-		foldRun(run, time.Time{}, &total, nil, byModel, nil, false)
+	for _, current := range runs {
+		if err := foldRun(current, time.Time{}, &total, nil, byModel, nil, false); err != nil {
+			return UsageReport{}, err
+		}
 	}
 	report := UsageReport{Total: total.usage()}
 	if len(byModel) > 0 {
@@ -116,8 +120,10 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 			return UsageSummary{}, err
 		}
 		before := total.runs
-		for _, run := range runs {
-			foldRun(run, since, &total, byProvider, byModel, byDay, true)
+		for _, current := range runs {
+			if err := foldRun(current, since, &total, byProvider, byModel, byDay, true); err != nil {
+				return UsageSummary{}, err
+			}
 		}
 		if total.runs > before {
 			sessionCount++
@@ -134,42 +140,51 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 	}, nil
 }
 
-func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvider, byModel, byDay map[string]*usageAccumulator, qualifyModels bool) {
+func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvider, byModel, byDay map[string]*usageAccumulator, qualifyModels bool) error {
 	usage, reported := current.Metrics().Usage()
 	if !current.State().IsTerminal() || !reported {
-		return
+		return nil
 	}
 	if !since.IsZero() && !current.FinishedAt().IsZero() && current.FinishedAt().Before(since) {
-		return
+		return nil
 	}
 	if total != nil {
-		total.add(usage.Total)
-		total.runs++
+		if err := total.addRun(usage.Total); err != nil {
+			return fmt.Errorf("sessions: aggregate Run %q usage: %w", current.ID(), err)
+		}
 	}
 	if byProvider != nil {
 		bucket := accumulatorFor(byProvider, current.ModelSelection().Provider())
-		bucket.add(usage.Total)
-		bucket.runs++
+		if err := bucket.addRun(usage.Total); err != nil {
+			return fmt.Errorf("sessions: aggregate provider %q usage: %w", current.ModelSelection().Provider(), err)
+		}
 	}
 	if byDay != nil && !current.FinishedAt().IsZero() {
-		bucket := accumulatorFor(byDay, current.FinishedAt().UTC().Format(time.DateOnly))
-		bucket.add(usage.Total)
-		bucket.runs++
+		day := current.FinishedAt().UTC().Format(time.DateOnly)
+		bucket := accumulatorFor(byDay, day)
+		if err := bucket.addRun(usage.Total); err != nil {
+			return fmt.Errorf("sessions: aggregate day %q usage: %w", day, err)
+		}
 	}
 	if byModel == nil {
-		return
+		return nil
 	}
 	if len(usage.ByModel) > 0 {
 		for name, split := range usage.ByModel {
-			bucket := accumulatorFor(byModel, usageModelKey(current.ModelSelection().Provider(), name, qualifyModels))
-			bucket.add(split)
-			bucket.runs++
+			key := usageModelKey(current.ModelSelection().Provider(), name, qualifyModels)
+			bucket := accumulatorFor(byModel, key)
+			if err := bucket.addRun(split); err != nil {
+				return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
+			}
 		}
-		return
+		return nil
 	}
-	bucket := accumulatorFor(byModel, usageModelKey(current.ModelSelection().Provider(), current.ModelSelection().Model(), qualifyModels))
-	bucket.add(usage.Total)
-	bucket.runs++
+	key := usageModelKey(current.ModelSelection().Provider(), current.ModelSelection().Model(), qualifyModels)
+	bucket := accumulatorFor(byModel, key)
+	if err := bucket.addRun(usage.Total); err != nil {
+		return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
+	}
+	return nil
 }
 
 func usageModelKey(provider, model string, qualified bool) string {
@@ -182,29 +197,68 @@ func usageModelKey(provider, model string, qualified bool) string {
 // usageAccumulator preserves the metering fields needed while folding Run
 // records into one report bucket.
 type usageAccumulator struct {
-	tokens  accounting.Totals
-	cost    float64
-	hasCost bool
-	runs    int
+	tokens       accounting.Totals
+	cost         accounting.Cost
+	costObserved bool
+	runs         int
 }
 
-func (u *usageAccumulator) add(usage accounting.Totals) {
-	u.tokens.InputTokens += usage.InputTokens
-	u.tokens.OutputTokens += usage.OutputTokens
-	u.tokens.CacheReadTokens += usage.CacheReadTokens
-	u.tokens.CacheWriteTokens += usage.CacheWriteTokens
-	u.tokens.ReasoningTokens += usage.ReasoningTokens
-	if usage.CostUSD != nil {
-		u.cost += *usage.CostUSD
-		u.hasCost = true
+func (u *usageAccumulator) addRun(usage accounting.Totals) error {
+	if u.runs < 0 || (!u.costObserved && u.cost != (accounting.Cost{})) {
+		return fmt.Errorf("usage accumulator is invalid")
 	}
+	if err := u.tokens.Validate(); err != nil {
+		return fmt.Errorf("usage accumulator: %w", err)
+	}
+	if err := u.cost.Validate(); err != nil {
+		return fmt.Errorf("usage accumulator: %w", err)
+	}
+	if err := usage.Validate(); err != nil {
+		return err
+	}
+	if u.runs == math.MaxInt {
+		return fmt.Errorf("usage Run count overflows")
+	}
+	next := *u
+	fields := []struct {
+		name  string
+		value *int64
+		add   int64
+	}{
+		{name: "input tokens", value: &next.tokens.InputTokens, add: usage.InputTokens},
+		{name: "output tokens", value: &next.tokens.OutputTokens, add: usage.OutputTokens},
+		{name: "cache-read tokens", value: &next.tokens.CacheReadTokens, add: usage.CacheReadTokens},
+		{name: "cache-write tokens", value: &next.tokens.CacheWriteTokens, add: usage.CacheWriteTokens},
+		{name: "reasoning tokens", value: &next.tokens.ReasoningTokens, add: usage.ReasoningTokens},
+	}
+	for _, field := range fields {
+		if field.add > math.MaxInt64-*field.value {
+			return fmt.Errorf("usage %s overflow", field.name)
+		}
+		*field.value += field.add
+	}
+	cost, err := accounting.CostFromOptional(usage.CostUSD)
+	if err != nil {
+		return err
+	}
+	if next.costObserved {
+		next.cost, err = next.cost.Add(cost)
+		if err != nil {
+			return err
+		}
+	} else {
+		next.cost = cost
+		next.costObserved = true
+	}
+	next.runs++
+	*u = next
+	return nil
 }
 
 func (u usageAccumulator) usage() accounting.Totals {
 	out := u.tokens
-	if u.hasCost {
-		cost := u.cost
-		out.CostUSD = &cost
+	if u.costObserved {
+		out.CostUSD = u.cost.OptionalUSD()
 	}
 	return out
 }
