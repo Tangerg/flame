@@ -12,7 +12,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,10 +105,7 @@ type InteractionExecutor struct {
 	implementationIdentity deploymentIdentity
 	configurationIdentity  deploymentIdentity
 
-	mu       sync.Mutex
-	sessions map[string]*interactionSession
-	closed   bool
-	shutdown []*interactionSession
+	sessions interactionSessions
 }
 
 // NewInteractionExecutor validates immutable host configuration. It creates no
@@ -173,7 +169,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		buildID:                buildID,
 		implementationIdentity: implementationIdentity,
 		configurationIdentity:  configurationIdentity,
-		sessions:               make(map[string]*interactionSession),
+		sessions:               newInteractionSessions(),
 	}, nil
 }
 
@@ -252,7 +248,8 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: encode Interaction input: %w", err)
 	}
 	session.input = input
-	if err := i.registerSession(session); err != nil {
+	if err := i.sessions.register(session); err != nil {
+		_ = session.engine.Close()
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -376,41 +373,14 @@ func (i *InteractionExecutor) interactionConfiguration(
 	return configuration, nil
 }
 
-func (i *InteractionExecutor) registerSession(session *interactionSession) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if i.closed {
-		_ = session.engine.Close()
-		return errors.New("agentexec: Interaction executor is shutting down")
-	}
-	if _, duplicate := i.sessions[session.ref.ExecutorID]; duplicate {
-		_ = session.engine.Close()
-		return errors.New("agentexec: duplicate Interaction executor identity")
-	}
-	i.sessions[session.ref.ExecutorID] = session
-	return nil
-}
-
-// BeginShutdown atomically rejects future roots and freezes the complete live
-// execution set. Resource release is joined by AwaitShutdown under its caller's
+// BeginShutdown atomically rejects future roots. The remaining live set can
+// only shrink; resource release is joined by AwaitShutdown under its caller's
 // deadline so an interrupted close remains retryable.
 func (i *InteractionExecutor) BeginShutdown() {
 	if i == nil {
 		return
 	}
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if i.closed {
-		return
-	}
-	i.closed = true
-	i.shutdown = make([]*interactionSession, 0, len(i.sessions))
-	for _, session := range i.sessions {
-		i.shutdown = append(i.shutdown, session)
-	}
-	slices.SortFunc(i.shutdown, func(left, right *interactionSession) int {
-		return strings.Compare(left.ref.ExecutorID, right.ref.ExecutorID)
-	})
+	i.sessions.closeAdmission()
 }
 
 // AwaitShutdown releases every root frozen by BeginShutdown. Successful
@@ -420,10 +390,11 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("agentexec: Interaction shutdown context is required")
 	}
+	if i == nil {
+		return nil
+	}
 	i.BeginShutdown()
-	i.mu.Lock()
-	targets := slices.Clone(i.shutdown)
-	i.mu.Unlock()
+	targets := i.sessions.snapshot()
 	var failures []error
 	for _, session := range targets {
 		if err := session.release(ctx); err != nil {
@@ -437,14 +408,7 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 			}
 			continue
 		}
-		i.mu.Lock()
-		if i.sessions[session.ref.ExecutorID] == session {
-			delete(i.sessions, session.ref.ExecutorID)
-		}
-		i.shutdown = slices.DeleteFunc(i.shutdown, func(candidate *interactionSession) bool {
-			return candidate == session
-		})
-		i.mu.Unlock()
+		i.sessions.remove(session)
 	}
 	return errors.Join(failures...)
 }
@@ -660,7 +624,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
-	if err := i.registerSession(session); err != nil {
+	if err := i.sessions.register(session); err != nil {
 		discardRestoredInteraction(session, process)
 		return err
 	}
@@ -977,28 +941,17 @@ func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef)
 	if i == nil {
 		return nil
 	}
-	i.mu.Lock()
-	session := i.sessions[ref.ExecutorID]
-	if session != nil && session.ref.SessionID != ref.SessionID {
-		i.mu.Unlock()
-		return runs.ErrInvalidExecutorRef
+	session, err := i.sessions.lookup(ref)
+	if err != nil {
+		return err
 	}
 	if session == nil {
-		i.mu.Unlock()
 		return nil
 	}
-	i.mu.Unlock()
 
-	err := session.release(ctx)
+	err = session.release(ctx)
 	if err == nil {
-		i.mu.Lock()
-		if i.sessions[ref.ExecutorID] == session {
-			delete(i.sessions, ref.ExecutorID)
-		}
-		i.shutdown = slices.DeleteFunc(i.shutdown, func(candidate *interactionSession) bool {
-			return candidate == session
-		})
-		i.mu.Unlock()
+		i.sessions.remove(session)
 	}
 	return err
 }
@@ -1065,16 +1018,7 @@ func (i *InteractionExecutor) session(ref runs.ExecutorRef) (*interactionSession
 	if i == nil {
 		return nil, errors.New("agentexec: Interaction executor is nil")
 	}
-	if err := ref.ValidateFor(ref.SessionID); err != nil {
-		return nil, err
-	}
-	i.mu.Lock()
-	session := i.sessions[ref.ExecutorID]
-	i.mu.Unlock()
-	if session == nil || session.ref.SessionID != ref.SessionID {
-		return nil, fmt.Errorf("%w: Interaction execution %q", runs.ErrExecutorNotLive, ref.ExecutorID)
-	}
-	return session, nil
+	return i.sessions.require(ref)
 }
 
 func cloneChatMessages(messages []corechat.Message) []corechat.Message {

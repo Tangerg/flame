@@ -245,6 +245,26 @@ func TestInteractionExecutorStagesWithoutCallingModel(t *testing.T) {
 	}
 }
 
+func TestInteractionExecutorShutdownRejectsNewRoots(t *testing.T) {
+	var calls atomic.Int64
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		calls.Add(1)
+		return interactionTextResponse("unexpected"), nil
+	})
+	executor := newTestInteractionExecutor(t, model)
+	executor.BeginShutdown()
+
+	if _, err := executor.StageRoot(t.Context(), interactionTestStart()); err == nil {
+		t.Fatal("StageRoot after shutdown succeeded")
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("model calls after shutdown = %d", calls.Load())
+	}
+	if err := executor.AwaitShutdown(t.Context()); err != nil {
+		t.Fatalf("AwaitShutdown after rejected stage: %v", err)
+	}
+}
+
 func TestInteractionExecutorMapsModelFailure(t *testing.T) {
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("provider unavailable")
