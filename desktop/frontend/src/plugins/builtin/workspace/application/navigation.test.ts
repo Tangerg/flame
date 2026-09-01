@@ -8,6 +8,8 @@ import {
   WORKSPACE_DOCK_CATALOG,
   activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
+  closeAllWorkspaceDockViews,
+  closeWorkspaceDockView,
   closeActiveWorkspaceView,
   collapseWorkspaceDock,
   locateWorkspaceTool,
@@ -97,6 +99,23 @@ describe("workspace navigation port", () => {
       dockViewIds: [],
       lastViewId: WORKSPACE_DOCK_CATALOG,
     });
+  });
+
+  it("returns an emptied dock to its catalogue rather than closing it", () => {
+    openWorkspaceViewInDock("diff");
+
+    closeWorkspaceDockView("diff");
+
+    expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+  });
+
+  it("returns to the catalogue when every tab is closed at once", () => {
+    openWorkspaceViewInDock("diff");
+    openWorkspaceViewInDock("plan");
+
+    closeAllWorkspaceDockViews();
+
+    expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
   });
 
   it("shows the remembered panel instead of the catalogue when there is one", () => {

@@ -78,7 +78,7 @@ export function installWorkspaceNavigationPort(): () => void {
     closeDockView: (id) => {
       const next = useContextDockStore.getState().closeDockTab(id);
       if (navigator().get().dock !== id) return;
-      if (next === null) navigator().go({ dock: null });
+      if (next === null) navigator().go({ dock: WORKSPACE_DOCK_CATALOG });
       else showDockView(next, false);
     },
     closeOtherDockViews: (id) => {
@@ -89,7 +89,7 @@ export function installWorkspaceNavigationPort(): () => void {
     },
     closeAllDockViews: () => {
       useContextDockStore.getState().closeAllDockTabs();
-      navigator().go({ dock: null });
+      navigator().go({ dock: WORKSPACE_DOCK_CATALOG });
     },
     reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
     collapseDock: () => navigator().go({ dock: null }),
