@@ -950,15 +950,62 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     totalLines: allOf([integer(), minimum(1)]),
     truncated: flag(),
   }, ["content", "encoding", "path", "totalLines"]),
-  FileDiff: object({
-    added: allOf([integer(), minimum(0)]),
-    binary: flag(),
-    path: text(),
-    previousPath: text(),
-    removed: allOf([integer(), minimum(0)]),
-    rows: array(ref(() => CHECKS.DiffRow)),
-    status: ref(() => CHECKS.FileStatus),
-  }, ["path", "rows", "status"]),
+  FileDiff: allOf([
+    object({
+      added: allOf([integer(), minimum(0)]),
+      binary: flag(),
+      path: text(),
+      previousPath: text(),
+      removed: allOf([integer(), minimum(0)]),
+      rows: array(ref(() => CHECKS.DiffRow)),
+      status: ref(() => CHECKS.FileStatus),
+    }, ["path", "rows", "status"]),
+    ifThen(
+      fields({
+        status: literal("renamed"),
+      }, ["status"]),
+      fields({}, ["previousPath"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("added"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("modified"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("deleted"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("untracked"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({}, ["binary"]),
+      fields({
+        added: absent(),
+        removed: absent(),
+      }, []),
+    ),
+  ]),
   FileEntry: object({
     modifiedAt: text(),
     name: text(),
@@ -3367,14 +3414,61 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     results: array(ref(() => CHECKS.WebSearchHit)),
   }, ["results"]),
   WorkspaceAvailability: enumOf(["available", "missing"]),
-  WorkspaceFileChange: object({
-    added: allOf([integer(), minimum(0)]),
-    binary: flag(),
-    path: text(),
-    previousPath: text(),
-    removed: allOf([integer(), minimum(0)]),
-    status: ref(() => CHECKS.FileStatus),
-  }, ["path", "status"]),
+  WorkspaceFileChange: allOf([
+    object({
+      added: allOf([integer(), minimum(0)]),
+      binary: flag(),
+      path: text(),
+      previousPath: text(),
+      removed: allOf([integer(), minimum(0)]),
+      status: ref(() => CHECKS.FileStatus),
+    }, ["path", "status"]),
+    ifThen(
+      fields({
+        status: literal("renamed"),
+      }, ["status"]),
+      fields({}, ["previousPath"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("added"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("modified"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("deleted"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("untracked"),
+      }, ["status"]),
+      fields({
+        previousPath: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({}, ["binary"]),
+      fields({
+        added: absent(),
+        removed: absent(),
+      }, []),
+    ),
+  ]),
   WorkspaceInfo: object({
     availability: ref(() => CHECKS.WorkspaceAvailability),
     projectRoot: text(),

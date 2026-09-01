@@ -525,6 +525,31 @@ func registerObjectConstraints(s *Shapes) {
 			Forbidden: []string{"limit"},
 		}},
 	})
+	workspaceChangeRules := []ConditionalRule{{
+		When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.FileStatusRenamed)}},
+		Required: []string{"previousPath"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.FileStatusAdded)}},
+		Forbidden: []string{"previousPath"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.FileStatusModified)}},
+		Forbidden: []string{"previousPath"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.FileStatusDeleted)}},
+		Forbidden: []string{"previousPath"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.FileStatusUntracked)}},
+		Forbidden: []string{"previousPath"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "binary", Operator: delivery.OperatorPresent}},
+		Forbidden: []string{"added", "removed"},
+	}}
+	for _, shape := range []reflect.Type{
+		typeOf[protocol.WorkspaceFileChange](),
+		typeOf[protocol.FileDiff](),
+	} {
+		s.constraint(ObjectConstraintSpec{GoType: shape, Rules: workspaceChangeRules})
+	}
 
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.StreamEvent](),

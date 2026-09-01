@@ -3675,6 +3675,160 @@
       ]
     },
     {
+      "type": "WorkspaceFileChange",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "renamed"
+            }
+          ],
+          "required": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "added"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "modified"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "deleted"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "untracked"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "binary",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "added",
+            "removed"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "FileDiff",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "renamed"
+            }
+          ],
+          "required": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "added"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "modified"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "deleted"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "untracked"
+            }
+          ],
+          "forbidden": [
+            "previousPath"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "binary",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "added",
+            "removed"
+          ]
+        }
+      ]
+    },
+    {
       "type": "StreamEvent",
       "rules": [
         {

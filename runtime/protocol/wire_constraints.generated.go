@@ -1692,6 +1692,36 @@ func (r RunProgress) ValidateWire() error {
 	)
 }
 
+func (w WorkspaceFileChange) ValidateWire() error {
+	return collectWireViolations("WorkspaceFileChange",
+		optionalNonNegativeNumber("added", w.Added),
+		optionalNonNegativeNumber("removed", w.Removed),
+		closedEnum("status", string(w.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
+		requiredWhen(wireFieldEquals(w, "status", "renamed"), "previousPath", w),
+		forbiddenWhen(wireFieldEquals(w, "status", "added"), "previousPath", w),
+		forbiddenWhen(wireFieldEquals(w, "status", "modified"), "previousPath", w),
+		forbiddenWhen(wireFieldEquals(w, "status", "deleted"), "previousPath", w),
+		forbiddenWhen(wireFieldEquals(w, "status", "untracked"), "previousPath", w),
+		forbiddenWhen(wireFieldPresent(w, "binary"), "added", w),
+		forbiddenWhen(wireFieldPresent(w, "binary"), "removed", w),
+	)
+}
+
+func (f FileDiff) ValidateWire() error {
+	return collectWireViolations("FileDiff",
+		optionalNonNegativeNumber("added", f.Added),
+		optionalNonNegativeNumber("removed", f.Removed),
+		closedEnum("status", string(f.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
+		requiredWhen(wireFieldEquals(f, "status", "renamed"), "previousPath", f),
+		forbiddenWhen(wireFieldEquals(f, "status", "added"), "previousPath", f),
+		forbiddenWhen(wireFieldEquals(f, "status", "modified"), "previousPath", f),
+		forbiddenWhen(wireFieldEquals(f, "status", "deleted"), "previousPath", f),
+		forbiddenWhen(wireFieldEquals(f, "status", "untracked"), "previousPath", f),
+		forbiddenWhen(wireFieldPresent(f, "binary"), "added", f),
+		forbiddenWhen(wireFieldPresent(f, "binary"), "removed", f),
+	)
+}
+
 func (m MCPAuthorizationAttempt) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
@@ -2129,22 +2159,6 @@ func (g GrepResult) ValidateWire() error {
 func (g GrepMatch) ValidateWire() error {
 	return collectWireViolations("GrepMatch",
 		positiveNumber("lineNumber", g.LineNumber),
-	)
-}
-
-func (f FileDiff) ValidateWire() error {
-	return collectWireViolations("FileDiff",
-		optionalNonNegativeNumber("added", f.Added),
-		optionalNonNegativeNumber("removed", f.Removed),
-		closedEnum("status", string(f.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
-	)
-}
-
-func (w WorkspaceFileChange) ValidateWire() error {
-	return collectWireViolations("WorkspaceFileChange",
-		optionalNonNegativeNumber("added", w.Added),
-		optionalNonNegativeNumber("removed", w.Removed),
-		closedEnum("status", string(w.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
 	)
 }
 
