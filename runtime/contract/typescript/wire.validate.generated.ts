@@ -941,15 +941,25 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     detail: allOf([text(), minLength(1)]),
     field: allOf([text(), minLength(1)]),
   }, ["detail", "field"]),
-  FileContent: object({
-    content: text(),
-    encoding: text(),
-    endLine: allOf([integer(), minimum(1)]),
-    path: text(),
-    startLine: allOf([integer(), minimum(1)]),
-    totalLines: allOf([integer(), minimum(1)]),
-    truncated: flag(),
-  }, ["content", "encoding", "path", "totalLines"]),
+  FileContent: allOf([
+    object({
+      content: text(),
+      encoding: text(),
+      endLine: allOf([integer(), minimum(1)]),
+      path: text(),
+      startLine: allOf([integer(), minimum(1)]),
+      totalLines: allOf([integer(), minimum(1)]),
+      truncated: flag(),
+    }, ["content", "encoding", "path", "totalLines"]),
+    ifThen(
+      fields({}, ["startLine"]),
+      fields({}, ["endLine"]),
+    ),
+    ifThen(
+      fields({}, ["endLine"]),
+      fields({}, ["startLine"]),
+    ),
+  ]),
   FileDiff: allOf([
     object({
       added: allOf([integer(), minimum(0)]),

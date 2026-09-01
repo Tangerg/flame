@@ -52,9 +52,11 @@ type ReadFileRequest struct {
 
 // FileContent is the workspace.files.read result. TotalLines is the
 // whole-file line count even for a windowed read (so the UI can show "12–40 /
-// 320"). StartLine/EndLine describe the served window (1-based inclusive), set
-// only when a range was requested; a byte-limited last line may be a valid
-// UTF-8 prefix of that source line.
+// 320"). StartLine/EndLine describe the served window (1-based inclusive) and
+// are present together when a range was requested and at least one line was
+// served. A byte-limited last line may be a valid UTF-8 prefix of that source
+// line; when even its first code point cannot fit, both window fields are
+// omitted and Truncated remains true.
 type FileContent struct {
 	Path       string `json:"path"`
 	Content    string `json:"content"`

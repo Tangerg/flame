@@ -519,6 +519,16 @@ func registerObjectConstraints(s *Shapes) {
 		}},
 	})
 	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.FileContent](),
+		Rules: []ConditionalRule{{
+			When:     []delivery.FieldCondition{{Field: "startLine", Operator: delivery.OperatorPresent}},
+			Required: []string{"endLine"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "endLine", Operator: delivery.OperatorPresent}},
+			Required: []string{"startLine"},
+		}},
+	})
+	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.GetDiffRequest](),
 		Rules: []ConditionalRule{{
 			When:      []delivery.FieldCondition{{Field: "format", Operator: delivery.OperatorEquals, Value: string(protocol.DiffFormatRaw)}},

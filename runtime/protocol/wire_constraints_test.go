@@ -1345,6 +1345,19 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 	}
 }
 
+func TestFileContentWindowBoundariesAreAtomic(t *testing.T) {
+	t.Parallel()
+
+	if err := (FileContent{TotalLines: 1}).ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected an unwindowed file: %v", err)
+	}
+	if err := (FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a complete window: %v", err)
+	}
+	assertConstraintField(t, (FileContent{TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
+	assertConstraintField(t, (FileContent{TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
+}
+
 func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) {
 	t.Parallel()
 

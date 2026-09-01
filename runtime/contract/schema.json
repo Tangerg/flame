@@ -2097,6 +2097,32 @@
         "encoding",
         "path",
         "totalLines"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "startLine"
+            ]
+          },
+          "then": {
+            "required": [
+              "endLine"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "endLine"
+            ]
+          },
+          "then": {
+            "required": [
+              "startLine"
+            ]
+          }
+        }
       ]
     },
     "FileDiff": {

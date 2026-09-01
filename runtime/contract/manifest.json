@@ -3658,6 +3658,33 @@
       ]
     },
     {
+      "type": "FileContent",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "startLine",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "endLine"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "endLine",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "startLine"
+          ]
+        }
+      ]
+    },
+    {
       "type": "GetDiffRequest",
       "rules": [
         {

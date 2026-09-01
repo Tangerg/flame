@@ -254,6 +254,9 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "long.txt"), []byte("abcdef"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "unicode.txt"), []byte("é"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	s := newWorkspaceHandler(dir)
 
 	got, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{Path: "f.txt", StartLine: valuePtr(2), EndLine: valuePtr(3)})
@@ -270,6 +273,16 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 	}
 	if capped.Content != "abc" || !capped.Truncated {
 		t.Fatalf("capped = %+v, want abc with truncated=true", capped)
+	}
+
+	emptyWindow, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{
+		Path: "unicode.txt", StartLine: valuePtr(1), EndLine: valuePtr(1), MaxBytes: valuePtr(1),
+	})
+	if err != nil {
+		t.Fatalf("read byte-limited Unicode window: %v", err)
+	}
+	if emptyWindow.Content != "" || emptyWindow.StartLine != 0 || emptyWindow.EndLine != 0 || !emptyWindow.Truncated {
+		t.Fatalf("byte-limited Unicode window = %+v, want no malformed line range and truncated=true", emptyWindow)
 	}
 }
 

@@ -1692,6 +1692,16 @@ func (r RunProgress) ValidateWire() error {
 	)
 }
 
+func (f FileContent) ValidateWire() error {
+	return collectWireViolations("FileContent",
+		positiveNumber("totalLines", f.TotalLines),
+		optionalPositiveScalarNumber("startLine", f.StartLine),
+		optionalPositiveScalarNumber("endLine", f.EndLine),
+		requiredWhen(wireFieldPresent(f, "startLine"), "endLine", f),
+		requiredWhen(wireFieldPresent(f, "endLine"), "startLine", f),
+	)
+}
+
 func (w WorkspaceFileChange) ValidateWire() error {
 	return collectWireViolations("WorkspaceFileChange",
 		optionalNonNegativeNumber("added", w.Added),
@@ -2126,14 +2136,6 @@ func (w WorkspaceRef) ValidateWire() error {
 func (w WorkspaceSummary) ValidateWire() error {
 	return collectWireViolations("WorkspaceSummary",
 		nonNegativeNumber("sessionCount", w.SessionCount),
-	)
-}
-
-func (f FileContent) ValidateWire() error {
-	return collectWireViolations("FileContent",
-		positiveNumber("totalLines", f.TotalLines),
-		optionalPositiveScalarNumber("startLine", f.StartLine),
-		optionalPositiveScalarNumber("endLine", f.EndLine),
 	)
 }
 
