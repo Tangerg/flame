@@ -526,11 +526,10 @@ func TestGoalAdapterRejectsInvalidNestedBudgetBeforeCallingRuntime(t *testing.T)
 	}
 }
 
-func TestGoalAdapterRejectsInvalidNestedBudgetInRuntimeResult(t *testing.T) {
+func TestGoalAdapterRejectsInvalidNestedUsageInRuntimeResult(t *testing.T) {
 	t.Parallel()
 	goal := activeProtocolGoal()
-	invalid := -1
-	goal.Budget = &protocol.GoalBudget{MaxRuns: &invalid}
+	goal.Used.Steps = -1
 	runtime := &Connection{
 		goals: &goalBindingStub{t: t, current: goal},
 		meta:  requestMeta("test"),
