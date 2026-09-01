@@ -77,7 +77,7 @@ export function injectRunFinished(
     runId,
     segmentId,
     eventId,
-    { type: "segment.finished", outcome, metrics },
+    { type: "segment.finished", contextTokens: 0, outcome, metrics },
     requestRpcId,
   );
 }

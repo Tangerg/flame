@@ -30,6 +30,7 @@ const runStarted = (): RunEvent =>
 const runFinished = (): RunEvent =>
   envelope({
     type: "segment.finished",
+    contextTokens: 0,
     outcome: { type: "completed" },
     metrics: { steps: 0, activeDurationMillis: 1 },
   });

@@ -1,5 +1,6 @@
 import { knownIconName } from "@/ui/icons";
 import type { IconName } from "@/ui/icons";
+import type { ToolResultShape } from "@/plugins/sdk";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
 import { defaultToolIconFor } from "../application/toolIconContributions";
@@ -9,6 +10,10 @@ export { defaultToolIconContributions } from "../application/toolIconContributio
 /** The icon/preview registry key for a tool = its wire `name` (§4.4). */
 export function toolRoutingKey(tool: ToolCall): string {
   return tool.name;
+}
+
+export function toolShapeKey(shape: ToolResultShape): string {
+  return `@shape/${shape}`;
 }
 
 export function toolIconFor(key: string): IconName {

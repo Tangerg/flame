@@ -52,3 +52,15 @@ export function commandToolResult(raw: unknown): Partial<CommandResult> | undefi
 export function webSearchToolResult(raw: unknown): Partial<WebSearchResult> | undefined {
   return parsed<WebSearchResult>(raw);
 }
+
+export const TOOL_RESULT_SHAPES = ["search", "patch", "command", "webSearch"] as const;
+export type ToolResultShape = (typeof TOOL_RESULT_SHAPES)[number];
+
+export function toolResultShape(raw: unknown): ToolResultShape | undefined {
+  if (Array.isArray(searchToolResult(raw)?.hits)) return "search";
+  if (Array.isArray(patchToolResult(raw)?.changes)) return "patch";
+  if (Array.isArray(webSearchToolResult(raw)?.results)) return "webSearch";
+  const command = commandToolResult(raw);
+  if (typeof command?.output === "string") return "command";
+  return undefined;
+}

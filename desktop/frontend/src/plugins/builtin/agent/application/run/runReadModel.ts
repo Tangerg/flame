@@ -32,6 +32,9 @@ export class CurrentRootMaterial {
    * is the number that occupies the model's context window. */
   readonly contextTokens: number | null;
   readonly modelSelection: AgentModelSelection | null;
+  /** Epoch millis, so a view can time the wait without re-parsing per tick. Null when the
+   *  Run states no start a clock could run from. */
+  readonly startedAt: number | null;
   readonly attention: AgentRootAttention;
 
   private constructor(run: AgentRunView | null) {
@@ -41,6 +44,7 @@ export class CurrentRootMaterial {
     this.metrics = run?.metrics ?? null;
     this.contextTokens = run?.progress?.contextTokens ?? null;
     this.modelSelection = run?.modelSelection ?? null;
+    this.startedAt = epochMillis(run?.createdAt);
     this.attention = Object.freeze(
       run ? { status: run.status, runId: run.id } : { status: "idle", runId: null },
     );
@@ -98,4 +102,12 @@ export function useActiveSessionRunTree(): AgentRunTreeNode[] {
 
 export function useActiveSessionProblem(): AgentProblem | null {
   return agentSessionView().useProblem();
+}
+
+// An unparseable timestamp answers "no clock" rather than NaN, which would render as a
+// duration nobody can read.
+function epochMillis(iso: string | undefined): number | null {
+  if (iso === undefined) return null;
+  const parsed = Date.parse(iso);
+  return Number.isNaN(parsed) ? null : parsed;
 }

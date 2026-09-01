@@ -41,7 +41,8 @@ describe("toolPresentation", () => {
   // same shell line at two different truncations.
   it("drops a detail that repeats the label", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "pnpm test", command: "pnpm test" }))).toEqual({
-      label: { kind: "text", value: "pnpm test" },
+      label: { kind: "text", value: "Shell" },
+      detail: { kind: "text", value: "pnpm test" },
     });
     expect(
       toolIntent(t, tool({ name: "shell", fn: "Run the unit tests", command: "pnpm test" })),
@@ -51,13 +52,16 @@ describe("toolPresentation", () => {
     });
   });
 
-  it("says so when the LABEL is a path", () => {
-    // `fn` carries the path for read/apply_patch (the fold bakes the key argument
-    // into the label), so the kind has to travel with it or the row clips the
-    // filename off the only part a reader was looking for.
+  it("says so when the target is a path", () => {
+    // `fn` carries the path for read/apply_patch (the fold bakes the key argument in), so
+    // the kind has to travel with it or the row clips the filename off the only part a
+    // reader was looking for.
     expect(
-      toolIntent(t, tool({ name: "apply_patch", fn: "runtime/store.go", fnKind: "path" })).label,
-    ).toEqual({ kind: "path", value: "runtime/store.go" });
+      toolIntent(t, tool({ name: "apply_patch", fn: "runtime/store.go", fnKind: "path" })),
+    ).toEqual({
+      label: { kind: "text", value: "Apply patch" },
+      detail: { kind: "path", value: "runtime/store.go" },
+    });
   });
 
   it("marks a pattern as text, not as a path", () => {
@@ -77,15 +81,23 @@ describe("toolPresentation", () => {
   });
 
   it("keeps a command verbatim even when it reads like a tool name", () => {
-    // `fn` normally IS the command; only a projection that had nothing but the
-    // tool's own name gets the table's word for it.
-    expect(toolIntent(t, tool({ name: "shell", fn: "grep" })).label.value).toBe("grep");
+    expect(toolIntent(t, tool({ name: "shell", fn: "grep" })).detail?.value).toBe("grep");
     expect(toolIntent(t, tool({ name: "shell", fn: "shell" })).label.value).toBe("Shell");
   });
 
+  // A tool this build has never heard of still reads as an act on a thing: the generic verb
+  // says an unlisted tool ran, and its wire name IS the thing it names.
+  it("gives a tool it has no verb for the generic one", () => {
+    expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
+      label: { kind: "text", value: "Tool" },
+      detail: { kind: "text", value: "acme_docs" },
+    });
+  });
+
   it("ignores malformed args while keeping the tool label", () => {
-    expect(toolIntent(t, tool({ fn: "my_tool", args: "{" }))).toEqual({
-      label: { kind: "text", value: "my_tool" },
+    expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs", args: "{" }))).toEqual({
+      label: { kind: "text", value: "Tool" },
+      detail: { kind: "text", value: "acme_docs" },
     });
   });
 
@@ -97,7 +109,6 @@ describe("toolPresentation", () => {
       // atom the diff views use rather than by two chips of its own.
       { id: "hits", label: "7 matches", tone: "muted" },
       { id: "exit", label: "exit 1", tone: "negative" },
-      { id: "live", label: "live", tone: "muted" },
     ]);
   });
 
@@ -118,6 +129,16 @@ describe("toolPresentation", () => {
     // the reader has to stop and interpret.
     expect(toolDiffStat(tool({ added: 0, removed: 0 }))).toBeUndefined();
     expect(toolDiffStat(tool({}))).toBeUndefined();
+  });
+
+  // The counts are read off the patch the call was handed, so they outlive the call itself.
+  it("does not dress a refused or failed call in the size of the change it proposed", () => {
+    expect(toolDiffStat(tool({ added: 3, removed: 2, status: "denied" }))).toBeUndefined();
+    expect(toolDiffStat(tool({ added: 3, removed: 2, status: "err" }))).toBeUndefined();
+    expect(toolDiffStat(tool({ added: 3, removed: 2, status: "running" }))).toEqual({
+      added: 3,
+      removed: 2,
+    });
   });
 
   // The runtime measures the call; a sub-second read reporting "0.1s" is noise on

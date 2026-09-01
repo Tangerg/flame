@@ -114,7 +114,9 @@ export function AgentActivityDisclosure({
               "grid shrink-0 place-items-center",
               shell === "line" ? "h-4 w-4" : GUTTER.cardSlot,
               framed ? `h-5 rounded-[var(--shape-sm)] ${TRAY_CLASS[tone]}` : "h-4",
-              shell === "line" && tone === "neutral" ? "text-fg-faint" : TONE_CLASS[tone],
+              // Identity, not decoration: one glyph per tool is the fastest read on the row,
+              // and the faintest tone spends that distinction on nothing.
+              shell === "line" && tone === "neutral" ? "text-fg-muted" : TONE_CLASS[tone],
             )}
           >
             {leading ?? (icon ? <Icon name={icon} size="xs" /> : null)}

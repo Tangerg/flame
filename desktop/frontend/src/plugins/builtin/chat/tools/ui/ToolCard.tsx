@@ -12,12 +12,7 @@ import {
   TOOL_VIEW_OPENER,
   useExtensionPoint,
 } from "@/plugins/sdk";
-import {
-  toolCardActions,
-  toolCardModel,
-  toolCardViewOpener,
-  visibleToolMetaItems,
-} from "../application/toolCardModel";
+import { toolCardActions, toolCardModel, toolCardViewOpener } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
@@ -61,7 +56,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
           {model.diffStat && (
             <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
           )}
-          <ToolMeta items={model.metaItems} running={model.running} />
+          <ToolMeta items={model.metaItems} />
           {model.running && <StatusDot tone="running" />}
           {model.denied && (
             <span data-slot="tool-status" className="font-sans text-ui-xs text-fg-muted">
@@ -96,13 +91,12 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   );
 }
 
-function ToolMeta({ items, running }: { items: ToolMetaItem[]; running: boolean }) {
-  const shown = visibleToolMetaItems(items, running);
-  if (shown.length === 0) return null;
+function ToolMeta({ items }: { items: ToolMetaItem[] }) {
+  if (items.length === 0) return null;
 
   return (
     <span className="hidden shrink-0 items-center gap-1.5 @sm:flex">
-      {shown.map((item) => (
+      {items.map((item) => (
         <span
           key={item.id}
           className={cn(

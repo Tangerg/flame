@@ -105,9 +105,9 @@ describe("toolFields — runtime wire shapes", () => {
     expect(toolFields(tool("glob", {}, { hits: [{ path: "x" }] })).hits).toBe(1);
   });
 
-  it("apply_patch: does not fabricate line counts absent from its receipt", () => {
-    // The Runtime's actual patch shape contains path/status facts but no
-    // per-file diff rows, so the transcript must not render "+0 −0".
+  it("apply_patch: does not fabricate line counts nothing stated", () => {
+    // The receipt carries path/status facts and no line counts at all, and text that is not
+    // a patch states none either, so the transcript must not render "+0 −0".
     const f = toolFields(
       tool("apply_patch", { patch: "…" }, { changes: [{ path: "a.go", status: "modified" }] }),
     );
@@ -117,6 +117,34 @@ describe("toolFields — runtime wire shapes", () => {
     const g = toolFields(tool("apply_patch", { patch: "…" }, { files: [] }));
     expect(g.added).toBeUndefined();
     expect(g.removed).toBeUndefined();
+  });
+
+  // Counts and per-file rows come from the ARGUMENT, which arrives with the call: this is
+  // what a still-running edit has to show instead of a placeholder, and the receipt never
+  // carries line counts even once it lands.
+  it("apply_patch: reads the change out of the patch it was given", () => {
+    const f = toolFields(
+      tool(
+        "apply_patch",
+        {
+          patch: [
+            "diff --git a/src/a.ts b/src/a.ts",
+            "--- a/src/a.ts",
+            "+++ b/src/a.ts",
+            "@@ -1,2 +1,3 @@",
+            " keep",
+            "-gone",
+            "+one",
+            "+two",
+          ].join("\n"),
+        },
+        undefined,
+      ),
+    );
+
+    expect(f.added).toBe(2);
+    expect(f.removed).toBe(1);
+    expect(f.changes).toEqual([{ path: "src/a.ts", status: "modified", added: 2, removed: 1 }]);
   });
 
   it("apply_patch: carries the authoritative call-scoped change receipt", () => {

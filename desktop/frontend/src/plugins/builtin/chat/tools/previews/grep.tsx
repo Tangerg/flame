@@ -6,6 +6,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 const MAX_GREP_MATCHES = 4;
@@ -68,7 +69,10 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const grep = definePlugin({
   name: "flame.builtin.grep",
   setup(ctx) {
-    for (const preview of toolPreviews({ grep: GrepPreview })) {
+    for (const preview of toolPreviews({
+      grep: GrepPreview,
+      [toolShapeKey("search")]: GrepPreview,
+    })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

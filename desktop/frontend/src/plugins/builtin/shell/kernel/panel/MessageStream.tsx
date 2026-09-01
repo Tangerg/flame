@@ -25,6 +25,8 @@ import {
   RootRunOutcome,
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
+import { durationText } from "@/plugins/builtin/agent/public/runDigest";
+import { useElapsedMillis } from "@/lib/useElapsedMillis";
 
 interface Props {
   rows: readonly TranscriptRow[];
@@ -222,13 +224,34 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
             );
           })}
         </AnimatePresence>
-        {running && rows[rows.length - 1]?.message.role === "user" && (
-          <div className={cn(READING_GUTTER, "mt-4 flex")}>
-            <Loader variant="dots" />
-          </div>
-        )}
+        {running && <WorkingLine startedAt={currentRoot.startedAt} />}
       </StickToBottom.Content>
       <ControlsRelay />
     </StickToBottom>
+  );
+}
+
+/**
+ * That the turn is still going, and how long it has been going for.
+ *
+ * Wall clock on purpose: this is the wait as lived, including approval pauses that a
+ * runtime-measured step duration deliberately excludes.
+ */
+function WorkingLine({ startedAt }: { startedAt: number | null }) {
+  const t = useT();
+  const elapsed = useElapsedMillis(startedAt);
+  const label = t("agent.working");
+  return (
+    <div className={cn(READING_GUTTER, "mt-4 flex")} data-slot="agent-working">
+      <Loader
+        variant="text-shimmer"
+        size="sm"
+        text={
+          startedAt === null
+            ? label
+            : `${label} · ${durationText(t, startedAt, startedAt + elapsed)}`
+        }
+      />
+    </div>
   );
 }

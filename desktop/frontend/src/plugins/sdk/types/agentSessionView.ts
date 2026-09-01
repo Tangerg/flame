@@ -23,11 +23,14 @@ export interface AgentPlan {
 export type ToolCallStatus = "running" | "ok" | "err" | "denied" | "requires-action";
 export type AgentSafetyClass = "safe" | "write" | "exec" | "network";
 
-export type ToolDiffRow =
-  | { type: "hunk"; text: string }
-  | { type: "context"; leftLine: number; rightLine: number; code: string }
-  | { type: "added"; rightLine: number; code: string }
-  | { type: "deleted"; leftLine: number; code: string };
+export interface ToolFileChange {
+  path: string;
+  status: "added" | "deleted" | "modified" | "moved";
+  /** Set only for a rename: where the file came from. */
+  from?: string;
+  added: number;
+  removed: number;
+}
 
 export interface ToolCall {
   id: string;
@@ -43,8 +46,9 @@ export interface ToolCall {
   status: ToolCallStatus;
   added?: number;
   removed?: number;
-  /** The patch THIS call applied, so the row does not re-query the whole worktree. */
-  diff?: ToolDiffRow[];
+  /** What the call's own patch SETS OUT to change, read from its arguments and therefore
+   *  known while it runs. An outcome is the receipt's to state, never this. */
+  changes?: ToolFileChange[];
   hits?: number;
   files?: number;
   lines?: number;

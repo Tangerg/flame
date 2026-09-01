@@ -6,6 +6,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectWebSearchPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 const MAX_WEB_RESULTS = 8;
@@ -35,7 +36,10 @@ function WebSearchPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const webSearchPreview = definePlugin({
   name: "flame.builtin.web-search-preview",
   setup(ctx) {
-    for (const preview of toolPreviews({ web_search: WebSearchPreview })) {
+    for (const preview of toolPreviews({
+      web_search: WebSearchPreview,
+      [toolShapeKey("webSearch")]: WebSearchPreview,
+    })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

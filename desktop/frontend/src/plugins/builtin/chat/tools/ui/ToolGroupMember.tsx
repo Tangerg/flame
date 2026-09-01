@@ -1,8 +1,8 @@
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { Icon, Pressable } from "@/ui";
+import { DiffStat, Icon, Pressable } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
-import { toolCardModel, visibleToolMetaItems } from "../application/toolCardModel";
+import { toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
@@ -16,7 +16,7 @@ interface Props {
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
-  const meta = visibleToolMetaItems(model.metaItems, model.running);
+  const meta = model.metaItems;
 
   return (
     <div>
@@ -32,11 +32,17 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           expanded && "text-fg",
         )}
       >
-        <Icon name={toolCallIconFor(tool)} size="xs" className="shrink-0 text-fg-faint" />
-        <ToolText
-          value={model.detail ?? model.intent.label}
-          className="min-w-0 flex-1 text-ui-sm text-inherit"
-        />
+        <Icon name={toolCallIconFor(tool)} size="xs" className="shrink-0 text-fg-muted" />
+        <ToolText value={model.intent.label} className="shrink-0 text-ui-sm text-inherit" />
+        {model.detail && (
+          <ToolText
+            value={model.detail}
+            className="min-w-0 flex-1 font-mono text-ui-sm text-fg-faint"
+          />
+        )}
+        {model.diffStat && (
+          <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
+        )}
         {meta.length > 0 && (
           <span className="shrink-0 font-mono text-ui-2xs text-fg-faint tabular-nums">
             {meta[meta.length - 1]!.label}

@@ -15,6 +15,7 @@ import { activePlanStep, planProgress, planStepsFromArguments } from "../view/se
 import type { BlockStatus, ContentBlock, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import type { ToolCall, ToolCallStatus } from "@/plugins/sdk/types/agentSessionView";
 import { toolCategory } from "../../domain/toolCategory";
+import { parseUnifiedDiff } from "../../domain/unifiedDiff";
 
 // A toolCall spans time (`startedAt`/`finishedAt`); every other Item is instantaneous
 // (`createdAt`).
@@ -238,9 +239,20 @@ function categoryFields(
       };
     }
     case "fileEdit": {
+      // The patch argument is the only account of the change until the receipt lands, and it
+      // is the only one carrying line counts at all — the receipt states paths and statuses.
+      const proposed = parseUnifiedDiff(asString(tool.arguments?.patch) ?? "");
       const changes = editChanges(tool.result);
+      const files = changes.length || proposed.length;
       return {
-        ...(changes.length > 1 ? { files: changes.length } : {}),
+        ...(files > 1 ? { files } : {}),
+        ...(proposed.length > 0
+          ? {
+              changes: proposed,
+              added: proposed.reduce((sum, file) => sum + file.added, 0),
+              removed: proposed.reduce((sum, file) => sum + file.removed, 0),
+            }
+          : {}),
         // Only the call's own path/status/from receipt. A preview must NOT substitute the
         // current Git worktree for absent line diffs — that includes other calls' edits.
         ...(tool.result !== undefined

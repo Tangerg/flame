@@ -4,6 +4,8 @@ import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/To
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
+import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { commandToolResult } from "@/plugins/sdk";
 
 function TerminalResult({ tool, onOpenView }: ToolPreviewProps) {
   return (
@@ -30,6 +32,19 @@ function StopShellPreview(props: ToolPreviewProps) {
   return <TerminalResult {...props} />;
 }
 
+function CommandShapePreview({ tool, onOpenView }: ToolPreviewProps) {
+  return (
+    <div>
+      <ToolOutputPanel
+        output={commandToolResult(tool.result)?.output}
+        status={tool.status}
+        idleLabel="tools.preview.idle.noOutput"
+      />
+      <PreviewFoot label="tools.preview.openTerminal" onClick={onOpenView} />
+    </div>
+  );
+}
+
 export const shellPreview = definePlugin({
   name: "flame.builtin.shell",
   setup(ctx) {
@@ -39,6 +54,7 @@ export const shellPreview = definePlugin({
       shell: ShellCommandPreview,
       read_shell_output: ShellOutputPreview,
       stop_shell: StopShellPreview,
+      [toolShapeKey("command")]: CommandShapePreview,
     })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }

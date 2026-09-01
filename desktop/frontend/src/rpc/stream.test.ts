@@ -127,6 +127,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_2", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -146,6 +147,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_finish", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -186,6 +188,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_child", "seg_child", "evt_4", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -193,6 +196,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_5", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -222,6 +226,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_2", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -275,6 +280,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_4", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -321,6 +327,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_done", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -465,6 +472,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     emit(
       evt("run_root", "seg_root", "evt_2", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -535,6 +543,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
     emit(
       evt("run_root", "seg_root", "evt_3", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),
@@ -553,6 +562,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
     emit(
       evt("run_root", "seg_root", "evt_finish", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: { type: "completed" },
         metrics: { steps: 0, activeDurationMillis: 0 },
       }),

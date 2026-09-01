@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { ToolActionSpec, ToolViewOpenerSpec } from "@/plugins/sdk";
-import {
-  toolCardActions,
-  toolCardModel,
-  toolCardViewOpener,
-  visibleToolMetaItems,
-} from "./toolCardModel";
+import { toolCardActions, toolCardModel, toolCardViewOpener } from "./toolCardModel";
 
 const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => ({
   id: "tool-1",
@@ -115,17 +110,5 @@ describe("toolCardViewOpener", () => {
     ];
 
     expect(toolCardViewOpener(tool({ name: "shell" }), openers)?.id).toBe("shell");
-  });
-});
-
-describe("visibleToolMetaItems", () => {
-  it("hides the live text when the running dot already carries that state", () => {
-    const items = [
-      { id: "live", label: "live", tone: "muted" },
-      { id: "hits", label: "3 hits", tone: "muted" },
-    ] as const;
-
-    expect(visibleToolMetaItems(items, true)).toEqual([items[1]]);
-    expect(visibleToolMetaItems(items, false)).toEqual([...items]);
   });
 });

@@ -34,6 +34,43 @@ describe("ApplyPatchPreview", () => {
     expect(container.querySelector("[class*='diff-added']")).toBeNull();
   });
 
+  // The patch argument is the only account of the change until the receipt lands. Without
+  // it a running edit says "Running…" for its whole duration while the frontend already
+  // holds every file it touches.
+  it("shows what a running call is changing, with the counts the receipt never carries", () => {
+    render(
+      <ApplyPatchPreview
+        tool={{
+          ...patchTool(undefined, "running"),
+          changes: [
+            { path: "src/a.ts", status: "modified", added: 12, removed: 3 },
+            { path: "src/b.ts", status: "added", added: 40, removed: 0 },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByTitle("src/a.ts")).toBeTruthy();
+    expect(screen.getByTitle("src/b.ts")).toBeTruthy();
+    expect(screen.getByText("+12")).toBeTruthy();
+    expect(screen.queryByText("Running…")).toBeNull();
+  });
+
+  // A proposal is not an outcome: once the call settles, only its receipt may speak.
+  it("hands the row back to the receipt the moment the call settles", () => {
+    render(
+      <ApplyPatchPreview
+        tool={{
+          ...patchTool('{"changes":[{"path":"src/a.ts","status":"modified"}]}', "ok"),
+          changes: [{ path: "src/never-applied.ts", status: "added", added: 9, removed: 0 }],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Edited")).toBeTruthy();
+    expect(screen.queryByTitle("src/never-applied.ts")).toBeNull();
+  });
+
   it("keeps running and completed empty receipts distinct", () => {
     const { rerender } = render(<ApplyPatchPreview tool={patchTool(undefined, "running")} />);
     expect(screen.getByText("Running…")).toBeTruthy();

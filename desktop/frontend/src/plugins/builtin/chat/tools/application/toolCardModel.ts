@@ -58,10 +58,3 @@ export function toolCardViewOpener(
 ): ToolViewOpenerSpec | undefined {
   return openers.find((opener) => opener.predicate(tool));
 }
-
-export function visibleToolMetaItems(
-  items: readonly ToolMetaItem[],
-  running: boolean,
-): ToolMetaItem[] {
-  return running ? items.filter((item) => item.id !== "live") : [...items];
-}

@@ -6,7 +6,9 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/public/patchResult";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { FilePath } from "@/ui";
+import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
+import { DiffStat, FilePath } from "@/ui";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 const STATUS_KEY: Record<PatchChange["status"], string> = {
@@ -39,11 +41,28 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
   );
 }
 
+/**
+ * The files a still-running call is working through, read off the patch it was given.
+ *
+ * Deliberately without the receipt's verbs: those report what HAPPENED, and this call has
+ * not happened yet. Line counts carry the row instead — the receipt never has them.
+ */
+function ProposedChangeRow({ change }: { change: ToolFileChange }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 py-0.5 text-ui-md leading-body">
+      <FilePath path={change.path} className="min-w-0 flex-1 text-fg-muted" />
+      <DiffStat added={change.added} removed={change.removed} />
+    </div>
+  );
+}
+
 export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const changes = projectPatchChanges(tool.result);
+  const proposed = tool.status === "running" ? (tool.changes ?? []) : [];
+  const rows = changes.length > 0 ? changes.length : proposed.length;
   return (
     <div className={TEXT_PREVIEW_CLASS}>
-      {changes.length === 0 && (
+      {rows === 0 && (
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.running"
@@ -56,7 +75,10 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
           change={change}
         />
       ))}
-      <PreviewOverflow count={changes.length - INLINE_PREVIEW_ROW_LIMIT} />
+      {proposed.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
+        <ProposedChangeRow key={change.path} change={change} />
+      ))}
+      <PreviewOverflow count={rows - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.openDiff" onClick={onOpenView} />
     </div>
   );
@@ -65,7 +87,10 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
 export const applyPatchPreview = definePlugin({
   name: "flame.builtin.apply-patch-preview",
   setup(ctx) {
-    for (const preview of toolPreviews({ apply_patch: ApplyPatchPreview })) {
+    for (const preview of toolPreviews({
+      apply_patch: ApplyPatchPreview,
+      [toolShapeKey("patch")]: ApplyPatchPreview,
+    })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }
   },

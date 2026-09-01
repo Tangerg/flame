@@ -17,6 +17,8 @@ export {
 } from "./kernel";
 export { COMMANDS, CONFIG, I18N, WINDOW, WORKSPACE } from "./services";
 export {
+  toolResultShape,
+  type ToolResultShape,
   commandToolResult,
   patchToolResult,
   searchToolResult,

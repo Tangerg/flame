@@ -21,10 +21,14 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-// A title is either one of these verbs or the runtime's tool name, which is data and stays
-// verbatim. That mix is why the translator arrives as an argument rather than a `labelKey`.
+// Every built-in tool's VERB. A row states the act before the thing acted on, so these are
+// the label and the identifying argument is the detail — one glance answers "doing what, to
+// what" without decoding a glyph. A tool the runtime added and this table has not heard of
+// keeps its wire name as the thing, under a generic verb.
 const TOOL_LABEL_KEYS = new Map([
   ["shell", "tool.label.shell"],
+  ["read_shell_output", "tool.label.readShellOutput"],
+  ["stop_shell", "tool.label.stopShell"],
   ["read", "tool.label.read"],
   ["edit", "tool.label.edit"],
   ["write", "tool.label.write"],
@@ -32,13 +36,28 @@ const TOOL_LABEL_KEYS = new Map([
   ["grep", "tool.label.grep"],
   ["glob", "tool.label.glob"],
   ["lsp", "tool.label.lsp"],
-  // No identifying argument to title with; without an entry these read as snake_case.
+  ["web_search", "tool.label.webSearch"],
+  ["web_fetch", "tool.label.webFetch"],
+  ["http_request", "tool.label.httpRequest"],
+  ["list_skills", "tool.label.listSkills"],
+  ["load_skill", "tool.label.loadSkill"],
+  ["read_skill_resource", "tool.label.readSkillResource"],
+  ["propose_skill", "tool.label.proposeSkill"],
+  ["delegate_task", "tool.label.delegateTask"],
+  ["ask_user", "tool.label.askUser"],
   ["enter_plan_mode", "tool.label.enterPlanMode"],
   ["set_plan", "tool.label.setPlan"],
   ["exit_plan_mode", "tool.label.exitPlanMode"],
-  ["list_skills", "tool.label.listSkills"],
-  ["list_schedules", "tool.label.listSchedules"],
+  ["search_memory", "tool.label.searchMemory"],
+  ["search_conversations", "tool.label.searchConversations"],
+  ["search_tools", "tool.label.searchTools"],
   ["read_tool_result", "tool.label.readToolResult"],
+  ["list_schedules", "tool.label.listSchedules"],
+  ["create_schedule", "tool.label.createSchedule"],
+  ["delete_schedule", "tool.label.deleteSchedule"],
+  ["create_goal", "tool.label.createGoal"],
+  ["get_goal", "tool.label.getGoal"],
+  ["report_goal_outcome", "tool.label.reportGoalOutcome"],
 ]);
 
 // `path` is the runtime's own spelling, which ApprovalSubject reads too, so a rename cannot
@@ -51,16 +70,25 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 ];
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
+  const labelKey = TOOL_LABEL_KEYS.get(tool.name);
+  const verb: ToolDetail = { kind: "text", value: t(labelKey ?? "tool.label.generic") };
+  const command = text(tool.command);
+  // Prose outranks the verb; an argument does not. A shell call's `fn` is the model's own
+  // account of what the run is FOR, which no table can restate — but everywhere else `fn` is
+  // the identifying argument, and putting it in the title leaves the row never saying what
+  // was done to it. `fn` restating the tool's own name means the projection found nothing.
+  const described = command !== undefined && tool.fn !== command.value;
+  const argument: ToolDetail | undefined =
+    tool.fn === tool.name && labelKey !== undefined
+      ? undefined
+      : { kind: tool.fnKind ?? "text", value: tool.fn };
+  const label = described ? { kind: "text" as const, value: tool.fn } : verb;
   const parsed = parseToolArgs(tool.args);
-  // Keyed on "the projection had nothing better than the tool's name", NOT on `fn` matching
-  // a table entry — the same thing until a shell command is spelled `grep`.
-  const labelKey = tool.fn === tool.name ? TOOL_LABEL_KEYS.get(tool.name) : undefined;
-  const label: ToolDetail = labelKey
-    ? { kind: "text", value: t(labelKey) }
-    : { kind: tool.fnKind ?? "text", value: tool.fn };
-  const detail = text(tool.command) ?? text(tool.step) ?? (parsed ? toolDetail(parsed) : undefined);
-  // `description` is the tool's contract, not the wire's guarantee: an absent one falls the
-  // title back to the command, and both slots then print the same line at two widths.
+  const detail =
+    command ??
+    (described ? undefined : argument) ??
+    text(tool.step) ??
+    (parsed ? toolDetail(parsed) : undefined);
   return detail && detail.value === label.value ? { label } : { label, detail };
 }
 
@@ -98,14 +126,14 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
     items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
   }
-  if (tool.status === "running") {
-    items.push({ id: "live", label: t("tool.meta.live"), tone: "muted" });
-  }
   return items;
 }
 
 // Absent, not zeroed, when nothing was measured: a zero would draw a dash on the row.
 export function toolDiffStat(tool: ToolCall): { added: number; removed: number } | undefined {
+  // The counts come from the patch the call was GIVEN, so they survive a call that never
+  // applied it. A refusal or a failure must not wear the size of a change that never landed.
+  if (tool.status === "denied" || tool.status === "err") return undefined;
   const added = tool.added ?? 0;
   const removed = tool.removed ?? 0;
   if (tool.added == null && tool.removed == null) return undefined;

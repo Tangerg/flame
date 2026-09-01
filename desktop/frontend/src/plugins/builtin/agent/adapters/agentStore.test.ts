@@ -31,6 +31,7 @@ const runStarted = (id: string, sessionId: string): StreamEvent => ({
 });
 const runFinished = (outcome: SegmentOutcome): StreamEvent => ({
   type: "segment.finished",
+  contextTokens: 0,
   outcome,
   metrics: { steps: 0, activeDurationMillis: 0 },
 });
