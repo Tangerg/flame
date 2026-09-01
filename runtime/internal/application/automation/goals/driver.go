@@ -402,6 +402,14 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if !ok {
 		return goal.Goal{}, errors.Join(ErrNoGoal, quiesceErr)
 	}
+	if current.Status() == goal.StatusActive && drive == nil && foreignLease == nil {
+		var acquired bool
+		foreignLease, acquired = d.tryDriveLease(sessionID)
+		if !acquired {
+			return goal.Goal{}, errors.Join(ErrGoalOwned, quiesceErr)
+		}
+		defer foreignLease.Release()
+	}
 	if !wasActive && current.Status() != goal.StatusActive {
 		return current, quiesceErr
 	}

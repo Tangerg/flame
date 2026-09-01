@@ -3,6 +3,7 @@ package goals_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
 	"strconv"
 	"sync"
@@ -1633,6 +1634,83 @@ func (s *selectiveDriveOwnership) TryGoalDrive(sessionID string) (goals.DriveLea
 		return nil, false
 	}
 	return testDriveLease{release: func() { s.released[sessionID]++ }}, true
+}
+
+type activateOnSecondReadStore struct {
+	goals.Store
+	base  *memStore
+	reads atomic.Int32
+	now   time.Time
+}
+
+func (a *activateOnSecondReadStore) Get(
+	ctx context.Context,
+	sessionID string,
+) (goal.Current, error) {
+	if sessionID == "s1" && a.reads.Add(1) == 2 {
+		current, err := a.base.Get(ctx, sessionID)
+		if err != nil {
+			return goal.Current{}, err
+		}
+		paused, found := current.Goal()
+		if !found {
+			return goal.Current{}, errors.New("test Goal disappeared before foreign resume")
+		}
+		active, err := paused.Resume(a.now)
+		if err != nil {
+			return goal.Current{}, err
+		}
+		if _, applied, err := a.base.Save(ctx, active, paused.Version()); err != nil || !applied {
+			return goal.Current{}, fmt.Errorf("foreign resume: applied=%t err=%v", applied, err)
+		}
+	}
+	return a.base.Get(ctx, sessionID)
+}
+
+func TestDriverStopRejectsGoalThatBecameForeignOwnedAfterInitialRead(t *testing.T) {
+	base := newMemStore()
+	now := time.Unix(10, 0).UTC()
+	active, err := goal.New(
+		"s1", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{},
+		"inc-stop-ownership", now,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	active = seedStoredGoal(t, base, active)
+	paused, err := active.Pause(goal.ReasonAwaitingInput, "", now.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaceStoredGoal(t, base, paused, active.Version())
+	store := &activateOnSecondReadStore{
+		Store: base,
+		base:  base,
+		now:   now.Add(2 * time.Second),
+	}
+	ownership := &selectiveDriveOwnership{
+		busy: map[string]bool{"s1": true}, released: map[string]int{},
+	}
+	driver := goals.NewDriver(
+		store,
+		&fakeRuns{t: t, store: base},
+		&fakeSessions{},
+		goals.NewSessionMutations(),
+		ownership,
+		testPrompt,
+	)
+	cleanupDriver(t, driver)
+
+	if _, err := driver.Stop(t.Context(), "s1"); !errors.Is(err, goals.ErrGoalOwned) {
+		t.Fatalf("Stop error = %v, want ErrGoalOwned", err)
+	}
+	current, found, err := loadStoredGoal(t.Context(), store, "s1")
+	if err != nil || !found {
+		t.Fatalf("foreign Goal = %+v, found=%t err=%v", current, found, err)
+	}
+	if current.Status() != goal.StatusActive || current.Reason().Code() == goal.ReasonStoppedByUser {
+		t.Fatalf("foreign-owned Goal was mutated by Stop: %+v", current)
+	}
 }
 
 func TestReconcileSkipsGoalDriveOwnedByAnotherRuntime(t *testing.T) {
