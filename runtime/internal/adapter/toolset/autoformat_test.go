@@ -1,6 +1,7 @@
 package toolset
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -56,6 +57,53 @@ func TestFormatGoUsesBoundedInProcessFormatter(t *testing.T) {
 func TestFormatPathIgnoresDeletedFile(t *testing.T) {
 	if err := formatPath(t.Context(), filepath.Join(t.TempDir(), "deleted.go")); err != nil {
 		t.Fatalf("format deleted file: %v", err)
+	}
+}
+
+func TestFormatPathDoesNotReplaceSymbolicLink(t *testing.T) {
+	directory := t.TempDir()
+	target := filepath.Join(directory, "target.json")
+	before := []byte(`{"value":1}`)
+	if err := os.WriteFile(target, before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(directory, "linked.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := formatPath(t.Context(), link); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("formatted link = (%v, %v), want symbolic link", info, err)
+	}
+	if content, err := os.ReadFile(target); err != nil || !bytes.Equal(content, before) {
+		t.Fatalf("target = %q, %v; want unchanged", content, err)
+	}
+}
+
+func TestWriteFormattedFileRejectsReplacedSource(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "data.json")
+	if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(directory, "replacement")
+	if err := os.WriteFile(replacement, []byte("replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFormattedFile(path, []byte("formatted"), source); err == nil || !strings.Contains(err.Error(), "changed while formatting") {
+		t.Fatalf("writeFormattedFile error = %v, want changed source", err)
+	}
+	if content, err := os.ReadFile(path); err != nil || string(content) != "replacement" {
+		t.Fatalf("replacement = %q, %v; want preserved", content, err)
 	}
 }
 

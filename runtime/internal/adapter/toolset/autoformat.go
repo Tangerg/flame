@@ -50,14 +50,14 @@ func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 }
 
 func formatPath(ctx context.Context, path string) error {
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("%s: inspect before formatting: %w", path, err)
 	}
-	if info.IsDir() {
+	if !info.Mode().IsRegular() {
 		return nil
 	}
 	extension := strings.ToLower(filepath.Ext(path))
@@ -73,10 +73,11 @@ func formatPath(ctx context.Context, path string) error {
 		return nil
 	}
 
-	input, err := readAutoFormatFile(ctx, path)
+	source, err := readAutoFormatFile(ctx, path)
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
+	input := source.content
 	var formatted []byte
 	switch extension {
 	case ".go":
@@ -109,7 +110,7 @@ func formatPath(ctx context.Context, path string) error {
 	if bytes.Equal(input, formatted) {
 		return nil
 	}
-	return writeFormattedFile(path, formatted, info.Mode().Perm())
+	return writeFormattedFile(path, formatted, source.info)
 }
 
 func runFormatter(ctx context.Context, input []byte, name string, args ...string) ([]byte, error) {
@@ -150,35 +151,68 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 	return nil, fmt.Errorf("%s: %s: %w", target, msg, runErr)
 }
 
-func readAutoFormatFile(ctx context.Context, path string) (_ []byte, err error) {
+type autoFormatSource struct {
+	content []byte
+	info    os.FileInfo
+}
+
+func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, err error) {
 	if cause := context.Cause(ctx); cause != nil {
-		return nil, cause
+		return autoFormatSource{}, cause
+	}
+	pathInfo, err := os.Lstat(path)
+	if err != nil {
+		return autoFormatSource{}, err
+	}
+	if err := validateAutoFormatSource(pathInfo); err != nil {
+		return autoFormatSource{}, err
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return autoFormatSource{}, err
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
 	info, err := file.Stat()
 	if err != nil {
-		return nil, err
+		return autoFormatSource{}, err
 	}
-	if info.Size() > maxAutoFormatFileBytes {
-		return nil, fmt.Errorf("%w: file uses %d bytes", errAutoFormatFileTooLarge, info.Size())
+	if !os.SameFile(pathInfo, info) {
+		return autoFormatSource{}, errors.New("file changed while opening for formatting")
+	}
+	if err := validateAutoFormatSource(info); err != nil {
+		return autoFormatSource{}, err
 	}
 	content, err := io.ReadAll(io.LimitReader(
 		autoFormatContextReader{ctx: ctx, reader: file},
 		maxAutoFormatFileBytes+1,
 	))
 	if err != nil {
-		return nil, err
+		return autoFormatSource{}, err
 	}
 	if len(content) > int(maxAutoFormatFileBytes) {
-		return nil, fmt.Errorf("%w: file grew while reading", errAutoFormatFileTooLarge)
+		return autoFormatSource{}, fmt.Errorf("%w: file grew while reading", errAutoFormatFileTooLarge)
 	}
-	return content, nil
+	after, err := file.Stat()
+	if err != nil {
+		return autoFormatSource{}, err
+	}
+	current, err := os.Lstat(path)
+	if err != nil || !sameFileVersion(info, after) || !sameFileVersion(after, current) {
+		return autoFormatSource{}, errors.New("file changed while reading for formatting")
+	}
+	return autoFormatSource{content: content, info: current}, nil
+}
+
+func validateAutoFormatSource(info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("unsupported file mode %s", info.Mode().Type())
+	}
+	if info.Size() > maxAutoFormatFileBytes {
+		return fmt.Errorf("%w: file uses %d bytes", errAutoFormatFileTooLarge, info.Size())
+	}
+	return nil
 }
 
 type autoFormatContextReader struct {
@@ -224,7 +258,7 @@ func (f *formatOutputBuffer) String() string {
 
 func (f *formatOutputBuffer) Bytes() []byte { return f.buffer.Bytes() }
 
-func writeFormattedFile(path string, data []byte, mode os.FileMode) error {
+func writeFormattedFile(path string, data []byte, source os.FileInfo) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -243,6 +277,9 @@ func writeFormattedFile(path string, data []byte, mode os.FileMode) error {
 	if _, err := tmp.Write(data); err != nil {
 		return err
 	}
+	if err := tmp.Chmod(source.Mode().Perm()); err != nil {
+		return err
+	}
 	if err := tmp.Sync(); err != nil {
 		return err
 	}
@@ -251,8 +288,18 @@ func writeFormattedFile(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	closed = true
-	if err := os.Chmod(tmpPath, mode); err != nil {
+	current, err := os.Lstat(path)
+	if err != nil || !sameFileVersion(source, current) {
+		return errors.New("file changed while formatting")
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
 		return err
 	}
-	return os.Rename(tmpPath, path)
+	// The replacement is already committed. Directory sync strengthens crash
+	// durability where supported, but a refusal cannot turn a successful format
+	// into an apparent failure that might overwrite a later user edit on retry.
+	if directory, openErr := os.Open(filepath.Dir(path)); openErr == nil {
+		_ = errors.Join(directory.Sync(), directory.Close())
+	}
+	return nil
 }
