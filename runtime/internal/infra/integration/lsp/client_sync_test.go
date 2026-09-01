@@ -56,3 +56,16 @@ func TestReadDocumentHonorsExactBoundaryAndCancellation(t *testing.T) {
 		t.Fatalf("canceled read error = %v, want %v", err, cause)
 	}
 }
+
+func TestReadDocumentRejectsUnsupportedSources(t *testing.T) {
+	directory := t.TempDir()
+	invalid := filepath.Join(directory, "invalid.go")
+	if err := os.WriteFile(invalid, []byte{'p', 'a', 'c', 'k', 'a', 'g', 'e', 0}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{directory, invalid} {
+		if _, err := readDocument(t.Context(), path); !errors.Is(err, ErrUnsupportedDocument) {
+			t.Fatalf("readDocument(%q) error = %v, want ErrUnsupportedDocument", path, err)
+		}
+	}
+}

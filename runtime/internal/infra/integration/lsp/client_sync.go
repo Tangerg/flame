@@ -1,12 +1,14 @@
 package lsp
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"unicode/utf8"
 )
 
 const maxDocumentBytes int64 = 8 << 20
@@ -14,6 +16,10 @@ const maxDocumentBytes int64 = 8 << 20
 // ErrDocumentTooLarge reports a workspace document that cannot be admitted to
 // the in-memory language-server synchronization boundary.
 var ErrDocumentTooLarge = errors.New("lsp: document exceeds the 8 MiB limit")
+
+// ErrUnsupportedDocument reports a source that cannot be represented as one
+// Language Server Protocol text document.
+var ErrUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 text file")
 
 // ensureOpen makes the server aware of abs's current on-disk content: a
 // didOpen the first time, a didChange when the content has changed since we
@@ -67,6 +73,13 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateDocumentSource(pathInfo); err != nil {
+		return nil, err
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -79,8 +92,11 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if info.Size() > maxDocumentBytes {
-		return nil, fmt.Errorf("%w: %d bytes", ErrDocumentTooLarge, info.Size())
+	if !os.SameFile(pathInfo, info) {
+		return nil, errors.New("lsp: document changed while it was being opened")
+	}
+	if err := validateDocumentSource(info); err != nil {
+		return nil, err
 	}
 	content, err := io.ReadAll(io.LimitReader(contextReader{ctx: ctx, reader: file}, maxDocumentBytes+1))
 	if err != nil {
@@ -89,7 +105,20 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if len(content) > int(maxDocumentBytes) {
 		return nil, fmt.Errorf("%w: file grew while reading", ErrDocumentTooLarge)
 	}
+	if !utf8.Valid(content) || bytes.IndexByte(content, 0) >= 0 {
+		return nil, ErrUnsupportedDocument
+	}
 	return content, nil
+}
+
+func validateDocumentSource(info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return ErrUnsupportedDocument
+	}
+	if info.Size() > maxDocumentBytes {
+		return fmt.Errorf("%w: %d bytes", ErrDocumentTooLarge, info.Size())
+	}
+	return nil
 }
 
 type contextReader struct {
