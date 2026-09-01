@@ -508,6 +508,31 @@ func registerObjectConstraints(s *Shapes) {
 		}},
 	})
 
+	hookRules := []ConditionalRule{{
+		RequiredAny: []string{"command", "inject"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "command", Operator: delivery.OperatorPresent}},
+		Forbidden: []string{"inject"},
+	}, {
+		When:      []delivery.FieldCondition{{Field: "inject", Operator: delivery.OperatorPresent}},
+		Forbidden: []string{"command", "matcher", "timeoutMillis"},
+	}}
+	for _, event := range []protocol.HookEvent{
+		protocol.HookEventUserPromptSubmit,
+		protocol.HookEventSessionStart,
+		protocol.HookEventSubagentStart,
+		protocol.HookEventSubagentStop,
+		protocol.HookEventPreCompact,
+		protocol.HookEventStop,
+		protocol.HookEventNotification,
+	} {
+		hookRules = append(hookRules, ConditionalRule{
+			When:      []delivery.FieldCondition{{Field: "event", Operator: delivery.OperatorEquals, Value: string(event)}},
+			Forbidden: []string{"matcher"},
+		})
+	}
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.HookInfo](), Rules: hookRules})
+
 	// A file end line is meaningful only as the end of a window that starts at
 	// an explicit line. Structured-diff row budgets likewise have no meaning on
 	// the raw patch branch.

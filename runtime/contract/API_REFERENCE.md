@@ -770,6 +770,7 @@ TypeScript validator from this single registry projection.
 | `SkillNameRequest` | `name` | `nonEmpty` |
 | `SkillProposalRef` | `name` | `nonEmpty` |
 | `SkillProposalRef` | `revision` | `nonEmpty` |
+| `HookInfo` | `source` | `nonEmpty` |
 | `HookInfo` | `timeoutMillis` | `nonNegative` |
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
 | `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |

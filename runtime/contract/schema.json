@@ -2812,7 +2812,8 @@
           "$ref": "#/$defs/HookScope"
         },
         "source": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "timeoutMillis": {
           "type": "integer",
@@ -2825,6 +2826,167 @@
         "event",
         "scope",
         "source"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "command"
+              ]
+            },
+            {
+              "required": [
+                "inject"
+              ]
+            }
+          ]
+        },
+        {
+          "if": {
+            "required": [
+              "command"
+            ]
+          },
+          "then": {
+            "properties": {
+              "inject": false
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "inject"
+            ]
+          },
+          "then": {
+            "properties": {
+              "command": false,
+              "matcher": false,
+              "timeoutMillis": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "UserPromptSubmit"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "SessionStart"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "SubagentStart"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "SubagentStop"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "PreCompact"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "Stop"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "Notification"
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "then": {
+            "properties": {
+              "matcher": false
+            }
+          }
+        }
       ]
     },
     "HookScope": {

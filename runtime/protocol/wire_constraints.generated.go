@@ -1692,6 +1692,28 @@ func (r RunProgress) ValidateWire() error {
 	)
 }
 
+func (h HookInfo) ValidateWire() error {
+	return collectWireViolations("HookInfo",
+		requiredText("source", h.Source),
+		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
+		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
+		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"}, false),
+		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
+		requiredAnyWhen(true, []string{"command", "inject"}, h),
+		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
+		forbiddenWhen(wireFieldPresent(h, "inject"), "command", h),
+		forbiddenWhen(wireFieldPresent(h, "inject"), "matcher", h),
+		forbiddenWhen(wireFieldPresent(h, "inject"), "timeoutMillis", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "UserPromptSubmit"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "SessionStart"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "SubagentStart"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "SubagentStop"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "PreCompact"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "Stop"), "matcher", h),
+		forbiddenWhen(wireFieldEquals(h, "event", "Notification"), "matcher", h),
+	)
+}
+
 func (f FileContent) ValidateWire() error {
 	return collectWireViolations("FileContent",
 		positiveNumber("totalLines", f.TotalLines),
@@ -2180,15 +2202,6 @@ func (u UsageSummary) ValidateWire() error {
 	return collectWireViolations("UsageSummary",
 		nonNegativeNumber("sessions", u.Sessions),
 		nonNegativeNumber("runs", u.Runs),
-	)
-}
-
-func (h HookInfo) ValidateWire() error {
-	return collectWireViolations("HookInfo",
-		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
-		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
-		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"}, false),
-		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
 	)
 }
 

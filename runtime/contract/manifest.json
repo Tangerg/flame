@@ -3642,6 +3642,125 @@
       ]
     },
     {
+      "type": "HookInfo",
+      "rules": [
+        {
+          "requiredAny": [
+            "command",
+            "inject"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "command",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "inject"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "inject",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "command",
+            "matcher",
+            "timeoutMillis"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "UserPromptSubmit"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "SessionStart"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "SubagentStart"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "SubagentStop"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "PreCompact"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "Stop"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "event",
+              "operator": "equals",
+              "value": "Notification"
+            }
+          ],
+          "forbidden": [
+            "matcher"
+          ]
+        }
+      ]
+    },
+    {
       "type": "ReadFileRequest",
       "rules": [
         {
@@ -6396,6 +6515,10 @@
     {
       "type": "HookInfo",
       "rules": [
+        {
+          "field": "source",
+          "constraint": "nonEmpty"
+        },
         {
           "field": "timeoutMillis",
           "constraint": "nonNegative"

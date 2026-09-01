@@ -1348,13 +1348,39 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "line"},
 		UsageBucket{},
 		UsageSummary{},
-		HookInfo{Event: HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: HookScopeGlobal},
+		HookInfo{Event: HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: HookScopeGlobal, Source: "/hooks.json"},
 		MCPServerState{Type: MCPServerConnected, ToolCount: &maximumTools},
 		ModelPricing{},
 	} {
 		if err := value.ValidateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid %T numeric boundaries: %v", value, err)
 		}
+	}
+}
+
+func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
+	t.Parallel()
+
+	for _, hook := range []HookInfo{
+		{Event: HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: HookScopeProject, Source: "/repo/.flame/hooks.json"},
+		{Event: HookEventStop, Inject: "remember this", Scope: HookScopeGlobal, Source: "/home/.flame/hooks.json"},
+	} {
+		if err := hook.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected valid hook %+v: %v", hook, err)
+		}
+	}
+
+	for _, test := range []struct {
+		field string
+		hook  HookInfo
+	}{
+		{field: "command|inject", hook: HookInfo{Event: HookEventStop, Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "inject", hook: HookInfo{Event: HookEventStop, Command: "check", Inject: "context", Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "timeoutMillis", hook: HookInfo{Event: HookEventStop, Inject: "context", TimeoutMillis: 1, Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "matcher", hook: HookInfo{Event: HookEventStop, Matcher: "shell*", Command: "check", Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "source", hook: HookInfo{Event: HookEventStop, Command: "check", Scope: HookScopeGlobal}},
+	} {
+		assertConstraintField(t, test.hook.ValidateWire(), "HookInfo", test.field)
 	}
 }
 

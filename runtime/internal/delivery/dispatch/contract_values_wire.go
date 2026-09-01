@@ -525,6 +525,7 @@ func registerHookValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.HookInfo](),
 		Constraints: []FieldConstraint{
+			{Field: "source", Kind: ConstraintNonEmpty},
 			{Field: "timeoutMillis", Kind: ConstraintNonNegative},
 			{Field: "timeoutMillis", Kind: ConstraintMaximum, Limit: hooks.MaxTimeoutMillis},
 		},

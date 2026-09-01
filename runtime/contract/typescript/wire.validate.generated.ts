@@ -1138,16 +1138,89 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["matches", "total"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"]),
-  HookInfo: object({
-    active: flag(),
-    command: text(),
-    event: ref(() => CHECKS.HookEvent),
-    inject: text(),
-    matcher: text(),
-    scope: ref(() => CHECKS.HookScope),
-    source: text(),
-    timeoutMillis: allOf([integer(), minimum(0), maximum(300000)]),
-  }, ["active", "event", "scope", "source"]),
+  HookInfo: allOf([
+    object({
+      active: flag(),
+      command: text(),
+      event: ref(() => CHECKS.HookEvent),
+      inject: text(),
+      matcher: text(),
+      scope: ref(() => CHECKS.HookScope),
+      source: allOf([text(), minLength(1)]),
+      timeoutMillis: allOf([integer(), minimum(0), maximum(300000)]),
+    }, ["active", "event", "scope", "source"]),
+    anyOf([fields({}, ["command"]), fields({}, ["inject"])]),
+    ifThen(
+      fields({}, ["command"]),
+      fields({
+        inject: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({}, ["inject"]),
+      fields({
+        command: absent(),
+        matcher: absent(),
+        timeoutMillis: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("UserPromptSubmit"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("SessionStart"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("SubagentStart"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("SubagentStop"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("PreCompact"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("Stop"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        event: literal("Notification"),
+      }, ["event"]),
+      fields({
+        matcher: absent(),
+      }, []),
+    ),
+  ]),
   HookScope: enumOf(["global", "project"]),
   HooksListResult: object({
     hooks: array(ref(() => CHECKS.HookInfo)),
