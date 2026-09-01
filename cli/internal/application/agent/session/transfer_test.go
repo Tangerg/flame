@@ -3,11 +3,13 @@ package session
 import (
 	"bytes"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	body := []byte(`{"version":17}`)
-	document, err := NewDocument(JSONFormat, body)
+	document, err := NewDocument(protocol.ExportFormatJSON, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +22,7 @@ func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 	if !document.Importable() {
 		t.Fatal("valid JSON document is not importable")
 	}
-	markdown, err := NewDocument(MarkdownFormat, []byte("# Session"))
+	markdown, err := NewDocument(protocol.ExportFormatMarkdown, []byte("# Session"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +33,7 @@ func TestDocumentOwnsAndValidatesPortableContent(t *testing.T) {
 
 func TestDocumentRejectsOversizedPortableContent(t *testing.T) {
 	body := bytes.Repeat([]byte("x"), MaximumDocumentBytes+1)
-	if _, err := NewDocument(MarkdownFormat, body); err == nil {
+	if _, err := NewDocument(protocol.ExportFormatMarkdown, body); err == nil {
 		t.Fatal("oversized session document was accepted")
 	}
 }

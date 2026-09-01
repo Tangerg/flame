@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
@@ -27,7 +28,7 @@ func (Store) Publish(workspace, title, requestedName string, document session.Do
 	if err != nil {
 		return "", err
 	}
-	name, err := documentName(title, requestedName, document.Format())
+	name, err := documentName(title, requestedName, document.Extension())
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +76,7 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if len(body) > session.MaximumDocumentBytes {
 		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 	}
-	document, err := session.NewDocument(session.JSONFormat, body)
+	document, err := session.NewDocument(protocol.ExportFormatJSON, body)
 	if err != nil {
 		return session.Document{}, fmt.Errorf("read session artifact: %w", err)
 	}
@@ -128,23 +129,23 @@ func resolveInputPath(workspace, selected string) (string, error) {
 	return resolved, nil
 }
 
-func documentName(title, requested string, format session.DocumentFormat) (string, error) {
+func documentName(title, requested, desiredExtension string) (string, error) {
 	requested = strings.TrimSpace(requested)
 	if requested == "" {
 		stem := pathologize.Clean(strings.TrimSpace(title))
 		if stem == "" || stem == "." || stem == "_" {
 			stem = "flame-session"
 		}
-		requested = stem + format.Extension()
+		requested = stem + desiredExtension
 	}
 	if strings.ContainsAny(requested, `/\`) || filepath.Base(requested) != requested || requested == "." || requested == ".." {
 		return "", errors.New("export name must be a filename, not a path")
 	}
-	extension := filepath.Ext(requested)
-	if extension == "" {
-		requested += format.Extension()
-	} else if !strings.EqualFold(extension, format.Extension()) {
-		return "", fmt.Errorf("export filename must end in %s", format.Extension())
+	actualExtension := filepath.Ext(requested)
+	if actualExtension == "" {
+		requested += desiredExtension
+	} else if !strings.EqualFold(actualExtension, desiredExtension) {
+		return "", fmt.Errorf("export filename must end in %s", desiredExtension)
 	}
 	cleaned := pathologize.Clean(requested)
 	if cleaned == "" || cleaned == "." || cleaned == "_" {

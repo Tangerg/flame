@@ -104,7 +104,7 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 		return session.Document{}, err
 	}
 	response, err := r.sessions.ExportSession(ctx, protocol.ExportSessionRequest{
-		SessionID: request.SessionID, Format: protocol.ExportFormat(request.Format),
+		SessionID: request.SessionID, Format: request.Format,
 	}, r.callOptions())
 	if err != nil {
 		return session.Document{}, classifyError(err)
@@ -112,17 +112,17 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 	if response == nil {
 		return session.Document{}, runtimeContractViolation("export session returned nil")
 	}
-	if protocol.ExportFormat(request.Format) != response.Format {
+	if request.Format != response.Format {
 		return session.Document{}, runtimeContractViolation("export session returned format %q, want %q", response.Format, request.Format)
 	}
 	var body []byte
 	switch request.Format {
-	case session.MarkdownFormat:
+	case protocol.ExportFormatMarkdown:
 		if response.Artifact != nil || response.Markdown == "" {
 			return session.Document{}, runtimeContractViolation("export session returned a malformed Markdown result")
 		}
 		body = []byte(response.Markdown)
-	case session.JSONFormat:
+	case protocol.ExportFormatJSON:
 		if response.Artifact == nil || response.Markdown != "" {
 			return session.Document{}, runtimeContractViolation("export session returned a malformed JSON result")
 		}

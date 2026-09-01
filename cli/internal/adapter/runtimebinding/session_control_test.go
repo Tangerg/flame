@@ -109,7 +109,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	}
 	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: protocol.RestoreHistory})
 	requireRuntimeContractViolation(t, err)
-	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.JSONFormat})
+	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -132,11 +132,11 @@ func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 		sessions: stub, meta: requestMeta("test"),
 		profile: sessionControlProfile(FeatureSessionExport),
 	}
-	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.MarkdownFormat})
+	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatMarkdown})
 	if err != nil || string(markdown.Bytes()) != "# Runtime transcript" {
 		t.Fatalf("Markdown export = (%q, %v)", markdown.Bytes(), err)
 	}
-	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.JSONFormat})
+	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
 	versionField := fmt.Sprintf(`"version": %d`, protocol.SessionArtifactVersion)
 	if err != nil || !strings.Contains(string(artifact.Bytes()), versionField) || !artifact.Importable() {
 		t.Fatalf("JSON export = (%q, %v)", artifact.Bytes(), err)
@@ -167,7 +167,7 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 		profile: sessionControlProfile(FeatureSessionExport),
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","reasoningEffort":"high","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
-	document, err := session.NewDocument(session.JSONFormat, []byte(artifactJSON))
+	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 	}
 
 	unknownJSON := fmt.Sprintf(`{"version":%d,"future":true}`, protocol.SessionArtifactVersion)
-	unknown, err := session.NewDocument(session.JSONFormat, []byte(unknownJSON))
+	unknown, err := session.NewDocument(protocol.ExportFormatJSON, []byte(unknownJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := session.NewDocument(session.JSONFormat, body)
+	document, err := session.NewDocument(protocol.ExportFormatJSON, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,12 +276,12 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 		t.Fatalf("files rollback error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if _, err := runtime.ExportSession(t.Context(), session.ExportRequest{
-		SessionID: "ses_1", Format: session.JSONFormat,
+		SessionID: "ses_1", Format: protocol.ExportFormatJSON,
 	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("export error = %v, want ErrIncompatibleRuntime", err)
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","workspace":{"path":"/workspace"},"provider":"mock","model":"balanced"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
-	document, err := session.NewDocument(session.JSONFormat, []byte(artifactJSON))
+	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)
 	}

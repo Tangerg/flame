@@ -273,13 +273,13 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 func requireSessionPortability(t *testing.T, runtime *Connection, sessionID string) {
 	t.Helper()
 	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{
-		SessionID: sessionID, Format: session.MarkdownFormat,
+		SessionID: sessionID, Format: protocol.ExportFormatMarkdown,
 	})
 	if err != nil || len(markdown.Bytes()) == 0 || markdown.Importable() {
 		t.Fatalf("Markdown ExportSession = (%q, %v)", markdown.Bytes(), err)
 	}
 	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{
-		SessionID: sessionID, Format: session.JSONFormat,
+		SessionID: sessionID, Format: protocol.ExportFormatJSON,
 	})
 	if err != nil || !artifact.Importable() {
 		t.Fatalf("JSON ExportSession = (%q, %v)", artifact.Bytes(), err)

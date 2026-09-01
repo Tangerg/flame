@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -24,7 +25,7 @@ func TestParseExportArgumentSeparatesTheFormatFromAnOptionalSpacedFilename(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if format != session.MarkdownFormat || filename != "Project notes.md" {
+	if format != protocol.ExportFormatMarkdown || filename != "Project notes.md" {
 		t.Fatalf("export argument = %q, %q", format, filename)
 	}
 	if _, _, err := parseExportArgument("pdf report.pdf"); err == nil {
@@ -69,10 +70,10 @@ func (outputTransferStub) ExportSession(_ context.Context, request session.Expor
 	if err := request.Validate(); err != nil {
 		return session.Document{}, err
 	}
-	if request.Format == session.MarkdownFormat {
-		return session.NewDocument(session.MarkdownFormat, []byte("# Runtime export\n\nstable answer\n"))
+	if request.Format == protocol.ExportFormatMarkdown {
+		return session.NewDocument(protocol.ExportFormatMarkdown, []byte("# Runtime export\n\nstable answer\n"))
 	}
-	return session.NewDocument(session.JSONFormat, []byte(`{"version":17}`))
+	return session.NewDocument(protocol.ExportFormatJSON, []byte(`{"version":17}`))
 }
 
 func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (agent.Session, error) {

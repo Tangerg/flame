@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
@@ -80,7 +82,7 @@ func (a *app) exportSession(argument string) error {
 	return nil
 }
 
-func parseExportArgument(argument string) (session.DocumentFormat, string, error) {
+func parseExportArgument(argument string) (protocol.ExportFormat, string, error) {
 	argument = strings.TrimSpace(argument)
 	formatName, filename, found := strings.Cut(argument, " ")
 	if !found {
