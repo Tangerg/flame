@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -67,5 +68,25 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	ledger.mu.Unlock()
 	if !prepared {
 		t.Fatal("rejected model call consumed its prepared context")
+	}
+}
+
+func TestAdvanceProcessUsageRejectsOverflowWithoutMutatingInput(t *testing.T) {
+	current := map[string]accounting.ModelUsage{
+		"test-model": {
+			Model: "test-model", TokenUsage: accounting.TokenUsage{PromptTokens: math.MaxInt64},
+			Cost: interactionTestCost(0), Calls: 1,
+		},
+	}
+	before := current["test-model"]
+	_, _, _, err := advanceProcessUsage(current, accounting.ModelUsage{
+		Model: "test-model", TokenUsage: accounting.TokenUsage{PromptTokens: 1},
+		Cost: interactionTestCost(0), Calls: 1,
+	}, 2)
+	if err == nil {
+		t.Fatal("overflowing process usage was accepted")
+	}
+	if current["test-model"] != before {
+		t.Fatalf("failed aggregation mutated input: before=%+v after=%+v", before, current["test-model"])
 	}
 }

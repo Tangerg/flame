@@ -150,8 +150,12 @@ func (i *interactionSession) projectDelegateResult(
 		modelResult = delegateFailureModelResult(managed.call, diagnostic)
 	}
 	if !managed.segmentProjected {
+		end, err := i.segmentEnd(result)
+		if err != nil {
+			return err
+		}
 		if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{
-			Member: member, Payload: i.segmentEnd(result),
+			Member: member, Payload: end,
 		}); err != nil {
 			return fmt.Errorf("agentexec: publish delegated child terminal: %w", err)
 		}

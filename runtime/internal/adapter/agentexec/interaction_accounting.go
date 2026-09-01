@@ -130,14 +130,11 @@ func mergeInteractionUsage(
 			target[model] = usage
 			continue
 		}
-		current.Add(usage.TokenUsage)
-		cost, err := current.Cost.Add(usage.Cost)
+		combined, err := current.Add(usage)
 		if err != nil {
-			return fmt.Errorf("agentexec: aggregate model %q cost: %w", model, err)
+			return fmt.Errorf("agentexec: aggregate model %q usage: %w", model, err)
 		}
-		current.Cost = cost
-		current.Calls += usage.Calls
-		target[model] = current
+		target[model] = combined
 	}
 	return nil
 }
@@ -155,13 +152,11 @@ func advanceProcessUsage(
 	if !found {
 		model = delta
 	} else {
-		model.Add(delta.TokenUsage)
-		cost, err := model.Cost.Add(delta.Cost)
+		var err error
+		model, err = model.Add(delta)
 		if err != nil {
-			return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call cost: %w", err)
+			return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call usage: %w", err)
 		}
-		model.Cost = cost
-		model.Calls += delta.Calls
 	}
 	if err := model.Validate(); err != nil {
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call: %w", err)
@@ -303,7 +298,7 @@ func (i *interactionAccounting) accountModelCall(
 	return completed, nil
 }
 
-func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) *runs.SegmentUsage {
+func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) (*runs.SegmentUsage, error) {
 	i.mu.Lock()
 	usageByModel := i.usageByProcess[processID]
 	models := make([]accounting.ModelUsage, 0, len(usageByModel))
@@ -315,14 +310,14 @@ func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) *runs.Se
 		return strings.Compare(left.Model, right.Model)
 	})
 	if len(models) == 0 {
-		return nil
+		return nil, nil
 	}
 	total, err := (accounting.Snapshot{Models: models}).Total()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("agentexec: total segment usage: %w", err)
 	}
 	return &runs.SegmentUsage{
 		Tokens: total.TokenUsage, ByModel: models,
 		Cost: total.Cost, Steps: total.Calls,
-	}
+	}, nil
 }

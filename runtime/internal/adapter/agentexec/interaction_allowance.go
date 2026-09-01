@@ -3,7 +3,6 @@ package agentexec
 import (
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -82,10 +81,11 @@ func (a *interactionAllowance) admit(snapshot accounting.Snapshot) error {
 	if stop == interactionAllowanceOpen {
 		maximum, limited := a.limits.MaxTotalTokens()
 		if limited {
-			if total.PromptTokens > math.MaxInt64-total.CompletionTokens {
-				return errors.New("agentexec: cumulative token usage overflows")
+			used, err := total.Total()
+			if err != nil {
+				return fmt.Errorf("agentexec: cumulative token usage: %w", err)
 			}
-			if total.PromptTokens+total.CompletionTokens >= maximum {
+			if used >= maximum {
 				stop = interactionAllowanceBudgetExhausted
 			}
 		}

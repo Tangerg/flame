@@ -30,15 +30,32 @@ func TestTokenUsageAdd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.base
-			got.Add(tt.add)
+			got, err := tt.base.Add(tt.add)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got != tt.want {
 				t.Fatalf("TokenUsage = %+v, want %+v", got, tt.want)
 			}
-			if got.Total() != tt.want.PromptTokens+tt.want.CompletionTokens {
-				t.Fatalf("Total() = %d, want %d", got.Total(), tt.want.PromptTokens+tt.want.CompletionTokens)
+			total, err := got.Total()
+			if err != nil || total != tt.want.PromptTokens+tt.want.CompletionTokens {
+				t.Fatalf("Total() = %d, %v; want %d", total, err, tt.want.PromptTokens+tt.want.CompletionTokens)
 			}
 		})
+	}
+}
+
+func TestTokenAndModelUsageRejectOverflow(t *testing.T) {
+	if _, err := (TokenUsage{PromptTokens: math.MaxInt64}).Add(TokenUsage{PromptTokens: 1}); err == nil {
+		t.Fatal("TokenUsage.Add accepted overflow")
+	}
+	if _, err := (TokenUsage{PromptTokens: math.MaxInt64, CompletionTokens: 1}).Total(); err == nil {
+		t.Fatal("TokenUsage.Total accepted overflow")
+	}
+	left := ModelUsage{Model: "model", Calls: math.MaxInt, Cost: mustCost(t, 0)}
+	right := ModelUsage{Model: "model", Calls: 1, Cost: mustCost(t, 0)}
+	if _, err := left.Add(right); err == nil {
+		t.Fatal("ModelUsage.Add accepted call-count overflow")
 	}
 }
 

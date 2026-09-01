@@ -289,19 +289,62 @@ func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	return nil
 }
 
-// Total is prompt + completion: the figure a token budget caps.
-func (t TokenUsage) Total() int64 {
-	return t.PromptTokens + t.CompletionTokens
+// Validate reports whether the token relationships can represent one model's
+// cumulative usage.
+func (t TokenUsage) Validate() error {
+	if t.PromptTokens < 0 || t.CompletionTokens < 0 || t.ReasoningTokens < 0 ||
+		t.CacheReadTokens < 0 || t.CacheWriteTokens < 0 {
+		return errors.New("accounting: token counts must not be negative")
+	}
+	if t.ReasoningTokens > t.CompletionTokens {
+		return errors.New("accounting: reasoning tokens exceed completion tokens")
+	}
+	if t.CacheReadTokens > t.PromptTokens || t.CacheWriteTokens > t.PromptTokens {
+		return errors.New("accounting: cache tokens exceed prompt tokens")
+	}
+	return nil
 }
 
-// Add folds another model-call roll-up into this one for cumulative execution
-// totals and per-model breakdowns.
-func (t *TokenUsage) Add(u TokenUsage) {
-	t.PromptTokens += u.PromptTokens
-	t.CompletionTokens += u.CompletionTokens
-	t.ReasoningTokens += u.ReasoningTokens
-	t.CacheReadTokens += u.CacheReadTokens
-	t.CacheWriteTokens += u.CacheWriteTokens
+// Total returns prompt + completion: the figure a token budget caps.
+func (t TokenUsage) Total() (int64, error) {
+	if err := t.Validate(); err != nil {
+		return 0, err
+	}
+	total, ok := checkedAddInt64(t.PromptTokens, t.CompletionTokens)
+	if !ok {
+		return 0, errors.New("accounting: total token usage overflows")
+	}
+	return total, nil
+}
+
+// Add returns the checked sum of two independently valid token roll-ups.
+func (t TokenUsage) Add(other TokenUsage) (TokenUsage, error) {
+	if err := t.Validate(); err != nil {
+		return TokenUsage{}, fmt.Errorf("left token usage: %w", err)
+	}
+	if err := other.Validate(); err != nil {
+		return TokenUsage{}, fmt.Errorf("right token usage: %w", err)
+	}
+	next := TokenUsage{}
+	fields := []struct {
+		name        string
+		left, right int64
+		target      *int64
+	}{
+		{name: "prompt", left: t.PromptTokens, right: other.PromptTokens, target: &next.PromptTokens},
+		{name: "completion", left: t.CompletionTokens, right: other.CompletionTokens, target: &next.CompletionTokens},
+		{name: "reasoning", left: t.ReasoningTokens, right: other.ReasoningTokens, target: &next.ReasoningTokens},
+		{name: "cache-read", left: t.CacheReadTokens, right: other.CacheReadTokens, target: &next.CacheReadTokens},
+		{name: "cache-write", left: t.CacheWriteTokens, right: other.CacheWriteTokens, target: &next.CacheWriteTokens},
+	}
+	for _, field := range fields {
+		value, ok := checkedAddInt64(field.left, field.right)
+		if !ok {
+			return TokenUsage{}, fmt.Errorf("accounting: %s token usage overflows", field.name)
+		}
+		*field.target = value
+	}
+	return next, nil
 }
 
 // ModelUsage is one model's slice of an execution's tokens and cost.
@@ -310,6 +353,31 @@ type ModelUsage struct {
 	TokenUsage
 	Cost  Cost
 	Calls int
+}
+
+// Add returns the checked cumulative usage for the same served model.
+func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
+	if err := m.Validate(); err != nil {
+		return ModelUsage{}, fmt.Errorf("left model usage: %w", err)
+	}
+	if err := other.Validate(); err != nil {
+		return ModelUsage{}, fmt.Errorf("right model usage: %w", err)
+	}
+	if m.Model != other.Model {
+		return ModelUsage{}, fmt.Errorf("accounting: cannot combine models %q and %q", m.Model, other.Model)
+	}
+	tokens, err := m.TokenUsage.Add(other.TokenUsage)
+	if err != nil {
+		return ModelUsage{}, err
+	}
+	cost, err := m.Cost.Add(other.Cost)
+	if err != nil {
+		return ModelUsage{}, err
+	}
+	if other.Calls > math.MaxInt-m.Calls {
+		return ModelUsage{}, errors.New("accounting: model call count overflows")
+	}
+	return ModelUsage{Model: m.Model, TokenUsage: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
 }
 
 // Snapshot is the durable usage projection for one complete execution tree.
@@ -333,22 +401,11 @@ func (s Snapshot) Total() (ModelUsage, error) {
 		total.Cost = Cost{available: true}
 	}
 	for index, model := range s.Models {
-		var ok bool
-		if total.PromptTokens, ok = checkedAddInt64(total.PromptTokens, model.PromptTokens); !ok {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] prompt-token aggregate overflows", index)
+		tokens, err := total.TokenUsage.Add(model.TokenUsage)
+		if err != nil {
+			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] token aggregate: %w", index, err)
 		}
-		if total.CompletionTokens, ok = checkedAddInt64(total.CompletionTokens, model.CompletionTokens); !ok {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] completion-token aggregate overflows", index)
-		}
-		if total.ReasoningTokens, ok = checkedAddInt64(total.ReasoningTokens, model.ReasoningTokens); !ok {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] reasoning-token aggregate overflows", index)
-		}
-		if total.CacheReadTokens, ok = checkedAddInt64(total.CacheReadTokens, model.CacheReadTokens); !ok {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cache-read-token aggregate overflows", index)
-		}
-		if total.CacheWriteTokens, ok = checkedAddInt64(total.CacheWriteTokens, model.CacheWriteTokens); !ok {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cache-write-token aggregate overflows", index)
-		}
+		total.TokenUsage = tokens
 		nextCost, err := total.Cost.Add(model.Cost)
 		if err != nil {
 			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cost aggregate: %w", index, err)
@@ -427,16 +484,8 @@ func (m ModelUsage) Validate() error {
 	if _, err := modelref.NewModelIdentity(m.Model); err != nil {
 		return fmt.Errorf("model usage: %w", err)
 	}
-	u := m.TokenUsage
-	if u.PromptTokens < 0 || u.CompletionTokens < 0 || u.ReasoningTokens < 0 ||
-		u.CacheReadTokens < 0 || u.CacheWriteTokens < 0 {
-		return errors.New("model usage token counts must not be negative")
-	}
-	if u.ReasoningTokens > u.CompletionTokens {
-		return errors.New("model usage reasoning tokens exceed completion tokens")
-	}
-	if u.CacheReadTokens > u.PromptTokens || u.CacheWriteTokens > u.PromptTokens {
-		return errors.New("model usage cache tokens exceed prompt tokens")
+	if err := m.TokenUsage.Validate(); err != nil {
+		return fmt.Errorf("model usage: %w", err)
 	}
 	if err := m.Cost.Validate(); err != nil {
 		return fmt.Errorf("model usage: %w", err)

@@ -708,7 +708,10 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		}
 		i.maintainCompletedRoot()
 	}
-	end := i.segmentEnd(result)
+	end, err := i.segmentEnd(result)
+	if err != nil {
+		return err
+	}
 	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
 	if i.lifecycleHooks != nil {
 		i.lifecycleHooks.NotifyStopped(
@@ -766,7 +769,7 @@ func (i *interactionSession) release(ctx context.Context) error {
 	}
 }
 
-func (i *interactionSession) segmentEnd(result agent.Result) runs.SegmentEnded {
+func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
 	// The model Effect and Scope's host-context watcher observe the same owner
@@ -784,8 +787,12 @@ func (i *interactionSession) segmentEnd(result agent.Result) runs.SegmentEnded {
 	} else {
 		end = segmentEndFromTermination(termination, duration)
 	}
-	end.Usage = i.accounting.segmentUsage(result.ProcessID())
-	return end
+	usage, err := i.accounting.segmentUsage(result.ProcessID())
+	if err != nil {
+		return runs.SegmentEnded{}, err
+	}
+	end.Usage = usage
+	return end, nil
 }
 
 func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Duration) runs.SegmentEnded {
