@@ -239,7 +239,7 @@ func (r *RunStore) validateChildPlacement(
 // repeated transition, mismatched identity, or any other source state is an
 // ownership error and never succeeds silently.
 func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run) error {
-	return r.suspend(ctx, value, runCommitIdentity{})
+	return r.suspend(ctx, value, nil)
 }
 
 // SuspendBarrier parks one exact active Segment and stamps the root-owned tree
@@ -251,16 +251,17 @@ func (r *RunStore) SuspendBarrier(
 	segmentID string,
 	commitID runtimeidentity.CommitID,
 ) error {
-	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
+	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
+	if err != nil {
 		return err
 	}
-	return r.suspend(ctx, value, runCommitIdentity{segmentID: segmentID, commitID: commitID})
+	return r.suspend(ctx, value, marker)
 }
 
 func (r *RunStore) suspend(
 	ctx context.Context,
 	value rundomain.Run,
-	commit runCommitIdentity,
+	marker *runCommitMarker,
 ) error {
 	if err := value.Validate(); err != nil {
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
@@ -280,11 +281,8 @@ func (r *RunStore) suspend(
 		if !found || current.SessionID() != value.SessionID() {
 			return errors.New("sqlite: suspend run: active run not found")
 		}
-		if !commit.commitID.IsZero() && current.ActiveSegmentID() != commit.segmentID {
-			return fmt.Errorf(
-				"sqlite: suspend run: active Segment is %q, want %q",
-				current.ActiveSegmentID(), commit.segmentID,
-			)
+		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
+			return fmt.Errorf("sqlite: suspend run: %w", err)
 		}
 		next, err := current.AdvanceProgress(
 			value.Metrics(), value.ContextTokens(), value.UpdatedAt(),
@@ -299,13 +297,14 @@ func (r *RunStore) suspend(
 		if !next.Equal(value) {
 			return errors.New("sqlite: suspend run: proposed Run differs from the aggregate transition")
 		}
+		commitSegmentID, commitID := marker.databaseValues()
 		// The segment identity is cleared in the same statement that parks the Run:
 		// a Run waiting on a person has no segment to attach to.
 		res, err := conn(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 			        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`,
-			coarseState(next.State()).databaseValue(), commit.segmentID, commit.commitID.String(),
+			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
 			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), runUpdatedAt(value),
 			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue())
 		if err != nil {
@@ -483,7 +482,7 @@ func (r *RunStore) UpdateProgress(
 // Terminalize ends the exact non-terminal Run that run identifies, recording the
 // outcome the executor reached and the result that explains it.
 func (r *RunStore) Terminalize(ctx context.Context, value rundomain.Run) error {
-	return r.terminalize(ctx, value, runCommitIdentity{})
+	return r.terminalize(ctx, value, nil)
 }
 
 // RecordRunCommit stamps one exact active Segment's latest immutable
@@ -564,23 +563,57 @@ func (r *RunStore) TerminalizeEvent(
 	segmentID string,
 	commitID runtimeidentity.CommitID,
 ) error {
-	if err := validateRunCommitIdentity(value.SessionID(), value.ID(), segmentID, commitID); err != nil {
+	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
+	if err != nil {
 		return err
 	}
-	return r.terminalize(ctx, value, runCommitIdentity{segmentID: segmentID, commitID: commitID})
+	return r.terminalize(ctx, value, marker)
 }
 
-type runCommitIdentity struct {
+// runCommitMarker is the optional durable fence attached to one Application
+// write-set. A non-nil marker always carries both coordinates because callers
+// can only construct it through newRunCommitMarker; nil means the lifecycle
+// transition has no EventCommit to stamp.
+type runCommitMarker struct {
 	segmentID string
 	commitID  runtimeidentity.CommitID
+}
+
+func newRunCommitMarker(
+	sessionID string,
+	runID string,
+	segmentID string,
+	commitID runtimeidentity.CommitID,
+) (*runCommitMarker, error) {
+	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
+		return nil, err
+	}
+	return &runCommitMarker{segmentID: segmentID, commitID: commitID}, nil
+}
+
+func (r *runCommitMarker) requireActiveSegment(activeSegmentID string) error {
+	if r == nil {
+		return nil
+	}
+	if activeSegmentID != r.segmentID {
+		return fmt.Errorf("active Segment is %q, want %q", activeSegmentID, r.segmentID)
+	}
+	return nil
+}
+
+func (r *runCommitMarker) databaseValues() (string, string) {
+	if r == nil {
+		return "", ""
+	}
+	return r.segmentID, r.commitID.String()
 }
 
 func (r *RunStore) terminalize(
 	ctx context.Context,
 	value rundomain.Run,
-	identity runCommitIdentity,
+	marker *runCommitMarker,
 ) error {
-	return r.finish(ctx, "terminalize", value, identity, func(current rundomain.Run) (rundomain.Run, error) {
+	return r.finish(ctx, "terminalize", value, marker, func(current rundomain.Run) (rundomain.Run, error) {
 		outcome, terminal := value.Outcome()
 		if !terminal {
 			return rundomain.Run{}, errors.New("outcome is required")
@@ -721,7 +754,7 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, expected, replacement 
 // Running or Waiting, because it describes a Run nobody is driving rather
 // than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, value rundomain.Run) error {
-	return r.finish(ctx, "recover lost", value, runCommitIdentity{}, func(current rundomain.Run) (rundomain.Run, error) {
+	return r.finish(ctx, "recover lost", value, nil, func(current rundomain.Run) (rundomain.Run, error) {
 		failure, failed := value.Failure()
 		if !failed {
 			return rundomain.Run{}, errors.New("lost failure is required")
@@ -740,7 +773,7 @@ func (r *RunStore) finish(
 	ctx context.Context,
 	op string,
 	value rundomain.Run,
-	commit runCommitIdentity,
+	marker *runCommitMarker,
 	transition func(rundomain.Run) (rundomain.Run, error),
 ) error {
 	if err := value.Validate(); err != nil {
@@ -767,13 +800,8 @@ func (r *RunStore) finish(
 		if !found || current.SessionID() != value.SessionID() {
 			return fmt.Errorf("sqlite: %s run: active run not found", op)
 		}
-		if !commit.commitID.IsZero() && current.ActiveSegmentID() != commit.segmentID {
-			return fmt.Errorf(
-				"sqlite: %s run: active Segment is %q, want %q",
-				op,
-				current.ActiveSegmentID(),
-				commit.segmentID,
-			)
+		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
+			return fmt.Errorf("sqlite: %s run: %w", op, err)
 		}
 		current, err = current.AdvanceProgress(
 			value.Metrics(), value.ContextTokens(), value.FinishedAt(),
@@ -789,6 +817,7 @@ func (r *RunStore) finish(
 			return fmt.Errorf("sqlite: %s run: proposed Run differs from the aggregate transition", op)
 		}
 		outcome, _ := value.Outcome()
+		commitSegmentID, commitID := marker.databaseValues()
 		query :=
 			`UPDATE runs SET
 			   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
@@ -796,15 +825,15 @@ func (r *RunStore) finish(
 			   usage = ?, context_tokens = ?, problem = ?, message_mark = ?, finished_at = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`
 		args := []any{
-			coarseState(next.State()).databaseValue(), commit.segmentID, commit.commitID.String(),
+			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
 			outcome.String(), value.Detail(), metrics.steps, metrics.durationNs,
 			metrics.usage, next.ContextTokens(), encodedFailure,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
 			runUpdatedAt(value), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}
-		if !commit.commitID.IsZero() {
+		if marker != nil {
 			query += ` AND active_segment_id = ?`
-			args = append(args, commit.segmentID)
+			args = append(args, marker.segmentID)
 		}
 		res, err := conn(ctx, r.db).ExecContext(ctx, query, args...)
 		if err != nil {
