@@ -97,9 +97,10 @@ func OpenToken(path string) (*Token, error) {
 		}
 		return nil, fmt.Errorf("local Runtime token: publish candidate: %w", err)
 	}
-	if err := syncDirectory(parent); err != nil {
-		return nil, fmt.Errorf("local Runtime token: sync parent: %w", err)
-	}
+	// Link is the credential's logical commit point. A directory-sync refusal
+	// cannot be reported as failed publication after trusted clients can already
+	// observe the token; strengthen crash durability where supported instead.
+	syncCommittedDirectory(parent)
 	return &Token{value: value, path: path}, nil
 }
 
@@ -188,11 +189,10 @@ func invalidToken(reason string) error {
 	return fmt.Errorf("local Runtime token: %s: %w", reason, ErrInvalidToken)
 }
 
-func syncDirectory(path string) error {
+func syncCommittedDirectory(path string) {
 	directory, err := os.Open(path)
 	if err != nil {
-		return err
+		return
 	}
-	defer func() { _ = directory.Close() }()
-	return directory.Sync()
+	_ = errors.Join(directory.Sync(), directory.Close())
 }
