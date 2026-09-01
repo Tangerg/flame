@@ -59,7 +59,7 @@ func run(dir, validatorDir, tsDir string) error {
 	// only the second published that method in go-api.json.
 	if validatorDir != "" {
 		path := filepath.Join(validatorDir, validatorFile)
-		if err := os.WriteFile(path, []byte(newValidators(registry, shapes)), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(newValidators(registry, shapes, walked)), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}

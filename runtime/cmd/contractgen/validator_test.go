@@ -3,8 +3,10 @@ package main
 import (
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
@@ -93,5 +95,18 @@ func TestObjectAlternativePresenceStaysOneRule(t *testing.T) {
 	want := `requiredAnyWhen(true, []string{"alpha", "beta"}, v)`
 	if !slices.Equal(checks, []string{want}) {
 		t.Fatalf("object checks = %v, want one alternative-presence check %q", checks, want)
+	}
+}
+
+func TestReachableEnumOnlyResponseReceivesGoValidator(t *testing.T) {
+	t.Parallel()
+
+	registry, shapes := delivery.Contract(), dispatch.WireShapes()
+	generated := newValidators(registry, shapes, walkWireTypes(registry, shapes))
+	if !strings.Contains(generated, "func (w WorkspaceInfo) ValidateWire() error") {
+		t.Fatal("WorkspaceInfo enum constraint was omitted from the Go validator")
+	}
+	if !strings.Contains(generated, `closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false)`) {
+		t.Fatal("WorkspaceInfo availability enum check was omitted from the Go validator")
 	}
 }

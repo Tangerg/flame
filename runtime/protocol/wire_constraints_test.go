@@ -1318,6 +1318,19 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 	}
 }
 
+func TestReachableOutputLeavesKeepGeneratedConstraints(t *testing.T) {
+	t.Parallel()
+
+	assertConstraintField(t, ValidateWireTree(WorkspaceInfo{
+		Availability: WorkspaceAvailability("unknown"),
+	}), "WorkspaceInfo", "availability")
+	assertConstraintField(t, (ListItemsResponse{
+		Page: Page[Item]{PageContinuation: PageContinuation{
+			NextCursor: strings.Repeat("a", MaximumPaginationCursorCharacters+1),
+		}},
+	}).ValidateWire(), "ListItemsResponse", "nextCursor")
+}
+
 func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 	t.Parallel()
 

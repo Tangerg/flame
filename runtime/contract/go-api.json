@@ -2276,6 +2276,12 @@
               "type": "AgentDocScope",
               "tag": "json:\"scope\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -2510,6 +2516,12 @@
               "type": "ApprovalMode",
               "tag": "json:\"mode\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -2550,6 +2562,12 @@
               "name": "Decision",
               "type": "ApprovalRuleDecision",
               "tag": "json:\"decision\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -3705,6 +3723,12 @@
               "type": "string",
               "tag": "json:\"markdown,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4343,6 +4367,12 @@
               "type": "string",
               "tag": "json:\"detail,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -4673,6 +4703,12 @@
               "name": "Question",
               "type": "*Question",
               "tag": "json:\"question,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5770,6 +5806,12 @@
               "type": "SkillLifecycle",
               "tag": "json:\"lifecycle\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -6314,6 +6356,12 @@
               "type": "ProviderKeySource",
               "tag": "json:\"source\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -6509,6 +6557,12 @@
               "type": "string",
               "tag": "json:\"source\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -6535,6 +6589,12 @@
               "name": "Scope",
               "type": "RememberScopeKind",
               "tag": "json:\"scope\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7357,6 +7417,12 @@
               "type": "RuntimeLimits",
               "tag": "json:\"limits\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -7615,6 +7681,12 @@
               "type": "SkillScope",
               "tag": "json:\"scope\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -7682,6 +7754,12 @@
               "name": "Revises",
               "type": "bool",
               "tag": "json:\"revises,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -8082,6 +8160,12 @@
               "name": "SafetyClass",
               "type": "SafetyClass",
               "tag": "json:\"safetyClass,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -8551,6 +8635,12 @@
               "name": "Availability",
               "type": "WorkspaceAvailability",
               "tag": "json:\"availability\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

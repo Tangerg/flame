@@ -2396,3 +2396,102 @@ func (s SubscriptionLimits) ValidateWire() error {
 		positiveNumber("maxWatches", s.MaxWatches),
 	)
 }
+
+func (a AgentDoc) ValidateWire() error {
+	return collectWireViolations("AgentDoc",
+		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
+	)
+}
+
+func (a ApprovalModeResult) ValidateWire() error {
+	return collectWireViolations("ApprovalModeResult",
+		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
+	)
+}
+
+func (a ApprovalRule) ValidateWire() error {
+	return collectWireViolations("ApprovalRule",
+		closedEnum("scope", string(a.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
+	)
+}
+
+func (e ExportSessionResponse) ValidateWire() error {
+	return collectWireViolations("ExportSessionResponse",
+		closedEnum("format", string(e.Format), []string{"md", "json"}, false),
+	)
+}
+
+func (g GoalReason) ValidateWire() error {
+	return collectWireViolations("GoalReason",
+		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}, false),
+	)
+}
+
+func (i InterruptPayload) ValidateWire() error {
+	return collectWireViolations("InterruptPayload",
+		closedEnum("risk", string(i.Risk), []string{"low", "medium", "high"}, true),
+	)
+}
+
+func (l ListItemsResponse) ValidateWire() error {
+	return collectWireViolations("ListItemsResponse",
+		maxLength("nextCursor", l.NextCursor, 65536),
+	)
+}
+
+func (m ManagedSkill) ValidateWire() error {
+	return collectWireViolations("ManagedSkill",
+		closedEnum("lifecycle", string(m.Lifecycle), []string{"active", "archived"}, false),
+	)
+}
+
+func (p ProviderCredential) ValidateWire() error {
+	return collectWireViolations("ProviderCredential",
+		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
+	)
+}
+
+func (r Recipe) ValidateWire() error {
+	return collectWireViolations("Recipe",
+		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
+	)
+}
+
+func (r RememberScope) ValidateWire() error {
+	return collectWireViolations("RememberScope",
+		closedEnum("scope", string(r.Scope), []string{"session", "project", "global"}, false),
+	)
+}
+
+func (s ServerCapabilities) ValidateWire() error {
+	return collectWireViolations("ServerCapabilities",
+		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
+		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+	)
+}
+
+func (s Skill) ValidateWire() error {
+	return collectWireViolations("Skill",
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+	)
+}
+
+func (s SkillProposal) ValidateWire() error {
+	return collectWireViolations("SkillProposal",
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, true),
+	)
+}
+
+func (t ToolSpec) ValidateWire() error {
+	return collectWireViolations("ToolSpec",
+		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
+	)
+}
+
+func (w WorkspaceInfo) ValidateWire() error {
+	return collectWireViolations("WorkspaceInfo",
+		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
+	)
+}
