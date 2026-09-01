@@ -31,13 +31,20 @@ func (d *DiagnosticTools) Tools(ctx context.Context) ([]workspace.DiagnosticTool
 	tools := make([]workspace.DiagnosticToolDescriptor, 0, len(values))
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
+		if value.SafetyClass != protocol.SafetyClassSafe {
+			return nil, runtimeContractViolation(
+				"list diagnostic tools item %d is not safe for direct invocation: %q",
+				index+1,
+				value.SafetyClass,
+			)
+		}
 		schema, marshalErr := json.Marshal(value.Parameters)
 		if marshalErr != nil {
 			return nil, runtimeContractViolation("list diagnostic tools item %d has an invalid schema: %v", index+1, marshalErr)
 		}
 		descriptor := workspace.DiagnosticToolDescriptor{
 			Name: value.Name, Description: value.Description,
-			Schema: schema, Safety: workspace.DiagnosticToolSafety(value.SafetyClass),
+			Schema: schema,
 		}
 		if err := descriptor.Validate(); err != nil {
 			return nil, runtimeContractViolation("list diagnostic tools item %d is invalid: %v", index+1, err)

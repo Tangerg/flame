@@ -22,7 +22,7 @@ type diagnosticToolServiceStub struct {
 
 func (d *diagnosticToolServiceStub) Tools(context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
 	return []workspace.DiagnosticToolDescriptor{{
-		Name: "inspect.cache", Description: "inspect cache ownership", Safety: workspace.DiagnosticToolSafe,
+		Name: "inspect.cache", Description: "inspect cache ownership",
 		Schema: json.RawMessage(`{"type":"object","properties":{"depth":{"type":"number"}}}`),
 	}}, nil
 }

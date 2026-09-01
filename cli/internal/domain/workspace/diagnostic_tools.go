@@ -7,32 +7,15 @@ import (
 	"strings"
 )
 
-type DiagnosticToolSafety string
-
-const (
-	DiagnosticToolSafe DiagnosticToolSafety = "safe"
-)
-
-func (s DiagnosticToolSafety) Validate() error {
-	if s != DiagnosticToolSafe {
-		return fmt.Errorf("direct diagnostic tool safety must be safe, got %q", s)
-	}
-	return nil
-}
-
 type DiagnosticToolDescriptor struct {
 	Name        string
 	Description string
 	Schema      json.RawMessage
-	Safety      DiagnosticToolSafety
 }
 
 func (d DiagnosticToolDescriptor) Validate() error {
 	if strings.TrimSpace(d.Name) == "" {
 		return errors.New("diagnostic tool name is empty")
-	}
-	if err := d.Safety.Validate(); err != nil {
-		return fmt.Errorf("diagnostic tool %s: %w", d.Name, err)
 	}
 	return validateObject("diagnostic tool schema", d.Schema)
 }

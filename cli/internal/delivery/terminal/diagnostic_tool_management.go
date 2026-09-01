@@ -36,7 +36,7 @@ func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerD
 			description = "No description provided."
 		}
 		sections = append(sections,
-			ToolSection{Title: tool.Name + " · " + string(tool.Safety), Style: toolSectionParagraph, Text: description},
+			ToolSection{Title: tool.Name + " · safe", Style: toolSectionParagraph, Text: description},
 			ToolSection{Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(tool.Schema)},
 		)
 	}
