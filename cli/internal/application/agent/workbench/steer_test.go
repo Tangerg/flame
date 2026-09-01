@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
@@ -125,7 +127,7 @@ func TestPendingSteerOwnsDetachedCommandMaterial(t *testing.T) {
 
 func steerTestAttachment(directory string) agent.Attachment {
 	return agent.Attachment{
-		ID: "att_notes", Kind: agent.AttachmentText, Name: "notes.txt",
+		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(directory, "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
 }

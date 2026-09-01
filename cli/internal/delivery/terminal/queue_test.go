@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -239,7 +240,7 @@ func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 
 func TestQueueDrawerRendersPreviewActionsAndResponsiveFallback(t *testing.T) {
 	drawer, _ := testQueueDrawer(t,
-		agent.Message{Text: "first line\nsecond line", Attachments: []agent.Attachment{{ID: "a", Kind: agent.AttachmentText, Name: "context.txt", Path: "/tmp/context.txt"}}},
+		agent.Message{Text: "first line\nsecond line", Attachments: []agent.Attachment{{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}}},
 		agent.Message{Text: "second prompt"},
 	)
 	_, _, rendered := drawQueueDrawer(t, drawer, 96, 9)
@@ -293,7 +294,7 @@ func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
 }
 
 func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
-	attachment := agent.Attachment{ID: "a", Kind: agent.AttachmentText, Name: "context.txt", Path: "/tmp/context.txt"}
+	attachment := agent.Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}
 	drawer, queue := testQueueDrawer(t, agent.Message{Text: "original", Attachments: []agent.Attachment{attachment}})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})

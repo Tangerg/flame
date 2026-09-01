@@ -183,7 +183,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapability(t *testing.T) {
 	t.Parallel()
 	attachment := agent.Attachment{
-		ID: "image", Kind: agent.AttachmentImage, Name: "image.png", Path: "/image.png",
+		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}
 	message := agent.Message{Attachments: []agent.Attachment{attachment}}

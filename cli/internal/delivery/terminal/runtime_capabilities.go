@@ -3,6 +3,8 @@ package terminal
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -23,7 +25,7 @@ func (a *app) requireRuntimeFeature(feature runtimebinding.FeatureName) error {
 
 func (a *app) validateMessageCapabilities(message agent.Message) error {
 	for _, attachment := range message.Attachments {
-		if attachment.Kind == agent.AttachmentImage {
+		if attachment.Kind == protocol.ContentBlockImage {
 			return a.requireRuntimeFeature(runtimebinding.FeatureMultimodal)
 		}
 	}

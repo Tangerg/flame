@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
@@ -173,7 +175,7 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 		t.Fatal(err)
 	}
 	attachment := agent.Attachment{
-		ID: "att_notes", Kind: agent.AttachmentText, Name: "notes.txt",
+		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
 	request := agent.SteerRun{
@@ -235,7 +237,7 @@ func stagedSteer(t *testing.T) *steerFixture {
 	}
 	fixture := &steerFixture{store: store, capability: capability, now: stagedAt}
 	attachment := agent.Attachment{
-		ID: "att_notes", Kind: agent.AttachmentText, Name: "notes.txt",
+		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
 	request := agent.SteerRun{

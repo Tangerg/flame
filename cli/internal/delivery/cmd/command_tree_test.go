@@ -557,7 +557,7 @@ func TestRunAttachesRepeatedFilesAndAllowsAttachmentOnlyPrompts(t *testing.T) {
 	if prompt.Text != "" || len(prompt.Attachments) != 2 {
 		t.Fatalf("prompt block = %+v", prompt)
 	}
-	if prompt.Attachments[0].Kind != agent.AttachmentText || prompt.Attachments[1].Kind != agent.AttachmentImage {
+	if prompt.Attachments[0].Kind != protocol.ContentBlockText || prompt.Attachments[1].Kind != protocol.ContentBlockImage {
 		t.Fatalf("attachment kinds = %+v", prompt.Attachments)
 	}
 }

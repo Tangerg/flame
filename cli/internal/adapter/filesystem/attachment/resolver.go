@@ -23,6 +23,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -178,12 +180,12 @@ func (i attachmentIdentity) digest() [sha256.Size]byte {
 	return value
 }
 
-func attachmentKind(mimeType string) (agent.AttachmentKind, bool) {
+func attachmentKind(mimeType string) (protocol.ContentBlockType, bool) {
 	switch {
 	case strings.HasPrefix(mimeType, "image/"):
-		return agent.AttachmentImage, true
+		return protocol.ContentBlockImage, true
 	case isTextMIME(mimeType):
-		return agent.AttachmentText, true
+		return protocol.ContentBlockText, true
 	default:
 		return "", false
 	}

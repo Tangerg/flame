@@ -83,7 +83,7 @@ func TestSubscribeRunNeedsRunAndSegment(t *testing.T) {
 }
 
 func TestMessageRejectsDuplicateAttachments(t *testing.T) {
-	attachment := Attachment{ID: "a", Kind: AttachmentText, Name: "a.txt", Path: "/tmp/a.txt"}
+	attachment := Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "a.txt", Path: "/tmp/a.txt"}
 	message := Message{Attachments: []Attachment{attachment, attachment}}
 	if err := message.Validate(); err == nil {
 		t.Fatal("duplicate attachment was accepted")
@@ -91,7 +91,7 @@ func TestMessageRejectsDuplicateAttachments(t *testing.T) {
 }
 
 func TestDurableAttachmentMayLackLocalPathButDraftMayNot(t *testing.T) {
-	durable := Attachment{ID: "item_1:image:0", Kind: AttachmentImage, Name: "image.png", MimeType: "image/png", Size: 8}
+	durable := Attachment{ID: "item_1:image:0", Kind: protocol.ContentBlockImage, Name: "image.png", MimeType: "image/png", Size: 8}
 	if err := durable.Validate(); err != nil {
 		t.Fatalf("durable attachment: %v", err)
 	}

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -216,11 +218,11 @@ func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *te
 	application := &app{runtimeProfile: &runtimebinding.Profile{Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
 		runtimebinding.FeatureMultimodal: {Enabled: false},
 	}}}
-	text := agent.Message{Attachments: []agent.Attachment{{Kind: agent.AttachmentText}}}
+	text := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {
 		t.Fatalf("text attachment: %v", err)
 	}
-	image := agent.Message{Attachments: []agent.Attachment{{Kind: agent.AttachmentImage}}}
+	image := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockImage}}}
 	if err := application.validateMessageCapabilities(image); err == nil || !strings.Contains(err.Error(), "multimodal") {
 		t.Fatalf("image attachment error = %v", err)
 	}

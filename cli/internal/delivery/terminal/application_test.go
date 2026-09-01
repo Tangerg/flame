@@ -4356,7 +4356,7 @@ func TestWorkspaceFileCompletionCreatesAtomicAttachments(t *testing.T) {
 		t.Fatalf("start message = %+v", started.Message)
 	}
 	canonical, _ := filepath.EvalSymlinks(path)
-	if got := started.Message.Attachments[0]; got.Path != canonical || got.Kind != agent.AttachmentText {
+	if got := started.Message.Attachments[0]; got.Path != canonical || got.Kind != protocol.ContentBlockText {
 		t.Fatalf("attachment = %+v", got)
 	}
 

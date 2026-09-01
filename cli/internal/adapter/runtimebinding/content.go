@@ -90,7 +90,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 			return nil, err
 		}
 		switch attachment.Kind {
-		case agent.AttachmentText:
+		case protocol.ContentBlockText:
 			if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
 				return nil, fmt.Errorf("read attachment %q: content is not valid text", attachment.Name)
 			}
@@ -98,7 +98,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 				Type: protocol.ContentBlockText,
 				Text: fmt.Sprintf("--- attached file: %q ---\n%s\n--- end attached file ---", attachment.Name, data),
 			})
-		case agent.AttachmentImage:
+		case protocol.ContentBlockImage:
 			blocks = append(blocks, protocol.ContentBlock{
 				Type: protocol.ContentBlockImage, Mime: attachment.MimeType,
 				Data: base64.StdEncoding.EncodeToString(data),
@@ -112,7 +112,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 
 func (r *Connection) requireInputCapabilities(message agent.Message) error {
 	for _, attachment := range message.Attachments {
-		if attachment.Kind == agent.AttachmentImage {
+		if attachment.Kind == protocol.ContentBlockImage {
 			return r.requireFeature(FeatureMultimodal)
 		}
 	}
@@ -155,7 +155,7 @@ func projectContentValue(itemID string, content []protocol.ContentBlock) (conten
 				name += "." + filepath.Base(subtype)
 			}
 			attachments = append(attachments, agent.Attachment{
-				ID: fmt.Sprintf("%s:image:%d", itemID, index), Kind: agent.AttachmentImage,
+				ID: fmt.Sprintf("%s:image:%d", itemID, index), Kind: protocol.ContentBlockImage,
 				Name: name, MimeType: block.Mime, Size: int64(len(data)),
 			})
 			images = append(images, agent.InlineImage{

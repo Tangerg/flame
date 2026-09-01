@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -56,7 +58,7 @@ func resolveFixture(t *testing.T, resolver *Resolver, path string) agent.Attachm
 
 func requireTextAttachment(t *testing.T, got agent.Attachment, canonical string) {
 	t.Helper()
-	if got.ID == "" || got.Kind != agent.AttachmentText || got.Name != "docs/notes.md" || got.Path != canonical || got.MimeType != "text/markdown" || got.Size != 8 {
+	if got.ID == "" || got.Kind != protocol.ContentBlockText || got.Name != "docs/notes.md" || got.Path != canonical || got.MimeType != "text/markdown" || got.Size != 8 {
 		t.Fatalf("attachment = %+v", got)
 	}
 }

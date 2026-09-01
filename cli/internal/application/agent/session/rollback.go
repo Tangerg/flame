@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
@@ -86,7 +88,7 @@ func openingInput(transcript []agent.Block, droppedIDs []string) (string, int) {
 			}
 			images := 0
 			for _, attachment := range block.Attachments {
-				if attachment.Kind == agent.AttachmentImage {
+				if attachment.Kind == protocol.ContentBlockImage {
 					images++
 				}
 			}

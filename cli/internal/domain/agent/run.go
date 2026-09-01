@@ -145,16 +145,9 @@ func (m Message) Equal(other Message) bool {
 	return m.Text == other.Text && slices.Equal(m.Attachments, other.Attachments)
 }
 
-type AttachmentKind string
-
-const (
-	AttachmentImage AttachmentKind = "image"
-	AttachmentText  AttachmentKind = "text"
-)
-
 type Attachment struct {
 	ID       string
-	Kind     AttachmentKind
+	Kind     protocol.ContentBlockType
 	Name     string
 	Path     string
 	MimeType string
@@ -166,10 +159,10 @@ func (a Attachment) Validate() error {
 	if strings.TrimSpace(a.ID) == "" {
 		problems = append(problems, errors.New("id is empty"))
 	}
-	if !slices.Contains([]AttachmentKind{AttachmentImage, AttachmentText}, a.Kind) {
+	if !slices.Contains([]protocol.ContentBlockType{protocol.ContentBlockImage, protocol.ContentBlockText}, a.Kind) {
 		problems = append(problems, fmt.Errorf("kind %q is invalid", a.Kind))
 	}
-	if a.Kind == AttachmentImage {
+	if a.Kind == protocol.ContentBlockImage {
 		mediaType, _, err := mime.ParseMediaType(a.MimeType)
 		if err != nil || !strings.HasPrefix(mediaType, "image/") {
 			problems = append(problems, fmt.Errorf("image MIME %q is invalid", a.MimeType))

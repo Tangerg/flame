@@ -32,7 +32,7 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 			t.Fatal(rememberErr)
 		}
 	}
-	draft := agent.Message{Text: "unfinished", Attachments: []agent.Attachment{{ID: "attachment", Path: "/tmp/a.go", Name: "a.go", Kind: agent.AttachmentText}}}
+	draft := agent.Message{Text: "unfinished", Attachments: []agent.Attachment{{ID: "attachment", Path: "/tmp/a.go", Name: "a.go", Kind: protocol.ContentBlockText}}}
 	if saveDraftErr := store.SaveDraft("../../session", draft); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -721,7 +721,7 @@ func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := agent.Message{Text: "inspect", Attachments: []agent.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: agent.AttachmentText}}}
+	first := agent.Message{Text: "inspect", Attachments: []agent.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: protocol.ContentBlockText}}}
 	second := first.Clone()
 	second.Attachments[0].Name = "new.go"
 	if err := store.Remember(first); err != nil {

@@ -34,8 +34,8 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 	blocks, err := runtime.projectInput(t.Context(), agent.Message{
 		Text: "prompt",
 		Attachments: []agent.Attachment{
-			{ID: "text", Kind: agent.AttachmentText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 5},
-			{ID: "image", Kind: agent.AttachmentImage, Name: "pixel.png", Path: imagePath, MimeType: "image/png", Size: int64(len(image))},
+			{ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 5},
+			{ID: "image", Kind: protocol.ContentBlockImage, Name: "pixel.png", Path: imagePath, MimeType: "image/png", Size: int64(len(image))},
 		},
 	})
 	if err != nil {
@@ -56,7 +56,7 @@ func TestProjectInputRejectsImagesBeforeReadingWithoutMultimodalCapability(t *te
 		return []byte("image"), nil
 	}}
 	blocks, err := runtime.projectInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
-		ID: "image", Kind: agent.AttachmentImage, Name: "image.png", Path: "/image.png",
+		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}}})
 	if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
@@ -81,7 +81,7 @@ func TestProjectInputRejectsInvalidTextBytesAtDispatch(t *testing.T) {
 				return test.data, nil
 			}}
 			blocks, err := runtime.projectInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
-				ID: "text", Kind: agent.AttachmentText, Name: "notes.txt", Path: "/notes.txt",
+				ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
 				MimeType: "text/plain", Size: int64(len(test.data)),
 			}}})
 			if err == nil || !strings.Contains(err.Error(), "not valid text") {

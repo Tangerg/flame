@@ -6,25 +6,27 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestMergeSessionDraftPreservesBothAuthoringValues(t *testing.T) {
 	shared := agent.Attachment{
-		ID: "shared", Kind: agent.AttachmentText, Name: "shared.txt", Path: "/workspace/shared.txt", Size: 10,
+		ID: "shared", Kind: protocol.ContentBlockText, Name: "shared.txt", Path: "/workspace/shared.txt", Size: 10,
 	}
 	existing := agent.Message{
 		Text: "destination draft",
 		Attachments: []agent.Attachment{
 			shared,
-			{ID: "destination", Kind: agent.AttachmentText, Name: "destination.txt", Path: "/workspace/destination.txt", Size: 20},
+			{ID: "destination", Kind: protocol.ContentBlockText, Name: "destination.txt", Path: "/workspace/destination.txt", Size: 20},
 		},
 	}
 	incoming := agent.Message{
 		Text: "input authored during navigation",
 		Attachments: []agent.Attachment{
 			shared,
-			{ID: "incoming", Kind: agent.AttachmentText, Name: "incoming.txt", Path: "/workspace/incoming.txt", Size: 30},
+			{ID: "incoming", Kind: protocol.ContentBlockText, Name: "incoming.txt", Path: "/workspace/incoming.txt", Size: 30},
 		},
 	}
 	wantExisting, wantIncoming := existing.Clone(), incoming.Clone()

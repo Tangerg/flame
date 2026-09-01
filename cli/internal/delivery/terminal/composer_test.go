@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestPromptHistoryRestoresAttachmentsAndDraft(t *testing.T) {
-	file := agent.Attachment{ID: "att_1", Kind: agent.AttachmentText, Name: "main.go", Path: "/tmp/main.go", Size: 10}
+	file := agent.Attachment{ID: "att_1", Kind: protocol.ContentBlockText, Name: "main.go", Path: "/tmp/main.go", Size: 10}
 	var history promptHistory
 	history.Add(agent.Message{Text: "inspect", Attachments: []agent.Attachment{file}})
 	got, ok := history.Back(agent.Message{Text: "draft"})
