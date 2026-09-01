@@ -6,8 +6,6 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 const skillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -15,6 +13,28 @@ const skillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef012345678
 type skillBindingStub struct {
 	t       *testing.T
 	actions []string
+}
+
+type invalidSkillBindingStub struct {
+	*skillBindingStub
+	discovered *protocol.Page[protocol.Skill]
+	managed    *protocol.Page[protocol.ManagedSkill]
+	proposals  *protocol.Page[protocol.SkillProposal]
+}
+
+func (s *invalidSkillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return s.discovered, nil
+}
+
+func (s *invalidSkillBindingStub) ListManagedSkills(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+	s.assertMeta(options.RequestMeta)
+	return s.managed, nil
+}
+
+func (s *invalidSkillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return s.proposals, nil
 }
 
 func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
@@ -95,7 +115,7 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 		t.Fatalf("Discover = (%+v, %v)", discovered, err)
 	}
 	managed, err := runtime.Managed(t.Context())
-	if err != nil || len(managed) != 1 || managed[0].Lifecycle != workspace.SkillArchived {
+	if err != nil || len(managed) != 1 || managed[0].Lifecycle != protocol.SkillLifecycleArchived {
 		t.Fatalf("Managed = (%+v, %v)", managed, err)
 	}
 	proposals, err := runtime.Proposals(t.Context(), "/workspace")
@@ -126,6 +146,50 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 		if stub.actions[index] != want[index] {
 			t.Fatalf("actions = %v, want %v", stub.actions, want)
 		}
+	}
+}
+
+func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		stub *invalidSkillBindingStub
+		read func(*Connection) error
+	}{
+		{
+			name: "blank discovered name",
+			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{{Scope: protocol.SkillScopeProject}})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Discover(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "blank managed name",
+			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{{Name: " \t", Lifecycle: protocol.SkillLifecycleActive}})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Managed(t.Context())
+				return err
+			},
+		}, {
+			name: "non-canonical proposal revision",
+			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{{
+				Name: "review", Revision: "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789",
+				Scope: protocol.SkillScopeUser, Description: "Review code", Instructions: "Inspect code.",
+			}})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Proposals(t.Context(), "/workspace")
+				return err
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.stub.skillBindingStub = &skillBindingStub{t: t}
+			runtime := &Connection{skills: test.stub, meta: requestMeta("test")}
+			err := test.read(runtime)
+			if err == nil {
+				t.Fatal("invalid skill value was accepted")
+			}
+			requireRuntimeContractViolation(t, err)
+		})
 	}
 }
 

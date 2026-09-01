@@ -13,13 +13,14 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T) {
-	first := workspace.SkillProposal{Name: "shared", Scope: workspace.SkillUserScope, Revision: terminalSkillRevision}
-	second := workspace.SkillProposal{Name: "shared", Scope: workspace.SkillUserScope, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
+	first := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillScopeUser, Revision: terminalSkillRevision}
+	second := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillScopeUser, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
 	proposals := []workspace.SkillProposal{first, second}
 	if _, err := resolveSkillProposal(proposals, "user/shared"); err == nil {
 		t.Fatal("ambiguous proposal name was accepted")
@@ -69,11 +70,11 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 
 func newSkillServiceStub() *skillServiceStub {
 	return &skillServiceStub{
-		discovered: []workspace.DiscoveredSkill{{Name: "release-checks", Description: "Release safely", Scope: workspace.SkillProjectScope}},
-		managed:    []workspace.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: workspace.SkillActive}},
+		discovered: []workspace.DiscoveredSkill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}},
+		managed:    []workspace.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive}},
 		proposals: []workspace.SkillProposal{
-			{Name: "release-checks", Revision: terminalSkillRevision, Scope: workspace.SkillUserScope, Description: "Release safely", Instructions: "Run every release gate.", Origin: workspace.SkillProposalRequested},
-			{Name: "cleanup", Revision: terminalSkillRevision, Scope: workspace.SkillProjectScope, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: workspace.SkillProposalMined},
+			{Name: "release-checks", Revision: terminalSkillRevision, Scope: protocol.SkillScopeUser, Description: "Release safely", Instructions: "Run every release gate.", Origin: protocol.SkillProposalOriginRequested},
+			{Name: "cleanup", Revision: terminalSkillRevision, Scope: protocol.SkillScopeProject, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: protocol.SkillProposalOriginMined},
 		},
 		decisions: make(chan skillDecision, 2),
 	}
@@ -99,14 +100,14 @@ func (s *skillServiceStub) Proposals(context.Context, string) ([]workspace.Skill
 }
 
 func (s *skillServiceStub) Archive(_ context.Context, name string) error {
-	return s.setLifecycle(name, workspace.SkillArchived)
+	return s.setLifecycle(name, protocol.SkillLifecycleArchived)
 }
 
 func (s *skillServiceStub) Restore(_ context.Context, name string) error {
-	return s.setLifecycle(name, workspace.SkillActive)
+	return s.setLifecycle(name, protocol.SkillLifecycleActive)
 }
 
-func (s *skillServiceStub) setLifecycle(name string, lifecycle workspace.SkillLifecycle) error {
+func (s *skillServiceStub) setLifecycle(name string, lifecycle protocol.SkillLifecycle) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for index := range s.managed {
@@ -301,7 +302,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		t.Fatal(err)
 	}
 	managed, err := base.Managed(t.Context())
-	if err != nil || len(managed) != 1 || managed[0].Lifecycle != workspace.SkillArchived {
+	if err != nil || len(managed) != 1 || managed[0].Lifecycle != protocol.SkillLifecycleArchived {
 		t.Fatalf("managed skills after archive = (%+v, %v)", managed, err)
 	}
 	stop()

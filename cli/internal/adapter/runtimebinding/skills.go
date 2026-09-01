@@ -34,10 +34,13 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]work
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list discovered skills", values, func(value protocol.Skill) workspace.DiscoveredSkill {
-		return workspace.DiscoveredSkill{
-			Name: value.Name, Description: value.Description, Scope: workspace.SkillScope(value.Scope),
+	return projectUniqueValuesFallible("list discovered skills", values, func(value protocol.Skill) (workspace.DiscoveredSkill, error) {
+		if err := protocol.ValidateWireTree(value); err != nil {
+			return workspace.DiscoveredSkill{}, err
 		}
+		return workspace.DiscoveredSkill{
+			Name: value.Name, Description: value.Description, Scope: value.Scope,
+		}, nil
 	}, func(skill workspace.DiscoveredSkill) string {
 		return skill.Key()
 	})
@@ -52,10 +55,13 @@ func (r *Connection) Managed(ctx context.Context) ([]workspace.ManagedSkill, err
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list managed skills", values, func(value protocol.ManagedSkill) workspace.ManagedSkill {
-		return workspace.ManagedSkill{
-			Name: value.Name, Description: value.Description, Lifecycle: workspace.SkillLifecycle(value.Lifecycle),
+	return projectUniqueValuesFallible("list managed skills", values, func(value protocol.ManagedSkill) (workspace.ManagedSkill, error) {
+		if err := protocol.ValidateWireTree(value); err != nil {
+			return workspace.ManagedSkill{}, err
 		}
+		return workspace.ManagedSkill{
+			Name: value.Name, Description: value.Description, Lifecycle: value.Lifecycle,
+		}, nil
 	}, func(skill workspace.ManagedSkill) string {
 		return skill.Name
 	})
@@ -77,13 +83,13 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 	projected := make([]workspace.SkillProposal, 0, len(values))
 	seen := make(map[[3]string]struct{}, len(values))
 	for index, value := range values {
-		proposal := workspace.SkillProposal{
-			Name: value.Name, Revision: value.Revision, Scope: workspace.SkillScope(value.Scope),
-			Description: value.Description, Instructions: value.Instructions,
-			Origin: workspace.SkillProposalOrigin(value.Origin), SourceSession: value.SourceSession, Revises: value.Revises,
-		}
-		if err := proposal.Validate(); err != nil {
+		if err := protocol.ValidateWireTree(value); err != nil {
 			return nil, runtimeContractViolation("list skill proposals item %d is invalid: %v", index+1, err)
+		}
+		proposal := workspace.SkillProposal{
+			Name: value.Name, Revision: value.Revision, Scope: value.Scope,
+			Description: value.Description, Instructions: value.Instructions,
+			Origin: value.Origin, SourceSession: value.SourceSession, Revises: value.Revises,
 		}
 		identity := [3]string{string(proposal.Scope), proposal.Name, proposal.Revision}
 		if _, duplicate := seen[identity]; duplicate {
@@ -142,7 +148,7 @@ func (r *Connection) decideSkillProposal(
 	}
 	request := protocol.SkillProposalRef{
 		Workspace: protocol.WorkspaceRef{Path: reference.Workspace},
-		Name:      reference.Name, Revision: reference.Revision, Scope: protocol.SkillScope(reference.Scope),
+		Name:      reference.Name, Revision: reference.Revision, Scope: reference.Scope,
 	}
 	if err := decide(ctx, request, options); err != nil {
 		return classifyError(err)

@@ -1,14 +1,18 @@
 package workspace
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 const testSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 	proposal := SkillProposal{
 		Name: "release-checks", Revision: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-		Scope: SkillUserScope, Description: "Review releases consistently.", Instructions: "Run every release gate.",
-		Origin: SkillProposalRequested,
+		Scope: protocol.SkillScopeUser, Description: "Review releases consistently.", Instructions: "Run every release gate.",
+		Origin: protocol.SkillProposalOriginRequested,
 	}
 	if err := proposal.Validate(); err != nil {
 		t.Fatal(err)
@@ -30,29 +34,29 @@ func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 }
 
 func TestSkillClosedVocabulariesRejectUnknownValues(t *testing.T) {
-	if err := (DiscoveredSkill{Name: "review", Scope: SkillScope("global")}).Validate(); err == nil {
+	if err := (DiscoveredSkill{Name: "review", Scope: protocol.SkillScope("global")}).Validate(); err == nil {
 		t.Fatal("unknown scope was accepted")
 	}
-	if err := (ManagedSkill{Name: "review", Lifecycle: SkillLifecycle("stale")}).Validate(); err == nil {
+	if err := (ManagedSkill{Name: "review", Lifecycle: protocol.SkillLifecycle("stale")}).Validate(); err == nil {
 		t.Fatal("unknown lifecycle was accepted")
 	}
 }
 
 func TestManagedSkillValidatesLifecycleAcknowledgement(t *testing.T) {
-	catalog := []ManagedSkill{{Name: "review", Lifecycle: SkillActive}}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", SkillActive); err != nil {
+	catalog := []ManagedSkill{{Name: "review", Lifecycle: protocol.SkillLifecycleActive}}
+	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", protocol.SkillLifecycleActive); err != nil {
 		t.Fatalf("active lifecycle acknowledgement: %v", err)
 	}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", SkillArchived); err == nil {
+	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", protocol.SkillLifecycleArchived); err == nil {
 		t.Fatal("accepted unchanged lifecycle")
 	}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "missing", SkillActive); err == nil {
+	if err := ValidateSkillLifecycleAcknowledgement(catalog, "missing", protocol.SkillLifecycleActive); err == nil {
 		t.Fatal("accepted missing managed skill")
 	}
 }
 
 func TestProposalReferenceValidatesDecisionAcknowledgement(t *testing.T) {
-	reference := SkillProposalReference{Workspace: "/workspace", Name: "release-checks", Revision: testSkillRevision, Scope: SkillUserScope}
+	reference := SkillProposalReference{Workspace: "/workspace", Name: "release-checks", Revision: testSkillRevision, Scope: protocol.SkillScopeUser}
 	decided := SkillProposal{
 		Name: reference.Name, Revision: reference.Revision, Scope: reference.Scope,
 		Description: "Release safely", Instructions: "Run every gate.",

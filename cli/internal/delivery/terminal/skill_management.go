@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (a *app) ShowDiscoveredSkills() {
@@ -135,19 +136,19 @@ func (a *app) ArchiveSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("archiving skill", name, workspace.SkillArchived, a.skills.Archive)
+	return a.changeSkillLifecycle("archiving skill", name, protocol.SkillLifecycleArchived, a.skills.Archive)
 }
 
 func (a *app) RestoreSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("restoring skill", name, workspace.SkillActive, a.skills.Restore)
+	return a.changeSkillLifecycle("restoring skill", name, protocol.SkillLifecycleActive, a.skills.Restore)
 }
 
 func (a *app) changeSkillLifecycle(
 	status, name string,
-	lifecycle workspace.SkillLifecycle,
+	lifecycle protocol.SkillLifecycle,
 	change func(context.Context, string) error,
 ) error {
 	if a.skills == nil {

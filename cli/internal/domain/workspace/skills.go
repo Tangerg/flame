@@ -1,65 +1,21 @@
 package workspace
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-type SkillScope string
-
-const (
-	SkillProjectScope SkillScope = "project"
-	SkillUserScope    SkillScope = "user"
-)
-
-func (s SkillScope) Validate() error {
-	if s != SkillProjectScope && s != SkillUserScope {
-		return fmt.Errorf("skill scope %q is invalid", s)
-	}
-	return nil
-}
-
-type SkillLifecycle string
-
-const (
-	SkillActive   SkillLifecycle = "active"
-	SkillArchived SkillLifecycle = "archived"
-)
-
-func (l SkillLifecycle) Validate() error {
-	if l != SkillActive && l != SkillArchived {
-		return fmt.Errorf("skill lifecycle %q is invalid", l)
-	}
-	return nil
-}
-
-type SkillProposalOrigin string
-
-const (
-	SkillProposalRequested SkillProposalOrigin = "requested"
-	SkillProposalMined     SkillProposalOrigin = "mined"
-)
-
-func (o SkillProposalOrigin) Validate() error {
-	if o != "" && o != SkillProposalRequested && o != SkillProposalMined {
-		return fmt.Errorf("skill proposal origin %q is invalid", o)
-	}
-	return nil
-}
 
 type DiscoveredSkill struct {
 	Name        string
 	Description string
-	Scope       SkillScope
+	Scope       protocol.SkillScope
 }
 
 func (d DiscoveredSkill) Validate() error {
-	if strings.TrimSpace(d.Name) == "" {
-		return errors.New("discovered skill name is empty")
-	}
-	return d.Scope.Validate()
+	return (protocol.Skill{Name: d.Name, Description: d.Description, Scope: d.Scope}).ValidateWire()
 }
 
 func (d DiscoveredSkill) Key() string { return string(d.Scope) + "/" + d.Name }
@@ -67,24 +23,21 @@ func (d DiscoveredSkill) Key() string { return string(d.Scope) + "/" + d.Name }
 type ManagedSkill struct {
 	Name        string
 	Description string
-	Lifecycle   SkillLifecycle
+	Lifecycle   protocol.SkillLifecycle
 }
 
 func (m ManagedSkill) Validate() error {
-	if strings.TrimSpace(m.Name) == "" {
-		return errors.New("managed skill name is empty")
-	}
-	return m.Lifecycle.Validate()
+	return (protocol.ManagedSkill{Name: m.Name, Description: m.Description, Lifecycle: m.Lifecycle}).ValidateWire()
 }
 
 // ValidateSkillLifecycleAcknowledgement proves that an authoritative managed-skill
 // catalog reflects the requested lifecycle for exactly one named skill.
-func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, lifecycle SkillLifecycle) error {
+func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, lifecycle protocol.SkillLifecycle) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("managed skill acknowledgement name is empty")
 	}
-	if err := lifecycle.Validate(); err != nil {
+	if err := (protocol.ManagedSkill{Name: name, Lifecycle: lifecycle}).ValidateWire(); err != nil {
 		return err
 	}
 	found := false
@@ -112,25 +65,20 @@ func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, 
 type SkillProposal struct {
 	Name          string
 	Revision      string
-	Scope         SkillScope
+	Scope         protocol.SkillScope
 	Description   string
 	Instructions  string
-	Origin        SkillProposalOrigin
+	Origin        protocol.SkillProposalOrigin
 	SourceSession string
 	Revises       bool
 }
 
 func (p SkillProposal) Validate() error {
-	if err := validateProposalIdentity(p.Name, p.Revision, p.Scope); err != nil {
-		return err
-	}
-	if strings.TrimSpace(p.Description) == "" {
-		return errors.New("skill proposal description is empty")
-	}
-	if strings.TrimSpace(p.Instructions) == "" {
-		return errors.New("skill proposal instructions are empty")
-	}
-	return p.Origin.Validate()
+	return (protocol.SkillProposal{
+		Name: p.Name, Revision: p.Revision, Scope: p.Scope,
+		Description: p.Description, Instructions: p.Instructions,
+		Origin: p.Origin, SourceSession: p.SourceSession, Revises: p.Revises,
+	}).ValidateWire()
 }
 
 func (p SkillProposal) QualifiedName() string { return string(p.Scope) + "/" + p.Name }
@@ -157,17 +105,14 @@ type SkillProposalReference struct {
 	Workspace string
 	Name      string
 	Revision  string
-	Scope     SkillScope
+	Scope     protocol.SkillScope
 }
 
 func (p SkillProposalReference) Validate() error {
-	if strings.TrimSpace(p.Workspace) == "" {
-		return errors.New("skill proposal reference workspace is empty")
-	}
-	if err := validateProposalIdentity(p.Name, p.Revision, p.Scope); err != nil {
-		return fmt.Errorf("skill proposal reference: %w", err)
-	}
-	return nil
+	return protocol.ValidateWireTree(protocol.SkillProposalRef{
+		Workspace: protocol.WorkspaceRef{Path: p.Workspace},
+		Name:      p.Name, Revision: p.Revision, Scope: p.Scope,
+	})
 }
 
 // ValidateDecisionAcknowledgement proves that the exact immutable proposal
@@ -186,17 +131,4 @@ func (p SkillProposalReference) ValidateDecisionAcknowledgement(pending []SkillP
 		}
 	}
 	return nil
-}
-
-func validateProposalIdentity(name, revision string, scope SkillScope) error {
-	if strings.TrimSpace(name) == "" {
-		return errors.New("skill proposal name is empty")
-	}
-	if len(revision) != 64 {
-		return errors.New("skill proposal revision is not a SHA-256 digest")
-	}
-	if _, err := hex.DecodeString(revision); err != nil {
-		return fmt.Errorf("skill proposal revision: %w", err)
-	}
-	return scope.Validate()
 }
