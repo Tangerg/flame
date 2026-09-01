@@ -21,6 +21,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // Store serializes writes to one scoped skills root. The same instance must be
@@ -576,7 +577,7 @@ func managedSkillNames(root *os.Root) ([]string, []string, error) {
 }
 
 func managedSkillNamesAt(root *os.Root, path string) ([]string, error) {
-	directory, err := root.Open(path)
+	directory, _, err := fileinput.OpenDirectoryAt(root, path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -679,7 +680,7 @@ func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, err
 // Counting every entry (including malformed external additions) prevents junk
 // from bypassing the finite scan; only valid named directories become reviews.
 func proposalSlotNames(root *os.Root) ([]string, error) {
-	directory, err := root.Open(proposalsSubdir)
+	directory, _, err := fileinput.OpenDirectoryAt(root, proposalsSubdir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}

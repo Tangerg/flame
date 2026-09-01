@@ -351,7 +351,7 @@ func removeStagedFiles(ctx context.Context, root *os.Root, target string) error 
 
 func stagedFilesForRemoval(ctx context.Context, root *os.Root, target string) (paths []string, err error) {
 	directoryPath := filepath.Dir(target)
-	directory, err := root.Open(directoryPath)
+	directory, _, err := fileinput.OpenDirectoryAt(root, directoryPath)
 	if err != nil {
 		return nil, err
 	}
