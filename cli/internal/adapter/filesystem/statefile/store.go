@@ -143,6 +143,9 @@ func (s Store) Replace(name string, body []byte) error {
 		return fmt.Errorf("replace state snapshot: %w", err)
 	}
 	removeTemporary = false
+	if err := syncDirectory(directory); err != nil {
+		return fmt.Errorf("commit state snapshot: %w", err)
+	}
 	return nil
 }
 
@@ -152,17 +155,20 @@ func (s Store) Remove(name string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.directory(filepath.Dir(name), false); err != nil {
+	directory, err := s.directory(filepath.Dir(name), false)
+	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
 		return err
 	}
-	err = os.Remove(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-	return err
+	if err := syncDirectory(directory); err != nil {
+		return fmt.Errorf("commit state removal: %w", err)
+	}
+	return nil
 }
 
 func (s Store) path(name string) (string, error) {
@@ -195,9 +201,12 @@ func (s Store) directory(name string, create bool) (string, error) {
 	}
 	current := s.root
 	for _, part := range strings.Split(relative, string(filepath.Separator)) {
+		parent := current
 		current = filepath.Join(current, part)
 		info, inspectErr := os.Lstat(current)
+		created := false
 		if errors.Is(inspectErr, os.ErrNotExist) && create {
+			created = true
 			if mkdirErr := os.Mkdir(current, 0o700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
 				return "", fmt.Errorf("create state directory: %w", mkdirErr)
 			}
@@ -209,6 +218,19 @@ func (s Store) directory(name string, create bool) (string, error) {
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return "", fmt.Errorf("state path %q contains a component that is not a directory", name)
 		}
+		if created {
+			if syncErr := syncDirectory(parent); syncErr != nil {
+				return "", fmt.Errorf("commit state directory: %w", syncErr)
+			}
+		}
 	}
 	return destination, nil
+}
+
+func syncDirectory(path string) error {
+	directory, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	return errors.Join(directory.Sync(), directory.Close())
 }
