@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/oolong/components/headless"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // approvalAction is the terminal's complete decision vocabulary for one tool
@@ -55,13 +56,13 @@ func (a approvalAction) Normalize(rememberable bool) approvalAction {
 	return approvalAllowOnce
 }
 
-func defaultApprovalAction(scope agent.RememberScope) approvalAction {
+func defaultApprovalAction(scope protocol.RememberScopeKind) approvalAction {
 	switch scope {
-	case agent.RememberSession:
+	case protocol.RememberSession:
 		return approvalAllowSession
-	case agent.RememberProject:
+	case protocol.RememberProject:
 		return approvalAllowProject
-	case agent.RememberGlobal:
+	case protocol.RememberGlobal:
 		return approvalAllowGlobal
 	default:
 		return approvalAllowOnce
@@ -71,21 +72,21 @@ func defaultApprovalAction(scope agent.RememberScope) approvalAction {
 func (a approvalAction) Answer() (agent.ApprovalAnswer, bool) {
 	switch a {
 	case approvalAllowSession:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: agent.RememberSession}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberSession}, true
 	case approvalAllowProject:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: agent.RememberProject}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberProject}, true
 	case approvalAllowGlobal:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: agent.RememberGlobal}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberGlobal}, true
 	case approvalAllowOnce:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: agent.RememberNone}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalApprove}, true
 	case approvalDenySession:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: agent.RememberSession}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberSession}, true
 	case approvalDenyProject:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: agent.RememberProject}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberProject}, true
 	case approvalDenyGlobal:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: agent.RememberGlobal}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: protocol.RememberGlobal}, true
 	case approvalDenyOnce:
-		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny, Remember: agent.RememberNone}, true
+		return agent.ApprovalAnswer{Decision: agent.ApprovalDeny}, true
 	default:
 		return agent.ApprovalAnswer{}, false
 	}
@@ -94,22 +95,22 @@ func (a approvalAction) Answer() (agent.ApprovalAnswer, bool) {
 func approvalActionFromAnswer(answer agent.ApprovalAnswer) approvalAction {
 	if answer.Decision == agent.ApprovalDeny {
 		switch answer.Remember {
-		case agent.RememberSession:
+		case protocol.RememberSession:
 			return approvalDenySession
-		case agent.RememberProject:
+		case protocol.RememberProject:
 			return approvalDenyProject
-		case agent.RememberGlobal:
+		case protocol.RememberGlobal:
 			return approvalDenyGlobal
 		default:
 			return approvalDenyOnce
 		}
 	}
 	switch answer.Remember {
-	case agent.RememberSession:
+	case protocol.RememberSession:
 		return approvalAllowSession
-	case agent.RememberProject:
+	case protocol.RememberProject:
 		return approvalAllowProject
-	case agent.RememberGlobal:
+	case protocol.RememberGlobal:
 		return approvalAllowGlobal
 	default:
 		return approvalAllowOnce

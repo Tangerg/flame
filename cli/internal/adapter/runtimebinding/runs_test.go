@@ -416,7 +416,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		RunID: "run_1", Answers: []agent.InterruptAnswer{{
 			ItemID: "item_approval",
 			Answer: agent.ApprovalAnswer{
-				Decision: agent.ApprovalApprove, Remember: agent.RememberProject, ArgumentOverride: override,
+				Decision: agent.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 			},
 		}},
 	})
@@ -441,7 +441,7 @@ func TestProjectAnswerMapsRememberedDenial(t *testing.T) {
 	projected, err := projectAnswer(agent.InterruptAnswer{
 		ItemID: "item_denial",
 		Answer: agent.ApprovalAnswer{
-			Decision: agent.ApprovalDeny, Remember: agent.RememberGlobal, Reason: "protect generated files",
+			Decision: agent.ApprovalDeny, Remember: protocol.RememberGlobal, Reason: "protect generated files",
 		},
 	})
 	if err != nil {

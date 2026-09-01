@@ -1,6 +1,10 @@
 package agent
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 func TestQuestionAnswerUsesFieldOrder(t *testing.T) {
 	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Configuration", Fields: []QuestionField{
@@ -38,14 +42,14 @@ func TestQuestionAcceptReturnsAnOwnedDurableFact(t *testing.T) {
 
 func TestApprovalHonorsRememberable(t *testing.T) {
 	approval := runningApproval("a_1", "shell")
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: RememberProject}); err == nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: protocol.RememberProject}); err == nil {
 		t.Fatal("unrememberable approval was remembered")
 	}
 	approval.Rememberable = true
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: RememberProject}); err != nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalApprove, Remember: protocol.RememberProject}); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalDeny, Remember: RememberSession}); err != nil {
+	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: ApprovalDeny, Remember: protocol.RememberSession}); err != nil {
 		t.Fatalf("remembered denial was rejected: %v", err)
 	}
 }

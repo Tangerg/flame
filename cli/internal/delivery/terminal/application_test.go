@@ -1193,7 +1193,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			{
 				ItemID: agent.InteractionItemID(snapshot.Interactions[0]),
 				Answer: agent.ApprovalAnswer{
-					Decision: agent.ApprovalApprove, Remember: agent.RememberProject, ArgumentOverride: override,
+					Decision: agent.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 				},
 			},
 			{
@@ -1228,7 +1228,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			t.Fatalf("resume attempt %d answers = %+v", index+1, attempt.Answers)
 		}
 		approval, ok := attempt.Answers[0].Answer.(agent.ApprovalAnswer)
-		if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != agent.RememberProject ||
+		if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != protocol.RememberProject ||
 			approval.ArgumentOverride == nil ||
 			string(approval.ArgumentOverride.JSON()) != `{"command":"go test -race ./...","count":20}` {
 			t.Fatalf("resume attempt %d approval = %#v", index+1, attempt.Answers[0].Answer)
@@ -3744,7 +3744,7 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalDeny || answer.Remember != agent.RememberSession ||
+	if answer.Decision != agent.ApprovalDeny || answer.Remember != protocol.RememberSession ||
 		answer.Reason != "preserve generated fixtures" || answer.ArgumentOverride != nil {
 		t.Fatalf("remembered denial = %+v", answer)
 	}
@@ -3762,16 +3762,16 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 		name     string
 		moves    int
 		decision agent.ApprovalDecision
-		remember agent.RememberScope
+		remember protocol.RememberScopeKind
 	}{
 		{name: "allow once", decision: agent.ApprovalApprove},
-		{name: "allow session", moves: 1, decision: agent.ApprovalApprove, remember: agent.RememberSession},
-		{name: "allow project", moves: 2, decision: agent.ApprovalApprove, remember: agent.RememberProject},
-		{name: "allow global", moves: 3, decision: agent.ApprovalApprove, remember: agent.RememberGlobal},
+		{name: "allow session", moves: 1, decision: agent.ApprovalApprove, remember: protocol.RememberSession},
+		{name: "allow project", moves: 2, decision: agent.ApprovalApprove, remember: protocol.RememberProject},
+		{name: "allow global", moves: 3, decision: agent.ApprovalApprove, remember: protocol.RememberGlobal},
 		{name: "deny once", moves: 4, decision: agent.ApprovalDeny},
-		{name: "deny session", moves: 5, decision: agent.ApprovalDeny, remember: agent.RememberSession},
-		{name: "deny project", moves: 6, decision: agent.ApprovalDeny, remember: agent.RememberProject},
-		{name: "deny global", moves: 7, decision: agent.ApprovalDeny, remember: agent.RememberGlobal},
+		{name: "deny session", moves: 5, decision: agent.ApprovalDeny, remember: protocol.RememberSession},
+		{name: "deny project", moves: 6, decision: agent.ApprovalDeny, remember: protocol.RememberProject},
+		{name: "deny global", moves: 7, decision: agent.ApprovalDeny, remember: protocol.RememberGlobal},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -3824,7 +3824,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if test.remember == agent.RememberNone {
+			if test.remember == "" {
 				if len(rules) != 0 {
 					t.Fatalf("one-shot decision created rules: %+v", rules)
 				}
@@ -3845,13 +3845,13 @@ func approvalRuleDecision(decision agent.ApprovalDecision) protocol.ApprovalRule
 	return protocol.ApprovalRuleDecisionDeny
 }
 
-func approvalRuleScope(scope agent.RememberScope) protocol.ApprovalRuleScope {
+func approvalRuleScope(scope protocol.RememberScopeKind) protocol.ApprovalRuleScope {
 	switch scope {
-	case agent.RememberSession:
+	case protocol.RememberSession:
 		return protocol.ApprovalRuleScopeSession
-	case agent.RememberProject:
+	case protocol.RememberProject:
 		return protocol.ApprovalRuleScopeProject
-	case agent.RememberGlobal:
+	case protocol.RememberGlobal:
 		return protocol.ApprovalRuleScopeGlobal
 	default:
 		return ""
@@ -3915,7 +3915,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalApprove || answer.Remember != agent.RememberSession ||
+	if answer.Decision != agent.ApprovalApprove || answer.Remember != protocol.RememberSession ||
 		answer.ArgumentOverride == nil ||
 		string(answer.ArgumentOverride.JSON()) != `{"command":"echo safe","timeout":45}` {
 		t.Fatalf("edited approval answer = %+v", answer)
@@ -4040,7 +4040,7 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	answer := <-answers
-	if answer.Decision != agent.ApprovalApprove || answer.Remember != agent.RememberNone {
+	if answer.Decision != agent.ApprovalApprove || answer.Remember != "" {
 		t.Fatalf("one-shot approval answer = %+v", answer)
 	}
 

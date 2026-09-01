@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -89,16 +90,16 @@ func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
 		name     string
 		action   approvalAction
 		decision agent.ApprovalDecision
-		remember agent.RememberScope
+		remember protocol.RememberScopeKind
 	}{
-		{name: "allow once", action: approvalAllowOnce, decision: agent.ApprovalApprove, remember: agent.RememberNone},
-		{name: "allow session", action: approvalAllowSession, decision: agent.ApprovalApprove, remember: agent.RememberSession},
-		{name: "allow project", action: approvalAllowProject, decision: agent.ApprovalApprove, remember: agent.RememberProject},
-		{name: "allow global", action: approvalAllowGlobal, decision: agent.ApprovalApprove, remember: agent.RememberGlobal},
-		{name: "deny once", action: approvalDenyOnce, decision: agent.ApprovalDeny, remember: agent.RememberNone},
-		{name: "deny session", action: approvalDenySession, decision: agent.ApprovalDeny, remember: agent.RememberSession},
-		{name: "deny project", action: approvalDenyProject, decision: agent.ApprovalDeny, remember: agent.RememberProject},
-		{name: "deny global", action: approvalDenyGlobal, decision: agent.ApprovalDeny, remember: agent.RememberGlobal},
+		{name: "allow once", action: approvalAllowOnce, decision: agent.ApprovalApprove},
+		{name: "allow session", action: approvalAllowSession, decision: agent.ApprovalApprove, remember: protocol.RememberSession},
+		{name: "allow project", action: approvalAllowProject, decision: agent.ApprovalApprove, remember: protocol.RememberProject},
+		{name: "allow global", action: approvalAllowGlobal, decision: agent.ApprovalApprove, remember: protocol.RememberGlobal},
+		{name: "deny once", action: approvalDenyOnce, decision: agent.ApprovalDeny},
+		{name: "deny session", action: approvalDenySession, decision: agent.ApprovalDeny, remember: protocol.RememberSession},
+		{name: "deny project", action: approvalDenyProject, decision: agent.ApprovalDeny, remember: protocol.RememberProject},
+		{name: "deny global", action: approvalDenyGlobal, decision: agent.ApprovalDeny, remember: protocol.RememberGlobal},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -142,13 +143,13 @@ func TestApprovalOptionsKeepOneShotActionsStableAndExposeRememberedDenials(t *te
 
 func TestApprovalDefaultSelectsEveryConfiguredRememberScope(t *testing.T) {
 	tests := []struct {
-		scope agent.RememberScope
+		scope protocol.RememberScopeKind
 		want  approvalAction
 	}{
-		{scope: agent.RememberNone, want: approvalAllowOnce},
-		{scope: agent.RememberSession, want: approvalAllowSession},
-		{scope: agent.RememberProject, want: approvalAllowProject},
-		{scope: agent.RememberGlobal, want: approvalAllowGlobal},
+		{want: approvalAllowOnce},
+		{scope: protocol.RememberSession, want: approvalAllowSession},
+		{scope: protocol.RememberProject, want: approvalAllowProject},
+		{scope: protocol.RememberGlobal, want: approvalAllowGlobal},
 	}
 	for _, test := range tests {
 		if got := defaultApprovalAction(test.scope); got != test.want {

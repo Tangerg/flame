@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -57,9 +59,8 @@ type Approval struct {
 	Remember RememberPreference `json:"remember" mapstructure:"remember"`
 }
 
-// RememberPreference is the explicit configuration vocabulary. It deliberately
-// differs from agent.RememberScope, whose zero value means the protocol answer
-// omits a remember directive.
+// RememberPreference is the explicit configuration vocabulary. "none" maps
+// to an omitted Runtime remember directive.
 type RememberPreference string
 
 const (
@@ -69,16 +70,16 @@ const (
 	RememberGlobal  RememberPreference = "global"
 )
 
-func (r RememberPreference) Scope() agent.RememberScope {
+func (r RememberPreference) Scope() protocol.RememberScopeKind {
 	switch r {
 	case RememberSession:
-		return agent.RememberSession
+		return protocol.RememberSession
 	case RememberProject:
-		return agent.RememberProject
+		return protocol.RememberProject
 	case RememberGlobal:
-		return agent.RememberGlobal
+		return protocol.RememberGlobal
 	default:
-		return agent.RememberNone
+		return ""
 	}
 }
 

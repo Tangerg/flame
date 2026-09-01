@@ -238,7 +238,7 @@ func (r *Runtime) recordAnswersLocked(run *runState, answers []agent.InterruptAn
 		run.answers[response.ItemID] = agent.CloneAnswer(response.Answer)
 		approval := findApproval(run.interactions, response.ItemID)
 		answer, ok := response.Answer.(agent.ApprovalAnswer)
-		if approval != nil && ok && answer.Remember != agent.RememberNone {
+		if approval != nil && ok && answer.Remember != "" {
 			r.rememberApprovalLocked(run, *approval, answer)
 		}
 	}

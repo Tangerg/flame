@@ -235,7 +235,7 @@ func ValidateAnswer(interaction Interaction, answer Answer) error {
 		if !ok {
 			return errors.New("approval requires an approval answer")
 		}
-		if !item.Rememberable && provided.Remember != RememberNone {
+		if !item.Rememberable && provided.Remember != "" {
 			return errors.New("approval cannot be remembered")
 		}
 		return provided.Validate()
@@ -254,8 +254,10 @@ func (a ApprovalAnswer) Validate() error {
 	if !slices.Contains([]ApprovalDecision{ApprovalApprove, ApprovalDeny}, a.Decision) {
 		return fmt.Errorf("approval answer: decision %q is invalid", a.Decision)
 	}
-	if !slices.Contains([]RememberScope{RememberNone, RememberSession, RememberProject, RememberGlobal}, a.Remember) {
-		return fmt.Errorf("approval answer: remember scope %q is invalid", a.Remember)
+	if a.Remember != "" {
+		if err := (runtimeprotocol.RememberScope{Scope: a.Remember}).ValidateWire(); err != nil {
+			return fmt.Errorf("approval answer: %w", err)
+		}
 	}
 	if a.ArgumentOverride != nil {
 		if a.Decision != ApprovalApprove {

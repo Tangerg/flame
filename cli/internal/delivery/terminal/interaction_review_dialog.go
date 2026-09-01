@@ -144,13 +144,13 @@ func summarizeInteraction(item agent.Interaction, answer agent.Answer) string {
 		decision := "allow once"
 		if provided.Decision == agent.ApprovalDeny {
 			decision = "deny once"
-			if provided.Remember != agent.RememberNone {
+			if provided.Remember != "" {
 				decision = "deny for " + string(provided.Remember)
 			}
 			if strings.TrimSpace(provided.Reason) != "" {
 				decision += " — " + strings.TrimSpace(provided.Reason)
 			}
-		} else if provided.Remember != agent.RememberNone {
+		} else if provided.Remember != "" {
 			decision = "allow for " + string(provided.Remember)
 		}
 		if provided.ArgumentOverride != nil {

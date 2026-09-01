@@ -53,7 +53,7 @@ func (r *Runtime) DeleteApprovalRule(ctx context.Context, id string) error {
 }
 
 func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval, answer agent.ApprovalAnswer) {
-	if !approval.Rememberable || answer.Remember == agent.RememberNone {
+	if !approval.Rememberable || answer.Remember == "" {
 		return
 	}
 	session := r.sessions[run.sessionID]
@@ -71,11 +71,11 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval,
 	}
 	stored := storedRule{view: rule}
 	switch answer.Remember {
-	case agent.RememberSession:
+	case protocol.RememberSession:
 		stored.sessionID = run.sessionID
-	case agent.RememberProject:
+	case protocol.RememberProject:
 		stored.view.Dir = session.meta.Workspace.ProjectRoot
-	case agent.RememberGlobal:
+	case protocol.RememberGlobal:
 	default:
 		return
 	}
@@ -140,29 +140,29 @@ func ruleApplies(rule storedRule, sessionID, workspace string) bool {
 	}
 }
 
-func approvalRuleScope(scope agent.RememberScope) protocol.ApprovalRuleScope {
+func approvalRuleScope(scope protocol.RememberScopeKind) protocol.ApprovalRuleScope {
 	switch scope {
-	case agent.RememberSession:
+	case protocol.RememberSession:
 		return protocol.ApprovalRuleScopeSession
-	case agent.RememberProject:
+	case protocol.RememberProject:
 		return protocol.ApprovalRuleScopeProject
-	case agent.RememberGlobal:
+	case protocol.RememberGlobal:
 		return protocol.ApprovalRuleScopeGlobal
 	default:
 		return ""
 	}
 }
 
-func rememberScope(scope protocol.ApprovalRuleScope) agent.RememberScope {
+func rememberScope(scope protocol.ApprovalRuleScope) protocol.RememberScopeKind {
 	switch scope {
 	case protocol.ApprovalRuleScopeSession:
-		return agent.RememberSession
+		return protocol.RememberSession
 	case protocol.ApprovalRuleScopeProject:
-		return agent.RememberProject
+		return protocol.RememberProject
 	case protocol.ApprovalRuleScopeGlobal:
-		return agent.RememberGlobal
+		return protocol.RememberGlobal
 	default:
-		return agent.RememberNone
+		return ""
 	}
 }
 

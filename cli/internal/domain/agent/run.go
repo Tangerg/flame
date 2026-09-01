@@ -287,18 +287,9 @@ const (
 	ApprovalDeny    ApprovalDecision = "deny"
 )
 
-type RememberScope string
-
-const (
-	RememberNone    RememberScope = ""
-	RememberSession RememberScope = "session"
-	RememberProject RememberScope = "project"
-	RememberGlobal  RememberScope = "global"
-)
-
 type ApprovalAnswer struct {
 	Decision         ApprovalDecision
-	Remember         RememberScope
+	Remember         protocol.RememberScopeKind
 	Reason           string
 	ArgumentOverride *ToolArgumentOverride
 }

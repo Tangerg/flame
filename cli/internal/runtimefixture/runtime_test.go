@@ -416,7 +416,7 @@ func resumeApprovedRun(t *testing.T, runtime *Runtime, opened agent.SegmentStrea
 		RunID: opened.RunID,
 		Answers: []agent.InterruptAnswer{{
 			ItemID: agent.InteractionItemID(interaction),
-			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: agent.RememberProject},
+			Answer: agent.ApprovalAnswer{Decision: agent.ApprovalApprove, Remember: protocol.RememberProject},
 		}},
 	})
 	if err != nil {

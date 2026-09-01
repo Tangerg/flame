@@ -1486,7 +1486,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 			CommandID: agent.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1",
 			Answers: []agent.InterruptAnswer{
 				{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{
-					Decision: agent.ApprovalDeny, Remember: agent.RememberProject, Reason: "protect generated output",
+					Decision: agent.ApprovalDeny, Remember: protocol.RememberProject, Reason: "protect generated output",
 				}},
 				{ItemID: question.ItemID, Answer: agent.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
 			},
@@ -1505,7 +1505,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 		t.Fatalf("restored mixed resume = %+v, present = %t", restored, ok)
 	}
 	approvalAnswer, ok := restored.Command.Answers[0].Answer.(agent.ApprovalAnswer)
-	if !ok || approvalAnswer.Decision != agent.ApprovalDeny || approvalAnswer.Remember != agent.RememberProject ||
+	if !ok || approvalAnswer.Decision != agent.ApprovalDeny || approvalAnswer.Remember != protocol.RememberProject ||
 		approvalAnswer.Reason != "protect generated output" {
 		t.Fatalf("restored approval answer = %#v", restored.Command.Answers[0].Answer)
 	}

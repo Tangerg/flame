@@ -155,8 +155,8 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 			}
 			response.Response.EditedArgs = arguments
 		}
-		if answer.Remember != agent.RememberNone {
-			response.Response.Remember = &protocol.RememberScope{Scope: protocol.RememberScopeKind(answer.Remember)}
+		if answer.Remember != "" {
+			response.Response.Remember = &protocol.RememberScope{Scope: answer.Remember}
 		}
 	case agent.QuestionAnswer:
 		response.Response.Type = protocol.InterruptResponseAnswer

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/ptytest"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
@@ -565,7 +566,7 @@ func mixedInteractionPTYAnswersMatch(provided []agent.InterruptAnswer) bool {
 		return false
 	}
 	approval, ok := provided[0].Answer.(agent.ApprovalAnswer)
-	if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != agent.RememberProject ||
+	if !ok || approval.Decision != agent.ApprovalApprove || approval.Remember != protocol.RememberProject ||
 		approval.ArgumentOverride == nil ||
 		string(approval.ArgumentOverride.JSON()) != `{"command":"go test ./...","count":2}` {
 		return false
