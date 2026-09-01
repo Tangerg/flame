@@ -2,7 +2,10 @@ package terminal
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -10,7 +13,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 )
 
 const defaultScheduleCron = "0 9 * * 1-5"
@@ -32,65 +34,96 @@ type scheduleFormDraft struct {
 	enabled      bool
 }
 
-func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.Schedule, defaultWorkspace string) scheduleFormDraft {
+func newScheduleFormDraft(mode scheduleFormMode, scheduled protocol.Schedule, defaultWorkspace string) scheduleFormDraft {
 	if mode == scheduleFormUpdate {
 		return scheduleFormDraft{
-			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.Workspace,
+			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduleWorkspacePath(scheduled),
 			provider: scheduled.Provider, model: scheduled.Model, cron: scheduled.Cron, enabled: scheduled.Enabled,
 		}
 	}
 	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
 }
 
-func (s scheduleFormDraft) candidate() (schedule.Candidate, error) {
-	candidate := schedule.Candidate{
+func (s scheduleFormDraft) candidate() (protocol.CreateScheduleRequest, error) {
+	request := protocol.CreateScheduleRequest{
 		Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions),
-		Workspace: strings.TrimSpace(s.workspace), Provider: s.provider,
-		Model: s.model, Cron: strings.TrimSpace(s.cron),
+		Provider: s.provider, Model: s.model, Cron: strings.TrimSpace(s.cron),
 	}
-	return candidate, candidate.Validate()
+	workspace := strings.TrimSpace(s.workspace)
+	if workspace != "" {
+		if !filepath.IsAbs(workspace) {
+			return protocol.CreateScheduleRequest{}, errors.New("workspace path is not absolute")
+		}
+		request.Workspace = &protocol.WorkspaceRef{Path: workspace}
+	}
+	if err := validateScheduleModelPair(request.Provider, request.Model); err != nil {
+		return protocol.CreateScheduleRequest{}, err
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return protocol.CreateScheduleRequest{}, err
+	}
+	return request, nil
 }
 
-func (s scheduleFormDraft) patch(original schedule.Schedule) (schedule.Patch, bool, error) {
-	patch := schedule.Patch{ID: original.ID, ExpectedRevision: original.Revision}
+func (s scheduleFormDraft) patch(original protocol.Schedule) (protocol.UpdateScheduleRequest, bool, error) {
+	request := protocol.UpdateScheduleRequest{ID: original.ID, ExpectedRevision: original.Revision}
 	title := strings.TrimSpace(s.title)
 	if title != original.Title {
-		patch.Title = &title
+		request.Title = &title
 	}
 	instructions := strings.TrimSpace(s.instructions)
 	if instructions != original.Instructions {
-		patch.Instructions = &instructions
+		request.Instructions = &instructions
 	}
 	workspace := strings.TrimSpace(s.workspace)
-	if workspace != original.Workspace {
+	if workspace != scheduleWorkspacePath(original) {
 		if workspace == "" {
-			patch.Workspace = schedule.UseDefaultWorkspace()
+			request.WorkspaceMode = protocol.ScheduleWorkspaceDefault
 		} else {
-			patch.Workspace = schedule.BindWorkspace(workspace)
+			if !filepath.IsAbs(workspace) {
+				return protocol.UpdateScheduleRequest{}, false, errors.New("workspace path is not absolute")
+			}
+			request.Workspace = &protocol.WorkspaceRef{Path: workspace}
 		}
 	}
 	provider, model := s.provider, s.model
 	if provider != original.Provider || model != original.Model {
-		patch.Provider, patch.Model = &provider, &model
+		if err := validateScheduleModelPair(provider, model); err != nil {
+			return protocol.UpdateScheduleRequest{}, false, err
+		}
+		request.Provider, request.Model = &provider, &model
 	}
 	cron := strings.TrimSpace(s.cron)
 	if cron != original.Cron {
-		patch.Cron = &cron
+		request.Cron = &cron
 	}
 	enabled := s.enabled
 	if enabled != original.Enabled {
-		patch.Enabled = &enabled
+		request.Enabled = &enabled
 	}
-	if !patch.HasChanges() {
-		return patch, false, nil
+	if !scheduleRequestHasChanges(request) {
+		return request, false, nil
 	}
-	if err := patch.Validate(); err != nil {
-		return schedule.Patch{}, false, err
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return protocol.UpdateScheduleRequest{}, false, err
 	}
-	return patch, true, nil
+	return request, true, nil
 }
 
-func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedule) {
+func scheduleWorkspacePath(scheduled protocol.Schedule) string {
+	if scheduled.Workspace == nil {
+		return ""
+	}
+	return scheduled.Workspace.Path
+}
+
+func scheduleRequestHasChanges(request protocol.UpdateScheduleRequest) bool {
+	return request.Title != nil || request.Instructions != nil || request.Workspace != nil ||
+		request.WorkspaceMode != "" || request.Provider != nil || request.Model != nil ||
+		request.ReasoningEffort != nil || request.Cron != nil || request.Enabled != nil
+}
+
+func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedule) {
 	if a.dialogs.scheduleDialog != nil {
 		a.dialogs.scheduleDialog.Controller().Dismiss()
 		a.dialogs.scheduleDialog = nil
@@ -132,15 +165,15 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 		}
 		switch mode {
 		case scheduleFormCreate:
-			candidate, err := draft.candidate()
+			request, err := draft.candidate()
 			if err != nil {
 				a.message("schedule form: " + err.Error())
 				return
 			}
 			dismiss()
-			a.createSchedule(candidate)
+			a.createSchedule(request)
 		case scheduleFormUpdate:
-			patch, changed, err := draft.patch(scheduled)
+			request, changed, err := draft.patch(scheduled)
 			if err != nil {
 				a.message("schedule form: " + err.Error())
 				return
@@ -150,7 +183,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Schedul
 				a.message("schedule configuration unchanged")
 				return
 			}
-			a.updateSchedule(patch, "updating schedule "+scheduled.ID)
+			a.updateSchedule(request, "updating schedule "+scheduled.ID)
 		}
 	}
 	form.GaveUp = dismiss

@@ -9,19 +9,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type scheduleServiceStub struct {
 	mu        sync.Mutex
-	schedules []schedule.Schedule
-	created   chan schedule.Candidate
-	updated   chan schedule.Patch
+	schedules []protocol.Schedule
+	created   chan protocol.CreateScheduleRequest
+	updated   chan protocol.UpdateScheduleRequest
 	deleted   chan string
 	run       chan string
 	reads     atomic.Int32
@@ -35,7 +35,7 @@ type blockingScheduleRunService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingScheduleRunService) RunNow(ctx context.Context, id string) (schedule.RunHandle, error) {
+func (b *blockingScheduleRunService) RunNow(ctx context.Context, id string) (protocol.RunScheduleNowResponse, error) {
 	select {
 	case b.started <- id:
 	default:
@@ -48,7 +48,7 @@ func (b *blockingScheduleRunService) RunNow(ctx context.Context, id string) (sch
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return schedule.RunHandle{}, context.Cause(ctx)
+		return protocol.RunScheduleNowResponse{}, context.Cause(ctx)
 	}
 }
 
@@ -56,37 +56,38 @@ func newScheduleServiceStub() *scheduleServiceStub {
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
 	next := now.Add(time.Hour)
 	return &scheduleServiceStub{
-		schedules: []schedule.Schedule{{
+		schedules: []protocol.Schedule{{
 			ID: "sch_review", Title: "Repository review", Instructions: "review the repository",
-			Workspace: "/workspace", Cron: "0 * * * *", Enabled: true,
+			Workspace: &protocol.WorkspaceRef{Path: "/workspace"}, Cron: "0 * * * *", Enabled: true,
 			NextRunAt: &next, CreatedAt: now, Revision: 1,
 		}},
-		created: make(chan schedule.Candidate, 1), updated: make(chan schedule.Patch, 4),
+		created: make(chan protocol.CreateScheduleRequest, 1), updated: make(chan protocol.UpdateScheduleRequest, 4),
 		deleted: make(chan string, 1), run: make(chan string, 1), now: now,
 	}
 }
 
-func (s *scheduleServiceStub) Schedules(context.Context) ([]schedule.Schedule, error) {
+func (s *scheduleServiceStub) Schedules(context.Context) ([]protocol.Schedule, error) {
 	s.reads.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	result := make([]schedule.Schedule, len(s.schedules))
+	result := make([]protocol.Schedule, len(s.schedules))
 	for index, scheduled := range s.schedules {
 		result[index] = cloneSchedule(scheduled)
 	}
 	return result, nil
 }
 
-func (s *scheduleServiceStub) Create(_ context.Context, candidate schedule.Candidate) (schedule.Schedule, error) {
-	if err := candidate.Validate(); err != nil {
-		return schedule.Schedule{}, err
+func (s *scheduleServiceStub) Create(_ context.Context, request protocol.CreateScheduleRequest) (protocol.Schedule, error) {
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return protocol.Schedule{}, err
 	}
-	s.created <- candidate
+	s.created <- request
 	next := s.now.Add(2 * time.Hour)
-	created := schedule.Schedule{
-		ID: "sch_created", Title: candidate.Title, Instructions: candidate.Instructions,
-		Workspace: candidate.Workspace, Provider: candidate.Provider, Model: candidate.Model,
-		Cron: candidate.Cron, Enabled: true, NextRunAt: &next, CreatedAt: s.now, Revision: 1,
+	created := protocol.Schedule{
+		ID: "sch_created", Title: request.Title, Instructions: request.Instructions,
+		Workspace: cloneWorkspaceRef(request.Workspace), Provider: request.Provider, Model: request.Model,
+		ReasoningEffort: request.ReasoningEffort, Cron: request.Cron,
+		Enabled: true, NextRunAt: &next, CreatedAt: s.now, Revision: 1,
 	}
 	s.mu.Lock()
 	s.schedules = append(s.schedules, created)
@@ -94,26 +95,26 @@ func (s *scheduleServiceStub) Create(_ context.Context, candidate schedule.Candi
 	return cloneSchedule(created), nil
 }
 
-func (s *scheduleServiceStub) Update(_ context.Context, patch schedule.Patch) (schedule.Schedule, error) {
-	if err := patch.Validate(); err != nil {
-		return schedule.Schedule{}, err
+func (s *scheduleServiceStub) Update(_ context.Context, request protocol.UpdateScheduleRequest) (protocol.Schedule, error) {
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return protocol.Schedule{}, err
 	}
-	s.updated <- patch
+	s.updated <- request
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for index := range s.schedules {
 		scheduled := &s.schedules[index]
-		if scheduled.ID != patch.ID {
+		if scheduled.ID != request.ID {
 			continue
 		}
-		if scheduled.Revision != patch.ExpectedRevision {
-			return schedule.Schedule{}, errors.New("revision conflict")
+		if scheduled.Revision != request.ExpectedRevision {
+			return protocol.Schedule{}, errors.New("revision conflict")
 		}
-		applySchedulePatch(scheduled, patch)
+		applyScheduleUpdate(scheduled, request)
 		scheduled.Revision++
 		return cloneSchedule(*scheduled), nil
 	}
-	return schedule.Schedule{}, errors.New("schedule not found")
+	return protocol.Schedule{}, errors.New("schedule not found")
 }
 
 func (s *scheduleServiceStub) Delete(_ context.Context, id string) error {
@@ -129,12 +130,13 @@ func (s *scheduleServiceStub) Delete(_ context.Context, id string) error {
 	return errors.New("schedule not found")
 }
 
-func (s *scheduleServiceStub) RunNow(_ context.Context, id string) (schedule.RunHandle, error) {
+func (s *scheduleServiceStub) RunNow(_ context.Context, id string) (protocol.RunScheduleNowResponse, error) {
 	s.run <- id
-	return schedule.RunHandle{SessionID: "ses_scheduled", RunID: "run_scheduled"}, nil
+	return protocol.RunScheduleNowResponse{SessionID: "ses_scheduled", RunID: "run_scheduled"}, nil
 }
 
-func cloneSchedule(scheduled schedule.Schedule) schedule.Schedule {
+func cloneSchedule(scheduled protocol.Schedule) protocol.Schedule {
+	scheduled.Workspace = cloneWorkspaceRef(scheduled.Workspace)
 	if scheduled.LastRunAt != nil {
 		scheduled.LastRunAt = new(*scheduled.LastRunAt)
 	}
@@ -144,26 +146,36 @@ func cloneSchedule(scheduled schedule.Schedule) schedule.Schedule {
 	return scheduled
 }
 
-func applySchedulePatch(scheduled *schedule.Schedule, patch schedule.Patch) {
-	if patch.Title != nil {
-		scheduled.Title = *patch.Title
+func cloneWorkspaceRef(workspace *protocol.WorkspaceRef) *protocol.WorkspaceRef {
+	if workspace == nil {
+		return nil
 	}
-	if patch.Instructions != nil {
-		scheduled.Instructions = *patch.Instructions
+	return &protocol.WorkspaceRef{Path: workspace.Path}
+}
+
+func applyScheduleUpdate(scheduled *protocol.Schedule, request protocol.UpdateScheduleRequest) {
+	if request.Title != nil {
+		scheduled.Title = *request.Title
 	}
-	if workspace, bound := patch.Workspace.Binding(); bound {
-		scheduled.Workspace = workspace
-	} else if patch.Workspace.UsesDefault() {
-		scheduled.Workspace = ""
+	if request.Instructions != nil {
+		scheduled.Instructions = *request.Instructions
 	}
-	if patch.Provider != nil {
-		scheduled.Provider, scheduled.Model = *patch.Provider, *patch.Model
+	if request.Workspace != nil {
+		scheduled.Workspace = cloneWorkspaceRef(request.Workspace)
+	} else if request.WorkspaceMode == protocol.ScheduleWorkspaceDefault {
+		scheduled.Workspace = nil
 	}
-	if patch.Cron != nil {
-		scheduled.Cron = *patch.Cron
+	if request.Provider != nil {
+		scheduled.Provider, scheduled.Model = *request.Provider, *request.Model
 	}
-	if patch.Enabled != nil {
-		scheduled.Enabled = *patch.Enabled
+	if request.ReasoningEffort != nil {
+		scheduled.ReasoningEffort = *request.ReasoningEffort
+	}
+	if request.Cron != nil {
+		scheduled.Cron = *request.Cron
+	}
+	if request.Enabled != nil {
+		scheduled.Enabled = *request.Enabled
 		if scheduled.Enabled {
 			next := scheduled.CreatedAt.Add(time.Hour)
 			scheduled.NextRunAt = &next
@@ -214,7 +226,7 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Daily audit")
 	created := awaitValue(t, service.created, "schedule creation")
-	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.Workspace == "" ||
+	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.Workspace == nil ||
 		created.Provider != "deepseek" || created.Model != "deepseek-v4-flash" {
 		t.Fatalf("created schedule candidate = %+v", created)
 	}
@@ -232,7 +244,7 @@ func TestScheduleFormDoesNotNormalizeModelIdentity(t *testing.T) {
 		t.Fatal("schedule create form normalized a provider identity")
 	}
 
-	original := schedule.Schedule{
+	original := protocol.Schedule{
 		ID: "sch_review", Instructions: "review the repository", Provider: "deepseek",
 		Model: "deepseek-v4-flash", Cron: defaultScheduleCron, Enabled: true, Revision: 1,
 	}
@@ -460,13 +472,13 @@ func TestScheduleDraftClearsWorkspaceBindingAndRejectsAmbiguousIdentity(t *testi
 	original := newScheduleServiceStub().schedules[0]
 	draft := newScheduleFormDraft(scheduleFormUpdate, original, "")
 	draft.workspace = ""
-	patch, changed, err := draft.patch(original)
-	if err != nil || !changed || !patch.Workspace.UsesDefault() {
-		t.Fatalf("workspace clearing patch = (%+v, %v, %v)", patch, changed, err)
+	request, changed, err := draft.patch(original)
+	if err != nil || !changed || request.WorkspaceMode != protocol.ScheduleWorkspaceDefault {
+		t.Fatalf("workspace clearing request = (%+v, %v, %v)", request, changed, err)
 	}
 	duplicate := cloneSchedule(original)
 	duplicate.ID = "sch_review_other"
-	if _, err := resolveSchedule([]schedule.Schedule{original, duplicate}, "sch_rev"); err == nil {
+	if _, err := resolveSchedule([]protocol.Schedule{original, duplicate}, "sch_rev"); err == nil {
 		t.Fatal("ambiguous schedule prefix was accepted")
 	}
 }

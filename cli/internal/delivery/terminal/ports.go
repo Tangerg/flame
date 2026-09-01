@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -97,11 +96,11 @@ type Skills interface {
 }
 
 type Schedules interface {
-	Schedules(context.Context) ([]schedule.Schedule, error)
-	Create(context.Context, schedule.Candidate) (schedule.Schedule, error)
-	Update(context.Context, schedule.Patch) (schedule.Schedule, error)
+	Schedules(context.Context) ([]protocol.Schedule, error)
+	Create(context.Context, protocol.CreateScheduleRequest) (protocol.Schedule, error)
+	Update(context.Context, protocol.UpdateScheduleRequest) (protocol.Schedule, error)
 	Delete(context.Context, string) error
-	RunNow(context.Context, string) (schedule.RunHandle, error)
+	RunNow(context.Context, string) (protocol.RunScheduleNowResponse, error)
 }
 
 type AgentMemory interface {

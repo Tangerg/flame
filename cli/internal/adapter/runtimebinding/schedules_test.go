@@ -7,8 +7,6 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 )
 
 type scheduleBindingStub struct {
@@ -43,7 +41,7 @@ func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol
 	}
 	created := wireSchedule(s.now, "sch_created")
 	created.Title, created.Instructions, created.Cron = request.Title, request.Instructions, request.Cron
-	created.Provider, created.Model = request.Provider, request.Model
+	created.Provider, created.Model, created.ReasoningEffort = request.Provider, request.Model, request.ReasoningEffort
 	created.Workspace = request.Workspace
 	return &created, nil
 }
@@ -70,6 +68,9 @@ func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol
 	if request.Provider != nil {
 		updated.Provider = *request.Provider
 		updated.Model = *request.Model
+	}
+	if request.ReasoningEffort != nil {
+		updated.ReasoningEffort = *request.ReasoningEffort
 	}
 	if request.Cron != nil {
 		updated.Cron = *request.Cron
@@ -138,19 +139,20 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	if err != nil || len(listed) != 2 || listed[0].ID != "sch_1" || listed[1].ID != "sch_2" {
 		t.Fatalf("Schedules = (%+v, %v)", listed, err)
 	}
-	candidate := schedule.Candidate{
-		Title: "Daily review", Instructions: "review everything", Workspace: "/workspace",
-		Provider: "deepseek", Model: "deepseek-v4-flash", Cron: "0 9 * * *",
+	candidate := protocol.CreateScheduleRequest{
+		Title: "Daily review", Instructions: "review everything", Workspace: &protocol.WorkspaceRef{Path: "/workspace"},
+		Provider: "deepseek", Model: "deepseek-v4-flash", ReasoningEffort: "high", Cron: "0 9 * * *",
 	}
 	created, err := runtime.Create(t.Context(), candidate)
 	if err != nil || created.ID != "sch_created" {
 		t.Fatalf("Create = (%+v, %v)", created, err)
 	}
-	if stub.created.Workspace == nil || stub.created.Workspace.Path != "/workspace" || stub.created.Model != candidate.Model {
+	if stub.created.Workspace == nil || stub.created.Workspace.Path != "/workspace" ||
+		stub.created.Model != candidate.Model || stub.created.ReasoningEffort != candidate.ReasoningEffort {
 		t.Fatalf("create request = %+v", stub.created)
 	}
 	title := "Updated"
-	updated, err := runtime.Update(t.Context(), schedule.Patch{ID: created.ID, ExpectedRevision: created.Revision, Title: &title})
+	updated, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{ID: created.ID, ExpectedRevision: created.Revision, Title: &title})
 	if err != nil || updated.Title != title || updated.Revision != created.Revision+1 {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
@@ -188,8 +190,8 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 		meta: requestMeta("test"),
 	}
 
-	_, err := runtime.Update(t.Context(), schedule.Patch{
-		ID: "sch_1", ExpectedRevision: 1, Workspace: schedule.BindWorkspace("/workspace/alias"),
+	_, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
+		ID: "sch_1", ExpectedRevision: 1, Workspace: &protocol.WorkspaceRef{Path: "/workspace/alias"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -198,8 +200,8 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 		t.Fatalf("bound workspace request = %+v", stub.updated)
 	}
 
-	_, err = runtime.Update(t.Context(), schedule.Patch{
-		ID: "sch_1", ExpectedRevision: 2, Workspace: schedule.UseDefaultWorkspace(),
+	_, err = runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
+		ID: "sch_1", ExpectedRevision: 2, WorkspaceMode: protocol.ScheduleWorkspaceDefault,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -212,14 +214,14 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 func TestScheduleAdapterRejectsAMutationForAnotherSchedule(t *testing.T) {
 	t.Parallel()
 	value := wireSchedule(time.Unix(1, 0), "sch_other")
-	_, err := projectScheduleResult("update schedule", "sch_expected", &value, nil)
+	_, err := scheduleResult("update schedule", "sch_expected", &value, nil)
 	requireRuntimeContractViolation(t, err)
 }
 
 func TestScheduleAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
-	candidate := schedule.Candidate{Title: "Review", Instructions: "review", Cron: "0 * * * *"}
+	candidate := protocol.CreateScheduleRequest{Title: "Review", Instructions: "review", Cron: "0 * * * *"}
 	wrongCreate := wireSchedule(now, "sch_created")
 	wrongCreate.Instructions = "ignored"
 	wrongUpdate := wireSchedule(now, "sch_1")
@@ -243,7 +245,7 @@ func TestScheduleAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			stub: &scheduleBindingStub{now: now, updateResult: &wrongUpdate},
 			invoke: func(runtime *Connection) error {
 				title := "updated"
-				_, err := runtime.Update(t.Context(), schedule.Patch{
+				_, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
 					ID: "sch_1", ExpectedRevision: 1, Title: &title,
 				})
 				return err

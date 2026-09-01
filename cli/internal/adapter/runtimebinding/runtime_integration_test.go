@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -583,8 +582,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	created, err := runtime.Create(t.Context(), schedule.Candidate{
-		Title: "Adapter schedule", Instructions: "review the workspace", Workspace: workspace, Cron: "0 9 * * 1-5",
+	created, err := runtime.Create(t.Context(), protocol.CreateScheduleRequest{
+		Title: "Adapter schedule", Instructions: "review the workspace",
+		Workspace: &protocol.WorkspaceRef{Path: workspace}, Cron: "0 9 * * 1-5",
 	})
 	if err != nil {
 		t.Fatalf("Create schedule: %v", err)
@@ -594,7 +594,7 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Schedules = (%+v, %v)", listed, err)
 	}
 	enabled := false
-	updated, err := runtime.Update(t.Context(), schedule.Patch{
+	updated, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
 		ID: created.ID, ExpectedRevision: created.Revision, Enabled: &enabled,
 	})
 	if err != nil || updated.Enabled || updated.Revision <= created.Revision {

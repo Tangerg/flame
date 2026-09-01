@@ -9,7 +9,6 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -29,8 +28,8 @@ type scheduleBinding interface {
 	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error)
 }
 
-func (r *Connection) Schedules(ctx context.Context) ([]schedule.Schedule, error) {
-	var schedules []schedule.Schedule
+func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error) {
+	var schedules []protocol.Schedule
 	seenIDs := make(map[string]struct{})
 	cursors, err := newCursorTraversal("list schedules", "", maximumSchedulePageRequests)
 	if err != nil {
@@ -49,15 +48,14 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.Schedule, error)
 			return nil, runtimeContractViolation("list schedules returned %d rows for limit %d", len(page.Data), schedulePageLimit)
 		}
 		for index, value := range page.Data {
-			projected := projectSchedule(value)
-			if validateErr := projected.Validate(); validateErr != nil {
+			if validateErr := protocol.ValidateWireTree(value); validateErr != nil {
 				return nil, runtimeContractViolation("list schedules item %d after cursor %q is invalid: %v", index+1, cursor, validateErr)
 			}
-			if _, duplicate := seenIDs[projected.ID]; duplicate {
-				return nil, runtimeContractViolation("list schedules repeats %q", projected.ID)
+			if _, duplicate := seenIDs[value.ID]; duplicate {
+				return nil, runtimeContractViolation("list schedules repeats %q", value.ID)
 			}
-			seenIDs[projected.ID] = struct{}{}
-			schedules = append(schedules, projected)
+			seenIDs[value.ID] = struct{}{}
+			schedules = append(schedules, cloneSchedule(value))
 		}
 		more, err := cursors.Advance(page.NextCursor)
 		if err != nil {
@@ -69,139 +67,211 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.Schedule, error)
 	}
 }
 
-func (r *Connection) Create(ctx context.Context, candidate schedule.Candidate) (schedule.Schedule, error) {
-	if err := candidate.Validate(); err != nil {
-		return schedule.Schedule{}, err
+func (r *Connection) Create(ctx context.Context, request protocol.CreateScheduleRequest) (protocol.Schedule, error) {
+	validated := cloneCreateScheduleRequest(request)
+	if err := protocol.ValidateWireTree(validated); err != nil {
+		return protocol.Schedule{}, fmt.Errorf("create schedule: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return schedule.Schedule{}, err
+		return protocol.Schedule{}, err
 	}
-	validated := candidate
-	if candidate.Workspace != "" {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: candidate.Workspace})
+	if validated.Workspace != nil {
+		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: validated.Workspace.Path})
 		if resolveErr != nil {
-			return schedule.Schedule{}, fmt.Errorf("create schedule workspace: %w", resolveErr)
+			return protocol.Schedule{}, fmt.Errorf("create schedule workspace: %w", resolveErr)
 		}
-		validated.Workspace = resolved.Path
+		validated.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
-	request := protocol.CreateScheduleRequest{
-		Title: validated.Title, Instructions: validated.Instructions,
-		Provider: validated.Provider, Model: validated.Model, Cron: validated.Cron,
-	}
-	if validated.Workspace != "" {
-		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
-	}
-	created, err := r.schedules.CreateSchedule(ctx, request, options)
-	projected, err := projectScheduleResult("create schedule", "", created, err)
+	created, err := r.schedules.CreateSchedule(ctx, validated, options)
+	result, err := scheduleResult("create schedule", "", created, err)
 	if err != nil {
-		return schedule.Schedule{}, err
+		return protocol.Schedule{}, err
 	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return schedule.Schedule{}, runtimeContractViolation("create schedule returned an invalid acknowledgement: %v", err)
+	if err := validateCreateScheduleAcknowledgement(validated, result); err != nil {
+		return protocol.Schedule{}, runtimeContractViolation("create schedule returned an invalid acknowledgement: %v", err)
 	}
-	return projected, nil
+	return result, nil
 }
 
-func (r *Connection) Update(ctx context.Context, patch schedule.Patch) (schedule.Schedule, error) {
-	if err := patch.Validate(); err != nil {
-		return schedule.Schedule{}, err
+func (r *Connection) Update(ctx context.Context, request protocol.UpdateScheduleRequest) (protocol.Schedule, error) {
+	validated := cloneUpdateScheduleRequest(request)
+	if err := protocol.ValidateWireTree(validated); err != nil {
+		return protocol.Schedule{}, fmt.Errorf("update schedule: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return schedule.Schedule{}, err
+		return protocol.Schedule{}, err
 	}
-	validated := patch
-	if path, bound := patch.Workspace.Binding(); bound {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: path})
+	if validated.Workspace != nil {
+		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: validated.Workspace.Path})
 		if resolveErr != nil {
-			return schedule.Schedule{}, fmt.Errorf("update schedule workspace: %w", resolveErr)
+			return protocol.Schedule{}, fmt.Errorf("update schedule workspace: %w", resolveErr)
 		}
-		validated.Workspace = schedule.BindWorkspace(resolved.Path)
+		validated.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
-	request := protocol.UpdateScheduleRequest{
-		ID: validated.ID, ExpectedRevision: validated.ExpectedRevision,
-		Title: clonePointer(validated.Title), Instructions: clonePointer(validated.Instructions),
-		Provider: clonePointer(validated.Provider), Model: clonePointer(validated.Model),
-		Cron: clonePointer(validated.Cron), Enabled: clonePointer(validated.Enabled),
-	}
-	if path, bound := validated.Workspace.Binding(); bound {
-		request.Workspace = &protocol.WorkspaceRef{Path: path}
-	} else if validated.Workspace.UsesDefault() {
-		request.WorkspaceMode = protocol.ScheduleWorkspaceDefault
-	}
-	updated, err := r.schedules.UpdateSchedule(ctx, request, options)
-	projected, err := projectScheduleResult("update schedule", validated.ID, updated, err)
+	updated, err := r.schedules.UpdateSchedule(ctx, validated, options)
+	result, err := scheduleResult("update schedule", validated.ID, updated, err)
 	if err != nil {
-		return schedule.Schedule{}, err
+		return protocol.Schedule{}, err
 	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return schedule.Schedule{}, runtimeContractViolation("update schedule returned an invalid acknowledgement: %v", err)
+	if err := validateUpdateScheduleAcknowledgement(validated, result); err != nil {
+		return protocol.Schedule{}, runtimeContractViolation("update schedule returned an invalid acknowledgement: %v", err)
 	}
-	return projected, nil
+	return result, nil
 }
 
 func (r *Connection) Delete(ctx context.Context, id string) error {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return errors.New("delete schedule: id is empty")
+	request := protocol.DeleteScheduleRequest{ID: strings.TrimSpace(id)}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return fmt.Errorf("delete schedule: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return err
 	}
-	return classifyError(r.schedules.DeleteSchedule(ctx, protocol.DeleteScheduleRequest{ID: id}, options))
+	return classifyError(r.schedules.DeleteSchedule(ctx, request, options))
 }
 
-func (r *Connection) RunNow(ctx context.Context, id string) (schedule.RunHandle, error) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return schedule.RunHandle{}, errors.New("run schedule now: id is empty")
+func (r *Connection) RunNow(ctx context.Context, id string) (protocol.RunScheduleNowResponse, error) {
+	request := protocol.RunScheduleNowRequest{ID: strings.TrimSpace(id)}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return protocol.RunScheduleNowResponse{}, fmt.Errorf("run schedule now: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return schedule.RunHandle{}, err
+		return protocol.RunScheduleNowResponse{}, err
 	}
-	result, err := r.schedules.RunScheduleNow(ctx, protocol.RunScheduleNowRequest{ID: id}, options)
+	result, err := r.schedules.RunScheduleNow(ctx, request, options)
 	if err != nil {
-		return schedule.RunHandle{}, classifyError(err)
+		return protocol.RunScheduleNowResponse{}, classifyError(err)
 	}
 	if result == nil {
-		return schedule.RunHandle{}, runtimeContractViolation("run schedule now returned nil")
+		return protocol.RunScheduleNowResponse{}, runtimeContractViolation("run schedule now returned nil")
 	}
-	handle := schedule.RunHandle{SessionID: result.SessionID, RunID: result.RunID}
-	if err := handle.Validate(); err != nil {
-		return schedule.RunHandle{}, runtimeContractViolation("run schedule now returned an invalid handle: %v", err)
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return protocol.RunScheduleNowResponse{}, runtimeContractViolation("run schedule now returned an invalid response: %v", err)
 	}
-	return handle, nil
+	return *result, nil
 }
 
-func projectScheduleResult(operation, expectedID string, result *protocol.Schedule, err error) (schedule.Schedule, error) {
+func scheduleResult(operation, expectedID string, result *protocol.Schedule, err error) (protocol.Schedule, error) {
 	if err != nil {
-		return schedule.Schedule{}, classifyError(err)
+		return protocol.Schedule{}, classifyError(err)
 	}
 	if result == nil {
-		return schedule.Schedule{}, runtimeContractViolation("%s returned nil", operation)
+		return protocol.Schedule{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	projected := projectSchedule(*result)
-	if err := projected.Validate(); err != nil {
-		return schedule.Schedule{}, runtimeContractViolation("%s returned an invalid schedule: %v", operation, err)
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return protocol.Schedule{}, runtimeContractViolation("%s returned an invalid schedule: %v", operation, err)
 	}
-	if expectedID != "" && projected.ID != expectedID {
-		return schedule.Schedule{}, runtimeContractViolation("%s returned id %q for %q", operation, projected.ID, expectedID)
+	if expectedID != "" && result.ID != expectedID {
+		return protocol.Schedule{}, runtimeContractViolation("%s returned id %q for %q", operation, result.ID, expectedID)
 	}
-	return projected, nil
+	return cloneSchedule(*result), nil
 }
 
-func projectSchedule(value protocol.Schedule) schedule.Schedule {
-	projected := schedule.Schedule{
-		ID: value.ID, Title: value.Title, Instructions: value.Instructions,
-		Provider: value.Provider, Model: value.Model, Cron: value.Cron, Enabled: value.Enabled,
-		LastRunAt: clonePointer(value.LastRunAt), NextRunAt: clonePointer(value.NextRunAt),
-		CreatedAt: value.CreatedAt, Revision: value.Revision,
+func validateCreateScheduleAcknowledgement(request protocol.CreateScheduleRequest, result protocol.Schedule) error {
+	var problems []error
+	if result.Revision != 1 {
+		problems = append(problems, fmt.Errorf("revision is %d, want 1", result.Revision))
 	}
-	if value.Workspace != nil {
-		projected.Workspace = value.Workspace.Path
+	if result.Title != request.Title {
+		problems = append(problems, errors.New("title does not match the request"))
 	}
-	return projected
+	if result.Instructions != request.Instructions {
+		problems = append(problems, errors.New("instructions do not match the request"))
+	}
+	if request.Workspace != nil && !sameWorkspace(result.Workspace, request.Workspace) {
+		problems = append(problems, errors.New("workspace does not match the request"))
+	}
+	if result.Provider != request.Provider || result.Model != request.Model || result.ReasoningEffort != request.ReasoningEffort {
+		problems = append(problems, errors.New("model selection does not match the request"))
+	}
+	if result.Cron != request.Cron {
+		problems = append(problems, errors.New("cron does not match the request"))
+	}
+	if !result.Enabled {
+		problems = append(problems, errors.New("new schedule is disabled"))
+	}
+	if result.LastRunAt != nil {
+		problems = append(problems, errors.New("new schedule has prior run state"))
+	}
+	return errors.Join(problems...)
+}
+
+func validateUpdateScheduleAcknowledgement(request protocol.UpdateScheduleRequest, result protocol.Schedule) error {
+	var problems []error
+	if result.ID != request.ID {
+		problems = append(problems, errors.New("id does not match the request"))
+	}
+	if result.Revision != request.ExpectedRevision+1 {
+		problems = append(problems, fmt.Errorf("revision is %d, want %d", result.Revision, request.ExpectedRevision+1))
+	}
+	if request.Title != nil && result.Title != *request.Title {
+		problems = append(problems, errors.New("title does not match the request"))
+	}
+	if request.Instructions != nil && result.Instructions != *request.Instructions {
+		problems = append(problems, errors.New("instructions do not match the request"))
+	}
+	if request.Workspace != nil && !sameWorkspace(result.Workspace, request.Workspace) {
+		problems = append(problems, errors.New("workspace does not match the request"))
+	}
+	if request.WorkspaceMode == protocol.ScheduleWorkspaceDefault && result.Workspace != nil {
+		problems = append(problems, errors.New("workspace binding was not cleared"))
+	}
+	if request.Provider != nil && result.Provider != *request.Provider {
+		problems = append(problems, errors.New("provider does not match the request"))
+	}
+	if request.Model != nil && result.Model != *request.Model {
+		problems = append(problems, errors.New("model does not match the request"))
+	}
+	if request.ReasoningEffort != nil && result.ReasoningEffort != *request.ReasoningEffort {
+		problems = append(problems, errors.New("reasoning effort does not match the request"))
+	}
+	if request.Cron != nil && result.Cron != *request.Cron {
+		problems = append(problems, errors.New("cron does not match the request"))
+	}
+	if request.Enabled != nil && result.Enabled != *request.Enabled {
+		problems = append(problems, errors.New("enabled state does not match the request"))
+	}
+	return errors.Join(problems...)
+}
+
+func cloneCreateScheduleRequest(value protocol.CreateScheduleRequest) protocol.CreateScheduleRequest {
+	value.Workspace = cloneWorkspaceRef(value.Workspace)
+	return value
+}
+
+func cloneUpdateScheduleRequest(value protocol.UpdateScheduleRequest) protocol.UpdateScheduleRequest {
+	value.Title = clonePointer(value.Title)
+	value.Instructions = clonePointer(value.Instructions)
+	value.Workspace = cloneWorkspaceRef(value.Workspace)
+	value.Provider = clonePointer(value.Provider)
+	value.Model = clonePointer(value.Model)
+	value.ReasoningEffort = clonePointer(value.ReasoningEffort)
+	value.Cron = clonePointer(value.Cron)
+	value.Enabled = clonePointer(value.Enabled)
+	return value
+}
+
+func cloneSchedule(value protocol.Schedule) protocol.Schedule {
+	value.Workspace = cloneWorkspaceRef(value.Workspace)
+	value.LastRunAt = clonePointer(value.LastRunAt)
+	value.NextRunAt = clonePointer(value.NextRunAt)
+	return value
+}
+
+func cloneWorkspaceRef(value *protocol.WorkspaceRef) *protocol.WorkspaceRef {
+	if value == nil {
+		return nil
+	}
+	return &protocol.WorkspaceRef{Path: value.Path}
+}
+
+func sameWorkspace(left, right *protocol.WorkspaceRef) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return left.Path == right.Path
 }
