@@ -51,7 +51,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 	if !info.Mode().IsRegular() {
 		return 0, true, nil
 	}
-	file, _, err := fileinput.Open(path, 0)
+	file, _, err := fileinput.OpenExpected(path, info, 0)
 	if err != nil {
 		if errors.Is(err, fileinput.ErrNotRegular) {
 			return 0, true, nil

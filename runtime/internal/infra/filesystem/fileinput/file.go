@@ -25,6 +25,12 @@ func Open(path string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	)
 }
 
+// OpenExpected opens path only when it still identifies expected. This keeps a
+// caller's earlier lstat/stat decision authoritative across the open boundary.
+func OpenExpected(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error) {
+	return openExpected(expected, func() (*os.File, error) { return openPath(path) }, maximumBytes)
+}
+
 // OpenAt applies Open's admission policy through an os.Root, retaining the
 // root's traversal and symlink confinement.
 func OpenAt(root *os.Root, name string, maximumBytes int64) (*os.File, os.FileInfo, error) {
@@ -38,6 +44,19 @@ func OpenAt(root *os.Root, name string, maximumBytes int64) (*os.File, os.FileIn
 	)
 }
 
+// OpenAtExpected applies OpenExpected through an os.Root.
+func OpenAtExpected(
+	root *os.Root,
+	name string,
+	expected os.FileInfo,
+	maximumBytes int64,
+) (*os.File, os.FileInfo, error) {
+	if root == nil {
+		return nil, nil, errors.New("file input: root is required")
+	}
+	return openExpected(expected, func() (*os.File, error) { return openRootPath(root, name) }, maximumBytes)
+}
+
 func open(
 	inspect func() (os.FileInfo, error),
 	openFile func() (*os.File, error),
@@ -49,6 +68,17 @@ func open(
 	source, err := inspect()
 	if err != nil {
 		return nil, nil, err
+	}
+	return openExpected(source, openFile, maximumBytes)
+}
+
+func openExpected(
+	source os.FileInfo,
+	openFile func() (*os.File, error),
+	maximumBytes int64,
+) (_ *os.File, _ os.FileInfo, err error) {
+	if maximumBytes < 0 {
+		return nil, nil, errors.New("file input: byte limit must not be negative")
 	}
 	if err := validate(source, maximumBytes); err != nil {
 		return nil, nil, err
@@ -76,6 +106,9 @@ func open(
 }
 
 func validate(info os.FileInfo, maximumBytes int64) error {
+	if info == nil {
+		return errors.New("file input: expected source information is required")
+	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("%w: mode %s", ErrNotRegular, info.Mode().Type())
 	}

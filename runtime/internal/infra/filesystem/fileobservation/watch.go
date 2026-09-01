@@ -326,7 +326,7 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 			encoder.state(fingerprintStateTooLarge)
 			return encoder.sum(), physical, nil
 		}
-		file, opened, openErr := fileinput.Open(physical, candidate.maxBytes)
+		file, opened, openErr := fileinput.OpenExpected(physical, physicalInfo, candidate.maxBytes)
 		if openErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}

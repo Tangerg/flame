@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const skillFile = "SKILL.md"
@@ -26,30 +27,22 @@ func readSkill(root *os.Root, dir string) ([]byte, bool, error) {
 }
 
 func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
-	file, err := root.Open(path)
+	file, _, err := fileinput.OpenAt(root, path, skills.MaxAuthoredSkillDocumentBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
+	if errors.Is(err, fileinput.ErrNotRegular) {
+		return nil, false, errors.New("skill document is not a regular file")
+	}
+	if errors.Is(err, fileinput.ErrTooLarge) {
+		return nil, false, fmt.Errorf(
+			"%w: exceeds %d bytes",
+			skills.ErrDocumentTooLarge,
+			skills.MaxAuthoredSkillDocumentBytes,
+		)
+	}
 	if err != nil {
 		return nil, false, err
-	}
-	info, statErr := file.Stat()
-	if statErr != nil {
-		return nil, false, errors.Join(
-			fmt.Errorf("inspect file: %w", statErr),
-			file.Close(),
-		)
-	}
-	if info.Size() > skills.MaxAuthoredSkillDocumentBytes {
-		return nil, false, errors.Join(
-			fmt.Errorf(
-				"%w: %d bytes exceeds %d",
-				skills.ErrDocumentTooLarge,
-				info.Size(),
-				skills.MaxAuthoredSkillDocumentBytes,
-			),
-			file.Close(),
-		)
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, skills.MaxAuthoredSkillDocumentBytes+1))
 	closeErr := file.Close()

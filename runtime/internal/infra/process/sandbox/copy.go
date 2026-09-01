@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const (
@@ -167,16 +169,15 @@ func (t *treeCopier) copyFile(
 	}
 	t.totalBytes += size
 
-	source, err := t.source.Open(localName)
+	source, openedInfo, err := fileinput.OpenAtExpected(t.source, localName, info, maxWorkspaceCopyFileBytes)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrChanged) || errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) {
+			return fmt.Errorf("source file %q changed before copy: %w", portableName, err)
+		}
 		return fmt.Errorf("open source file %q: %w", portableName, err)
 	}
-	openedInfo, statErr := source.Stat()
-	if statErr != nil || !openedInfo.Mode().IsRegular() || openedInfo.Size() != size || !os.SameFile(info, openedInfo) {
+	if openedInfo.Size() != size {
 		closeErr := source.Close()
-		if statErr != nil {
-			return fmt.Errorf("restat source file %q: %w", portableName, errors.Join(statErr, closeErr))
-		}
 		return fmt.Errorf(
 			"source file %q changed before copy: %w",
 			portableName,

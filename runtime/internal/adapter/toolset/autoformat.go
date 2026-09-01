@@ -16,6 +16,8 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const (
@@ -167,23 +169,21 @@ func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, e
 	if err := validateAutoFormatSource(pathInfo); err != nil {
 		return autoFormatSource{}, err
 	}
-	file, err := os.Open(path)
+	file, info, err := fileinput.OpenExpected(path, pathInfo, maxAutoFormatFileBytes)
 	if err != nil {
+		switch {
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return autoFormatSource{}, fmt.Errorf("%w: file grew while opening", errAutoFormatFileTooLarge)
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return autoFormatSource{}, errors.New("unsupported file mode while opening for formatting")
+		case errors.Is(err, fileinput.ErrChanged):
+			return autoFormatSource{}, errors.New("file changed while opening for formatting")
+		}
 		return autoFormatSource{}, err
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	info, err := file.Stat()
-	if err != nil {
-		return autoFormatSource{}, err
-	}
-	if !os.SameFile(pathInfo, info) {
-		return autoFormatSource{}, errors.New("file changed while opening for formatting")
-	}
-	if err := validateAutoFormatSource(info); err != nil {
-		return autoFormatSource{}, err
-	}
 	content, err := io.ReadAll(io.LimitReader(
 		autoFormatContextReader{ctx: ctx, reader: file},
 		maxAutoFormatFileBytes+1,

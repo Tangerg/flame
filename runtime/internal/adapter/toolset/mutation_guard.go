@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -149,23 +150,16 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	if cause := context.Cause(ctx); cause != nil {
 		return fingerprintObservation{}, false, cause
 	}
-	file, err := os.Open(path)
+	file, before, err := fileinput.OpenExpected(path, preflight, maxBytes)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrTooLarge) {
+			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening", errRuntimeReadFileTooLarge)
+		}
 		return fingerprintObservation{}, false, err
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	before, err := file.Stat()
-	if err != nil {
-		return fingerprintObservation{}, false, err
-	}
-	if !before.Mode().IsRegular() {
-		return fingerprintObservation{}, false, fmt.Errorf("unsupported file mode %s", before.Mode().Type())
-	}
-	if maxBytes > 0 && before.Size() > maxBytes {
-		return fingerprintObservation{}, false, fmt.Errorf("%w: file uses %d bytes", errRuntimeReadFileTooLarge, before.Size())
-	}
 	hash := sha256.New()
 	buffer := make([]byte, 64<<10)
 	var source io.Reader = fingerprintContextReader{ctx: ctx, reader: file}

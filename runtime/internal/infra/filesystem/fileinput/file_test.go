@@ -43,3 +43,25 @@ func TestOpenAndOpenAtAdmitOnlyBoundedRegularFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestOpenExpectedRejectsAReplacement(t *testing.T) {
+	rootPath := t.TempDir()
+	path := filepath.Join(rootPath, "input")
+	if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(rootPath, "replacement")
+	if err := os.WriteFile(replacement, []byte("second"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenExpected(path, expected, 0); !errors.Is(err, ErrChanged) {
+		t.Fatalf("OpenExpected replacement error = %v, want ErrChanged", err)
+	}
+}

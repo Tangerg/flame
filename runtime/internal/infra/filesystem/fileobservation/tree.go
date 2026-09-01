@@ -324,7 +324,7 @@ func fingerprintTreeFile(logical, physical, boundary string, maxBytes int64) (fi
 		encoder.state(fingerprintStateTooLarge)
 		return encoder.sum(), resolved, nil
 	}
-	file, _, err := fileinput.Open(resolved, maxBytes)
+	file, _, err := fileinput.OpenExpected(resolved, info, maxBytes)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe trees: open %q: %w", logical, err)
 	}
