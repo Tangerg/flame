@@ -216,7 +216,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 		}
 		for _, entry := range page.Data {
 			result.Entries = append(result.Entries, workspace.FileEntry{
-				Path: entry.Path, Name: entry.Name, Type: projectFileType(entry.Type),
+				Path: entry.Path, Name: entry.Name, Type: entry.Type,
 				SizeBytes: cloneInt64(entry.SizeBytes), ModifiedAt: entry.ModifiedAt,
 			})
 		}
@@ -334,19 +334,6 @@ func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)
 	}
 	return result, nil
-}
-
-func projectFileType(value protocol.FileEntryType) workspace.FileType {
-	switch value {
-	case protocol.FileEntryFile:
-		return workspace.FileEntryFile
-	case protocol.FileEntryDir:
-		return workspace.FileEntryDirectory
-	case protocol.FileEntrySymlink:
-		return workspace.FileEntrySymlink
-	default:
-		return workspace.FileType(value)
-	}
 }
 
 func cloneInt(value *int) *int {

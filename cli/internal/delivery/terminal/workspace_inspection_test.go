@@ -112,7 +112,7 @@ func (w *workspaceServiceStub) Files(_ context.Context, request workspace.FilesR
 	w.mu.Unlock()
 	size := int64(42)
 	return workspace.FileListing{Entries: []workspace.FileEntry{{
-		Path: "main.go", Name: "main.go", Type: workspace.FileEntryFile,
+		Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile,
 		SizeBytes: &size, ModifiedAt: "2026-08-12T09:00:00Z",
 	}}}, nil
 }

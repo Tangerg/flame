@@ -316,7 +316,7 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 	}
 	files, err := runtime.Files(t.Context(), workspaceapi.FilesRequest{Workspace: path})
 	if err != nil || len(files.Entries) != 2 || files.Entries[0].Path != "empty" ||
-		files.Entries[0].Type != workspaceapi.FileEntryDirectory || files.Entries[1].Path != "main.go" {
+		files.Entries[0].Type != protocol.FileEntryDir || files.Entries[1].Path != "main.go" {
 		t.Fatalf("Files = (%+v, %v)", files, err)
 	}
 	headLimit, err := workspaceapi.NewHeadLineLimit(2)

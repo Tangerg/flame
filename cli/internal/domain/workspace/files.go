@@ -8,22 +8,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type FileType string
-
-const (
-	FileEntryFile      FileType = "file"
-	FileEntryDirectory FileType = "directory"
-	FileEntrySymlink   FileType = "symlink"
-)
-
-func (f FileType) Valid() bool {
-	return f == FileEntryFile || f == FileEntryDirectory || f == FileEntrySymlink
-}
-
 type FileEntry struct {
 	Path       string
 	Name       string
-	Type       FileType
+	Type       protocol.FileEntryType
 	SizeBytes  *int64
 	ModifiedAt string
 }
@@ -34,7 +22,7 @@ func (f FileEntry) Validate() error {
 		return errors.New("file entry path is empty")
 	case strings.TrimSpace(f.Name) == "":
 		return errors.New("file entry name is empty")
-	case !f.Type.Valid():
+	case f.Type != protocol.FileEntryFile && f.Type != protocol.FileEntryDir && f.Type != protocol.FileEntrySymlink:
 		return fmt.Errorf("file entry type %q is invalid", f.Type)
 	case f.SizeBytes != nil && *f.SizeBytes < 0:
 		return errors.New("file entry size is negative")

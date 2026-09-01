@@ -150,8 +150,8 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		t.Fatalf("Search = (%+v, %v)", search, err)
 	}
 	files, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
-	if err != nil || len(files.Entries) != 2 || files.Entries[0].Type != workspace.FileEntryFile ||
-		*files.Entries[0].SizeBytes != size || files.Entries[1].Type != workspace.FileEntryDirectory {
+	if err != nil || len(files.Entries) != 2 || files.Entries[0].Type != protocol.FileEntryFile ||
+		*files.Entries[0].SizeBytes != size || files.Entries[1].Type != protocol.FileEntryDir {
 		t.Fatalf("Files = (%+v, %v)", files, err)
 	}
 	if len(stub.fileCalls) != 2 || stub.fileCalls[0].Cursor != "" ||

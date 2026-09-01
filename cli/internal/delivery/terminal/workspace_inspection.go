@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -165,7 +167,7 @@ func (a *app) BrowseWorkspace(argument string) error {
 			lines := make([]string, 0, len(listing.Entries))
 			for _, entry := range listing.Entries {
 				kind := string(entry.Type)
-				if entry.Type == workspace.FileEntryDirectory {
+				if entry.Type == protocol.FileEntryDir {
 					kind = "dir"
 				}
 				line := fmt.Sprintf("%-7s %s", kind, entry.Path)
