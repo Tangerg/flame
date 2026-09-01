@@ -6,7 +6,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -110,12 +109,6 @@ type reducer struct {
 	toolContext conversation.Conversation
 }
 
-type openText struct {
-	id        string
-	createdAt time.Time
-	buf       strings.Builder
-}
-
 type openTool struct {
 	callID            string
 	sourceCallID      string
@@ -184,8 +177,8 @@ func (r *reducer) clone() *reducer {
 	cloned.toolPositions = maps.Clone(r.toolPositions)
 	cloned.drained = slices.Clone(r.drained)
 	cloned.tools = r.tools.clone()
-	cloned.text = cloneOpenText(r.text)
-	cloned.reasoning = cloneOpenText(r.reasoning)
+	cloned.text = r.text.clone()
+	cloned.reasoning = r.reasoning.clone()
 	cloned.resume = cloneResumeBinding(r.resume)
 	if r.plan != nil {
 		plan := *r.plan
@@ -205,15 +198,6 @@ func (r *reducer) clone() *reducer {
 		cloned.earlyAssistantMessage = &message
 	}
 	return &cloned
-}
-
-func cloneOpenText(value *openText) *openText {
-	if value == nil {
-		return nil
-	}
-	cloned := &openText{id: value.id, createdAt: value.createdAt}
-	cloned.buf.WriteString(value.buf.String())
-	return cloned
 }
 
 func cloneResumeBinding(value *resumeBinding) *resumeBinding {

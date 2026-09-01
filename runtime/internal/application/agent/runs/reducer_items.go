@@ -19,6 +19,35 @@ import (
 
 const applyingUserInputActivity = "Applying user input"
 
+// openText owns the identity and accumulated content of one live streaming
+// item. Reducer clones are speculative, so cloning must also detach the
+// mutable builder before a persistence batch can be attempted.
+type openText struct {
+	identity transcript.ItemIdentity
+	content  strings.Builder
+}
+
+func newOpenText(identity transcript.ItemIdentity) *openText {
+	return &openText{identity: identity}
+}
+
+func (o *openText) clone() *openText {
+	if o == nil {
+		return nil
+	}
+	cloned := newOpenText(o.identity)
+	cloned.append(o.text())
+	return cloned
+}
+
+func (o *openText) append(text string) { o.content.WriteString(text) }
+
+func (o *openText) itemIdentity() transcript.ItemIdentity { return o.identity }
+
+func (o *openText) itemID() string { return o.identity.ItemID }
+
+func (o *openText) text() string { return o.content.String() }
+
 func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemIdentity {
 	return transcript.ItemIdentity{
 		SessionID:  r.cfg.SessionID,
@@ -42,16 +71,16 @@ func (r *reducer) appendText(text string) ([]ProjectionEvent, error) {
 		if identityErr != nil {
 			return nil, identityErr
 		}
-		r.text = &openText{id: id, createdAt: r.now()}
-		start, err := newTransientItemStart(r.itemIdentity(r.text.id, r.text.createdAt), transcript.AgentMessage)
+		r.text = newOpenText(r.itemIdentity(id, r.now()))
+		start, err := newTransientItemStart(r.text.itemIdentity(), transcript.AgentMessage)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, ItemStarted{Item: start})
 	}
-	r.text.buf.WriteString(text)
+	r.text.append(text)
 	return append(out, ItemChanged{
-		ItemID: r.text.id,
+		ItemID: r.text.itemID(),
 		Delta:  delta,
 	}), nil
 }
@@ -70,16 +99,16 @@ func (r *reducer) appendReasoning(text string) ([]ProjectionEvent, error) {
 		if identityErr != nil {
 			return nil, identityErr
 		}
-		r.reasoning = &openText{id: id, createdAt: r.now()}
-		start, err := newTransientItemStart(r.itemIdentity(r.reasoning.id, r.reasoning.createdAt), transcript.Reasoning)
+		r.reasoning = newOpenText(r.itemIdentity(id, r.now()))
+		start, err := newTransientItemStart(r.reasoning.itemIdentity(), transcript.Reasoning)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, ItemStarted{Item: start})
 	}
-	r.reasoning.buf.WriteString(text)
+	r.reasoning.append(text)
 	return append(out, ItemChanged{
-		ItemID: r.reasoning.id,
+		ItemID: r.reasoning.itemID(),
 		Delta:  delta,
 	}), nil
 }
@@ -89,9 +118,9 @@ func (r *reducer) closeText(phase transcript.MessagePhase) ([]ProjectionEvent, e
 		return nil, nil
 	}
 	item, err := transcript.NewAgentMessage(
-		r.itemIdentity(r.text.id, r.text.createdAt),
+		r.text.itemIdentity(),
 		phase,
-		[]transcript.ContentBlock{{Kind: transcript.TextContent, Text: r.text.buf.String()}},
+		[]transcript.ContentBlock{{Kind: transcript.TextContent, Text: r.text.text()}},
 	)
 	if err != nil {
 		return nil, err
@@ -105,8 +134,8 @@ func (r *reducer) closeReasoning() ([]ProjectionEvent, error) {
 		return nil, nil
 	}
 	item, err := transcript.NewReasoning(
-		r.itemIdentity(r.reasoning.id, r.reasoning.createdAt),
-		r.reasoning.buf.String(),
+		r.reasoning.itemIdentity(),
+		r.reasoning.text(),
 		false,
 	)
 	if err != nil {
@@ -224,29 +253,27 @@ func (r *reducer) completeReasoning(text string) ([]ProjectionEvent, error) {
 	if text == "" {
 		return r.closeReasoning()
 	}
-	createdAt := r.now()
-	var id string
+	var identity transcript.ItemIdentity
 	started := r.reasoning == nil
 	if r.reasoning != nil {
-		createdAt = r.reasoning.createdAt
-		id = r.reasoning.id
+		identity = r.reasoning.itemIdentity()
 	} else {
-		var err error
-		id, err = r.nextItemID()
+		id, err := r.nextItemID()
 		if err != nil {
 			return nil, err
 		}
+		identity = r.itemIdentity(id, r.now())
 	}
 	r.reasoning = nil
 	out := make([]ProjectionEvent, 0, 2)
 	if started {
-		start, err := newTransientItemStart(r.itemIdentity(id, createdAt), transcript.Reasoning)
+		start, err := newTransientItemStart(identity, transcript.Reasoning)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, ItemStarted{Item: start})
 	}
-	item, err := transcript.NewReasoning(r.itemIdentity(id, createdAt), text, false)
+	item, err := transcript.NewReasoning(identity, text, false)
 	if err != nil {
 		return nil, err
 	}
@@ -261,29 +288,27 @@ func (r *reducer) completeMessageContent(
 	if len(content) == 0 {
 		return r.closeText(phase)
 	}
-	createdAt := r.now()
-	var id string
+	var identity transcript.ItemIdentity
 	started := r.text == nil
 	if r.text != nil {
-		createdAt = r.text.createdAt
-		id = r.text.id
+		identity = r.text.itemIdentity()
 	} else {
-		var err error
-		id, err = r.nextItemID()
+		id, err := r.nextItemID()
 		if err != nil {
 			return nil, err
 		}
+		identity = r.itemIdentity(id, r.now())
 	}
 	r.text = nil
 	out := make([]ProjectionEvent, 0, 2)
 	if started {
-		start, err := newTransientItemStart(r.itemIdentity(id, createdAt), transcript.AgentMessage)
+		start, err := newTransientItemStart(identity, transcript.AgentMessage)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, ItemStarted{Item: start})
 	}
-	item, err := transcript.NewAgentMessage(r.itemIdentity(id, createdAt), phase, content)
+	item, err := transcript.NewAgentMessage(identity, phase, content)
 	if err != nil {
 		return nil, err
 	}
