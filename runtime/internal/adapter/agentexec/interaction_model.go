@@ -156,6 +156,13 @@ func (o *observedInteractionModel) begin(
 		return interaction.ModelInvocation{}, nil, "", err
 	}
 	callID := callIdentity.String()
+	usage, err := o.session.accounting.snapshot()
+	if err != nil {
+		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)
+	}
+	if err := o.session.allowance.admit(usage); err != nil {
+		return interaction.ModelInvocation{}, nil, "", err
+	}
 	if _, err := o.session.reconcileCompletedDelegateChildren(ctx); err != nil {
 		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)
 	}

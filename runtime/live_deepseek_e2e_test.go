@@ -20,6 +20,7 @@ const (
 	liveDeepSeekEnvironment        = "FLAME_LIVE_DEEPSEEK"
 	liveConfigDirectoryEnvironment = "FLAME_LIVE_CONFIG_DIR"
 	liveGoalMarker                 = "LIVE_GOAL_PLAN_OK"
+	liveTokenBudgetMarker          = "LIVE_TOKEN_BUDGET_TOOL_OK"
 	liveScheduleMarker             = "LIVE_SCHEDULE_RUN_OK"
 	liveSteerMarker                = "LIVE_STEER_APPLIED"
 	liveHITLMarker                 = "LIVE_HITL_RESUMED"
@@ -192,6 +193,56 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	}
 	assertDeepSeekRun(t, &runs.Data[0])
 	t.Logf("Goal settled after %d steps for $%.6f; final observable state was %s", lastGoal.Used.Steps, lastGoal.Used.CostUSD, lastGoal.Status)
+}
+
+func TestLiveDeepSeekTokenBudgetStopsBeforeFollowUpModelCall(t *testing.T) {
+	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
+	session := fixture.createSession(t, "Live DeepSeek token budget E2E")
+	maxTokens, maxSteps := int64(1), 4
+	started, events, err := fixture.runtime.StartRun(fixture.ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input: []protocol.ContentBlock{{
+			Type: protocol.ContentBlockText,
+			Text: "Use set_plan exactly once to create one completed step whose description is " +
+				liveTokenBudgetMarker + ". After the tool returns, reply exactly UNREACHABLE. " +
+				"Do not call any other tool or ask the user anything.",
+		}},
+		Limits: &protocol.RunLimits{MaxTotalTokens: &maxTokens, MaxSteps: &maxSteps},
+	}, flameruntime.RunCommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, eventErr := range events {
+		if eventErr != nil {
+			t.Fatal(eventErr)
+		}
+	}
+	finished, err := fixture.runtime.GetRun(
+		fixture.ctx,
+		protocol.GetRunRequest{RunID: started.RunID},
+		flameruntime.CallOptions{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if finished.Status != protocol.RunStatusFinished || finished.Outcome == nil ||
+		finished.Outcome.Type != protocol.OutcomeMaxBudget || finished.Metrics.Steps != 1 {
+		t.Fatalf("token-limited Run = %+v, want one-step max-budget terminal", finished)
+	}
+	assertDeepSeekRun(t, finished)
+	plan, err := fixture.runtime.GetPlan(
+		fixture.ctx,
+		protocol.GetPlanRequest{SessionID: session.ID},
+		flameruntime.CallOptions{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.State == nil || len(plan.State.Steps) != 1 ||
+		plan.State.Steps[0].Description != liveTokenBudgetMarker ||
+		plan.State.Steps[0].Status != protocol.PlanStatusCompleted {
+		t.Fatalf("Plan = %+v, want completed boundary Tool effect", plan)
+	}
 }
 
 func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {

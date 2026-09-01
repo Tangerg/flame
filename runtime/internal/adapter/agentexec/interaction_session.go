@@ -34,6 +34,7 @@ type interactionSession struct {
 	state               interactionState
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
+	allowance           *interactionAllowance
 	unknownPollInterval time.Duration
 	statePollInterval   time.Duration
 	mcpToolAutoApproved func(server, tool string) bool
@@ -778,10 +779,31 @@ func (i *interactionSession) segmentEnd(result agent.Result) runs.SegmentEnded {
 	var end runs.SegmentEnded
 	if termination.Cause() == agent.TerminationCauseExternalFailure && ownerCause != nil {
 		end = segmentEndFromOwnerCause(ownerCause, duration)
+	} else if stop := i.allowance.terminal(); stop != interactionAllowanceOpen {
+		end = segmentEndFromAllowance(stop, duration)
 	} else {
 		end = segmentEndFromTermination(termination, duration)
 	}
 	end.Usage = i.accounting.segmentUsage(result.ProcessID())
+	return end
+}
+
+func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Duration) runs.SegmentEnded {
+	end := runs.SegmentEnded{Duration: duration}
+	switch stop {
+	case interactionAllowanceStepsExhausted:
+		end.Reason = run.OutcomeMaxSteps
+	case interactionAllowanceBudgetExhausted:
+		end.Reason = run.OutcomeMaxBudget
+	case interactionAllowancePricingUnavailable:
+		end.Reason = run.OutcomeFailed
+		end.Failure = &run.Failure{
+			Kind:   run.FailureProviderRejected,
+			Detail: "served model pricing is unavailable for the configured cost limit",
+		}
+	default:
+		panic("agentexec: impossible allowance stop")
+	}
 	return end
 }
 

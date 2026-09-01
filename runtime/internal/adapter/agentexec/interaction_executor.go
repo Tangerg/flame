@@ -266,7 +266,12 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, err
 	}
+	allowance, err := newInteractionAllowance(start.Limits, start.ModelSelection, i.config.Pricing)
+	if err != nil {
+		return nil, err
+	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
+	session.allowance = allowance
 	observedClient, err := newObservedInteractionClient(client, session)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: observe Interaction client: %w", err)
