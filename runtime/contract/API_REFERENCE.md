@@ -36,10 +36,10 @@ Protocol `2026-08-30` · 86 methods
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspace.diff.get` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `path_outside_root`, `capability_not_negotiated` |
-| `workspace.files.head` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
+| `workspace.files.head` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
 | `workspace.files.search` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `workspace.files.list` | query | unary | none | none | cursor | — | — | `workspace_unavailable`, `path_outside_root` |
-| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
+| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
 | `runtime.subscribe` | subscription | stream | none | none | none | — | `fileWatch` | `capability_not_negotiated` |
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.library.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |

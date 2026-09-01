@@ -84,7 +84,7 @@ type grepSource struct {
 }
 
 func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, error) {
-	path, err := rootRelativeGrepPath(
+	path, err := rootRelativeFilePath(
 		search.root,
 		search.canonicalRoot,
 		filepath.Join(search.root, filepath.FromSlash(entryPath)),
@@ -92,20 +92,15 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 	if err != nil {
 		return grepSource{}, false, err
 	}
-	file, err := os.Open(filepath.Join(search.canonicalRoot, filepath.FromSlash(path)))
+	file, err := openRegularFile(
+		filepath.Join(search.canonicalRoot, filepath.FromSlash(path)),
+		workspaceapp.MaxGrepFileBytes,
+	)
 	if err != nil {
-		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)
-	}
-	info, err := file.Stat()
-	if err != nil {
-		_ = file.Close()
-		return grepSource{}, false, fmt.Errorf("workspace: inspect search file %q: %w", path, err)
-	}
-	if !info.Mode().IsRegular() || info.Size() > workspaceapp.MaxGrepFileBytes {
-		if err := file.Close(); err != nil {
-			return grepSource{}, false, fmt.Errorf("workspace: close search file %q: %w", path, err)
+		if errors.Is(err, errFileSourceNotRegular) || errors.Is(err, errFileSourceTooLarge) {
+			return grepSource{}, false, nil
 		}
-		return grepSource{}, false, nil
+		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)
 	}
 	return grepSource{path: path, file: file}, true, nil
 }
@@ -221,10 +216,10 @@ func grepFile(
 	return result, err
 }
 
-// rootRelativeGrepPath converts a host path into the slash-separated workspace
-// identity promised by workspace.files.search. Canonicalizing both sides also
-// rejects a candidate that escapes through an in-root symlink.
-func rootRelativeGrepPath(root, canonicalRoot, candidate string) (string, error) {
+// rootRelativeFilePath converts a host path into a confined slash-separated
+// workspace identity. Canonicalizing both sides also rejects a candidate that
+// escapes through an in-root symlink.
+func rootRelativeFilePath(root, canonicalRoot, candidate string) (string, error) {
 	abs := candidate
 	if !filepath.IsAbs(abs) {
 		abs = filepath.Join(root, candidate)

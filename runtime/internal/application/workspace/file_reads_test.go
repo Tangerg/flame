@@ -67,7 +67,7 @@ func TestFilesReadRejectsInvalidPortResults(t *testing.T) {
 		{
 			name:   "invalid text",
 			result: FileReadResult{Content: string([]byte{0xff}), TotalLines: 1, EndLine: 1},
-			want:   ErrUnsupportedText,
+			want:   ErrUnsupportedFile,
 		},
 		{
 			name:   "unmarked omission",

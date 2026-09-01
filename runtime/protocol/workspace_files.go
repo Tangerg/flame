@@ -42,6 +42,7 @@ type ListFilesRequest struct {
 // file, or the StartLine..EndLine window (1-based inclusive, editor-facing)
 // when given. A zero MaxBytes selects the 1 MiB default; larger values are
 // capped at 8 MiB. FileContent.Truncated reports omitted source material.
+// Non-regular files and content that is not valid UTF-8 text are unsupported.
 type ReadFileRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`

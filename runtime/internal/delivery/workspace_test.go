@@ -340,6 +340,14 @@ func TestWorkspaceReadFilePreservesCancellationAndClassifiesBinaryText(t *testin
 			t.Fatalf("binary read error = %v, want unsupported_mime", err)
 		}
 	})
+	t.Run("directory", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(dir, "directory"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "directory"}); !errors.Is(err, protocol.ErrUnsupportedMime) {
+			t.Fatalf("directory read error = %v, want unsupported_mime", err)
+		}
+	})
 }
 
 func TestWorkspaceReadFileRejectsInvalidRange(t *testing.T) {

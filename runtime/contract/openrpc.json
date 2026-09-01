@@ -1997,6 +1997,10 @@
         {
           "code": -32013,
           "message": "path_outside_root"
+        },
+        {
+          "code": -32011,
+          "message": "unsupported_mime"
         }
       ],
       "x-flame-kind": "unary",
@@ -2253,6 +2257,10 @@
         {
           "code": -32013,
           "message": "path_outside_root"
+        },
+        {
+          "code": -32011,
+          "message": "unsupported_mime"
         }
       ],
       "x-flame-kind": "unary",

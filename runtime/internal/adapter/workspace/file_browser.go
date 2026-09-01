@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -42,25 +41,31 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
 	}
-	file, err := os.Open(path)
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: resolve read root: %w", err)
+	}
+	relative, err := rootRelativeFilePath(root, canonicalRoot, path)
 	if err != nil {
 		return workspaceapp.FileReadResult{}, err
+	}
+	file, err := openRegularFile(
+		filepath.Join(canonicalRoot, filepath.FromSlash(relative)),
+		workspaceapp.MaxFileReadSourceBytes,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, errFileSourceNotRegular):
+			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrUnsupportedFile, input.Path)
+		case errors.Is(err, errFileSourceTooLarge):
+			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrFileReadTooLarge, input.Path)
+		default:
+			return workspaceapp.FileReadResult{}, err
+		}
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	info, err := file.Stat()
-	if err != nil {
-		return workspaceapp.FileReadResult{}, err
-	}
-	if !info.Mode().IsRegular() {
-		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: read %s: unsupported file mode %s", input.Path, info.Mode().Type())
-	}
-	if info.Size() > workspaceapp.MaxFileReadSourceBytes {
-		return workspaceapp.FileReadResult{}, fmt.Errorf(
-			"%w: %s uses %d bytes", workspaceapp.ErrFileReadTooLarge, input.Path, info.Size(),
-		)
-	}
 
 	start, lines := 0, 0
 	if input.StartLine > 0 {
@@ -83,7 +88,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 				workspaceapp.ErrFileReadTooLarge, input.Path, textread.LineNumber(err),
 			)
 		case errors.Is(err, textread.ErrInvalidText):
-			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrUnsupportedText, input.Path)
+			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrUnsupportedFile, input.Path)
 		default:
 			return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: scan %s: %w", input.Path, err)
 		}

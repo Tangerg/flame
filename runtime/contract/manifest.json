@@ -372,7 +372,8 @@
       "pagination": "none",
       "errors": [
         "workspace_unavailable",
-        "path_outside_root"
+        "path_outside_root",
+        "unsupported_mime"
       ]
     },
     {
@@ -408,7 +409,8 @@
       "pagination": "none",
       "errors": [
         "workspace_unavailable",
-        "path_outside_root"
+        "path_outside_root",
+        "unsupported_mime"
       ]
     },
     {
@@ -1493,7 +1495,9 @@
         "code": -32011,
         "recoveryAction": "promptUser",
         "methods": [
-          "runs.start"
+          "runs.start",
+          "workspace.files.head",
+          "workspace.files.read"
         ]
       },
       {

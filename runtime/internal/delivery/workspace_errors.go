@@ -40,7 +40,7 @@ func wireWorkspaceError(err error) error {
 		return fmt.Errorf("%w: %w", protocol.ErrWorkspaceUnavailable, err)
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
 		return protocol.ErrPathOutsideRoot
-	case errors.Is(err, workspaceapp.ErrUnsupportedText):
+	case errors.Is(err, workspaceapp.ErrUnsupportedFile):
 		return fmt.Errorf("%w: %w", protocol.ErrUnsupportedMime, err)
 	case errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrInvalidFileRange),

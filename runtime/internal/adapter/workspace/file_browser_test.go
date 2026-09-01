@@ -189,7 +189,7 @@ func TestFileBrowserGrepHonorsPreCanceledContext(t *testing.T) {
 	}
 }
 
-func TestRootRelativeGrepPathRejectsEscape(t *testing.T) {
+func TestRootRelativeFilePathRejectsEscape(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	path := filepath.Join(outside, "secret.txt")
@@ -200,7 +200,7 @@ func TestRootRelativeGrepPathRejectsEscape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := rootRelativeGrepPath(root, canonicalRoot, path); err == nil {
-		t.Fatal("rootRelativeGrepPath accepted a path outside the workspace")
+	if _, err := rootRelativeFilePath(root, canonicalRoot, path); err == nil {
+		t.Fatal("rootRelativeFilePath accepted a path outside the workspace")
 	}
 }

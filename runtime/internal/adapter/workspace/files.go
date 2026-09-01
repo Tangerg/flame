@@ -293,12 +293,16 @@ func inspectEntry(root, rel string) (workspaceapp.FileEntry, bool, error) {
 		return workspaceapp.FileEntry{}, false, fmt.Errorf("inspect %q: %w", rel, err)
 	}
 
-	kind := workspaceapp.FileEntryFile
+	var kind workspaceapp.FileEntryKind
 	switch {
 	case info.Mode()&os.ModeSymlink != 0:
 		kind = workspaceapp.FileEntrySymlink
 	case info.IsDir():
 		kind = workspaceapp.FileEntryDir
+	case info.Mode().IsRegular():
+		kind = workspaceapp.FileEntryFile
+	default:
+		return workspaceapp.FileEntry{}, false, nil
 	}
 	return workspaceapp.FileEntry{
 		Path:       rel,

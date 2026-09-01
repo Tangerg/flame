@@ -68,6 +68,7 @@ func registerWorkspace(registry *Registry) {
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
 			protocol.ErrPathOutsideRoot.Error(),
+			protocol.ErrUnsupportedMime.Error(),
 		},
 	}, func(service interface {
 		GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest) (*protocol.FileHead, error)
@@ -104,6 +105,7 @@ func registerWorkspace(registry *Registry) {
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
 			protocol.ErrPathOutsideRoot.Error(),
+			protocol.ErrUnsupportedMime.Error(),
 		},
 	}, func(service interface {
 		ReadWorkspaceFile(context.Context, protocol.ReadFileRequest) (*protocol.FileContent, error)

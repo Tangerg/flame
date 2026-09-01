@@ -294,7 +294,7 @@ func validateFileReadResult(input FileReadPlan, result FileReadResult) error {
 		return ErrFileReadTooLarge
 	}
 	if !utf8.ValidString(result.Content) || strings.ContainsRune(result.Content, 0) {
-		return ErrUnsupportedText
+		return ErrUnsupportedFile
 	}
 	if result.TotalLines <= 0 {
 		return errors.New("workspace: file reader returned a non-positive total line count")
@@ -394,7 +394,7 @@ func validateGrepResult(pattern *regexp.Regexp, limit int, result GrepResult) er
 			return ErrGrepResultTooLarge
 		}
 		if !utf8.ValidString(match.Text) || strings.ContainsRune(match.Text, 0) {
-			return ErrUnsupportedText
+			return ErrUnsupportedFile
 		}
 		if pattern == nil || !pattern.MatchString(match.Text) {
 			return errors.New("workspace: file search returned a row that does not match its query")
