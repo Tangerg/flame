@@ -160,6 +160,24 @@ func TestSessionColdReadBindsMaterialToOneMetadataProjection(t *testing.T) {
 	}
 }
 
+func TestSessionColdReadTreatsEqualTimestampInstantsAsStable(t *testing.T) {
+	created := time.Date(2026, time.August, 31, 9, 0, 0, 0, time.FixedZone("source", 8*60*60))
+	first := snapshotSession(1)
+	first.CreatedAt, first.UpdatedAt = created, created.Add(time.Minute)
+	second := *first
+	second.CreatedAt, second.UpdatedAt = first.CreatedAt.UTC(), first.UpdatedAt.UTC()
+	stub := &snapshotBindingStub{
+		sessions: []*protocol.Session{first, &second}, snapshot: &protocol.SessionSnapshot{},
+	}
+	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
+	if _, err := runtime.GetSession(t.Context(), "ses_1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.snapshotRequests) != 1 || stub.sessionCalls != 2 {
+		t.Fatalf("semantically stable cold read made %d material and %d session calls", len(stub.snapshotRequests), stub.sessionCalls)
+	}
+}
+
 func TestSessionColdReadStopsWhenMetadataNeverStabilizes(t *testing.T) {
 	stub := &snapshotBindingStub{
 		sessionAt: func(call int) *protocol.Session { return snapshotSession(uint64(call)) },

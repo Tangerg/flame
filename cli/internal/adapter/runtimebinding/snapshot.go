@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"reflect"
 	"slices"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -46,7 +45,7 @@ func (r *Connection) GetSession(ctx context.Context, sessionID string) (agent.Se
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
-		if reflect.DeepEqual(previous, current) {
+		if sessionProjectionEqual(previous, current) {
 			material.session = current
 			projected, err := projectSnapshot(material)
 			if err != nil {
@@ -67,7 +66,21 @@ func (r *Connection) readSession(ctx context.Context, sessionID string) (protoco
 	if session == nil {
 		return protocol.Session{}, runtimeContractViolation("get session returned nil")
 	}
+	if _, err := projectSession(*session); err != nil {
+		return protocol.Session{}, runtimeContractViolation("get session returned an invalid session: %v", err)
+	}
 	return *session, nil
+}
+
+// sessionProjectionEqual compares durable Session facts rather than Go's
+// in-memory representation. In particular, equal timestamps may arrive with
+// different locations across binding or protocol projections.
+func sessionProjectionEqual(left, right protocol.Session) bool {
+	return left.ID == right.ID && left.Title == right.Title && left.Status == right.Status &&
+		left.Provider == right.Provider && left.Model == right.Model &&
+		left.ReasoningEffort == right.ReasoningEffort && left.Workspace == right.Workspace &&
+		left.CreatedAt.Equal(right.CreatedAt) && left.UpdatedAt.Equal(right.UpdatedAt) &&
+		left.Favorite == right.Favorite && left.Revision == right.Revision
 }
 
 func (r *Connection) readMaterialSnapshot(ctx context.Context, sessionID string) (coldRead, error) {
