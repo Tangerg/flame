@@ -466,7 +466,7 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 		return errors.New("agentexec: Interaction execution must be observed before begin")
 	}
 	process, err := session.engine.Start(
-		runExecutionContext(session.lifetime.context, session.scope, session.start),
+		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
 		session.input,
 	)
@@ -590,7 +590,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	process, err := session.engine.RestoreTree(
-		runExecutionContext(session.lifetime.context, session.scope, session.start),
+		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
 		checkpoint.tree,
 	)
@@ -654,7 +654,7 @@ func (i *InteractionExecutor) validateRestoreScope(
 
 func discardRestoredInteraction(session *interactionSession, process *agent.Process) {
 	cleanupCtx, cancel := context.WithTimeout(
-		context.WithoutCancel(session.lifetime.context),
+		context.WithoutCancel(session.lifetime.execution),
 		authoritativeProjectionTimeout,
 	)
 	defer cancel()

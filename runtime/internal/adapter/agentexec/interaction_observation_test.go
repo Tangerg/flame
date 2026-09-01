@@ -190,6 +190,7 @@ func TestInteractionExecutorPublishesModelContextCompactionSummary(t *testing.T)
 
 func TestInteractionExecutorPublishesRunMaintenanceCompactionSummary(t *testing.T) {
 	const summary = "ROOT MAINTENANCE SUMMARY"
+	var maintenanceContextErr error
 	compaction, err := NewCompactionResult(summary, 12, 5)
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +199,10 @@ func TestInteractionExecutorPublishesRunMaintenanceCompactionSummary(t *testing.
 		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
 	}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		Maintenance: fixedRunMaintenance{result: RunMaintenanceResult{Compaction: compaction}},
+		Maintenance: fixedRunMaintenance{
+			result:     RunMaintenanceResult{Compaction: compaction},
+			contextErr: &maintenanceContextErr,
+		},
 	})
 
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
@@ -206,6 +210,9 @@ func TestInteractionExecutorPublishesRunMaintenanceCompactionSummary(t *testing.
 	if len(boundaries) != 1 || boundaries[0].Summary != summary ||
 		boundaries[0].MessagesBefore != 12 || boundaries[0].MessagesAfter != 5 {
 		t.Fatalf("compaction boundaries = %#v", boundaries)
+	}
+	if maintenanceContextErr != nil {
+		t.Fatalf("Run maintenance context after Process completion = %v", maintenanceContextErr)
 	}
 }
 
@@ -227,10 +234,14 @@ func (c summarizingObservationCompactor) CompactModelContext(
 }
 
 type fixedRunMaintenance struct {
-	result RunMaintenanceResult
+	result     RunMaintenanceResult
+	contextErr *error
 }
 
-func (m fixedRunMaintenance) Maintain(context.Context, RunMaintenanceInput) RunMaintenanceResult {
+func (m fixedRunMaintenance) Maintain(ctx context.Context, _ RunMaintenanceInput) RunMaintenanceResult {
+	if m.contextErr != nil {
+		*m.contextErr = ctx.Err()
+	}
 	return m.result
 }
 

@@ -96,7 +96,7 @@ func (i *interactionSession) maintainCompletedRoot() {
 			ctx, i.start.SessionID, i.start.CWD,
 		)
 	}
-	result := i.maintenance.Maintain(i.lifetime.context, RunMaintenanceInput{
+	result := i.maintenance.Maintain(i.lifetime.execution, RunMaintenanceInput{
 		SessionID:      i.start.SessionID,
 		CWD:            i.start.CWD,
 		ModelSelection: i.start.ModelSelection,
@@ -106,7 +106,7 @@ func (i *interactionSession) maintainCompletedRoot() {
 	})
 	for _, err := range result.Errors {
 		if err != nil {
-			trace.SpanFromContext(i.lifetime.context).RecordError(
+			trace.SpanFromContext(i.lifetime.execution).RecordError(
 				fmt.Errorf("agentexec: Run maintenance: %w", err),
 			)
 		}

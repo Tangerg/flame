@@ -150,8 +150,8 @@ func (i *interactionSession) beginDispatch(
 	request agent.EffectRequest,
 ) (context.Context, func()) {
 	bound, cancel := context.WithCancelCause(ctx)
-	stopLifetimeBinding := context.AfterFunc(i.lifetime.context, func() {
-		cancel(context.Cause(i.lifetime.context))
+	stopLifetimeBinding := context.AfterFunc(i.lifetime.execution, func() {
+		cancel(context.Cause(i.lifetime.execution))
 	})
 	key := interactionDispatchKey(request)
 	i.state.mu.Lock()
@@ -403,7 +403,7 @@ func (i *interactionSession) failStart() {
 }
 
 func (i *interactionSession) stopReconciliation() {
-	i.lifetime.stop()
+	i.lifetime.stopReconciling()
 	i.lifetime.reconcilers.Wait()
 }
 
@@ -412,6 +412,7 @@ func (i *interactionSession) finish() {
 		i.state.mu.Lock()
 		i.state.finished = true
 		i.state.mu.Unlock()
+		i.lifetime.stopExecution()
 		i.stopReconciliation()
 		close(i.lifetime.events)
 		close(i.lifetime.done)
@@ -496,7 +497,7 @@ func (i *interactionSession) reconcileUnknownEffects() {
 		select {
 		case <-i.lifetime.unknownWake:
 		case <-ticker.C:
-		case <-i.lifetime.context.Done():
+		case <-i.lifetime.reconciling.Done():
 			return
 		}
 		if i.reportUnknownEffects() {
@@ -512,10 +513,10 @@ func (i *interactionSession) reconcileExecutionState() {
 		select {
 		case <-i.lifetime.stateWake:
 		case <-ticker.C:
-		case <-i.lifetime.context.Done():
+		case <-i.lifetime.reconciling.Done():
 			return
 		}
-		ctx, cancel := context.WithTimeout(i.lifetime.context, authoritativeProjectionTimeout)
+		ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
 		progressed, err := i.reconcileCompletedDelegateChildren(ctx)
 		cancel()
 		if err != nil {
@@ -542,7 +543,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	if process.Status() != agent.StatusWaiting {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(i.lifetime.context, authoritativeProjectionTimeout)
+	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
 	defer cancel()
 	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
 	if err != nil {
@@ -574,7 +575,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	})
 	if published && i.lifecycleHooks != nil {
 		i.lifecycleHooks.NotifyWaiting(
-			i.lifetime.context, i.start.SessionID, i.start.CWD,
+			i.lifetime.execution, i.start.SessionID, i.start.CWD,
 		)
 	}
 	return published
@@ -635,7 +636,7 @@ func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 }
 
 func (i *interactionSession) reportUnknownEffects() bool {
-	ctx, cancel := context.WithTimeout(i.lifetime.context, authoritativeProjectionTimeout)
+	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
 	defer cancel()
 	ids, err := i.unknownEffectIDs(ctx)
 	if err != nil || len(ids) == 0 {
@@ -661,7 +662,7 @@ func (i *interactionSession) reportUnknownEffects() bool {
 }
 
 func (i *interactionSession) await() {
-	joinCtx := context.WithoutCancel(i.lifetime.context)
+	joinCtx := context.WithoutCancel(i.lifetime.execution)
 	result, err := i.state.process.Await(joinCtx)
 	if err == nil {
 		projectionCtx, cancel := context.WithTimeout(joinCtx, authoritativeProjectionTimeout)
@@ -710,7 +711,7 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
 	if i.lifecycleHooks != nil {
 		i.lifecycleHooks.NotifyStopped(
-			i.lifetime.context, i.start.SessionID, i.start.CWD, string(end.Reason),
+			i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
 		)
 	}
 	return nil
