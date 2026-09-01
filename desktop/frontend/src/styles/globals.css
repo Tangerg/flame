@@ -448,7 +448,6 @@
   --density-navigation-section-gap: 18px;
   --density-navigation-group-gap: 10px;
   --density-column-gutter: 12px;
-  --density-view-gutter: 16px;
   --density-column-gutter-wide: 20px;
   --density-composer-editor-top: 12px;
   --density-composer-editor-bottom: 8px;
@@ -1086,7 +1085,7 @@ html.theme-dark {
 
 .agent-context-dock > .agent-surface-header:first-child {
   gap: 4px;
-  padding-inline: 14px var(--dock-control-span);
+  padding-inline: calc(var(--density-column-gutter-wide) - 8px) var(--dock-control-span);
   background: var(--app-dock-tabstrip-surface);
 }
 

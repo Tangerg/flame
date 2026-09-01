@@ -64,7 +64,7 @@ function NotificationRow({ level, message, plugin, timestamp, dismissed, onDismi
   return (
     <div
       className={cn(
-        "flex items-start gap-2.5 px-[var(--density-view-gutter)] py-2",
+        "flex items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-2",
         dismissed && "opacity-50",
       )}
     >

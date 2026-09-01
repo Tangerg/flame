@@ -45,7 +45,7 @@ export function SkillsTab() {
         {(rows) => (
           <div className="flex flex-col">
             {rows.map((s) => (
-              <div key={s.id} className="px-[var(--density-view-gutter)] py-2">
+              <div key={s.id} className="px-[var(--density-column-gutter-wide)] py-2">
                 <div className="flex items-center gap-2">
                   <div className="text-ui-md font-semibold text-fg truncate">{s.name}</div>
                   {s.scope && (

@@ -60,7 +60,7 @@ function PendingRow({
       type="button"
       data-chrome-focus=""
       onClick={onOpen}
-      className="flex w-full min-w-0 items-start gap-2.5 px-[var(--density-view-gutter)] py-2 text-left hover:bg-hover"
+      className="flex w-full min-w-0 items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-2 text-left hover:bg-hover"
     >
       <Icon
         name={item.kind === "question" ? "question" : "shield"}

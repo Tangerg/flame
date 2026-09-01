@@ -44,7 +44,7 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
   const icon = knownIconName(lookupExtensionByKey(TOOL_ICON, row.name)) ?? "lightning";
 
   return (
-    <div className="px-[var(--density-view-gutter)] py-2">
+    <div className="px-[var(--density-column-gutter-wide)] py-2">
       <div className="flex min-w-0 items-baseline gap-2">
         <Icon name={icon} size="sm" className="shrink-0 self-center text-fg-muted" />
         <span className="min-w-0 flex-1 truncate text-ui-md text-fg">{row.name}</span>

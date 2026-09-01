@@ -56,7 +56,7 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
   const t = useT();
   const icon = KIND_ICON[entry.kind];
   return (
-    <div className="flex items-start gap-2.5 px-[var(--density-view-gutter)] py-1.5">
+    <div className="flex items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1.5">
       <Icon name={icon} size="xs" className="mt-1 shrink-0 text-fg-faint" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -94,7 +94,7 @@ function TimelineRunHeader({
   const run = group.run;
   if (!run) {
     return group.runId ? (
-      <div className="px-[var(--density-view-gutter)] pb-1 font-mono text-ui-xs text-fg-faint">
+      <div className="px-[var(--density-column-gutter-wide)] pb-1 font-mono text-ui-xs text-fg-faint">
         {t("timeline.unknownRun", { id: group.runId })}
       </div>
     ) : null;
@@ -202,7 +202,7 @@ export function TimelineTab() {
             {group.items.length > 0 ? (
               group.items.map((entry) => <TimelineRow key={entry.id} entry={entry} />)
             ) : (
-              <p className="px-[var(--density-view-gutter)] py-2 text-pretty text-ui-xs text-fg-faint">
+              <p className="px-[var(--density-column-gutter-wide)] py-2 text-pretty text-ui-xs text-fg-faint">
                 {t("timeline.noEvents")}
               </p>
             )}

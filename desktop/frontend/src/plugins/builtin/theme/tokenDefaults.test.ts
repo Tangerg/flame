@@ -83,9 +83,9 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     expect(declaredInBlock(":root", "--color-media-preview")).toBe("rgb(0 0 0 / 0.9)");
     expect(declaredInBlock(":root", "--color-on-media")).toBe("#ffffff");
   });
-  it("keeps one gutter for every dock list row, scaled by density", () => {
-    expect(declaredInBlock(":root", "--density-view-gutter")).toBe("16px");
-    expect(densityCssVariables("compact")["--density-view-gutter"]).toBe("14px");
-    expect(densityCssVariables("spacious")["--density-view-gutter"]).toBe("18px");
+  it("keeps one reading edge for the chat gutter, the dock rows and the tab strip", () => {
+    expect(declaredInBlock(":root", "--density-column-gutter-wide")).toBe("20px");
+    expect(densityCssVariables("compact")["--density-column-gutter-wide"]).toBe("17px");
+    expect(densityCssVariables("spacious")["--density-column-gutter-wide"]).toBe("23px");
   });
 });
