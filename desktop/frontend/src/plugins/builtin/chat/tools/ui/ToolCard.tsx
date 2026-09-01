@@ -112,5 +112,5 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
 }
 
 function toolMetaToneClass(tone: ToolMetaItem["tone"]): string {
-  return tone === "success" ? "text-success" : "text-fg-muted";
+  return tone === "negative" ? "text-negative" : "text-fg-muted";
 }

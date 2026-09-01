@@ -45,6 +45,18 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   };
 }
 
+/**
+ * The one figure a COMPACT row has space for.
+ *
+ * A failure outranks a measurement: a non-zero exit says something went wrong and a duration
+ * only says how long it took, so the row must not spend its single slot on the second and
+ * drop the first. Otherwise the last item wins, which is the most specific one the fold
+ * derived — counts before spans before totals.
+ */
+export function headlineToolMetaItem(items: readonly ToolMetaItem[]): ToolMetaItem | undefined {
+  return items.find((item) => item.tone === "negative") ?? items[items.length - 1];
+}
+
 export function toolCardActions(
   tool: ToolCall,
   actions: readonly ToolActionSpec[],

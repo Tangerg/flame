@@ -2,7 +2,7 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, Icon, Pressable } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
-import { toolCardModel } from "../application/toolCardModel";
+import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
@@ -16,7 +16,7 @@ interface Props {
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
-  const meta = model.metaItems;
+  const headline = headlineToolMetaItem(model.metaItems);
 
   return (
     <div>
@@ -43,9 +43,14 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         {model.diffStat && (
           <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
         )}
-        {meta.length > 0 && (
-          <span className="shrink-0 font-mono text-ui-2xs text-fg-faint tabular-nums">
-            {meta[meta.length - 1]!.label}
+        {headline && (
+          <span
+            className={cn(
+              "shrink-0 font-mono text-ui-2xs tabular-nums",
+              headline.tone === "negative" ? "text-negative" : "text-fg-faint",
+            )}
+          >
+            {headline.label}
           </span>
         )}
       </Pressable>

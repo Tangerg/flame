@@ -26,6 +26,16 @@ describe("ToolGroupMember", () => {
     expect(screen.getByTitle("src/App.tsx")).toBeTruthy();
   });
 
+  // The tone the presentation assigns has to survive to the row. It did not: the renderer
+  // handled a "success" nothing ever produced and swept "negative" into the muted default,
+  // so a non-zero exit read as an ordinary measurement.
+  it("shows a non-zero exit as a failure rather than as one more grey figure", () => {
+    const { container } = member({ name: "shell", fn: "go test ./...", exitCode: 1 });
+
+    const chip = container.querySelector(".text-negative");
+    expect(chip?.textContent).toContain("1");
+  });
+
   it("carries the line counts a running edit already knows", () => {
     member({
       name: "apply_patch",

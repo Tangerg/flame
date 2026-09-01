@@ -26,7 +26,7 @@ import {
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
 import { durationText } from "@/plugins/builtin/agent/public/runDigest";
-import { useElapsedMillis } from "@/lib/useElapsedMillis";
+import { useElapsedMillis } from "./useElapsedMillis";
 
 interface Props {
   rows: readonly TranscriptRow[];

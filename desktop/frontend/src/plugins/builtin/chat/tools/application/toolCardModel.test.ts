@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { ToolActionSpec, ToolViewOpenerSpec } from "@/plugins/sdk";
-import { toolCardActions, toolCardModel, toolCardViewOpener } from "./toolCardModel";
+import {
+  headlineToolMetaItem,
+  toolCardActions,
+  toolCardModel,
+  toolCardViewOpener,
+} from "./toolCardModel";
 
 const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => ({
   id: "tool-1",
@@ -110,5 +115,21 @@ describe("toolCardViewOpener", () => {
     ];
 
     expect(toolCardViewOpener(tool({ name: "shell" }), openers)?.id).toBe("shell");
+  });
+});
+
+describe("headlineToolMetaItem", () => {
+  // The compact row has one slot. It used to take whatever sat last in the list, so a call
+  // that exited non-zero showed its duration instead — in the faint tone, at that.
+  it("gives the one slot to a failure over a measurement", () => {
+    const items = [
+      { id: "hits", label: "3 matches", tone: "muted" },
+      { id: "exit", label: "exit 1", tone: "negative" },
+      { id: "duration", label: "4.2s", tone: "muted" },
+    ] as const;
+
+    expect(headlineToolMetaItem(items)?.id).toBe("exit");
+    expect(headlineToolMetaItem(items.filter((item) => item.id !== "exit"))?.id).toBe("duration");
+    expect(headlineToolMetaItem([])).toBeUndefined();
   });
 });
