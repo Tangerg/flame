@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -571,6 +572,13 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	invalid.OpeningEvents[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
 	if err := invalid.Validate(); err == nil {
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
+	}
+	invalid.OpeningEvents[0].CommitID = runtimeidentity.CommitID{}
+	invalid.OpeningEvents[0].Progress = &ProgressCommit{
+		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
+	}
+	if err := invalid.Validate(); err == nil {
+		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
 	}
 	if _, live := coordinator.segments.lookup(plan.root.run.ID()); !live {
 		t.Fatal("continued root has no live segment owner")

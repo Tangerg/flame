@@ -470,7 +470,10 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		if err := event.Validate(); err != nil {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
 		}
-		if event.State != StateUnchanged || event.SessionID != c.SessionID || len(event.Items) == 0 {
+		if err := validateOpeningProjection(event); err != nil {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
+		}
+		if event.SessionID != c.SessionID || len(event.Items) == 0 || len(event.ConversationMessages) != 0 {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] is not item-only", index)
 		}
 		if _, exists := surviving[event.RunID]; !exists {

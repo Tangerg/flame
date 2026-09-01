@@ -25,6 +25,18 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid suspend commit: %v", err)
 	}
+	withOutcome := valid
+	withOutcome.Outcome = run.OutcomeCanceled
+	if err := withOutcome.Validate(); err == nil {
+		t.Fatal("suspend commit accepted a terminal outcome")
+	}
+	unchangedWithOutcome := EventCommit{
+		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
+		Outcome: run.OutcomeCanceled,
+	}
+	if err := unchangedWithOutcome.Validate(); err == nil || unchangedWithOutcome.isEmpty() {
+		t.Fatalf("unchanged commit with outcome = empty:%t error:%v", unchangedWithOutcome.isEmpty(), err)
+	}
 
 	contradictory := waiting.Snapshot()
 	contradictory.ActiveSegmentID = "segment_stale"
@@ -241,6 +253,16 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		Events: []EventCommit{parentEvent, childEvent},
 	}).Validate(); err != nil {
 		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
+	}
+	withProgress := childEvent
+	withProgress.Progress = &ProgressCommit{
+		SegmentID: child.SegmentID, UpdatedAt: createdAt, Metrics: run.Metrics{},
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_child_progress"), Admit: &child,
+		Events: []EventCommit{parentEvent, withProgress},
+	}).Validate(); err == nil {
+		t.Fatal("child OpeningCommit accepted an execution observation")
 	}
 
 	resume := run.TreeResumeDraft{

@@ -130,10 +130,26 @@ func (o OpeningCommit) validateEvents() error {
 		if err := o.validateEventOwner(commit); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
-		if commit.State != StateUnchanged ||
-			(len(commit.Items) == 0 && len(commit.ConversationMessages) == 0) {
-			return fmt.Errorf("runs: opening event[%d] has no transcript or conversation projection", index)
+		if err := validateOpeningProjection(commit); err != nil {
+			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
+	}
+	return nil
+}
+
+// validateOpeningProjection limits admission/resume projections to the facts
+// that can exist before execution begins. Operational observations belong to
+// later authoritative EventCommits, even when they name the same Segment.
+func validateOpeningProjection(commit EventCommit) error {
+	if commit.State != StateUnchanged || commit.Outcome != "" || commit.Run != nil ||
+		commit.GoalRun != nil || commit.ObsoleteCheckpointRootID != "" {
+		return errors.New("opening projection carries lifecycle facts")
+	}
+	if len(commit.ModelInvocations) != 0 || len(commit.ToolInvocations) != 0 || commit.Progress != nil {
+		return errors.New("opening projection carries execution observations")
+	}
+	if len(commit.Items) == 0 && len(commit.ConversationMessages) == 0 {
+		return errors.New("opening projection has no transcript or conversation facts")
 	}
 	return nil
 }

@@ -390,7 +390,7 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 func (e EventCommit) validateLifecycle() error {
 	switch e.State {
 	case StateUnchanged:
-		if e.Run != nil || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
+		if e.Outcome != "" || e.Run != nil || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: unchanged event commit carries lifecycle facts")
 		}
 		return nil
@@ -398,7 +398,7 @@ func (e EventCommit) validateLifecycle() error {
 		if e.Run == nil || e.Run.State() != run.Waiting {
 			return errors.New("runs: suspend event commit has no waiting Run")
 		}
-		if e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
+		if e.Outcome != "" || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: suspend event commit carries terminal facts")
 		}
 	case StateTerminalize:
@@ -474,6 +474,7 @@ func (e EventCommit) isEmpty() bool {
 		len(e.ModelInvocations) == 0 &&
 		len(e.ToolInvocations) == 0 &&
 		e.Progress == nil &&
+		e.Outcome == "" &&
 		e.Run == nil &&
 		e.GoalRun == nil &&
 		e.ObsoleteCheckpointRootID == "" &&
