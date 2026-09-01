@@ -225,6 +225,64 @@ func TestQuestionValidateRejectsUnanswerableShapes(t *testing.T) {
 	}
 }
 
+func TestQuestionEqualityOwnsSemanticRepresentation(t *testing.T) {
+	left := transcript.Question{Fields: []transcript.QuestionField{{
+		Prompt: "Explain", Kind: transcript.QuestionText,
+	}}}
+	right := transcript.Question{Fields: []transcript.QuestionField{{
+		Prompt: "Explain", Kind: transcript.QuestionText, Options: []transcript.QuestionOption{},
+	}}}
+	if !left.Equal(right) {
+		t.Fatal("equivalent unanswered Questions differ by empty option representation")
+	}
+	answeredLeft := left
+	answeredLeft.Answers = [][]string{{}}
+	answeredRight := right
+	answeredRight.Answers = [][]string{nil}
+	if !answeredLeft.Equal(answeredRight) {
+		t.Fatal("equivalent answered Questions differ by empty answer representation")
+	}
+	if left.Equal(answeredLeft) {
+		t.Fatal("unanswered Question equals answered Question")
+	}
+	changed := left
+	changed.Fields = []transcript.QuestionField{{Prompt: "Different", Kind: transcript.QuestionText}}
+	if left.Equal(changed) {
+		t.Fatal("Questions with different prompts are equal")
+	}
+}
+
+func TestToolInvocationEqualityUsesCanonicalValues(t *testing.T) {
+	leftArguments, err := tool.ParseArguments(`{"b":2,"a":1}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightArguments, err := tool.ParseArguments(`{"a":1,"b":2}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leftResult := tool.Result{}
+	rightResult, err := tool.ParseResult([]byte("null"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	left := transcript.ToolInvocation{
+		Name: "shell", Arguments: leftArguments, Result: &leftResult,
+		Offload: &toolresult.Ref{ID: "BLOB234"},
+	}
+	right := transcript.ToolInvocation{
+		Name: "shell", Arguments: rightArguments, Result: &rightResult,
+		Offload: &toolresult.Ref{ID: "BLOB234"},
+	}
+	if !left.Equal(right) {
+		t.Fatal("equivalent Tool invocations differ by canonical representation")
+	}
+	right.Offload = &toolresult.Ref{ID: "BLOB235"}
+	if left.Equal(right) {
+		t.Fatal("Tool invocations with different offloads are equal")
+	}
+}
+
 func TestApprovalValidateRequiresAPendingRiskClassifiedTool(t *testing.T) {
 	result := tool.StringResult("already ran")
 	tests := []struct {

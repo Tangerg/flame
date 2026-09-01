@@ -218,6 +218,24 @@ type ToolInvocation struct {
 	Offload   *toolresult.Ref
 }
 
+// Equal compares the semantic Tool invocation value without exposing the
+// canonical storage representation of arguments or results to callers.
+func (t ToolInvocation) Equal(other ToolInvocation) bool {
+	if t.Name != other.Name || !t.Arguments.Equal(other.Arguments) {
+		return false
+	}
+	if (t.Result == nil) != (other.Result == nil) {
+		return false
+	}
+	if t.Result != nil && !t.Result.Equal(*other.Result) {
+		return false
+	}
+	if (t.Offload == nil) != (other.Offload == nil) {
+		return false
+	}
+	return t.Offload == nil || *t.Offload == *other.Offload
+}
+
 // Interrupt is one thing a person has to answer before execution continues.
 type Interrupt struct {
 	ItemID string
@@ -318,6 +336,32 @@ func (q Question) Validate() error {
 // It does not claim that an unanswered question is still open; Pending owns
 // that separate lifecycle fact.
 func (q Question) Answered() bool { return q.Answers != nil }
+
+// Equal compares the semantic question value. Empty option or answer slices
+// are equivalent regardless of backing representation; the top-level nil
+// Answers value remains distinct because it means no response was accepted.
+func (q Question) Equal(other Question) bool {
+	if len(q.Fields) != len(other.Fields) || q.Answered() != other.Answered() {
+		return false
+	}
+	for index, field := range q.Fields {
+		candidate := other.Fields[index]
+		if field.Prompt != candidate.Prompt ||
+			field.Header != candidate.Header ||
+			field.Kind != candidate.Kind ||
+			field.Multiple != candidate.Multiple ||
+			field.AllowCustom != candidate.AllowCustom ||
+			!slices.Equal(field.Options, candidate.Options) {
+			return false
+		}
+	}
+	if !q.Answered() {
+		return true
+	}
+	return slices.EqualFunc(q.Answers, other.Answers, func(left, right []string) bool {
+		return slices.Equal(left, right)
+	})
+}
 
 func (field QuestionField) validate(index int) error {
 	if strings.TrimSpace(field.Prompt) == "" {

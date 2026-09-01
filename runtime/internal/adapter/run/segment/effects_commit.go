@@ -327,7 +327,7 @@ func (e *Effects) resolveToolApproval(
 		return fmt.Errorf("%w: running ToolCall identity differs from Pending", transcript.ErrIdentityConflict)
 	}
 	invocation, present := current.ToolInvocation()
-	if !present || !reflect.DeepEqual(invocation, resolution.Invocation) {
+	if !present || !invocation.Equal(resolution.Invocation) {
 		return fmt.Errorf("%w: running ToolCall invocation differs from Pending", transcript.ErrIdentityConflict)
 	}
 	replacement, err := current.ResolveToolApproval(resolution.Decision)

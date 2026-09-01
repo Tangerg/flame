@@ -64,6 +64,9 @@ func (a Arguments) Canonical() string {
 	return a.raw
 }
 
+// Equal reports whether both values name the same canonical argument object.
+func (a Arguments) Equal(other Arguments) bool { return a.Canonical() == other.Canonical() }
+
 // Map returns a recursively ownership-isolated object projection.
 func (a Arguments) Map() map[string]any {
 	var value map[string]any
@@ -164,6 +167,9 @@ func (r Result) Canonical() string {
 	}
 	return r.raw
 }
+
+// Equal reports whether both values contain the same canonical result.
+func (r Result) Equal(other Result) bool { return r.Canonical() == other.Canonical() }
 
 func (r Result) MarshalJSON() ([]byte, error) { return []byte(r.Canonical()), nil }
 

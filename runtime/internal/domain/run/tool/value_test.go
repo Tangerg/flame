@@ -72,6 +72,33 @@ func TestArgumentsJSONRoundTrip(t *testing.T) {
 	}
 }
 
+func TestCanonicalValuesOwnEquality(t *testing.T) {
+	leftArguments, err := ParseArguments(`{"b":2,"a":1}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightArguments, err := ParseArguments(`{"a":1,"b":2}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherArguments, err := ParseArguments(`{"a":1,"b":3}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !leftArguments.Equal(rightArguments) || leftArguments.Equal(otherArguments) {
+		t.Fatalf("Arguments equality = same:%t other:%t", leftArguments.Equal(rightArguments), leftArguments.Equal(otherArguments))
+	}
+
+	nullResult, err := ParseResult([]byte("null"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	textResult := StringResult("null")
+	if !(Result{}).Equal(nullResult) || (Result{}).Equal(textResult) {
+		t.Fatalf("Result equality = null:%t text:%t", (Result{}).Equal(nullResult), (Result{}).Equal(textResult))
+	}
+}
+
 func TestArgumentsStringField(t *testing.T) {
 	arguments, err := ParseArguments(`{"command":"go test","timeout":30}`)
 	if err != nil {

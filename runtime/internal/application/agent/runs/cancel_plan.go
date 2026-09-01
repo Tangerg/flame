@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -482,7 +481,7 @@ func validateWaitingCancellationInterruptItem(
 		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted ||
 			!present ||
 			request.Question == nil ||
-			!reflect.DeepEqual(question, *request.Question) {
+			!question.Equal(*request.Question) {
 			return fmt.Errorf(
 				"runs: waiting question Item %q differs from its interrupt",
 				item.ID(),
@@ -493,7 +492,7 @@ func validateWaitingCancellationInterruptItem(
 		if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
 			!present ||
 			request.Approval == nil ||
-			!reflect.DeepEqual(invocation, request.Approval.Tool) {
+			!invocation.Equal(request.Approval.Tool) {
 			return fmt.Errorf(
 				"runs: waiting approval Item %q differs from its interrupt",
 				item.ID(),

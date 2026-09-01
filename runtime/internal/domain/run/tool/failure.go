@@ -59,3 +59,6 @@ func (f Failure) Validate() error {
 	}
 	return nil
 }
+
+// Equal reports whether both durable failures describe the same outcome.
+func (f Failure) Equal(other Failure) bool { return f == other }

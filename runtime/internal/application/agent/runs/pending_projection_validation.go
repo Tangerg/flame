@@ -2,7 +2,6 @@ package runs
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -63,7 +62,7 @@ func validatePendingInterruptItems(
 				item.Status() != transcript.ItemRunning ||
 				item.ApprovalDecision() != "" ||
 				!present ||
-				!reflect.DeepEqual(invocation, request.Approval.Tool) {
+				!invocation.Equal(request.Approval.Tool) {
 				return nil, fmt.Errorf(
 					"runs: validate parked Run tree %q: malformed approval Item %q",
 					rootRunID,
@@ -77,7 +76,7 @@ func validatePendingInterruptItems(
 				item.Kind() != transcript.QuestionItem ||
 				item.Status() != transcript.ItemCompleted ||
 				!present ||
-				!reflect.DeepEqual(question, *request.Question) {
+				!question.Equal(*request.Question) {
 				return nil, fmt.Errorf(
 					"runs: validate parked Run tree %q: malformed question Item %q",
 					rootRunID,
@@ -169,7 +168,7 @@ func validatePendingContinuationTools(
 			invocation.Name != committed.Name ||
 			invocation.Arguments.Canonical() != committed.Arguments ||
 			!hasFailure ||
-			!reflect.DeepEqual(failure, committed.Failure) {
+			!failure.Equal(committed.Failure) {
 			return fmt.Errorf(
 				"runs: validate parked Run tree %q: malformed committed tool Item %q in Run %q",
 				rootRunID,

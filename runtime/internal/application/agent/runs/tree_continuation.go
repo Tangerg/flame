@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -58,7 +57,7 @@ func (t *treeContinuation) bindToolApprovalResolutions(
 		if pending.Kind != interrupt.Approval || pending.Approval == nil ||
 			pending.RunID != resolution.Identity.RunID ||
 			!pending.ItemOccurredAt.Equal(resolution.Identity.OccurredAt) ||
-			!reflect.DeepEqual(pending.Approval.Tool, resolution.Invocation) {
+			!pending.Approval.Tool.Equal(resolution.Invocation) {
 			return fmt.Errorf("runs: Tool approval item %q differs from the continuation", resolution.Identity.ItemID)
 		}
 		if _, duplicate := resolved[resolution.Identity.ItemID]; duplicate {
