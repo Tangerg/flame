@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -153,6 +154,47 @@ func TestListFiles_ScopedToSubdir(t *testing.T) {
 	slices.Sort(gotP)
 	if !slices.Equal(gotP, []string{"sub/b.go", "sub/c.go"}) {
 		t.Fatalf("sub level = %v", gotP)
+	}
+}
+
+func TestListFilesProjectsSelectedDirectorySymlink(t *testing.T) {
+	for _, repository := range []bool{false, true} {
+		t.Run(map[bool]string{false: "filesystem", true: "git"}[repository], func(t *testing.T) {
+			root := t.TempDir()
+			if repository {
+				if _, err := exec.LookPath("git"); err != nil {
+					t.Skip("git is unavailable")
+				}
+				if output, err := exec.CommandContext(t.Context(), "git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+					t.Fatalf("git init: %v: %s", err, output)
+				}
+			}
+			if err := os.Mkdir(filepath.Join(root, "real"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "real", "visible.txt"), []byte("visible"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if repository {
+				if err := os.WriteFile(filepath.Join(root, "real", "ignored.txt"), []byte("ignored"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("real/ignored.txt\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.Symlink("real", filepath.Join(root, "alias")); err != nil {
+				t.Skipf("symlink unsupported: %v", err)
+			}
+
+			got, err := ListFiles(t.Context(), root, workspaceapp.FileListOptions{Path: "alias", Recursive: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if gotPaths := paths(got); !slices.Equal(gotPaths, []string{"alias/visible.txt"}) {
+				t.Fatalf("selected symlink paths = %v, want [alias/visible.txt]", gotPaths)
+			}
+		})
 	}
 }
 

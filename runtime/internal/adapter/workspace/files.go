@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
@@ -60,7 +61,8 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	if sub == "." || sub == "/" {
 		sub = ""
 	}
-	if err := validateListDirectory(root, sub); err != nil {
+	scope, err := resolveListDirectory(root, sub)
+	if err != nil {
 		return nil, err
 	}
 	if opts.Glob != "" {
@@ -71,11 +73,11 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	repository := false
 	var files []string
 	if !opts.IncludeIgnored {
-		var err error
-		files, err = git.ListFiles(ctx, root, sub, maxListEntries)
+		files, err = git.ListFiles(ctx, scope.root, scope.physical, maxListEntries)
 		switch {
 		case err == nil:
 			repository = true
+			files = scope.project(files)
 		case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
 			// Git-aware listing is unavailable for this workspace. The
 			// filesystem fallback below remains authoritative in this case.
@@ -91,12 +93,11 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	// immediate children are returned. Git-backed listings still derive their
 	// children from `git ls-files` so ignored directories stay hidden.
 	if !opts.Recursive && opts.Glob == "" && !repository {
-		return levelFilesystemEntries(ctx, root, sub, opts.IncludeIgnored)
+		return levelFilesystemEntries(ctx, scope, opts.IncludeIgnored)
 	}
 
 	if !repository {
-		var err error
-		files, err = walkFiles(ctx, root, sub, opts.IncludeIgnored)
+		files, err = walkFiles(ctx, scope, opts.IncludeIgnored)
 		if err != nil {
 			return nil, err
 		}
@@ -106,20 +107,97 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	}
 
 	if opts.Recursive || opts.Glob != "" {
-		return recursiveFiles(root, files, opts.Glob, sub)
+		return recursiveFiles(scope, files, opts.Glob)
 	}
-	return levelEntries(root, files, sub)
+	return levelEntries(scope, files)
 }
 
-func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
+type listDirectory struct {
+	root     string
+	logical  string
+	physical string
+	path     string
+}
+
+func resolveListDirectory(root, sub string) (listDirectory, error) {
+	if path.IsAbs(sub) || sub == ".." || strings.HasPrefix(sub, "../") {
+		return listDirectory{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
+	}
+	physicalRoot, err := pathidentity.Resolve("", root)
+	if err != nil {
+		return listDirectory{}, fmt.Errorf("inspect listing root %q: %w", root, err)
+	}
+	physicalPath, err := pathidentity.Resolve(physicalRoot, filepath.FromSlash(sub))
+	if err != nil {
+		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+	}
+	inside, err := pathidentity.Contains(physicalRoot, physicalPath)
+	if err != nil {
+		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+	}
+	if !inside {
+		return listDirectory{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
+	}
+	info, err := os.Stat(physicalPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return listDirectory{}, fmt.Errorf("%w: %q does not exist", errInvalidListPath, sub)
+	}
+	if err != nil {
+		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+	}
+	if !info.IsDir() {
+		return listDirectory{}, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, sub)
+	}
+	physical, err := filepath.Rel(physicalRoot, physicalPath)
+	if err != nil {
+		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+	}
+	if physical == "." {
+		physical = ""
+	}
+	return listDirectory{
+		root: physicalRoot, logical: sub, physical: filepath.ToSlash(physical), path: physicalPath,
+	}, nil
+}
+
+func (l listDirectory) project(files []string) []string {
+	if l.logical == l.physical {
+		return files
+	}
+	projected := make([]string, 0, len(files))
+	for _, file := range files {
+		relative, ok := listingRelativePath(file, l.physical)
+		if !ok {
+			continue
+		}
+		projected = append(projected, path.Join(l.logical, relative))
+	}
+	return projected
+}
+
+func (l listDirectory) inspect(logical string) (workspaceapp.FileEntry, bool, error) {
+	physical := logical
+	if l.logical != l.physical {
+		relative, ok := listingRelativePath(logical, l.logical)
+		if !ok {
+			return workspaceapp.FileEntry{}, false, nil
+		}
+		physical = path.Join(l.physical, relative)
+	}
+	entry, exists, err := inspectEntry(l.root, physical)
+	if err != nil || !exists {
+		return entry, exists, err
+	}
+	entry.Path = logical
+	entry.Name = path.Base(logical)
+	return entry, true, nil
+}
+
+func levelFilesystemEntries(ctx context.Context, scope listDirectory, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	directory := root
-	if sub != "" {
-		directory = filepath.Join(root, filepath.FromSlash(sub))
-	}
-	children, err := readDirectoryEntries(directory, maxListEntries)
+	children, err := readDirectoryEntries(scope.path, maxListEntries)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +209,8 @@ func levelFilesystemEntries(ctx context.Context, root, sub string, includeIgnore
 		if child.Name() == ".git" || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
 			continue
 		}
-		rel := path.Join(sub, child.Name())
-		entry, exists, err := inspectEntry(root, rel)
+		rel := path.Join(scope.logical, child.Name())
+		entry, exists, err := scope.inspect(rel)
 		if err != nil {
 			return nil, err
 		}
@@ -181,73 +259,51 @@ func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
 	return children, nil
 }
 
-func validateListDirectory(root, sub string) error {
-	directory := root
-	if sub != "" {
-		directory = filepath.Join(root, filepath.FromSlash(sub))
-	}
-	info, err := os.Stat(directory)
-	if errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
-	}
-	if err != nil {
-		return fmt.Errorf("inspect listing path %q: %w", directory, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%w: %q is not a directory", errInvalidListPath, directory)
-	}
-	return nil
-}
-
 // walkFiles is the non-repo fallback: a filesystem walk under root/sub that
 // skips backstop directories and fails explicitly at the safety boundary.
-func walkFiles(ctx context.Context, root, sub string, includeIgnored bool) ([]string, error) {
-	start := root
-	if sub != "" {
-		start = filepath.Join(root, filepath.FromSlash(sub))
-	}
+func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool) ([]string, error) {
 	var files []string
-	walkErr := filepath.WalkDir(start, func(p string, d fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(scope.path, func(p string, d fs.DirEntry, err error) error {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
 		}
 		if err != nil {
 			return fmt.Errorf("visit %q: %w", p, err)
 		}
-		if p != start && d.Name() == ".git" {
+		if p != scope.path && d.Name() == ".git" {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
 		if d.IsDir() {
-			if p != start && !includeIgnored && backstopExclude[d.Name()] {
+			if p != scope.path && !includeIgnored && backstopExclude[d.Name()] {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		rel, e := filepath.Rel(root, p)
+		rel, e := filepath.Rel(scope.path, p)
 		if e != nil {
 			return nil
 		}
-		files = append(files, filepath.ToSlash(rel))
+		files = append(files, path.Join(scope.logical, filepath.ToSlash(rel)))
 		if len(files) > maxListEntries {
 			return ErrListingTooLarge
 		}
 		return nil
 	})
 	if walkErr != nil {
-		return nil, fmt.Errorf("walk %q: %w", start, walkErr)
+		return nil, fmt.Errorf("walk %q: %w", scope.path, walkErr)
 	}
 	return files, nil
 }
 
 // recursiveFiles turns flat candidate paths into inspected file entries.
-func recursiveFiles(root string, files []string, glob, sub string) ([]workspaceapp.FileEntry, error) {
+func recursiveFiles(scope listDirectory, files []string, glob string) ([]workspaceapp.FileEntry, error) {
 	out := make([]workspaceapp.FileEntry, 0, len(files))
 	for _, f := range files {
 		if glob != "" {
-			candidate, ok := listingRelativePath(f, sub)
+			candidate, ok := listingRelativePath(f, scope.logical)
 			if !ok {
 				continue
 			}
@@ -259,7 +315,7 @@ func recursiveFiles(root string, files []string, glob, sub string) ([]workspacea
 				continue
 			}
 		}
-		entry, exists, err := inspectEntry(root, f)
+		entry, exists, err := scope.inspect(f)
 		if err != nil {
 			return nil, err
 		}
@@ -284,10 +340,10 @@ func listingRelativePath(file, sub string) (string, bool) {
 // levelEntries derives the immediate children of sub from the flat candidate
 // paths: direct files become file entries, and any deeper path contributes its
 // first path segment as a dir entry (deduped). Dirs sort before files.
-func levelEntries(root string, files []string, sub string) ([]workspaceapp.FileEntry, error) {
+func levelEntries(scope listDirectory, files []string) ([]workspaceapp.FileEntry, error) {
 	prefix := ""
-	if sub != "" {
-		prefix = sub + "/"
+	if scope.logical != "" {
+		prefix = scope.logical + "/"
 	}
 	seenDir := map[string]bool{}
 	var children []string
@@ -303,7 +359,7 @@ func levelEntries(root string, files []string, sub string) ([]workspaceapp.FileE
 		if name, _, nested := strings.Cut(rel, "/"); nested {
 			if !seenDir[name] {
 				seenDir[name] = true
-				children = append(children, path.Join(sub, name))
+				children = append(children, path.Join(scope.logical, name))
 			}
 			continue
 		}
@@ -311,7 +367,7 @@ func levelEntries(root string, files []string, sub string) ([]workspaceapp.FileE
 	}
 	entries := make([]workspaceapp.FileEntry, 0, len(children))
 	for _, child := range children {
-		entry, exists, err := inspectEntry(root, child)
+		entry, exists, err := scope.inspect(child)
 		if err != nil {
 			return nil, err
 		}
