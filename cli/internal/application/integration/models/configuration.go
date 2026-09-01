@@ -121,20 +121,16 @@ func (r Roles) Validate() error {
 	return nil
 }
 
-type KeySource string
-
 const (
-	KeyStored           KeySource = "stored"
-	KeyEnvironment      KeySource = "env"
-	credentialMaskGlyph           = "*"
+	credentialMaskGlyph = "*"
 )
 
 type Credential struct {
 	masked string
-	source KeySource
+	source runtimeprotocol.ProviderKeySource
 }
 
-func NewCredential(masked string, source KeySource) (Credential, error) {
+func NewCredential(masked string, source runtimeprotocol.ProviderKeySource) (Credential, error) {
 	credential := Credential{masked: masked, source: source}
 	if err := credential.Validate(); err != nil {
 		return Credential{}, err
@@ -146,18 +142,20 @@ func (c Credential) Validate() error {
 	if strings.TrimSpace(c.masked) == "" {
 		return errors.New("provider credential mask is empty")
 	}
-	if c.source != KeyStored && c.source != KeyEnvironment {
+	if c.source != runtimeprotocol.ProviderKeySourceStored && c.source != runtimeprotocol.ProviderKeySourceEnv {
 		return fmt.Errorf("provider credential source %q is invalid", c.source)
 	}
 	return nil
 }
 
-func (c Credential) Masked() string    { return c.masked }
-func (c Credential) Source() KeySource { return c.source }
-func (c Credential) FromEnvironment() bool {
-	return c.source == KeyEnvironment
+func (c Credential) Masked() string { return c.masked }
+func (c Credential) Source() runtimeprotocol.ProviderKeySource {
+	return c.source
 }
-func (c Credential) Stored() bool { return c.source == KeyStored }
+func (c Credential) FromEnvironment() bool {
+	return c.source == runtimeprotocol.ProviderKeySourceEnv
+}
+func (c Credential) Stored() bool { return c.source == runtimeprotocol.ProviderKeySourceStored }
 
 // Exposes reports whether a returned mask reproduces a non-mask credential.
 // An all-mask input is indistinguishable from a correctly redacted value and

@@ -223,7 +223,7 @@ func projectProvider(value protocol.Provider) (models.Provider, error) {
 	if value.Credential != nil {
 		projected, err := models.NewCredential(
 			value.Credential.Masked,
-			models.KeySource(value.Credential.Source),
+			value.Credential.Source,
 		)
 		if err != nil {
 			return models.Provider{}, err

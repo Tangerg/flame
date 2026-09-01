@@ -231,13 +231,13 @@ func newModelConfigServiceStub() *modelConfigServiceStub {
 			Embedding: models.DisabledEmbeddingRole(),
 		},
 		providers: []models.Provider{terminalTestProvider(
-			"deepseek", "https://api.deepseek.example", "sk****42", models.KeyStored,
+			"deepseek", "https://api.deepseek.example", "sk****42", protocol.ProviderKeySourceStored,
 		)},
 		updates: make(chan models.UpdateProvider, 1),
 	}
 }
 
-func terminalTestProvider(id, rawBaseURL, masked string, source models.KeySource) models.Provider {
+func terminalTestProvider(id, rawBaseURL, masked string, source protocol.ProviderKeySource) models.Provider {
 	credential, err := models.NewCredential(masked, source)
 	if err != nil {
 		panic(err)
@@ -345,7 +345,7 @@ func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing
 func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
 	service := newModelConfigServiceStub()
 	service.providers[0] = terminalTestProvider(
-		"deepseek", "https://api.deepseek.example", "sk****env", models.KeyEnvironment,
+		"deepseek", "https://api.deepseek.example", "sk****env", protocol.ProviderKeySourceEnv,
 	)
 	host, stop := runUIWithRuntimeServices(t, Config{
 		Runtime: runtimefixture.New(), ModelConfig: service,

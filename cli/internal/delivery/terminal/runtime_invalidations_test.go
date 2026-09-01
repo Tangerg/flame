@@ -269,7 +269,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 		service.mu.Lock()
 		service.providers[0] = terminalTestProvider(
-			"deepseek", "https://new.deepseek.example", "sk****42", models.KeyStored,
+			"deepseek", "https://new.deepseek.example", "sk****42", protocol.ProviderKeySourceStored,
 		)
 		service.mu.Unlock()
 		source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.ModelsChanged), Sequence: 1}

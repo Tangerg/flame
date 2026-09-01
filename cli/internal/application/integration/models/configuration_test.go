@@ -1,6 +1,10 @@
 package models
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	if err := (Role{}).Validate(); err == nil {
@@ -55,7 +59,7 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 		t.Fatal("provider was configured without its required endpoint")
 	}
 
-	credential, err := NewCredential("sk****ed", KeyStored)
+	credential, err := NewCredential("sk****ed", protocol.ProviderKeySourceStored)
 	if err != nil {
 		t.Fatal(err)
 	}
