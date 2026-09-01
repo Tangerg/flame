@@ -71,7 +71,7 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 		profile: sessionControlProfile(FeatureCheckpoints),
 	}
 	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
-		CommandID: commandID, SessionID: "ses_1", ToRunID: "run_1", Scope: agent.RestoreBoth,
+		CommandID: commandID, SessionID: "ses_1", ToRunID: "run_1", Scope: protocol.RestoreBoth,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 		sessions: stub, meta: requestMeta("test"),
 		profile: sessionControlProfile(FeatureSessionExport),
 	}
-	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: agent.RestoreHistory})
+	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: protocol.RestoreHistory})
 	requireRuntimeContractViolation(t, err)
 	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: session.JSONFormat})
 	requireRuntimeContractViolation(t, err)
@@ -271,7 +271,7 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 	}
 	runtime := &Connection{sessions: stub, meta: requestMeta("test")}
 	if _, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_1", ToRunID: "run_1", Scope: agent.RestoreFiles,
+		SessionID: "ses_1", ToRunID: "run_1", Scope: protocol.RestoreFiles,
 	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("files rollback error = %v, want ErrIncompatibleRuntime", err)
 	}

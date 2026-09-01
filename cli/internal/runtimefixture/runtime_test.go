@@ -55,7 +55,7 @@ func TestMockSessionRollbackRevisionExhaustionIsAtomic(t *testing.T) {
 	originalRuntimeRuns := len(runtime.runs)
 
 	if _, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: state.meta.ID, Scope: agent.RestoreHistory,
+		SessionID: state.meta.ID, Scope: protocol.RestoreHistory,
 	}); err == nil {
 		t.Fatal("session rollback accepted exhausted revision")
 	}
@@ -551,7 +551,7 @@ func TestRuntimeForkStartsWithAFreshProjectionAtRunBoundary(t *testing.T) {
 func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 	runtime := New()
 	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	if err != nil {
 		t.Fatal(err)

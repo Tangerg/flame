@@ -300,7 +300,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	if state.active != "" {
 		return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrSessionBusy, in.SessionID)
 	}
-	if in.Scope == agent.RestoreFiles {
+	if in.FilesOnly() {
 		return agent.RollbackResult{Session: state.meta}, nil
 	}
 	keep := -1

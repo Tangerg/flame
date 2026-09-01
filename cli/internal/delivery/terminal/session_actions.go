@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type sessionImport struct {
@@ -80,7 +81,7 @@ func (a *app) prepareSessionRollback(argument string) error {
 	if err != nil {
 		return err
 	}
-	if request.Scope != agent.RestoreHistory {
+	if request.RestoresFiles() {
 		if err := a.requireRuntimeFeature(runtimebinding.FeatureCheckpoints); err != nil {
 			return err
 		}
@@ -139,7 +140,7 @@ func (r rollbackPreview) Description() string {
 	if r.request.ToRunID != "" {
 		boundary = shortIdentity(r.request.ToRunID)
 	}
-	if r.request.Scope == agent.RestoreFiles {
+	if r.request.FilesOnly() {
 		return fmt.Sprintf("Restore files to %s while keeping chat history?", boundary)
 	}
 	return fmt.Sprintf("Restore %s to %s and remove %d later runs?", r.request.Scope, boundary, r.settlement.DroppedCount())
@@ -255,9 +256,9 @@ func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, e
 	if strings.EqualFold(boundary, "all") {
 		boundary = ""
 	}
-	scope := agent.RestoreHistory
+	scope := protocol.RestoreHistory
 	if len(fields) == 2 {
-		scope = agent.RestoreScope(strings.ToLower(fields[1]))
+		scope = protocol.RestoreType(strings.ToLower(fields[1]))
 	}
 	request := agent.RollbackSession{SessionID: sessionID, ToRunID: boundary, Scope: scope}
 	if err := request.Validate(); err != nil {

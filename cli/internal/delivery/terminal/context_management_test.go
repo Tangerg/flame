@@ -355,7 +355,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 		t.Fatalf("review decision = %q", decision)
 	}
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -644,7 +644,7 @@ func TestKnowledgeEditorSaveOutlivesSameSessionProjectionReplacement(t *testing.
 		t.Fatalf("blocked save content = %q", got)
 	}
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}

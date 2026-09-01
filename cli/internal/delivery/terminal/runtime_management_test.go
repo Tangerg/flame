@@ -403,7 +403,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	}
 
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}

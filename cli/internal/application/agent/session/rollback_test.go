@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type recordingRuntime struct {
@@ -84,7 +85,7 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	preview, err := PreviewRollback(snapshot, agent.RollbackSession{
-		SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: agent.RestoreFiles,
+		SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: protocol.RestoreFiles,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +127,7 @@ func rollbackFixture(t *testing.T, request agent.RollbackSession) (*runtimefixtu
 
 func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	underlying, preview := rollbackFixture(t, agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
@@ -182,7 +183,7 @@ func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
 		t.Fatal(validateErr)
 	}
 	preview, err := PreviewRollback(snapshot, agent.RollbackSession{
-		SessionID: snapshot.Session.ID, ToRunID: root.ID, Scope: agent.RestoreHistory,
+		SessionID: snapshot.Session.ID, ToRunID: root.ID, Scope: protocol.RestoreHistory,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +201,7 @@ func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
 
 func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.T) {
 	underlying, preview := rollbackFixture(t, agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
@@ -253,7 +254,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 				t.Fatal(err)
 			}
 			preview, err := PreviewRollback(snapshot, agent.RollbackSession{
-				SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: agent.RestoreFiles,
+				SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: protocol.RestoreFiles,
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -289,7 +290,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 
 func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	underlying, preview := rollbackFixture(t, agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
@@ -317,7 +318,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 
 func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing.T) {
 	underlying, preview := rollbackFixture(t, agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := unavailableRollbackPolicy(t, func() time.Time { return now })

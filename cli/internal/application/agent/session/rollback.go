@@ -61,7 +61,7 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 		request: request, beforeRevision: snapshot.Session.Revision,
 		beforeRunIDs: slices.Clone(allIDs), afterRunIDs: slices.Clone(allIDs),
 	}
-	if request.Scope != agent.RestoreFiles {
+	if !request.FilesOnly() {
 		dropFrom := 0
 		if boundary >= 0 {
 			dropFrom = len(snapshot.Runs)
@@ -164,7 +164,7 @@ func Rollback(
 	}
 	stagedAt := policy.Now()
 	replay := commandreplay.UnprotectedGuard()
-	if preview.request.Scope != agent.RestoreHistory {
+	if preview.request.RestoresFiles() {
 		replay, err = policy.NewGuardAt(stagedAt)
 		if err != nil {
 			return RollbackResult{}, err
@@ -205,7 +205,7 @@ func settleRollback(
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("authoritative session matches neither side of the pending rollback: %w", err)
 	}
-	if pending.Scope != agent.RestoreHistory &&
+	if pending.Request().RestoresFiles() &&
 		!policy.Replayable(pending.Replay) && (!fresh || !policy.CanStart(pending.Replay)) {
 		result.Outcome = mutation.Unknown
 		return result, errors.New("file rollback replay guarantee expired or belongs to another runtime")
@@ -236,7 +236,7 @@ func executeRollback(
 	backoff retry.Backoff,
 	fresh bool,
 ) (agent.RollbackResult, error) {
-	if pending.Scope == agent.RestoreHistory {
+	if pending.Request().HistoryOnly() {
 		// History rollback has an authoritative before/after projection. One call
 		// followed by another read converges an uncertain acknowledgement without
 		// blindly replaying beyond an unrecorded command-store deadline.
@@ -271,7 +271,7 @@ func reconcileRollback(
 		result.Outcome = mutation.Confirmed
 		return result, rollbackErr
 	}
-	if pending.Scope == agent.RestoreHistory && !mutation.OutcomeUnknown(rollbackErr) {
+	if pending.Request().HistoryOnly() && !mutation.OutcomeUnknown(rollbackErr) {
 		if err := validateBefore(pending, after); err == nil {
 			result.Outcome = mutation.Rejected
 			return result, rollbackErr
@@ -296,7 +296,7 @@ func validateBefore(pending workbench.PendingSessionRollback, snapshot agent.Ses
 }
 
 func validateApplied(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
-	if pending.Scope == agent.RestoreFiles {
+	if pending.Request().FilesOnly() {
 		return errors.New("files-only rollback has no authoritative session outcome")
 	}
 	if err := validateSnapshot(pending, snapshot); err != nil {
@@ -329,7 +329,7 @@ func validateAcknowledged(
 		droppedIDs[index] = dropped.RunID
 	}
 	wantDropped := pending.BeforeRunIDs[len(pending.AfterRunIDs):]
-	if pending.Scope == agent.RestoreFiles {
+	if pending.Request().FilesOnly() {
 		wantDropped = nil
 	}
 	if !slices.Equal(droppedIDs, wantDropped) {

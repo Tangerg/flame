@@ -28,18 +28,18 @@ const (
 // outcomes without replay; file-affecting commands additionally bind replay to
 // one runtime idempotency store and its advertised retention window.
 type PendingSessionRollback struct {
-	Phase          SessionRollbackPhase `json:"phase"`
-	CommandID      agent.CommandID      `json:"commandId"`
-	SessionID      string               `json:"sessionId"`
-	ToRunID        string               `json:"toRunId,omitempty"`
-	Scope          agent.RestoreScope   `json:"scope"`
-	BeforeRevision uint64               `json:"beforeRevision"`
-	BeforeRunIDs   []string             `json:"beforeRunIds"`
-	AfterRunIDs    []string             `json:"afterRunIds"`
-	OpeningText    string               `json:"openingText,omitempty"`
-	OpeningImages  int                  `json:"openingImages,omitempty"`
-	StagedAt       time.Time            `json:"stagedAt"`
-	Replay         commandreplay.Guard  `json:"replay"`
+	Phase          SessionRollbackPhase        `json:"phase"`
+	CommandID      agent.CommandID             `json:"commandId"`
+	SessionID      string                      `json:"sessionId"`
+	ToRunID        string                      `json:"toRunId,omitempty"`
+	Scope          runtimeprotocol.RestoreType `json:"scope"`
+	BeforeRevision uint64                      `json:"beforeRevision"`
+	BeforeRunIDs   []string                    `json:"beforeRunIds"`
+	AfterRunIDs    []string                    `json:"afterRunIds"`
+	OpeningText    string                      `json:"openingText,omitempty"`
+	OpeningImages  int                         `json:"openingImages,omitempty"`
+	StagedAt       time.Time                   `json:"stagedAt"`
+	Replay         commandreplay.Guard         `json:"replay"`
 }
 
 func (p PendingSessionRollback) Validate() error {
@@ -65,7 +65,7 @@ func (p PendingSessionRollback) Validate() error {
 	if err := validateRunIDs("session rollback after projection", p.AfterRunIDs); err != nil {
 		return err
 	}
-	if p.Scope == agent.RestoreFiles {
+	if request.FilesOnly() {
 		if !slices.Equal(p.BeforeRunIDs, p.AfterRunIDs) {
 			return errors.New("files-only rollback changes the history projection")
 		}
@@ -74,10 +74,10 @@ func (p PendingSessionRollback) Validate() error {
 		return errors.New("session rollback after projection is not a prefix of its before projection")
 	}
 	if p.ToRunID == "" {
-		if p.Scope != agent.RestoreFiles && len(p.AfterRunIDs) != 0 {
+		if !request.FilesOnly() && len(p.AfterRunIDs) != 0 {
 			return errors.New("full history rollback retains a run projection")
 		}
-	} else if p.Scope == agent.RestoreFiles {
+	} else if request.FilesOnly() {
 		if !slices.Contains(p.BeforeRunIDs, p.ToRunID) {
 			return errors.New("file rollback boundary is absent from its history projection")
 		}
@@ -87,7 +87,7 @@ func (p PendingSessionRollback) Validate() error {
 	if err := p.Replay.Validate(); err != nil {
 		return err
 	}
-	if p.Scope != agent.RestoreHistory {
+	if request.RestoresFiles() {
 		if !p.Replay.Protected() || !p.Replay.Until().After(p.StagedAt) {
 			return errors.New("file rollback replay guarantee is incomplete")
 		}

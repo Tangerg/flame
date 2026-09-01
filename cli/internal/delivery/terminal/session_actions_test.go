@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type postCommitSessionDeleteRuntime struct {
@@ -295,14 +296,14 @@ func TestParseRollbackArgumentPreservesTheInclusiveBoundaryAndScope(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if request.SessionID != "ses_1" || request.ToRunID != "run_42" || request.Scope != agent.RestoreBoth {
+	if request.SessionID != "ses_1" || request.ToRunID != "run_42" || request.Scope != protocol.RestoreBoth {
 		t.Fatalf("request = %+v", request)
 	}
 	all, err := parseRollbackArgument("ses_1", "all")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if all.ToRunID != "" || all.Scope != agent.RestoreHistory {
+	if all.ToRunID != "" || all.Scope != protocol.RestoreHistory {
 		t.Fatalf("all request = %+v", all)
 	}
 	if _, err := parseRollbackArgument("ses_1", "all files"); err == nil {
@@ -317,7 +318,7 @@ func TestRollbackPreviewRejectsEverySessionRevisionChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := agent.RollbackSession{
-		SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: agent.RestoreFiles,
+		SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: protocol.RestoreFiles,
 	}
 	preview, err := previewRollback(snapshot, request)
 	if err != nil {
@@ -338,7 +339,7 @@ func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := agent.RollbackSession{SessionID: before.Session.ID, Scope: agent.RestoreHistory}
+	request := agent.RollbackSession{SessionID: before.Session.ID, Scope: protocol.RestoreHistory}
 	preview, err := previewRollback(before, request)
 	if err != nil {
 		t.Fatal(err)
@@ -363,7 +364,7 @@ func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
 		t.Fatal("rollback outcome with a surviving dropped run was accepted")
 	}
 	files, err := previewRollback(before, agent.RollbackSession{
-		SessionID: before.Session.ID, ToRunID: before.Runs[0].ID, Scope: agent.RestoreFiles,
+		SessionID: before.Session.ID, ToRunID: before.Runs[0].ID, Scope: protocol.RestoreFiles,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
@@ -604,7 +605,7 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_66666666666666666666666666666666"),
 		Replay:    commandreplay.UnprotectedGuard(),
-		SessionID: sessionID, ToRunID: "run_1", Scope: agent.RestoreHistory,
+		SessionID: sessionID, ToRunID: "run_1", Scope: protocol.RestoreHistory,
 		BeforeRevision: 7, BeforeRunIDs: []string{"run_1", "run_2"}, AfterRunIDs: []string{"run_1"},
 		OpeningText: "restored opening", OpeningImages: 2,
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
@@ -651,7 +652,7 @@ func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
 		CommandID:      agent.CommandID("cli_66666666666666666666666666666667"),
 		SessionID:      "session",
 		ToRunID:        " run_1",
-		Scope:          agent.RestoreHistory,
+		Scope:          protocol.RestoreHistory,
 		BeforeRevision: 1,
 		BeforeRunIDs:   []string{" run_1"},
 		AfterRunIDs:    []string{" run_1"},
@@ -672,7 +673,7 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
 		Replay:    commandreplay.UnprotectedGuard(),
-		SessionID: "session", Scope: agent.RestoreHistory,
+		SessionID: "session", Scope: protocol.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"}, OpeningText: "opening",
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
 	}
@@ -700,7 +701,7 @@ func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
 		Phase:     SessionRollbackPrepared,
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
 		Replay:    commandreplay.UnprotectedGuard(),
-		SessionID: "session", Scope: agent.RestoreHistory,
+		SessionID: "session", Scope: protocol.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"},
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
 	}

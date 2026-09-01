@@ -48,7 +48,7 @@ func installChangedSessionProjection(
 ) {
 	t.Helper()
 	if _, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: sessionID, Scope: agent.RestoreHistory,
+		SessionID: sessionID, Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 	}
 
 	if _, err := base.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +515,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 	host.Shows(t, "wait for the current session action to finish")
 
 	if _, rollbackSessionErr := base.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); rollbackSessionErr != nil {
 		t.Fatal(rollbackSessionErr)
 	}

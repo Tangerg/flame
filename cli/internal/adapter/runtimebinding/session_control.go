@@ -29,7 +29,7 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 	if err := input.Validate(); err != nil {
 		return agent.RollbackResult{}, err
 	}
-	if input.Scope != agent.RestoreHistory {
+	if input.RestoresFiles() {
 		if err := r.requireFeature(FeatureCheckpoints); err != nil {
 			return agent.RollbackResult{}, err
 		}
@@ -39,7 +39,7 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 		return agent.RollbackResult{}, err
 	}
 	response, err := r.sessions.RollbackSession(ctx, protocol.RollbackSessionRequest{
-		SessionID: input.SessionID, ToRunID: input.ToRunID, RestoreType: protocol.RestoreType(input.Scope),
+		SessionID: input.SessionID, ToRunID: input.ToRunID, RestoreType: input.Scope,
 	}, options)
 	if err != nil {
 		return agent.RollbackResult{}, classifyError(err)

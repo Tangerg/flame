@@ -9,29 +9,13 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-// RestoreScope is the portion of a session rollback rewinds.
-type RestoreScope string
-
-const (
-	RestoreHistory RestoreScope = "history"
-	RestoreFiles   RestoreScope = "files"
-	RestoreBoth    RestoreScope = "both"
-)
-
-func (r RestoreScope) Validate() error {
-	if !slices.Contains([]RestoreScope{RestoreHistory, RestoreFiles, RestoreBoth}, r) {
-		return fmt.Errorf("restore scope %q is invalid", r)
-	}
-	return nil
-}
-
 // RollbackSession keeps ToRunID and every earlier root run. An empty ToRunID
 // clears all history; file restoration therefore requires a concrete boundary.
 type RollbackSession struct {
 	CommandID CommandID
 	SessionID string
 	ToRunID   string
-	Scope     RestoreScope
+	Scope     runtimeprotocol.RestoreType
 }
 
 func (r RollbackSession) Validate() error {
@@ -41,24 +25,25 @@ func (r RollbackSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
+	if err := (runtimeprotocol.RollbackSessionRequest{
+		SessionID: r.SessionID, ToRunID: r.ToRunID, RestoreType: r.Scope,
+	}).ValidateWire(); err != nil {
 		problems = append(problems, err)
-	}
-	if err := r.Scope.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if r.ToRunID != "" {
-		if err := runtimeprotocol.ValidateRunID(r.ToRunID); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if r.ToRunID == "" && r.Scope != RestoreHistory {
-		problems = append(problems, errors.New("file restoration requires a run boundary"))
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("rollback session: %w", err)
 	}
 	return nil
+}
+
+func (r RollbackSession) RestoresFiles() bool {
+	return r.Scope == runtimeprotocol.RestoreFiles || r.Scope == runtimeprotocol.RestoreBoth
+}
+
+func (r RollbackSession) FilesOnly() bool { return r.Scope == runtimeprotocol.RestoreFiles }
+
+func (r RollbackSession) HistoryOnly() bool {
+	return r.Scope == "" || r.Scope == runtimeprotocol.RestoreHistory
 }
 
 type InputContentKind string

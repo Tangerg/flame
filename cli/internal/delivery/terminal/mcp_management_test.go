@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type mcpServiceStub struct {
@@ -266,7 +267,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	awaitValue(t, service.started, "MCP authorization observation")
 
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +328,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 	}
 
 	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: agent.RestoreHistory,
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
 	}
