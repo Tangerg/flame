@@ -3,14 +3,19 @@
 // settings context's port made the notifier refuse to run unless that pane's plugin had
 // loaded first, which is a load order the notifier has no reason to care about.
 
+import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+
+const STORAGE_KEY = "flame.completion-sound";
 
 interface CompletionSoundState {
   completionSound: boolean;
   setCompletionSound: (on: boolean) => void;
 }
+
+const persistSchema = z.object({ completionSound: z.boolean() });
 
 export const useCompletionSoundStore = create<CompletionSoundState>()(
   persist(
@@ -19,14 +24,11 @@ export const useCompletionSoundStore = create<CompletionSoundState>()(
       setCompletionSound: (completionSound) => set({ completionSound }),
     }),
     {
-      name: "flame.completion-sound",
+      name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       version: 1,
       migrate: discardOlderVersions,
-      merge: (persisted, current) =>
-        typeof (persisted as CompletionSoundState | undefined)?.completionSound === "boolean"
-          ? { ...current, completionSound: (persisted as CompletionSoundState).completionSound }
-          : current,
+      merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
     },
   ),
 );

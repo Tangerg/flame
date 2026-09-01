@@ -46,7 +46,9 @@ const TABLE = /\b(?:const|let)\s+(\w+)\s*:\s*Record<\s*string\s*,[\s\S]*?>\s*=\s
 
 const violations = [];
 
+let examined = 0;
 for (const file of sources(SRC)) {
+  examined += 1;
   const rel = relative(process.cwd(), file);
   if (EXEMPT.some((prefix) => rel.startsWith(prefix))) continue;
   if (/\.(test|spec)\.tsx?$/.test(rel)) continue;
@@ -80,4 +82,17 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("[check-lookup-tables] OK — no object-literal lookup tables with an open key.");
+// A guard that examined nothing reports the same "OK" as a guard that examined
+// everything — `check-circular` did exactly that, on an empty graph, for its whole
+// existence. The floor is far below today's count: it catches a broken walk or a moved
+// tree, not ordinary growth.
+const MIN_FILES_EXAMINED = 500;
+if (examined < MIN_FILES_EXAMINED) {
+  console.error(
+    `[check-lookup-tables] only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
+  );
+  process.exit(2);
+}
+console.log(
+  `[check-lookup-tables] OK — ${examined} files read, no object-literal lookup tables with an open key.`,
+);

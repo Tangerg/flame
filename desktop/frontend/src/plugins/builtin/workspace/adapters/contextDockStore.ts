@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -243,22 +243,13 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
       version: 2,
       migrate: discardOlderVersions,
-      merge: (persisted, current) => {
-        if (persisted === undefined) return current;
-        const parsed = contextDockPersistSchema.safeParse(persisted);
-        if (!parsed.success) {
-          console.warn(
-            "[contextDockStore] discarding corrupted flame.context-dock:",
-            parsed.error.issues,
-          );
-          return current;
-        }
-        const sessionScopes = new Map<string, ContextDockSessionScope>();
-        for (const [sessionId, scope] of parsed.data.sessionScopes) {
-          sessionScopes.set(sessionId, restorePersistedScope(scope));
-        }
-        return { ...current, sessionScopes };
-      },
+      // Persisted as tuples, live as a Map: `project` is where that difference belongs, so
+      // the parse-or-default policy stays the shared one.
+      merge: rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
+        sessionScopes: new Map<string, ContextDockSessionScope>(
+          data.sessionScopes.map(([sessionId, scope]) => [sessionId, restorePersistedScope(scope)]),
+        ),
+      })),
     },
   ),
 );

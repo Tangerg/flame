@@ -351,6 +351,22 @@ try {
   process.exit(2);
 }
 
+// The same floor `check-circular` carries, for the same reason and off the same graph: an
+// empty or truncated madge result makes every rule below vacuously true, and the run still
+// prints OK. This proves module resolution worked before any conclusion is drawn.
+const MIN_MODULES = 600;
+const MIN_EDGES = 1000;
+const moduleCount = Object.keys(graph).length;
+const graphEdgeCount = Object.values(graph).reduce((total, deps) => total + deps.length, 0);
+if (moduleCount < MIN_MODULES || graphEdgeCount < MIN_EDGES) {
+  console.error(
+    `[check-layers] graph has ${moduleCount} modules and ${graphEdgeCount} edges ` +
+      `(expected at least ${MIN_MODULES} and ${MIN_EDGES}).`,
+  );
+  console.error("Module resolution broke — this run proves nothing.");
+  process.exit(2);
+}
+
 const violations = [];
 const contextRoots = contextRootsOf(graph);
 for (const [file, deps] of Object.entries(graph)) {

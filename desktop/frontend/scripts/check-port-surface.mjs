@@ -151,4 +151,17 @@ if (bypasses.length > 0) {
   console.error("test-only accessor and redundant port installation; do not preserve a bypass.");
   process.exit(1);
 }
-console.log("check-port-surface: every port clause and singleton accessor has a product caller");
+// A guard that examined nothing reports the same "OK" as a guard that examined
+// everything — `check-circular` did exactly that, on an empty graph, for its whole
+// existence. The floor is far below today's count: it catches a broken walk or a moved
+// tree, not ordinary growth.
+const MIN_SOURCES_EXAMINED = 500;
+if (sources.length < MIN_SOURCES_EXAMINED) {
+  console.error(
+    `check-port-surface: only read ${sources.length} files (floor ${MIN_SOURCES_EXAMINED}) — the walk is broken.`,
+  );
+  process.exit(2);
+}
+console.log(
+  `check-port-surface: ${sources.length} files read; every port clause and singleton accessor has a product caller`,
+);

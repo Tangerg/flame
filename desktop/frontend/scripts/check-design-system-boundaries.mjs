@@ -62,6 +62,7 @@ const snapshot = compiler.updateSnapshot({ openProjects: [TSCONFIG] });
 const project = snapshot.getProject(TSCONFIG);
 if (!project) throw new Error("TypeScript did not load tsconfig.json");
 
+let examined = 0;
 for (const fileName of project.program.getSourceFileNames()) {
   const path = resolve(fileName);
   if (!path.startsWith(SRC) || isTestFile(path)) continue;
@@ -69,6 +70,7 @@ for (const fileName of project.program.getSourceFileNames()) {
   const rel = relative(SRC, path);
   const sourceFile = project.program.getSourceFile(path);
   if (!sourceFile) continue;
+  examined += 1;
   const insidePrimitives = rel.startsWith(PRIMITIVES);
   const insideDesignSystem = DESIGN_SYSTEM_RINGS.some((prefix) => rel.startsWith(prefix));
 
@@ -122,6 +124,18 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+// A guard that examined nothing reports the same "OK" as a guard that examined
+// everything — `check-circular` did exactly that, on an empty graph, for its whole
+// existence. The floor is far below today's count: it catches a broken walk or a moved
+// tree, not ordinary growth.
+const MIN_FILES_EXAMINED = 500;
+if (examined < MIN_FILES_EXAMINED) {
+  console.error(
+    `check-design-system-boundaries: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the program is not loading src.`,
+  );
+  process.exit(2);
+}
+
 console.log(
-  "check-design-system-boundaries: native interaction and Base UI stay behind design-system rings",
+  `check-design-system-boundaries: ${examined} files read; native interaction and Base UI stay behind design-system rings`,
 );

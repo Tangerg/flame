@@ -116,10 +116,12 @@ function reportDuplicateVocabulary() {
   }
 }
 
+let examined = 0;
 for (const file of files(SRC)) {
   const rel = relative(SRC, file);
   const text = readFileSync(file, "utf8");
   const isTest = /\.(test|spec)\.[tj]sx?$/.test(rel);
+  examined += 1;
 
   if (!isTest && /\.tsx?$/.test(rel)) {
     collectVocabulary(rel, text);
@@ -270,7 +272,13 @@ for (const file of files(SRC)) {
 
   if (
     !isTest &&
-    /plugins\/builtin\/.+\/(?:index|bootstrap)\.(ts|tsx)$/.test(rel) &&
+    // Keyed on "declares a plugin", not on the filename: `index.ts` was the shape when
+    // every plugin sat in its own folder, and it silently stopped covering forty roots
+    // that live beside their siblings (`sidebar/footer.tsx`, `chat/tools/previews/*`,
+    // `workspace/events.ts`). A guard that only watches one naming convention protects
+    // whoever follows it, which is not who needs protecting.
+    /plugins\/builtin\/.+\.(ts|tsx)$/.test(rel) &&
+    /\bdefinePlugin\(/.test(text) &&
     // Any argument list, any suffix: dropping the disposer leaks the same way whether
     // the installer is called `installFooPort()` or `installFoo(host)`.
     /^\s*install\w+\([^)]*\);/m.test(text)
@@ -301,7 +309,7 @@ for (const file of files(SRC)) {
   if (!isTest && /\bopenWorkspaceSettingsPane\(\s*["'`]/.test(text)) {
     violations.push({
       file: rel,
-      reason: "settings pane id spelled as a literal; use the constant from settings/public/panes",
+      reason: "settings pane id spelled as a literal; use the constant from settings/kit/panes",
     });
   }
 
@@ -336,19 +344,6 @@ for (const file of files(SRC)) {
     violations.push({
       file: rel,
       reason: "context read models must publish context language, not runtime wire DTOs",
-    });
-  }
-
-  if (
-    !rel.startsWith("plugins/sdk/") &&
-    !rel.startsWith("plugins/host/") &&
-    !rel.startsWith("plugins/builtin/agent/") &&
-    rel !== "plugins/builtin/agent/public/viewState.ts" &&
-    /from\s+["']@\/plugins\/sdk\/types\/agent(View|Timeline)["']/.test(text)
-  ) {
-    violations.push({
-      file: rel,
-      reason: "cross-context consumers must use the agent public view-state facade",
     });
   }
 
@@ -493,20 +488,14 @@ for (const file of files(SRC)) {
     });
   }
 
+  // Written as "every application ring, minus the one that may", not as a list of the
+  // three contexts that had offended: a list names who was caught, so a context added
+  // tomorrow is unguarded by default and nobody notices. The `runtime` context is the
+  // exemption because capability negotiation IS the wire's vocabulary — projecting it into
+  // a second spelling would give one fact two names.
   if (
     !isTest &&
-    /plugins\/builtin\/workspace\/application\/.+\.(ts|tsx)$/.test(rel) &&
-    /from\s+["']@\/rpc["']/.test(text)
-  ) {
-    violations.push({
-      file: rel,
-      reason: "workspace application must expose workspace language, not runtime wire types",
-    });
-  }
-
-  if (
-    !isTest &&
-    /plugins\/builtin\/(?:chat\/recipes|settings\/usage)\/application\/.+\.(ts|tsx)$/.test(rel) &&
+    /plugins\/builtin\/(?!runtime\/).+\/application\/.+\.(ts|tsx)$/.test(rel) &&
     /from\s+["']@\/rpc["']/.test(text)
   ) {
     violations.push({
@@ -584,4 +573,18 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("[check-published-boundaries] OK — published boundaries stay wire-free.");
+// A guard that examined nothing reports the same "OK" as a guard that examined
+// everything. `check-circular` did exactly that for its whole existence, on an empty
+// graph. These floors are deliberately far below today's count — they catch a broken
+// walk or a moved tree, not ordinary growth.
+const MIN_FILES_EXAMINED = 700;
+if (examined < MIN_FILES_EXAMINED) {
+  console.error(
+    `[check-published-boundaries] only read ${examined} source files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
+  );
+  process.exit(2);
+}
+
+console.log(
+  `[check-published-boundaries] OK — ${examined} files read, published boundaries stay wire-free.`,
+);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import {
   ACCENT_TINTS,
   DEFAULT_ACCENT_TINT,
@@ -14,6 +14,8 @@ import {
 // Read back as COLOURS, not opaque strings. `parseInt(hex, 16)` does not reject a non-hex
 // value, it reads whatever prefix parses — "blue" returns a finite garbage colour and every
 // derived surface paints black. Rejecting here is what makes a corrupt payload boot clean.
+export const APPEARANCE_STORAGE_KEY = "flame.appearance";
+
 const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 const appearancePersistSchema = z.object({
@@ -64,19 +66,11 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       setMotionScale: (motionScale) => set({ motionScale }),
     }),
     {
-      name: "flame.appearance",
+      name: APPEARANCE_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       version: 1,
       migrate: discardOlderVersions,
-      merge: (persisted, current) => {
-        if (persisted === undefined) return current;
-        const parsed = appearancePersistSchema.safeParse(persisted);
-        if (!parsed.success) {
-          console.warn("[appearance] discarding corrupted flame.appearance:", parsed.error.issues);
-          return current;
-        }
-        return { ...current, ...parsed.data };
-      },
+      merge: rehydrateOrDefault(APPEARANCE_STORAGE_KEY, appearancePersistSchema),
     },
   ),
 );

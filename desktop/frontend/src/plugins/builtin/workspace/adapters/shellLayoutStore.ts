@@ -8,8 +8,10 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
+
+const STORAGE_KEY = "flame.shell-layout";
 
 interface ShellLayoutState {
   sidebarCollapsed: boolean;
@@ -41,19 +43,11 @@ export const useShellLayoutStore = create<ShellLayoutState & ShellLayoutActions>
       setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
     }),
     {
-      name: "flame.shell-layout",
+      name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       version: 1,
       migrate: discardOlderVersions,
-      merge: (persisted, current) => {
-        if (persisted === undefined) return current;
-        const parsed = shellLayoutPersistSchema.safeParse(persisted);
-        if (!parsed.success) {
-          console.warn("[workspace] discarding corrupted flame.shell-layout:", parsed.error.issues);
-          return current;
-        }
-        return { ...current, ...parsed.data };
-      },
+      merge: rehydrateOrDefault(STORAGE_KEY, shellLayoutPersistSchema),
     },
   ),
 );

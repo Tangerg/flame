@@ -104,8 +104,10 @@ function* walk(dir) {
 }
 
 const violations = [];
+let examined = 0;
 for (const path of walk(SRC)) {
   if (![".ts", ".tsx", ".css"].includes(extname(path))) continue;
+  examined += 1;
   const rel = relative(SRC, path);
   const lines = readFileSync(path, "utf8").split("\n");
   lines.forEach((line, index) => {
@@ -123,6 +125,17 @@ if (violations.length > 0) {
   for (const violation of violations) console.error(`  ${violation}`);
   process.exit(1);
 }
+// A guard that examined nothing reports the same "OK" as a guard that examined
+// everything — `check-circular` did exactly that, on an empty graph, for its whole
+// existence. The floor is far below today's count: it catches a broken walk or a moved
+// tree, not ordinary growth.
+const MIN_FILES_EXAMINED = 500;
+if (examined < MIN_FILES_EXAMINED) {
+  console.error(
+    `check-interactive-chrome: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
+  );
+  process.exit(2);
+}
 console.log(
-  "check-interactive-chrome: hover + selected + press + focus + motion each hold one value",
+  `check-interactive-chrome: ${examined} files read; hover + selected + press + focus + motion each hold one value`,
 );
