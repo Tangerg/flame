@@ -21,8 +21,8 @@ const (
 func (t toolInvocationState) databaseValue() string { return string(t) }
 
 // ToolInvocationStore is the SQLite operational journal for Tool attempts.
-// Arguments and results deliberately stay out of this table: the canonical
-// Transcript Item remains their single durable owner.
+// Arguments and results deliberately stay in the canonical Transcript Item;
+// terminal rows are Run-bounded idempotency tombstones.
 type ToolInvocationStore struct{ db *sql.DB }
 
 func NewToolInvocationStore(db *sql.DB) *ToolInvocationStore {
@@ -78,20 +78,30 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if startedAt.IsZero() {
 		return errors.New("sqlite: Tool invocation start time is required")
 	}
-	_, err := conn(ctx, t.db).ExecContext(ctx,
+	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+		 SELECT ?, ?, session_id, run_id, ?, ?, ?, 0
+		   FROM runs
+		  WHERE run_id = ? AND session_id = ? AND state != ?`,
 		callID,
 		itemID,
-		sessionID,
-		runID,
 		segmentID,
 		toolInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
+		runID,
+		sessionID,
+		runStateTerminal.databaseValue(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: start Tool invocation %q: %w", callID, err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect Tool invocation %q start: %w", callID, err)
+	}
+	if changed != 1 {
+		return fmt.Errorf("sqlite: Tool invocation %q has no owning active Run", callID)
 	}
 	return nil
 }

@@ -65,7 +65,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 // schemaEpoch identifies the one storage shape this build understands. It is an
 // epoch rather than a version because nothing connects two values: a database
 // stamped with any other number is refused, never upgraded.
-const schemaEpoch = 95
+const schemaEpoch = 96
 
 func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 	var epoch int
@@ -218,12 +218,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			ON runs(commit_id) WHERE commit_id != ''`,
 		// model_invocations is the provider-attempt journal. It deliberately stores
 		// neither semantic response content nor accounting: those facts belong to
-		// history_items and runs. A surviving started row proves only that the
-		// external boundary was crossed without a durable terminal observation.
+		// history_items and runs. Terminal rows remain only while their Run is alive,
+		// acting as idempotency tombstones against stale start-event replay. Run
+		// terminalization and deletion prune the complete operational journal.
 		`CREATE TABLE IF NOT EXISTS model_invocations (
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL,
-			run_id      TEXT    NOT NULL,
+			run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
 			segment_id  TEXT    NOT NULL,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
@@ -238,14 +239,14 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			ON model_invocations(run_id, segment_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
 			ON model_invocations(state) WHERE state = 'started'`,
-		// tool_invocations is the operational pre-call journal. Its independent row
-		// lets concurrent calls start in scheduler order while history_items receives
-		// only final semantic Items in the model's declared order.
+		// tool_invocations has the same Run-bounded tombstone lifecycle. Its
+		// independent row lets concurrent calls start in scheduler order while
+		// history_items receives only final semantic Items in declared order.
 		`CREATE TABLE IF NOT EXISTS tool_invocations (
 			call_id     TEXT    NOT NULL,
 			item_id     TEXT    NOT NULL,
 			session_id  TEXT    NOT NULL,
-			run_id      TEXT    NOT NULL,
+			run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
 			segment_id  TEXT    NOT NULL,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
@@ -262,6 +263,17 @@ func installCurrentSchema(ctx context.Context, db *sql.DB, path string) error {
 			ON tool_invocations(run_id, segment_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
 			ON tool_invocations(state) WHERE state = 'started'`,
+		// A terminal Run owns no external attempt. This trigger is a storage-level
+		// lifecycle backstop for every normal, recovery, and cancellation path; the
+		// ordinary settlement path has already made observed attempts terminal before
+		// it fires.
+		`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_invocations
+			AFTER UPDATE OF state ON runs
+			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
+			BEGIN
+				DELETE FROM model_invocations WHERE run_id = NEW.run_id;
+				DELETE FROM tool_invocations WHERE run_id = NEW.run_id;
+			END`,
 		// child_run_start_reservations are invisible executor/application ACL
 		// records. They allocate product identity after a managed child admission
 		// but before the executor has conclusively initialized. The conclusive

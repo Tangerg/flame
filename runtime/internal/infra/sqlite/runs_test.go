@@ -305,6 +305,68 @@ func TestRunAdmitEnforcesOneActivePerSession(t *testing.T) {
 	}
 }
 
+func TestRunLifecyclePrunesPendingInvocationJournals(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		settle func(context.Context, *sqlite.RunStore, run.Draft) error
+	}{
+		{
+			name: "terminal",
+			settle: func(ctx context.Context, store *sqlite.RunStore, draft run.Draft) error {
+				return store.Terminalize(ctx, finishedRunFromDraft(draft, run.OutcomeCompleted))
+			},
+		},
+		{
+			name: "deleted",
+			settle: func(ctx context.Context, store *sqlite.RunStore, draft run.Draft) error {
+				return store.Delete(ctx, draft.SessionID, draft.RunID)
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			database, err := sqlite.Open(t.Context(), ":memory:")
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			t.Cleanup(func() { _ = database.Close() })
+			ctx := t.Context()
+			store := sqlite.NewRunStore(database)
+			draft := runDraft("run_invocation_owner", "ses_invocation_owner")
+			if err := store.Admit(ctx, draft); err != nil {
+				t.Fatalf("admit Run: %v", err)
+			}
+			startedAt := draft.CreatedAt.Add(time.Second)
+			if err := sqlite.NewModelInvocationStore(database).StartModelInvocation(
+				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt,
+			); err != nil {
+				t.Fatalf("start model invocation: %v", err)
+			}
+			if err := sqlite.NewToolInvocationStore(database).StartToolInvocation(
+				ctx, draft.SessionID, draft.RunID, draft.SegmentID,
+				"tool_call_pending", "item_call_pending", startedAt,
+			); err != nil {
+				t.Fatalf("start Tool invocation: %v", err)
+			}
+
+			if err := test.settle(ctx, store, draft); err != nil {
+				t.Fatalf("settle Run: %v", err)
+			}
+			for table, query := range map[string]string{
+				"model_invocations": `SELECT count(*) FROM model_invocations`,
+				"tool_invocations":  `SELECT count(*) FROM tool_invocations`,
+			} {
+				var rows int
+				if err := database.QueryRowContext(ctx, query).Scan(&rows); err != nil {
+					t.Fatalf("count %s: %v", table, err)
+				}
+				if rows != 0 {
+					t.Fatalf("%s rows = %d, want none after Run %s", table, rows, test.name)
+				}
+			}
+		})
+	}
+}
+
 func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	ctx := context.Background()
 	store, _ := newRunStores(t)

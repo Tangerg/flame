@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
@@ -530,17 +531,16 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil || !found || recoveredToolItem.Status() != transcript.ItemIncomplete {
 		t.Fatalf("recovered Tool Item = found:%t value:%+v err:%v", found, recoveredToolItem, err)
 	}
-	var modelFinishedAt, toolFinishedAt int64
 	if scanErr := db.QueryRowContext(ctx,
-		`SELECT state, finished_at FROM model_invocations WHERE call_id = ?`, "model_call_lost",
-	).Scan(&modelState, &modelFinishedAt); scanErr != nil || modelState != "unknown" || modelFinishedAt == 0 {
-		t.Fatalf("recovered model invocation = state:%q finished:%d err:%v", modelState, modelFinishedAt, scanErr)
+		`SELECT call_id FROM model_invocations WHERE call_id = ?`, "model_call_lost",
+	).Scan(&modelState); !errors.Is(scanErr, sql.ErrNoRows) {
+		t.Fatalf("recovered model invocation read = %v, want consumed journal row", scanErr)
 	}
 	if scanErr := db.QueryRowContext(ctx,
-		`SELECT state, finished_at FROM tool_invocations WHERE call_id = ? AND segment_id = ?`,
+		`SELECT call_id FROM tool_invocations WHERE call_id = ? AND segment_id = ?`,
 		"tool_call_lost", "segment",
-	).Scan(&toolState, &toolFinishedAt); scanErr != nil || toolState != "incomplete" || toolFinishedAt == 0 {
-		t.Fatalf("recovered Tool invocation = state:%q finished:%d err:%v", toolState, toolFinishedAt, scanErr)
+	).Scan(&toolState); !errors.Is(scanErr, sql.ErrNoRows) {
+		t.Fatalf("recovered Tool invocation read = %v, want consumed journal row", scanErr)
 	}
 	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)

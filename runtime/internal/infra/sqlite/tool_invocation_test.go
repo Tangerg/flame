@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -13,9 +14,14 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	segments := []string{"segment_before_wait", "segment_after_answer"}
+	if err := sqlite.NewRunStore(db).Admit(t.Context(), run.Draft{
+		RunID: "run_1", SessionID: "session_1", SegmentID: segments[0], CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("admit Run: %v", err)
+	}
 	store := sqlite.NewToolInvocationStore(db)
 	startedAt := time.Now().UTC()
-	segments := []string{"segment_before_wait", "segment_after_answer"}
 	for index, segmentID := range segments {
 		if err := store.StartToolInvocation(
 			t.Context(), "session_1", "run_1", segmentID,

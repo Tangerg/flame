@@ -23,8 +23,8 @@ func (m modelInvocationState) databaseValue() string { return string(m) }
 
 // ModelInvocationStore is the SQLite operational journal for provider-call
 // attempts. Semantic messages stay in history_items and accounting stays on the
-// Run row; this table records only whether a crossed provider boundary reached a
-// provable terminal observation.
+// Run row. Terminal rows are Run-bounded idempotency tombstones, not a second
+// semantic ledger.
 type ModelInvocationStore struct{ db *sql.DB }
 
 func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
@@ -81,19 +81,29 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	if startedAt.IsZero() {
 		return errors.New("sqlite: model invocation start time is required")
 	}
-	_, err := conn(ctx, m.db).ExecContext(ctx,
+	result, err := conn(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 0)`,
+		 SELECT ?, session_id, run_id, ?, ?, ?, 0
+		   FROM runs
+		  WHERE run_id = ? AND session_id = ? AND state != ?`,
 		callID,
-		sessionID,
-		runID,
 		segmentID,
 		modelInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
+		runID,
+		sessionID,
+		runStateTerminal.databaseValue(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: start model invocation %q: %w", callID, err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect model invocation %q start: %w", callID, err)
+	}
+	if changed != 1 {
+		return fmt.Errorf("sqlite: model invocation %q has no owning active Run", callID)
 	}
 	return nil
 }
