@@ -19,7 +19,7 @@ type goalBinding interface {
 }
 
 func (r *Connection) UpdateGoal(ctx context.Context, update protocol.UpdateGoalRequest) (protocol.Goal, error) {
-	if err := update.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(update); err != nil {
 		return protocol.Goal{}, fmt.Errorf("update goal: %w", err)
 	}
 	options, err := r.commandOptions()
@@ -71,7 +71,7 @@ func (r *Connection) GetGoal(ctx context.Context, sessionID string) (protocol.Go
 }
 
 func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequest) (protocol.Goal, error) {
-	if err := start.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(start); err != nil {
 		return protocol.Goal{}, fmt.Errorf("start goal: %w", err)
 	}
 	options, err := r.commandOptions()
@@ -142,7 +142,7 @@ func goalResult(operation, expectedSessionID string, result *protocol.Goal, err 
 	if result == nil {
 		return protocol.Goal{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	if err := result.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(*result); err != nil {
 		return protocol.Goal{}, runtimeContractViolation("%s returned an invalid goal: %v", operation, err)
 	}
 	if result.SessionID != expectedSessionID {

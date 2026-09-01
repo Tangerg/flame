@@ -508,6 +508,38 @@ func TestGoalAdapterRejectsAResponseForAnotherSession(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestGoalAdapterRejectsInvalidNestedBudgetBeforeCallingRuntime(t *testing.T) {
+	t.Parallel()
+	stub := &goalBindingStub{t: t}
+	runtime := &Connection{goals: stub, meta: requestMeta("test")}
+	invalid := -1
+
+	_, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
+		SessionID: "ses_1", Objective: "finish",
+		Budget: &protocol.GoalBudget{MaxRuns: &invalid},
+	})
+	if err == nil {
+		t.Fatal("StartGoal accepted a negative nested budget")
+	}
+	if stub.last != "" {
+		t.Fatalf("StartGoal called runtime before validating nested budget: %q", stub.last)
+	}
+}
+
+func TestGoalAdapterRejectsInvalidNestedBudgetInRuntimeResult(t *testing.T) {
+	t.Parallel()
+	goal := activeProtocolGoal()
+	invalid := -1
+	goal.Budget = &protocol.GoalBudget{MaxRuns: &invalid}
+	runtime := &Connection{
+		goals: &goalBindingStub{t: t, current: goal},
+		meta:  requestMeta("test"),
+	}
+
+	_, _, err := runtime.GetGoal(t.Context(), "ses_1")
+	requireRuntimeContractViolation(t, err)
+}
+
 func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	paused := *activeProtocolGoal()

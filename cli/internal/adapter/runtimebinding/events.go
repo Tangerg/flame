@@ -9,7 +9,7 @@ import (
 )
 
 func projectEvent(value protocol.RunEvent) (agent.RunEvent, bool, error) {
-	if err := value.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(value); err != nil {
 		return agent.RunEvent{}, false, err
 	}
 	if value.Timestamp.IsZero() {

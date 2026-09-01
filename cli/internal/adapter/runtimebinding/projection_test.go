@@ -445,6 +445,7 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 			name: "item started",
 			event: protocol.StreamEvent{Type: protocol.StreamItemStarted, Item: &protocol.Item{
 				ID: "answer", RunID: "run_1", Status: protocol.ItemStatusRunning, Type: protocol.ItemTypeAgentMessage,
+				CreatedAt: at,
 			}},
 			assert: func(t *testing.T, event agent.RunEvent) {
 				started, ok := event.Event.(agent.BlockStarted)
@@ -457,6 +458,7 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 			name: "item completed",
 			event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
 				ID: "answer", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
+				CreatedAt: at, Phase: protocol.MessagePhaseFinalAnswer,
 				Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "done"}},
 			}},
 			assert: func(t *testing.T, event agent.RunEvent) {
