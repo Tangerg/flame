@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRunLifecycleShape(t *testing.T) {
@@ -227,7 +227,7 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 		t.Fatal("non-canonical model attribution key was accepted")
 	}
 	if err := (Usage{ByModel: map[string]ModelUsage{
-		strings.Repeat("m", cliidentity.MaximumModelCharacters+1): {},
+		strings.Repeat("m", runtimeprotocol.MaximumModelIdentityCharacters+1): {},
 	}}).Validate(); err == nil {
 		t.Fatal("overlong model attribution key was accepted")
 	}

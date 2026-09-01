@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 const MaxMessageAttachments = 16
@@ -17,7 +17,7 @@ func (s StartRun) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := s.Message.Validate(); err != nil {
@@ -39,7 +39,7 @@ func (d DeleteSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := cliidentity.ValidateSession(d.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(d.SessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -77,14 +77,14 @@ func (m Message) Validate() error {
 }
 
 func (s SubscribeRun) Validate() error {
-	if err := cliidentity.ValidateRun(s.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
 		return fmt.Errorf("subscribe run: %w", err)
 	}
-	if err := cliidentity.ValidateSegment(s.SegmentID); err != nil {
+	if err := runtimeprotocol.ValidateSegmentID(s.SegmentID); err != nil {
 		return fmt.Errorf("subscribe run: %w", err)
 	}
 	if s.AfterEventID != "" {
-		if err := cliidentity.ValidateEvent(s.AfterEventID); err != nil {
+		if err := runtimeprotocol.ValidateRunEventID(s.AfterEventID); err != nil {
 			return fmt.Errorf("subscribe run: after %w", err)
 		}
 	}
@@ -97,7 +97,7 @@ func (r ResumeRun) Validate() error {
 			return fmt.Errorf("resume run: %w", err)
 		}
 	}
-	if err := cliidentity.ValidateRun(r.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(r.RunID); err != nil {
 		return fmt.Errorf("resume run: %w", err)
 	}
 	if len(r.Answers) == 0 {
@@ -105,7 +105,7 @@ func (r ResumeRun) Validate() error {
 	}
 	seen := make(map[string]struct{}, len(r.Answers))
 	for i, response := range r.Answers {
-		if err := cliidentity.ValidateItem(response.ItemID); err != nil {
+		if err := runtimeprotocol.ValidateItemID(response.ItemID); err != nil {
 			return fmt.Errorf("resume run: answer %d: %w", i+1, err)
 		}
 		if response.Answer == nil {
@@ -130,7 +130,7 @@ func (c CancelRun) Validate() error {
 			return fmt.Errorf("cancel run: %w", err)
 		}
 	}
-	if err := cliidentity.ValidateRun(c.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(c.RunID); err != nil {
 		return fmt.Errorf("cancel run: %w", err)
 	}
 	return nil
@@ -143,10 +143,10 @@ func (s SteerRun) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := cliidentity.ValidateRun(s.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := cliidentity.ValidateSegment(s.SegmentID); err != nil {
+	if err := runtimeprotocol.ValidateSegmentID(s.SegmentID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := s.Message.Validate(); err != nil {
@@ -160,14 +160,14 @@ func (s SteerRun) Validate() error {
 
 func (s SegmentStream) Validate() error {
 	var problems []error
-	if err := cliidentity.ValidateRun(s.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := cliidentity.ValidateSegment(s.SegmentID); err != nil {
+	if err := runtimeprotocol.ValidateSegmentID(s.SegmentID); err != nil {
 		problems = append(problems, err)
 	}
 	if s.HeadEventID != "" {
-		if err := cliidentity.ValidateEvent(s.HeadEventID); err != nil {
+		if err := runtimeprotocol.ValidateRunEventID(s.HeadEventID); err != nil {
 			problems = append(problems, fmt.Errorf("head %w", err))
 		}
 	}
@@ -186,7 +186,7 @@ func (s SegmentStream) ValidateStart() error {
 	if err := s.Validate(); err != nil {
 		return err
 	}
-	if err := cliidentity.ValidateItem(s.UserItemID); err != nil {
+	if err := runtimeprotocol.ValidateItemID(s.UserItemID); err != nil {
 		return fmt.Errorf("start segment stream: user %w", err)
 	}
 	return nil
@@ -199,7 +199,7 @@ func (s SegmentStream) ValidateResume(runID string, message *Message) error {
 	if err := s.Validate(); err != nil {
 		return err
 	}
-	if err := cliidentity.ValidateRun(runID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(runID); err != nil {
 		return fmt.Errorf("resume segment stream: %w", err)
 	}
 	if s.RunID != runID {
@@ -207,7 +207,7 @@ func (s SegmentStream) ValidateResume(runID string, message *Message) error {
 	}
 	hasUserItem := s.UserItemID != ""
 	if hasUserItem {
-		if err := cliidentity.ValidateItem(s.UserItemID); err != nil {
+		if err := runtimeprotocol.ValidateItemID(s.UserItemID); err != nil {
 			return fmt.Errorf("resume segment stream: user %w", err)
 		}
 	}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // SessionRollbackPhase separates a command whose runtime outcome is unknown
@@ -123,7 +123,7 @@ func pendingSessionRollbackEqual(left, right PendingSessionRollback) bool {
 func validateRunIDs(name string, ids []string) error {
 	seen := make(map[string]struct{}, len(ids))
 	for index, id := range ids {
-		if err := cliidentity.ValidateRun(id); err != nil {
+		if err := runtimeprotocol.ValidateRunID(id); err != nil {
 			return fmt.Errorf("%s item %d: %w", name, index+1, err)
 		}
 		if _, duplicate := seen[id]; duplicate {
@@ -195,7 +195,7 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 // local recovery record. Draft materialization remains a separate activation
 // transition so a non-active session cannot replace the visible composer.
 func (s *Store) ConfirmSessionRollback(sessionID string, commandID agent.CommandID) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -221,7 +221,7 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID agent.Command
 // RejectSessionRollback retires only the exact prepared command after a
 // definitive runtime refusal.
 func (s *Store) RejectSessionRollback(sessionID string, commandID agent.CommandID) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -247,7 +247,7 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID agent.CommandI
 // input with any newer draft and retires the journal. A newer user draft is
 // appended after the restored opening text so neither value is discarded.
 func (s *Store) ConsumeConfirmedSessionRollback(sessionID string) (SessionRollbackRecovery, bool, error) {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return SessionRollbackRecovery{}, false, err
 	}
 	s.mu.Lock()

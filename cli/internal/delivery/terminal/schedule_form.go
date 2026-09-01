@@ -11,8 +11,6 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
 const defaultScheduleCron = "0 9 * * 1-5"
@@ -213,7 +211,7 @@ func validateCronShape(value string) error {
 }
 
 func validateScheduleModelPair(provider, model string) error {
-	if err := cliidentity.ValidateModelSelection(provider, model, ""); errors.Is(err, cliidentity.ErrIncompleteModelSelection) {
+	if err := protocol.ValidateModelSelection(provider, model, ""); errors.Is(err, protocol.ErrIncompleteModelSelection) {
 		return errors.New("provider and model must both be set or both be empty")
 	} else if err != nil {
 		return err

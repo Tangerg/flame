@@ -61,7 +61,7 @@ func TestValidationReportsAllIndependentProblems(t *testing.T) {
 	if err == nil {
 		t.Fatal("invalid settings were accepted")
 	}
-	for _, want := range []string{"selected together", "positive", "transcript-retain", "empty path", "repeats", "shortcuts is missing", "unknown", "empty binding"} {
+	for _, want := range []string{"provider and model must be set together", "positive", "transcript-retain", "empty path", "repeats", "shortcuts is missing", "unknown", "empty binding"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("validation error %q does not mention %q", err, want)
 		}

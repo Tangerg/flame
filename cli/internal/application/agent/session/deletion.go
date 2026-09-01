@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type deletionRuntime interface {
@@ -39,7 +39,7 @@ func Delete(
 	if authoring == nil {
 		return DeletionResult{}, errors.New("CLI workbench is unavailable")
 	}
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return DeletionResult{}, err
 	}
 	pending, exists := authoring.PendingSessionDeletion(sessionID)

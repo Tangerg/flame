@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // RunQuery selects one cursor page in runtime order, newest first. An empty
@@ -21,7 +21,7 @@ type RunQuery struct {
 
 func (r RunQuery) Validate() error {
 	if r.SessionID != "" {
-		if err := cliidentity.ValidateSession(r.SessionID); err != nil {
+		if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
 			return fmt.Errorf("run query: %w", err)
 		}
 	}
@@ -103,7 +103,7 @@ func (r RunCancellation) ValidateTarget(runID string) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
-	if err := cliidentity.ValidateRun(runID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(runID); err != nil {
 		return fmt.Errorf("run cancellation: %w", err)
 	}
 	if r.Canceled.ID != runID {

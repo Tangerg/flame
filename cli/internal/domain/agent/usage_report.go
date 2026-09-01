@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type UsageTotals struct {
@@ -52,7 +52,7 @@ type SessionUsageReport struct {
 }
 
 func (s SessionUsageReport) Validate() error {
-	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
 	}
 	if err := s.Total.Validate(); err != nil {

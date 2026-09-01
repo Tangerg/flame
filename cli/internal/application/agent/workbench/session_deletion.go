@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // SessionDeletionPhase separates an unacknowledged runtime mutation from a
@@ -33,7 +33,7 @@ type PendingSessionDeletion struct {
 }
 
 func (p PendingSessionDeletion) validate() error {
-	if err := cliidentity.ValidateSession(p.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(p.SessionID); err != nil {
 		return fmt.Errorf("session deletion: %w", err)
 	}
 	switch p.Phase {
@@ -133,7 +133,7 @@ func (s *Store) StageSessionDeletion(request agent.DeleteSession, replay command
 // RejectSessionDeletion retires a prepared journal after the runtime
 // definitively reports that the session still exists and was not deleted.
 func (s *Store) RejectSessionDeletion(sessionID string, commandID agent.CommandID) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -159,7 +159,7 @@ func (s *Store) RejectSessionDeletion(sessionID string, commandID agent.CommandI
 // durable, physical cleanup is best-effort: an undeletable old aggregate can
 // no longer be observed and will be retried on the next Open.
 func (s *Store) ConfirmSessionDeletion(sessionID string, commandID agent.CommandID) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -176,7 +176,7 @@ func (s *Store) ConfirmSessionDeletion(sessionID string, commandID agent.Command
 // finish removing its old aggregate and tombstone first, preventing a later
 // import with the same session ID from inheriting obsolete local state.
 func (s *Store) ActivateSessionState(sessionID string) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -209,7 +209,7 @@ func (s *Store) ActivateSessionState(sessionID string) error {
 // mutations because each rewrites the same durable aggregate. A failure between
 // them would expose a partially retired session after restart.
 func (s *Store) RetireSessionState(sessionID string) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()

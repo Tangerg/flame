@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type GoalStatus string
@@ -257,7 +257,7 @@ func RestoreGoal(snapshot GoalSnapshot) (Goal, error) {
 
 func (g Goal) Validate() error {
 	var problems []error
-	if err := cliidentity.ValidateSession(g.sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(g.sessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(g.objective) == "" {
@@ -280,7 +280,7 @@ func (g Goal) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := cliidentity.ValidateModelSelection(g.provider, g.model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(g.provider, g.model, ""); err != nil {
 		problems = append(problems, err)
 	}
 	problems = append(problems, g.budget.Validate(), g.used.Validate())
@@ -350,7 +350,7 @@ type UpdateGoal struct {
 }
 
 func (u UpdateGoal) Validate() error {
-	if err := cliidentity.ValidateSession(u.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(u.SessionID); err != nil {
 		return fmt.Errorf("update goal: %w", err)
 	}
 	if strings.TrimSpace(u.Objective) == "" {
@@ -383,7 +383,7 @@ func (u UpdateGoal) ValidateResult(result Goal) error {
 }
 
 func (s StartGoal) Validate() error {
-	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	if strings.TrimSpace(s.Objective) == "" {
@@ -392,7 +392,7 @@ func (s StartGoal) Validate() error {
 	if s.Objective != strings.TrimSpace(s.Objective) {
 		return errors.New("start goal: objective must not have surrounding whitespace")
 	}
-	if err := cliidentity.ValidateModelSelection(s.Provider, s.Model, ""); err != nil {
+	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, ""); err != nil {
 		return fmt.Errorf("start goal: %w", err)
 	}
 	if err := s.Budget.Validate(); err != nil {

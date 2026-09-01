@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/pathologize"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (
@@ -77,7 +77,7 @@ type stashTransfer struct {
 }
 
 func (s stashTransfer) validate() error {
-	if err := cliidentity.ValidateSession(s.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 		return fmt.Errorf("stash transfer: %w", err)
 	}
 	if err := s.Draft.Validate(); err != nil {
@@ -311,7 +311,7 @@ func (s *Store) Draft(sessionID string) (agent.Message, bool, error) {
 
 // SaveDraft atomically replaces a session draft, or removes it when empty.
 func (s *Store) SaveDraft(sessionID string, message agent.Message) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	message = message.Clone()
@@ -369,7 +369,7 @@ func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
 // restores the complete pre-transaction stash collection so capacity eviction
 // cannot turn compensation into data loss.
 func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, error) {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
 	}
 	message = message.Clone()
@@ -633,7 +633,7 @@ func (s *Store) loadSessionState(name string) (sessionState, error) {
 	if err := s.load(filepath.Join("sessions", name), &state); err != nil {
 		return sessionState{}, fmt.Errorf("load %s: %w", name, err)
 	}
-	if err := cliidentity.ValidateSession(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
+	if err := runtimeprotocol.ValidateSessionID(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
 		return sessionState{}, fmt.Errorf("state %s has an invalid session identity", name)
 	}
 	return state, nil
@@ -727,7 +727,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	rollback *PendingSessionRollback,
 	steer *PendingSteer,
 ) error {
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	if pending, exists := s.sessionDeletions[sessionID]; exists && pending.Phase == SessionDeletionConfirmed {

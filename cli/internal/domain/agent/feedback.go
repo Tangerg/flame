@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type FeedbackRating string
@@ -43,17 +43,17 @@ type FeedbackSignal struct {
 func (s FeedbackSignal) Validate() error {
 	var problems []error
 	if s.SessionID != "" {
-		if err := cliidentity.ValidateSession(s.SessionID); err != nil {
+		if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 			problems = append(problems, err)
 		}
 	}
 	if s.RunID != "" {
-		if err := cliidentity.ValidateRun(s.RunID); err != nil {
+		if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
 			problems = append(problems, err)
 		}
 	}
 	if s.ItemID != "" {
-		if err := cliidentity.ValidateItem(s.ItemID); err != nil {
+		if err := runtimeprotocol.ValidateItemID(s.ItemID); err != nil {
 			problems = append(problems, err)
 		}
 	}

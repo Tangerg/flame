@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // RequirementKind names the capability registry that contains a missing
@@ -90,7 +90,7 @@ func (p Problem) Validate() error {
 		seen[requirement] = struct{}{}
 	}
 	if p.ActiveRun != nil {
-		if err := cliidentity.ValidateRun(p.ActiveRun.RunID); err != nil {
+		if err := runtimeprotocol.ValidateRunID(p.ActiveRun.RunID); err != nil {
 			problems = append(problems, err)
 		}
 		switch p.ActiveRun.Status {

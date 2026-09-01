@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 const sessionDraftTransferName = "session-draft-transfer.json"
@@ -40,10 +40,10 @@ func (d DraftTransfer) equal(other DraftTransfer) bool {
 }
 
 func (d DraftTransfer) validate() error {
-	if err := cliidentity.ValidateSession(d.SourceSessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(d.SourceSessionID); err != nil {
 		return fmt.Errorf("draft transfer source: %w", err)
 	}
-	if err := cliidentity.ValidateSession(d.DestinationSessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(d.DestinationSessionID); err != nil {
 		return fmt.Errorf("draft transfer destination: %w", err)
 	}
 	if d.SourceSessionID == d.DestinationSessionID {

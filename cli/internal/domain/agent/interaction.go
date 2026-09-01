@@ -8,7 +8,7 @@ import (
 
 	"unicode/utf8"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 func InteractionItemID(interaction Interaction) string {
@@ -69,10 +69,10 @@ func ValidateInteractions(interactions []Interaction) error {
 
 func (a Approval) Validate() error {
 	var problems []error
-	if err := cliidentity.ValidateRun(a.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(a.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := cliidentity.ValidateItem(a.ItemID); err != nil {
+	if err := runtimeprotocol.ValidateItemID(a.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(a.Title) == "" {
@@ -119,10 +119,10 @@ func (a Approval) Equal(other Approval) bool {
 
 func (q Question) Validate() error {
 	var problems []error
-	if err := cliidentity.ValidateRun(q.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(q.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := cliidentity.ValidateItem(q.ItemID); err != nil {
+	if err := runtimeprotocol.ValidateItemID(q.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(q.Title) == "" {

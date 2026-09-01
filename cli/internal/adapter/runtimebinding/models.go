@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
 type modelConfigBinding interface {
@@ -202,7 +201,7 @@ func validateProviderUpdate(update models.UpdateProvider, result models.Provider
 }
 
 func (r *Connection) TestProvider(ctx context.Context, providerID string) (models.TestResult, error) {
-	if err := cliidentity.ValidateProvider(providerID); err != nil {
+	if err := protocol.ValidateProviderIdentity(providerID); err != nil {
 		return models.TestResult{}, fmt.Errorf("test provider: %w", err)
 	}
 	result, err := r.modelConfig.TestProvider(ctx, protocol.TestProviderRequest{Provider: providerID}, r.callOptions())

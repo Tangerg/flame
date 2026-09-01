@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type DocumentFormat string
@@ -107,7 +107,7 @@ type ExportRequest struct {
 }
 
 func (e ExportRequest) Validate() error {
-	if err := cliidentity.ValidateSession(e.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(e.SessionID); err != nil {
 		return fmt.Errorf("export session: %w", err)
 	}
 	if err := e.Format.Validate(); err != nil {

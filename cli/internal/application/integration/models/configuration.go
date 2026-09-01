@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type RoleKind string
@@ -70,7 +70,7 @@ func (r Role) Validate() error {
 			return errors.New("only an empty embedding role can be disabled")
 		}
 	case configuredRole:
-		if err := cliidentity.ValidateModelSelection(r.provider, r.model, ""); err != nil {
+		if err := runtimeprotocol.ValidateModelSelection(r.provider, r.model, ""); err != nil {
 			return fmt.Errorf("configured model role: %w", err)
 		}
 	default:
@@ -228,7 +228,7 @@ func NewProvider(spec ProviderSpec) (Provider, error) {
 }
 
 func (p Provider) Validate() error {
-	if err := cliidentity.ValidateProvider(p.id); err != nil {
+	if err := runtimeprotocol.ValidateProviderIdentity(p.id); err != nil {
 		return err
 	}
 	if err := p.credentialRequirement.Validate(); err != nil {
@@ -304,7 +304,7 @@ type UpdateProvider struct {
 }
 
 func (u UpdateProvider) Validate() error {
-	if err := cliidentity.ValidateProvider(u.Provider); err != nil {
+	if err := runtimeprotocol.ValidateProviderIdentity(u.Provider); err != nil {
 		return fmt.Errorf("update provider: %w", err)
 	}
 	if u.BaseURL == nil && u.APIKey == nil {

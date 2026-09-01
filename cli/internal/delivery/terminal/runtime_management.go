@@ -14,8 +14,8 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type runtimeReaderMode uint8
@@ -327,7 +327,7 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := cliidentity.ValidateProvider(providerID); err != nil {
+	if err := runtimeprotocol.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	a.status.note("testing provider " + providerID)
@@ -357,7 +357,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := cliidentity.ValidateProvider(providerID); err != nil {
+	if err := runtimeprotocol.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
 	presentation := a.session.context

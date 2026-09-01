@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // RestoreScope is the portion of a session rollback rewinds.
@@ -41,14 +41,14 @@ func (r RollbackSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := cliidentity.ValidateSession(r.SessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
 		problems = append(problems, err)
 	}
 	if err := r.Scope.Validate(); err != nil {
 		problems = append(problems, err)
 	}
 	if r.ToRunID != "" {
-		if err := cliidentity.ValidateRun(r.ToRunID); err != nil {
+		if err := runtimeprotocol.ValidateRunID(r.ToRunID); err != nil {
 			problems = append(problems, err)
 		}
 	}
@@ -115,7 +115,7 @@ func (d DroppedRun) Clone() DroppedRun {
 }
 
 func (d DroppedRun) Validate() error {
-	if err := cliidentity.ValidateRun(d.RunID); err != nil {
+	if err := runtimeprotocol.ValidateRunID(d.RunID); err != nil {
 		return fmt.Errorf("dropped run: %w", err)
 	}
 	for index, content := range d.Input {

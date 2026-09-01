@@ -15,7 +15,7 @@ func TestStartRunValidation(t *testing.T) {
 	}
 	invalid := valid
 	invalid.Options.Model = ""
-	if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "selected together") {
+	if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "provider and model must be set together") {
 		t.Fatalf("error = %v", err)
 	}
 }

@@ -372,7 +372,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	host.Shows(t, "Ask flame")
 	host.Type("cancel malformed accepted start")
 	host.Press(input.Enter)
-	host.Shows(t, "start segment stream: user item id is empty")
+	host.Shows(t, "start segment stream: user item identity is empty")
 	host.Until(t, "the malformed accepted start to be canceled", func() bool {
 		starts, cancellations := runtime.attempts()
 		if len(starts) != 1 || len(cancellations) != 1 {
@@ -419,7 +419,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	host.Shows(t, "Ask flame")
 	host.Type("settle malformed start without files")
 	host.Press(input.Enter)
-	host.Shows(t, "start segment stream: user item id is empty")
+	host.Shows(t, "start segment stream: user item identity is empty")
 	host.Until(t, "the memory-only malformed start cleanup", func() bool {
 		starts, cancellations := runtime.attempts()
 		return len(starts) == 1 && len(cancellations) == 1 && host.Repaint()
@@ -456,7 +456,7 @@ func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t 
 		cancellations[0].RunID != cancellations[1].RunID {
 		t.Fatalf("malformed receipt cleanup retry identities = %+v", cancellations)
 	}
-	host.Shows(t, "start segment stream: user item id is empty")
+	host.Shows(t, "start segment stream: user item identity is empty")
 	host.Hides(t, "apply runtime event")
 	stop()
 }

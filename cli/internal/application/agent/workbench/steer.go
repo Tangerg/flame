@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 // PendingSteer owns an instruction and its borrowed composer attachments until
@@ -55,7 +55,7 @@ func NewPendingSteer(
 
 // Validate enforces the complete persisted command and replay shape.
 func (p PendingSteer) Validate() error {
-	if err := cliidentity.ValidateSession(p.sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(p.sessionID); err != nil {
 		return fmt.Errorf("pending steer: %w", err)
 	}
 	if err := p.command.Validate(); err != nil {
@@ -190,7 +190,7 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID agent.Comman
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -237,7 +237,7 @@ func (s *Store) RejectPendingSteer(
 	if err := commandID.Validate(); err != nil {
 		return agent.Message{}, err
 	}
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return agent.Message{}, err
 	}
 	currentDraft = currentDraft.Clone()

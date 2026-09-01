@@ -10,14 +10,13 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	if err := cliidentity.ValidateSession(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	r.mu.Lock()

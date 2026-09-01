@@ -18,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	cliidentity "github.com/Tangerg/flame/cli/internal/domain/identity"
+	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (
@@ -94,7 +94,7 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 		},
 		rejected: func(err error) error {
 			if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
-				if identityErr := cliidentity.ValidateRun(receipt.RunID); identityErr != nil {
+				if identityErr := runtimeprotocol.ValidateRunID(receipt.RunID); identityErr != nil {
 					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
 				}
 				a.execution.openingRunID = receipt.RunID
@@ -882,7 +882,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 				return
 			}
 			validationErr := observed.ValidateStart()
-			if identityErr := cliidentity.ValidateRun(observed.RunID); identityErr != nil {
+			if identityErr := runtimeprotocol.ValidateRunID(observed.RunID); identityErr != nil {
 				a.fail(errors.Join(
 					fmt.Errorf("reconcile canceled start: accepted receipt: %w", identityErr),
 					err,
@@ -1175,7 +1175,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 		return fmt.Errorf("reconcile run start during terminal close: %w", err)
 	}
 	validationErr := opened.ValidateStart()
-	if identityErr := cliidentity.ValidateRun(opened.RunID); identityErr != nil {
+	if identityErr := runtimeprotocol.ValidateRunID(opened.RunID); identityErr != nil {
 		return errors.Join(
 			fmt.Errorf("reconcile run start during terminal close: accepted receipt: %w", identityErr),
 			err,
