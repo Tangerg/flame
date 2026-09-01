@@ -1060,9 +1060,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   GoalStatus: enumOf(["active", "paused", "blocked", "completing"]),
   GoalUsage: object({
-    costUsd: numeric(),
-    runs: integer(),
-    steps: integer(),
+    costUsd: allOf([numeric(), minimum(0)]),
+    runs: allOf([integer(), minimum(0)]),
+    steps: allOf([integer(), minimum(0)]),
   }, ["runs", "steps"]),
   GrepMatch: object({
     lineNumber: integer(),

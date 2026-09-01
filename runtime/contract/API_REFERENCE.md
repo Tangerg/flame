@@ -921,6 +921,9 @@ TypeScript validator from this single registry projection.
 | `Goal` | `model` | `maxLength(256)` |
 | `Goal` | `reasoningEffort` | `identity` |
 | `Goal` | `reasoningEffort` | `maxLength(32)` |
+| `GoalUsage` | `runs` | `nonNegative` |
+| `GoalUsage` | `costUsd` | `nonNegative` |
+| `GoalUsage` | `steps` | `nonNegative` |
 | `StartGoalRequest` | `sessionId` | `nonEmpty` |
 | `StartGoalRequest` | `sessionId` | `identity` |
 | `StartGoalRequest` | `sessionId` | `maxLength(256)` |

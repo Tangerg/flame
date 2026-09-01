@@ -6972,6 +6972,23 @@
       ]
     },
     {
+      "type": "GoalUsage",
+      "rules": [
+        {
+          "field": "runs",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "costUsd",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "steps",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
       "type": "StartGoalRequest",
       "rules": [
         {

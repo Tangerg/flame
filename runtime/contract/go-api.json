@@ -4367,6 +4367,12 @@
               "type": "int",
               "tag": "json:\"steps\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {

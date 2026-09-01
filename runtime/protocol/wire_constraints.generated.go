@@ -2210,6 +2210,14 @@ func (g Goal) ValidateWire() error {
 	)
 }
 
+func (g GoalUsage) ValidateWire() error {
+	return collectWireViolations("GoalUsage",
+		nonNegativeNumber("runs", g.Runs),
+		optionalNonNegativeNumber("costUsd", g.CostUSD),
+		nonNegativeNumber("steps", g.Steps),
+	)
+}
+
 func (c ClientInfo) ValidateWire() error {
 	return collectWireViolations("ClientInfo",
 		requiredText("name", c.Name),

@@ -1225,6 +1225,29 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 	}
 	nonFiniteCost := math.Inf(1)
 	assertConstraintField(t, (GoalBudget{MaxCostUSD: &nonFiniteCost}).ValidateWire(), "GoalBudget", "maxCostUsd")
+
+	negativeCost := -0.01
+	for _, test := range []struct {
+		field string
+		value GoalUsage
+	}{
+		{field: "runs", value: GoalUsage{Runs: -1}},
+		{field: "costUsd", value: GoalUsage{CostUSD: &negativeCost}},
+		{field: "steps", value: GoalUsage{Steps: -1}},
+		{field: "costUsd", value: GoalUsage{CostUSD: &nonFiniteCost}},
+	} {
+		assertConstraintField(t, test.value.ValidateWire(), "GoalUsage", test.field)
+	}
+
+	goal := Goal{
+		SessionID: "ses_1",
+		Objective: "finish",
+		Status:    GoalActive,
+		Used:      GoalUsage{Steps: -1},
+		CreatedAt: time.Unix(1, 0).UTC(),
+		UpdatedAt: time.Unix(2, 0).UTC(),
+	}
+	assertConstraintField(t, ValidateWireTree(goal), "Goal", "used.steps")
 }
 
 func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
