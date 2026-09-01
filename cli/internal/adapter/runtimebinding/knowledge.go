@@ -35,10 +35,10 @@ func (k *Knowledge) Entries(ctx context.Context, workspacePath string) ([]worksp
 		return nil, err
 	}
 	entries := make([]workspace.KnowledgeEntry, 0, len(values))
-	seen := make(map[workspace.KnowledgeScope]struct{}, len(values))
+	seen := make(map[protocol.KnowledgeScope]struct{}, len(values))
 	for index, value := range values {
-		entry := projectKnowledgeEntry(value)
-		if err := entry.Validate(); err != nil {
+		entry, err := projectKnowledgeEntry(value)
+		if err != nil {
 			return nil, runtimeContractViolation("list knowledge item %d is invalid: %v", index+1, err)
 		}
 		if _, duplicate := seen[entry.Scope]; duplicate {
@@ -55,8 +55,8 @@ func (k *Knowledge) Document(ctx context.Context, target workspace.KnowledgeTarg
 	if err := target.Validate(); err != nil {
 		return workspace.KnowledgeEntry{}, err
 	}
-	request := protocol.GetKnowledgeRequest{Scope: protocol.KnowledgeScope(target.Scope)}
-	if target.Scope != workspace.KnowledgeHome {
+	request := protocol.GetKnowledgeRequest{Scope: target.Scope}
+	if target.Scope != protocol.KnowledgeScopeHome {
 		request.Workspace = &protocol.WorkspaceRef{Path: target.Workspace}
 	}
 	result, err := r.knowledge.GetKnowledge(ctx, request, r.callOptions())
@@ -66,8 +66,8 @@ func (k *Knowledge) Document(ctx context.Context, target workspace.KnowledgeTarg
 	if result == nil {
 		return workspace.KnowledgeEntry{}, runtimeContractViolation("get knowledge returned nil")
 	}
-	entry := projectKnowledgeEntry(*result)
-	if err := entry.Validate(); err != nil {
+	entry, err := projectKnowledgeEntry(*result)
+	if err != nil {
 		return workspace.KnowledgeEntry{}, runtimeContractViolation("get knowledge returned an invalid entry: %v", err)
 	}
 	if entry.Scope != target.Scope {
@@ -87,9 +87,9 @@ func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) 
 	}
 	target := update.Target
 	request := protocol.UpdateKnowledgeRequest{
-		Scope: protocol.KnowledgeScope(target.Scope), ExpectedRevision: update.ExpectedRevision, Content: update.Content,
+		Scope: target.Scope, ExpectedRevision: update.ExpectedRevision, Content: update.Content,
 	}
-	if target.Scope != workspace.KnowledgeHome {
+	if target.Scope != protocol.KnowledgeScopeHome {
 		request.Workspace = &protocol.WorkspaceRef{Path: target.Workspace}
 	}
 	updated, err := r.knowledge.UpdateKnowledge(ctx, request, options)
@@ -99,9 +99,9 @@ func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) 
 	if updated == nil {
 		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned nil")
 	}
-	entry := projectKnowledgeEntry(*updated)
-	if validateErr := entry.Validate(); validateErr != nil {
-		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned an invalid entry: %v", validateErr)
+	entry, err := projectKnowledgeEntry(*updated)
+	if err != nil {
+		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned an invalid entry: %v", err)
 	}
 	if entry.Scope != target.Scope || entry.Content != update.Content {
 		return workspace.KnowledgeEntry{}, runtimeContractViolation("update knowledge returned a mismatched entry")
@@ -116,10 +116,13 @@ func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) 
 	return authoritative, nil
 }
 
-func projectKnowledgeEntry(value protocol.KnowledgeEntry) workspace.KnowledgeEntry {
-	entry := workspace.KnowledgeEntry{Scope: workspace.KnowledgeScope(value.Scope), Content: value.Content, Revision: value.Revision}
+func projectKnowledgeEntry(value protocol.KnowledgeEntry) (workspace.KnowledgeEntry, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return workspace.KnowledgeEntry{}, err
+	}
+	entry := workspace.KnowledgeEntry{Scope: value.Scope, Content: value.Content, Revision: value.Revision}
 	if !value.UpdatedAt.IsZero() {
 		entry.UpdatedAt = new(value.UpdatedAt)
 	}
-	return entry
+	return entry, entry.Validate()
 }

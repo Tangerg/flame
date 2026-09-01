@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -179,7 +181,7 @@ func parseKnowledgeTarget(argument, workspacePath string) (workspace.KnowledgeTa
 	if err != nil {
 		return workspace.KnowledgeTarget{}, errors.New("usage: <cwd|projectRoot|home>")
 	}
-	if scope == workspace.KnowledgeHome {
+	if scope == protocol.KnowledgeScopeHome {
 		workspacePath = ""
 	}
 	return workspace.NewKnowledgeTarget(scope, workspacePath)

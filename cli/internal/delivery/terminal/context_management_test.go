@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
@@ -182,8 +183,8 @@ func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarge
 
 type knowledgeServiceStub struct {
 	mu        sync.Mutex
-	content   map[workspace.KnowledgeScope]string
-	revisions map[workspace.KnowledgeScope]string
+	content   map[protocol.KnowledgeScope]string
+	revisions map[protocol.KnowledgeScope]string
 	saved     chan string
 	failed    chan struct{}
 	failNext  bool
@@ -193,13 +194,13 @@ type knowledgeServiceStub struct {
 
 func newKnowledgeServiceStub() *knowledgeServiceStub {
 	return &knowledgeServiceStub{
-		content: map[workspace.KnowledgeScope]string{
-			workspace.KnowledgeWorkingDirectory: "cwd guidance",
-			workspace.KnowledgeProjectRoot:      "project rules",
-			workspace.KnowledgeHome:             "global preferences",
+		content: map[protocol.KnowledgeScope]string{
+			protocol.KnowledgeScopeCWD:         "cwd guidance",
+			protocol.KnowledgeScopeProjectRoot: "project rules",
+			protocol.KnowledgeScopeHome:        "global preferences",
 		},
-		revisions: map[workspace.KnowledgeScope]string{
-			workspace.KnowledgeWorkingDirectory: "rev-cwd", workspace.KnowledgeProjectRoot: "rev-project", workspace.KnowledgeHome: "rev-home",
+		revisions: map[protocol.KnowledgeScope]string{
+			protocol.KnowledgeScopeCWD: "rev-cwd", protocol.KnowledgeScopeProjectRoot: "rev-project", protocol.KnowledgeScopeHome: "rev-home",
 		},
 		saved: make(chan string, 1), failed: make(chan struct{}, 1),
 	}
@@ -210,9 +211,9 @@ func (k *knowledgeServiceStub) Entries(context.Context, string) ([]workspace.Kno
 	defer k.mu.Unlock()
 	now := time.Now()
 	return []workspace.KnowledgeEntry{
-		{Scope: workspace.KnowledgeWorkingDirectory, Content: k.content[workspace.KnowledgeWorkingDirectory], Revision: k.revisions[workspace.KnowledgeWorkingDirectory], UpdatedAt: &now},
-		{Scope: workspace.KnowledgeProjectRoot, Content: k.content[workspace.KnowledgeProjectRoot], Revision: k.revisions[workspace.KnowledgeProjectRoot], UpdatedAt: &now},
-		{Scope: workspace.KnowledgeHome, Content: k.content[workspace.KnowledgeHome], Revision: k.revisions[workspace.KnowledgeHome], UpdatedAt: &now},
+		{Scope: protocol.KnowledgeScopeCWD, Content: k.content[protocol.KnowledgeScopeCWD], Revision: k.revisions[protocol.KnowledgeScopeCWD], UpdatedAt: &now},
+		{Scope: protocol.KnowledgeScopeProjectRoot, Content: k.content[protocol.KnowledgeScopeProjectRoot], Revision: k.revisions[protocol.KnowledgeScopeProjectRoot], UpdatedAt: &now},
+		{Scope: protocol.KnowledgeScopeHome, Content: k.content[protocol.KnowledgeScopeHome], Revision: k.revisions[protocol.KnowledgeScopeHome], UpdatedAt: &now},
 	}, nil
 }
 
@@ -496,8 +497,8 @@ func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
 	host.Shows(t, "global preferences")
 
 	knowledgeStore.mu.Lock()
-	knowledgeStore.content[workspace.KnowledgeHome] = "preferences from runtime change"
-	knowledgeStore.revisions[workspace.KnowledgeHome] = "rev-home+external"
+	knowledgeStore.content[protocol.KnowledgeScopeHome] = "preferences from runtime change"
+	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+external"
 	knowledgeStore.mu.Unlock()
 	source.events <- changefeed.Event{Type: changefeed.EventType(changefeed.KnowledgeChanged), Sequence: 1}
 	awaitValue(t, source.applied, "knowledge invalidation")
@@ -520,8 +521,8 @@ func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
 	host.Shows(t, "global preferences")
 
 	knowledgeStore.mu.Lock()
-	knowledgeStore.content[workspace.KnowledgeHome] = "preferences from scoped resync"
-	knowledgeStore.revisions[workspace.KnowledgeHome] = "rev-home+resync"
+	knowledgeStore.content[protocol.KnowledgeScopeHome] = "preferences from scoped resync"
+	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+resync"
 	knowledgeStore.mu.Unlock()
 	source.events <- changefeed.Event{
 		Type: changefeed.Resync, Sequence: 1, Topics: []changefeed.Topic{changefeed.KnowledgeChanged},

@@ -47,6 +47,7 @@ func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 		{name: "nil page", nilList: true},
 		{name: "continuation without request cursor", listed: protocol.NewPageWithCursor([]protocol.KnowledgeEntry{}, "next")},
 		{name: "duplicate scope", listed: &protocol.Page[protocol.KnowledgeEntry]{Data: []protocol.KnowledgeEntry{duplicate, duplicate}}},
+		{name: "invalid wire scope", listed: protocol.NewPage([]protocol.KnowledgeEntry{{Scope: protocol.KnowledgeScope("unknown"), Revision: "rev"}})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &knowledgeBindingStub{t: t, updated: now, listed: test.listed, nilList: test.nilList}
@@ -107,15 +108,15 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 	if err != nil || len(entries) != 1 || entries[0].UpdatedAt == nil {
 		t.Fatalf("Entries = (%+v, %v)", entries, err)
 	}
-	project, err := workspace.NewKnowledgeTarget(workspace.KnowledgeProjectRoot, "/workspace")
+	project, err := workspace.NewKnowledgeTarget(protocol.KnowledgeScopeProjectRoot, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	entry, err := adapter.Document(t.Context(), project)
-	if err != nil || entry.Scope != workspace.KnowledgeProjectRoot || entry.Content != "document" {
+	if err != nil || entry.Scope != protocol.KnowledgeScopeProjectRoot || entry.Content != "document" {
 		t.Fatalf("Document = (%+v, %v)", entry, err)
 	}
-	home, err := workspace.NewKnowledgeTarget(workspace.KnowledgeHome, "")
+	home, err := workspace.NewKnowledgeTarget(protocol.KnowledgeScopeHome, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +135,7 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 func TestKnowledgeAdapterDoesNotAcceptAnUpdateBeforeTheAuthoritativeReadConverges(t *testing.T) {
 	stub := &knowledgeBindingStub{t: t, updated: time.Now(), dropUpdate: true}
 	adapter := &Knowledge{runtime: &Connection{knowledge: stub, meta: requestMeta("test")}}
-	target, err := workspace.NewKnowledgeTarget(workspace.KnowledgeProjectRoot, "/workspace")
+	target, err := workspace.NewKnowledgeTarget(protocol.KnowledgeScopeProjectRoot, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}

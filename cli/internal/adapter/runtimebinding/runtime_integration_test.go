@@ -139,7 +139,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		t.Fatalf("write external knowledge: %v", writeFileErr)
 	}
 	awaitRuntimeInvalidation(t, events, streamErrors, changefeed.KnowledgeChanged)
-	target, err := workspaceapi.NewKnowledgeTarget(workspaceapi.KnowledgeWorkingDirectory, workspace)
+	target, err := workspaceapi.NewKnowledgeTarget(protocol.KnowledgeScopeCWD, workspace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil {
 		t.Fatalf("Entries knowledge = (%+v, %v)", entries, err)
 	}
-	target, err := workspaceapi.NewKnowledgeTarget(workspaceapi.KnowledgeWorkingDirectory, workspace)
+	target, err := workspaceapi.NewKnowledgeTarget(protocol.KnowledgeScopeCWD, workspace)
 	if err != nil {
 		t.Fatal(err)
 	}

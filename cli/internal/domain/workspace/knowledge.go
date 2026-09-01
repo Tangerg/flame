@@ -5,75 +5,60 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type KnowledgeScope string
-
-const (
-	KnowledgeWorkingDirectory KnowledgeScope = "cwd"
-	KnowledgeProjectRoot      KnowledgeScope = "projectRoot"
-	KnowledgeHome             KnowledgeScope = "home"
-)
-
-func ParseKnowledgeScope(value string) (KnowledgeScope, error) {
-	scope := KnowledgeScope(strings.TrimSpace(value))
-	if err := scope.Validate(); err != nil {
-		return "", err
+func ParseKnowledgeScope(value string) (protocol.KnowledgeScope, error) {
+	scope := protocol.KnowledgeScope(strings.TrimSpace(value))
+	if !scope.Valid() {
+		return "", fmt.Errorf("knowledge scope must be cwd, projectRoot, or home, got %q", scope)
 	}
 	return scope, nil
-}
-
-func (s KnowledgeScope) Validate() error {
-	if s != KnowledgeWorkingDirectory && s != KnowledgeProjectRoot && s != KnowledgeHome {
-		return fmt.Errorf("knowledge scope must be cwd, projectRoot, or home, got %q", s)
-	}
-	return nil
 }
 
 // KnowledgeTarget identifies exactly one document. Home is runtime-global and therefore
 // intentionally carries no workspace; the other scopes cannot resolve without it.
 type KnowledgeTarget struct {
-	Scope     KnowledgeScope
+	Scope     protocol.KnowledgeScope
 	Workspace string
 }
 
-func NewKnowledgeTarget(scope KnowledgeScope, workspace string) (KnowledgeTarget, error) {
+func NewKnowledgeTarget(scope protocol.KnowledgeScope, workspace string) (KnowledgeTarget, error) {
 	target := KnowledgeTarget{Scope: scope, Workspace: strings.TrimSpace(workspace)}
 	return target, target.Validate()
 }
 
 func (t KnowledgeTarget) Validate() error {
-	if err := t.Scope.Validate(); err != nil {
-		return err
-	}
-	if t.Scope == KnowledgeHome {
-		if t.Workspace != "" {
-			return errors.New("home knowledge does not belong to a workspace")
-		}
+	return (protocol.GetKnowledgeRequest{
+		Scope: t.Scope, Workspace: t.workspaceRef(),
+	}).ValidateWire()
+}
+
+func (t KnowledgeTarget) workspaceRef() *protocol.WorkspaceRef {
+	if t.Workspace == "" {
 		return nil
 	}
-	if t.Workspace == "" {
-		return fmt.Errorf("%s knowledge requires a workspace", t.Scope)
-	}
-	return nil
+	return &protocol.WorkspaceRef{Path: t.Workspace}
 }
 
 type KnowledgeEntry struct {
-	Scope     KnowledgeScope
+	Scope     protocol.KnowledgeScope
 	Content   string
 	Revision  string
 	UpdatedAt *time.Time
 }
 
 func (e KnowledgeEntry) Validate() error {
-	if err := e.Scope.Validate(); err != nil {
+	wire := protocol.KnowledgeEntry{Scope: e.Scope, Content: e.Content, Revision: e.Revision}
+	if e.UpdatedAt != nil {
+		wire.UpdatedAt = *e.UpdatedAt
+	}
+	if err := wire.ValidateWire(); err != nil {
 		return err
 	}
 	if e.UpdatedAt != nil && e.UpdatedAt.IsZero() {
 		return errors.New("knowledge update time is zero")
-	}
-	if strings.TrimSpace(e.Revision) == "" {
-		return errors.New("knowledge revision is empty")
 	}
 	return nil
 }
@@ -101,11 +86,8 @@ type KnowledgeUpdate struct {
 }
 
 func (u KnowledgeUpdate) Validate() error {
-	if err := u.Target.Validate(); err != nil {
-		return err
-	}
-	if strings.TrimSpace(u.ExpectedRevision) == "" {
-		return errors.New("knowledge update expected revision is empty")
-	}
-	return nil
+	return (protocol.UpdateKnowledgeRequest{
+		Scope: u.Target.Scope, Workspace: u.Target.workspaceRef(),
+		ExpectedRevision: u.ExpectedRevision, Content: u.Content,
+	}).ValidateWire()
 }
