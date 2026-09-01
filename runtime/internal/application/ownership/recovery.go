@@ -4,7 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
+
+var recoveryTracer = otel.Tracer("scope/flame/ownership-recovery")
+
+const recoveryInterval = time.Second
 
 // RecoveryBackend elects one Runtime process to perform a recovery sweep.
 type RecoveryBackend interface {
@@ -75,6 +83,28 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 		return fmt.Errorf("ownership recovery: acquire startup sweep: %w", err)
 	}
 	return c.reconcileOwned(ctx, lease)
+}
+
+// RunWorker continuously detects process death by attempting the same kernel
+// leases held by live Run and Goal owners. A contended lease is definitive
+// liveness evidence; no heartbeat or expiry clock participates. A failed sweep
+// remains observable and is retried at the next interval.
+func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
+	ticker := time.NewTicker(recoveryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := c.Reconcile(ctx); err != nil && ctx.Err() == nil {
+				_, span := recoveryTracer.Start(ctx, "ownership-recovery.error")
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "recovery sweep failed")
+				span.End()
+			}
+		}
+	}
 }
 
 func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) error {

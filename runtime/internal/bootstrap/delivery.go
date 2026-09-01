@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
@@ -33,8 +32,6 @@ type workerJoins struct {
 	scheduler <-chan struct{}
 	recovery  <-chan struct{}
 }
-
-const ownershipRecoveryInterval = time.Second
 
 func (h *hostApplication) recoverStartup(ctx context.Context) error {
 	return h.sessions.RecoverWorkspaceMutations(ctx)
@@ -86,23 +83,7 @@ func (h *hostApplication) startWorkers(ctx context.Context) workerJoins {
 	recoveryDone := make(chan struct{})
 	go func() {
 		defer close(recoveryDone)
-		h.workers.runOwnershipRecovery(ctx)
+		h.workers.recovery.RunWorker(ctx)
 	}()
 	return workerJoins{scheduler: schedulerDone, recovery: recoveryDone}
-}
-
-// runOwnershipRecovery detects process death by attempting the same kernel
-// leases held by live Run and Goal owners. A contended lease is definitive
-// liveness evidence; no heartbeat or expiry clock participates.
-func (h hostWorkers) runOwnershipRecovery(ctx context.Context) {
-	ticker := time.NewTicker(ownershipRecoveryInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			_, _ = h.recovery.Reconcile(ctx)
-		}
-	}
 }
