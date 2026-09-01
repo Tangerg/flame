@@ -191,14 +191,14 @@ func TestTranscriptNavigationUsesRetainedBlockAndSearchCoordinates(t *testing.T)
 	case <-time.After(2 * time.Second):
 		t.Fatal("transcript search did not finish")
 	}
-	if len(view.matches) != 2 || view.current != 0 {
-		t.Fatalf("search state = (%d matches, current %d)", len(view.matches), view.current)
+	if len(view.search.matches) != 2 || view.search.current != 0 {
+		t.Fatalf("search state = (%d matches, current %d)", len(view.search.matches), view.search.current)
 	}
-	if !view.StepMatch(-1) || view.current != 1 {
-		t.Fatalf("previous search match = %d, want wrapped index 1", view.current)
+	if !view.StepMatch(-1) || view.search.current != 1 {
+		t.Fatalf("previous search match = %d, want wrapped index 1", view.search.current)
 	}
-	if !view.StepMatch(1) || view.current != 0 {
-		t.Fatalf("next search match = %d, want wrapped index 0", view.current)
+	if !view.StepMatch(1) || view.search.current != 0 {
+		t.Fatalf("next search match = %d, want wrapped index 0", view.search.current)
 	}
 }
 
@@ -215,16 +215,16 @@ func TestStreamingSearchRefreshPreservesTheCurrentMatch(t *testing.T) {
 			t.Fatal("could not advance the active search match")
 		}
 	}
-	if view.current != 2 {
-		t.Fatalf("current match = %d, want 2", view.current)
+	if view.search.current != 2 {
+		t.Fatalf("current match = %d, want 2", view.search.current)
 	}
-	want := view.searchCursor
+	want := view.search.cursor
 
 	view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: "streamed tail without the query"})
 	acceptSearchResult(t, view)
-	if view.current != 2 || !view.searchCursor.present || view.searchCursor.blockID != want.blockID ||
-		view.searchCursor.rowOffset != want.rowOffset || view.searchCursor.column != want.column {
-		t.Fatalf("search cursor after refresh = index %d cursor %+v, want index 2 cursor %+v", view.current, view.searchCursor, want)
+	if view.search.current != 2 || !view.search.cursor.present || view.search.cursor.blockID != want.blockID ||
+		view.search.cursor.rowOffset != want.rowOffset || view.search.cursor.column != want.column {
+		t.Fatalf("search cursor after refresh = index %d cursor %+v, want index 2 cursor %+v", view.search.current, view.search.cursor, want)
 	}
 }
 
@@ -243,10 +243,10 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 	drawRoot(t, view, 48, 8)
 	view.Find("needle")
 	acceptSearchResult(t, view)
-	if !view.StepMatch(1) || view.current != 1 {
-		t.Fatalf("current match = %d, want 1", view.current)
+	if !view.StepMatch(1) || view.search.current != 1 {
+		t.Fatalf("current match = %d, want 1", view.search.current)
 	}
-	wantBlock := view.searchCursor.blockID
+	wantBlock := view.search.cursor.blockID
 
 	// The still-live block precedes the selected match and introduces a new match,
 	// shifting every later result index. The cursor follows the retained BlockID.
@@ -254,8 +254,8 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	acceptSearchResult(t, view)
-	if view.current != 2 || !view.searchCursor.present || view.searchCursor.blockID != wantBlock {
-		t.Fatalf("interleaved refresh = index %d cursor %+v, want index 2 block %d", view.current, view.searchCursor, wantBlock)
+	if view.search.current != 2 || !view.search.cursor.present || view.search.cursor.blockID != wantBlock {
+		t.Fatalf("interleaved refresh = index %d cursor %+v, want index 2 block %d", view.search.current, view.search.cursor, wantBlock)
 	}
 }
 

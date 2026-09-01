@@ -31,12 +31,7 @@ type transcriptView struct {
 	selection        headless.Selection
 	sticky           headless.Sticky
 	view             kit.Transcript
-	search           *headless.Search
-	query            string
-	announceSearch   bool
-	matches          []headless.Match
-	current          int
-	searchCursor     transcriptSearchCursor
+	search           transcriptSearch
 	retain           int
 	details          bool
 	clipboard        headless.Clipboard
@@ -122,13 +117,6 @@ func (t *transcriptPointerGesture) release(
 }
 
 func (t *transcriptPointerGesture) cancel() { *t = transcriptPointerGesture{} }
-
-type transcriptSearchCursor struct {
-	blockID           headless.BlockID
-	rowOffset, column int
-	index             int
-	present           bool
-}
 
 const transcriptPrompt keymap.Action = "prompt"
 
@@ -224,7 +212,7 @@ func newTranscriptView(
 	c := &transcriptView{
 		theme: theme, glyphs: glyphs, wheel: wheel,
 		look: markdownLook(theme, glyphs, syntax), syntax: syntax,
-		search: headless.NewSearch(), current: -1, retain: max(retain, 4), details: details,
+		search: newTranscriptSearch(), retain: max(retain, 4), details: details,
 		clipboard: clipboard, entries: make(map[headless.BlockID]*transcriptEntry),
 		tools: make(map[string]liveTool), textStreams: make(map[string]*liveText),
 		pendingQuestions: make(map[string]trackedQuestion),
@@ -248,7 +236,7 @@ func (t *transcriptView) Draw(frame headless.Frame) {
 	t.presentedBlocks.Stage(frame, transcriptBlockPresentation{
 		lease: t.contentLease, blocks: t.projectBlockPlacements(width),
 	})
-	t.view.Matches, t.view.Current = t.matches, t.current
+	t.view.Matches, t.view.Current = t.search.presentation()
 	t.view.Draw(frame)
 	if t.content.Len() == 0 && t.entrance != nil {
 		t.entrance.Draw(frame.View)
@@ -677,7 +665,7 @@ func (t *transcriptView) Follow() { t.scroll.ToBottom() }
 func (t *transcriptView) Scroll(action keymap.Action) bool { return t.scroll.Do(action) }
 
 func (t *transcriptView) Close() {
-	if t != nil && t.search != nil {
+	if t != nil {
 		t.search.Close()
 	}
 }
@@ -1204,8 +1192,7 @@ func (t *transcriptView) Reset() {
 		live.stream.Reset()
 	}
 	clear(t.textStreams)
-	t.query, t.matches, t.current, t.announceSearch = "", nil, -1, false
-	t.searchCursor = transcriptSearchCursor{}
+	t.search.Reset(&t.content)
 	clear(t.tools)
 	clear(t.pendingQuestions)
 	clear(t.entries)
@@ -1215,7 +1202,6 @@ func (t *transcriptView) Reset() {
 	t.hasSelected = false
 	t.pointerGesture.cancel()
 	t.toolViews = nil
-	t.search.Submit(&t.content, "", false)
 }
 
 func (t *transcriptView) SetRuns(runs []agent.Run) {
@@ -1277,106 +1263,6 @@ func blockOffset(index int) headless.BlockID {
 
 func transcriptBlockKey(runID, blockID string) string {
 	return (agent.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
-}
-
-func (t *transcriptView) Find(query string) {
-	t.query = strings.TrimSpace(query)
-	t.announceSearch = t.query != ""
-	t.matches, t.current = nil, -1
-	t.searchCursor = transcriptSearchCursor{}
-	t.search.Submit(&t.content, t.query, false)
-}
-
-func (t *transcriptView) refreshSearch() {
-	if t.query != "" {
-		t.search.Submit(&t.content, t.query, false)
-	}
-}
-
-func (t *transcriptView) SearchResults() <-chan headless.Result { return t.search.Results() }
-
-func (t *transcriptView) AcceptSearch(result headless.Result) (accepted, announce bool) {
-	if result.Query != t.query {
-		return false, false
-	}
-	next := t.searchMatchIndex(result.Matches)
-	t.matches = result.Matches
-	if len(t.matches) > 0 {
-		t.current = next
-		t.rememberSearchCursor()
-	} else {
-		t.current = -1
-		t.searchCursor = transcriptSearchCursor{}
-	}
-	announce, t.announceSearch = t.announceSearch, false
-	return true, announce
-}
-
-func (t *transcriptView) StepMatch(delta int) bool {
-	if len(t.matches) == 0 {
-		return false
-	}
-	t.current = (t.current + delta) % len(t.matches)
-	if t.current < 0 {
-		t.current += len(t.matches)
-	}
-	t.rememberSearchCursor()
-	return true
-}
-
-func (t *transcriptView) searchMatchIndex(matches []headless.Match) int {
-	if len(matches) == 0 || !t.searchCursor.present {
-		return 0
-	}
-	best := -1
-	var bestRowDistance, bestColumnDistance uint
-	for index, match := range matches {
-		id, offset, ok := t.content.At(match.Row)
-		if !ok || id != t.searchCursor.blockID {
-			continue
-		}
-		col := 0
-		if len(match.Spans) > 0 {
-			col = match.Spans[0].Col
-		}
-		rowDistance := unsignedDistance(offset, t.searchCursor.rowOffset)
-		columnDistance := unsignedDistance(col, t.searchCursor.column)
-		if best < 0 || rowDistance < bestRowDistance ||
-			(rowDistance == bestRowDistance && columnDistance < bestColumnDistance) {
-			best, bestRowDistance, bestColumnDistance = index, rowDistance, columnDistance
-		}
-	}
-	if best >= 0 {
-		return best
-	}
-	return min(t.searchCursor.index, len(matches)-1)
-}
-
-func (t *transcriptView) rememberSearchCursor() {
-	if t.current < 0 || t.current >= len(t.matches) {
-		t.searchCursor = transcriptSearchCursor{}
-		return
-	}
-	match := t.matches[t.current]
-	id, offset, ok := t.content.At(match.Row)
-	if !ok {
-		t.searchCursor = transcriptSearchCursor{}
-		return
-	}
-	col := 0
-	if len(match.Spans) > 0 {
-		col = match.Spans[0].Col
-	}
-	t.searchCursor = transcriptSearchCursor{
-		blockID: id, rowOffset: offset, column: col, index: t.current, present: true,
-	}
-}
-
-func unsignedDistance(left, right int) uint {
-	if left < right {
-		left, right = right, left
-	}
-	return uint(left) - uint(right)
 }
 
 func (t *transcriptView) lookFor(kind agent.BlockKind) markdown.Look {
