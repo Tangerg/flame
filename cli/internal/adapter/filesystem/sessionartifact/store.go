@@ -43,6 +43,9 @@ func (Store) Publish(workspace, title, requestedName string, document session.Do
 	if err != nil {
 		return "", fmt.Errorf("publish session document: %w", err)
 	}
+	if err := syncDirectory(root); err != nil {
+		return "", fmt.Errorf("commit session document: %w", err)
+	}
 	return finalPath, nil
 }
 
@@ -54,6 +57,13 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if err != nil {
 		return session.Document{}, err
 	}
+	source, err := os.Lstat(path)
+	if err != nil {
+		return session.Document{}, fmt.Errorf("inspect session artifact: %w", err)
+	}
+	if err := validateDocumentSource(source); err != nil {
+		return session.Document{}, err
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return session.Document{}, fmt.Errorf("open session artifact: %w", err)
@@ -63,11 +73,11 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if err != nil {
 		return session.Document{}, fmt.Errorf("inspect session artifact: %w", err)
 	}
-	if !info.Mode().IsRegular() {
-		return session.Document{}, errors.New("session artifact is not a regular file")
+	if !os.SameFile(source, info) {
+		return session.Document{}, errors.New("session artifact changed while it was being opened")
 	}
-	if info.Size() > int64(session.MaximumDocumentBytes) {
-		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
+	if err := validateDocumentSource(info); err != nil {
+		return session.Document{}, err
 	}
 	body, err := io.ReadAll(io.LimitReader(file, session.MaximumDocumentBytes+1))
 	if err != nil {
@@ -81,6 +91,16 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 		return session.Document{}, fmt.Errorf("read session artifact: %w", err)
 	}
 	return document, nil
+}
+
+func validateDocumentSource(info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return errors.New("session artifact is not a regular file")
+	}
+	if info.Size() > int64(session.MaximumDocumentBytes) {
+		return fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
+	}
+	return nil
 }
 
 func existingDirectory(path string) (string, error) {
@@ -175,4 +195,12 @@ func stage(root string, body []byte) (path string, err error) {
 		return "", fmt.Errorf("sync session document staging file: %w", err)
 	}
 	return path, nil
+}
+
+func syncDirectory(path string) error {
+	directory, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	return errors.Join(directory.Sync(), directory.Close())
 }

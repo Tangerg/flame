@@ -64,3 +64,20 @@ func TestStoreRejectsPathsAsExportNames(t *testing.T) {
 		t.Fatal("path-shaped export name was accepted")
 	}
 }
+
+func TestStoreRejectsNonRegularImports(t *testing.T) {
+	workspace := t.TempDir()
+	target := filepath.Join(workspace, "target")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(workspace, "artifact.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := (Store{}).Load(workspace, link)
+	if err == nil || err.Error() != "session artifact is not a regular file" {
+		t.Fatalf("Load(%q) error = %v, want non-regular artifact", link, err)
+	}
+}
