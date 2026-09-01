@@ -115,6 +115,40 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	}
 }
 
+func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
+	store, err := workbench.OpenMemory(workbench.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline := agent.Message{Text: "source baseline"}
+	current := agent.Message{Text: "source baseline plus input authored during navigation"}
+	destination := agent.Message{Text: "destination draft"}
+	if err := store.SaveDraft("source", current); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveDraft("destination", destination); err != nil {
+		t.Fatal(err)
+	}
+
+	transition := sessionDraftTransition{
+		sourceSessionID: "source", baseline: baseline, disposition: preserveSourceDraft,
+	}
+	resolved, err := transition.resolve(store, "destination", destination, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDestination := agent.Message{Text: "destination draft\n\nsource baseline plus input authored during navigation"}
+	if !resolved.Equal(wantDestination) {
+		t.Fatalf("resolved draft = %+v, want %+v", resolved, wantDestination)
+	}
+	if source, found, err := store.Draft("source"); err != nil || !found || !source.Equal(baseline) {
+		t.Fatalf("source draft = %+v, found=%t, err=%v; want baseline", source, found, err)
+	}
+	if got, found, err := store.Draft("destination"); err != nil || !found || !got.Equal(wantDestination) {
+		t.Fatalf("destination draft = %+v, found=%t, err=%v", got, found, err)
+	}
+}
+
 func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	directory := t.TempDir()
 	store, err := openSessionWorkbench(directory)

@@ -3,6 +3,7 @@ package workbench
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -75,6 +76,71 @@ func (d DraftTransfer) validate() error {
 
 func (d DraftTransfer) blocks(sessionID string) bool {
 	return sessionID == d.SourceSessionID || sessionID == d.DestinationSessionID
+}
+
+// MergeSessionDraft combines authoring values when input written during a
+// Session transition follows the user into a destination that already owns a
+// draft. Existing destination text comes first; incoming text follows as a new
+// paragraph. Exact attachment identities are kept once, while conflicting
+// identities fail closed instead of silently choosing one user's file value.
+func MergeSessionDraft(existing, incoming agent.Message) (agent.Message, error) {
+	values := []struct {
+		label   string
+		message agent.Message
+	}{
+		{label: "existing", message: existing},
+		{label: "incoming", message: incoming},
+	}
+	for _, value := range values {
+		if messageEmpty(value.message) {
+			continue
+		}
+		if err := value.message.Validate(); err != nil {
+			return agent.Message{}, fmt.Errorf("%s session draft: %w", value.label, err)
+		}
+	}
+	if messageEmpty(existing) {
+		return incoming.Clone(), nil
+	}
+	if messageEmpty(incoming) {
+		return existing.Clone(), nil
+	}
+
+	merged := existing.Clone()
+	switch {
+	case strings.TrimSpace(merged.Text) == "":
+		merged.Text = incoming.Text
+	case strings.TrimSpace(incoming.Text) == "", merged.Text == incoming.Text:
+	default:
+		merged.Text += "\n\n" + incoming.Text
+	}
+	byID := make(map[string]agent.Attachment, len(merged.Attachments)+len(incoming.Attachments))
+	byPath := make(map[string]agent.Attachment, len(merged.Attachments)+len(incoming.Attachments))
+	for _, item := range merged.Attachments {
+		byID[item.ID] = item
+		byPath[item.Path] = item
+	}
+	for _, item := range incoming.Attachments {
+		if current, found := byID[item.ID]; found {
+			if current != item {
+				return agent.Message{}, fmt.Errorf("session drafts conflict on attachment id %q", item.ID)
+			}
+			continue
+		}
+		if current, found := byPath[item.Path]; found {
+			if current != item {
+				return agent.Message{}, fmt.Errorf("session drafts conflict on attachment path %q", item.Path)
+			}
+			continue
+		}
+		merged.Attachments = append(merged.Attachments, item)
+		byID[item.ID] = item
+		byPath[item.Path] = item
+	}
+	if err := merged.Validate(); err != nil {
+		return agent.Message{}, fmt.Errorf("merged session draft: %w", err)
+	}
+	return merged, nil
 }
 
 // ApplyDraftTransfer changes both session drafts under one restart-safe

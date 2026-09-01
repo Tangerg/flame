@@ -410,35 +410,43 @@ func (s sessionDraftTransition) resolve(
 		if destinationSessionID == s.sourceSessionID {
 			return agent.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
 		}
+		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
+		if err != nil {
+			return agent.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
+		}
 		if strings.TrimSpace(currentDraft.Text) == "" && len(currentDraft.Attachments) == 0 {
-			return currentDraft, nil
+			return merged, nil
 		}
 		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
 			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
 			SourceBefore: currentDraft, DestinationBefore: destinationDraft,
-			DestinationAfter: currentDraft,
+			DestinationAfter: merged,
 		}); err != nil {
 			return agent.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
 		}
-		return currentDraft, nil
+		return merged, nil
 	case preserveSourceDraft:
 		// Mutations such as rollback replace the authoritative projection without
-		// changing session identity. prepareDestinationDraft already flushed the
-		// current composer into this aggregate, so there is no cross-file transfer.
+		// changing session identity. The destination value may also contain a
+		// rollback recovery consumed during preparation, so it is authoritative.
 		if destinationSessionID == s.sourceSessionID {
-			return currentDraft, nil
+			return destinationDraft, nil
 		}
 		if currentDraft.Equal(s.baseline) {
 			return destinationDraft, nil
 		}
+		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
+		if err != nil {
+			return agent.Message{}, fmt.Errorf("merge session draft: %w", err)
+		}
 		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
 			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
 			SourceBefore: currentDraft, SourceAfter: s.baseline,
-			DestinationBefore: destinationDraft, DestinationAfter: currentDraft,
+			DestinationBefore: destinationDraft, DestinationAfter: merged,
 		}); err != nil {
 			return agent.Message{}, fmt.Errorf("transfer session draft: %w", err)
 		}
-		return currentDraft, nil
+		return merged, nil
 	default:
 		return agent.Message{}, errors.New("session draft transition has an invalid source disposition")
 	}
@@ -492,19 +500,19 @@ func (a *app) prepareDestinationDraft(
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	transition := a.session.draftTransition
-	if transition != nil {
-		draft, err = transition.resolve(a.workbench, session.ID, draft, current)
-		if err != nil {
-			return agent.Message{}, nil, err
-		}
-	}
 	recovery, recovered, err := a.workbench.ConsumeConfirmedSessionRollback(session.ID)
 	if err != nil {
 		return agent.Message{}, nil, fmt.Errorf("recover session rollback input: %w", err)
 	}
 	if recovered {
 		draft = recovery.Draft
+	}
+	transition := a.session.draftTransition
+	if transition != nil {
+		draft, err = transition.resolve(a.workbench, session.ID, draft, current)
+		if err != nil {
+			return agent.Message{}, nil, err
+		}
 	}
 	return draft, optionalRollbackRecovery(recovery, recovered), nil
 }
