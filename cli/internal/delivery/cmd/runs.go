@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func newRunsCommand(provider runtimeProvider) *cobra.Command {
@@ -169,7 +170,7 @@ func writeRunDetails(cmd *cobra.Command, run agent.Run) error {
 	if run.ActiveSegmentID != "" {
 		rows = append(rows, [2]string{"segment", run.ActiveSegmentID})
 	}
-	if run.Status == agent.RunStatusFinished {
+	if run.Status == protocol.RunStatusFinished {
 		outcome := string(run.Outcome.Status)
 		if detail := run.Outcome.Description(); detail != "" {
 			outcome += " · " + detail
@@ -242,13 +243,13 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 	return command
 }
 
-func parseRunStatuses(names []string) ([]agent.RunStatus, error) {
+func parseRunStatuses(names []string) ([]protocol.RunStatus, error) {
 	if len(names) == 0 {
 		return nil, nil
 	}
-	statuses := make([]agent.RunStatus, 0, len(names))
+	statuses := make([]protocol.RunStatus, 0, len(names))
 	for _, name := range names {
-		status := agent.RunStatus(strings.TrimSpace(name))
+		status := protocol.RunStatus(strings.TrimSpace(name))
 		if status == "" {
 			return nil, errors.New("run status is empty")
 		}
@@ -263,9 +264,9 @@ func parseRunStatuses(names []string) ([]agent.RunStatus, error) {
 
 func completeRunStatus(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	items := []string{
-		string(agent.RunStatusRunning) + "\texecuting a segment",
-		string(agent.RunStatusWaiting) + "\twaiting for human input",
-		string(agent.RunStatusFinished) + "\tterminal run",
+		string(protocol.RunStatusRunning) + "\texecuting a segment",
+		string(protocol.RunStatusWaiting) + "\twaiting for human input",
+		string(protocol.RunStatusFinished) + "\tterminal run",
 	}
 	return filterCompletionPrefix(items, toComplete), cobra.ShellCompDirectiveNoFileComp
 }

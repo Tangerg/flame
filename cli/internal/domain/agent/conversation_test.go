@@ -104,7 +104,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != finalContext {
 		t.Fatalf("finished run context = %+v, want %d", runs, finalContext)
 	}
-	if current, ok := conversation.CurrentRun(); !ok || current.Status != RunStatusFinished || current.ContextTokens != finalContext {
+	if current, ok := conversation.CurrentRun(); !ok || current.Status != protocol.RunStatusFinished || current.ContextTokens != finalContext {
 		t.Fatalf("finished current Run = %+v, %t", current, ok)
 	}
 }
@@ -353,7 +353,7 @@ func TestConversationTreatsEventIDAsOpaqueIdentity(t *testing.T) {
 		t.Fatalf("identical replay = %+v, %v", accepted, err)
 	}
 	conflict := event
-	conflict.Event = SegmentStarted{Run: testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1", Provider: "mock", Model: "other"})}
+	conflict.Event = SegmentStarted{Run: testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1", Provider: "mock", Model: "other"})}
 	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("conflict error = %v", err)
 	}
@@ -395,7 +395,7 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 		ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool,
 		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
 	}}})
-	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}})); err != nil {
+	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}})); err != nil {
 		t.Fatal(err)
 	}
 	block := conversation.Blocks()[0]
@@ -507,8 +507,8 @@ func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
 		},
 		Runs: []Run{
-			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
-			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"}),
+			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
+			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"}),
 		},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 	}
@@ -526,7 +526,7 @@ func TestConversationRejectsOrphanPreviewOutsideColdTail(t *testing.T) {
 }
 
 func runningRun(segmentID string) Run {
-	return testRootRun(Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: RunStatusRunning, ActiveSegmentID: segmentID})
+	return testRootRun(Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: protocol.RunStatusRunning, ActiveSegmentID: segmentID})
 }
 
 func apply(t *testing.T, conversation *Conversation, event RunEvent) {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ResultJSON folds a streamed run into one final JSON object. It retains only
@@ -190,15 +191,15 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 	r.frame.Outcome = nil
 	r.frame.Usage = nil
 	switch target.Status {
-	case agent.RunStatusWaiting:
+	case protocol.RunStatusWaiting:
 		r.frame.Status = "interrupted"
 		r.frame.Interactions = encodeInteractions(snapshot.Interactions)
 		r.frame.Usage = encodeUsage(target.Usage)
-	case agent.RunStatusFinished:
+	case protocol.RunStatusFinished:
 		r.frame.Status = string(target.Outcome.Status)
 		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
-	case agent.RunStatusRunning:
+	case protocol.RunStatusRunning:
 	}
 	return nil
 }

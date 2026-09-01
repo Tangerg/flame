@@ -11,16 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type RunStatus string
-
-const (
-	RunStatusRunning  RunStatus = "running"
-	RunStatusWaiting  RunStatus = "waiting"
-	RunStatusFinished RunStatus = "finished"
-)
-
 // Run is the lifecycle projection needed by the CLI. ActiveSegmentID exists
-// exactly while Status is RunStatusRunning.
+// exactly while Status is [protocol.RunStatusRunning].
 type Run struct {
 	ID              string
 	SessionID       string
@@ -28,7 +20,7 @@ type Run struct {
 	Provider        string
 	Model           string
 	ReasoningEffort string
-	Status          RunStatus
+	Status          protocol.RunStatus
 	ActiveSegmentID string
 	CreatedAt       time.Time
 	FinishedAt      time.Time

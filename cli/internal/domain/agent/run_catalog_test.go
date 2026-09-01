@@ -3,6 +3,8 @@ package agent
 import (
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRunQueryRejectsInvalidFilters(t *testing.T) {
@@ -13,8 +15,8 @@ func TestRunQueryRejectsInvalidFilters(t *testing.T) {
 		want  string
 	}{
 		{name: "negative page size", query: RunQuery{PageSize: PageSize{kind: explicitPageSize, rows: -1}}, want: "page size"},
-		{name: "unknown status", query: RunQuery{PageSize: DefaultPageSize(), Statuses: []RunStatus{"paused"}}, want: "paused"},
-		{name: "duplicate status", query: RunQuery{PageSize: DefaultPageSize(), Statuses: []RunStatus{RunStatusRunning, RunStatusRunning}}, want: "repeated"},
+		{name: "unknown status", query: RunQuery{PageSize: DefaultPageSize(), Statuses: []protocol.RunStatus{"paused"}}, want: "paused"},
+		{name: "duplicate status", query: RunQuery{PageSize: DefaultPageSize(), Statuses: []protocol.RunStatus{protocol.RunStatusRunning, protocol.RunStatusRunning}}, want: "not repeat"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -31,7 +33,7 @@ func TestRunPageValidatesItemsIndependentlyOfTreePageBoundaries(t *testing.T) {
 	page := RunPage{Items: []Run{{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  RunStatusWaiting, Limits: UnlimitedRunLimits(),
+		Status:  protocol.RunStatusWaiting, Limits: UnlimitedRunLimits(),
 	}}}
 	if err := page.Validate(); err != nil {
 		t.Fatalf("Validate() = %v", err)
@@ -45,7 +47,7 @@ func TestRunPageValidatesItemsIndependentlyOfTreePageBoundaries(t *testing.T) {
 func TestRunCancellationClosesRootAndChildResults(t *testing.T) {
 	t.Parallel()
 	rootCanceled := Run{
-		ID: "run_root", SessionID: "ses_1", Status: RunStatusFinished,
+		ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 		Lineage: RootRunLineage(),
 		Limits:  UnlimitedRunLimits(), Outcome: Outcome{Status: OutcomeCanceled},
 	}
@@ -56,9 +58,9 @@ func TestRunCancellationClosesRootAndChildResults(t *testing.T) {
 	childCanceled := Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: testChildRunLineage(t, "run_child", "item_spawn", "run_root", "run_root"),
-		Status:  RunStatusFinished, Limits: UnlimitedRunLimits(), Outcome: Outcome{Status: OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Limits: UnlimitedRunLimits(), Outcome: Outcome{Status: OutcomeCanceled},
 	}
-	rootWaiting := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusWaiting})
+	rootWaiting := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting})
 	if err := (RunCancellation{Canceled: childCanceled, Root: rootWaiting}).Validate(); err != nil {
 		t.Fatalf("child cancellation: %v", err)
 	}

@@ -49,7 +49,7 @@ func (r *Runtime) playSteps(run *runState, steps []Step) bool {
 
 func (r *Runtime) park(run *runState) {
 	r.mu.Lock()
-	if run.status != agent.RunStatusRunning {
+	if run.status != protocol.RunStatusRunning {
 		r.mu.Unlock()
 		return
 	}
@@ -109,7 +109,7 @@ func (r *Runtime) park(run *runState) {
 			return
 		}
 		r.mu.Lock()
-		if run.status != agent.RunStatusRunning {
+		if run.status != protocol.RunStatusRunning {
 			r.mu.Unlock()
 			return
 		}
@@ -117,7 +117,7 @@ func (r *Runtime) park(run *runState) {
 		r.play(run, steps, false)
 		return
 	}
-	run.status = agent.RunStatusWaiting
+	run.status = protocol.RunStatusWaiting
 	run.interactions = agent.CloneInteractions(pending)
 	run.usage = run.script.InterruptUsage.Clone()
 	if err := r.emitLocked(run, agent.RunInterrupted{Interactions: agent.CloneInteractions(run.interactions), Usage: run.usage}); err != nil {
@@ -231,7 +231,7 @@ func (r *Runtime) pause(run *runState, delay time.Duration) error {
 func (r *Runtime) emit(run *runState, event agent.Event) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if run.status != agent.RunStatusRunning {
+	if run.status != protocol.RunStatusRunning {
 		return false
 	}
 	if err := r.emitLocked(run, event); err != nil {
@@ -244,7 +244,7 @@ func (r *Runtime) emit(run *runState, event agent.Event) bool {
 func (r *Runtime) replacePlan(run *runState, steps []protocol.PlanStep) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if run.status != agent.RunStatusRunning {
+	if run.status != protocol.RunStatusRunning {
 		return false
 	}
 	session := r.sessions[run.sessionID]
@@ -372,7 +372,7 @@ func (r *Runtime) finish(run *runState, event agent.RunFinished) {
 }
 
 func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
-	if run.status == agent.RunStatusFinished {
+	if run.status == protocol.RunStatusFinished {
 		return nil
 	}
 	session := r.sessions[run.sessionID]
@@ -404,7 +404,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 			persistBlock(session, run.id, block)
 		}
 	}
-	run.status = agent.RunStatusFinished
+	run.status = protocol.RunStatusFinished
 	run.active = ""
 	run.interactions = nil
 	if session.planAtRun == nil {

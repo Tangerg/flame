@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
@@ -369,7 +370,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 	}
 	snapshot, snapshotErr := runtime.GetSession(t.Context(), session.ID)
 	active, activeOK := snapshot.ActiveRun()
-	if snapshotErr != nil || !activeOK || active.Status != agent.RunStatusWaiting {
+	if snapshotErr != nil || !activeOK || active.Status != protocol.RunStatusWaiting {
 		t.Fatalf("snapshot = %+v, %v", snapshot, snapshotErr)
 	}
 }
@@ -403,7 +404,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	}
 	root := agent.Run{
 		ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
-		Status: agent.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
+		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
 	}
 	lineage, err := agent.NewChildRunLineage("run_child", "item_delegate", root.ID, root.ID)
 	if err != nil {
@@ -411,7 +412,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	}
 	child := agent.Run{
 		ID: "run_child", SessionID: session.ID, Lineage: lineage,
-		Status: agent.RunStatusRunning, ActiveSegmentID: "seg_child", Limits: agent.UnlimitedRunLimits(),
+		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child", Limits: agent.UnlimitedRunLimits(),
 	}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
 		return agent.RunEvent{
@@ -595,7 +596,7 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 		t.Fatal(snapshotErr)
 	}
 	latest, ok := snapshot.LatestRun()
-	if !ok || latest.Status != agent.RunStatusFinished || latest.Outcome.Status != agent.OutcomeCanceled {
+	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Status != agent.OutcomeCanceled {
 		t.Fatalf("invalid opening left run active: %+v", snapshot.Runs)
 	}
 }

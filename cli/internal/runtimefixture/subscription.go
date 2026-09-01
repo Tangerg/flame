@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agent.SegmentStream, error) {
@@ -21,7 +22,7 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agen
 	if run == nil {
 		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
 	}
-	if run.active != in.SegmentID || run.status != agent.RunStatusRunning {
+	if run.active != in.SegmentID || run.status != protocol.RunStatusRunning {
 		return agent.SegmentStream{}, fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	segment := run.segments[in.SegmentID]

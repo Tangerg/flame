@@ -106,7 +106,7 @@ func (c *Conversation) RunningDescendants() int {
 	}
 	running := 0
 	for id, run := range c.runs {
-		if id != c.runID && run.Lineage.RootRunID() == c.runID && run.Status == RunStatusRunning {
+		if id != c.runID && run.Lineage.RootRunID() == c.runID && run.Status == protocol.RunStatusRunning {
 			running++
 		}
 	}
@@ -282,7 +282,7 @@ func (c *Conversation) validateEventIdentity(envelope RunEvent) error {
 	if !exists {
 		return fmt.Errorf("conversation: event references unknown run %s", envelope.RunID)
 	}
-	if run.Status != RunStatusRunning || run.ActiveSegmentID != envelope.SegmentID {
+	if run.Status != protocol.RunStatusRunning || run.ActiveSegmentID != envelope.SegmentID {
 		return fmt.Errorf("conversation: event segment %s does not match active run %s segment %s", envelope.SegmentID, envelope.RunID, run.ActiveSegmentID)
 	}
 	return nil
@@ -350,7 +350,7 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 			return fmt.Errorf("%w: cannot resume %s while %s is waiting", ErrInvalidTransition, run.ID, c.runID)
 		}
 	case ConversationRunning:
-		if c.runID != "" && (!exists || previous.Status == RunStatusRunning) {
+		if c.runID != "" && (!exists || previous.Status == protocol.RunStatusRunning) {
 			return fmt.Errorf("%w: cannot start root segment while %s is running", ErrInvalidTransition, c.runID)
 		}
 	}
@@ -377,7 +377,7 @@ func (c *Conversation) applyChildSegmentStarted(run, previous Run, exists bool) 
 	if exists && previous.Lineage != run.Lineage {
 		return fmt.Errorf("%w: child run %s changed lineage", ErrInvalidTransition, run.ID)
 	}
-	if exists && previous.Status == RunStatusRunning {
+	if exists && previous.Status == protocol.RunStatusRunning {
 		return fmt.Errorf("%w: child run %s started twice", ErrInvalidTransition, run.ID)
 	}
 	if exists {
@@ -522,7 +522,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	if err := ValidateInteractions(pending); err != nil {
 		return fmt.Errorf("%w: tree interrupt set: %v", ErrInvalidTransition, err)
 	}
-	run.Status = RunStatusWaiting
+	run.Status = protocol.RunStatusWaiting
 	run.ActiveSegmentID = ""
 	run.Usage = event.Usage.Clone()
 	run.ContextTokens = event.ContextTokens
@@ -550,7 +550,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 			return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %v", ErrInvalidTransition, err)
 		}
 	}
-	run.Status = RunStatusWaiting
+	run.Status = protocol.RunStatusWaiting
 	run.ActiveSegmentID = ""
 	run.Usage = event.Usage.Clone()
 	run.ContextTokens = event.ContextTokens
@@ -569,7 +569,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	if !exists {
 		return fmt.Errorf("%w: cannot finish unknown run %s", ErrInvalidTransition, runID)
 	}
-	if run.Status == RunStatusWaiting && event.Outcome.Status != OutcomeCanceled {
+	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != OutcomeCanceled {
 		return fmt.Errorf("%w: a waiting run can only finish by cancellation", ErrInvalidTransition)
 	}
 	if event.Outcome.Status == OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
@@ -580,7 +580,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	}
 	if runID == c.runID {
 		for memberID, member := range c.runs {
-			if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != RunStatusFinished {
+			if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != protocol.RunStatusFinished {
 				return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
 			}
 		}
@@ -590,7 +590,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 		toolStatus = ToolCanceled
 	}
 	c.settleOpenBlocksForRun(runID, toolStatus)
-	run.Status = RunStatusFinished
+	run.Status = protocol.RunStatusFinished
 	run.ActiveSegmentID = ""
 	run.Outcome = event.Outcome.Clone()
 	run.Usage = event.Usage.Clone()
@@ -641,7 +641,7 @@ func (c *Conversation) SettleRun(run Run) error {
 	if err := run.Validate(); err != nil {
 		return err
 	}
-	if run.Status != RunStatusFinished {
+	if run.Status != protocol.RunStatusFinished {
 		return errors.New("cannot settle conversation from an unfinished run")
 	}
 	if !run.Lineage.IsRoot() {
@@ -661,10 +661,10 @@ func (c *Conversation) SettleRun(run Run) error {
 	}
 	c.settleOpenBlocks(toolStatus)
 	for memberID, member := range c.runs {
-		if member.Lineage.RootRunID() != run.ID || member.Status == RunStatusFinished {
+		if member.Lineage.RootRunID() != run.ID || member.Status == protocol.RunStatusFinished {
 			continue
 		}
-		member.Status = RunStatusFinished
+		member.Status = protocol.RunStatusFinished
 		member.ActiveSegmentID = ""
 		member.Outcome = run.Outcome.Clone()
 		c.runs[memberID] = member
@@ -856,7 +856,7 @@ func blockIdentity(runID, blockID string) string {
 
 func (c *Conversation) requireRunRunning(runID, action string) error {
 	run, exists := c.runs[runID]
-	if !exists || run.Status != RunStatusRunning {
+	if !exists || run.Status != protocol.RunStatusRunning {
 		return fmt.Errorf("%w: cannot %s without active run %s", ErrInvalidTransition, action, runID)
 	}
 	return nil

@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
@@ -13,7 +12,7 @@ import (
 // their presence changes both topology and pagination.
 type RunQuery struct {
 	SessionID          string
-	Statuses           []RunStatus
+	Statuses           []runtimeprotocol.RunStatus
 	IncludeDescendants bool
 	Cursor             string
 	PageSize           PageSize
@@ -25,18 +24,15 @@ func (r RunQuery) Validate() error {
 			return fmt.Errorf("run query: %w", err)
 		}
 	}
+	statuses := r.Statuses
+	if len(statuses) == 0 {
+		statuses = nil
+	}
+	if err := runtimeprotocol.ValidateWireTree(runtimeprotocol.ListRunsRequest{Statuses: statuses}); err != nil {
+		return fmt.Errorf("run query statuses %q: %w", r.Statuses, err)
+	}
 	if _, err := r.PageSize.Rows(); err != nil {
 		return fmt.Errorf("run query: %w", err)
-	}
-	seen := make(map[RunStatus]struct{}, len(r.Statuses))
-	for _, status := range r.Statuses {
-		if !slices.Contains([]RunStatus{RunStatusRunning, RunStatusWaiting, RunStatusFinished}, status) {
-			return fmt.Errorf("run query: status %q is invalid", status)
-		}
-		if _, duplicate := seen[status]; duplicate {
-			return fmt.Errorf("run query: status %q is repeated", status)
-		}
-		seen[status] = struct{}{}
 	}
 	return nil
 }
@@ -77,7 +73,7 @@ func (r RunCancellation) Validate() error {
 	if err := r.Root.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("root: %w", err))
 	}
-	if r.Canceled.Status != RunStatusFinished || r.Canceled.Outcome.Status != OutcomeCanceled {
+	if r.Canceled.Status != runtimeprotocol.RunStatusFinished || r.Canceled.Outcome.Status != OutcomeCanceled {
 		problems = append(problems, errors.New("addressed run is not finished as canceled"))
 	}
 	if !r.Root.Lineage.IsRoot() {

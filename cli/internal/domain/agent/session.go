@@ -193,7 +193,7 @@ func (s SessionSnapshot) LatestRun() (Run, bool) {
 // ActiveRun returns the sole running or waiting root run, when one exists.
 func (s SessionSnapshot) ActiveRun() (Run, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() && run.Status != RunStatusFinished {
+		if run.Lineage.IsRoot() && run.Status != runtimeprotocol.RunStatusFinished {
 			return run.Clone(), true
 		}
 	}
@@ -328,7 +328,7 @@ func (s *snapshotRuns) index(sessionID string, runs []Run) (int, error) {
 			continue
 		}
 		lastRootIndex = i
-		if run.Status == RunStatusFinished {
+		if run.Status == runtimeprotocol.RunStatusFinished {
 			continue
 		}
 		if s.activeIndex >= 0 {
@@ -367,13 +367,13 @@ func (s snapshotRuns) validateChildLineage(run Run, position int) error {
 	if s.position[parent.ID] >= position {
 		return fmt.Errorf("session snapshot: child run %s precedes parent %s", run.ID, parent.ID)
 	}
-	if root.Status == RunStatusFinished && run.Status != RunStatusFinished {
+	if root.Status == runtimeprotocol.RunStatusFinished && run.Status != runtimeprotocol.RunStatusFinished {
 		return fmt.Errorf("session snapshot: child run %s outlives finished root %s", run.ID, root.ID)
 	}
-	if root.Status == RunStatusRunning && run.Status == RunStatusWaiting {
+	if root.Status == runtimeprotocol.RunStatusRunning && run.Status == runtimeprotocol.RunStatusWaiting {
 		return fmt.Errorf("session snapshot: child run %s is waiting beneath running root %s", run.ID, root.ID)
 	}
-	if root.Status == RunStatusWaiting && run.Status == RunStatusRunning {
+	if root.Status == runtimeprotocol.RunStatusWaiting && run.Status == runtimeprotocol.RunStatusRunning {
 		return fmt.Errorf("session snapshot: child run %s is running beneath waiting root %s", run.ID, root.ID)
 	}
 	return nil
@@ -395,7 +395,7 @@ func (s SessionSnapshot) validateReferences(transcript snapshotTranscript, runs 
 			rootID = run.ID
 		}
 		active := s.Runs[runs.activeIndex]
-		if rootID != active.ID || run.Status == RunStatusFinished {
+		if rootID != active.ID || run.Status == runtimeprotocol.RunStatusFinished {
 			return fmt.Errorf("session snapshot: running block %s belongs to inactive run %s", block.ID, block.RunID)
 		}
 	}
@@ -408,14 +408,14 @@ func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs s
 	}
 	active := s.Runs[runs.activeIndex]
 	switch active.Status {
-	case RunStatusRunning:
+	case runtimeprotocol.RunStatusRunning:
 		if s.Session.Status != runtimeprotocol.SessionStatusRunning {
 			return fmt.Errorf("session snapshot: running run has session status %s", s.Session.Status)
 		}
 		if len(s.Interactions) != 0 {
 			return errors.New("session snapshot: running run carries pending interactions")
 		}
-	case RunStatusWaiting:
+	case runtimeprotocol.RunStatusWaiting:
 		return s.validateWaitingLifecycle(active, transcript, runs)
 	}
 	return nil
@@ -450,7 +450,7 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 		if run.Lineage.IsRoot() {
 			rootID = run.ID
 		}
-		if !runExists || rootID != active.ID || run.Status != RunStatusWaiting {
+		if !runExists || rootID != active.ID || run.Status != runtimeprotocol.RunStatusWaiting {
 			return fmt.Errorf("session snapshot: waiting interrupt references inactive run %s", runID)
 		}
 		if !exists {
@@ -481,7 +481,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
 		next.usage = active.Usage.Clone()
-		if active.Status == RunStatusWaiting {
+		if active.Status == runtimeprotocol.RunStatusWaiting {
 			next.phase = ConversationWaiting
 			next.interactions = CloneInteractions(snapshot.Interactions)
 		} else {
@@ -506,7 +506,7 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 		return fmt.Errorf("restore attached snapshot: %w", err)
 	}
 	active, ok := snapshot.ActiveRun()
-	if !ok || active.Status != RunStatusRunning {
+	if !ok || active.Status != runtimeprotocol.RunStatusRunning {
 		return errors.New("restore attached snapshot: snapshot has no running run")
 	}
 	if active.ID != stream.RunID || active.ActiveSegmentID != stream.SegmentID {

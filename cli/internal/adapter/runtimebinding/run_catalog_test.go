@@ -63,7 +63,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		t.Fatalf("GetRun = %+v, %v", got, err)
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{
-		SessionID: "ses_1", Statuses: []agent.RunStatus{agent.RunStatusFinished},
+		SessionID: "ses_1", Statuses: []protocol.RunStatus{protocol.RunStatusFinished},
 		IncludeDescendants: true, Cursor: "opaque", PageSize: agent.MaximumPageSize(),
 	})
 	if err != nil || len(page.Items) != 1 || page.Items[0].ID != "run_1" || page.NextCursor != "next" {
@@ -161,7 +161,7 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 		t.Fatal("GetRun accepted empty id")
 	}
 	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
-		PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{"paused"},
+		PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{"paused"},
 	}); err == nil {
 		t.Fatal("ListRuns accepted invalid status")
 	}
@@ -206,7 +206,7 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 		value protocol.RunRef
 	}{
 		{name: "session", query: agent.RunQuery{SessionID: "ses_1", PageSize: agent.DefaultPageSize()}, value: base},
-		{name: "status", query: agent.RunQuery{PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{agent.RunStatusRunning}}, value: base},
+		{name: "status", query: agent.RunQuery{PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{protocol.RunStatusRunning}}, value: base},
 		{name: "descendant", query: agent.RunQuery{
 			IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
 		}, value: func() protocol.RunRef {
@@ -246,7 +246,7 @@ func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 	}
 	runtime := &Connection{runCatalog: stub, meta: requestMeta("test")}
 	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
-		PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{},
+		PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{},
 	}); err != nil {
 		t.Fatalf("ListRuns: %v", err)
 	}

@@ -373,12 +373,12 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	boundaryIndex := -1
 	if fromRunID != "" {
 		boundaryIndex = slices.Index(source.runs, fromRunID)
-		if boundaryIndex < 0 || r.runs[fromRunID] == nil || r.runs[fromRunID].status != agent.RunStatusFinished {
+		if boundaryIndex < 0 || r.runs[fromRunID] == nil || r.runs[fromRunID].status != protocol.RunStatusFinished {
 			return forkBoundary{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, fromRunID)
 		}
 	} else {
 		for i, runID := range slices.Backward(source.runs) {
-			if run := r.runs[runID]; run != nil && run.status == agent.RunStatusFinished {
+			if run := r.runs[runID]; run != nil && run.status == protocol.RunStatusFinished {
 				boundaryIndex = i
 				break
 			}
@@ -420,7 +420,7 @@ func (r *Runtime) seedHistory() {
 	run := &runState{
 		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
 		lineage: agent.RootRunLineage(),
-		limits:  agent.UnlimitedRunLimits(), status: agent.RunStatusFinished, segments: make(map[string]*segmentState),
+		limits:  agent.UnlimitedRunLimits(), status: protocol.RunStatusFinished, segments: make(map[string]*segmentState),
 		outcome: agent.Outcome{Status: agent.OutcomeCompleted},
 		usage:   agent.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
 	}

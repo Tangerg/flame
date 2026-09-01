@@ -74,7 +74,7 @@ func TestMockSteerRevisionExhaustionDoesNotEmitPartialEvent(t *testing.T) {
 	segment := &segmentState{id: "seg_exhausted", changed: make(chan struct{})}
 	run := &runState{
 		id: "run_exhausted", sessionID: session.meta.ID, lineage: agent.RootRunLineage(),
-		status: agent.RunStatusRunning, active: segment.id,
+		status: protocol.RunStatusRunning, active: segment.id,
 		segments: map[string]*segmentState{segment.id: segment}, cancel: make(chan struct{}),
 	}
 	runtime.runs[run.id] = run
@@ -140,7 +140,7 @@ func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartial
 		t.Fatalf("background exhaustion committed partial event: revision %d events %d items %d",
 			state.meta.Revision, len(events), len(state.items))
 	}
-	if run := runtime.runs[opened.RunID]; run.status != agent.RunStatusRunning || run.active != opened.SegmentID {
+	if run := runtime.runs[opened.RunID]; run.status != protocol.RunStatusRunning || run.active != opened.SegmentID {
 		t.Fatalf("background exhaustion invented lifecycle transition: %+v", projectRun(run))
 	}
 }
@@ -172,7 +172,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 		t.Fatalf("park exhaustion stream error = %v", streamErr)
 	}
 	run := runtime.runs[opened.RunID]
-	if state.meta.Status != protocol.SessionStatusRunning || run.status != agent.RunStatusRunning ||
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != protocol.RunStatusRunning ||
 		len(run.interactions) != 0 || len(run.answers) != 0 || len(state.items) != 1 {
 		t.Fatalf("park exhaustion published partial waiting state: meta %+v run %+v interactions %d answers %d items %d",
 			state.meta, projectRun(run), len(run.interactions), len(run.answers), len(state.items))
@@ -200,7 +200,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 		t.Fatalf("finish exhaustion stream error = %v", streamErr)
 	}
 	run := runtime.runs[opened.RunID]
-	if state.meta.Status != protocol.SessionStatusRunning || run.status != agent.RunStatusRunning ||
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != protocol.RunStatusRunning ||
 		run.active != opened.SegmentID || run.outcome.Status != "" {
 		t.Fatalf("finish exhaustion partially transitioned session/run: %+v / %+v", state.meta, projectRun(run))
 	}

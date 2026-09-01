@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const runtimeControlTimeout = 5 * time.Second
@@ -109,7 +109,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 				return
 			}
 			validationErr := observed.ValidateStart()
-			if identityErr := runtimeprotocol.ValidateRunID(observed.RunID); identityErr != nil {
+			if identityErr := protocol.ValidateRunID(observed.RunID); identityErr != nil {
 				a.fail(errors.Join(
 					fmt.Errorf("reconcile canceled start: accepted receipt: %w", identityErr),
 					err,
@@ -267,7 +267,7 @@ func (a *app) cancelRootRun(
 	if validateErr := settled.Validate(); validateErr != nil {
 		return agent.Run{}, fmt.Errorf("validate run after cancellation race: %w", validateErr)
 	}
-	if settled.ID != target.RunID || !settled.Lineage.IsRoot() || settled.Status != agent.RunStatusFinished {
+	if settled.ID != target.RunID || !settled.Lineage.IsRoot() || settled.Status != protocol.RunStatusFinished {
 		return agent.Run{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
 	}
 	return settled, nil
@@ -407,7 +407,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 		return fmt.Errorf("reconcile run start during terminal close: %w", err)
 	}
 	validationErr := opened.ValidateStart()
-	if identityErr := runtimeprotocol.ValidateRunID(opened.RunID); identityErr != nil {
+	if identityErr := protocol.ValidateRunID(opened.RunID); identityErr != nil {
 		return errors.Join(
 			fmt.Errorf("reconcile run start during terminal close: accepted receipt: %w", identityErr),
 			err,

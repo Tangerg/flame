@@ -25,7 +25,7 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		ID: value.ID, SessionID: value.SessionID,
 		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Lineage: lineage,
-		Status:  agent.RunStatus(value.Status), ActiveSegmentID: value.ActiveSegmentID,
+		Status:  value.Status, ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
 		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
 		Usage: projectUsage(value.Metrics), ProtocolProfile: profile,

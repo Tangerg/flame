@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const sessionAttachAttempts = 8
@@ -40,7 +41,7 @@ func RecoveryRequired(err error) bool {
 // preventing an unobserved gap between the snapshot and later stream events.
 func RecoverSegment(ctx context.Context, source RecoverySource, sessionID, runID string) (Recovery, error) {
 	first, run, err := read(ctx, source, sessionID, runID)
-	if err != nil || run.Status != agent.RunStatusRunning {
+	if err != nil || run.Status != protocol.RunStatusRunning {
 		return Recovery{Snapshot: first, Run: run}, err
 	}
 	stream, release, err := attach(ctx, source, run)
@@ -52,7 +53,7 @@ func RecoverSegment(ctx context.Context, source RecoverySource, sessionID, runID
 		release()
 		return Recovery{}, err
 	}
-	if current.Status != agent.RunStatusRunning {
+	if current.Status != protocol.RunStatusRunning {
 		release()
 		return Recovery{Snapshot: second, Run: current}, nil
 	}
@@ -74,7 +75,7 @@ func AttachSession(ctx context.Context, source RecoverySource, sessionID string)
 			return Recovery{}, err
 		}
 		run, ok := first.ActiveRun()
-		if !ok || run.Status != agent.RunStatusRunning {
+		if !ok || run.Status != protocol.RunStatusRunning {
 			return stateWithoutStream(first), nil
 		}
 
@@ -91,7 +92,7 @@ func AttachSession(ctx context.Context, source RecoverySource, sessionID string)
 			return Recovery{}, err
 		}
 		current, active := second.ActiveRun()
-		if !active || current.Status != agent.RunStatusRunning {
+		if !active || current.Status != protocol.RunStatusRunning {
 			release()
 			return stateWithoutStream(second), nil
 		}

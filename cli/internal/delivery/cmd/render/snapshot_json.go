@@ -195,7 +195,7 @@ func encodeRun(run agent.Run) runFrame {
 		ContextTokens: run.ContextTokens, Usage: *encodeUsage(run.Usage),
 	}
 	encoded.Limits = encodeRunLimits(run.Limits)
-	if run.Status == agent.RunStatusFinished {
+	if run.Status == protocol.RunStatusFinished {
 		encoded.Outcome = encodeOutcome(run.Outcome)
 	}
 	if run.ProtocolProfile != nil {

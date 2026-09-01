@@ -51,7 +51,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 		id: runID, sessionID: in.SessionID,
 		lineage:  agent.RootRunLineage(),
 		provider: in.Options.Provider, model: in.Options.Model, reasoningEffort: in.Options.ReasoningEffort,
-		limits: in.Options.Limits, status: agent.RunStatusRunning,
+		limits: in.Options.Limits, status: protocol.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
 	}
 	run.script = namespaceScript(run.script, run.id)
@@ -155,7 +155,7 @@ func (r *Runtime) prepareResumeLocked(in agent.ResumeRun) (resumePreparation, er
 
 func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Message, prepared resumePreparation) (agent.SegmentStream, error) {
 	run := prepared.run
-	if run.status != agent.RunStatusWaiting {
+	if run.status != protocol.RunStatusWaiting {
 		return agent.SegmentStream{}, fmt.Errorf("%w: run %s", agent.ErrInterruptNotOpen, run.id)
 	}
 	answeredQuestions, err := r.acceptedQuestionBlocksLocked(run, prepared.answers)
@@ -176,7 +176,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Messa
 		persistBlock(session, run.id, block)
 	}
 	run.interactions = nil
-	run.status = agent.RunStatusRunning
+	run.status = protocol.RunStatusRunning
 	segment := r.openSegmentLocked(run)
 	if err := r.setSessionStatusLocked(session, protocol.SessionStatusRunning); err != nil {
 		return agent.SegmentStream{}, err
@@ -276,7 +276,7 @@ func completeScriptAnswers(run *runState, provided []agent.InterruptAnswer) ([]a
 }
 
 func validateResumeSet(run *runState, answers []agent.InterruptAnswer) error {
-	if run.status != agent.RunStatusWaiting {
+	if run.status != protocol.RunStatusWaiting {
 		return fmt.Errorf("%w: run %s", agent.ErrInterruptNotOpen, run.id)
 	}
 	if len(answers) != len(run.interactions) {
@@ -338,7 +338,7 @@ func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunC
 	if run == nil {
 		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
 	}
-	if run.status == agent.RunStatusFinished {
+	if run.status == protocol.RunStatusFinished {
 		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunFinished, run.id)
 	}
 	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
@@ -362,7 +362,7 @@ func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
 	if run == nil {
 		return fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
 	}
-	if run.status != agent.RunStatusRunning || run.active != in.SegmentID {
+	if run.status != protocol.RunStatusRunning || run.active != in.SegmentID {
 		return fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	if err := r.sessions[run.sessionID].requireRevisionCapacity(sessionEventRevisionChange()); err != nil {

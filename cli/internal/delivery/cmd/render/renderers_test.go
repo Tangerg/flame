@@ -284,7 +284,7 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	finished := created.Add(2 * time.Second)
 	frame := encodeRun(agent.Run{
-		ID: "run_1", SessionID: "ses_1", Status: agent.RunStatusFinished,
+		ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
 		CreatedAt:     created, FinishedAt: finished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
@@ -639,9 +639,9 @@ func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 			{ID: "new", RunID: "run_new", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "newer answer"},
 		},
 		Runs: []agent.Run{
-			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		},
 		Plan: &plan,
 	}
@@ -780,7 +780,7 @@ func runTreeEvents(t *testing.T) []agent.RunEvent {
 	child := agent.Run{
 		ID: "run_child", SessionID: root.SessionID,
 		Lineage:  lineage,
-		Provider: root.Provider, Model: root.Model, Status: agent.RunStatusRunning, ActiveSegmentID: "seg_child",
+		Provider: root.Provider, Model: root.Model, Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child",
 		Limits: agent.UnlimitedRunLimits(),
 	}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
@@ -824,7 +824,7 @@ func testRun() agent.Run {
 	return agent.Run{
 		ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
 		Lineage: agent.RootRunLineage(),
-		Status:  agent.RunStatusRunning, ActiveSegmentID: "seg_1", Limits: agent.UnlimitedRunLimits(),
+		Status:  protocol.RunStatusRunning, ActiveSegmentID: "seg_1", Limits: agent.UnlimitedRunLimits(),
 	}
 }
 

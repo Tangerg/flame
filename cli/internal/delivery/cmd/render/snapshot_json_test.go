@@ -31,7 +31,7 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 	t.Parallel()
 
 	run := agent.Run{
-		ID: "run_1", SessionID: "session_1", Status: agent.RunStatusRunning, ActiveSegmentID: "segment_1",
+		ID: "run_1", SessionID: "session_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "segment_1",
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
 		Lineage:       agent.RootRunLineage(),

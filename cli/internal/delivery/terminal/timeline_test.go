@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestTimelineGroupsDescendantsBeneathNewestRoots(t *testing.T) {
@@ -73,7 +74,7 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 func TestLiveTimelineDisablesForkAndExplainsItsMode(t *testing.T) {
 	forked := 0
 	pane := newTimelinePane(kit.Dark(), kit.Unicode(), nil, func(timelineEntry) { forked++ })
-	pane.SetRuns([]agent.Run{{ID: "root", Lineage: agent.RootRunLineage(), Status: agent.RunStatusRunning}})
+	pane.SetRuns([]agent.Run{{ID: "root", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusRunning}})
 	pane.SetLive(true)
 	pane.Focus(true)
 

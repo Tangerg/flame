@@ -283,10 +283,10 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 			frame.Revision, frame.Plan = snapshot.Plan.State.Revision, encodePlan(snapshot.Plan.State.Steps)
 		}
 	}
-	if target.Status == agent.RunStatusWaiting {
+	if target.Status == protocol.RunStatusWaiting {
 		frame.Interactions = encodeInteractions(snapshot.Interactions)
 	}
-	if target.Status == agent.RunStatusFinished {
+	if target.Status == protocol.RunStatusFinished {
 		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		frame.Outcome, frame.Usage = finished.Outcome, finished.Usage
 	}

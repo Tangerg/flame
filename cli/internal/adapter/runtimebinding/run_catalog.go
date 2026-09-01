@@ -53,12 +53,9 @@ func (r *Connection) ListRuns(ctx context.Context, query agent.RunQuery) (agent.
 	if err := validateRequestCursor("list runs", query.Cursor); err != nil {
 		return agent.RunPage{}, err
 	}
-	var statuses []protocol.RunStatus
-	if len(query.Statuses) != 0 {
-		statuses = make([]protocol.RunStatus, len(query.Statuses))
-		for index, status := range query.Statuses {
-			statuses[index] = protocol.RunStatus(status)
-		}
+	statuses := slices.Clone(query.Statuses)
+	if len(statuses) == 0 {
+		statuses = nil
 	}
 	page, err := r.runCatalog.ListRuns(ctx, protocol.ListRunsRequest{
 		SessionID: query.SessionID, Statuses: statuses, IncludeDescendants: query.IncludeDescendants,

@@ -11,6 +11,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
@@ -33,7 +34,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recovered.Run.Status != agent.RunStatusFinished || recovered.Run.Outcome.Status != agent.OutcomeCompleted || recovered.Stream.Events != nil {
+	if recovered.Run.Status != protocol.RunStatusFinished || recovered.Run.Outcome.Status != agent.OutcomeCompleted || recovered.Stream.Events != nil {
 		t.Fatalf("recovered state = %+v", recovered)
 	}
 	if len(recovered.Snapshot.Transcript) != 2 {
@@ -58,7 +59,7 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recovered.Run.Status != agent.RunStatusRunning || recovered.Stream.RunID != opened.RunID || recovered.Stream.SegmentID != opened.SegmentID || recovered.Stream.Events == nil {
+	if recovered.Run.Status != protocol.RunStatusRunning || recovered.Stream.RunID != opened.RunID || recovered.Stream.SegmentID != opened.SegmentID || recovered.Stream.Events == nil {
 		t.Fatalf("recovered state = %+v", recovered)
 	}
 	conversation := agent.NewConversation()
@@ -129,7 +130,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		if recovered.Run.ID != opened.RunID || recovered.Run.Status != agent.RunStatusWaiting ||
+		if recovered.Run.ID != opened.RunID || recovered.Run.Status != protocol.RunStatusWaiting ||
 			recovered.Stream.Events != nil || len(recovered.Snapshot.Interactions) != 1 {
 			t.Fatalf("waiting session attachment = %+v", recovered)
 		}
@@ -156,7 +157,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		if recovered.Run.ID != opened.RunID || recovered.Run.Status != agent.RunStatusFinished || recovered.Stream.Events != nil {
+		if recovered.Run.ID != opened.RunID || recovered.Run.Status != protocol.RunStatusFinished || recovered.Stream.Events != nil {
 			t.Fatalf("finished session attachment = %+v", recovered)
 		}
 	})

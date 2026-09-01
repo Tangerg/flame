@@ -392,7 +392,7 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 		t.Fatal(getErr)
 	}
 	active, activeOK := snapshot.ActiveRun()
-	if !activeOK || active.Status != agent.RunStatusWaiting {
+	if !activeOK || active.Status != protocol.RunStatusWaiting {
 		t.Fatalf("question did not leave a resumable waiting run: %+v", snapshot.Runs)
 	}
 	if len(snapshot.Interactions) != 1 || agent.InteractionItemID(snapshot.Interactions[0]) == "" {

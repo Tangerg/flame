@@ -139,7 +139,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning}},
 		},
 		Plan: testPlan(t, 3, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
-		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusWaiting})},
+		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
 		Interactions: []Interaction{Approval{
 			RunID: "run_1", ItemID: "tool_1", Title: "edit", Rememberable: true,
 			Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning},
@@ -160,7 +160,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 func TestSessionSnapshotRejectsWaitingWithoutInteractions(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusWaiting})},
+		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
 	}
 	if err := snapshot.Validate(); err == nil {
 		t.Fatal("waiting snapshot without interactions was accepted")
@@ -295,9 +295,9 @@ func TestSessionCreationAndForkResultsMustFulfillTheCommand(t *testing.T) {
 }
 
 func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
-	root := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusWaiting})
+	root := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting})
 	child := testChildRun(Run{
-		ID: "run_child", SessionID: "ses_1", Status: RunStatusWaiting,
+		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
 		Lineage: testChildRunLineage(t, "run_child", "delegate", root.ID, root.ID),
 	})
 	approval := Approval{
@@ -333,7 +333,7 @@ func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs: []Run{testRootRun(Run{
-			ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished,
+			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 12, OutputTokens: 3},
 		})},
 	}
@@ -357,7 +357,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			name: "running run with idle session",
 			snapshot: SessionSnapshot{
 				Session: Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-				Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
+				Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"})},
 			},
 		},
 		{
@@ -365,8 +365,8 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			snapshot: SessionSnapshot{
 				Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
-					testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"}),
-					testRootRun(Run{ID: "run_2", SessionID: "ses_1", Status: RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
+					testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"}),
+					testRootRun(Run{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
 				},
 			},
 		},
@@ -376,8 +376,8 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			snapshot: SessionSnapshot{
 				Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
-					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_root"}),
-					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: RunStatusWaiting}),
+					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root"}),
+					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: protocol.RunStatusWaiting}),
 				},
 			},
 		},
@@ -387,8 +387,8 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 			snapshot: SessionSnapshot{
 				Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
-					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: RunStatusWaiting}),
-					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: RunStatusRunning, ActiveSegmentID: "seg_child"}),
+					testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting}),
+					testChildRun(Run{ID: "run_child", SessionID: "ses_1", Lineage: lineage, Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child"}),
 				},
 			},
 		},
@@ -421,7 +421,7 @@ func TestSessionSnapshotRejectsTransientRunningItems(t *testing.T) {
 			snapshot := SessionSnapshot{
 				Session:    Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
 				Transcript: []Block{{ID: "preview_1", RunID: "run_1", Status: BlockStatusRunning, Kind: kind}},
-				Runs:       []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
+				Runs:       []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"})},
 			}
 			if err := snapshot.Validate(); err == nil {
 				t.Fatalf("snapshot accepted a durable running %s preview", kind)
@@ -443,7 +443,7 @@ func TestSessionSnapshotRejectsItemWithoutItsRun(t *testing.T) {
 func TestConversationRestoresCursorlessAttachmentHead(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: RunStatusRunning, ActiveSegmentID: "seg_1"})},
+		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"})},
 	}
 	stream := SegmentStream{
 		RunID: "run_1", SegmentID: "seg_1", HeadEventID: "opaque-head",
@@ -483,7 +483,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 			Kind: BlockAssistant, Text: "done",
 		}},
 		Runs: []Run{testRootRun(Run{
-			ID: "run_1", SessionID: "ses_1", Status: RunStatusFinished,
+			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 5},
 		})},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusCompleted}}),

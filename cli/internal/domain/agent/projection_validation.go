@@ -22,21 +22,21 @@ func (r Run) Validate() error {
 	if err := r.Lineage.validate(r.ID); err != nil {
 		problems = append(problems, err)
 	}
-	if !slices.Contains([]RunStatus{RunStatusRunning, RunStatusWaiting, RunStatusFinished}, r.Status) {
+	if !slices.Contains([]runtimeprotocol.RunStatus{runtimeprotocol.RunStatusRunning, runtimeprotocol.RunStatusWaiting, runtimeprotocol.RunStatusFinished}, r.Status) {
 		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
 	}
 	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
-	if r.Status == RunStatusRunning {
+	if r.Status == runtimeprotocol.RunStatusRunning {
 		if err := runtimeprotocol.ValidateSegmentID(r.ActiveSegmentID); err != nil {
 			problems = append(problems, fmt.Errorf("running run: %w", err))
 		}
 	}
-	if r.Status != RunStatusRunning && r.ActiveSegmentID != "" {
+	if r.Status != runtimeprotocol.RunStatusRunning && r.ActiveSegmentID != "" {
 		problems = append(problems, errors.New("non-running run carries an active segment"))
 	}
-	if r.Status != RunStatusFinished && !r.FinishedAt.IsZero() {
+	if r.Status != runtimeprotocol.RunStatusFinished && !r.FinishedAt.IsZero() {
 		problems = append(problems, errors.New("unfinished run carries a finish time"))
 	}
 	if !r.FinishedAt.IsZero() && r.CreatedAt.IsZero() {
@@ -51,7 +51,7 @@ func (r Run) Validate() error {
 	if r.ContextTokens < 0 {
 		problems = append(problems, errors.New("context tokens cannot be negative"))
 	}
-	if r.Status == RunStatusFinished {
+	if r.Status == runtimeprotocol.RunStatusFinished {
 		if err := r.Outcome.Validate(); err != nil {
 			problems = append(problems, err)
 		}
@@ -212,7 +212,7 @@ func ValidateEvent(event Event) error {
 		if err := item.Run.Validate(); err != nil {
 			return fmt.Errorf("segment started: %w", err)
 		}
-		if item.Run.Status != RunStatusRunning {
+		if item.Run.Status != runtimeprotocol.RunStatusRunning {
 			return errors.New("segment started with a non-running run")
 		}
 		return nil

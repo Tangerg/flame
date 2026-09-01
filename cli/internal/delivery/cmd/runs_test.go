@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T) {
@@ -58,7 +59,7 @@ func TestRunsListConsumesFiltersAndStableJSON(t *testing.T) {
 	}
 	query := runtime.queries[0]
 	rows, rowsErr := query.PageSize.Rows()
-	if query.SessionID != "ses_demo_1" || len(query.Statuses) != 1 || query.Statuses[0] != agent.RunStatusFinished ||
+	if query.SessionID != "ses_demo_1" || len(query.Statuses) != 1 || query.Statuses[0] != protocol.RunStatusFinished ||
 		!query.IncludeDescendants || rowsErr != nil || rows != 7 {
 		t.Fatalf("query = %+v", query)
 	}
@@ -187,7 +188,7 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 		t.Fatal("runs cancel did not require --yes")
 	}
 	stillRunning, err := runtime.GetRun(t.Context(), opened.RunID)
-	if err != nil || stillRunning.Status != agent.RunStatusRunning {
+	if err != nil || stillRunning.Status != protocol.RunStatusRunning {
 		t.Fatalf("unconfirmed cancel changed run = %+v, %v", stillRunning, err)
 	}
 
@@ -258,9 +259,9 @@ func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
 	child := agent.Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  agent.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
 	}
-	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: agent.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
+	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
 	runtime := childCancellationRuntime{
 		Runtime: instantRuntime(),
 		result:  agent.RunCancellation{Canceled: child, Root: root},

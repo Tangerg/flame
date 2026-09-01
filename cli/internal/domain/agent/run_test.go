@@ -21,12 +21,12 @@ func TestRunLifecycleShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	waiting := running
-	waiting.Status, waiting.ActiveSegmentID = RunStatusWaiting, ""
+	waiting.Status, waiting.ActiveSegmentID = runtimeprotocol.RunStatusWaiting, ""
 	if err := waiting.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	finished := waiting
-	finished.Status, finished.Outcome = RunStatusFinished, Outcome{Status: OutcomeCompleted}
+	finished.Status, finished.Outcome = runtimeprotocol.RunStatusFinished, Outcome{Status: OutcomeCompleted}
 	finished.FinishedAt = finished.CreatedAt.Add(time.Second)
 	if err := finished.Validate(); err != nil {
 		t.Fatal(err)

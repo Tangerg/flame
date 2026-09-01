@@ -236,13 +236,13 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 			}
 		}
 	}
-	if target.Status == agent.RunStatusWaiting {
+	if target.Status == protocol.RunStatusWaiting {
 		for _, interaction := range snapshot.Interactions {
 			t.showInteraction(interaction)
 		}
 		t.showUsage(target.Usage)
 	}
-	if target.Status == agent.RunStatusFinished && !t.settled {
+	if target.Status == protocol.RunStatusFinished && !t.settled {
 		t.finished(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		t.settled = true
 	}

@@ -430,7 +430,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
-	if !canceled.Canceled.Equal(canceled.Root) || canceled.Canceled.Status != agent.RunStatusFinished ||
+	if !canceled.Canceled.Equal(canceled.Root) || canceled.Canceled.Status != protocol.RunStatusFinished ||
 		canceled.Canceled.Outcome.Status != agent.OutcomeCanceled || canceled.Canceled.Outcome.Detail != "stop" {
 		t.Fatalf("canceled = %+v", canceled)
 	}
@@ -514,7 +514,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 		t.Fatalf("CancelRun: %v", err)
 	}
 	if result.Canceled.ID != "run_child" || result.Canceled.Lineage.RootRunID() != "run_root" ||
-		result.Root.ID != "run_root" || result.Root.Status != agent.RunStatusWaiting {
+		result.Root.ID != "run_root" || result.Root.Status != protocol.RunStatusWaiting {
 		t.Fatalf("result = %+v", result)
 	}
 }

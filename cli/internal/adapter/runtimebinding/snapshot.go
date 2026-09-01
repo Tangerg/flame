@@ -144,7 +144,7 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		projected := cloneGoal(*read.goal)
 		snapshot.Goal = &projected
 	}
-	if active, ok := snapshot.ActiveRun(); ok && active.Status == agent.RunStatusWaiting {
+	if active, ok := snapshot.ActiveRun(); ok && active.Status == protocol.RunStatusWaiting {
 		sets := make([]protocol.PendingInterruptSet, 0, 1)
 		for _, set := range read.interrupts {
 			if set.RootRunID == active.ID {

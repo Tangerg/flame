@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
@@ -19,7 +20,7 @@ func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	}
 
 	got, err := runtime.GetRun(t.Context(), opened.RunID)
-	if err != nil || got.Status != agent.RunStatusRunning {
+	if err != nil || got.Status != protocol.RunStatusRunning {
 		t.Fatalf("GetRun = %+v, %v", got, err)
 	}
 	pageSize, err := agent.NewPageSize(1)
@@ -35,7 +36,7 @@ func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 		t.Fatalf("second page = %+v, %v", next, err)
 	}
 	waiting, err := runtime.ListRuns(t.Context(), agent.RunQuery{
-		PageSize: agent.DefaultPageSize(), Statuses: []agent.RunStatus{agent.RunStatusWaiting},
+		PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{protocol.RunStatusWaiting},
 	})
 	if err != nil || len(waiting.Items) != 0 {
 		t.Fatalf("waiting page = %+v, %v", waiting, err)

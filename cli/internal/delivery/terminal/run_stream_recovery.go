@@ -11,6 +11,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // followRecoveredSession closes the read-then-subscribe gap when the terminal
@@ -41,7 +42,7 @@ func (a *app) followRecoveredSession() {
 			follower.postFailure("", errors.Join(postErr, reconcileErr))
 			return
 		}
-		if !active || recovered.Run.Status != agent.RunStatusRunning {
+		if !active || recovered.Run.Status != protocol.RunStatusRunning {
 			return
 		}
 		follower.checkpoint = recovered.Stream.HeadEventID
@@ -331,7 +332,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 		s.postFailure(runID, errors.Join(postErr, reconcileErr))
 		return recoveryAttempt{disposition: recoveryStopped}
 	}
-	if !active || recovered.Run.Status != agent.RunStatusRunning {
+	if !active || recovered.Run.Status != protocol.RunStatusRunning {
 		return recoveryAttempt{disposition: recoveryStopped}
 	}
 	s.checkpoint = recovered.Stream.HeadEventID

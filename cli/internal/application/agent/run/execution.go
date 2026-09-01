@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const cancellationTimeout = 5 * time.Second
@@ -105,7 +106,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		Lineage:  agent.RootRunLineage(),
 		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
 		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
-		Status:          agent.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
+		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
 	}
 	if run.Provider == "" {
 		// The runtime default is intentionally opaque to the caller. Validation
@@ -342,20 +343,20 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered Recover
 		return abandoned, err
 	}
 	switch recovered.Run.Status {
-	case agent.RunStatusFinished:
+	case protocol.RunStatusFinished:
 		return settled, errorForOutcome(recovered.Run.Outcome)
-	case agent.RunStatusWaiting:
+	case protocol.RunStatusWaiting:
 		if err := e.resume(ctx, recovered.Snapshot.Interactions, recovered.Run.ID); err != nil {
 			return interactionDisposition(err), err
 		}
-	case agent.RunStatusRunning:
+	case protocol.RunStatusRunning:
 		e.current = recovered.Stream
 	}
 	return continuing, nil
 }
 
 func restoreRecoveredConversation(conversation *agent.Conversation, recovered Recovery) error {
-	if recovered.Run.Status == agent.RunStatusRunning {
+	if recovered.Run.Status == protocol.RunStatusRunning {
 		return conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}
 	return conversation.RestoreSnapshot(recovered.Snapshot)

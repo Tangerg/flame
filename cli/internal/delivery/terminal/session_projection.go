@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (a *app) restore(snapshot agent.SessionSnapshot) {
@@ -57,7 +58,7 @@ func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.Seg
 	}
 	conversation := agent.NewConversation()
 	var err error
-	if active, ok := snapshot.ActiveRun(); attached != nil && ok && active.Status == agent.RunStatusRunning {
+	if active, ok := snapshot.ActiveRun(); attached != nil && ok && active.Status == protocol.RunStatusRunning {
 		err = conversation.RestoreAttachedSnapshot(snapshot, *attached)
 	} else {
 		err = conversation.RestoreSnapshot(snapshot)
