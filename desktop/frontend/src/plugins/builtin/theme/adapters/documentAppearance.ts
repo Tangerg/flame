@@ -117,8 +117,7 @@ function applyVisualStyle(id: VisualStyleId): void {
   appliedStyleTokens = replaceTokens(appliedStyleTokens, { ...spec?.tokens, ...motionTokens });
   if (spec) publishVisualStyleMotion(spec.motion);
   root.dataset.visualStyle = spec?.id ?? "flame";
-  root.dataset.regionLayout = spec?.traits.regions ?? "tonal-columns";
-  root.dataset.controlTreatment = spec?.traits.controls ?? "quiet";
+  root.dataset.controlTreatment = spec?.controls ?? "quiet";
 }
 
 function applyFonts(

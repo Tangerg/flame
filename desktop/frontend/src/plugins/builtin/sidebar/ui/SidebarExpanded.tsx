@@ -4,7 +4,7 @@ import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { Slot } from "@/plugins/host/Slot";
 
 export function SidebarExpanded() {
-  const items = useWorkIndexItems("expanded");
+  const items = useWorkIndexItems();
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">

@@ -40,7 +40,6 @@ export interface AccentSpec {
   order?: number;
 }
 
-export type RegionLayout = "floating-card" | "flush-panes" | "tonal-columns" | "tool-windows";
 export type ControlTreatment = "quiet" | "outlined" | "tonal" | "elevated";
 
 export interface VisualStylePreview {
@@ -62,10 +61,8 @@ export interface VisualStyleSpec {
   label: string;
   description: string;
   order?: number;
-  traits: {
-    regions: RegionLayout;
-    controls: ControlTreatment;
-  };
+  /** Selects the chrome rules a stylesheet keys on `data-control-treatment`. */
+  controls: ControlTreatment;
   motion: VisualStyleMotion;
   preview: VisualStylePreview;
   /** CSS custom properties without the leading `--`. */

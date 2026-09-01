@@ -119,8 +119,6 @@ export const sidebarProjects = definePlugin({
   setup(ctx) {
     contributeWorkIndexItem(ctx, {
       id: "projects",
-      scope: "session",
-      variant: "expanded",
       order: 0,
       component: ProjectsSection,
     });

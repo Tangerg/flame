@@ -831,9 +831,12 @@ for (const overlay of OVERLAYS) {
       const trigger = page.getByRole("button", { name: overlay.open }).first();
       await trigger.click();
       // The popup is portalled, so wait for it rather than for the trigger's own state.
-      await expect(
-        page.locator('[role="menu"], [role="dialog"], [role="listbox"]').first(),
-      ).toBeVisible();
+      const popup = page.locator('[role="menu"], [role="dialog"], [role="listbox"]').first();
+      await expect(popup).toBeVisible();
+      // …and then for it to finish arriving. A floating surface fades in from opacity 0, and
+      // `toBeVisible` is satisfied the moment it has layout — Axe would sample a translucent
+      // element against whatever is behind it and report a contrast the design never had.
+      await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 
       const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
       expect(

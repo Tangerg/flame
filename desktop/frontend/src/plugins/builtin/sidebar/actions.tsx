@@ -51,8 +51,6 @@ export const sidebarActions = definePlugin({
   setup(ctx) {
     contributeWorkIndexItem(ctx, {
       id: "actions",
-      scope: "global",
-      variant: "expanded",
       order: -10,
       component: SidebarActions,
     });

@@ -32,8 +32,6 @@ export const sidebarRecents = definePlugin({
   setup(ctx) {
     contributeWorkIndexItem(ctx, {
       id: "recents",
-      scope: "session",
-      variant: "expanded",
       order: 10,
       component: RecentsSection,
     });
