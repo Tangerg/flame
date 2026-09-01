@@ -59,13 +59,13 @@ func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) 
 type authoringContextServiceStub struct{}
 
 func (authoringContextServiceStub) Documents(context.Context, string) ([]workspace.AuthoringDocument, error) {
-	return []workspace.AuthoringDocument{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: workspace.AuthoringDocumentProjectRoot}}, nil
+	return []workspace.AuthoringDocument{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: protocol.AgentDocScopeProjectRoot}}, nil
 }
 
 func (authoringContextServiceStub) Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error) {
 	return []workspace.AuthoringRecipe{{
 		Name: "review", Description: "review a target", ArgumentHint: "<target>",
-		Body: "Review $1.\nContext: $ARGUMENTS", Scope: workspace.ProjectAuthoringRecipe, Source: "/workspace/.flame/recipes/review.md",
+		Body: "Review $1.\nContext: $ARGUMENTS", Scope: protocol.RecipeScopeProject, Source: "/workspace/.flame/recipes/review.md",
 	}}, nil
 }
 

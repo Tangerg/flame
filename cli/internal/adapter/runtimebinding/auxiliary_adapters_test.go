@@ -98,12 +98,48 @@ func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
 	}
 	adapter := &AuthoringContext{runtime: &Connection{authoringContext: stub, meta: requestMeta("test")}}
 	documents, err := adapter.Documents(t.Context(), "/workspace")
-	if err != nil || len(documents) != 1 || documents[0].Scope != workspace.AuthoringDocumentProjectRoot {
+	if err != nil || len(documents) != 1 || documents[0].Scope != protocol.AgentDocScopeProjectRoot {
 		t.Fatalf("Documents = (%+v, %v)", documents, err)
 	}
 	recipes, err := adapter.Recipes(t.Context(), "/workspace")
 	if err != nil || len(recipes) != 1 {
 		t.Fatalf("Recipes = (%+v, %v)", recipes, err)
+	}
+}
+
+func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		stub *authoringContextBindingStub
+		read func(*AuthoringContext) error
+	}{
+		{
+			name: "blank document path",
+			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{{Path: " \t", Scope: protocol.AgentDocScopeHome}})},
+			read: func(adapter *AuthoringContext) error {
+				_, err := adapter.Documents(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "blank recipe body",
+			stub: &authoringContextBindingStub{recipes: protocol.NewPage([]protocol.Recipe{{
+				Name: "empty", Body: " \n", Scope: protocol.RecipeScopeGlobal, Source: "/recipe.md",
+			}})},
+			read: func(adapter *AuthoringContext) error {
+				_, err := adapter.Recipes(t.Context(), "/workspace")
+				return err
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.stub.t = t
+			adapter := &AuthoringContext{runtime: &Connection{authoringContext: test.stub, meta: requestMeta("test")}}
+			err := test.read(adapter)
+			if err == nil {
+				t.Fatal("invalid authoring value was accepted")
+			}
+			requireRuntimeContractViolation(t, err)
+		})
 	}
 }
 

@@ -1,53 +1,19 @@
 package workspace
 
 import (
-	"errors"
-	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-type AuthoringDocumentScope string
-
-const (
-	AuthoringDocumentWorkingDirectory AuthoringDocumentScope = "cwd"
-	AuthoringDocumentProjectRoot      AuthoringDocumentScope = "projectRoot"
-	AuthoringDocumentHome             AuthoringDocumentScope = "home"
-)
-
-func (d AuthoringDocumentScope) Validate() error {
-	switch d {
-	case AuthoringDocumentWorkingDirectory, AuthoringDocumentProjectRoot, AuthoringDocumentHome:
-		return nil
-	default:
-		return fmt.Errorf("agent document scope %q is invalid", d)
-	}
-}
 
 type AuthoringDocument struct {
 	Path  string
 	Title string
-	Scope AuthoringDocumentScope
+	Scope protocol.AgentDocScope
 }
 
 func (d AuthoringDocument) Validate() error {
-	if strings.TrimSpace(d.Path) == "" {
-		return errors.New("agent document path is empty")
-	}
-	return d.Scope.Validate()
-}
-
-type AuthoringRecipeScope string
-
-const (
-	ProjectAuthoringRecipe AuthoringRecipeScope = "project"
-	GlobalAuthoringRecipe  AuthoringRecipeScope = "global"
-)
-
-func (r AuthoringRecipeScope) Validate() error {
-	if r != ProjectAuthoringRecipe && r != GlobalAuthoringRecipe {
-		return fmt.Errorf("recipe scope %q is invalid", r)
-	}
-	return nil
+	return (protocol.AgentDoc{Path: d.Path, Title: d.Title, Scope: d.Scope}).ValidateWire()
 }
 
 type AuthoringRecipe struct {
@@ -55,21 +21,15 @@ type AuthoringRecipe struct {
 	Description  string
 	ArgumentHint string
 	Body         string
-	Scope        AuthoringRecipeScope
+	Scope        protocol.RecipeScope
 	Source       string
 }
 
 func (r AuthoringRecipe) Validate() error {
-	if strings.TrimSpace(r.Name) == "" {
-		return errors.New("recipe name is empty")
-	}
-	if strings.TrimSpace(r.Body) == "" {
-		return fmt.Errorf("recipe %s body is empty", r.Name)
-	}
-	if strings.TrimSpace(r.Source) == "" {
-		return fmt.Errorf("recipe %s source is empty", r.Name)
-	}
-	return r.Scope.Validate()
+	return (protocol.Recipe{
+		Name: r.Name, Description: r.Description, ArgumentHint: r.ArgumentHint,
+		Body: r.Body, Scope: r.Scope, Source: r.Source,
+	}).ValidateWire()
 }
 
 // Expand applies the runtime's documented client-side recipe substitution.

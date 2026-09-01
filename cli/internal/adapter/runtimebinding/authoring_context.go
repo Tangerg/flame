@@ -32,8 +32,11 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list agent documents", values, func(value protocol.AgentDoc) workspace.AuthoringDocument {
-		return workspace.AuthoringDocument{Path: value.Path, Title: value.Title, Scope: workspace.AuthoringDocumentScope(value.Scope)}
+	return projectUniqueValuesFallible("list agent documents", values, func(value protocol.AgentDoc) (workspace.AuthoringDocument, error) {
+		if err := protocol.ValidateWireTree(value); err != nil {
+			return workspace.AuthoringDocument{}, err
+		}
+		return workspace.AuthoringDocument{Path: value.Path, Title: value.Title, Scope: value.Scope}, nil
 	}, func(document workspace.AuthoringDocument) string {
 		return document.Path
 	})
@@ -53,11 +56,14 @@ func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValues("list recipes", values, func(value protocol.Recipe) workspace.AuthoringRecipe {
+	return projectUniqueValuesFallible("list recipes", values, func(value protocol.Recipe) (workspace.AuthoringRecipe, error) {
+		if err := protocol.ValidateWireTree(value); err != nil {
+			return workspace.AuthoringRecipe{}, err
+		}
 		return workspace.AuthoringRecipe{
 			Name: value.Name, Description: value.Description, ArgumentHint: value.ArgumentHint,
-			Body: value.Body, Scope: workspace.AuthoringRecipeScope(value.Scope), Source: value.Source,
-		}
+			Body: value.Body, Scope: value.Scope, Source: value.Source,
+		}, nil
 	}, func(recipe workspace.AuthoringRecipe) string {
 		return recipe.Name
 	})
