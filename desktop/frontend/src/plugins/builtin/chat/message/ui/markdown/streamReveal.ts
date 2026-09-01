@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motionScale } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 
+// Characters per second, chosen by how far the reveal has fallen behind the stream.
 const RATE_CRUISE = 40;
 const RATE_MODERATE = 80;
 const RATE_CATCHUP = 160;
+const BACKLOG_MODERATE_CHARS = 20;
+const BACKLOG_CATCHUP_CHARS = 60;
 
 const SENTENCE_PAUSE_MS = 80;
 const MAX_DEBT = 12;
@@ -15,10 +19,18 @@ const DRAIN_RATE_PER_CHAR = 8;
 
 const SENTENCE_END_RE = /[。！？…!?.]$/;
 
+const HIGH_SURROGATE_FIRST = 0xd800;
+const HIGH_SURROGATE_LAST = 0xdbff;
+
+function isHighSurrogate(code: number): boolean {
+  return code >= HIGH_SURROGATE_FIRST && code <= HIGH_SURROGATE_LAST;
+}
+
+// The painter publishes the scale AND writes `data-motion` for the stylesheet. Reading the
+// published value keeps this on the one path; scraping the attribute made the same fact
+// reachable two ways, and only one of them survives a rename.
 function prefersReducedMotion(): boolean {
-  if (typeof document !== "undefined") {
-    if (document.documentElement.getAttribute("data-motion") === "off") return true;
-  }
+  if (motionScale() === 0) return true;
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
@@ -30,8 +42,8 @@ export function pickRate(backlog: number, streaming: boolean): number {
   if (!streaming) {
     return Math.min(DRAIN_RATE_MAX, Math.max(DRAIN_RATE_MIN, backlog * DRAIN_RATE_PER_CHAR));
   }
-  if (backlog >= 60) return RATE_CATCHUP;
-  if (backlog >= 20) return RATE_MODERATE;
+  if (backlog >= BACKLOG_CATCHUP_CHARS) return RATE_CATCHUP;
+  if (backlog >= BACKLOG_MODERATE_CHARS) return RATE_MODERATE;
   return RATE_CRUISE;
 }
 
@@ -46,7 +58,7 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
     rawText: "",
     words: [] as string[],
     displayLen: initialLen,
-    lastTickAt: -1,
+    lastTickAt: null as number | null,
     charDebt: 0,
     pauseUntil: 0,
   });
@@ -76,7 +88,7 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
       const backlog = st.rawText.length - st.displayLen;
 
       if (backlog <= 0) {
-        st.lastTickAt = -1;
+        st.lastTickAt = null;
         st.charDebt = 0;
         return;
       }
@@ -87,7 +99,7 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
         return;
       }
 
-      if (st.lastTickAt < 0) {
+      if (st.lastTickAt === null) {
         st.lastTickAt = now;
         st.charDebt = 1;
       } else {
@@ -123,8 +135,8 @@ export function useStreamReveal(rawText: string, enabled: boolean, typewriter = 
 
       newLen = Math.min(newLen, st.rawText.length);
       if (newLen > st.displayLen && newLen < st.rawText.length) {
-        const code = st.rawText.charCodeAt(newLen - 1);
-        if (code >= 0xd800 && code <= 0xdbff) newLen += 1;
+        // Cutting between a surrogate pair renders a replacement character for a frame.
+        if (isHighSurrogate(st.rawText.charCodeAt(newLen - 1))) newLen += 1;
       }
       if (newLen !== st.displayLen) {
         st.displayLen = newLen;

@@ -3,11 +3,11 @@ import { composerState } from "../application/ports/state";
 
 export type { ComposerImage, PastedText } from "../domain/draft";
 
-export function useComposerImages(): ComposerImage[] {
+export function useComposerImages(): readonly ComposerImage[] {
   return composerState().useImages();
 }
 
-export function useComposerPastes(): PastedText[] {
+export function useComposerPastes(): readonly PastedText[] {
   return composerState().usePastes();
 }
 

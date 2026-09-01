@@ -7,8 +7,8 @@ import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
 
 interface Props {
-  images: ComposerImage[];
-  pastes: PastedText[];
+  images: readonly ComposerImage[];
+  pastes: readonly PastedText[];
   value: string;
   onChange: (value: string) => void;
   onRemoveImage: (id: string) => void;

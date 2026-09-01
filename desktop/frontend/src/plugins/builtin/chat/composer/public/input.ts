@@ -6,7 +6,7 @@ export interface InputImage {
   data: string;
 }
 
-export function buildInput(text: string, images: InputImage[]): AgentInput {
+export function buildInput(text: string, images: readonly InputImage[]): AgentInput {
   const parts: AgentInputPart[] = [];
   if (text) parts.push({ kind: "text", text });
   for (const img of images) parts.push({ kind: "image", mime: img.mime, data: img.data });

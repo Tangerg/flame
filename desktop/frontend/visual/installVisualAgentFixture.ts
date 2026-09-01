@@ -290,10 +290,12 @@ export async function installVisualAgentFixture(
 
   // composerBootstrap synchronizes the active session draft while it loads;
   // install the fixture draft after that production bootstrap has completed.
-  useComposerStore.setState({
-    value: state === "steer" ? "Tighten the error copy and continue." : "",
-    images: [],
-    pastes: [],
+  // `setState` with a function, not a literal: the composer carries the session
+  // composerBootstrap just activated, and replacing the whole aggregate would drop it.
+  useComposerStore.setState((current) => ({
+    composer: current.composer.edit((draft) =>
+      draft.withValue(state === "steer" ? "Tighten the error copy and continue." : ""),
+    ),
     modelPreference: {
       kind: "explicit",
       provider: VISUAL_MODELS[0]!.provider,
@@ -302,7 +304,7 @@ export async function installVisualAgentFixture(
         ? { reasoningEffort: VISUAL_MODELS[0]!.reasoningDefaultLevel }
         : {}),
     },
-  });
+  }));
 
   let view = projectAgentSessionSnapshot(AGENT_SESSION_SNAPSHOTS[state]);
   for (const event of AGENT_SESSION_TAIL_EVENTS[state]) {

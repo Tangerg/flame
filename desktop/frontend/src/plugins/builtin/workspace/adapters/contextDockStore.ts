@@ -58,6 +58,12 @@ interface ContextDockSessionScope {
   expandedToolIds: Set<string>;
 }
 
+/**
+ * The scope fields at the top level are the WORKING COPY of the active session's scope, and
+ * `sessionScopes` holds it only as of the last checkpoint. Both checkpoints — switching
+ * sessions and persisting — flush through `saveCurrentSessionScope`, so a mutation writes
+ * the top level alone. Reading `sessionScopes.get(activeSessionScopeId)` reads stale state.
+ */
 interface ContextDockState extends ContextDockSessionScope {
   /** null until the current renderer has adopted its URL-backed location. */
   activeSessionScopeId: string | null;

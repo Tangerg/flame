@@ -4,7 +4,7 @@ import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
 
 export interface MessageDraftContent {
   text: string;
-  images: InputImage[];
+  images: readonly InputImage[];
 }
 
 export interface RegenerationPrompt extends MessageDraftContent {

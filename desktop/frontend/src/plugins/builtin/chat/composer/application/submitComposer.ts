@@ -19,8 +19,8 @@ export interface SubmitDeps {
   value: string;
   clear: () => void;
   sendInput: (input: AgentInput) => boolean;
-  images: InputImage[];
-  pastes: PastedText[];
+  images: readonly InputImage[];
+  pastes: readonly PastedText[];
   recordHistory: (text: string) => void;
   canSend: () => boolean;
 }

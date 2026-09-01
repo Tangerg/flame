@@ -8,10 +8,10 @@ let stopSessionSync: (() => void) | null = null;
 
 export function installComposerStatePorts(sessions: AgentSessionPorts): () => void {
   const disposePort = configureComposerStatePort({
-    useText: () => useComposerStore((state) => state.value),
+    useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
     useClearDraft: () => useComposerStore((state) => state.clear),
-    getText: () => useComposerStore.getState().value,
+    getText: () => useComposerStore.getState().composer.draft.value,
     replaceDraft: (input) => {
       const store = useComposerStore.getState();
       store.clear();
@@ -19,8 +19,8 @@ export function installComposerStatePorts(sessions: AgentSessionPorts): () => vo
       if (input.images?.length) store.addImages(input.images);
       focusComposer(input.text.length);
     },
-    useImages: () => useComposerStore((state) => state.images),
-    usePastes: () => useComposerStore((state) => state.pastes),
+    useImages: () => useComposerStore((state) => state.composer.draft.images),
+    usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
     useAddImageFiles: () => useComposerStore((state) => state.addImageFiles),
     useRemoveImage: () => useComposerStore((state) => state.removeImage),
     useAddPaste: () => useComposerStore((state) => state.addPaste),

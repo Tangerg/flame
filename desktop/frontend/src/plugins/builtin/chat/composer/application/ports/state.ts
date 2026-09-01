@@ -11,8 +11,8 @@ export interface ComposerStatePort {
   useClearDraft(): () => void;
   getText(): string;
   replaceDraft(input: ComposerDraftInput): void;
-  useImages(): ComposerImage[];
-  usePastes(): PastedText[];
+  useImages(): readonly ComposerImage[];
+  usePastes(): readonly PastedText[];
   useAddImageFiles(): (files: File[]) => void;
   useRemoveImage(): (id: string) => void;
   useAddPaste(): (text: string) => void;

@@ -6,7 +6,7 @@ export interface ComposerDraftImage {
 
 export interface ComposerDraftInput {
   text: string;
-  images?: ComposerDraftImage[];
+  images?: readonly ComposerDraftImage[];
 }
 
 export interface ComposerImage extends ComposerDraftImage {

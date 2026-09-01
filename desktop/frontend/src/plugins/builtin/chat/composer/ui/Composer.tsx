@@ -19,10 +19,10 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   onClear: () => void;
-  images: ComposerImage[];
+  images: readonly ComposerImage[];
   onRemoveImage: (id: string) => void;
   onAddImages: (files: File[]) => void;
-  pastes: PastedText[];
+  pastes: readonly PastedText[];
   onRemovePaste: (id: string) => void;
   onAddPaste: (text: string) => void;
   acceptsImages: boolean;

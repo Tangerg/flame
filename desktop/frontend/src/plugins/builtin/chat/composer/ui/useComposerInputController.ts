@@ -28,8 +28,8 @@ interface Args {
   onChange: (value: string) => void;
   onClear: () => void;
   onSend: (input: AgentInput) => boolean;
-  images: ComposerImage[];
-  pastes: PastedText[];
+  images: readonly ComposerImage[];
+  pastes: readonly PastedText[];
   recordHistory: (text: string) => void;
   onAddImages: (files: File[]) => void;
   onAddPaste: (text: string) => void;
