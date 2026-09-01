@@ -282,6 +282,28 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	stop()
 }
 
+func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
+	backend := runtimefixture.New()
+	contextTokens := int64(12_345)
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
+			{Delay: 10 * time.Millisecond, Event: agent.RunProgress{Activity: "thinking", ContextTokens: &contextTokens}},
+			{Delay: 10 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
+				ID: "answer", Kind: agent.BlockAssistant, Text: "context-aware answer",
+			}}},
+			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+		}}
+	}
+	host, stop := runUIWith(t, backend)
+	host.Shows(t, "Ask flame")
+	host.Type("show the current context footprint")
+	host.Press(input.Enter)
+	host.Shows(t, "context-aware answer")
+	host.Shows(t, "complete")
+	host.Shows(t, "ctx 12,345")
+	stop()
+}
+
 func TestStartHandshakeRetriesTheSameMutationIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = stableCompletedScript

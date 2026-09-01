@@ -285,6 +285,7 @@ type statusView struct {
 	problem            string
 	elapsed            string
 	usage              agent.Usage
+	contextTokens      int64
 	outcome            agent.Outcome
 	status             kit.Status
 	busy               bool
@@ -314,7 +315,10 @@ func (s *statusView) Draw(view grid.View) {
 	if s.busy {
 		s.status.Theme, s.status.Glyphs = s.theme, s.glyphs
 		s.status.Doing, s.status.Elapsed = s.doing, s.elapsed
-		right := runningDescendantsLabel(s.glyphs, s.runningDescendants)
+		right := joinStatusLabels(
+			contextLabel(s.contextTokens),
+			runningDescendantsLabel(s.glyphs, s.runningDescendants),
+		)
 		rightWidth := text.Width(right)
 		if right == "" || rightWidth+2 >= width {
 			s.status.Draw(view)
@@ -324,7 +328,7 @@ func (s *statusView) Draw(view grid.View) {
 		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 		return
 	}
-	right := usageLabel(s.usage)
+	right := joinStatusLabels(contextLabel(s.contextTokens), usageLabel(s.usage))
 	style := s.theme.Muted
 	switch s.outcome.Status {
 	case agent.OutcomeCompleted:
@@ -355,6 +359,27 @@ func runningDescendantsLabel(glyphs kit.Glyphs, count int) string {
 		return ""
 	}
 	return glyphs.Bullet + " " + countedNoun(count, "subagent") + " active"
+}
+
+func joinStatusLabels(labels ...string) string {
+	var joined string
+	for _, label := range labels {
+		if label == "" {
+			continue
+		}
+		if joined != "" {
+			joined += "  "
+		}
+		joined += label
+	}
+	return joined
+}
+
+func contextLabel(contextTokens int64) string {
+	if contextTokens <= 0 {
+		return ""
+	}
+	return "ctx " + formatThousands(contextTokens)
 }
 
 func optionsLabel(options agent.RunOptions) string {
@@ -409,11 +434,12 @@ func (s *statusView) tick(elapsed time.Duration) {
 	s.elapsed = fmt.Sprintf("%4.1fs", elapsed.Seconds())
 }
 
-func (s *statusView) settled(outcome agent.Outcome, usage agent.Usage) {
-	s.outcome, s.usage, s.elapsed = outcome, usage.Clone(), ""
+func (s *statusView) settled(run agent.Run) {
+	s.observeRun(run)
+	s.outcome, s.elapsed = run.Outcome.Clone(), ""
 	s.busy = false
 	s.runningDescendants = 0
-	switch outcome.Status {
+	switch run.Outcome.Status {
 	case agent.OutcomeCompleted:
 		s.doing = "complete"
 	case agent.OutcomeCanceled:
@@ -425,12 +451,23 @@ func (s *statusView) settled(outcome agent.Outcome, usage agent.Usage) {
 	case agent.OutcomeMaxBudget:
 		s.doing = "max budget"
 	case agent.OutcomeFailed:
-		s.doing = "failed: " + outcome.Description()
+		s.doing = "failed: " + run.Outcome.Description()
 	case agent.OutcomeLost:
-		s.doing = "lost: " + outcome.Description()
+		s.doing = "lost: " + run.Outcome.Description()
 	default:
 		s.doing = "ready"
 	}
+}
+
+func (s *statusView) beginRun(label string) {
+	s.usage = agent.Usage{}
+	s.contextTokens = 0
+	s.active(label)
+}
+
+func (s *statusView) observeRun(run agent.Run) {
+	s.usage = run.Usage.Clone()
+	s.contextTokens = run.ContextTokens
 }
 
 func (s *statusView) active(label string) {
@@ -441,6 +478,12 @@ func (s *statusView) active(label string) {
 }
 
 func (s *statusView) progress(progress agent.RunProgress) {
+	if progress.Usage != nil {
+		s.usage = progress.Usage.Clone()
+	}
+	if progress.ContextTokens != nil {
+		s.contextTokens = *progress.ContextTokens
+	}
 	label := strings.TrimSpace(progress.Activity)
 	if label == "" {
 		label = "working"
@@ -448,9 +491,6 @@ func (s *statusView) progress(progress agent.RunProgress) {
 	parts := []string{label}
 	if progress.Step != nil {
 		parts = append(parts, "step "+strconv.Itoa(*progress.Step))
-	}
-	if progress.ContextTokens != nil {
-		parts = append(parts, "ctx "+formatThousands(*progress.ContextTokens))
 	}
 	s.active(strings.Join(parts, " · "))
 }

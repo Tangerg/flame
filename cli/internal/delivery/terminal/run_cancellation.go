@@ -320,7 +320,7 @@ func (a *app) handleRuntimeCancellation(
 		return
 	}
 	a.transcript.settleLive(settled.Outcome)
-	a.status.settled(settled.Outcome, settled.Usage)
+	a.settleCurrentRunStatus()
 	a.header.SetUsage(settled.Usage)
 	a.prompt.SetBusy(false)
 	a.syncAnimation()

@@ -59,6 +59,9 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != interruptedContext {
 		t.Fatalf("waiting run context = %+v, want %d", runs, interruptedContext)
 	}
+	if current, ok := conversation.CurrentRun(); !ok || current.ID != "run_1" || current.ContextTokens != interruptedContext {
+		t.Fatalf("waiting current Run = %+v, %t", current, ok)
+	}
 	acceptedQuestions, err := conversation.RecordAcceptedInteractionAnswers([]InterruptAnswer{
 		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: ApprovalApprove}},
 		{ItemID: question.ItemID, Answer: QuestionAnswer{Values: [][]string{{"A"}}}},
@@ -98,6 +101,9 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}
 	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != finalContext {
 		t.Fatalf("finished run context = %+v, want %d", runs, finalContext)
+	}
+	if current, ok := conversation.CurrentRun(); !ok || current.Status != RunStatusFinished || current.ContextTokens != finalContext {
+		t.Fatalf("finished current Run = %+v, %t", current, ok)
 	}
 }
 

@@ -622,11 +622,12 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 		if a.dialogs.interactionReview == nil {
 			a.openInteractions(projection.conversation.Interactions())
 		}
+		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")
 	case agent.ConversationIdle:
 		a.execution.following = false
 		if projection.conversation.Outcome().Status != "" {
-			a.status.settled(projection.conversation.Outcome(), projection.conversation.Usage())
+			a.settleCurrentRunStatus()
 		}
 		if a.drainQueue() {
 			return nil
@@ -652,6 +653,7 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 		if a.dialogs.interactionReview == nil {
 			a.openInteractions(a.execution.conversation.Interactions())
 		}
+		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")
 	case agent.ConversationRunning:
 		active, ok := snapshot.ActiveRun()
@@ -664,7 +666,7 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 		a.followRecoveredSession()
 	case agent.ConversationIdle:
 		if a.execution.conversation.Outcome().Status != "" {
-			a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
+			a.settleCurrentRunStatus()
 		}
 	default:
 		a.fail(errors.New("session snapshot has an unknown conversation phase"))
@@ -672,11 +674,22 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 }
 
 func (a *app) showRecoveredRunStatus(activity string, run agent.Run) {
-	progress := agent.RunProgress{Activity: activity}
-	if run.ContextTokens > 0 {
-		progress.ContextTokens = new(run.ContextTokens)
+	a.status.observeRun(run)
+	a.status.progress(agent.RunProgress{Activity: activity})
+}
+
+func (a *app) observeCurrentRunStatus() {
+	run, ok := a.execution.conversation.CurrentRun()
+	if ok {
+		a.status.observeRun(run)
 	}
-	a.status.progress(progress)
+}
+
+func (a *app) settleCurrentRunStatus() {
+	run, _ := a.execution.conversation.CurrentRun()
+	run.Outcome = a.execution.conversation.Outcome()
+	run.Usage = a.execution.conversation.Usage()
+	a.status.settled(run)
 }
 
 func displayTitle(session agent.Session) string {

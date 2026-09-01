@@ -326,7 +326,7 @@ func (a *app) finishAuthoringSettlementRecovery() {
 		return
 	}
 	if a.execution.conversation.Outcome().Status != "" {
-		a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
+		a.settleCurrentRunStatus()
 		a.syncAnimation()
 	}
 }

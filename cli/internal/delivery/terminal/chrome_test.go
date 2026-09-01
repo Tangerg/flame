@@ -81,8 +81,25 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	step, contextTokens := 7, int64(12_345)
 	status.progress(agent.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
-	if !status.busy || status.doing != "calling tools · step 7 · ctx 12,345" {
+	if !status.busy || status.doing != "calling tools · step 7" || status.contextTokens != contextTokens {
 		t.Fatalf("progress status = busy %t, doing %q", status.busy, status.doing)
+	}
+	status.active("using shell")
+	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "using shell") || !strings.Contains(got, "ctx 12,345") {
+		t.Fatalf("sparse activity lost the latest context footprint:\n%s", got)
+	}
+	status.settled(agent.Run{
+		ContextTokens: contextTokens,
+		Outcome:       agent.Outcome{Status: agent.OutcomeCompleted},
+		Usage:         agent.Usage{InputTokens: 20, OutputTokens: 4},
+	})
+	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "complete") ||
+		!strings.Contains(got, "ctx 12,345") || !strings.Contains(got, "↑20") {
+		t.Fatalf("settled status lost the final Run footprint:\n%s", got)
+	}
+	status.beginRun("starting")
+	if status.contextTokens != 0 || status.usage.InputTokens != 0 {
+		t.Fatalf("new Run retained the prior footprint: context %d, usage %+v", status.contextTokens, status.usage)
 	}
 }
 

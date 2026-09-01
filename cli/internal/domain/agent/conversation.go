@@ -85,6 +85,16 @@ func (c *Conversation) SegmentID() string           { return c.segmentID }
 func (c *Conversation) Checkpoint() string          { return c.checkpoint }
 func (c *Conversation) Busy() bool                  { return c.phase != ConversationIdle }
 
+// CurrentRun returns the root Run whose lifecycle the conversation owns.
+// Descendant activity never replaces this root identity.
+func (c *Conversation) CurrentRun() (Run, bool) {
+	if c == nil || c.runID == "" {
+		return Run{}, false
+	}
+	run, exists := c.runs[c.runID]
+	return run.Clone(), exists
+}
+
 // RunningDescendants reports how much delegated work is live beneath the
 // current root run. The aggregate owns this derivation so presentation layers
 // never infer lifecycle state from transcript blocks or copy the run-tree

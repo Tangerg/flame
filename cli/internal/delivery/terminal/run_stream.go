@@ -136,7 +136,7 @@ func (a *app) presentRunStart(status string) {
 	a.activity.Reset()
 	a.header.SetUsage(agent.Usage{})
 	a.prompt.SetBusy(true)
-	a.status.active(status)
+	a.status.beginRun(status)
 	a.execution.clock.start(0, time.Now())
 	a.syncAnimation()
 }
@@ -671,6 +671,7 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case agent.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
+			a.observeCurrentRunStatus()
 			if settled := a.settleQueuedDispatch(); settled {
 				a.execution.openingRunID = ""
 				a.status.active("working")
@@ -692,6 +693,7 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 	case agent.RunProgress:
 		if envelope.RunID == a.execution.conversation.RunID() {
 			a.header.SetUsage(a.execution.conversation.Usage())
+			a.observeCurrentRunStatus()
 			a.status.progress(event)
 		} else if strings.TrimSpace(event.Activity) != "" {
 			a.status.active("subagent · " + event.Activity)
@@ -700,12 +702,14 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 		if a.execution.conversation.Phase() == agent.ConversationWaiting {
 			a.openInteractions(a.execution.conversation.Interactions())
 			a.header.SetUsage(a.execution.conversation.Usage())
+			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
 		}
 	case agent.RunSuspended:
 		if a.execution.conversation.Phase() == agent.ConversationWaiting {
 			a.openInteractions(a.execution.conversation.Interactions())
 			a.header.SetUsage(a.execution.conversation.Usage())
+			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
 		}
 	case agent.RunFinished:
@@ -728,6 +732,7 @@ func (a *app) noteBlockStarted(block agent.Block) {
 }
 
 func (a *app) noteRunFinished() {
+	a.observeCurrentRunStatus()
 	a.status.note("finishing run")
 	a.header.SetUsage(a.execution.conversation.Usage())
 }
@@ -742,7 +747,7 @@ func (a *app) finishFollowing() {
 	if a.execution.conversation.Phase() != agent.ConversationIdle || a.execution.conversation.Outcome().Status == "" {
 		return
 	}
-	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
+	a.settleCurrentRunStatus()
 	a.prompt.SetBusy(false)
 	settled := a.settleQueuedDispatch()
 	if settled {
@@ -782,7 +787,7 @@ func (a *app) fail(err error) {
 	a.execution.conversation.Failed(err)
 	a.transcript.settleLive(a.execution.conversation.Outcome())
 	a.transcript.Append(presentError(a.transcript.theme, err.Error()))
-	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
+	a.settleCurrentRunStatus()
 	a.header.SetUsage(a.execution.conversation.Usage())
 	a.prompt.SetBusy(false)
 	a.syncAnimation()
