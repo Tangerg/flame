@@ -77,6 +77,10 @@ func (i *interactionSession) executorCheckpoint(
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
+	usage, err := i.accounting.snapshot()
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, err
+	}
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: tree.RootID().String(), Payload: payload,
 		BuildID: i.buildID.String(), Scope: i.scope,
@@ -85,7 +89,7 @@ func (i *interactionSession) executorCheckpoint(
 			ChildRuns:      i.start.ChildRunAdmissionEnabled,
 			InterruptKinds: slices.Clone(i.start.InterruptKinds),
 		},
-		Usage: i.accounting.snapshot(),
+		Usage: usage,
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, err

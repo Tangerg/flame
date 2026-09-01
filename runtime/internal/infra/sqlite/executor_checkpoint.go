@@ -144,14 +144,14 @@ type executorPolicyWire struct {
 const executorPolicySchemaVersion uint16 = 4
 
 type executorModelUsageWire struct {
-	Model            string  `json:"model"`
-	PromptTokens     int64   `json:"prompt_tokens"`
-	CompletionTokens int64   `json:"completion_tokens"`
-	ReasoningTokens  int64   `json:"reasoning_tokens"`
-	CacheReadTokens  int64   `json:"cache_read_tokens"`
-	CacheWriteTokens int64   `json:"cache_write_tokens"`
-	CostUSD          float64 `json:"cost_usd"`
-	Calls            int     `json:"calls"`
+	Model            string   `json:"model"`
+	PromptTokens     int64    `json:"prompt_tokens"`
+	CompletionTokens int64    `json:"completion_tokens"`
+	ReasoningTokens  int64    `json:"reasoning_tokens"`
+	CacheReadTokens  int64    `json:"cache_read_tokens"`
+	CacheWriteTokens int64    `json:"cache_write_tokens"`
+	CostUSD          *float64 `json:"cost_usd,omitempty"`
+	Calls            int      `json:"calls"`
 }
 
 // SaveCheckpoint atomically advances one root-owned executor checkpoint. The
@@ -430,7 +430,7 @@ func encodeExecutorUsage(usage accounting.Snapshot) ([]byte, error) {
 			ReasoningTokens:  model.ReasoningTokens,
 			CacheReadTokens:  model.CacheReadTokens,
 			CacheWriteTokens: model.CacheWriteTokens,
-			CostUSD:          model.CostUSD,
+			CostUSD:          model.Cost.OptionalUSD(),
 			Calls:            model.Calls,
 		}
 	}
@@ -456,6 +456,10 @@ func decodeExecutorUsage(data string) (accounting.Snapshot, error) {
 	}
 	usage := accounting.Snapshot{Models: make([]accounting.ModelUsage, len(wire.Models))}
 	for index, model := range wire.Models {
+		cost, err := accounting.CostFromOptional(model.CostUSD)
+		if err != nil {
+			return accounting.Snapshot{}, fmt.Errorf("usage model[%d] cost: %w", index, err)
+		}
 		usage.Models[index] = accounting.ModelUsage{
 			Model: model.Model,
 			TokenUsage: accounting.TokenUsage{
@@ -465,8 +469,8 @@ func decodeExecutorUsage(data string) (accounting.Snapshot, error) {
 				CacheReadTokens:  model.CacheReadTokens,
 				CacheWriteTokens: model.CacheWriteTokens,
 			},
-			CostUSD: model.CostUSD,
-			Calls:   model.Calls,
+			Cost:  cost,
+			Calls: model.Calls,
 		}
 	}
 	if err := usage.Validate(); err != nil {

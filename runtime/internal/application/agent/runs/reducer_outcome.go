@@ -152,7 +152,7 @@ func transcriptUsage(reported SegmentUsage) *accounting.Usage {
 		reported.Tokens.ReasoningTokens,
 		reported.Tokens.CacheReadTokens,
 		reported.Tokens.CacheWriteTokens,
-		reported.CostUSD,
+		reported.Cost,
 	)}
 	if len(reported.ByModel) > 0 {
 		usage.ByModel = make(map[string]accounting.Totals, len(reported.ByModel))
@@ -163,7 +163,7 @@ func transcriptUsage(reported SegmentUsage) *accounting.Usage {
 				model.ReasoningTokens,
 				model.CacheReadTokens,
 				model.CacheWriteTokens,
-				model.CostUSD,
+				model.Cost,
 			)
 		}
 	}
@@ -177,14 +177,14 @@ func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
 	total := accounting.ModelUsage{
 		Model:      "total",
 		TokenUsage: reported.Tokens,
-		CostUSD:    reported.CostUSD,
+		Cost:       reported.Cost,
 		Calls:      max(reported.Steps, 1),
 	}
 	if err := total.Validate(); err != nil {
 		return nil, fmt.Errorf("total usage: %w", err)
 	}
 	if reported.Steps == 0 &&
-		(reported.Tokens != (accounting.TokenUsage{}) || reported.CostUSD != 0) {
+		(reported.Tokens != (accounting.TokenUsage{}) || reported.Cost != (accounting.Cost{})) {
 		return nil, errors.New("zero model calls carry non-zero token or cost usage")
 	}
 	if len(reported.ByModel) > 0 {
@@ -194,14 +194,18 @@ func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
 		}
 		if aggregate.TokenUsage != reported.Tokens ||
 			aggregate.Calls != reported.Steps ||
-			!sameUsageCost(aggregate.CostUSD, reported.CostUSD) {
+			!aggregate.Cost.Equal(reported.Cost) {
+			aggregateCost, aggregatePriced := aggregate.Cost.USD()
+			reportedCost, reportedPriced := reported.Cost.USD()
 			return nil, fmt.Errorf(
-				"per-model aggregate {tokens:%+v cost:%g calls:%d} does not match total {tokens:%+v cost:%g calls:%d}",
+				"per-model aggregate {tokens:%+v cost:%g priced:%t calls:%d} does not match total {tokens:%+v cost:%g priced:%t calls:%d}",
 				aggregate.TokenUsage,
-				aggregate.CostUSD,
+				aggregateCost,
+				aggregatePriced,
 				aggregate.Calls,
 				reported.Tokens,
-				reported.CostUSD,
+				reportedCost,
+				reportedPriced,
 				reported.Steps,
 			)
 		}
@@ -232,45 +236,22 @@ func validateUsageMonotonic(previous, next *accounting.Usage) error {
 }
 
 func validateModelUsageMonotonic(label string, previous, next accounting.Totals) error {
-	if next.InputTokens < previous.InputTokens ||
-		next.OutputTokens < previous.OutputTokens ||
-		next.ReasoningTokens < previous.ReasoningTokens ||
-		next.CacheReadTokens < previous.CacheReadTokens ||
-		next.CacheWriteTokens < previous.CacheWriteTokens ||
-		usageCost(next.CostUSD) < usageCost(previous.CostUSD) {
+	if err := next.ValidateAdvanceFrom(previous); err != nil {
 		return fmt.Errorf(
-			"cumulative usage for %q regressed from %+v to %+v",
+			"cumulative usage for %q regressed from %+v to %+v: %w",
 			label,
 			previous,
 			next,
+			err,
 		)
 	}
 	return nil
 }
 
-func usageCost(cost *float64) float64 {
-	if cost == nil {
-		return 0
-	}
-	return *cost
-}
-
-func sameUsageCost(left, right float64) bool {
-	scale := max(1, math.Abs(left), math.Abs(right))
-	return math.Abs(left-right) <= 1e-12*scale
-}
-
-func modelUsageFrom(prompt, completion, reasoning, cacheRead, cacheWrite int64, cost float64) accounting.Totals {
+func modelUsageFrom(prompt, completion, reasoning, cacheRead, cacheWrite int64, cost accounting.Cost) accounting.Totals {
 	return accounting.Totals{
 		InputTokens: prompt, OutputTokens: completion,
 		ReasoningTokens: reasoning, CacheReadTokens: cacheRead,
-		CacheWriteTokens: cacheWrite, CostUSD: optCostUSD(cost),
+		CacheWriteTokens: cacheWrite, CostUSD: cost.OptionalUSD(),
 	}
-}
-
-func optCostUSD(cost float64) *float64 {
-	if cost <= 0 {
-		return nil
-	}
-	return &cost
 }

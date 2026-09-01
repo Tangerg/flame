@@ -46,7 +46,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
 		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
-		Pricing: func(_, _ string, _ *chat.Usage) float64 { return 0.25 },
+		Pricing: fixedInteractionPricing(0.25),
 	})
 
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
@@ -57,8 +57,12 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("model starts = %d, want 2", got)
 	}
 	models := payloadsOf[runs.ModelCallCompleted](events)
-	if len(models) != 2 || models[1].Steps != 2 || models[1].TokenUsage.PromptTokens != 18 ||
-		models[1].TokenUsage.CompletionTokens != 5 || models[1].CostUSD != 0.5 {
+	if len(models) != 2 {
+		t.Fatalf("model completions = %#v", models)
+	}
+	modelCost, modelCostAvailable := models[1].Cost.USD()
+	if models[1].Steps != 2 || models[1].TokenUsage.PromptTokens != 18 ||
+		models[1].TokenUsage.CompletionTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
 		t.Fatalf("model completions = %#v", models)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
@@ -79,8 +83,12 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("hook calls = before %d after %d", hooks.before, hooks.after)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage == nil || ended[0].Usage.Steps != 2 ||
-		ended[0].Usage.Tokens.PromptTokens != 18 || ended[0].Usage.CostUSD != 0.5 {
+	if len(ended) != 1 || ended[0].Usage == nil {
+		t.Fatalf("segment accounting = %#v", ended)
+	}
+	segmentCost, segmentCostAvailable := ended[0].Usage.Cost.USD()
+	if ended[0].Usage.Steps != 2 ||
+		ended[0].Usage.Tokens.PromptTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
 		t.Fatalf("segment accounting = %#v", ended)
 	}
 }

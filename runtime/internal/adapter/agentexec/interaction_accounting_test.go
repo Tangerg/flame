@@ -12,6 +12,19 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
+func interactionTestCost(usd float64) accounting.Cost {
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		panic(err)
+	}
+	return cost
+}
+
+func fixedInteractionPricing(usd float64) accounting.Pricing {
+	cost := interactionTestCost(usd)
+	return func(_, _ string, _ *chat.Usage) accounting.Cost { return cost }
+}
+
 func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) {
 	var invocation interaction.ModelInvocation
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
@@ -33,13 +46,20 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	if err := ledger.prepareModelContext(invocation, 100); err != nil {
 		t.Fatal(err)
 	}
-	before := ledger.snapshot()
+	before, err := ledger.snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err := ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1))
+	_, err = ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1))
 	if err == nil || !strings.Contains(err.Error(), "differs from accounted calls") {
 		t.Fatalf("account duplicate call error = %v", err)
 	}
-	if after := ledger.snapshot(); !reflect.DeepEqual(after, before) {
+	after, snapshotErr := ledger.snapshot()
+	if snapshotErr != nil {
+		t.Fatal(snapshotErr)
+	}
+	if !reflect.DeepEqual(after, before) {
 		t.Fatalf("rejected model call mutated usage: before=%+v after=%+v", before, after)
 	}
 	ledger.mu.Lock()

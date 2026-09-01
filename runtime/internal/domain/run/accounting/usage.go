@@ -57,17 +57,18 @@ func (t Totals) ValidateAdvanceFrom(previous Totals) error {
 	}
 	if t.InputTokens < previous.InputTokens || t.OutputTokens < previous.OutputTokens ||
 		t.CacheReadTokens < previous.CacheReadTokens || t.CacheWriteTokens < previous.CacheWriteTokens ||
-		t.ReasoningTokens < previous.ReasoningTokens || t.cost() < previous.cost() {
+		t.ReasoningTokens < previous.ReasoningTokens {
 		return errors.New("accounting: cumulative totals regressed")
 	}
-	return nil
-}
-
-func (t Totals) cost() float64 {
-	if t.CostUSD == nil {
-		return 0
+	nextCost, err := CostFromOptional(t.CostUSD)
+	if err != nil {
+		return fmt.Errorf("next totals: %w", err)
 	}
-	return *t.CostUSD
+	previousCost, err := CostFromOptional(previous.CostUSD)
+	if err != nil {
+		return fmt.Errorf("previous totals: %w", err)
+	}
+	return nextCost.ValidateAdvanceFrom(previousCost)
 }
 
 // Equal reports semantic equality, preserving the distinction between absent
@@ -171,6 +172,120 @@ type TokenUsage struct {
 	CacheWriteTokens int64
 }
 
+// Cost is one explicit pricing fact. Its zero value means pricing was
+// unavailable; a priced zero is constructed explicitly and remains distinct.
+// This prevents an unknown catalog entry from silently becoming a free model.
+type Cost struct {
+	usd       float64
+	available bool
+}
+
+// NewCost constructs one available finite non-negative USD amount.
+func NewCost(usd float64) (Cost, error) {
+	if usd < 0 || math.IsNaN(usd) || math.IsInf(usd, 0) {
+		return Cost{}, errors.New("accounting: cost must be finite and non-negative")
+	}
+	return Cost{usd: usd, available: true}, nil
+}
+
+// CostFromOptional restores the exact absent-versus-priced-zero distinction
+// used by durable Run metrics and executor checkpoints.
+func CostFromOptional(usd *float64) (Cost, error) {
+	if usd == nil {
+		return Cost{}, nil
+	}
+	return NewCost(*usd)
+}
+
+// USD returns the price only when the model call was priced.
+func (c Cost) USD() (float64, bool) { return c.usd, c.available }
+
+// OptionalUSD projects this value to the pointer vocabulary used by durable
+// accounting records. The returned pointer owns an independent value.
+func (c Cost) OptionalUSD() *float64 {
+	if !c.available {
+		return nil
+	}
+	value := c.usd
+	return &value
+}
+
+// Add combines independently priced calls. One unavailable component makes
+// the aggregate unavailable because a known partial sum is not a total cost.
+func (c Cost) Add(other Cost) (Cost, error) {
+	if err := c.Validate(); err != nil {
+		return Cost{}, err
+	}
+	if err := other.Validate(); err != nil {
+		return Cost{}, err
+	}
+	if !c.available || !other.available {
+		return Cost{}, nil
+	}
+	if other.usd > math.MaxFloat64-c.usd {
+		return Cost{}, errors.New("accounting: cost aggregate overflows")
+	}
+	return Cost{usd: c.usd + other.usd, available: true}, nil
+}
+
+// Subtract removes an available component from an available aggregate. An
+// unavailable total cannot prove any remainder and therefore stays unavailable.
+func (c Cost) Subtract(other Cost) (Cost, error) {
+	if err := c.Validate(); err != nil {
+		return Cost{}, err
+	}
+	if err := other.Validate(); err != nil {
+		return Cost{}, err
+	}
+	if !c.available {
+		return Cost{}, nil
+	}
+	if !other.available {
+		return Cost{}, errors.New("accounting: unavailable cost cannot be subtracted from a priced total")
+	}
+	if c.usd+1e-9 < other.usd {
+		return Cost{}, errors.New("accounting: cost subtraction exceeds total")
+	}
+	remaining := c.usd - other.usd
+	if math.Abs(remaining) < 1e-9 {
+		remaining = 0
+	}
+	return Cost{usd: remaining, available: true}, nil
+}
+
+// Validate reports corrupt private state. The unavailable zero value is valid.
+func (c Cost) Validate() error {
+	if !c.available {
+		if c.usd != 0 {
+			return errors.New("accounting: unavailable cost carries a value")
+		}
+		return nil
+	}
+	if c.usd < 0 || math.IsNaN(c.usd) || math.IsInf(c.usd, 0) {
+		return errors.New("accounting: cost must be finite and non-negative")
+	}
+	return nil
+}
+
+// Equal preserves availability as part of the accounting fact.
+func (c Cost) Equal(other Cost) bool {
+	return c.available == other.available && (!c.available || c.usd == other.usd)
+}
+
+// ValidateAdvanceFrom rejects cost erasure or regression.
+func (c Cost) ValidateAdvanceFrom(previous Cost) error {
+	if err := previous.Validate(); err != nil {
+		return fmt.Errorf("previous cost: %w", err)
+	}
+	if err := c.Validate(); err != nil {
+		return fmt.Errorf("next cost: %w", err)
+	}
+	if c.available != previous.available || (c.available && c.usd < previous.usd) {
+		return errors.New("accounting: cumulative cost regressed")
+	}
+	return nil
+}
+
 // Total is prompt + completion: the figure a token budget caps.
 func (t TokenUsage) Total() int64 {
 	return t.PromptTokens + t.CompletionTokens
@@ -190,8 +305,8 @@ func (t *TokenUsage) Add(u TokenUsage) {
 type ModelUsage struct {
 	Model string
 	TokenUsage
-	CostUSD float64
-	Calls   int
+	Cost  Cost
+	Calls int
 }
 
 // Snapshot is the durable usage projection for one complete execution tree.
@@ -208,7 +323,12 @@ func (s Snapshot) Total() (ModelUsage, error) {
 	if err := s.Validate(); err != nil {
 		return ModelUsage{}, err
 	}
-	var total ModelUsage
+	total := ModelUsage{}
+	if len(s.Models) > 0 {
+		// The additive identity is priced only when there are actual model facts
+		// to aggregate. An empty snapshot has no pricing fact at all.
+		total.Cost = Cost{available: true}
+	}
 	for index, model := range s.Models {
 		var ok bool
 		if total.PromptTokens, ok = checkedAddInt64(total.PromptTokens, model.PromptTokens); !ok {
@@ -226,13 +346,14 @@ func (s Snapshot) Total() (ModelUsage, error) {
 		if total.CacheWriteTokens, ok = checkedAddInt64(total.CacheWriteTokens, model.CacheWriteTokens); !ok {
 			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cache-write-token aggregate overflows", index)
 		}
-		if model.CostUSD > math.MaxFloat64-total.CostUSD {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cost aggregate overflows", index)
+		nextCost, err := total.Cost.Add(model.Cost)
+		if err != nil {
+			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cost aggregate: %w", index, err)
 		}
+		total.Cost = nextCost
 		if model.Calls > math.MaxInt-total.Calls {
 			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] call aggregate overflows", index)
 		}
-		total.CostUSD += model.CostUSD
 		total.Calls += model.Calls
 	}
 	return total, nil
@@ -288,9 +409,11 @@ func (s Snapshot) ValidateAdvanceFrom(previous Snapshot) error {
 			after.ReasoningTokens < before.ReasoningTokens ||
 			after.CacheReadTokens < before.CacheReadTokens ||
 			after.CacheWriteTokens < before.CacheWriteTokens ||
-			after.CostUSD < before.CostUSD ||
 			after.Calls < before.Calls {
 			return fmt.Errorf("accounting snapshot: model %q usage regressed", before.Model)
+		}
+		if err := after.Cost.ValidateAdvanceFrom(before.Cost); err != nil {
+			return fmt.Errorf("accounting snapshot: model %q: %w", before.Model, err)
 		}
 	}
 	return nil
@@ -312,8 +435,8 @@ func (m ModelUsage) Validate() error {
 	if u.CacheReadTokens > u.PromptTokens || u.CacheWriteTokens > u.PromptTokens {
 		return errors.New("model usage cache tokens exceed prompt tokens")
 	}
-	if math.IsNaN(m.CostUSD) || math.IsInf(m.CostUSD, 0) || m.CostUSD < 0 {
-		return errors.New("model usage cost must be finite and non-negative")
+	if err := m.Cost.Validate(); err != nil {
+		return fmt.Errorf("model usage: %w", err)
 	}
 	if m.Calls <= 0 {
 		return errors.New("model usage calls must be positive")
@@ -323,4 +446,4 @@ func (m ModelUsage) Validate() error {
 
 // Pricing computes the USD cost of one LLM round from the provider, served
 // model, and full token usage.
-type Pricing func(provider, model string, usage *chat.Usage) float64
+type Pricing func(provider, model string, usage *chat.Usage) Cost

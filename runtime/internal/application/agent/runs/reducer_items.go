@@ -624,7 +624,7 @@ func (r *reducer) usageProgress(e UsageReported) ([]ProjectionEvent, error) {
 	if err := r.applyUsage(SegmentUsage{
 		Tokens:  e.TokenUsage,
 		ByModel: e.ByModel,
-		CostUSD: e.CostUSD,
+		Cost:    e.Cost,
 		Steps:   e.Steps,
 	}); err != nil {
 		return nil, err

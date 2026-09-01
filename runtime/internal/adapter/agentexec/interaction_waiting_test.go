@@ -589,7 +589,7 @@ func rootInteractionWaitingContinuation(
 			Total: accounting.Totals{
 				InputTokens: total.PromptTokens, OutputTokens: total.CompletionTokens,
 				ReasoningTokens: total.ReasoningTokens, CacheReadTokens: total.CacheReadTokens,
-				CacheWriteTokens: total.CacheWriteTokens, CostUSD: new(total.CostUSD),
+				CacheWriteTokens: total.CacheWriteTokens, CostUSD: total.Cost.OptionalUSD(),
 			},
 			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage.Models)),
 		}
@@ -597,7 +597,7 @@ func rootInteractionWaitingContinuation(
 			usage.ByModel[model.Model] = accounting.Totals{
 				InputTokens: model.PromptTokens, OutputTokens: model.CompletionTokens,
 				ReasoningTokens: model.ReasoningTokens, CacheReadTokens: model.CacheReadTokens,
-				CacheWriteTokens: model.CacheWriteTokens, CostUSD: new(model.CostUSD),
+				CacheWriteTokens: model.CacheWriteTokens, CostUSD: model.Cost.OptionalUSD(),
 			}
 		}
 		metrics, err = run.NewMetrics(usage, total.Calls, 0)

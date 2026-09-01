@@ -42,6 +42,15 @@ func TestTokenUsageAdd(t *testing.T) {
 	}
 }
 
+func mustCost(t *testing.T, usd float64) Cost {
+	t.Helper()
+	cost, err := NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
+
 func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	snapshot := Snapshot{Models: []ModelUsage{
 		{
@@ -51,8 +60,8 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 				CompletionTokens: 2,
 				ReasoningTokens:  1,
 			},
-			CostUSD: 0.25,
-			Calls:   1,
+			Cost:  mustCost(t, 0.25),
+			Calls: 1,
 		},
 		{
 			Model: "beta",
@@ -60,8 +69,8 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 				PromptTokens:     5,
 				CompletionTokens: 1,
 			},
-			CostUSD: 0.5,
-			Calls:   2,
+			Cost:  mustCost(t, 0.5),
+			Calls: 2,
 		},
 	}}
 	total, err := snapshot.Total()
@@ -71,9 +80,11 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	if total.PromptTokens != 8 ||
 		total.CompletionTokens != 3 ||
 		total.ReasoningTokens != 1 ||
-		total.CostUSD != 0.75 ||
 		total.Calls != 3 {
 		t.Fatalf("total = %+v", total)
+	}
+	if cost, ok := total.Cost.USD(); !ok || cost != 0.75 {
+		t.Fatalf("total cost = %g, %t; want 0.75, true", cost, ok)
 	}
 
 	overflow := Snapshot{Models: []ModelUsage{
@@ -109,8 +120,8 @@ func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
 			PromptTokens: 4, CompletionTokens: 2, ReasoningTokens: 1,
 			CacheReadTokens: 1, CacheWriteTokens: 1,
 		},
-		CostUSD: 0.5,
-		Calls:   2,
+		Cost:  mustCost(t, 0.5),
+		Calls: 2,
 	}}}
 	next := previous
 	next.Models = append([]ModelUsage(nil), previous.Models...)
@@ -122,8 +133,10 @@ func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
 	for name, mutate := range map[string]func(*Snapshot){
 		"model removed": func(value *Snapshot) { value.Models = nil },
 		"tokens":        func(value *Snapshot) { value.Models[0].PromptTokens-- },
-		"cost":          func(value *Snapshot) { value.Models[0].CostUSD -= 0.25 },
-		"calls":         func(value *Snapshot) { value.Models[0].Calls-- },
+		"cost": func(value *Snapshot) {
+			value.Models[0].Cost = mustCost(t, 0.25)
+		},
+		"calls": func(value *Snapshot) { value.Models[0].Calls-- },
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := previous
@@ -133,5 +146,30 @@ func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
 				t.Fatal("ValidateAdvanceFrom accepted cumulative usage regression")
 			}
 		})
+	}
+}
+
+func TestCostPreservesPricingAvailability(t *testing.T) {
+	unpriced := Cost{}
+	pricedZero := mustCost(t, 0)
+	if unpriced.Equal(pricedZero) {
+		t.Fatal("unpriced cost equals an explicitly priced zero")
+	}
+	if value, ok := pricedZero.USD(); !ok || value != 0 {
+		t.Fatalf("priced zero = %g, %t; want 0, true", value, ok)
+	}
+	if value, ok := unpriced.USD(); ok || value != 0 {
+		t.Fatalf("unpriced = %g, %t; want 0, false", value, ok)
+	}
+
+	partial, err := mustCost(t, 1.25).Add(unpriced)
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if _, ok := partial.USD(); ok {
+		t.Fatal("aggregate with an unpriced component was reported as priced")
+	}
+	if err := unpriced.ValidateAdvanceFrom(pricedZero); err == nil {
+		t.Fatal("cumulative pricing availability was allowed to disappear")
 	}
 }

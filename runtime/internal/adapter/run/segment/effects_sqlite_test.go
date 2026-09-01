@@ -27,6 +27,15 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
+func segmentTestCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
+
 const checkpointBuildID = testsupport.BuildID
 
 func claimResumeForTest(
@@ -2395,7 +2404,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 3, CompletionTokens: 2},
-			CostUSD:    0.25,
+			Cost:       segmentTestCost(t, 0.25),
 			Calls:      1,
 		}}},
 	})
@@ -2461,7 +2470,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 8, CompletionTokens: 5},
-			CostUSD:    0.75,
+			Cost:       segmentTestCost(t, 0.75),
 			Calls:      2,
 		}}},
 	})

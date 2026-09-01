@@ -98,13 +98,17 @@ func (i *interactionAccounting) toolCallCount() int {
 	return i.toolCalls
 }
 
-func (i *interactionAccounting) snapshot() accounting.Snapshot {
+func (i *interactionAccounting) snapshot() (accounting.Snapshot, error) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	byModel := make(map[string]accounting.ModelUsage)
-	mergeInteractionUsage(byModel, i.carriedUsage)
+	if err := mergeInteractionUsage(byModel, i.carriedUsage); err != nil {
+		return accounting.Snapshot{}, err
+	}
 	for _, processUsage := range i.usageByProcess {
-		mergeInteractionUsage(byModel, processUsage)
+		if err := mergeInteractionUsage(byModel, processUsage); err != nil {
+			return accounting.Snapshot{}, err
+		}
 	}
 	models := make([]accounting.ModelUsage, 0, len(byModel))
 	for _, usage := range byModel {
@@ -113,23 +117,29 @@ func (i *interactionAccounting) snapshot() accounting.Snapshot {
 	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
 		return strings.Compare(left.Model, right.Model)
 	})
-	return accounting.Snapshot{Models: models}
+	return accounting.Snapshot{Models: models}, nil
 }
 
 func mergeInteractionUsage(
 	target map[string]accounting.ModelUsage,
 	source map[string]accounting.ModelUsage,
-) {
+) error {
 	for model, usage := range source {
-		current := target[model]
-		if current.Model == "" {
-			current.Model = model
+		current, found := target[model]
+		if !found {
+			target[model] = usage
+			continue
 		}
 		current.Add(usage.TokenUsage)
-		current.CostUSD += usage.CostUSD
+		cost, err := current.Cost.Add(usage.Cost)
+		if err != nil {
+			return fmt.Errorf("agentexec: aggregate model %q cost: %w", model, err)
+		}
+		current.Cost = cost
 		current.Calls += usage.Calls
 		target[model] = current
 	}
+	return nil
 }
 
 func advanceProcessUsage(
@@ -141,13 +151,18 @@ func advanceProcessUsage(
 	if next == nil {
 		next = make(map[string]accounting.ModelUsage)
 	}
-	model := next[delta.Model]
-	if model.Model == "" {
-		model.Model = delta.Model
+	model, found := next[delta.Model]
+	if !found {
+		model = delta
+	} else {
+		model.Add(delta.TokenUsage)
+		cost, err := model.Cost.Add(delta.Cost)
+		if err != nil {
+			return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call cost: %w", err)
+		}
+		model.Cost = cost
+		model.Calls += delta.Calls
 	}
-	model.Add(delta.TokenUsage)
-	model.CostUSD += delta.CostUSD
-	model.Calls += delta.Calls
 	if err := model.Validate(); err != nil {
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call: %w", err)
 	}
@@ -274,7 +289,7 @@ func (i *interactionAccounting) accountModelCall(
 	}
 	completed := runs.ModelCallCompleted{
 		CallID: callID, Message: modelOutput.Message.Clone(), TokenUsage: total.TokenUsage,
-		ByModel: slices.Clone(models), CostUSD: total.CostUSD, Steps: total.Calls,
+		ByModel: slices.Clone(models), Cost: total.Cost, Steps: total.Calls,
 		ContextTokens: usage.InputTokens,
 	}
 
@@ -308,6 +323,6 @@ func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) *runs.Se
 	}
 	return &runs.SegmentUsage{
 		Tokens: total.TokenUsage, ByModel: models,
-		CostUSD: total.CostUSD, Steps: total.Calls,
+		Cost: total.Cost, Steps: total.Calls,
 	}
 }

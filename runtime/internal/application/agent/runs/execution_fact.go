@@ -161,7 +161,7 @@ type ModelCallCompleted struct {
 	Message       corechat.Message
 	TokenUsage    accounting.TokenUsage
 	ByModel       []accounting.ModelUsage
-	CostUSD       float64
+	Cost          accounting.Cost
 	Steps         int
 	ContextTokens int64
 }
@@ -348,7 +348,7 @@ type SegmentEnded struct {
 type SegmentUsage struct {
 	Tokens  accounting.TokenUsage
 	ByModel []accounting.ModelUsage
-	CostUSD float64
+	Cost    accounting.Cost
 	Steps   int
 }
 
@@ -356,7 +356,7 @@ type UsageReported struct {
 	executionFactBase
 	TokenUsage    accounting.TokenUsage
 	ByModel       []accounting.ModelUsage
-	CostUSD       float64
+	Cost          accounting.Cost
 	Steps         int
 	ContextTokens int64
 }

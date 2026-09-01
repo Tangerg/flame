@@ -229,12 +229,12 @@ func modelUsage(
 	if servedModel == "" {
 		servedModel = selection.Model()
 	}
-	cost := 0.0
+	var cost accounting.Cost
 	if pricing != nil {
 		cost = pricing(selection.Provider(), servedModel, &metadata.Usage)
 	}
 	return accounting.ModelUsage{
-		Model: servedModel, TokenUsage: accountingTokenUsage(metadata.Usage), CostUSD: cost, Calls: 1,
+		Model: servedModel, TokenUsage: accountingTokenUsage(metadata.Usage), Cost: cost, Calls: 1,
 	}
 }
 

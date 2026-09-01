@@ -10,7 +10,7 @@ import (
 // catalog. It prices the round's provider and served model, so every Run
 // reports CostUSD against the model that actually answered.
 func Pricing() accounting.Pricing {
-	return func(provider, servedModel string, usage *chat.Usage) float64 {
+	return func(provider, servedModel string, usage *chat.Usage) accounting.Cost {
 		if info, ok := catalog.Default.Lookup(provider, servedModel); ok {
 			catalogUsage := catalog.Usage{
 				InputTokens:  usage.InputTokens,
@@ -22,8 +22,12 @@ func Pricing() accounting.Pricing {
 			if usage.CacheWriteInputTokens != nil {
 				catalogUsage.CacheWriteInputTokens = *usage.CacheWriteInputTokens
 			}
-			return info.Pricing.Cost(catalogUsage)
+			cost, err := accounting.NewCost(info.Pricing.Cost(catalogUsage))
+			if err != nil {
+				panic("model: bundled pricing returned an invalid cost: " + err.Error())
+			}
+			return cost
 		}
-		return 0
+		return accounting.Cost{}
 	}
 }

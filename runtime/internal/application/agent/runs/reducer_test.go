@@ -32,6 +32,15 @@ func testReducerConfig() reducerConfig {
 	}
 }
 
+func mustReducerCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatalf("NewCost(%g): %v", usd, err)
+	}
+	return cost
+}
+
 func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	config := testReducerConfig()
 	config.GoalIncarnationID = "goal_lease"
@@ -40,7 +49,7 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
 	reductions := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		Usage:  &SegmentUsage{CostUSD: 0.75, Steps: 1},
+		Usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
 	})
 	commit := reductions[len(reductions)-1].Commit
 	if commit == nil || commit.GoalRun == nil {
@@ -1032,7 +1041,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	usage := mustReduce(t, reducer, UsageReported{
 		TokenUsage: accounting.TokenUsage{PromptTokens: 1200, CompletionTokens: 80, ReasoningTokens: 30},
-		CostUSD:    0.0125, Steps: 1, ContextTokens: 4096,
+		Cost:       mustReducerCost(t, 0.0125), Steps: 1, ContextTokens: 4096,
 	})
 	progress, ok := usage[0].Event.(SegmentProgressed)
 	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total.InputTokens != 1200 || progress.Progress.Usage.Total.CostUSD == nil {
@@ -1075,8 +1084,8 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 				CompletionTokens: 80,
 				ReasoningTokens:  30,
 			},
-			CostUSD: 4.2,
-			Steps:   1,
+			Cost:  mustReducerCost(t, 4.2),
+			Steps: 1,
 		},
 	})
 	finished := terminal[len(terminal)-1].Event.(SegmentFinished)

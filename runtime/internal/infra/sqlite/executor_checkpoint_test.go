@@ -35,6 +35,10 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 	if err != nil {
 		panic(err)
 	}
+	cost, err := accounting.NewCost(0.25)
+	if err != nil {
+		panic(err)
+	}
 	return runs.ExecutorCheckpoint{
 		RootMemberID: rootMemberID,
 		Payload:      []byte(payload),
@@ -61,8 +65,8 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 				PromptTokens: 12, CompletionTokens: 7, ReasoningTokens: 3,
 				CacheReadTokens: 4, CacheWriteTokens: 2,
 			},
-			CostUSD: 0.25,
-			Calls:   1,
+			Cost:  cost,
+			Calls: 1,
 		}}},
 	}
 }

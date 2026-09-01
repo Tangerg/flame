@@ -3,7 +3,6 @@ package agentexec
 import (
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -229,7 +228,9 @@ func restoreInteractionAccounting(
 			return nil, nil, fmt.Errorf("member %s: %w", processID, err)
 		}
 		usageByProcess[processID] = usage
-		mergeInteractionUsage(activeAggregate, usage)
+		if err := mergeInteractionUsage(activeAggregate, usage); err != nil {
+			return nil, nil, err
+		}
 	}
 	carried, err := subtractInteractionUsage(total, activeAggregate)
 	if err != nil {
@@ -284,6 +285,10 @@ func accountingFromRunMetrics(
 		if calls <= 0 {
 			return nil, fmt.Errorf("model %q has no durable call count", model)
 		}
+		cost, err := accounting.CostFromOptional(value.CostUSD)
+		if err != nil {
+			return nil, fmt.Errorf("model %q cost: %w", model, err)
+		}
 		usage := accounting.ModelUsage{
 			Model: model,
 			TokenUsage: accounting.TokenUsage{
@@ -291,10 +296,8 @@ func accountingFromRunMetrics(
 				ReasoningTokens: value.ReasoningTokens, CacheReadTokens: value.CacheReadTokens,
 				CacheWriteTokens: value.CacheWriteTokens,
 			},
+			Cost:  cost,
 			Calls: calls,
-		}
-		if value.CostUSD != nil {
-			usage.CostUSD = *value.CostUSD
 		}
 		if err := usage.Validate(); err != nil {
 			return nil, fmt.Errorf("model %q: %w", model, err)
@@ -328,13 +331,13 @@ func accountingFromRunMetrics(
 }
 
 func sameTranscriptUsage(total accounting.ModelUsage, value accounting.Totals) bool {
-	cost := 0.0
-	if value.CostUSD != nil {
-		cost = *value.CostUSD
+	cost, err := accounting.CostFromOptional(value.CostUSD)
+	if err != nil {
+		return false
 	}
 	return total.PromptTokens == value.InputTokens && total.CompletionTokens == value.OutputTokens &&
 		total.ReasoningTokens == value.ReasoningTokens && total.CacheReadTokens == value.CacheReadTokens &&
-		total.CacheWriteTokens == value.CacheWriteTokens && sameInteractionCost(total.CostUSD, cost)
+		total.CacheWriteTokens == value.CacheWriteTokens && total.Cost.Equal(cost)
 }
 
 func subtractInteractionUsage(
@@ -350,8 +353,12 @@ func subtractInteractionUsage(
 		if !found || value.PromptTokens < used.PromptTokens ||
 			value.CompletionTokens < used.CompletionTokens || value.ReasoningTokens < used.ReasoningTokens ||
 			value.CacheReadTokens < used.CacheReadTokens || value.CacheWriteTokens < used.CacheWriteTokens ||
-			value.Calls < used.Calls || value.CostUSD+1e-9 < used.CostUSD {
+			value.Calls < used.Calls {
 			return nil, fmt.Errorf("active model %q usage exceeds tree checkpoint", model)
+		}
+		remainingCost, err := value.Cost.Subtract(used.Cost)
+		if err != nil {
+			return nil, fmt.Errorf("active model %q cost exceeds tree checkpoint: %w", model, err)
 		}
 		value.PromptTokens -= used.PromptTokens
 		value.CompletionTokens -= used.CompletionTokens
@@ -359,12 +366,10 @@ func subtractInteractionUsage(
 		value.CacheReadTokens -= used.CacheReadTokens
 		value.CacheWriteTokens -= used.CacheWriteTokens
 		value.Calls -= used.Calls
-		value.CostUSD -= used.CostUSD
-		if math.Abs(value.CostUSD) < 1e-9 {
-			value.CostUSD = 0
-		}
+		value.Cost = remainingCost
 		if value.Calls == 0 {
-			if value.TokenUsage != (accounting.TokenUsage{}) || value.CostUSD != 0 {
+			cost, priced := value.Cost.USD()
+			if value.TokenUsage != (accounting.TokenUsage{}) || (priced && cost != 0) {
 				return nil, fmt.Errorf("model %q has residual usage without calls", model)
 			}
 			delete(remaining, model)
@@ -376,8 +381,4 @@ func subtractInteractionUsage(
 		remaining[model] = value
 	}
 	return remaining, nil
-}
-
-func sameInteractionCost(left, right float64) bool {
-	return math.Abs(left-right) <= 1e-9*math.Max(1, math.Max(math.Abs(left), math.Abs(right)))
 }
