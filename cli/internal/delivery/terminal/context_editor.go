@@ -20,7 +20,7 @@ type contextEditor struct {
 	composer kit.Composer
 	theme    kit.Theme
 	keys     *keymap.Map
-	save     func(string) error
+	save     func(string)
 	cancel   func()
 	problem  string
 	failed   bool
@@ -97,7 +97,7 @@ func (c *contextEditor) Handle(event input.Event) bool {
 		switch action {
 		case saveContextDocument:
 			if c.save != nil {
-				_ = c.save(c.composer.Editor().Text())
+				c.save(c.composer.Editor().Text())
 			}
 			return true
 		case cancelContextDocument:
@@ -128,9 +128,9 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 		}
 	}
 	editor.cancel = session.Dismiss
-	editor.save = func(value string) error {
+	editor.save = func(value string) {
 		if editor.saving || session.closed || a.dialogs.activeContextEditor != session {
-			return nil
+			return
 		}
 		editor.saving = true
 		editor.problem, editor.failed = "Saving…", false
@@ -162,9 +162,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 		if err := request.Save(value, complete); err != nil {
 			complete(err)
 			a.message(request.Title + ": " + err.Error())
-			return err
 		}
-		return nil
 	}
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
