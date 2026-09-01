@@ -23,7 +23,16 @@ export function WorkspaceViewBody({ viewId }: Props) {
   }
   return (
     <PluginBoundary plugin={`workspace:${viewId}`} label={t("plugins.mainView")}>
-      <Suspense fallback={<SkeletonList count={6} label={t("common.loading")} />}>
+      {/* The body arrives as its own chunk. Marking the wait makes it observable — a
+          harness cannot otherwise tell a settled shell from one still resolving, and would
+          measure a skeleton as a missing surface. */}
+      <Suspense
+        fallback={
+          <div data-workspace-view-pending="">
+            <SkeletonList count={6} label={t("common.loading")} />
+          </div>
+        }
+      >
         <Body />
       </Suspense>
     </PluginBoundary>

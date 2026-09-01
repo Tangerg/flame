@@ -170,12 +170,39 @@ createRoot(container).render(
 // `ready` waits for them. The two frames after are for the relayout that follows.
 const FIXTURE_FACES = ['1rem "Geist"', '1rem "JetBrains Mono"'];
 
+/**
+ * Wait for the shell to have finished arriving, not merely for two frames to pass.
+ *
+ * A workspace view body is its own chunk, so the first commit can be a Suspense skeleton.
+ * Measured here, the dock had three of its seven chrome bars when a two-frame gate fired
+ * and all seven shortly after — read by a spec as a missing surface, ~70% of runs. DOM
+ * quiescence does not help: the chunk fetch is a SILENT gap that looks settled. The
+ * boundary marks itself while it waits, so that is what to watch.
+ */
+function shellArrived(deadlineMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    const expiry = performance.now() + deadlineMs;
+    const check = () => {
+      const pending = rootElement.querySelector("[data-workspace-view-pending]");
+      if (!pending || performance.now() > expiry) resolve();
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
+}
+
+const ARRIVAL_DEADLINE_MS = 8000;
+
 void Promise.all(FIXTURE_FACES.map((face) => document.fonts.load(face)))
   .then(() => document.fonts.ready)
-  .then(() =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        rootElement.dataset.visualReady = "";
-      }),
-    ),
-  );
+  .then(() => shellArrived(ARRIVAL_DEADLINE_MS))
+  // Two more for the relayout that follows the last commit.
+  .then(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  )
+  .then(() => {
+    rootElement.dataset.visualReady = "";
+  });
