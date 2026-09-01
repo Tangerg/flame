@@ -43,6 +43,7 @@ const (
 	GoalRunBudgetReached       GoalReasonCode = "runBudgetReached"
 	GoalCostBudgetReached      GoalReasonCode = "costBudgetReached"
 	GoalStepBudgetReached      GoalReasonCode = "stepBudgetReached"
+	GoalPricingUnavailable     GoalReasonCode = "pricingUnavailable"
 	GoalBlockedByModel         GoalReasonCode = "blockedByModel"
 )
 
@@ -50,7 +51,7 @@ func (r GoalReasonCode) valid() bool {
 	switch r {
 	case GoalStoppedByUser, GoalRuntimeRestarted, GoalRunStartFailed, GoalAwaitingInput,
 		GoalTerminalOutcomeMissing, GoalRunNotCompleted, GoalRunBudgetReached,
-		GoalCostBudgetReached, GoalStepBudgetReached, GoalBlockedByModel:
+		GoalCostBudgetReached, GoalStepBudgetReached, GoalPricingUnavailable, GoalBlockedByModel:
 		return true
 	default:
 		return false
@@ -89,7 +90,7 @@ func newGoalReason(status GoalStatus, code GoalReasonCode, detail string) (GoalR
 		}
 	case GoalBlocked:
 		switch code {
-		case GoalRunBudgetReached, GoalCostBudgetReached, GoalStepBudgetReached:
+		case GoalRunBudgetReached, GoalCostBudgetReached, GoalStepBudgetReached, GoalPricingUnavailable:
 			if detail != "" {
 				return GoalReason{}, fmt.Errorf("goal reason %q must not carry detail", code)
 			}

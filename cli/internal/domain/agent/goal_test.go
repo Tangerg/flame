@@ -114,6 +114,15 @@ func TestGoalReasonAndBudgetMustMatchLifecycle(t *testing.T) {
 	}
 }
 
+func TestGoalAcceptsPricingUnavailableBlock(t *testing.T) {
+	snapshot := validGoalSnapshot()
+	snapshot.Status = GoalBlocked
+	snapshot.ReasonCode = GoalPricingUnavailable
+	if _, err := RestoreGoal(snapshot); err != nil {
+		t.Fatalf("RestoreGoal: %v", err)
+	}
+}
+
 func TestGoalStartResultMustFulfillTheCommand(t *testing.T) {
 	budget := limitedBudget(t, GoalBudgetLimits{MaxRuns: intLimit(3), MaxCostUSD: floatLimit(1.5), MaxSteps: intLimit(20)})
 	start := StartGoal{
