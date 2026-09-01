@@ -7,13 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"time"
 
 	skillspec "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // usageFile is the store-root sidecar holding per-skill usage. Its dot-prefixed
@@ -196,25 +196,18 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 	if err := contextError(ctx, "read skill usage"); err != nil {
 		return nil, err
 	}
-	file, err := root.Open(usageFile)
-	if errors.Is(err, fs.ErrNotExist) {
+	file, _, err := fileinput.OpenAt(root, usageFile, maxUsageMetadataBytes)
+	if errors.Is(err, os.ErrNotExist) {
 		return map[string]usageRecord{}, nil
+	}
+	if errors.Is(err, fileinput.ErrNotRegular) {
+		return nil, errors.New("skillauthoring: usage metadata is not a regular file")
+	}
+	if errors.Is(err, fileinput.ErrTooLarge) {
+		return nil, fmt.Errorf("%w: exceeds %d bytes", skills.ErrUsageTooLarge, maxUsageMetadataBytes)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)
-	}
-	info, statErr := file.Stat()
-	if statErr != nil {
-		return nil, errors.Join(fmt.Errorf("skillauthoring: inspect usage: %w", statErr), file.Close())
-	}
-	if !info.Mode().IsRegular() {
-		return nil, errors.Join(errors.New("skillauthoring: usage metadata is not a regular file"), file.Close())
-	}
-	if info.Size() > maxUsageMetadataBytes {
-		return nil, errors.Join(
-			fmt.Errorf("%w: %d bytes exceeds %d", skills.ErrUsageTooLarge, info.Size(), maxUsageMetadataBytes),
-			file.Close(),
-		)
 	}
 	data, readErr := io.ReadAll(io.LimitReader(
 		skillUsageContextReader{ctx: ctx, reader: file},

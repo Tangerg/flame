@@ -13,6 +13,7 @@ import (
 	sdk "github.com/Tangerg/scope/skills"
 
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // runtimeSkillSource is Runtime's finite admission boundary around the Agent
@@ -83,34 +84,21 @@ func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill,
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
 	defer func() { _ = root.Close() }()
-	file, err := root.Open(filepath.Join(name, sdk.SkillFile))
+	file, _, err := fileinput.OpenAt(root, filepath.Join(name, sdk.SkillFile), domainskills.MaxAuthoredSkillDocumentBytes)
 	if err != nil {
-		return nil, fmt.Errorf("runtime skill source: open %q: %w", name, err)
-	}
-	info, statErr := file.Stat()
-	if statErr != nil {
-		return nil, errors.Join(
-			fmt.Errorf("runtime skill source: inspect %q: %w", name, statErr),
-			file.Close(),
-		)
-	}
-	if !info.Mode().IsRegular() {
-		return nil, errors.Join(
-			fmt.Errorf("runtime skill source: %q is not a regular document", name),
-			file.Close(),
-		)
-	}
-	if info.Size() > domainskills.MaxAuthoredSkillDocumentBytes {
-		return nil, errors.Join(
-			fmt.Errorf(
-				"%w: %q is %d bytes; limit is %d",
+		switch {
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return nil, fmt.Errorf("runtime skill source: %q is not a regular document", name)
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return nil, fmt.Errorf(
+				"%w: %q exceeds %d bytes",
 				domainskills.ErrDocumentTooLarge,
 				name,
-				info.Size(),
 				domainskills.MaxAuthoredSkillDocumentBytes,
-			),
-			file.Close(),
-		)
+			)
+		default:
+			return nil, fmt.Errorf("runtime skill source: open %q: %w", name, err)
+		}
 	}
 	content, readErr := io.ReadAll(io.LimitReader(
 		skillSourceContextReader{ctx: ctx, reader: file},
