@@ -39,7 +39,10 @@ type WaitingSubtreeCancellationCommit struct {
 	ParentItem           ItemReplacement
 	ConversationMessages []corechat.Message
 	Resume               *rundomain.TreeResumeDraft
-	OpeningEvents        []EventCommit
+	// OpeningEvents are nested projections of this cancellation transaction.
+	// Their CommitID must remain zero because CommitID above owns the complete
+	// write-set receipt.
+	OpeningEvents []EventCommit
 }
 
 type WaitingSubtreeCancellationResult struct {
@@ -461,6 +464,9 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		surviving[runID] = struct{}{}
 	}
 	for index, event := range c.OpeningEvents {
+		if !event.CommitID.IsZero() {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d] carries a top-level event commit identity", index)
+		}
 		if err := event.Validate(); err != nil {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
 		}

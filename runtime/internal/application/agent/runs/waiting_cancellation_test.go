@@ -546,6 +546,32 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	if commit.CommitID.IsZero() || commit.RemainingPending != nil || commit.Resume == nil {
 		t.Fatalf("continuation commit = %+v, want a tree Resume", commit)
 	}
+	if err := commit.Validate(); err != nil {
+		t.Fatalf("continuation commit: %v", err)
+	}
+	rootSegmentID := ""
+	for _, draft := range commit.Resume.Runs {
+		if draft.RunID == commit.RootRunID {
+			rootSegmentID = draft.SegmentID
+			break
+		}
+	}
+	openingItem := testsupport.MustRestoreItem(testsupport.ItemInput{
+		SessionID: commit.SessionID, RunID: commit.RootRunID, ID: "item_resume_projection",
+		OccurredAt: time.Date(2026, 7, 30, 2, 3, 5, 0, time.UTC),
+	})
+	invalid := commit
+	invalid.OpeningEvents = []EventCommit{{
+		RunID: commit.RootRunID, SessionID: commit.SessionID, SegmentID: rootSegmentID,
+		Items: []transcript.Item{openingItem},
+	}}
+	if err := invalid.Validate(); err != nil {
+		t.Fatalf("waiting cancellation with opening projection: %v", err)
+	}
+	invalid.OpeningEvents[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
+	if err := invalid.Validate(); err == nil {
+		t.Fatal("waiting cancellation accepted a nested top-level event identity")
+	}
 	if _, live := coordinator.segments.lookup(plan.root.run.ID()); !live {
 		t.Fatal("continued root has no live segment owner")
 	}
