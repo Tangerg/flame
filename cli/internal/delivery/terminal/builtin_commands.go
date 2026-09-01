@@ -3,9 +3,9 @@ package terminal
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (
@@ -158,7 +158,7 @@ func availableWithGitWorkspaceService(a *app) CommandAvailability {
 	if unavailable := availableWithWorkspaceService(a); !unavailable.Enabled {
 		return unavailable
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureGit)
+	return availableWithRuntimeFeature(a, protocol.FeatureGit)
 }
 
 func availableWithSessionTransfer(a *app) CommandAvailability {
@@ -168,7 +168,7 @@ func availableWithSessionTransfer(a *app) CommandAvailability {
 	if a.transfers == nil {
 		return CommandAvailability{Reason: "this runtime composition has no session transfer service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureSessionExport)
+	return availableWithRuntimeFeature(a, protocol.FeatureSessionExport)
 }
 
 func availableWithUsage(a *app) CommandAvailability {
@@ -189,42 +189,42 @@ func availableWithGoals(a *app) CommandAvailability {
 	if a.goals == nil {
 		return CommandAvailability{Reason: "this runtime composition has no goal service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureGoals)
+	return availableWithRuntimeFeature(a, protocol.FeatureGoals)
 }
 
 func availableWithSkills(a *app) CommandAvailability {
 	if a.skills == nil {
 		return CommandAvailability{Reason: "this runtime composition has no skill service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureSkills)
+	return availableWithRuntimeFeature(a, protocol.FeatureSkills)
 }
 
 func availableWithMCP(a *app) CommandAvailability {
 	if a.mcp == nil {
 		return CommandAvailability{Reason: "this runtime composition has no MCP service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureMCP)
+	return availableWithRuntimeFeature(a, protocol.FeatureMCP)
 }
 
 func availableWithSchedules(a *app) CommandAvailability {
 	if a.schedules == nil {
 		return CommandAvailability{Reason: "this runtime composition has no schedule service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureSchedules)
+	return availableWithRuntimeFeature(a, protocol.FeatureSchedules)
 }
 
 func availableWithAgentMemory(a *app) CommandAvailability {
 	if a.agentMemory == nil {
 		return CommandAvailability{Reason: "this runtime composition has no agent memory service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureAgentMemory)
+	return availableWithRuntimeFeature(a, protocol.FeatureAgentMemory)
 }
 
 func availableWithKnowledge(a *app) CommandAvailability {
 	if a.knowledge == nil {
 		return CommandAvailability{Reason: "this runtime composition has no knowledge service"}
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureKnowledge)
+	return availableWithRuntimeFeature(a, protocol.FeatureKnowledge)
 }
 
 func availableWithDiagnosticTools(a *app) CommandAvailability {
@@ -266,7 +266,7 @@ func availableForRelocation(a *app) CommandAvailability {
 	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled {
 		return unavailable
 	}
-	return availableWithRuntimeFeature(a, runtimebinding.FeatureRelocate)
+	return availableWithRuntimeFeature(a, protocol.FeatureRelocate)
 }
 
 func availableForRollback(a *app) CommandAvailability {

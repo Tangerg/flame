@@ -123,8 +123,8 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
 		RunEvents: []string{"segment.started"}, RuntimeTopics: []string{"files.changed"},
 		StreamingMethods: []string{"runs.start"},
-		Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
-			runtimebinding.FeatureMCP: {Enabled: true},
+		Features: map[string]runtimebinding.Feature{
+			protocol.FeatureMCP: {Enabled: true},
 		},
 		Limits: runtimebinding.Limits{
 			RunConcurrency:                   boundedRunConcurrency(t, 4),

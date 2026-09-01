@@ -94,8 +94,8 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 		return err
 	}
 	if r.includeDescendants && profile != nil &&
-		!profile.Supports(runtimebinding.FeatureSubagents) {
-		return fmt.Errorf("runtime capability %q was not negotiated", runtimebinding.FeatureSubagents)
+		!profile.Supports(protocol.FeatureSubagents) {
+		return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureSubagents)
 	}
 	page, err := runtime.ListRuns(cmd.Context(), query)
 	if err != nil {
@@ -281,7 +281,7 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		includeDescendants := profile == nil ||
-			profile.Supports(runtimebinding.FeatureSubagents)
+			profile.Supports(protocol.FeatureSubagents)
 		page, err := runtime.ListRuns(cmd.Context(), agent.RunQuery{
 			IncludeDescendants: includeDescendants, PageSize: agent.MaximumPageSize(),
 		})

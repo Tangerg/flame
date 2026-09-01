@@ -194,20 +194,20 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 }
 
 func TestConnectionProfileControlsOptionalAdapterAvailability(t *testing.T) {
-	runtime := &Connection{profile: Profile{Features: map[FeatureName]Feature{
-		FeatureSkills: {Enabled: true}, FeatureMCP: {Enabled: true},
-		FeatureSchedules: {Enabled: true}, FeatureAgentMemory: {Enabled: true},
-		FeatureKnowledge: {Enabled: true}, FeatureSessionExport: {Enabled: true},
+	runtime := &Connection{profile: Profile{Features: map[string]Feature{
+		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
+		protocol.FeatureSchedules: {Enabled: true}, protocol.FeatureAgentMemory: {Enabled: true},
+		protocol.FeatureKnowledge: {Enabled: true}, protocol.FeatureSessionExport: {Enabled: true},
 	}}}
 	profile := runtime.Profile()
-	if !profile.Supports(FeatureSkills) || !profile.Supports(FeatureMCP) ||
-		!profile.Supports(FeatureSchedules) || profile.Supports(FeatureGoals) {
+	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
+		!profile.Supports(protocol.FeatureSchedules) || profile.Supports(protocol.FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Features)
 	}
 	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
 		t.Fatal("advertised context adapters were not exposed")
 	}
-	runtime.profile.Features[FeatureAgentMemory] = Feature{}
+	runtime.profile.Features[protocol.FeatureAgentMemory] = Feature{}
 	if runtime.AgentMemory() != nil {
 		t.Fatal("unadvertised agent memory exposed an adapter")
 	}

@@ -122,7 +122,7 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 		return agent.Session{}, err
 	}
 	if input.Workspace != nil {
-		if err := r.requireFeature(FeatureRelocate); err != nil {
+		if err := r.requireFeature(protocol.FeatureRelocate); err != nil {
 			return agent.Session{}, err
 		}
 	}

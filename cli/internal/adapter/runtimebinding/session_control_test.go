@@ -24,8 +24,8 @@ type sessionBindingStub struct {
 	imported func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error)
 }
 
-func sessionControlProfile(features ...FeatureName) Profile {
-	profile := Profile{Features: make(map[FeatureName]Feature, len(features))}
+func sessionControlProfile(features ...string) Profile {
+	profile := Profile{Features: make(map[string]Feature, len(features))}
 	for _, feature := range features {
 		profile.Features[feature] = Feature{Enabled: true}
 	}
@@ -68,7 +68,7 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(FeatureCheckpoints),
+		profile: sessionControlProfile(protocol.FeatureCheckpoints),
 	}
 	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
 		CommandID: commandID, SessionID: "ses_1", ToRunID: "run_1", Scope: protocol.RestoreBoth,
@@ -105,7 +105,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(FeatureSessionExport),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
 	}
 	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: protocol.RestoreHistory})
 	requireRuntimeContractViolation(t, err)
@@ -130,7 +130,7 @@ func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(FeatureSessionExport),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
 	}
 	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatMarkdown})
 	if err != nil || string(markdown.Bytes()) != "# Runtime transcript" {
@@ -164,7 +164,7 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 			Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 		}},
 		meta:    requestMeta("test"),
-		profile: sessionControlProfile(FeatureSessionExport),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","reasoningEffort":"high","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
 	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(artifactJSON))
@@ -244,7 +244,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 					Availability: protocol.WorkspaceAvailable,
 				}},
 				meta:    requestMeta("test"),
-				profile: sessionControlProfile(FeatureSessionExport),
+				profile: sessionControlProfile(protocol.FeatureSessionExport),
 			}
 			_, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
 			requireRuntimeContractViolation(t, err)

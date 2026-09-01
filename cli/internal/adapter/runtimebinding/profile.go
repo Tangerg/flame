@@ -34,7 +34,7 @@ func projectRuntimeProfile(
 		RunEvents:        make([]string, 0, len(discovery.Capabilities.RunEvents)),
 		RuntimeTopics:    make([]string, 0, len(discovery.Capabilities.RuntimeTopics)),
 		StreamingMethods: append([]string(nil), discovery.Capabilities.StreamingMethods...),
-		Features:         make(map[FeatureName]Feature, len(discovery.Capabilities.Features)),
+		Features:         make(map[string]Feature, len(discovery.Capabilities.Features)),
 		Limits: Limits{
 			RunConcurrency: runConcurrency,
 			CommandReplay:  commandReplay,
@@ -58,7 +58,7 @@ func projectRuntimeProfile(
 	}
 	for name, feature := range discovery.Capabilities.Features {
 		requested := client != nil && client.Features[name].Enabled
-		profile.Features[FeatureName(name)] = Feature{
+		profile.Features[name] = Feature{
 			Enabled:     feature.Enabled,
 			ClientOptIn: feature.ClientOptIn, ClientRequested: requested,
 			RequiredByRunProtocol: feature.RequiredByRunProtocol,

@@ -54,12 +54,12 @@ func snapshotSession(revision uint64) *protocol.Session {
 	}
 }
 
-func snapshotProfile(features ...FeatureName) Profile {
-	profile := Profile{Features: make(map[FeatureName]Feature)}
+func snapshotProfile(features ...string) Profile {
+	profile := Profile{Features: make(map[string]Feature)}
 	for _, feature := range features {
 		profile.Features[feature] = Feature{
-			Enabled: true, ClientOptIn: feature == FeatureSubagents,
-			ClientRequested: feature == FeatureSubagents,
+			Enabled: true, ClientOptIn: feature == protocol.FeatureSubagents,
+			ClientRequested: feature == protocol.FeatureSubagents,
 		}
 	}
 	return profile
@@ -73,7 +73,7 @@ func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
 			}
 			profile := snapshotProfile()
 			if enabled {
-				profile = snapshotProfile(FeatureSubagents)
+				profile = snapshotProfile(protocol.FeatureSubagents)
 			}
 			runtime := &Connection{snapshot: stub, profile: profile, meta: requestMeta("test")}
 			if _, err := runtime.GetSession(t.Context(), "ses_1"); err != nil {
@@ -100,10 +100,10 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 		{name: "disabled and absent", profile: snapshotProfile()},
 		{name: "disabled but present", profile: snapshotProfile(), plan: &protocol.Plan{}, wantErr: true},
 		{
-			name: "enabled and present", profile: snapshotProfile(FeaturePlan),
+			name: "enabled and present", profile: snapshotProfile(protocol.FeaturePlan),
 			plan: &protocol.Plan{SessionID: "ses_1"},
 		},
-		{name: "enabled but absent", profile: snapshotProfile(FeaturePlan), wantErr: true},
+		{name: "enabled but absent", profile: snapshotProfile(protocol.FeaturePlan), wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 		snapshot: &protocol.SessionSnapshot{Goal: goal},
 	}
 	runtime := &Connection{
-		snapshot: stub, profile: snapshotProfile(FeatureGoals), meta: requestMeta("test"),
+		snapshot: stub, profile: snapshotProfile(protocol.FeatureGoals), meta: requestMeta("test"),
 	}
 
 	snapshot, err := runtime.GetSession(t.Context(), "ses_1")

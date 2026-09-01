@@ -348,14 +348,14 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 func (r *Connection) Profile() Profile { return r.profile.Clone() }
 
 func (r *Connection) AgentMemory() *AgentMemory {
-	if !r.supportsFeature(FeatureAgentMemory) {
+	if !r.supportsFeature(protocol.FeatureAgentMemory) {
 		return nil
 	}
 	return &AgentMemory{runtime: r}
 }
 
 func (r *Connection) Knowledge() *Knowledge {
-	if !r.supportsFeature(FeatureKnowledge) {
+	if !r.supportsFeature(protocol.FeatureKnowledge) {
 		return nil
 	}
 	return &Knowledge{runtime: r}
@@ -377,11 +377,11 @@ func (r *Connection) Feedback() *Feedback {
 	return &Feedback{runtime: r}
 }
 
-func (r *Connection) supportsFeature(name FeatureName) bool {
+func (r *Connection) supportsFeature(name string) bool {
 	return r.profile.Supports(name)
 }
 
-func (r *Connection) requireFeature(name FeatureName) error {
+func (r *Connection) requireFeature(name string) error {
 	if r.supportsFeature(name) {
 		return nil
 	}

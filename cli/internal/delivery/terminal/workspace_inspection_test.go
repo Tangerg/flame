@@ -579,13 +579,13 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	t.Parallel()
 
-	features := map[runtimebinding.FeatureName]runtimebinding.Feature{
-		runtimebinding.FeaturePlan:      {},
-		runtimebinding.FeatureGoals:     {},
-		runtimebinding.FeatureSkills:    {},
-		runtimebinding.FeatureMCP:       {},
-		runtimebinding.FeatureSchedules: {},
-		runtimebinding.FeatureKnowledge: {},
+	features := map[string]runtimebinding.Feature{
+		protocol.FeaturePlan:      {},
+		protocol.FeatureGoals:     {},
+		protocol.FeatureSkills:    {},
+		protocol.FeatureMCP:       {},
+		protocol.FeatureSchedules: {},
+		protocol.FeatureKnowledge: {},
 	}
 	profile := runtimebinding.Profile{Features: features}
 	application := &app{

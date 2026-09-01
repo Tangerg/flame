@@ -128,7 +128,7 @@ func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimebinding.FeatureSubagents] = runtimebinding.Feature{
+	profile.Features[protocol.FeatureSubagents] = runtimebinding.Feature{
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
@@ -320,7 +320,7 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimebinding.FeatureSubagents] = runtimebinding.Feature{
+	profile.Features[protocol.FeatureSubagents] = runtimebinding.Feature{
 		ClientOptIn: true,
 	}
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}

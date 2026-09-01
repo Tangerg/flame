@@ -970,7 +970,7 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profi
 		Server: runtimebinding.Server{
 			Name: "steer-test", Version: "1.0.0", DefaultWorkspace: workspace, Home: workspace,
 		},
-		Features: map[runtimebinding.FeatureName]runtimebinding.Feature{},
+		Features: map[string]runtimebinding.Feature{},
 		Limits: runtimebinding.Limits{
 			RunConcurrency: boundedRunConcurrency(t, 1),
 			CommandReplay:  testCommandReplay(t, terminalTestReplayNamespace, 10*time.Minute),

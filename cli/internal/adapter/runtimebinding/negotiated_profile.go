@@ -21,31 +21,6 @@ type Server struct {
 	Home             string `json:"home"`
 }
 
-// FeatureName is the runtime capability vocabulary the CLI currently knows how
-// to consume. Discovery may still carry newer names; FeatureName remains a
-// string so the profile can preserve and report them without interpreting them.
-type FeatureName string
-
-const (
-	FeatureReasoning     FeatureName = "reasoning"
-	FeatureMultimodal    FeatureName = "multimodal"
-	FeatureCompaction    FeatureName = "compaction"
-	FeaturePlan          FeatureName = "plan"
-	FeatureGoals         FeatureName = "goals"
-	FeatureAgentMemory   FeatureName = "agentMemory"
-	FeatureKnowledge     FeatureName = "knowledge"
-	FeatureSkills        FeatureName = "skills"
-	FeatureMCP           FeatureName = "mcp"
-	FeatureSchedules     FeatureName = "schedules"
-	FeatureGit           FeatureName = "git"
-	FeatureCheckpoints   FeatureName = "checkpoints"
-	FeatureFileWatch     FeatureName = "fileWatch"
-	FeatureLSP           FeatureName = "lsp"
-	FeatureSessionExport FeatureName = "sessionExport"
-	FeatureRelocate      FeatureName = "relocate"
-	FeatureSubagents     FeatureName = "subagents"
-)
-
 type Feature struct {
 	Enabled               bool `json:"enabled"`
 	ClientOptIn           bool `json:"clientOptIn"`
@@ -81,13 +56,13 @@ type Limits struct {
 // Profile is the complete, CLI-owned projection of one successful runtime
 // discovery. It is immutable by convention; Clone crosses ownership boundaries.
 type Profile struct {
-	Protocol         Protocol                `json:"protocol"`
-	Server           Server                  `json:"server"`
-	RunEvents        []string                `json:"runEvents"`
-	RuntimeTopics    []string                `json:"runtimeTopics"`
-	StreamingMethods []string                `json:"streamingMethods"`
-	Features         map[FeatureName]Feature `json:"features"`
-	Limits           Limits                  `json:"limits"`
+	Protocol         Protocol           `json:"protocol"`
+	Server           Server             `json:"server"`
+	RunEvents        []string           `json:"runEvents"`
+	RuntimeTopics    []string           `json:"runtimeTopics"`
+	StreamingMethods []string           `json:"streamingMethods"`
+	Features         map[string]Feature `json:"features"`
+	Limits           Limits             `json:"limits"`
 }
 
 func (p Profile) Clone() Profile {
@@ -164,7 +139,7 @@ func validateUniqueStrings(name string, values []string) error {
 	return nil
 }
 
-func (p Profile) Supports(feature FeatureName) bool {
+func (p Profile) Supports(feature string) bool {
 	return p.Features[feature].Available()
 }
 

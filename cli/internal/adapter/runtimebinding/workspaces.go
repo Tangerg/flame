@@ -71,7 +71,7 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 }
 
 func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Change, error) {
-	if err := r.requireFeature(FeatureGit); err != nil {
+	if err := r.requireFeature(protocol.FeatureGit); err != nil {
 		return nil, err
 	}
 	page, err := r.workspaces.ListWorkspaceFileChanges(ctx, protocol.WorkspaceQuery{
@@ -99,7 +99,7 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 	if err := request.Validate(); err != nil {
 		return workspace.Diff{}, err
 	}
-	if err := r.requireFeature(FeatureGit); err != nil {
+	if err := r.requireFeature(protocol.FeatureGit); err != nil {
 		return workspace.Diff{}, err
 	}
 	var rowLimit *int

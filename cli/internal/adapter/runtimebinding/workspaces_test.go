@@ -48,8 +48,8 @@ func TestWorkspaceAdapterProjectsVersionControlUnavailability(t *testing.T) {
 	stub := &workspaceBindingStub{changesErr: protocol.ErrVcsUnavailable}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
-		profile: Profile{Features: map[FeatureName]Feature{
-			FeatureGit: {Enabled: true},
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureGit: {Enabled: true},
 		}},
 	}
 
@@ -110,8 +110,8 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
-		profile: Profile{Features: map[FeatureName]Feature{
-			FeatureGit: {Enabled: true},
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureGit: {Enabled: true},
 		}},
 	}
 
@@ -233,8 +233,8 @@ func TestWorkspaceUnpageableListsRejectContinuation(t *testing.T) {
 			t.Parallel()
 			runtime := &Connection{workspaces: test.stub, meta: requestMeta("test")}
 			if test.name == "changes" {
-				runtime.profile.Features = map[FeatureName]Feature{
-					FeatureGit: {Enabled: true},
+				runtime.profile.Features = map[string]Feature{
+					protocol.FeatureGit: {Enabled: true},
 				}
 			}
 			err := test.call(t.Context(), runtime)

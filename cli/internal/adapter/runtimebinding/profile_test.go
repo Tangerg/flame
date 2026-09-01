@@ -31,7 +31,7 @@ func TestRuntimeProfileProjectionPreservesCompleteDiscovery(t *testing.T) {
 		len(profile.StreamingMethods) != len(discovery.Capabilities.StreamingMethods) {
 		t.Fatalf("runtime profile = %+v", profile)
 	}
-	feature := profile.Features[FeatureMCP]
+	feature := profile.Features[protocol.FeatureMCP]
 	if !feature.Enabled || !feature.ClientOptIn ||
 		!feature.ClientRequested || !feature.RequiredByRunProtocol || !feature.Available() {
 		t.Fatalf("MCP profile = %+v", feature)

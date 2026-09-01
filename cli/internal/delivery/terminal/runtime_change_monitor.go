@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const workspaceWatchID = "flame-active-workspace"
@@ -18,7 +18,7 @@ func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
 	workspacePath := a.session.current.Workspace.Path
 	var repository WorkspaceChanges
-	if a.runtimeSupports(runtimebinding.FeatureGit) {
+	if a.runtimeSupports(protocol.FeatureGit) {
 		repository = a.workspaces
 	}
 	if repository == nil && a.changes == nil {
@@ -30,7 +30,7 @@ func (a *app) followRuntimeChanges() {
 			workspace: workspacePath, repository: repository, source: a.changes,
 			recovery:           runtimeRecoveryBackoff,
 			subscriptionLimits: a.runtimeChangeSubscriptionLimits(),
-			watchFiles:         a.runtimeSupports(runtimebinding.FeatureFileWatch),
+			watchFiles:         a.runtimeSupports(protocol.FeatureFileWatch),
 			resources:          a.observedRuntimeResources(),
 			applyFiles: func(changes []workspace.Change) error {
 				return post(ctx, dispatcher, func() {
@@ -108,16 +108,16 @@ func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
 
 func (a *app) observedRuntimeResources() runtimeResourceObservation {
 	return runtimeResourceObservation{
-		plan:        a.runtimeSupports(runtimebinding.FeaturePlan),
-		goals:       a.goals != nil && a.runtimeSupports(runtimebinding.FeatureGoals),
-		skills:      a.skills != nil && a.runtimeSupports(runtimebinding.FeatureSkills),
-		mcp:         a.mcp != nil && a.runtimeSupports(runtimebinding.FeatureMCP),
-		schedules:   a.schedules != nil && a.runtimeSupports(runtimebinding.FeatureSchedules),
-		knowledge:   a.knowledge != nil && a.runtimeSupports(runtimebinding.FeatureKnowledge),
+		plan:        a.runtimeSupports(protocol.FeaturePlan),
+		goals:       a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
+		skills:      a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
+		mcp:         a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
+		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeatureSchedules),
+		knowledge:   a.knowledge != nil && a.runtimeSupports(protocol.FeatureKnowledge),
 		hooks:       a.hooks != nil,
 		models:      true,
 		approvals:   true,
-		agentMemory: a.agentMemory != nil && a.runtimeSupports(runtimebinding.FeatureAgentMemory),
+		agentMemory: a.agentMemory != nil && a.runtimeSupports(protocol.FeatureAgentMemory),
 	}
 }
 

@@ -113,7 +113,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 func (r *Connection) requireInputCapabilities(message agent.Message) error {
 	for _, attachment := range message.Attachments {
 		if attachment.Kind == protocol.ContentBlockImage {
-			return r.requireFeature(FeatureMultimodal)
+			return r.requireFeature(protocol.FeatureMultimodal)
 		}
 	}
 	return nil

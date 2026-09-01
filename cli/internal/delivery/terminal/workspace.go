@@ -13,11 +13,11 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type workspaceChoice struct {
@@ -195,7 +195,7 @@ func (a *app) createSessionInWorkspace(requested string) error {
 }
 
 func (a *app) RelocateSession(requested string) error {
-	if err := a.requireRuntimeFeature(runtimebinding.FeatureRelocate); err != nil {
+	if err := a.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
 		return err
 	}
 	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)

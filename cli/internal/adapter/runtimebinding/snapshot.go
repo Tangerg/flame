@@ -85,7 +85,7 @@ func sessionProjectionEqual(left, right protocol.Session) bool {
 
 func (r *Connection) readMaterialSnapshot(ctx context.Context, sessionID string) (coldRead, error) {
 	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{
-		SessionID: sessionID, IncludeDescendants: r.profile.Supports(FeatureSubagents),
+		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
 	}, r.callOptions())
 	if err != nil {
 		return coldRead{}, classifyError(err)
@@ -93,14 +93,14 @@ func (r *Connection) readMaterialSnapshot(ctx context.Context, sessionID string)
 	if snapshot == nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot returned nil")
 	}
-	planEnabled := r.profile.Supports(FeaturePlan)
+	planEnabled := r.profile.Supports(protocol.FeaturePlan)
 	if planEnabled && snapshot.Plan == nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot omitted plan while the plan feature is enabled")
 	}
 	if !planEnabled && snapshot.Plan != nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot returned plan while the plan feature is disabled")
 	}
-	if !r.profile.Supports(FeatureGoals) && snapshot.Goal != nil {
+	if !r.profile.Supports(protocol.FeatureGoals) && snapshot.Goal != nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot returned goal while the goals feature is disabled")
 	}
 	return coldRead{

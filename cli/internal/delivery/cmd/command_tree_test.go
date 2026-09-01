@@ -705,7 +705,7 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 		t.Fatal(err)
 	}
 	profile := commandRuntimeProfile(t)
-	profile.Features[runtimebinding.FeatureRelocate] = runtimebinding.Feature{}
+	profile.Features[protocol.FeatureRelocate] = runtimebinding.Feature{}
 	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return base, new(profile.Clone()), nil
 	}}

@@ -38,8 +38,8 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 		changes: stub, meta: requestMeta("test"),
 		profile: changefeedProfile(changefeed.FilesChanged),
 	}
-	runtime.profile.Features = map[FeatureName]Feature{
-		FeatureFileWatch: {Enabled: true},
+	runtime.profile.Features = map[string]Feature{
+		protocol.FeatureFileWatch: {Enabled: true},
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
 		Topics:  []changefeed.Topic{changefeed.FilesChanged},
@@ -137,8 +137,8 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 				profile: changefeedProfile(changefeed.FilesChanged, changefeed.SessionsChanged, changefeed.RunsChanged),
 			}
 			if len(test.subscription.Watches) != 0 {
-				runtime.profile.Features = map[FeatureName]Feature{
-					FeatureFileWatch: {Enabled: true},
+				runtime.profile.Features = map[string]Feature{
+					protocol.FeatureFileWatch: {Enabled: true},
 				}
 			}
 			stream, err := runtime.Subscribe(t.Context(), test.subscription)

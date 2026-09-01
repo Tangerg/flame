@@ -26,7 +26,7 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 		return nil, err
 	}
 	if len(subscription.Watches) != 0 {
-		if err := r.requireFeature(FeatureFileWatch); err != nil {
+		if err := r.requireFeature(protocol.FeatureFileWatch); err != nil {
 			return nil, err
 		}
 	}

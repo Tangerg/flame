@@ -30,7 +30,7 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 		return agent.RollbackResult{}, err
 	}
 	if input.RestoresFiles() {
-		if err := r.requireFeature(FeatureCheckpoints); err != nil {
+		if err := r.requireFeature(protocol.FeatureCheckpoints); err != nil {
 			return agent.RollbackResult{}, err
 		}
 	}
@@ -100,7 +100,7 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 	if err := request.Validate(); err != nil {
 		return session.Document{}, err
 	}
-	if err := r.requireFeature(FeatureSessionExport); err != nil {
+	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
 		return session.Document{}, err
 	}
 	response, err := r.sessions.ExportSession(ctx, protocol.ExportSessionRequest{
@@ -151,7 +151,7 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err := request.Validate(); err != nil {
 		return agent.Session{}, err
 	}
-	if err := r.requireFeature(FeatureSessionExport); err != nil {
+	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
 		return agent.Session{}, err
 	}
 	var artifact protocol.SessionArtifact

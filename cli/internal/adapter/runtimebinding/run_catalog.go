@@ -42,7 +42,7 @@ func (r *Connection) ListRuns(ctx context.Context, query agent.RunQuery) (agent.
 		return agent.RunPage{}, err
 	}
 	if query.IncludeDescendants {
-		if err := r.requireFeature(FeatureSubagents); err != nil {
+		if err := r.requireFeature(protocol.FeatureSubagents); err != nil {
 			return agent.RunPage{}, err
 		}
 	}

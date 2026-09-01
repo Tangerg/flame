@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
 
@@ -50,7 +49,7 @@ func (a *app) copyLastAssistant() error {
 }
 
 func (a *app) exportSession(argument string) error {
-	if err := a.requireRuntimeFeature(runtimebinding.FeatureSessionExport); err != nil {
+	if err := a.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
 		return err
 	}
 	format, filename, err := parseExportArgument(argument)

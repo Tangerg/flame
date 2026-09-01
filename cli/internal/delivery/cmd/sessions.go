@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func newSessionsCommand(provider runtimeProvider, stateDirectory string) *cobra.Command {
@@ -78,8 +79,8 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			if update.Workspace != nil && profile != nil &&
-				!profile.Supports(runtimebinding.FeatureRelocate) {
-				return fmt.Errorf("runtime capability %q was not negotiated", runtimebinding.FeatureRelocate)
+				!profile.Supports(protocol.FeatureRelocate) {
+				return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureRelocate)
 			}
 			updated, err := session.Update(cmd.Context(), runtime, update)
 			if err != nil {

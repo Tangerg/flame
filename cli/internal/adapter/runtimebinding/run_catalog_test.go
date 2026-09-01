@@ -52,8 +52,8 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	runtime := &Connection{
 		runCatalog: stub, meta: requestMeta("test"),
-		profile: Profile{Features: map[FeatureName]Feature{
-			FeatureSubagents: {
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureSubagents: {
 				Enabled: true, ClientOptIn: true, ClientRequested: true,
 			},
 		}},

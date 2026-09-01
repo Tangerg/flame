@@ -134,10 +134,10 @@ func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	t.Parallel()
 
-	profile := runtimebinding.Profile{Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
-		runtimebinding.FeatureGit:           {},
-		runtimebinding.FeatureRelocate:      {},
-		runtimebinding.FeatureSessionExport: {},
+	profile := runtimebinding.Profile{Features: map[string]runtimebinding.Feature{
+		protocol.FeatureGit:           {},
+		protocol.FeatureRelocate:      {},
+		protocol.FeatureSessionExport: {},
 	}}
 	application := &app{
 		runtimeProfile: &profile,
@@ -166,13 +166,13 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.T) {
 	t.Parallel()
 
-	features := map[runtimebinding.FeatureName]runtimebinding.Feature{
-		runtimebinding.FeatureGoals:       {},
-		runtimebinding.FeatureSkills:      {},
-		runtimebinding.FeatureMCP:         {},
-		runtimebinding.FeatureSchedules:   {},
-		runtimebinding.FeatureAgentMemory: {},
-		runtimebinding.FeatureKnowledge:   {},
+	features := map[string]runtimebinding.Feature{
+		protocol.FeatureGoals:       {},
+		protocol.FeatureSkills:      {},
+		protocol.FeatureMCP:         {},
+		protocol.FeatureSchedules:   {},
+		protocol.FeatureAgentMemory: {},
+		protocol.FeatureKnowledge:   {},
 	}
 	profile := runtimebinding.Profile{Features: features}
 	application := &app{
@@ -184,13 +184,13 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		agentMemory:    newAgentMemoryServiceStub(),
 		knowledge:      newKnowledgeServiceStub(),
 	}
-	checks := map[runtimebinding.FeatureName]func(*app) CommandAvailability{
-		runtimebinding.FeatureGoals:       availableWithGoals,
-		runtimebinding.FeatureSkills:      availableWithSkills,
-		runtimebinding.FeatureMCP:         availableWithMCP,
-		runtimebinding.FeatureSchedules:   availableWithSchedules,
-		runtimebinding.FeatureAgentMemory: availableWithAgentMemory,
-		runtimebinding.FeatureKnowledge:   availableWithKnowledge,
+	checks := map[string]func(*app) CommandAvailability{
+		protocol.FeatureGoals:       availableWithGoals,
+		protocol.FeatureSkills:      availableWithSkills,
+		protocol.FeatureMCP:         availableWithMCP,
+		protocol.FeatureSchedules:   availableWithSchedules,
+		protocol.FeatureAgentMemory: availableWithAgentMemory,
+		protocol.FeatureKnowledge:   availableWithKnowledge,
 	}
 	for feature, check := range checks {
 		if availability := check(application); availability.Enabled || !strings.Contains(availability.Reason, "was not negotiated") {
@@ -215,8 +215,8 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *testing.T) {
 	t.Parallel()
 
-	application := &app{runtimeProfile: &runtimebinding.Profile{Features: map[runtimebinding.FeatureName]runtimebinding.Feature{
-		runtimebinding.FeatureMultimodal: {Enabled: false},
+	application := &app{runtimeProfile: &runtimebinding.Profile{Features: map[string]runtimebinding.Feature{
+		protocol.FeatureMultimodal: {Enabled: false},
 	}}}
 	text := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {

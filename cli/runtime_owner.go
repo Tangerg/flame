@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal/sideload"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
@@ -65,19 +66,19 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 		PluginSources:  []extensions.Source{sideload.New(configured.Plugins.Directories)},
 		StateDirectory: request.StateDirectory,
 	}
-	if profile.Supports(runtimebinding.FeatureGoals) {
+	if profile.Supports(protocol.FeatureGoals) {
 		cfg.Goals = connection
 	}
-	if profile.Supports(runtimebinding.FeatureSkills) {
+	if profile.Supports(protocol.FeatureSkills) {
 		cfg.Skills = connection
 	}
-	if profile.Supports(runtimebinding.FeatureMCP) {
+	if profile.Supports(protocol.FeatureMCP) {
 		cfg.MCP = connection
 	}
-	if profile.Supports(runtimebinding.FeatureSchedules) {
+	if profile.Supports(protocol.FeatureSchedules) {
 		cfg.Schedules = connection
 	}
-	if profile.Supports(runtimebinding.FeatureSessionExport) {
+	if profile.Supports(protocol.FeatureSessionExport) {
 		cfg.Transfers = connection
 	}
 	return terminal.Run(ctx, cfg)

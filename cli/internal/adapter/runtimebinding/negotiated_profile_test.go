@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestProfileOwnsCapabilityCollectionsAndAnswersGates(t *testing.T) {
@@ -15,7 +16,7 @@ func TestProfileOwnsCapabilityCollectionsAndAnswersGates(t *testing.T) {
 	if err := profile.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if !profile.Supports(FeatureMCP) || profile.Supports(FeatureSchedules) || !profile.SupportsRuntimeTopic("files.changed") {
+	if !profile.Supports(protocol.FeatureMCP) || profile.Supports(protocol.FeatureSchedules) || !profile.SupportsRuntimeTopic("files.changed") {
 		t.Fatalf("profile gates = %+v", profile)
 	}
 	if names := profile.AvailableFeatureNames(); len(names) != 1 || names[0] != "mcp" {
@@ -37,13 +38,13 @@ func TestProfileRequiresClientAgreementForOptInFeatures(t *testing.T) {
 
 	profile := validProfile(t)
 	profile.Features["subagents"] = Feature{Enabled: true, ClientOptIn: true}
-	if profile.Supports(FeatureSubagents) {
+	if profile.Supports(protocol.FeatureSubagents) {
 		t.Fatal("server support bypassed the client opt-in requirement")
 	}
 	feature := profile.Features["subagents"]
 	feature.ClientRequested = true
 	profile.Features["subagents"] = feature
-	if !profile.Supports(FeatureSubagents) {
+	if !profile.Supports(protocol.FeatureSubagents) {
 		t.Fatal("negotiated opt-in feature was unavailable")
 	}
 }
@@ -117,9 +118,9 @@ func validProfile(t *testing.T) Profile {
 		RunEvents:        []string{"segment.started"},
 		RuntimeTopics:    []string{"files.changed"},
 		StreamingMethods: []string{"runs.start"},
-		Features: map[FeatureName]Feature{
-			FeatureMCP:       {Enabled: true},
-			FeatureSchedules: {},
+		Features: map[string]Feature{
+			protocol.FeatureMCP:       {Enabled: true},
+			protocol.FeatureSchedules: {},
 		},
 		Limits: Limits{
 			RunConcurrency:                   boundedRunConcurrency(t, 4),

@@ -201,8 +201,8 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 			Availability: protocol.WorkspaceAvailable,
 		}},
 		meta: requestMeta("test"),
-		profile: Profile{Features: map[FeatureName]Feature{
-			FeatureRelocate: {Enabled: true},
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureRelocate: {Enabled: true},
 		}},
 	}
 	updated, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
@@ -274,8 +274,8 @@ func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testi
 					Availability: protocol.WorkspaceAvailable,
 				}},
 				meta: requestMeta("test"),
-				profile: Profile{Features: map[FeatureName]Feature{
-					FeatureRelocate: {Enabled: true},
+				profile: Profile{Features: map[string]Feature{
+					protocol.FeatureRelocate: {Enabled: true},
 				}},
 			}
 			_, err := runtime.UpdateSession(t.Context(), request)
@@ -318,8 +318,8 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessionCatalog: catalog, workspaces: resolved, meta: requestMeta("test"),
-		profile: Profile{Features: map[FeatureName]Feature{
-			FeatureRelocate: {Enabled: true},
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureRelocate: {Enabled: true},
 		}},
 	}
 	if _, err := runtime.CreateSession(t.Context(), agent.CreateSession{
