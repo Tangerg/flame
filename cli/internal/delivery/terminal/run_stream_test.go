@@ -112,10 +112,11 @@ type refusingFirstCommandRuntime struct {
 type invalidAcceptedStartRuntime struct {
 	Runtime
 
-	mu            sync.Mutex
-	starts        []agent.StartRun
-	cancellations []agent.CancelRun
-	refuseFirst   bool
+	mu             sync.Mutex
+	starts         []agent.StartRun
+	cancellations  []agent.CancelRun
+	refuseFirst    bool
+	refreshFailure error
 }
 
 func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
@@ -141,6 +142,17 @@ func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent
 		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
 	}
 	return i.Runtime.CancelRun(ctx, input)
+}
+
+func (i *invalidAcceptedStartRuntime) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+	i.mu.Lock()
+	failure := i.refreshFailure
+	canceled := len(i.cancellations) > 0
+	i.mu.Unlock()
+	if canceled && failure != nil {
+		return agent.SessionSnapshot{}, failure
+	}
+	return i.Runtime.GetSession(ctx, sessionID)
 }
 
 func (i *invalidAcceptedStartRuntime) attempts() ([]agent.StartRun, []agent.CancelRun) {
@@ -426,6 +438,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("malformed accepted receipt left a runtime run active: %+v", snapshot.Runs)
 	}
+	host.Shows(t, starts[0].Message.Text)
 	stop()
 }
 
@@ -450,7 +463,32 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	stop()
 }
 
-func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t *testing.T) {
+func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testing.T) {
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+		}}}
+	}
+	runtime := &invalidAcceptedStartRuntime{
+		Runtime: base, refreshFailure: errors.New("cold projection unavailable"),
+	}
+	host, stop := runUIWith(t, runtime)
+	host.Shows(t, "Ask flame")
+	host.Type("accepted but unprojectable")
+	host.Press(input.Enter)
+	host.Shows(t, "refresh session after runtime change failed: cold projection unavailable")
+	host.Type("must wait for cold recovery")
+	host.Press(input.Enter)
+	host.Shows(t, "queued behind runtime change")
+	starts, _ := runtime.attempts()
+	if len(starts) != 1 {
+		t.Fatalf("runs started before cold recovery = %+v", starts)
+	}
+	stop()
+}
+
+func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
@@ -478,7 +516,8 @@ func TestRetryingInvalidAcceptedStartCleanupPreservesIdentityAndFailurePolicy(t 
 		cancellations[0].RunID != cancellations[1].RunID {
 		t.Fatalf("malformed receipt cleanup retry identities = %+v", cancellations)
 	}
-	host.Shows(t, "start segment stream: user item identity is empty")
+	host.Shows(t, "retry malformed accepted start cleanup")
+	host.Hides(t, "start segment stream: user item identity is empty")
 	host.Hides(t, "apply runtime event")
 	stop()
 }
@@ -651,6 +690,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		current, openErr := openSessionWorkbench(stateDirectory)
 		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0 && host.Repaint()
 	})
+	host.Shows(t, command.Message.Text)
 	if cancelID == "" {
 		t.Fatal("cancel command identity is empty")
 	}

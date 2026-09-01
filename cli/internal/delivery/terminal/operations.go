@@ -70,7 +70,11 @@ const (
 
 type runAdmissionPolicy uint8
 
-const runAdmissionAfterSettlement runAdmissionPolicy = 1
+const (
+	runAdmissionUnrestricted runAdmissionPolicy = iota
+	runAdmissionFence
+	runAdmissionAfterSettlement
+)
 
 type operationPolicy struct {
 	scope        operationScope
@@ -208,10 +212,10 @@ func (o *operationOwner) Active(slot operationSlot) bool {
 	return !o.closed && ok
 }
 
-// BlocksRunAdmission reports whether an admitted runtime mutation must settle
-// before the next queued prompt may become a Run. The policy belongs to the
-// operation rather than to call sites that happen to initiate runs, so every
-// dispatch path observes the same ordering boundary.
+// BlocksRunAdmission reports whether an active operation owns a prerequisite
+// that must settle before the next queued prompt may become a Run. The policy
+// belongs to the operation rather than to call sites that happen to initiate
+// runs, so every dispatch path observes the same ordering boundary.
 func (o *operationOwner) BlocksRunAdmission() bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -219,7 +223,7 @@ func (o *operationOwner) BlocksRunAdmission() bool {
 		return false
 	}
 	for _, operation := range o.active {
-		if operation.policy.runAdmission == runAdmissionAfterSettlement {
+		if operation.policy.runAdmission != runAdmissionUnrestricted {
 			return true
 		}
 	}
@@ -325,6 +329,21 @@ func (a *app) runSessionSettlement[T any](
 ) bool {
 	return a.runOwnedOperation(operationPolicy{
 		scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement,
+	}, slot, replace, work, apply)
+}
+
+// runSessionAdmissionFence blocks Run admission while an authoritative Session
+// read is in flight without assuming that completion means success. The caller
+// owns retry state and explicitly drains the queue only after installing the
+// result.
+func (a *app) runSessionAdmissionFence[T any](
+	slot operationSlot,
+	replace bool,
+	work func(context.Context) (T, error),
+	apply func(T, error),
+) bool {
+	return a.runOwnedOperation(operationPolicy{
+		scope: sessionOperationScope, runAdmission: runAdmissionFence,
 	}, slot, replace, work, apply)
 }
 

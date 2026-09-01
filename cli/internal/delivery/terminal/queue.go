@@ -118,7 +118,7 @@ func (a *app) enqueueDeferredPrompt(commandID agent.CommandID, message agent.Mes
 	a.completion.Dismiss()
 	snapshot := a.syncQueue()
 	label := "queued follow-up"
-	if !a.execution.blocksAdmission() && a.operations.BlocksRunAdmission() {
+	if !a.execution.blocksAdmission() && a.runtimeChangeBlocksRunAdmission() {
 		label = "queued behind runtime change"
 	}
 	a.message(fmt.Sprintf("%s · %d waiting", label, len(snapshot.Entries)))
@@ -129,9 +129,8 @@ func (a *app) drainQueue() bool {
 		return false
 	}
 	if _, dispatching := a.queue.Dispatching(a.session.current.ID); dispatching {
-		if a.execution.blocksAdmission() || a.execution.openingRunID == "" ||
-			a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) ||
-			a.operations.BlocksRunAdmission() {
+		if a.runAdmissionBlocked() || a.execution.openingRunID == "" ||
+			a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
 		if err := a.attemptQueuedDispatchSettlement(); err != nil {
@@ -140,9 +139,8 @@ func (a *app) drainQueue() bool {
 		}
 		a.execution.openingRunID = ""
 	}
-	if a.execution.blocksAdmission() ||
-		a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) ||
-		a.operations.BlocksRunAdmission() {
+	if a.runAdmissionBlocked() ||
+		a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
 		return false
 	}
 	entry, ok := a.queue.BeginDispatch(a.session.current.ID)
@@ -322,7 +320,7 @@ func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string) {
 }
 
 func (a *app) finishAuthoringSettlementRecovery() {
-	if a.execution.blocksAdmission() || a.drainQueue() {
+	if a.runAdmissionBlocked() || a.drainQueue() {
 		return
 	}
 	if a.execution.conversation.Outcome().Status != "" {
@@ -541,7 +539,7 @@ func (a *app) sendQueuedNow(id promptqueue.EntryID) error {
 	if a.operations.Active(sessionChangeOperation) {
 		return errors.New("wait for the current session change to finish")
 	}
-	if !a.execution.blocksAdmission() && a.operations.BlocksRunAdmission() {
+	if !a.execution.blocksAdmission() && a.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
 	}
 	if err := a.commitQueueMutation(func() error {

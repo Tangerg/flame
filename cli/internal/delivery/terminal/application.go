@@ -446,7 +446,7 @@ func (a *app) dispatchPrompt(message agent.Message) {
 		return
 	}
 	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
-	if a.execution.blocksAdmission() || a.operations.BlocksRunAdmission() {
+	if a.runAdmissionBlocked() {
 		a.enqueueDeferredPrompt(commandID, message)
 		return
 	}

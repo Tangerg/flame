@@ -124,7 +124,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 				CommandID: pending.CancelCommandID,
 				RunID:     observed.RunID,
 				Reason:    "canceled while start delivery was unconfirmed",
-			}, preserveProjectionAndReportCanceled)
+			}, recoverCanceledOpening)
 		})
 	})
 }
@@ -177,18 +177,18 @@ func (a *app) cancelRuntime(target agent.CancelRun) {
 }
 
 // cancelRuntimePreservingFailure stops a run whose event stream has already been
-// rejected locally. The control response is authoritative about runtime cleanup,
-// but it must not replace the projection failure that made the stream untrustworthy.
+// rejected locally. The cancellation receipt proves cleanup, but only a cold
+// Session read can replace the now-untrustworthy transcript projection.
 func (a *app) cancelRuntimePreservingFailure(target agent.CancelRun) {
-	a.requestRuntimeCancellation(target, preserveProjectionFailure)
+	a.requestRuntimeCancellation(target, recoverProjectionFailure)
 }
 
 type cancellationResultPolicy uint8
 
 const (
 	applyRuntimeSettlement cancellationResultPolicy = iota
-	preserveProjectionFailure
-	preserveProjectionAndReportCanceled
+	recoverProjectionFailure
+	recoverCanceledOpening
 )
 
 type pendingCancellation struct {
@@ -302,17 +302,22 @@ func (a *app) handleRuntimeCancellation(
 	}
 	a.execution.openingRunID = ""
 	a.dropStream()
-	if pending.policy == preserveProjectionFailure {
+	if pending.policy == recoverProjectionFailure {
 		a.prompt.SetBusy(false)
 		a.syncAnimation()
-		a.drainQueue()
+		// The stream was rejected after Runtime had accepted the command. A
+		// cancellation receipt cannot reconstruct durable Items that were never
+		// projected, so the authoritative snapshot is the queue-admission fence.
+		a.session.invalidated = true
+		a.refreshInvalidatedSession(true)
 		return
 	}
-	if pending.policy == preserveProjectionAndReportCanceled {
+	if pending.policy == recoverCanceledOpening {
 		a.status.note("canceled")
 		a.prompt.SetBusy(false)
 		a.syncAnimation()
-		a.drainQueue()
+		a.session.invalidated = true
+		a.refreshInvalidatedSession(true)
 		return
 	}
 	if err := a.execution.conversation.SettleRun(settled); err != nil {

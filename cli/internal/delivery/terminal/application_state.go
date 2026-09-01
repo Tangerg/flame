@@ -37,6 +37,14 @@ func (e executionState) blocksAdmission() bool {
 	return e.observing() || e.pendingCancel != nil
 }
 
+func (a *app) runAdmissionBlocked() bool {
+	return a.execution.blocksAdmission() || a.session.invalidated || a.operations.BlocksRunAdmission()
+}
+
+func (a *app) runtimeChangeBlocksRunAdmission() bool {
+	return a.session.invalidated || a.operations.BlocksRunAdmission()
+}
+
 // dialogState owns transient modal presentation. Keeping it separate from the
 // application root makes it impossible to mistake dialog drafts, selections,
 // or readers for durable Runtime state.

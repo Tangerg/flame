@@ -148,6 +148,21 @@ func TestOperationOwnerDerivesRunAdmissionFromTheCurrentLease(t *testing.T) {
 	owner.Cancel("query")
 	<-concurrentDone
 
+	fenceDone := make(chan struct{})
+	if !owner.goWithPolicy(operationPolicy{
+		scope: applicationOperationScope, runAdmission: runAdmissionFence,
+	}, "refresh", false, func(ctx context.Context, _ operationLease) {
+		defer close(fenceDone)
+		<-ctx.Done()
+	}) {
+		t.Fatal("run-admission fence was rejected")
+	}
+	if !owner.BlocksRunAdmission() {
+		t.Fatal("run-admission fence did not block a run")
+	}
+	owner.Cancel("refresh")
+	<-fenceDone
+
 	blockingDone := make(chan struct{})
 	if !owner.goWithPolicy(operationPolicy{
 		scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement,
