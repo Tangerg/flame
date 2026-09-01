@@ -148,24 +148,29 @@ func (r runEventProjection) planUpdated() (projectedRunEvent, error) {
 
 func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 	stream := r.source.Event
-	if stream.Outcome == nil || stream.Metrics == nil {
+	if stream.Outcome == nil || stream.Metrics == nil || stream.ContextTokens == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.finished is incomplete", r.source.EventID)
 	}
 	usage := projectUsage(*stream.Metrics)
+	contextTokens := *stream.ContextTokens
 	switch stream.Outcome.Type {
 	case protocol.SegmentInterrupt:
 		interactions, err := projectInteractions(stream.Outcome.Interrupts)
 		if err != nil {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
-		return includeRunEvent(agent.RunInterrupted{Interactions: interactions, Usage: usage}), nil
+		return includeRunEvent(agent.RunInterrupted{
+			Interactions: interactions, Usage: usage, ContextTokens: contextTokens,
+		}), nil
 	case protocol.SegmentSuspended:
-		return includeRunEvent(agent.RunSuspended{Usage: usage}), nil
+		return includeRunEvent(agent.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
 	default:
 		outcome, err := projectOutcome(*stream.Outcome)
 		if err != nil {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
-		return includeRunEvent(agent.RunFinished{Outcome: outcome, Usage: usage}), nil
+		return includeRunEvent(agent.RunFinished{
+			Outcome: outcome, Usage: usage, ContextTokens: contextTokens,
+		}), nil
 	}
 }

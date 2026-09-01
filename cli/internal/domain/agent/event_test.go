@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,6 +63,14 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	unknownCost.Event = interrupted
 	if event.Equal(unknownCost) {
 		t.Fatal("unknown cost was treated as an explicit zero cost")
+	}
+
+	changedContext := event.Clone()
+	interrupted = changedContext.Event.(RunInterrupted)
+	interrupted.ContextTokens++
+	changedContext.Event = interrupted
+	if event.Equal(changedContext) {
+		t.Fatal("different segment-boundary context was ignored")
 	}
 }
 
@@ -181,6 +190,19 @@ func TestEphemeralEventValidationRejectsMalformedValues(t *testing.T) {
 	for _, event := range tests {
 		if err := ValidateEvent(event); err == nil {
 			t.Fatalf("ValidateEvent(%T) accepted %+v", event, event)
+		}
+	}
+}
+
+func TestSegmentBoundariesRejectNegativeContext(t *testing.T) {
+	for _, event := range []Event{
+		RunInterrupted{ContextTokens: -1},
+		RunSuspended{ContextTokens: -1},
+		RunFinished{ContextTokens: -1, Outcome: Outcome{Status: OutcomeCompleted}},
+	} {
+		err := ValidateEvent(event)
+		if err == nil || !strings.Contains(err.Error(), "context tokens") {
+			t.Fatalf("ValidateEvent(%T) error = %v, want context-token violation", event, err)
 		}
 	}
 }

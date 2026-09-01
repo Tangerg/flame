@@ -503,6 +503,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	run.Status = RunStatusWaiting
 	run.ActiveSegmentID = ""
 	run.Usage = event.Usage.Clone()
+	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.phase = ConversationWaiting
@@ -530,6 +531,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 	run.Status = RunStatusWaiting
 	run.ActiveSegmentID = ""
 	run.Usage = event.Usage.Clone()
+	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.phase = ConversationWaiting
@@ -570,6 +572,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	run.ActiveSegmentID = ""
 	run.Outcome = event.Outcome.Clone()
 	run.Usage = event.Usage.Clone()
+	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.phase = ConversationIdle

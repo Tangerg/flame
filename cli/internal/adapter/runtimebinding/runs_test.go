@@ -74,6 +74,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		if request.Limits == nil || request.Limits.MaxTotalTokens != nil || request.Limits.MaxSteps == nil || *request.Limits.MaxSteps != 20 || request.Limits.MaxBudgetUSD == nil || *request.Limits.MaxBudgetUSD != 3.5 {
 			t.Fatalf("start limits = %+v", request.Limits)
 		}
+		contextTokens := int64(12_345)
 		return &protocol.StartRunResponse{RunID: runID, SegmentID: segmentID, UserItemID: "item_user"}, func(yield func(protocol.RunEvent, error) bool) {
 			yield(protocol.RunEvent{
 				RunID: runID, SegmentID: segmentID, EventID: "evt_1", Timestamp: time.Unix(1, 0),
@@ -88,7 +89,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 				Event: protocol.StreamEvent{
 					Type:    protocol.StreamSegmentFinished,
 					Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentCompleted},
-					Metrics: &protocol.RunMetrics{},
+					Metrics: &protocol.RunMetrics{}, ContextTokens: &contextTokens,
 				},
 			}, nil)
 		}, nil
@@ -123,7 +124,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if _, ok := events[0].Event.(agent.SegmentStarted); !ok {
 		t.Fatalf("first event = %T", events[0].Event)
 	}
-	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != agent.OutcomeCompleted {
+	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != agent.OutcomeCompleted || finished.ContextTokens != 12_345 {
 		t.Fatalf("second event = %+v", events[1].Event)
 	}
 }

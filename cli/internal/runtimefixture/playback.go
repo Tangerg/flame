@@ -291,6 +291,15 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 			item.Block.Status = completedBlockStatus(item.Block)
 		}
 		event = item
+	case agent.RunInterrupted:
+		item.ContextTokens = run.contextTokens
+		event = item
+	case agent.RunSuspended:
+		item.ContextTokens = run.contextTokens
+		event = item
+	case agent.RunFinished:
+		item.ContextTokens = run.contextTokens
+		event = item
 	}
 	envelope := agent.RunEvent{
 		EventID: r.identities.next(eventIdentity), RunID: run.id,

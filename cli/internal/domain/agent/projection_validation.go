@@ -278,19 +278,30 @@ func ValidateEvent(event Event) error {
 	case PlanChanged:
 		return item.Plan.Validate()
 	case RunInterrupted:
-		return errors.Join(ValidateInteractions(item.Interactions), item.Usage.Validate())
+		return errors.Join(
+			validateSegmentBoundaryContext(item.ContextTokens),
+			ValidateInteractions(item.Interactions),
+			item.Usage.Validate(),
+		)
 	case RunSuspended:
-		return item.Usage.Validate()
+		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
 	case RunFinished:
 		if err := item.Outcome.Validate(); err != nil {
 			return err
 		}
-		return item.Usage.Validate()
+		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
 	case nil:
 		return errors.New("event is nil")
 	default:
 		return fmt.Errorf("event %T is unsupported", event)
 	}
+}
+
+func validateSegmentBoundaryContext(contextTokens int64) error {
+	if contextTokens < 0 {
+		return errors.New("segment boundary context tokens cannot be negative")
+	}
+	return nil
 }
 
 func (b Block) validateLifecycle(completed bool) error {

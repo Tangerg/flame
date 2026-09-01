@@ -577,13 +577,14 @@ func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
 }
 
 func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
+	contextTokens := int64(4_096)
 	source := func(yield func(protocol.RunEvent, error) bool) {
 		yield(protocol.RunEvent{
 			RunID: "run_root", SegmentID: "seg_root", EventID: "evt_suspend", Timestamp: time.Now(),
 			Event: protocol.StreamEvent{
 				Type:    protocol.StreamSegmentFinished,
 				Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentSuspended},
-				Metrics: &protocol.RunMetrics{},
+				Metrics: &protocol.RunMetrics{}, ContextTokens: &contextTokens,
 			},
 		}, nil)
 	}
@@ -594,8 +595,12 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 		if event.StreamSegment() != "seg_root" || event.SegmentID != "seg_root" {
 			t.Fatalf("event segments = producer %s stream %s", event.SegmentID, event.StreamSegment())
 		}
-		if _, ok := event.Event.(agent.RunSuspended); !ok {
+		suspended, ok := event.Event.(agent.RunSuspended)
+		if !ok {
 			t.Fatalf("event = %T, want RunSuspended", event.Event)
+		}
+		if suspended.ContextTokens != contextTokens {
+			t.Fatalf("suspended context tokens = %d, want %d", suspended.ContextTokens, contextTokens)
 		}
 		return
 	}

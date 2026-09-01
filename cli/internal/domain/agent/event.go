@@ -133,20 +133,26 @@ type PlanChanged struct {
 
 // RunInterrupted closes the current segment and parks the stable logical run.
 // Interactions is the complete pending set that must be answered atomically;
-// Usage is the run-cumulative metering committed at that segment boundary.
+// Usage and ContextTokens are the complete durable Run facts committed at that
+// segment boundary.
 type RunInterrupted struct {
-	Interactions []Interaction
-	Usage        Usage
+	Interactions  []Interaction
+	Usage         Usage
+	ContextTokens int64
 }
 
 // RunSuspended closes a member segment because another run in the same tree
 // interrupted. It carries no duplicate interactions; the tree-level pending
 // set is assembled from the member that raised them.
-type RunSuspended struct{ Usage Usage }
+type RunSuspended struct {
+	Usage         Usage
+	ContextTokens int64
+}
 
 type RunFinished struct {
-	Outcome Outcome
-	Usage   Usage
+	Outcome       Outcome
+	Usage         Usage
+	ContextTokens int64
 }
 
 func (SegmentStarted) isEvent()     {}
@@ -204,17 +210,19 @@ func (item PlanChanged) equal(event Event) bool {
 
 func (item RunInterrupted) equal(event Event) bool {
 	other, ok := event.(RunInterrupted)
-	return ok && item.Usage.Equal(other.Usage) && equalInteractions(item.Interactions, other.Interactions)
+	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage) &&
+		equalInteractions(item.Interactions, other.Interactions)
 }
 
 func (item RunSuspended) equal(event Event) bool {
 	other, ok := event.(RunSuspended)
-	return ok && item.Usage.Equal(other.Usage)
+	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage)
 }
 
 func (item RunFinished) equal(event Event) bool {
 	other, ok := event.(RunFinished)
-	return ok && item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
+	return ok && item.ContextTokens == other.ContextTokens &&
+		item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
 }
 
 // ReplayableEvent reports whether the underlying runtime retains this event in

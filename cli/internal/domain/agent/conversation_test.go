@@ -49,9 +49,15 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 		ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &question,
 	}}})
 	interruptedUsage := Usage{InputTokens: 10, OutputTokens: 2}
-	apply(t, conversation, RunEvent{EventID: "opaque:park", RunID: "run_1", SegmentID: "seg_1", Event: RunInterrupted{Interactions: interrupts, Usage: interruptedUsage}})
+	interruptedContext := int64(8_192)
+	apply(t, conversation, RunEvent{EventID: "opaque:park", RunID: "run_1", SegmentID: "seg_1", Event: RunInterrupted{
+		Interactions: interrupts, Usage: interruptedUsage, ContextTokens: interruptedContext,
+	}})
 	if conversation.Phase() != ConversationWaiting || len(conversation.Interactions()) != 2 || !conversation.Usage().Equal(interruptedUsage) {
 		t.Fatalf("waiting projection = phase %v, interactions %d, usage %+v", conversation.Phase(), len(conversation.Interactions()), conversation.Usage())
+	}
+	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != interruptedContext {
+		t.Fatalf("waiting run context = %+v, want %d", runs, interruptedContext)
 	}
 	acceptedQuestions, err := conversation.RecordAcceptedInteractionAnswers([]InterruptAnswer{
 		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: ApprovalApprove}},
@@ -70,6 +76,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 
 	resumed := runningRun("seg_2")
 	resumed.Usage = interruptedUsage
+	resumed.ContextTokens = interruptedContext
 	apply(t, conversation, RunEvent{EventID: "different-space:start", RunID: "run_1", SegmentID: "seg_2", Event: SegmentStarted{Run: resumed}})
 	if conversation.Phase() != ConversationRunning || conversation.SegmentID() != "seg_2" || len(conversation.Interactions()) != 0 {
 		t.Fatalf("resumed projection = phase %v, segment %q", conversation.Phase(), conversation.SegmentID())
@@ -79,14 +86,18 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	apply(t, conversation, RunEvent{EventID: "approval-done", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: Block{
 		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedTool,
 	}}})
+	finalContext := int64(4_096)
 	apply(t, conversation, RunEvent{EventID: "different-space:done", RunID: "run_1", SegmentID: "seg_2", Event: RunFinished{
-		Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 14, OutputTokens: 4},
+		Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 14, OutputTokens: 4}, ContextTokens: finalContext,
 	}})
 	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != OutcomeCompleted {
 		t.Fatalf("terminal projection = phase %v, outcome %+v", conversation.Phase(), conversation.Outcome())
 	}
 	if blocks := conversation.Blocks(); len(blocks) != 3 || blocks[0].Text != "final" {
 		t.Fatalf("blocks = %+v", blocks)
+	}
+	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != finalContext {
+		t.Fatalf("finished run context = %+v, want %d", runs, finalContext)
 	}
 }
 
