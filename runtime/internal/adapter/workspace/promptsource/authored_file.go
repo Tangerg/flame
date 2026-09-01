@@ -13,6 +13,13 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("stat %q: %w", path, err)
+	}
+	if err := validateAuthoredPromptSource(path, pathInfo); err != nil {
+		return nil, err
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open %q: %w", path, err)
@@ -22,11 +29,11 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("stat %q: %w", path, err)
 	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%w: %q is not a regular file", workspaceapp.ErrInvalidPromptSource, path)
+	if !os.SameFile(pathInfo, info) {
+		return nil, fmt.Errorf("%w: %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, path)
 	}
-	if validateAuthoredPromptDocumentSizeErr := workspaceapp.ValidateAuthoredPromptDocumentSize(info.Size()); validateAuthoredPromptDocumentSizeErr != nil {
-		return nil, fmt.Errorf("%s: %w", path, validateAuthoredPromptDocumentSizeErr)
+	if err := validateAuthoredPromptSource(path, info); err != nil {
+		return nil, err
 	}
 	document, err := io.ReadAll(io.LimitReader(
 		promptContextReader{ctx: ctx, reader: file},
@@ -39,6 +46,16 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return document, nil
+}
+
+func validateAuthoredPromptSource(path string, info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%w: %q is not a regular file", workspaceapp.ErrInvalidPromptSource, path)
+	}
+	if err := workspaceapp.ValidateAuthoredPromptDocumentSize(info.Size()); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return nil
 }
 
 type promptContextReader struct {

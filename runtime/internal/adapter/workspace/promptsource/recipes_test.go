@@ -119,6 +119,16 @@ func TestListRecipesMissingDirs(t *testing.T) {
 	}
 }
 
+func TestListRecipesRejectsNonDirectorySource(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recipes")
+	if err := os.WriteFile(path, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := listRecipes(t.Context(), path, ""); !errors.Is(err, workspaceapp.ErrInvalidPromptSource) {
+		t.Fatalf("listRecipes error = %v, want ErrInvalidPromptSource", err)
+	}
+}
+
 // TestListRecipesDegradesToBody: a malformed or unterminated frontmatter fence
 // keeps the recipe (whole document becomes the body) rather than dropping it.
 func TestListRecipesDegradesToBody(t *testing.T) {

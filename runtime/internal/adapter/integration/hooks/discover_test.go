@@ -126,6 +126,16 @@ func TestLoad_MissingFilesAreFine(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsNonRegularConfiguration(t *testing.T) {
+	cwd := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cwd, ".flame", "hooks.json"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(t.Context(), cwd, ""); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("Load error = %v, want non-regular configuration", err)
+	}
+}
+
 func TestLoadPreservesCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

@@ -112,10 +112,17 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return hooksFile{}, false, cause
 	}
-	handle, err := os.Open(path)
+	pathInfo, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return hooksFile{}, false, nil
 	}
+	if err != nil {
+		return hooksFile{}, false, err
+	}
+	if err := validateHooksSource(pathInfo); err != nil {
+		return hooksFile{}, false, err
+	}
+	handle, err := os.Open(path)
 	if err != nil {
 		return hooksFile{}, false, err
 	}
@@ -124,11 +131,11 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	if err != nil {
 		return hooksFile{}, false, err
 	}
-	if !info.Mode().IsRegular() {
-		return hooksFile{}, false, errors.New("not a regular file")
+	if !os.SameFile(pathInfo, info) {
+		return hooksFile{}, false, errors.New("configuration changed while it was being opened")
 	}
-	if validateConfigurationFileSizeErr := domainhooks.ValidateConfigurationFileSize(info.Size()); validateConfigurationFileSizeErr != nil {
-		return hooksFile{}, false, validateConfigurationFileSizeErr
+	if err := validateHooksSource(info); err != nil {
+		return hooksFile{}, false, err
 	}
 	data, err := io.ReadAll(io.LimitReader(
 		hooksContextReader{ctx: ctx, reader: handle},
@@ -169,6 +176,13 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 		}
 	}
 	return file, true, nil
+}
+
+func validateHooksSource(info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return errors.New("not a regular file")
+	}
+	return domainhooks.ValidateConfigurationFileSize(info.Size())
 }
 
 type hooksContextReader struct {
