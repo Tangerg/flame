@@ -75,6 +75,22 @@ func TestDirectorySourceDiscoversValidPluginsAndIsolatesMalformedNeighbors(t *te
 	}
 }
 
+func TestDirectorySourceRejectsNonRegularManifest(t *testing.T) {
+	root := t.TempDir()
+	pluginDirectory := filepath.Join(root, "invalid")
+	if err := os.MkdirAll(filepath.Join(pluginDirectory, manifestName), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	discovered, err := New([]string{root}).Discover(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(discovered.Plugins) != 0 || len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), "not a regular file") {
+		t.Fatalf("discovery = %+v", discovered)
+	}
+}
+
 func TestDirectorySourceDeduplicatesCanonicalPluginDirectories(t *testing.T) {
 	root := t.TempDir()
 	pluginDirectory := filepath.Join(root, "good")

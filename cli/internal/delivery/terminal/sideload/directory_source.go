@@ -3,6 +3,7 @@
 package sideload
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -215,10 +216,17 @@ func (d commandTimeoutDeclaration) Resolve(name string) (time.Duration, error) {
 
 func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	path := filepath.Join(directory, manifestName)
-	file, err := os.Open(path)
+	source, err := os.Stat(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return extensions.Plugin{}, false, nil
 	}
+	if err != nil {
+		return extensions.Plugin{}, false, fmt.Errorf("inspect plugin manifest %q: %w", path, err)
+	}
+	if err := validateManifestSource(path, source); err != nil {
+		return extensions.Plugin{}, false, err
+	}
+	file, err := os.Open(path)
 	if err != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("open plugin manifest %q: %w", path, err)
 	}
@@ -227,11 +235,21 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if err != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("inspect plugin manifest %q: %w", path, err)
 	}
-	if !info.Mode().IsRegular() || info.Size() > maxManifestBytes {
-		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q must be a regular file no larger than %d bytes", path, maxManifestBytes)
+	if !os.SameFile(source, info) {
+		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being opened", path)
+	}
+	if err := validateManifestSource(path, info); err != nil {
+		return extensions.Plugin{}, false, err
+	}
+	encoded, err := io.ReadAll(io.LimitReader(file, maxManifestBytes+1))
+	if err != nil {
+		return extensions.Plugin{}, false, fmt.Errorf("read plugin manifest %q: %w", path, err)
+	}
+	if len(encoded) > maxManifestBytes {
+		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
 	}
 	var declared pluginManifest
-	decoder := json.NewDecoder(io.LimitReader(file, maxManifestBytes+1))
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
 	if decodeErr := decoder.Decode(&declared); decodeErr != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, decodeErr)
@@ -244,6 +262,16 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 		return extensions.Plugin{}, false, fmt.Errorf("validate plugin manifest %q: %w", path, err)
 	}
 	return plugin, true, nil
+}
+
+func validateManifestSource(path string, info os.FileInfo) error {
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("plugin manifest %q is not a regular file", path)
+	}
+	if info.Size() > maxManifestBytes {
+		return fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
+	}
+	return nil
 }
 
 func rejectTrailingJSON(decoder *json.Decoder) error {
