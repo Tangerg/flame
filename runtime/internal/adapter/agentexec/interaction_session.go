@@ -766,11 +766,33 @@ func (i *interactionSession) release(ctx context.Context) error {
 
 func (i *interactionSession) segmentEnd(result agent.Result) runs.SegmentEnded {
 	termination := result.Termination()
-	end := segmentEndFromTermination(
-		termination,
-		i.segmentClock.duration(result.StartedAt(), result.FinishedAt()),
-	)
+	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
+	// The model Effect and Scope's host-context watcher observe the same owner
+	// cancellation concurrently. If the model returns context.Canceled first,
+	// Scope can freeze that Effect as an external failure before its watcher
+	// records host cancellation. The Runtime lifetime is the authoritative fact
+	// at this boundary, so do not project that scheduling race as provider
+	// failure. Other framework terminal causes remain untouched.
+	ownerCause := i.lifetime.ownerCause()
+	var end runs.SegmentEnded
+	if termination.Cause() == agent.TerminationCauseExternalFailure && ownerCause != nil {
+		end = segmentEndFromOwnerCause(ownerCause, duration)
+	} else {
+		end = segmentEndFromTermination(termination, duration)
+	}
 	end.Usage = i.accounting.segmentUsage(result.ProcessID())
+	return end
+}
+
+func segmentEndFromOwnerCause(cause error, duration time.Duration) runs.SegmentEnded {
+	end := runs.SegmentEnded{Reason: run.OutcomeCanceled, Duration: duration}
+	if errors.Is(cause, context.DeadlineExceeded) {
+		end.Reason = run.OutcomeTimedOut
+		end.Failure = &run.Failure{
+			Kind:   run.FailureTimeout,
+			Detail: "executor deadline reached",
+		}
+	}
 	return end
 }
 
