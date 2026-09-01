@@ -755,6 +755,10 @@ func (o OpeningCommit) validateAdmission() error {
 	if err := o.Admit.Validate(); err != nil {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
+	if o.Admit.Lineage().IsChild() &&
+		(o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil) {
+		return errors.New("runs: child opening carries root admission facts")
+	}
 	if o.InitialSession != nil {
 		if err := o.InitialSession.Validate(); err != nil {
 			return fmt.Errorf("runs: opening initial Session: %w", err)
@@ -770,6 +774,9 @@ func (o OpeningCommit) validateAdmission() error {
 	}
 	if o.InitialSession != nil && o.SessionReplacement != nil {
 		return errors.New("runs: opening cannot insert and replace the same Session")
+	}
+	if (o.ScheduleFiring != "" || o.ManualScheduleRun != nil) && o.InitialSession == nil {
+		return errors.New("runs: schedule opening has no initial Session")
 	}
 	if o.ScheduleFiring != "" {
 		if err := schedule.ValidateOccurrenceID(o.ScheduleFiring); err != nil {

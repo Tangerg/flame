@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -169,5 +170,36 @@ func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
 				t.Fatalf("OpeningCommit accepted an invalid %s action", test.name)
 			}
 		})
+	}
+}
+
+func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
+	createdAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
+	initialSession := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
+		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+	})
+	child := run.Draft{
+		RunID: "run_child", SessionID: initialSession.ID(), SegmentID: "segment_child",
+		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root", CreatedAt: createdAt,
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_child_with_session"), Admit: &child, InitialSession: &initialSession,
+	}).Validate(); err == nil {
+		t.Fatal("OpeningCommit accepted root Session facts on a child admission")
+	}
+
+	root := run.Draft{
+		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled", CreatedAt: createdAt,
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_schedule_without_session"), Admit: &root, ScheduleFiring: "sch_test:1000",
+	}).Validate(); err == nil {
+		t.Fatal("OpeningCommit accepted a schedule admission without its initial Session")
+	}
+	if err := (OpeningCommit{
+		CommitID: testCommitID("run_commit_existing_session"), Admit: &root,
+	}).Validate(); err != nil {
+		t.Fatalf("ordinary admission into an existing Session: %v", err)
 	}
 }
