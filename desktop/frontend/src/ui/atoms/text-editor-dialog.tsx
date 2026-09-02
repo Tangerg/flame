@@ -61,7 +61,7 @@ export function TextEditorDialog({
         <DialogPrimitive.Popup
           data-slot="text-editor-dialog"
           initialFocus={editorRef}
-          className={`fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[var(--shape-composer)] border-[length:var(--composer-edge-width)] border-border bg-card/90 shadow-[var(--shadow-modal)] backdrop-blur-xl outline-none ${FLOATING_MOTION}`}
+          className={`fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[var(--shape-composer)] bg-card shadow-[var(--shadow-modal)] outline-none ${FLOATING_MOTION}`}
         >
           <form className="relative flex flex-col gap-0 p-5" onSubmit={submit}>
             <div className="flex w-full flex-col items-start gap-3">

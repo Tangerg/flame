@@ -95,11 +95,13 @@ Rules for Flame:
 - Do not add hover highlights just because an element is interactive. Hover is
   reserved for dense lists, sidebar rows, icon buttons, and controls where it
   improves scanability.
-- Glass blur is material, not decoration. It belongs on exactly two things: the
-  drawer surface (a translucent panel the content card floats over) and floating
-  panels (menus, popovers, tooltips), where letting a hint of what they cover show
-  through is what makes them read as above the surface. Everywhere else, tokenized
-  surfaces and shadows.
+- Glass blur is material, not decoration. It belongs on exactly two things:
+  floating panels (menus, popovers, tooltips) and the composer with its top tray —
+  the two places something is genuinely moving underneath, where a hint of what is
+  covered is what makes them read as above it. Everywhere else, including modal
+  dialogs, tokenized surfaces and shadows. Each of the three is a token
+  (`--floating-backdrop`, `--composer-backdrop`, `--composer-tray-backdrop`); a raw
+  `backdrop-blur-*` is how a fourth appears.
 - Prefer native-feeling immediacy: no flicker, no layout jumps, no delayed
   reveal that makes a persistent surface feel like a web page entering.
 - Popovers, command palette, tooltips, and composer overlays should read as
