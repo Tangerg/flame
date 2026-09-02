@@ -22,16 +22,15 @@ import (
 // tree restore, and durable truncation — belongs to the session use case. This
 // method only decodes the wire intent and projects the result.
 func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
-	intent, err := rollbackIntentFromWire(in)
+	scope, err := rollbackScopeFromWire(in)
 	if err != nil {
 		return nil, err
 	}
 
 	result, err := s.sessions.Rollback(ctx, sessions.RollbackSpec{
-		SessionID:      in.SessionID,
-		ToRunID:        in.ToRunID,
-		RestoreFiles:   intent.restoreFiles,
-		RestoreHistory: intent.restoreHistory,
+		SessionID: in.SessionID,
+		ToRunID:   in.ToRunID,
+		Scope:     scope,
 	})
 	if err != nil {
 		return nil, wireRollbackErr(err, in.SessionID)
@@ -40,7 +39,7 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 	// Each dropped run reports its opening user input so the client can
 	// re-populate the composer. Files-only rollback drops nothing from history.
 	out := []protocol.DroppedRun{}
-	if intent.restoreHistory {
+	if scope.RestoresHistory() {
 		for _, dropped := range result.Dropped {
 			input := make([]protocol.ContentBlock, len(dropped.UserInput))
 			for i, block := range dropped.UserInput {

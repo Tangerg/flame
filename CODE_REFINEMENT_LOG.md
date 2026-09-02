@@ -163,3 +163,62 @@ Kind-specific answer rules were centralized into one validation entry point, but
 
 - The remaining risk is limited to accidental rule movement during extraction; existing kind-shape tables, ordered answer tests, claim revalidation, race coverage, and full lifecycle tests passed.
 - Round 4 will audit the measured Session rollback orchestration and its boot-recovery counterpart for duplicated workspace-transition ownership. It will preserve the explicit temporal sequence unless a coherent shared phase can be proven.
+
+## Round 4 — complete
+
+### Audit scope and evidence
+
+- Traced `sessions.rollback` from protocol validation through delivery translation, the Session application command, workspace admission, recoverable mutation log, checkpoint restore, history truncation, boot recovery, and CLI consumers.
+- The protocol already owns a closed three-value vocabulary: `history`, `files`, and `both`. Delivery expands that value into a private `rollbackIntent` pair of booleans, then copies the pair into `sessions.RollbackSpec` as two more booleans.
+- Those stored booleans admit an unrequested no-op state and make `both` a convention that two independently writable fields happen to be true. The use case has no validation for either condition.
+- `WorkspaceMutation.RestoreHistory` is not the same defect: a workspace mutation exists only for file restore, so its one boolean selects the optional second durable phase without encoding a multi-axis state.
+- The live and recovery workspace sequences differ legitimately in guards and failure cleanup, but direct inspection proves two identical ordered phases: quiescing Session/workspace state before file restore, and invalidating workspace evidence plus discarding the sandbox after a successful restore.
+- After the scope migration, `Rollback`'s measured cognitive complexity rose from 34 to 35 because command validation added a branch while the existing procedural phases remained inline. The refinement must not trade a valid state model for a harder use case.
+- Baseline: `GOWORK=off go test -count=1 ./internal/application/agent/sessions ./internal/delivery` passed in 8.09s.
+
+### Root cause
+
+Delivery decoded a closed wire enum into procedural booleans instead of preserving the same vocabulary at the application boundary. `RollbackSpec` then exposed those booleans as writable command state, so the semantic owner could neither validate nor exhaustively classify the requested rollback mode.
+
+### Impact and acceptance criteria
+
+- Introduce one closed Session-application restore scope with exactly the history, files, and both values and intention-revealing queries.
+- Make `RollbackSpec` store only that scope; reject invalid scopes and missing file targets before reading or mutating Session state.
+- Translate the wire enum directly to the application scope, delete `rollbackIntent`, and migrate delivery projection plus all application branches.
+- Preserve protocol JSON, defaults, capability constraints, mutation records, rollback ordering, error mapping, and CLI contracts.
+- Pass scope invariants, focused history/files/both and recovery tests, Runtime and current-workspace CLI full gates, and one bounded live Run.
+
+### Plan
+
+- **Completed:** added `RestoreScope`, validation, and derived queries; replaced the two `RollbackSpec` booleans throughout the use case.
+- **Completed:** removed the delivery boolean representation and migrated the handler to direct vocabulary-preserving scope translation.
+- **Completed:** centralized the proven pre-restore quiesce, mutation-log admission, and post-restore workspace-retirement phases while keeping their order visible in live and recovery orchestration.
+- **Completed:** added owner-invariant tests, formatted, remeasured complexity, ran focused/full/live verification, cleaned resources, and inspected compatibility.
+
+### Validation
+
+- The final `gocognit`/`gocyclo` scan no longer reports `Rollback`; Runtime findings fell from five to four, with no new finding and no cyclomatic threshold violation.
+- Final focused Session+delivery tests passed in 18.25s; targeted rollback integration tests passed in 12.55s; the same Session+delivery packages passed with `-race` in 33.37s. Focused `go vet` and `staticcheck` passed.
+- Runtime `GOWORK=off go vet ./...` passed in 3.13s, `GOWORK=off go build ./...` passed in 6.93s, and uncached `GOWORK=off go test -count=1 ./...` passed in 54.99s.
+- Current-workspace CLI `go vet ./...` passed in 2.17s, `go build ./...` passed in 4.03s, and uncached `go test -count=1 ./...` passed in 39.86s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND4_OK`, status `completed`, one step, 9,185 input tokens, 8 output tokens, 9,088 cache-read tokens, and 839ms model duration; the complete command took 4.08s. No credential value was printed or copied.
+- `git diff --check` passed. Protocol generation was not applicable because no protocol type, schema, constraint, or published contract changed.
+
+### Changes and compatibility
+
+- `RestoreScope` now owns the closed history/files/both application vocabulary, validity, and resource queries.
+- `RollbackSpec` stores one scope and rejects invalid scope values or file restores without a target before reading Session state.
+- Delivery now validates/defaults the wire value and converts it directly to the application scope; the `rollbackIntent` boolean representation was deleted.
+- Live and recovery rollback now share one pre-restore quiesce phase and one post-restore workspace-retirement phase. The recoverable mutation-log admission is one named operation.
+- Breaking changes: the internal `sessions.RollbackSpec` command shape intentionally replaced `RestoreFiles`/`RestoreHistory` with `Scope`; its only production consumer was migrated and the obsolete fields and delivery type were removed. Public Go binding requests, Runtime Protocol JSON, defaults, constraints, persistence, CLI contracts, and error categories are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round4.*` directory and moved it to the system Trash on exit.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- Delivery's direct string conversion intentionally depends on the shared history/files/both vocabulary; wire constraint tests, scope owner tests, three-mode integration tests, recovery tests, and full binding consumers passed.
+- Shared rollback phase errors now use the same file-rollback context in live and recovery paths while preserving wrapped causes and protocol categories.
+- Round 5 will audit the remaining measured complexity at strict JSON-null rejection and contract-shape validation, prioritizing a concrete boundary invariant over mechanical function splitting.
