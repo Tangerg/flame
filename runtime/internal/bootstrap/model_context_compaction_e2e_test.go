@@ -112,9 +112,10 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 			compactedMainCalls,
 		)
 	}
-	if len(summaryAtMainCalls) != 1 || summaryAtMainCalls[0] != modelCallsBeforeMidRunCompaction {
+	if len(summaryAtMainCalls) != 1 || summaryAtMainCalls[0] < 2 ||
+		summaryAtMainCalls[0] > modelCallsBeforeMidRunCompaction {
 		t.Fatalf(
-			"summary call boundaries = %v, want exactly once after main call %d",
+			"summary call boundaries = %v, want exactly once during main calls [2,%d]",
 			summaryAtMainCalls,
 			modelCallsBeforeMidRunCompaction,
 		)
@@ -154,7 +155,10 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 		call := chat.ToolCall{
 			ID: fmt.Sprintf("call_goal_%02d", l.mainCalls), Name: tool.GetGoal, Arguments: `{}`,
 		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+		message := chat.NewAssistantMessage(
+			chat.NewTextPart(modelContextPressurePayload),
+			chat.NewToolCallPart(call),
+		)
 		return chat.NewResponse(&chat.Output{
 			Message: &message, FinishReason: chat.FinishReasonToolCalls,
 		}, nil)

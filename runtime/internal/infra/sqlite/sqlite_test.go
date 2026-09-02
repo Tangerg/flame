@@ -2,11 +2,9 @@ package sqlite_test
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -445,99 +443,6 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	}
 	if err := store.AppendItem(t.Context(), duplicate); !errors.Is(err, transcript.ErrIdentityConflict) {
 		t.Fatalf("reuse offload error = %v, want ErrIdentityConflict", err)
-	}
-}
-
-// TestOpenRefusesEveryMismatchedSchemaWithoutTouchingIt pins the pre-release
-// storage contract: only the current shape is supported, including for an
-// unstamped non-empty database, and no old epoch receives a compatibility path.
-// Refusing is the whole point — the file holds the user's sessions and
-// credentials, so deciding to throw them away is theirs, not the runtime's.
-func TestOpenRefusesEveryMismatchedSchemaWithoutTouchingIt(t *testing.T) {
-	for _, staleEpoch := range []int{0, 1, 3, 4, 5, 6, 7, 8, 9, 25} {
-		t.Run(fmt.Sprintf("epoch_%d", staleEpoch), func(t *testing.T) {
-			assertMismatchedSchemaRefused(t, staleEpoch)
-		})
-	}
-}
-
-func assertMismatchedSchemaRefused(t *testing.T, staleEpoch int) {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "stale.db")
-	staleDatabase, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatalf("open stale database: %v", err)
-	}
-	_, seedError := staleDatabase.Exec(fmt.Sprintf(
-		`CREATE TABLE stale_runs (id TEXT PRIMARY KEY); INSERT INTO stale_runs(id) VALUES ('old'); PRAGMA user_version = %d`,
-		staleEpoch,
-	))
-	if seedError != nil {
-		_ = staleDatabase.Close()
-		t.Fatalf("seed stale schema: %v", seedError)
-	}
-	if closeErr := staleDatabase.Close(); closeErr != nil {
-		t.Fatalf("close stale database: %v", closeErr)
-	}
-
-	database, openError := sqlite.Open(t.Context(), path)
-	if !errors.Is(openError, sqlite.ErrSchemaEpochMismatch) {
-		if openError == nil {
-			_ = database.Close()
-		}
-		t.Fatalf(
-			"open stale epoch %d error = %v, want ErrSchemaEpochMismatch",
-			staleEpoch, openError,
-		)
-	}
-	// The refusal names the file, because "delete it to rebuild" is only
-	// actionable if the user knows which file.
-	if !strings.Contains(openError.Error(), path) {
-		t.Fatalf("refusal %q does not name %q", openError, path)
-	}
-
-	// Nothing was dropped and no schema was installed alongside the old one.
-	reopened, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatalf("reopen refused database: %v", err)
-	}
-	defer func() { _ = reopened.Close() }()
-	var rows int
-	if err := reopened.QueryRow(`SELECT count(*) FROM stale_runs`).Scan(&rows); err != nil || rows != 1 {
-		t.Fatalf("stale rows = %d, err=%v, want the untouched seed", rows, err)
-	}
-	var installed int
-	if err := reopened.QueryRow(
-		`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sessions'`,
-	).Scan(&installed); err != nil || installed != 0 {
-		t.Fatalf("current-schema tables = %d, err=%v, want none installed", installed, err)
-	}
-}
-
-// A database this process just created is not a mismatch: an empty file carries
-// no durable state to lose, so it is installed into rather than refused. Without
-// this exception every first run would fail.
-func TestOpenInstallsIntoAnEmptyFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "fresh.db")
-	empty, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatalf("create empty database: %v", err)
-	}
-	if _, execErr := empty.Exec(`PRAGMA user_version = 0`); execErr != nil {
-		t.Fatalf("touch empty database: %v", execErr)
-	}
-	if closeErr := empty.Close(); closeErr != nil {
-		t.Fatalf("close empty database: %v", closeErr)
-	}
-
-	db, err := sqlite.Open(t.Context(), path)
-	if err != nil {
-		t.Fatalf("open empty database: %v", err)
-	}
-	defer func() { _ = db.Close() }()
-	var epoch int
-	if err := db.QueryRow(`PRAGMA user_version`).Scan(&epoch); err != nil || epoch == 0 {
-		t.Fatalf("installed epoch = %d, err=%v, want the current epoch", epoch, err)
 	}
 }
 

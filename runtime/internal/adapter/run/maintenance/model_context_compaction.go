@@ -85,7 +85,6 @@ func (c *Compactor) CompactModelContext(
 		)
 	}
 	budget := newModelContextBudget(
-		c.policy.messageTrigger,
 		trigger,
 		request.Instructions(),
 		ephemeral,
@@ -99,16 +98,13 @@ func (c *Compactor) CompactModelContext(
 		return agentexec.ModelContextCompactionResult{}, err
 	}
 	if plan.action == noCompaction {
-		if plan.required {
+		if plan.cannotFit {
 			return agentexec.ModelContextCompactionResult{}, ErrModelContextCannotFit
 		}
 		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
 	if !request.AllowsCompaction(ctx) {
-		if plan.required {
-			return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
-		}
-		return unchangedModelContextResult(candidate, plan.estimatedTokens)
+		return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
 	}
 
 	replacement, summary, cutoff, prefixAfter, err := c.materializeModelContextPlan(

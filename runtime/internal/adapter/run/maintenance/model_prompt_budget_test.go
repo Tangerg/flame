@@ -24,7 +24,6 @@ func TestModelContextBudgetUsesProviderCountOnlyAtLocalThresholdOrForMedia(t *te
 	const threshold = 10_000
 	counter := &budgetInputCounter{count: threshold - 1}
 	budget := newModelContextBudget(
-		newMessageCountTrigger(100),
 		threshold,
 		[]chat.Message{chat.NewSystemMessage("frozen instructions")},
 		nil,
@@ -33,7 +32,7 @@ func TestModelContextBudgetUsesProviderCountOnlyAtLocalThresholdOrForMedia(t *te
 		0,
 		counter,
 	)
-	over, _, _, err := budget.triggered(t.Context(), []chat.Message{
+	over, _, err := budget.triggered(t.Context(), []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("well below threshold")),
 	})
 	if err != nil {
@@ -43,7 +42,7 @@ func TestModelContextBudgetUsesProviderCountOnlyAtLocalThresholdOrForMedia(t *te
 		t.Fatalf("text-only preflight = over:%t provider_counts:%d, want false and zero", over, counter.calls)
 	}
 
-	over, _, _, err = budget.triggered(t.Context(), []chat.Message{
+	over, _, err = budget.triggered(t.Context(), []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("inspect"), chat.NewMediaPart(mustBudgetImage(t, []byte{0}))),
 	})
 	if err != nil {
@@ -51,38 +50,6 @@ func TestModelContextBudgetUsesProviderCountOnlyAtLocalThresholdOrForMedia(t *te
 	}
 	if over || counter.calls != 1 {
 		t.Fatalf("media preflight = over:%t provider_counts:%d, want false and one", over, counter.calls)
-	}
-}
-
-func TestModelContextBudgetDoesNotTreatMessageTriggerAsRequestCapacity(t *testing.T) {
-	messages := make([]chat.Message, 0, 32)
-	for range 32 {
-		messages = append(messages, chat.NewAssistantMessage(chat.NewTextPart("short progress update")))
-	}
-	budget := newModelContextBudget(
-		newMessageCountTrigger(24),
-		10_000,
-		nil,
-		nil,
-		nil,
-		chat.Options{},
-		0,
-		nil,
-	)
-
-	triggered, tokenTriggered, _, err := budget.triggered(t.Context(), messages)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !triggered || tokenTriggered {
-		t.Fatalf("trigger = maintenance:%t token:%t, want true/false", triggered, tokenTriggered)
-	}
-	overCapacity, _, err := budget.exceeded(t.Context(), messages)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if overCapacity {
-		t.Fatal("a message-count maintenance trigger was treated as a model-capacity limit")
 	}
 }
 
@@ -113,7 +80,6 @@ func TestModelContextBudgetAppliesEstimateCalibrationToCapacityChecks(t *testing
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			budget := newModelContextBudget(
-				messageCountTrigger{},
 				test.maxTokens,
 				nil,
 				nil,
@@ -144,7 +110,6 @@ func TestModelContextBudgetKeepsProviderCountSeparateFromCalibrationEstimate(t *
 	rawEstimate := mustEstimateModelContextTokens(t, messages, nil, chat.Options{})
 	counter := &budgetInputCounter{count: int64(rawEstimate + 500)}
 	budget := newModelContextBudget(
-		messageCountTrigger{},
 		rawEstimate+100,
 		nil,
 		nil,

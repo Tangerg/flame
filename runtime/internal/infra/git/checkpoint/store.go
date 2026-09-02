@@ -23,7 +23,7 @@ type Store struct {
 	repoLocks sync.Map // session id → *sync.Mutex, serializing one shadow repository
 }
 
-// NewStore roots the shadow repos at dir (e.g. <FLAME_HOME>/checkpoints).
+// NewStore roots the shadow repos at dir (e.g. <FLAME_HOME>/runtime/checkpoints).
 func NewStore(dir string) *Store { return &Store{root: dir} }
 
 func (s *Store) treeLockFor(cwd string) *sync.Mutex {

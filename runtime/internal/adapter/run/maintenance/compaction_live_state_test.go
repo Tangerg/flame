@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -51,19 +50,21 @@ func TestCompactorAppendsLiveStateReminder(t *testing.T) {
 		}
 	}
 
-	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
-	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
+	history, _ := store.Read(context.Background(), sessID)
+	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
+	res, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Compacted() {
+	if !res.Summarized() {
 		t.Fatal("expected compaction to fire")
 	}
 
 	after, _ := store.Read(context.Background(), sessID)
-	// [summary, reminder, ...4 recent]
-	if len(after) != 6 {
-		t.Fatalf("post-compact len = %d, want 6 (summary + reminder + 4)", len(after))
+	// [summary, reminder, latest turn]
+	if len(after) != 3 {
+		t.Fatalf("post-compact len = %d, want 3 (summary + reminder + latest turn)", len(after))
 	}
 	if !strings.HasPrefix(after[0].Text(), "[Earlier conversation summary]") {
 		t.Fatalf("after[0] should be the summary, got %q", after[0].Text())
@@ -86,13 +87,15 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
 
 	live := func(context.Context, string) LiveStateSnapshot { return LiveStateSnapshot{} }
-	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
-	if _, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); err != nil {
+	history, _ := store.Read(context.Background(), sessID)
+	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
+	if _, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil)); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := store.Read(context.Background(), sessID)
-	if len(after) != 5 {
-		t.Fatalf("empty live-state should leave summary + 4 recent = 5, got %d", len(after))
+	if len(after) != 2 {
+		t.Fatalf("empty live-state should leave summary + latest turn = 2, got %d", len(after))
 	}
 	for _, m := range after {
 		if strings.Contains(m.Text(), "<system-reminder>") {

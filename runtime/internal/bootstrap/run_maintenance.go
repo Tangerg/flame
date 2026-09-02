@@ -10,13 +10,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
 func buildRunMaintenance(
 	cfg Config,
-	defaultSelection modelref.Selection,
 	conversationServices conversationEnvironment,
 	shells *exec.Shells,
 	skills *workspace.Skills,
@@ -25,19 +23,11 @@ func buildRunMaintenance(
 	resolveUtility modeladapter.AuxiliaryResolver,
 	contextState maintenance.SessionContextInvalidator,
 ) (agentexec.RunMaintenance, agentexec.ModelContextCompactor, error) {
-	fallbackLimits := modelref.TokenLimits{}
-	limits, found, err := modeladapter.LookupTokenLimits(defaultSelection)
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: default model token limits: %w", err)
-	}
-	if found {
-		fallbackLimits = limits
-	}
 	compactor, err := maintenance.NewCompactor(
 		conversationServices.messages,
 		resolveUtility,
 		maintenance.NewLiveStateSnapshotter(shells),
-		maintenance.CompactionPolicyValues{FallbackTokenLimits: fallbackLimits},
+		maintenance.CompactionPolicyValues{},
 		contextState,
 	)
 	if err != nil {
@@ -83,5 +73,5 @@ func buildRunMaintenance(
 			return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
 		}
 	}
-	return maintenance.NewPipeline(compactor, consolidator, skillMiner, skillArchiver), compactor, nil
+	return maintenance.NewPipeline(consolidator, skillMiner, skillArchiver), compactor, nil
 }

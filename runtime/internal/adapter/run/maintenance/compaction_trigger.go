@@ -24,7 +24,7 @@ const (
 	mediaReferencePlaceholder = "x"
 )
 
-// modelContextBudget owns both compaction triggers and the exact immutable
+// modelContextBudget owns the compaction trigger and the exact immutable
 // request material that survives every candidate rewrite. Every main-model call
 // pays only the local preflight cost. Provider counting is reserved for a local
 // threshold hit or provider-priced media, and compaction begins only when that
@@ -32,33 +32,13 @@ const (
 // conversation, pending tail, Tool manifest, and Options in one value prevents
 // independently rounded "fixed" and "history" token ledgers.
 type modelContextBudget struct {
-	messageTrigger messageCountTrigger
-	maxTokens      int
-	instructions   []chat.Message
-	tail           []chat.Message
-	tools          []chat.ToolDefinition
-	options        chat.Options
-	adjustment     int
-	counter        modelContextInputTokenCounter
-}
-
-// messageCountTrigger is an optional maintenance signal. It may initiate a
-// compaction attempt, but it never answers whether a concrete model request
-// fits: only the token envelope owns that decision.
-type messageCountTrigger struct {
-	maximum int
-}
-
-func newMessageCountTrigger(maximum int) messageCountTrigger {
-	return messageCountTrigger{maximum: maximum}
-}
-
-func (m messageCountTrigger) enabled() bool { return m.maximum > 0 }
-
-func (m messageCountTrigger) limit() int { return m.maximum }
-
-func (m messageCountTrigger) reached(messages int) bool {
-	return m.enabled() && messages >= m.maximum
+	maxTokens    int
+	instructions []chat.Message
+	tail         []chat.Message
+	tools        []chat.ToolDefinition
+	options      chat.Options
+	adjustment   int
+	counter      modelContextInputTokenCounter
 }
 
 type modelContextInputTokenCounter interface {
@@ -82,7 +62,6 @@ func (m modelContextFootprint) budgetTokens(adjustment int) int {
 }
 
 func newModelContextBudget(
-	messageTrigger messageCountTrigger,
 	maxTokens int,
 	instructions []chat.Message,
 	tail []chat.Message,
@@ -92,27 +71,22 @@ func newModelContextBudget(
 	counter modelContextInputTokenCounter,
 ) modelContextBudget {
 	return modelContextBudget{
-		messageTrigger: messageTrigger,
-		maxTokens:      maxTokens,
-		instructions:   cloneMessages(instructions),
-		tail:           cloneMessages(tail),
-		tools:          cloneToolDefinitions(tools),
-		options:        options.Clone(),
-		adjustment:     adjustment,
-		counter:        counter,
+		maxTokens:    maxTokens,
+		instructions: cloneMessages(instructions),
+		tail:         cloneMessages(tail),
+		tools:        cloneToolDefinitions(tools),
+		options:      options.Clone(),
+		adjustment:   adjustment,
+		counter:      counter,
 	}
 }
 
-func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Message) (bool, bool, int, error) {
+func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Message) (bool, int, error) {
 	footprint, err := m.triggerFootprint(ctx, messages)
 	if err != nil {
-		return false, false, 0, err
+		return false, 0, err
 	}
-	tokenTriggered := footprint.budgetTokens(m.adjustment) >= m.maxTokens
-	if m.messageTrigger.reached(saturatedAdd(len(messages), len(m.tail))) {
-		return true, tokenTriggered, footprint.estimatedTokens, nil
-	}
-	return tokenTriggered, tokenTriggered, footprint.estimatedTokens, nil
+	return footprint.budgetTokens(m.adjustment) >= m.maxTokens, footprint.estimatedTokens, nil
 }
 
 func (m modelContextBudget) exceeded(ctx context.Context, messages []chat.Message) (bool, int, error) {

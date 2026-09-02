@@ -4,33 +4,32 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 )
 
 // Pipeline composes the post-Run maintenance workers. It keeps the lifecycle
-// policy beside the concrete workers: mine the full transcript for Skill
-// proposals, archive idle Skills, compact when needed, then consolidate memory
-// only after compaction. Nil workers disable only their own operation.
+// policy beside the concrete workers: mine the transcript for Skill proposals,
+// archive idle Skills, then consolidate memory only after the model-call path
+// actually summarized durable context. Nil workers disable only their own
+// operation.
 type Pipeline struct {
-	compactor     *Compactor
 	consolidator  *MemoryConsolidator
 	skillMiner    *SkillProposalMiner
 	skillArchiver *IdleSkillArchiver
 }
 
 // NewPipeline composes the default maintenance workers for clean Run endings.
-func NewPipeline(compactor *Compactor, consolidator *MemoryConsolidator, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) *Pipeline {
+func NewPipeline(consolidator *MemoryConsolidator, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) *Pipeline {
 	return &Pipeline{
-		compactor:     compactor,
 		consolidator:  consolidator,
 		skillMiner:    skillMiner,
 		skillArchiver: skillArchiver,
 	}
 }
 
-// Maintain completes one best-effort maintenance pass. Skill mining precedes
-// compaction so it can see the full transcript; memory consolidation follows
-// only a summary compaction, matching its cost-amortization policy.
+// Maintain completes one best-effort maintenance pass. Memory consolidation is
+// cost-amortized behind a durable summary already produced by the exact
+// model-request compaction path; this pipeline never makes a second context
+// reduction decision from a partial request projection.
 func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceInput) agentexec.RunMaintenanceResult {
 	if p == nil {
 		return agentexec.RunMaintenanceResult{}
@@ -46,28 +45,7 @@ func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceI
 			result.Errors = append(result.Errors, err)
 		}
 	}
-	if p.compactor == nil {
-		return result
-	}
-
-	limits, _, err := modeladapter.LookupTokenLimits(input.ModelSelection)
-	if err != nil {
-		result.Errors = append(result.Errors, err)
-		return result
-	}
-	compaction, err := p.compactor.CompactIfNeeded(
-		ctx,
-		input.SessionID,
-		limits,
-		input.Options,
-		input.PreCompact,
-	)
-	if err != nil {
-		result.Errors = append(result.Errors, err)
-		return result
-	}
-	result.Compaction = compaction
-	if !compaction.Compacted() || p.consolidator == nil {
+	if !input.DurableContextCompacted || p.consolidator == nil {
 		return result
 	}
 	if err := p.consolidator.Consolidate(ctx, input.SessionID, input.CWD); err != nil {

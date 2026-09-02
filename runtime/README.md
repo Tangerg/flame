@@ -35,6 +35,8 @@ if err != nil {
 
 Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `protocol.ProblemError` for structured recovery information.
 
+The standalone Runtime and CLI interpret `FLAME_HOME` as Flame's local product root. Runtime-owned state lives under `$FLAME_HOME/runtime`; the default is `~/.flame/runtime`.
+
 ## Develop
 
 ```sh

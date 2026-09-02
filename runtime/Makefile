@@ -15,12 +15,13 @@ PID    := flame.pid
 LOG    := flame.log
 HEALTH := http://127.0.0.1:$(PORT)/v2/health/ready
 
-# FLAME_HOME holds the runtime's persistent state; DB is the single SQLite store
+# FLAME_HOME holds Flame's local product state; runtime/ contains the Runtime's
+# persistent state and DB is its single SQLite store
 # `make reset-db` / `make fresh` drop (dev stage = drop + rebuild, never
 # migrate). Only the db + its WAL/SHM sidecars are removed — local-token,
 # skills/, plugins/, and any user-edited FLAME.md are preserved.
 FLAME_HOME ?= $(HOME)/.flame
-DB        := $(FLAME_HOME)/flame.db
+DB        := $(FLAME_HOME)/runtime/flame.db
 
 .DEFAULT_GOAL := help
 .PHONY: help build start stop restart status health logs run clean reset-db fresh

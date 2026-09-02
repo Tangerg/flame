@@ -41,23 +41,24 @@ func TestResolveRuntimePathsUsesOneUserHomeSnapshot(t *testing.T) {
 		t.Fatalf("resolveRuntimePaths: %v", err)
 	}
 	if paths.userHome != userHome || paths.defaultWorkspacePath != userHome ||
-		paths.dataDirectory.Path() != filepath.Join(userHome, ".flame") || !filepath.IsAbs(paths.launchDirectory) {
+		paths.dataDirectory.Path() != filepath.Join(userHome, ".flame", "runtime") || !filepath.IsAbs(paths.launchDirectory) {
 		t.Fatalf("runtime paths = %+v, want user home and default workspace %q", paths, userHome)
 	}
 }
 
 func TestResolveRuntimePathsUsesExplicitAbsoluteDataDirectory(t *testing.T) {
 	userHome := t.TempDir()
-	dataDirectory := t.TempDir()
+	flameHome := t.TempDir()
 	t.Setenv("HOME", userHome)
-	t.Setenv("FLAME_HOME", dataDirectory)
+	t.Setenv("FLAME_HOME", flameHome)
 
 	paths, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatalf("resolveRuntimePaths: %v", err)
 	}
-	if paths.dataDirectory.Path() != dataDirectory {
-		t.Fatalf("data directory = %q, want %q", paths.dataDirectory.Path(), dataDirectory)
+	want := filepath.Join(flameHome, "runtime")
+	if paths.dataDirectory.Path() != want {
+		t.Fatalf("data directory = %q, want %q", paths.dataDirectory.Path(), want)
 	}
 }
 

@@ -10,21 +10,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// compactionDefaults govern the auto-compact trigger. Tunable via
-// [CompactionPolicyValues]. Token footprint owns the request-fit decision. A
-// separate message-count threshold may initiate proactive maintenance, but it
-// can never make an otherwise valid request fail its capacity check.
+// compactionDefaults govern model-context reduction. Tunable via
+// [CompactionPolicyValues]. The complete request's token footprint is the only
+// compaction trigger; protocol message count is not a measure of context
+// pressure.
 const (
 	percentageScale = 100
 
-	defaultCompactMaxMessages = 24 // proactive maintenance trigger threshold
-	defaultCompactKeepRecent  = 6  // raw messages to preserve verbatim
-
 	// defaultCompactMaxTokens is the estimated-token-footprint trigger used
 	// ONLY when the model's real context window is unknown (catalog miss). When
-	// the window IS known the trigger is window-relative instead — see
-	// [CompactionPolicyValues.FallbackTokenLimits] / [windowTriggerPct], capped by
-	// the provider's hard input envelope when one is known.
+	// the window is known the trigger is window-relative instead, capped by the
+	// provider's hard input envelope when one is known.
 	defaultCompactMaxTokens = 100_000
 
 	// windowTriggerPct is the share of the model's context window at which an
@@ -39,52 +35,19 @@ const (
 // policy. Nil means "use the named product default"; a present numeric zero is
 // invalid and never doubles as absence.
 //
-// A sweep triggers when EITHER bound is breached: MaxMessages (raw
-// message count) or MaxTokens (estimated token footprint). On a sweep the
-// oldest (len - KeepRecent) messages are replaced by a single system
-// message carrying an LLM-generated summary.
+// A sweep triggers only when the complete model request reaches MaxTokens.
 type CompactionPolicyValues struct {
-	MaxMessages *int // nil selects defaultCompactMaxMessages
-	MaxTokens   *int // optional explicit token-footprint trigger; capped by the provider's hard input limit
-	KeepRecent  *int // nil selects defaultCompactKeepRecent
-	// FallbackTokenLimits are the default model's complete context envelope,
-	// used only when the selected model is absent from the catalog.
-	FallbackTokenLimits modelref.TokenLimits
+	MaxTokens *int // optional explicit token-footprint trigger; capped by the provider's hard input limit
 }
 
 // compactionPolicy is the validated, immutable policy consumed by Compactor.
 type compactionPolicy struct {
-	messageTrigger    messageCountTrigger
 	maxTokens         int
 	maxTokensExplicit bool
-	keepRecent        int
-	fallbackLimits    modelref.TokenLimits
 }
 
 func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error) {
-	messageTrigger := newMessageCountTrigger(defaultCompactMaxMessages)
-	if values.MaxMessages != nil {
-		if *values.MaxMessages <= 0 {
-			return compactionPolicy{}, fmt.Errorf("compaction policy: maximum messages must be positive")
-		}
-		messageTrigger = newMessageCountTrigger(*values.MaxMessages)
-	}
-	keepRecent, err := positiveIntOrDefault(values.KeepRecent, defaultCompactKeepRecent, "recent messages")
-	if err != nil {
-		return compactionPolicy{}, fmt.Errorf("compaction policy: %w", err)
-	}
-	if messageTrigger.enabled() && keepRecent >= messageTrigger.limit() {
-		return compactionPolicy{}, fmt.Errorf("compaction policy: recent messages %d must be less than maximum messages %d", keepRecent, messageTrigger.limit())
-	}
-	if err := values.FallbackTokenLimits.Validate(); err != nil {
-		return compactionPolicy{}, fmt.Errorf("compaction policy: fallback token limits: %w", err)
-	}
-
-	policy := compactionPolicy{
-		messageTrigger: messageTrigger,
-		keepRecent:     keepRecent,
-		fallbackLimits: values.FallbackTokenLimits,
-	}
+	policy := compactionPolicy{}
 	if values.MaxTokens != nil {
 		if *values.MaxTokens <= 0 {
 			return compactionPolicy{}, fmt.Errorf("compaction policy: maximum tokens must be positive")
@@ -97,13 +60,9 @@ func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error
 
 // tokenTrigger resolves the token-footprint compaction threshold for a Run.
 // An explicit maximum wins; otherwise the threshold follows the selected
-// model's window, the default model fallback, or the coarse fixed fallback.
+// model's window or the coarse fixed fallback for an unknown model.
 // A provider's prompt envelope always remains the hard upper bound.
 func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
-	effectiveLimits := limits
-	if effectiveLimits.Unknown() {
-		effectiveLimits = p.fallbackLimits
-	}
 	reservation := modelref.OutputReservation{}
 	if options.MaxOutputTokens != nil {
 		var err error
@@ -112,11 +71,11 @@ func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat
 			return 0, err
 		}
 	}
-	inputLimit, inputLimitKnown, err := effectiveLimits.InputCeiling(reservation)
+	inputLimit, inputLimitKnown, err := limits.InputCeiling(reservation)
 	if err != nil {
 		return 0, err
 	}
-	contextWindow, contextWindowKnown := effectiveLimits.ContextWindow()
+	contextWindow, contextWindowKnown := limits.ContextWindow()
 
 	trigger := defaultCompactMaxTokens
 	if p.maxTokensExplicit {

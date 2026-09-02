@@ -247,7 +247,6 @@ func buildExecutionComposition(
 	}
 	runMaintenance, modelContextCompactor, err := buildRunMaintenance(
 		cfg,
-		defaultSelection,
 		conversation,
 		toolRuntime.tools.Shells,
 		workspaceServices.skills,

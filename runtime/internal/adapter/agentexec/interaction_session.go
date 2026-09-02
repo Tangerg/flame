@@ -53,24 +53,25 @@ type interactionSession struct {
 // committed replies, and Segment timing have independent invariants and do not
 // belong under this lock.
 type interactionState struct {
-	mu                        sync.Mutex
-	pendingSteers             map[agent.SignalID]pendingInteractionSteer
-	process                   *agent.Process
-	admittedProcessID         agent.ProcessID
-	observerWasAttached       bool
-	begun                     bool
-	finished                  bool
-	boundary                  interactionBoundary
-	waitingCheckpoint         runs.ExecutorCheckpoint
-	subtreeChange             *interactionWaitingSubtreeChange
-	subtreePrepared           chan struct{}
-	unknownReported           bool
-	deployments               *interactionDeploymentSet
-	delegateCalls             map[delegateCallIdentity]*managedDelegateCall
-	delegateChildren          map[agent.ProcessID]*managedDelegateCall
-	activeDispatches          map[interactionDispatchIdentity]activeInteractionDispatch
-	canceledSubtreeRoots      map[agent.ProcessID]struct{}
-	rootCancellationRequested bool
+	mu                         sync.Mutex
+	pendingSteers              map[agent.SignalID]pendingInteractionSteer
+	process                    *agent.Process
+	admittedProcessID          agent.ProcessID
+	observerWasAttached        bool
+	begun                      bool
+	finished                   bool
+	boundary                   interactionBoundary
+	waitingCheckpoint          runs.ExecutorCheckpoint
+	subtreeChange              *interactionWaitingSubtreeChange
+	subtreePrepared            chan struct{}
+	unknownReported            bool
+	deployments                *interactionDeploymentSet
+	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
+	delegateChildren           map[agent.ProcessID]*managedDelegateCall
+	activeDispatches           map[interactionDispatchIdentity]activeInteractionDispatch
+	canceledSubtreeRoots       map[agent.ProcessID]struct{}
+	rootCancellationRequested  bool
+	durableContextWasCompacted bool
 }
 
 type activeInteractionDispatch struct {
@@ -164,6 +165,18 @@ func (i *interactionState) observerAttached() bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return i.observerWasAttached
+}
+
+func (i *interactionState) markDurableContextCompacted() {
+	i.mu.Lock()
+	i.durableContextWasCompacted = true
+	i.mu.Unlock()
+}
+
+func (i *interactionState) durableContextCompacted() bool {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.durableContextWasCompacted
 }
 
 func (i *interactionState) begin() bool {

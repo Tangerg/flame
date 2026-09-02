@@ -7,7 +7,7 @@ package protocol
 // input, and sends the result as a Run — the runtime only discovers them.
 
 // RecipeScope is where a discovered Recipe came from: project (<cwd>/.flame/
-// recipes) or global (<FLAME_HOME>/recipes). Mirrors SkillScope's values but is
+// recipes) or global (<FLAME_HOME>/runtime/recipes). Mirrors SkillScope's values but is
 // a distinct domain (left separate rather than DRY-coupled — under rule-of-three).
 type RecipeScope string
 

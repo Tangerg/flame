@@ -133,7 +133,8 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 	mainCalls, summaryCalls, summaryAtMainCalls, stateChecks := model.Snapshot()
 	if mainCalls != modelCallsBeforeMidRunCompaction+2 ||
 		summaryCalls != 1 || len(summaryAtMainCalls) != 1 ||
-		summaryAtMainCalls[0] != modelCallsBeforeMidRunCompaction || !stateChecks.all() {
+		summaryAtMainCalls[0] < 2 || summaryAtMainCalls[0] > modelCallsBeforeMidRunCompaction ||
+		!stateChecks.all() {
 		t.Fatalf(
 			"Goal/Plan model context = main:%d summary:%d boundary:%v checks:%+v",
 			mainCalls,
@@ -295,7 +296,7 @@ func (g *goalAndPlanLongContextModel) Call(
 			ID:        "call_goal_set_current_plan",
 			Name:      tool.SetPlan,
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
-		}), nil
+		}, modelContextPressurePayload), nil
 	case call <= modelCallsBeforeMidRunCompaction:
 		if call == 2 {
 			g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -306,7 +307,7 @@ func (g *goalAndPlanLongContextModel) Call(
 		}
 		return toolCallResponse(chat.ToolCall{
 			ID: fmt.Sprintf("call_active_goal_%02d", call), Name: tool.GetGoal, Arguments: `{}`,
-		}), nil
+		}, modelContextPressurePayload), nil
 	case call == modelCallsBeforeMidRunCompaction+1:
 		g.recordCheck(func(checks *goalAndPlanStateChecks) {
 			checks.updatedAfterFold = requestContainsText(request, goalAcrossCompactionObjective) &&
@@ -383,7 +384,7 @@ func (p *planChangingLongContextModel) Call(
 			ID:        "call_set_current_plan",
 			Name:      tool.SetPlan,
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
-		}), nil
+		}, modelContextPressurePayload), nil
 	case p.mainCalls <= modelCallsBeforeMidRunCompaction:
 		if p.mainCalls == 2 &&
 			(requestContainsText(request, stalePlanText) || !requestContainsText(request, currentPlanText)) {
@@ -391,7 +392,7 @@ func (p *planChangingLongContextModel) Call(
 		}
 		return toolCallResponse(chat.ToolCall{
 			ID: fmt.Sprintf("call_goal_after_plan_%02d", p.mainCalls), Name: tool.GetGoal, Arguments: `{}`,
-		}), nil
+		}, modelContextPressurePayload), nil
 	default:
 		p.staleSeen = requestContainsText(request, stalePlanText)
 		p.currentSeen = requestContainsText(request, currentPlanText)
@@ -426,8 +427,15 @@ func requestContainsText(request *chat.Request, text string) bool {
 	return false
 }
 
-func toolCallResponse(call chat.ToolCall) *chat.Response {
-	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+var modelContextPressurePayload = strings.Repeat("context ", 4_200)
+
+func toolCallResponse(call chat.ToolCall, text ...string) *chat.Response {
+	parts := make([]chat.Part, 0, len(text)+1)
+	for _, value := range text {
+		parts = append(parts, chat.NewTextPart(value))
+	}
+	parts = append(parts, chat.NewToolCallPart(call))
+	message := chat.NewAssistantMessage(parts...)
 	return &chat.Response{Output: &chat.Output{
 		Message: &message, FinishReason: chat.FinishReasonToolCalls,
 	}}

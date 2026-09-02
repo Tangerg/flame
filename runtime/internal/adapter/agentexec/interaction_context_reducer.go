@@ -157,6 +157,9 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return nil, err
 	}
 	if result.Summarized() {
+		if compaction.Durable() {
+			i.session.state.markDurableContextCompacted()
+		}
 		before, after := result.MessageCounts()
 		i.session.lifetime.send(runs.ExecutorEvent{
 			Member: i.session.executorMember(invocation.Relation()),

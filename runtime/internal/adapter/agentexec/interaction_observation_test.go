@@ -181,12 +181,14 @@ func TestInteractionExecutorCarriesProviderInputCountingIntoEveryMainCallReducti
 
 func TestInteractionExecutorPublishesModelContextCompactionSummary(t *testing.T) {
 	const summary = "MID-RUN SUMMARY"
+	var maintenanceInput RunMaintenanceInput
 	model := &observationScriptModel{
 		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
 	}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ModelContextCompactor: summarizingObservationCompactor{summary: summary},
 		ModelContextState:     emptyInteractionModelContextState{},
+		Maintenance:           fixedRunMaintenance{input: &maintenanceInput},
 	})
 
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
@@ -194,33 +196,8 @@ func TestInteractionExecutorPublishesModelContextCompactionSummary(t *testing.T)
 	if len(boundaries) != 1 || boundaries[0].Summary != summary {
 		t.Fatalf("compaction boundaries = %#v, want summary %q", boundaries, summary)
 	}
-}
-
-func TestInteractionExecutorPublishesRunMaintenanceCompactionSummary(t *testing.T) {
-	const summary = "ROOT MAINTENANCE SUMMARY"
-	var maintenanceContextErr error
-	compaction, err := NewCompactionResult(summary, 12, 5)
-	if err != nil {
-		t.Fatal(err)
-	}
-	model := &observationScriptModel{
-		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
-	}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		Maintenance: fixedRunMaintenance{
-			result:     RunMaintenanceResult{Compaction: compaction},
-			contextErr: &maintenanceContextErr,
-		},
-	})
-
-	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
-	boundaries := payloadsOf[runs.CompactionBoundary](events)
-	if len(boundaries) != 1 || boundaries[0].Summary != summary ||
-		boundaries[0].MessagesBefore != 12 || boundaries[0].MessagesAfter != 5 {
-		t.Fatalf("compaction boundaries = %#v", boundaries)
-	}
-	if maintenanceContextErr != nil {
-		t.Fatalf("Run maintenance context after Process completion = %v", maintenanceContextErr)
+	if !maintenanceInput.DurableContextCompacted {
+		t.Fatal("Run maintenance did not receive the durable compaction fact")
 	}
 }
 
@@ -244,11 +221,15 @@ func (c summarizingObservationCompactor) CompactModelContext(
 type fixedRunMaintenance struct {
 	result     RunMaintenanceResult
 	contextErr *error
+	input      *RunMaintenanceInput
 }
 
-func (m fixedRunMaintenance) Maintain(ctx context.Context, _ RunMaintenanceInput) RunMaintenanceResult {
+func (m fixedRunMaintenance) Maintain(ctx context.Context, input RunMaintenanceInput) RunMaintenanceResult {
 	if m.contextErr != nil {
 		*m.contextErr = ctx.Err()
+	}
+	if m.input != nil {
+		*m.input = input
 	}
 	return m.result
 }

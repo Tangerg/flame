@@ -40,6 +40,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	}
 	pending := chat.NewUserMessage(chat.NewTextPart("steer that has not been projected yet"))
 	candidate := append(cloneMessages(history), pending)
+	threshold := contextTokenEstimate(t, candidate)
 	model := newTextStubModel("MID-RUN SUMMARY")
 	client, clientErr := chatclient.New(model, chatclient.Config{})
 	if clientErr != nil {
@@ -50,7 +51,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(len(history)), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 		contextState,
 	)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
@@ -98,11 +99,13 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	current := chat.NewUserMessage(chat.NewTextPart("the exact threshold message stays verbatim"))
+	threshold := contextTokenEstimate(t, append(cloneMessages(history), current))
 	compactor := mustNewCompactor(t,
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(len(history) + 1), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	preCompactCalls := 0
 	preCompact := func(context.Context) bool {
@@ -124,7 +127,6 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		)
 	}
 
-	current := chat.NewUserMessage(chat.NewTextPart("the exact threshold message stays verbatim"))
 	history = append(history, current)
 	if writeErr := store.Write(t.Context(), sessionID, current); writeErr != nil {
 		t.Fatal(writeErr)
@@ -230,9 +232,7 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 		t.Fatal(err)
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxMessages: intPointer(100),
-		MaxTokens:   intPointer(threshold),
-		KeepRecent:  intPointer(2),
+		MaxTokens: intPointer(threshold),
 	})
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -290,9 +290,7 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 		t.Fatal(err)
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxMessages: intPointer(100),
-		MaxTokens:   intPointer(10_000),
-		KeepRecent:  intPointer(2),
+		MaxTokens: intPointer(10_000),
 	})
 
 	if _, compactErr := compactor.CompactModelContext(t.Context(), request); !errors.Is(compactErr, countErr) {
@@ -354,9 +352,7 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 		t.Fatal(err)
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxMessages: intPointer(100),
-		MaxTokens:   intPointer(threshold),
-		KeepRecent:  intPointer(2),
+		MaxTokens: intPointer(threshold),
 	})
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -428,7 +424,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(100), MaxTokens: intPointer(rawEstimate + 100), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{MaxTokens: intPointer(rawEstimate + 100)},
 	)
 
 	below, err := compactor.CompactModelContext(
@@ -536,7 +532,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(100), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{},
 	)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -627,7 +623,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(100), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{},
 	)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -651,6 +647,7 @@ func TestFirstModelContextCompactionPreservesCurrentUserMessageVerbatim(t *testi
 	history := completeContextTurns()
 	current := chat.NewUserMessage(chat.NewTextPart("current request must be seen verbatim"))
 	history = append(history, current)
+	threshold := contextTokenEstimate(t, history)
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
@@ -662,7 +659,7 @@ func TestFirstModelContextCompactionPreservesCurrentUserMessageVerbatim(t *testi
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(len(history)), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	request := durableContextRequest(t, sessionID, history, 1, nil)
 
@@ -693,7 +690,7 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(100), MaxTokens: intPointer(1_000), KeepRecent: intPointer(2)},
+		CompactionPolicyValues{MaxTokens: intPointer(1_000)},
 	)
 	request := durableContextRequest(t, sessionID, []chat.Message{current}, 1, nil)
 
@@ -709,38 +706,6 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 	}
 	if len(after) != 1 || after[0].Text() != current.Text() {
 		t.Fatalf("protected input changed after rejection: %#v", after)
-	}
-}
-
-func TestOptionalModelContextCompactionHonorsLifecycleVetoWithoutBlockingCall(t *testing.T) {
-	store := newCompactionTestStore()
-	const sessionID = "session:optional-veto"
-	history := completeContextTurns()
-	if err := store.Write(t.Context(), sessionID, history...); err != nil {
-		t.Fatal(err)
-	}
-	model := newTextStubModel("must not run")
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	compactor := mustNewCompactor(t,
-		store,
-		constClient(client),
-		nil,
-		CompactionPolicyValues{MaxMessages: intPointer(len(history)), KeepRecent: intPointer(2)},
-	)
-	request := durableContextRequest(t, sessionID, history, 0, func(context.Context) bool { return false })
-
-	result, err := compactor.CompactModelContext(t.Context(), request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Changed() || result.Summarized() || !reflect.DeepEqual(result.Messages(), history) {
-		t.Fatalf("vetoed optional compaction changed context: %#v", result.Messages())
-	}
-	if store.rewrites != 0 || len(model.requests) != 0 {
-		t.Fatalf("vetoed optional compaction side effects = rewrites:%d summaries:%d", store.rewrites, len(model.requests))
 	}
 }
 
@@ -763,9 +728,7 @@ func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *tes
 		unexpectedClient,
 		nil,
 		CompactionPolicyValues{
-			MaxMessages: intPointer(len(history) + 1),
-			MaxTokens:   intPointer(threshold),
-			KeepRecent:  intPointer(2),
+			MaxTokens: intPointer(threshold),
 		},
 	)
 	request := durableContextRequest(t, sessionID, history, 0, func(context.Context) bool { return false })
@@ -784,10 +747,7 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	}
 	candidate := cloneMessages(history)
 	candidate[0] = chat.NewUserMessage(chat.NewTextPart("different"))
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{
-		MaxMessages: intPointer(len(history)),
-		KeepRecent:  intPointer(2),
-	})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -805,7 +765,7 @@ func TestDurableModelContextCompactionIgnoresProjectionMetadataDrift(t *testing.
 	}
 	candidate := cloneMessages(history)
 	candidate[1].Metadata = nil
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -836,7 +796,7 @@ func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *te
 	}
 	pending := chat.NewUserMessage(chat.NewTextPart("continue"))
 	candidate := []chat.Message{durable[0].Clone(), durable[1].Clone(), chat.NewToolMessage(first, second), pending}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -862,7 +822,7 @@ func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -884,7 +844,7 @@ func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T
 	candidate := []chat.Message{
 		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("candidate")}),
 	}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -906,7 +866,7 @@ func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testin
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"paused"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -971,4 +931,14 @@ func completeContextTurns() []chat.Message {
 		chat.NewUserMessage(chat.NewTextPart("q3")),
 		chat.NewAssistantMessage(chat.NewTextPart("a3")),
 	}
+}
+
+func contextTokenEstimate(t *testing.T, candidate []chat.Message) int {
+	t.Helper()
+	return mustEstimateModelContextTokens(
+		t,
+		append([]chat.Message{chat.NewSystemMessage("frozen instructions")}, candidate...),
+		nil,
+		chat.Options{},
+	)
 }

@@ -3,14 +3,10 @@ package maintenance
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
 // compactionStore is the worker's narrow conversation use-case view. The
@@ -35,8 +31,7 @@ type SessionContextInvalidator interface {
 	ForgetSessionContext(sessionID string)
 }
 
-// Compactor is the automatic conversation-history compaction worker. A nil
-// Compactor makes [Compactor.CompactIfNeeded] a silent no-op.
+// Compactor reduces the exact context of an imminent model request.
 type Compactor struct {
 	store        compactionStore
 	client       modeladapter.AuxiliaryResolver
@@ -55,7 +50,7 @@ const (
 
 type compactionPlan struct {
 	action          compactionAction
-	required        bool
+	cannotFit       bool
 	messagesBefore  int
 	cutoff          int
 	trimmed         []chat.Message
@@ -96,111 +91,10 @@ func NewCompactor(
 	}, nil
 }
 
-// CompactIfNeeded inspects sessionID's history. When either trigger
-// (message count or complete-request token footprint, see [modelContextBudget]) is
-// breached it runs a ladder, cheapest rung first: a non-LLM trim of oversized
-// tool-call arguments and old tool-result bodies (see trimForBudgetBefore);
-// only if that leaves the footprint over budget is the older slice summarized by
-// the LLM and the store rewritten as [summary, recent...]. A trim that suffices
-// on its own rewrites history silently and reports no boundary — it drops no
-// messages. The returned [agentexec.CompactionResult] carries the semantic
-// summary and before/after message counts so callers can chain follow-on work
-// (e.g. extraction) and surface an observable boundary event.
-//
-// No-op (zero result) on a nil receiver (compaction disabled) or an
-// empty sessionID.
-//
-// Important: the summary call goes through chatclient.Client directly
-// (no middleware), so it does NOT enter the chat history middleware
-// — otherwise the summarisation request itself would be appended
-// to the history and trigger another compaction round.
-func (c *Compactor) CompactIfNeeded(
-	ctx context.Context,
-	sessionID string,
-	limits modelref.TokenLimits,
-	options chat.Options,
-	preCompact func(context.Context) bool,
-) (agentexec.CompactionResult, error) {
-	if c == nil || sessionID == "" {
-		return agentexec.CompactionResult{}, nil
-	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: %w", err)
-	}
-	maxTokens, err := c.policy.tokenTrigger(limits, options)
-	if err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: resolve token trigger: %w", err)
-	}
-	msgs, err := c.store.Read(ctx, sessionID)
-	if err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: read: %w", err)
-	}
-	budget := newModelContextBudget(c.policy.messageTrigger, maxTokens, nil, nil, nil, chat.Options{}, 0, nil)
-	plan, err := c.planCompaction(ctx, msgs, budget)
-	if err != nil {
-		return agentexec.CompactionResult{}, err
-	}
-	if plan.action == noCompaction {
-		return agentexec.CompactionResult{}, nil
-	}
-	if preCompact != nil && !preCompact(ctx) {
-		return agentexec.CompactionResult{}, nil
-	}
-
-	if plan.action == trimCompaction {
-		if rewriteForCompactionErr := c.store.RewriteForCompaction(ctx, sessionID, len(msgs), 0, 0, plan.trimmed...); rewriteForCompactionErr != nil {
-			return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace trimmed: %w", rewriteForCompactionErr)
-		}
-		c.forgetSessionContext(sessionID)
-		return agentexec.CompactionResult{}, nil
-	}
-
-	summary, err := c.summarize(ctx, plan.older)
-	if err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: summarize: %w", err)
-	}
-
-	rewritten := make([]chat.Message, 0, 2+len(plan.recent))
-	rewritten = append(rewritten, summary.Message())
-	// Right after the summary, carry over the live execution state the summary
-	// dropped (running background shells) so the model does not forget a process
-	// it started before the compacted Runs. Deterministic, no model
-	// call; omitted entirely when nothing is active.
-	if c.liveState != nil {
-		if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
-			rewritten = append(rewritten, reminder)
-		}
-	}
-	rewritten = append(rewritten, plan.recent...)
-	// Atomically swap the history for [summary, ...recent]. The store rolls back
-	// a failed rewrite, so a crash cannot
-	// leave the conversation cleared-but-not-rewritten (losing `recent` too).
-	prefixAfter := len(rewritten) - len(plan.recent)
-	result, err := agentexec.NewCompactionResult(summary.Text(), plan.messagesBefore, len(rewritten))
-	if err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: build result: %w", err)
-	}
-	if err := c.store.RewriteForCompaction(
-		ctx, sessionID, plan.messagesBefore, plan.cutoff, prefixAfter, rewritten...,
-	); err != nil {
-		return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace: %w", err)
-	}
-	c.forgetSessionContext(sessionID)
-	return result, nil
-}
-
 func (c *Compactor) forgetSessionContext(sessionID string) {
 	if c.contextState != nil {
 		c.contextState.ForgetSessionContext(sessionID)
 	}
-}
-
-func (c *Compactor) planCompaction(
-	ctx context.Context,
-	messages []chat.Message,
-	budget modelContextBudget,
-) (compactionPlan, error) {
-	return c.planCompactionWithProtectedTail(ctx, messages, budget, 0)
 }
 
 func (c *Compactor) planCompactionWithProtectedTail(
@@ -209,7 +103,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	budget modelContextBudget,
 	protectedTail int,
 ) (compactionPlan, error) {
-	overBudget, tokenTriggered, estimatedTokens, err := budget.triggered(ctx, messages)
+	overBudget, estimatedTokens, err := budget.triggered(ctx, messages)
 	if err != nil {
 		return compactionPlan{}, err
 	}
@@ -217,7 +111,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{estimatedTokens: estimatedTokens}, nil
 	}
 	if protectedTail < 0 || protectedTail > len(messages) {
-		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
 	}
 	foldableLimit := len(messages) - protectedTail
 	protectedOverBudget, _, err := budget.exceeded(ctx, messages[foldableLimit:])
@@ -225,32 +119,31 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{}, err
 	}
 	if protectedOverBudget {
-		return compactionPlan{required: true, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
 	}
 	if foldableLimit == 0 {
-		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
 	}
-	cutoff := c.summaryCutoffWithProtectedTail(messages, protectedTail)
+	cutoff := summaryCutoffWithProtectedTail(messages, protectedTail)
 	if cutoff == 0 {
-		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
 	}
 	trimmed, changed := trimForBudgetBefore(messages, cutoff)
 	trimmedOverBudget, trimmedEstimate, err := budget.exceeded(ctx, trimmed)
 	if err != nil {
 		return compactionPlan{}, err
 	}
-	if tokenTriggered && changed && !trimmedOverBudget {
+	if changed && !trimmedOverBudget {
 		return compactionPlan{
-			action: trimCompaction, required: tokenTriggered,
+			action:         trimCompaction,
 			messagesBefore: len(messages), trimmed: trimmed,
 			estimatedTokens: trimmedEstimate,
 		}, nil
 	}
-	// KeepRecent is a preference, not a license to preserve a suffix that is
-	// already over budget by itself. In that case the preferred prefix summary
-	// cannot converge: every later pass would keep the same oversized turn.
-	// Widen the deterministic rung first; only summarize the complete, finished
-	// history when cheap trimming still cannot make it executable.
+	// The latest turn is not a license to preserve a suffix that is already over
+	// budget by itself. In that case a prefix summary cannot converge, so widen
+	// the deterministic rung first and summarize the complete foldable history
+	// only when cheap trimming still cannot make it executable.
 	recentOverBudget, _, err := budget.exceeded(ctx, trimmed[cutoff:])
 	if err != nil {
 		return compactionPlan{}, err
@@ -262,9 +155,9 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		if err != nil {
 			return compactionPlan{}, err
 		}
-		if tokenTriggered && changed && !trimmedOverBudget {
+		if changed && !trimmedOverBudget {
 			return compactionPlan{
-				action: trimCompaction, required: tokenTriggered,
+				action:         trimCompaction,
 				messagesBefore: len(messages), trimmed: trimmed,
 				estimatedTokens: trimmedEstimate,
 			}, nil
@@ -272,7 +165,6 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	}
 	return compactionPlan{
 		action:          summarizeCompaction,
-		required:        tokenTriggered,
 		messagesBefore:  len(messages),
 		cutoff:          cutoff,
 		older:           trimmed[:cutoff],
@@ -281,12 +173,10 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	}, nil
 }
 
-// summaryCutoffWithProtectedTail returns a complete-turn boundary near the
-// configured recent window without folding the caller-owned exact suffix. The
-// preferred boundary is the first User message at or after the naive cutoff.
-// If the cutoff landed inside the final foldable turn, it moves back to that
-// turn's opening User message.
-func (c *Compactor) summaryCutoffWithProtectedTail(
+// summaryCutoffWithProtectedTail preserves the latest foldable user turn and
+// the caller-owned exact suffix. When one long turn alone fills the context,
+// the complete foldable turn is summarized so the next model request can fit.
+func summaryCutoffWithProtectedTail(
 	messages []chat.Message,
 	protectedTail int,
 ) int {
@@ -294,28 +184,13 @@ func (c *Compactor) summaryCutoffWithProtectedTail(
 		return 0
 	}
 	foldable := messages[:len(messages)-protectedTail]
-	desired := max(0, len(messages)-c.policy.keepRecent)
-	desired = min(desired, len(foldable))
-	hasOpeningUser := false
-	for index := desired; index < len(foldable); index++ {
+	for index := len(foldable) - 1; index >= 0; index-- {
 		if foldable[index].Role == chat.RoleUser {
 			if index > 0 {
 				return index
 			}
-			hasOpeningUser = true
+			return len(foldable)
 		}
-	}
-	for index := min(desired-1, len(foldable)-1); index >= 0; index-- {
-		if foldable[index].Role == chat.RoleUser {
-			if index > 0 {
-				return index
-			}
-			hasOpeningUser = true
-			break
-		}
-	}
-	if hasOpeningUser {
-		return len(foldable)
 	}
 	return 0
 }

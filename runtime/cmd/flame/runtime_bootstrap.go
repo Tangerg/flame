@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const dataDirectoryEnvironment = "FLAME_HOME"
+const flameHomeEnvironment = "FLAME_HOME"
 
 // runtimePaths is the executable's single snapshot of host paths. User Home,
 // default workspace, durable data, and launch directory are distinct facts even
@@ -46,15 +46,13 @@ func resolveRuntimePaths() (runtimePaths, error) {
 	if !filepath.IsAbs(launchDirectory) {
 		return runtimePaths{}, errors.New("runtime: launch directory must be absolute")
 	}
-	dataDirectoryPath := os.Getenv(dataDirectoryEnvironment)
-	var dataDirectory localruntime.DataDirectory
-	if dataDirectoryPath == "" {
-		dataDirectory, err = localruntime.DefaultDataDirectory(userHome)
-	} else {
-		dataDirectory, err = localruntime.DataDirectoryAt(dataDirectoryPath)
+	flameHomePath := os.Getenv(flameHomeEnvironment)
+	if flameHomePath == "" {
+		flameHomePath = filepath.Join(userHome, ".flame")
 	}
+	dataDirectory, err := localruntime.DataDirectoryAt(filepath.Join(flameHomePath, "runtime"))
 	if err != nil {
-		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", dataDirectoryEnvironment, err)
+		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
 	}
 	return runtimePaths{
 		userHome:             userHome,
