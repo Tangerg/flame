@@ -1213,14 +1213,6 @@ html.theme-dark {
   background-clip: content-box;
 }
 
-.msg-scroll-frame {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
 .msg-scroll-viewport {
   --transcript-fade: 24px;
   /* The transcript runs BEHIND the composer, which is translucent. The bottom fade therefore
@@ -1262,7 +1254,6 @@ html.theme-dark {
 
 @import "./markdown.css";
 @import "./overlays.css";
-@import "./tool.css";
 
 /* The corner language, in one place, after the imports so the pill exception below reaches
    the sheets that declare pills.

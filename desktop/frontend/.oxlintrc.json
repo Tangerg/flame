@@ -29,5 +29,5 @@
       { "assertFunctionNames": ["expect", "expectTypeOf", "assert", "assertType", "expect*"] }
     ]
   },
-  "ignorePatterns": ["wailsjs/**", "dist/**", "node_modules/**", "sample-plugins/**"]
+  "ignorePatterns": ["wailsjs/**", "dist/**", "node_modules/**"]
 }
