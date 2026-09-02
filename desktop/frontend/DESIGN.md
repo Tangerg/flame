@@ -659,14 +659,18 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 - Long code blocks and tables can exceed the measure — they scroll horizontally
   inside their own wrapper; the prose column does not move.
 
-### Tabs — removed (2026-06 redesign)
+### Tabs
 
-- **No tab strip.** One active session at a time (ChatGPT-style); switching is
-  via the sidebar session list (`selectTab`). Workspace views (Files / Diff /
-  Plan / Tools / …) open **full-pane** (no tab affordance, no title bar) and
-  close via **Option A**: click the same sidebar nav row again (toggle), press
-  `Esc` (yields to palette/dialog/input first), or use the split-view
-  promote/close control.
+- **No session tab strip.** One active session at a time (ChatGPT-style);
+  switching is via the sidebar session list. A main workspace view opens
+  full-pane, and closes by clicking its sidebar nav row again, pressing `Esc`
+  (which yields to palette/dialog/input first), or the split-view control.
+- **The dock has one.** Views opened beside the conversation share a strip of
+  tabs: drag to reorder, a fade at each end that says the strip runs on, and
+  close with the ×, with `Delete`/`Backspace` on the focused tab, or with a
+  middle click. The × is not in the tab order — a focusable sibling inside a
+  `tablist` is an unallowed child, and Delete on the focused tab is the ARIA
+  practice for a closable tab.
 
 ### Spacing rhythm
 
@@ -784,20 +788,20 @@ ever be wrong.
 
 The frontmatter `components:` block carries the canonical spec for every Flame-specific component. Highlights:
 
-### Tool-call card — the "RPC log" rule
+### Tool-call row — one line on the work narrative
 
-Tool calls render **like an RPC log entry, not a generic card**:
+A tool call is **a line, not a card**. It renders through
+`AgentActivityDisclosure` at `shell="line"`: an identity glyph, the intent, an
+optional mono detail, and trailing meta — a diff stat, a duration, a running dot.
+No fill, no hairline, no radius, because it has no surface of its own.
 
-```
-read_file(path: "src/auth.ts")            ✓ 12ms · 1,247 lines
-```
+Every invocation takes the neutral tone whatever its safety class or outcome. The
+material result earns a surface only once the row is opened; colouring the
+identity glyph would turn a failure or a refusal back into a status card, which is
+the thing this shape exists to avoid.
 
-- Line 1: function signature in `code` typography (mono 12.5px).
-- Line 2: status glyph (`✓` / `✗` / pulsing dot) + duration + summary, all `caption-mono`.
-- Expandable for full result body.
-- Card chrome: `surface-1` + `hairline` + `md` radius.
-
-This single change carries more "agent-tool" feel than any other component decision.
+An earlier revision spelled this as an RPC log entry inside card chrome. The
+narrative line is what replaced it.
 
 ### No bottom status bar
 
@@ -815,16 +819,18 @@ The composer's hover-revealed cheatsheet **derives rows from `useCommands()`**. 
 
 Accent (default `#6c97ff` dark / `#2563eb` light, user-selectable) appears in:
 
-1. **Active tab indicator** — 2px underline on `chat-tab.active::after`
-2. **Primary CTA fill** — `button-primary` background, send button
-3. **Focus ring** — `:focus-visible`, a single thin accent stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it for everything; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. A theme retunes it through `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build
-4. **Live indicator** — streaming `tab-dot.running`, status pill while `run.running === true`, the reasoning block's pulse dot
+1. **Primary CTA fill** — `bg-cta`: the send button, an accent `PillButton`
+2. **Focus ring** — `:focus-visible`, a single thin accent stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it for everything; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. A theme retunes it through `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build
+3. **Live indicator** — the running `StatusDot`, the status pill while a run is
+   live, the reasoning block's pulse dot
+4. **Selection and control fills** — the check on a chosen menu item, a slider or
+   switch that is on, a progress indicator, an active step marker
 
 That's the entire list. Accent does **not** appear in:
 - Avatar backgrounds (use `surface-2/3` + `ink-muted`)
 - Section headers (use `ink`)
 - Active-state list rows (use `surface-2/3` + `ink`)
-- Iconography (icons are `ink-muted` → `ink` on hover)
+- Ordinary iconography — an icon that is only an affordance is `ink-muted` → `ink` on hover. An icon that carries STATE is item 4.
 - Tool-call success status (use `success`, not the accent)
 - Input / composer focus (a quiet border strengthen — no accent ring)
 

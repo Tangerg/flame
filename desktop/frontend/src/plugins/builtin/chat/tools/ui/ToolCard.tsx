@@ -43,7 +43,6 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   return (
     <AgentActivityDisclosure
       data-tool={tool.name}
-      data-status={tool.status}
       icon={toolCallIconFor(tool)}
       // Every invocation stays on the work-narrative line and takes the neutral tone,
       // whatever its safety class or outcome: the material result earns a surface only once
