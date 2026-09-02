@@ -19,6 +19,11 @@ type agentDocumentsPrompt struct {
 	sources contextSources
 }
 
+type agentDocumentBlock struct {
+	text string
+	path string
+}
+
 func newAgentDocumentsPrompt(files []workspace.AgentDocFile, maxBytes int) (agentDocumentsPrompt, error) {
 	if len(files) == 0 || maxBytes <= 0 {
 		return agentDocumentsPrompt{}, nil
@@ -26,52 +31,61 @@ func newAgentDocumentsPrompt(files []workspace.AgentDocFile, maxBytes int) (agen
 	if err := workspace.ValidateAgentDocumentCascade(files); err != nil {
 		return agentDocumentsPrompt{}, err
 	}
+	blocks, total := buildAgentDocumentBlocks(files)
+	selected, total, err := selectAgentDocumentBlocks(blocks, total, maxBytes)
+	if err != nil {
+		return agentDocumentsPrompt{}, err
+	}
+	return renderAgentDocumentBlocks(selected, total), nil
+}
 
-	blocks := make([]string, len(files))
-	sizes := make([]int, len(files))
-	total := len(agentDocPromptHeader) + 2
+func buildAgentDocumentBlocks(files []workspace.AgentDocFile) ([]agentDocumentBlock, int) {
+	blocks := make([]agentDocumentBlock, len(files))
+	total := len(agentDocPromptHeader) + 2 + max(0, len(files)-1)
 	for i, file := range files {
-		blocks[i] = "<!-- From: " + file.Path + " -->\n" + file.Content + "\n"
-		sizes[i] = len(blocks[i])
-		if len(agentDocPromptHeader)+2+sizes[i] > maxBytes {
-			return agentDocumentsPrompt{}, fmt.Errorf(
-				"%w: agent document %q cannot fit the %d-byte Run guidance budget",
-				workspace.ErrPromptSourceTooLarge,
-				file.Path,
-				maxBytes,
-			)
-		}
-		total += sizes[i]
+		text := "<!-- From: " + file.Path + " -->\n" + file.Content + "\n"
+		blocks[i] = agentDocumentBlock{text: text, path: file.Path}
+		total += len(text)
 	}
-	if len(files) > 1 {
-		total += len(files) - 1
-	}
+	return blocks, total
+}
 
+func selectAgentDocumentBlocks(
+	blocks []agentDocumentBlock,
+	total int,
+	maxBytes int,
+) ([]agentDocumentBlock, int, error) {
 	start := 0
-	for start < len(files) && total > maxBytes {
-		total -= sizes[start]
-		if start+1 < len(files) {
+	for start < len(blocks) && total > maxBytes {
+		total -= len(blocks[start].text)
+		if start+1 < len(blocks) {
 			total--
 		}
 		start++
 	}
-	if start == len(files) {
-		return agentDocumentsPrompt{}, nil
+	if start == len(blocks) {
+		return nil, 0, fmt.Errorf(
+			"%w: agent document %q cannot fit the %d-byte Run guidance budget",
+			workspace.ErrPromptSourceTooLarge,
+			blocks[len(blocks)-1].path,
+			maxBytes,
+		)
 	}
+	return blocks[start:], total, nil
+}
 
+func renderAgentDocumentBlocks(blocks []agentDocumentBlock, total int) agentDocumentsPrompt {
 	var prompt strings.Builder
 	prompt.Grow(total)
-	for i := start; i < len(files); i++ {
-		if i > start {
+	sources := make(contextSources, 0, len(blocks))
+	for i, block := range blocks {
+		if i > 0 {
 			prompt.WriteByte('\n')
 		}
-		prompt.WriteString(blocks[i])
+		prompt.WriteString(block.text)
+		sources = append(sources, contextSourceAgentDocument.source(block.path))
 	}
-	sources := make(contextSources, 0, len(files)-start)
-	for _, file := range files[start:] {
-		sources = append(sources, contextSourceAgentDocument.source(file.Path))
-	}
-	return agentDocumentsPrompt{text: prompt.String(), sources: sources}, nil
+	return agentDocumentsPrompt{text: prompt.String(), sources: sources}
 }
 
 func (a agentDocumentsPrompt) appendTo(composition *promptComposition) {

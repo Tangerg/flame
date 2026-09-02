@@ -42,6 +42,20 @@ func TestAgentDocumentsPromptKeepsMostSpecificFilesWithinBudget(t *testing.T) {
 	}
 }
 
+func TestAgentDocumentsPromptDropsUnrenderableLessSpecificFile(t *testing.T) {
+	files := []workspace.AgentDocFile{
+		{Path: "/root/AGENTS.md", Content: strings.Repeat("r", agentDocPromptMaxBytes), Scope: workspace.AgentDocScopeProjectRoot},
+		{Path: "/leaf/AGENTS.md", Content: "leaf", Scope: workspace.AgentDocScopeCWD},
+	}
+	prompt := agentDocumentsPromptForTest(t, files, agentDocPromptMaxBytes)
+	if strings.Contains(prompt.text, "/root/AGENTS.md") || !strings.Contains(prompt.text, "leaf") {
+		t.Fatalf("budgeted docs = %q, want only the renderable leaf document", prompt.text)
+	}
+	if len(prompt.sources) != 1 || prompt.sources[0].Reference != "/leaf/AGENTS.md" {
+		t.Fatalf("projected sources = %v, want only the leaf source", prompt.sources)
+	}
+}
+
 func agentDocumentsPromptForTest(
 	t *testing.T,
 	files []workspace.AgentDocFile,
