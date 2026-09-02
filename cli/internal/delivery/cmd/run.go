@@ -75,19 +75,41 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	workspacePath, err := resolveWorkspace(cmd)
+	messageText, err := r.readMessageText(cmd, args)
 	if err != nil {
 		return err
 	}
-	message, err := r.buildMessage(cmd, args, workspacePath)
-	if err != nil {
-		return err
+
+	var (
+		runtime Runtime
+		profile *runtimebinding.Profile
+		opened  agent.SessionSnapshot
+		message agent.Message
+	)
+	if r.sessionID == "" {
+		workspacePath, workspaceErr := resolveWorkspace(cmd)
+		if workspaceErr != nil {
+			return workspaceErr
+		}
+		message, err = r.buildMessage(cmd.Context(), messageText, workspacePath)
+		if err != nil {
+			return err
+		}
+		runtime, profile, err = provider.Open(cmd)
+		if err != nil {
+			return err
+		}
+		opened, err = session.Open(cmd.Context(), runtime, "", workspacePath)
+	} else {
+		runtime, profile, err = provider.Open(cmd)
+		if err != nil {
+			return err
+		}
+		opened, err = session.Open(cmd.Context(), runtime, r.sessionID, "")
+		if err == nil {
+			message, err = r.buildMessage(cmd.Context(), messageText, opened.Session.Workspace.Path)
+		}
 	}
-	runtime, profile, err := provider.Open(cmd)
-	if err != nil {
-		return err
-	}
-	opened, err := session.Open(cmd.Context(), runtime, r.sessionID, workspacePath)
 	if err != nil {
 		return err
 	}
@@ -149,12 +171,16 @@ func completeOutputFormat(_ *cobra.Command, _ []string, toComplete string) ([]st
 	return matched, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (r *runFlags) buildMessage(cmd *cobra.Command, args []string, workspace string) (agent.Message, error) {
+func (r *runFlags) readMessageText(cmd *cobra.Command, args []string) (string, error) {
 	text, textErr := readPrompt(cmd, args)
 	if textErr != nil && (!errors.Is(textErr, errNoPrompt) || len(r.files) == 0) {
-		return agent.Message{}, textErr
+		return "", textErr
 	}
-	attached, err := resolveAttachments(cmd.Context(), workspace, r.files)
+	return text, nil
+}
+
+func (r *runFlags) buildMessage(ctx context.Context, text, workspace string) (agent.Message, error) {
+	attached, err := resolveAttachments(ctx, workspace, r.files)
 	if err != nil {
 		return agent.Message{}, err
 	}

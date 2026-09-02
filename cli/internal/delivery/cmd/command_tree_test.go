@@ -537,15 +537,24 @@ func TestReadPipedPromptRejectsUnboundedOrInvalidInput(t *testing.T) {
 	}
 }
 
-func TestRunAttachesRepeatedFilesAndAllowsAttachmentOnlyPrompts(t *testing.T) {
+func TestRunResolvesAttachmentOnlyPromptAgainstExistingSessionWorkspace(t *testing.T) {
 	workspace := t.TempDir()
+	unrelatedWorkspace := t.TempDir()
+	canonicalWorkspace, err := filepath.EvalSymlinks(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
 	first := filepath.Join(workspace, "notes.txt")
 	second := filepath.Join(workspace, "diagram.png")
 	writeCommandFixture(t, first, []byte("notes"))
 	writeCommandFixture(t, second, append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 32)...))
 	runtime := instantRuntime()
-	id := firstSession(t, runtime)
-	if _, _, err := executeCommand(t, runtime, "", "-C", workspace, "run", "--approve-all", "-s", id, "-f", "notes.txt", "-f", "diagram.png"); err != nil {
+	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.ID
+	if _, _, err := executeCommand(t, runtime, "", "-C", unrelatedWorkspace, "run", "--approve-all", "-s", id, "-f", "notes.txt", "-f", "diagram.png"); err != nil {
 		t.Fatalf("attachment-only run: %v", err)
 	}
 	snapshot, err := runtime.GetSession(t.Context(), id)
@@ -558,6 +567,11 @@ func TestRunAttachesRepeatedFilesAndAllowsAttachmentOnlyPrompts(t *testing.T) {
 	}
 	if prompt.Attachments[0].Kind != protocol.ContentBlockText || prompt.Attachments[1].Kind != protocol.ContentBlockImage {
 		t.Fatalf("attachment kinds = %+v", prompt.Attachments)
+	}
+	for _, attachment := range prompt.Attachments {
+		if !strings.HasPrefix(attachment.Path, canonicalWorkspace+string(filepath.Separator)) {
+			t.Fatalf("attachment path = %q, want existing Session workspace %q", attachment.Path, canonicalWorkspace)
+		}
 	}
 }
 
