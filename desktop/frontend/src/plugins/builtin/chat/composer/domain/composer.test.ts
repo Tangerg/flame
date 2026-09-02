@@ -36,9 +36,12 @@ describe("Composer", () => {
   });
 
   it("does not record blank text or an immediate repeat", () => {
-    const once = Composer.empty().record("hello").record("   ").record("hello");
-    expect(once.recallOlder()?.draft.value).toBe("hello");
-    expect(once.recallOlder()?.recallOlder()?.draft.value).toBe("hello");
+    const once = typed(Composer.empty().record("hello").record("   ").record("hello"), "draft");
+    const oldest = once.recallOlder()!.recallOlder()!;
+    expect(oldest.draft.value).toBe("hello");
+    // One entry, not two. Stepping forward from the oldest reaches the draft that was set
+    // aside; a second copy of "hello" would be in the way.
+    expect(oldest.recallNewer()!.draft.value).toBe("draft");
   });
 
   it("restores what was typed when stepping past the newest entry", () => {
@@ -71,6 +74,11 @@ describe("Composer", () => {
     const composer = Composer.empty();
     expect(composer.draft).toBe(composer.activate("s1").draft);
     expect(composer.draft.images).toBe(composer.activate("s2").draft.images);
+
+    // The whole Composer too: it is what the store holds, so re-activating the session
+    // already in force would notify every subscriber for nothing.
+    const active = composer.activate("s1");
+    expect(active.activate("s1")).toBe(active);
   });
 
   it("persists only non-empty draft text", () => {

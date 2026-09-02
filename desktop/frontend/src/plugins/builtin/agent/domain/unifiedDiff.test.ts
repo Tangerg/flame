@@ -77,4 +77,15 @@ describe("parseUnifiedDiff", () => {
     expect(parseUnifiedDiff("")).toEqual([]);
     expect(parseUnifiedDiff("I will now edit the file.")).toEqual([]);
   });
+
+  // A `diff --git` line the parser cannot split names out of leaves an entry with no path at
+  // all, which would draw a blank row under the real ones.
+  it("drops a file header it cannot name", () => {
+    expect(parseUnifiedDiff("diff --git garbage\n@@ -1 +1 @@\n-old\n+new\n")).toEqual([]);
+    expect(
+      parseUnifiedDiff(
+        "diff --git garbage\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/one.ts b/one.ts\n@@ -1 +1 @@\n-old\n+new\n",
+      ),
+    ).toEqual([{ path: "one.ts", status: "modified", added: 1, removed: 1 }]);
+  });
 });
