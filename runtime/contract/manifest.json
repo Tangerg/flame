@@ -4184,6 +4184,96 @@
           "required": [
             "provider"
           ]
+        },
+        {
+          "when": [
+            {
+              "field": "reasoningEffort",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider",
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "StartGoalRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "reasoningEffort",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider",
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "CreateScheduleRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "reasoningEffort",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider",
+            "model"
+          ]
         }
       ]
     },
@@ -4215,8 +4305,245 @@
       ]
     },
     {
+      "type": "Goal",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "active"
+            }
+          ],
+          "forbidden": [
+            "reason"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "completing"
+            }
+          ],
+          "forbidden": [
+            "reason"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "paused"
+            }
+          ],
+          "required": [
+            "reason"
+          ],
+          "allowedValues": [
+            {
+              "field": "reason.code",
+              "values": [
+                "stoppedByUser",
+                "runtimeRestarted",
+                "runStartFailed",
+                "awaitingInput",
+                "terminalOutcomeMissing",
+                "runNotCompleted"
+              ]
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "blocked"
+            }
+          ],
+          "required": [
+            "reason"
+          ],
+          "allowedValues": [
+            {
+              "field": "reason.code",
+              "values": [
+                "runBudgetReached",
+                "costBudgetReached",
+                "stepBudgetReached",
+                "pricingUnavailable",
+                "blockedByModel"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "GoalReason",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "runNotCompleted"
+            }
+          ],
+          "required": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "blockedByModel"
+            }
+          ],
+          "required": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "stoppedByUser"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "runtimeRestarted"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "runStartFailed"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "awaitingInput"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "terminalOutcomeMissing"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "runBudgetReached"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "costBudgetReached"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "stepBudgetReached"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "code",
+              "operator": "equals",
+              "value": "pricingUnavailable"
+            }
+          ],
+          "forbidden": [
+            "detail"
+          ]
+        }
+      ]
+    },
+    {
       "type": "UpdateScheduleRequest",
       "rules": [
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        },
         {
           "when": [
             {
@@ -7642,6 +7969,18 @@
           "constraint": "maxLength(256)"
         },
         {
+          "field": "objective",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "model",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "provider",
           "constraint": "identity"
         },
@@ -7760,6 +8099,10 @@
         {
           "field": "sessionId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "objective",
+          "constraint": "nonEmpty"
         }
       ]
     },

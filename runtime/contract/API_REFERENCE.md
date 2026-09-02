@@ -958,6 +958,9 @@ TypeScript validator from this single registry projection.
 | `Goal` | `sessionId` | `nonEmpty` |
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |
+| `Goal` | `objective` | `nonEmpty` |
+| `Goal` | `provider` | `nonEmpty` |
+| `Goal` | `model` | `nonEmpty` |
 | `Goal` | `provider` | `identity` |
 | `Goal` | `provider` | `maxLength(64)` |
 | `Goal` | `model` | `identity` |
@@ -983,6 +986,7 @@ TypeScript validator from this single registry projection.
 | `UpdateGoalRequest` | `sessionId` | `nonEmpty` |
 | `UpdateGoalRequest` | `sessionId` | `identity` |
 | `UpdateGoalRequest` | `sessionId` | `maxLength(256)` |
+| `UpdateGoalRequest` | `objective` | `nonEmpty` |
 | `GoalBudget` | `maxRuns` | `positive` |
 | `GoalBudget` | `maxCostUsd` | `positive` |
 | `GoalBudget` | `maxSteps` | `positive` |

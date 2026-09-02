@@ -917,15 +917,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   CreateMCPAuthorizationAttemptRequest: object({
     server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
-  CreateScheduleRequest: object({
-    cron: allOf([text(), minLength(1)]),
-    instructions: allOf([text(), minLength(1)]),
-    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    title: text(),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["cron", "instructions"]),
+  CreateScheduleRequest: allOf([
+    object({
+      cron: allOf([text(), minLength(1)]),
+      instructions: allOf([text(), minLength(1)]),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      title: text(),
+      workspace: ref(() => CHECKS.WorkspaceRef),
+    }, ["cron", "instructions"]),
+    ifThen(
+      fields({}, ["provider"]),
+      fields({}, ["model"]),
+    ),
+    ifThen(
+      fields({}, ["model"]),
+      fields({}, ["provider"]),
+    ),
+    ifThen(
+      fields({}, ["reasoningEffort"]),
+      fields({}, ["model", "provider"]),
+    ),
+  ]),
   CreateSessionRequest: object({
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -1185,19 +1199,57 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     includeDescendants: flag(),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
-  Goal: object({
-    budget: ref(() => CHECKS.GoalBudget),
-    createdAt: text(),
-    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    objective: text(),
-    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    reason: ref(() => CHECKS.GoalReason),
-    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    status: ref(() => CHECKS.GoalStatus),
-    updatedAt: text(),
-    used: ref(() => CHECKS.GoalUsage),
-  }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
+  Goal: allOf([
+    object({
+      budget: ref(() => CHECKS.GoalBudget),
+      createdAt: text(),
+      model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      objective: allOf([text(), minLength(1)]),
+      provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reason: ref(() => CHECKS.GoalReason),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      status: ref(() => CHECKS.GoalStatus),
+      updatedAt: text(),
+      used: ref(() => CHECKS.GoalUsage),
+    }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
+    ifThen(
+      fields({
+        status: literal("active"),
+      }, ["status"]),
+      fields({
+        reason: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("completing"),
+      }, ["status"]),
+      fields({
+        reason: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        status: literal("paused"),
+      }, ["status"]),
+      fields({
+        reason: fields({
+          code: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted"]),
+        }, []),
+      }, ["reason"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("blocked"),
+      }, ["status"]),
+      fields({
+        reason: fields({
+          code: enumOf(["runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"]),
+        }, []),
+      }, ["reason"]),
+    ),
+  ]),
   GoalBudget: allOf([
     object({
       maxCostUsd: allOf([numeric(), exclusiveMinimum(0)]),
@@ -1206,10 +1258,96 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     anyOf([fields({}, ["maxRuns"]), fields({}, ["maxCostUsd"]), fields({}, ["maxSteps"])]),
   ]),
-  GoalReason: object({
-    code: ref(() => CHECKS.GoalReasonCode),
-    detail: text(),
-  }, ["code"]),
+  GoalReason: allOf([
+    object({
+      code: ref(() => CHECKS.GoalReasonCode),
+      detail: text(),
+    }, ["code"]),
+    ifThen(
+      fields({
+        code: literal("runNotCompleted"),
+      }, ["code"]),
+      fields({}, ["detail"]),
+    ),
+    ifThen(
+      fields({
+        code: literal("blockedByModel"),
+      }, ["code"]),
+      fields({}, ["detail"]),
+    ),
+    ifThen(
+      fields({
+        code: literal("stoppedByUser"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("runtimeRestarted"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("runStartFailed"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("awaitingInput"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("terminalOutcomeMissing"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("runBudgetReached"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("costBudgetReached"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("stepBudgetReached"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        code: literal("pricingUnavailable"),
+      }, ["code"]),
+      fields({
+        detail: absent(),
+      }, []),
+    ),
+  ]),
   GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"]),
   GoalRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3237,14 +3375,28 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["name", "revision", "scope", "workspace"]),
   SkillScope: enumOf(["project", "user"]),
-  StartGoalRequest: object({
-    budget: ref(() => CHECKS.GoalBudget),
-    model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    objective: allOf([text(), minLength(1)]),
-    provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["objective", "sessionId"]),
+  StartGoalRequest: allOf([
+    object({
+      budget: ref(() => CHECKS.GoalBudget),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      objective: allOf([text(), minLength(1)]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    }, ["objective", "sessionId"]),
+    ifThen(
+      fields({}, ["provider"]),
+      fields({}, ["model"]),
+    ),
+    ifThen(
+      fields({}, ["model"]),
+      fields({}, ["provider"]),
+    ),
+    ifThen(
+      fields({}, ["reasoningEffort"]),
+      fields({}, ["model", "provider"]),
+    ),
+  ]),
   StartRunRequest: allOf([
     object({
       input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
@@ -3262,6 +3414,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({}, ["model"]),
       fields({}, ["provider"]),
+    ),
+    ifThen(
+      fields({}, ["reasoningEffort"]),
+      fields({}, ["model", "provider"]),
     ),
   ]),
   StartRunResponse: object({
@@ -3431,7 +3587,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["name"]),
   TransportKind: enumOf(["http"]),
   UpdateGoalRequest: object({
-    objective: text(),
+    objective: allOf([text(), minLength(1)]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
   UpdateKnowledgeRequest: allOf([
@@ -3490,6 +3646,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       workspace: ref(() => CHECKS.WorkspaceRef),
       workspaceMode: ref(() => CHECKS.ScheduleWorkspaceMode),
     }, ["expectedRevision", "id"]),
+    ifThen(
+      fields({}, ["provider"]),
+      fields({}, ["model"]),
+    ),
+    ifThen(
+      fields({}, ["model"]),
+      fields({}, ["provider"]),
+    ),
     ifThen(
       fields({
         workspaceMode: literal("default"),

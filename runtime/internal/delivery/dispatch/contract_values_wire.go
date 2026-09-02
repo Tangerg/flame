@@ -821,8 +821,11 @@ func registerScheduleValues(s *Shapes) {
 func registerGoalValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Goal](),
-		Constraints: append(requiredResourceIdentity("sessionId"),
-			modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
+			{Field: "objective", Kind: ConstraintNonEmpty},
+			{Field: "provider", Kind: ConstraintNonEmpty},
+			{Field: "model", Kind: ConstraintNonEmpty},
+		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})
 	nonNegative[protocol.GoalUsage](s, "runs", "costUsd", "steps")
 	s.valueConstraint(FieldConstraintSpec{
@@ -833,8 +836,9 @@ func registerGoalValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GoalRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.UpdateGoalRequest](),
-		Constraints: requiredResourceIdentity("sessionId"),
+		GoType: typeOf[protocol.UpdateGoalRequest](),
+		Constraints: append(requiredResourceIdentity("sessionId"),
+			FieldConstraint{Field: "objective", Kind: ConstraintNonEmpty}),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GoalBudget](),

@@ -108,6 +108,8 @@ func (s StartRunRequest) ValidateWire() error {
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
 		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
 		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
 	)
 }
 
@@ -362,6 +364,10 @@ func (c CreateScheduleRequest) ValidateWire() error {
 		maxLength("model", c.Model, 256),
 		identity("reasoningEffort", c.ReasoningEffort),
 		maxLength("reasoningEffort", c.ReasoningEffort, 32),
+		requiredWhen(wireFieldPresent(c, "provider"), "model", c),
+		requiredWhen(wireFieldPresent(c, "model"), "provider", c),
+		requiredWhen(wireFieldPresent(c, "reasoningEffort"), "provider", c),
+		requiredWhen(wireFieldPresent(c, "reasoningEffort"), "model", c),
 	)
 }
 
@@ -382,6 +388,8 @@ func (u UpdateScheduleRequest) ValidateWire() error {
 		optionalIdentity("reasoningEffort", u.ReasoningEffort),
 		optionalMaxLength("reasoningEffort", u.ReasoningEffort, 32),
 		closedEnum("workspaceMode", string(u.WorkspaceMode), []string{"default"}, true),
+		requiredWhen(wireFieldPresent(u, "provider"), "model", u),
+		requiredWhen(wireFieldPresent(u, "model"), "provider", u),
 		forbiddenWhen(wireFieldEquals(u, "workspaceMode", "default"), "workspace", u),
 	)
 }
@@ -416,6 +424,10 @@ func (s StartGoalRequest) ValidateWire() error {
 		maxLength("model", s.Model, 256),
 		identity("reasoningEffort", s.ReasoningEffort),
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
+		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
 	)
 }
 
@@ -424,6 +436,7 @@ func (u UpdateGoalRequest) ValidateWire() error {
 		requiredText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
+		requiredText("objective", u.Objective),
 	)
 }
 
@@ -1751,6 +1764,47 @@ func (f FileDiff) ValidateWire() error {
 	)
 }
 
+func (g Goal) ValidateWire() error {
+	return collectWireViolations("Goal",
+		requiredText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		requiredText("objective", g.Objective),
+		requiredText("provider", g.Provider),
+		requiredText("model", g.Model),
+		identity("provider", g.Provider),
+		maxLength("provider", g.Provider, 64),
+		identity("model", g.Model),
+		maxLength("model", g.Model, 256),
+		identity("reasoningEffort", g.ReasoningEffort),
+		maxLength("reasoningEffort", g.ReasoningEffort, 32),
+		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
+		forbiddenWhen(wireFieldEquals(g, "status", "active"), "reason", g),
+		forbiddenWhen(wireFieldEquals(g, "status", "completing"), "reason", g),
+		requiredWhen(wireFieldEquals(g, "status", "paused"), "reason", g),
+		allowedValuesWhen(wireFieldEquals(g, "status", "paused"), "reason.code", g, []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted"}),
+		requiredWhen(wireFieldEquals(g, "status", "blocked"), "reason", g),
+		allowedValuesWhen(wireFieldEquals(g, "status", "blocked"), "reason.code", g, []string{"runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}),
+	)
+}
+
+func (g GoalReason) ValidateWire() error {
+	return collectWireViolations("GoalReason",
+		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}, false),
+		requiredWhen(wireFieldEquals(g, "code", "runNotCompleted"), "detail", g),
+		requiredWhen(wireFieldEquals(g, "code", "blockedByModel"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "stoppedByUser"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "runtimeRestarted"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "runStartFailed"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "awaitingInput"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "terminalOutcomeMissing"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "runBudgetReached"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "costBudgetReached"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "stepBudgetReached"), "detail", g),
+		forbiddenWhen(wireFieldEquals(g, "code", "pricingUnavailable"), "detail", g),
+	)
+}
+
 func (a AgentMemoryItem) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItem",
 		requiredText("id", a.ID),
@@ -2372,21 +2426,6 @@ func (r RunScheduleNowResponse) ValidateWire() error {
 	)
 }
 
-func (g Goal) ValidateWire() error {
-	return collectWireViolations("Goal",
-		requiredText("sessionId", g.SessionID),
-		identity("sessionId", g.SessionID),
-		maxLength("sessionId", g.SessionID, 256),
-		identity("provider", g.Provider),
-		maxLength("provider", g.Provider, 64),
-		identity("model", g.Model),
-		maxLength("model", g.Model, 256),
-		identity("reasoningEffort", g.ReasoningEffort),
-		maxLength("reasoningEffort", g.ReasoningEffort, 32),
-		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
-	)
-}
-
 func (g GoalUsage) ValidateWire() error {
 	return collectWireViolations("GoalUsage",
 		nonNegativeNumber("runs", g.Runs),
@@ -2479,12 +2518,6 @@ func (a ApprovalRule) ValidateWire() error {
 func (e ExportSessionResponse) ValidateWire() error {
 	return collectWireViolations("ExportSessionResponse",
 		closedEnum("format", string(e.Format), []string{"md", "json"}, false),
-	)
-}
-
-func (g GoalReason) ValidateWire() error {
-	return collectWireViolations("GoalReason",
-		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}, false),
 	)
 }
 

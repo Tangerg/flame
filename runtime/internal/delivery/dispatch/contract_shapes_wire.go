@@ -181,6 +181,14 @@ func allowedArtifactProblemTypes(field string, kinds ...protocol.ArtifactProblem
 	return []AllowedValueSet{{Field: field, Values: values}}
 }
 
+func allowedGoalReasonCodes(codes ...protocol.GoalReasonCode) []AllowedValueSet {
+	values := make([]string, len(codes))
+	for index, code := range codes {
+		values[index] = string(code)
+	}
+	return []AllowedValueSet{{Field: "reason.code", Values: values}}
+}
+
 func registerRunUnions(s *Shapes) {
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.CancelRunResponse](),
@@ -664,9 +672,13 @@ func registerObjectConstraints(s *Shapes) {
 		}},
 	})
 
+	// Value selections are either wholly absent (inherit the surrounding
+	// default) or name one exact model. Reasoning effort belongs to that exact
+	// identity and therefore cannot be supplied on its own.
 	for _, target := range []reflect.Type{
 		typeOf[protocol.StartRunRequest](),
-		typeOf[protocol.UpdateSessionRequest](),
+		typeOf[protocol.StartGoalRequest](),
+		typeOf[protocol.CreateScheduleRequest](),
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
@@ -676,13 +688,93 @@ func registerObjectConstraints(s *Shapes) {
 			}, {
 				When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
 				Required: []string{"provider"},
+			}, {
+				When:     []delivery.FieldCondition{{Field: "reasoningEffort", Operator: delivery.OperatorPresent}},
+				Required: []string{"provider", "model"},
 			}},
 		})
 	}
 
+	// Patch selections may update reasoning effort alone against the stored
+	// exact model, but changing the model identity remains an atomic pair.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.UpdateSessionRequest](),
+		Rules: []ConditionalRule{{
+			When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
+			Required: []string{"model"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
+			Required: []string{"provider"},
+		}},
+	})
+
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.Goal](),
+		Rules: []ConditionalRule{{
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalActive)}},
+			Forbidden: []string{"reason"},
+		}, {
+			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalCompleting)}},
+			Forbidden: []string{"reason"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalPaused)}},
+			Required: []string{"reason"},
+			AllowedValues: allowedGoalReasonCodes(
+				protocol.GoalReasonStoppedByUser,
+				protocol.GoalReasonRuntimeRestarted,
+				protocol.GoalReasonRunStartFailed,
+				protocol.GoalReasonAwaitingInput,
+				protocol.GoalReasonTerminalOutcomeMissing,
+				protocol.GoalReasonRunNotCompleted,
+			),
+		}, {
+			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalBlocked)}},
+			Required: []string{"reason"},
+			AllowedValues: allowedGoalReasonCodes(
+				protocol.GoalReasonRunBudgetReached,
+				protocol.GoalReasonCostBudgetReached,
+				protocol.GoalReasonStepBudgetReached,
+				protocol.GoalReasonPricingUnavailable,
+				protocol.GoalReasonBlockedByModel,
+			),
+		}},
+	})
+	goalReasonRules := []ConditionalRule{
+		{
+			When:     []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonRunNotCompleted)}},
+			Required: []string{"detail"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonBlockedByModel)}},
+			Required: []string{"detail"},
+		},
+	}
+	for _, code := range []protocol.GoalReasonCode{
+		protocol.GoalReasonStoppedByUser,
+		protocol.GoalReasonRuntimeRestarted,
+		protocol.GoalReasonRunStartFailed,
+		protocol.GoalReasonAwaitingInput,
+		protocol.GoalReasonTerminalOutcomeMissing,
+		protocol.GoalReasonRunBudgetReached,
+		protocol.GoalReasonCostBudgetReached,
+		protocol.GoalReasonStepBudgetReached,
+		protocol.GoalReasonPricingUnavailable,
+	} {
+		goalReasonRules = append(goalReasonRules, ConditionalRule{
+			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(code)}},
+			Forbidden: []string{"detail"},
+		})
+	}
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.GoalReason](), Rules: goalReasonRules})
+
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.UpdateScheduleRequest](),
 		Rules: []ConditionalRule{{
+			When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
+			Required: []string{"model"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
+			Required: []string{"provider"},
+		}, {
 			When:      []delivery.FieldCondition{{Field: "workspaceMode", Operator: delivery.OperatorEquals, Value: string(protocol.ScheduleWorkspaceDefault)}},
 			Forbidden: []string{"workspace"},
 		}},

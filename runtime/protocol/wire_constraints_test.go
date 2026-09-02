@@ -1136,6 +1136,79 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 		SessionID: "ses_1", ExpectedRevision: 1, Model: &model,
 	}
 	assertConstraintField(t, update.ValidateWire(), "UpdateSessionRequest", "provider")
+
+	goalStart := StartGoalRequest{SessionID: "ses_1", Objective: "finish", Provider: "provider"}
+	assertConstraintField(t, goalStart.ValidateWire(), "StartGoalRequest", "model")
+	goalStart = StartGoalRequest{SessionID: "ses_1", Objective: "finish", ReasoningEffort: "high"}
+	goalSelectionErr := goalStart.ValidateWire()
+	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "provider")
+	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "model")
+
+	scheduleCreate := CreateScheduleRequest{Instructions: "run", Cron: "0 0 * * *", Model: "model"}
+	assertConstraintField(t, scheduleCreate.ValidateWire(), "CreateScheduleRequest", "provider")
+	scheduleUpdate := UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Provider: &provider}
+	assertConstraintField(t, scheduleUpdate.ValidateWire(), "UpdateScheduleRequest", "model")
+}
+
+func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
+	t.Parallel()
+
+	valid := func(status GoalStatus, reason *GoalReason) Goal {
+		return Goal{
+			SessionID: "ses_1", Objective: "finish", Status: status, Reason: reason,
+			Provider: "deepseek", Model: "deepseek-chat",
+			CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(2, 0).UTC(),
+		}
+	}
+
+	for _, test := range []struct {
+		name  string
+		field string
+		value Goal
+	}{
+		{name: "missing objective", field: "objective", value: func() Goal { value := valid(GoalActive, nil); value.Objective = ""; return value }()},
+		{name: "missing provider", field: "provider", value: func() Goal { value := valid(GoalActive, nil); value.Provider = ""; return value }()},
+		{name: "missing model", field: "model", value: func() Goal { value := valid(GoalActive, nil); value.Model = ""; return value }()},
+		{name: "active reason", field: "reason", value: valid(GoalActive, &GoalReason{Code: GoalReasonStoppedByUser})},
+		{name: "completing reason", field: "reason", value: valid(GoalCompleting, &GoalReason{Code: GoalReasonStoppedByUser})},
+		{name: "paused without reason", field: "reason", value: valid(GoalPaused, nil)},
+		{name: "paused with blocked reason", field: "reason.code", value: valid(GoalPaused, &GoalReason{Code: GoalReasonRunBudgetReached})},
+		{name: "blocked without reason", field: "reason", value: valid(GoalBlocked, nil)},
+		{name: "blocked with paused reason", field: "reason.code", value: valid(GoalBlocked, &GoalReason{Code: GoalReasonStoppedByUser})},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, ValidateWireTree(test.value), "Goal", test.field)
+		})
+	}
+
+	for _, test := range []struct {
+		name  string
+		field string
+		value GoalReason
+	}{
+		{name: "fixed reason with detail", field: "detail", value: GoalReason{Code: GoalReasonStoppedByUser, Detail: "extra"}},
+		{name: "run outcome without detail", field: "detail", value: GoalReason{Code: GoalReasonRunNotCompleted}},
+		{name: "model block without detail", field: "detail", value: GoalReason{Code: GoalReasonBlockedByModel}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), "GoalReason", test.field)
+		})
+	}
+
+	if err := ValidateWireTree(valid(GoalPaused, &GoalReason{
+		Code: GoalReasonRunNotCompleted, Detail: "failed",
+	})); err != nil {
+		t.Fatalf("valid paused Goal: %v", err)
+	}
+	if err := ValidateWireTree(valid(GoalBlocked, &GoalReason{
+		Code: GoalReasonBlockedByModel, Detail: "needs user input",
+	})); err != nil {
+		t.Fatalf("valid blocked Goal: %v", err)
+	}
+
+	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1"}).ValidateWire(), "UpdateGoalRequest", "objective")
 }
 
 func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {

@@ -1912,6 +1912,45 @@
       "required": [
         "cron",
         "instructions"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "required": [
+              "model"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "model"
+            ]
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reasoningEffort"
+            ]
+          },
+          "then": {
+            "required": [
+              "model",
+              "provider"
+            ]
+          }
+        }
       ]
     },
     "CreateSessionRequest": {
@@ -2788,14 +2827,17 @@
         },
         "model": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "objective": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "provider": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -2831,6 +2873,107 @@
         "status",
         "updatedAt",
         "used"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "active"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completing"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "paused"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "stoppedByUser",
+                      "runtimeRestarted",
+                      "runStartFailed",
+                      "awaitingInput",
+                      "terminalOutcomeMissing",
+                      "runNotCompleted"
+                    ]
+                  }
+                }
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "blocked"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "runBudgetReached",
+                      "costBudgetReached",
+                      "stepBudgetReached",
+                      "pricingUnavailable",
+                      "blockedByModel"
+                    ]
+                  }
+                }
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          }
+        }
       ]
     },
     "GoalBudget": {
@@ -2883,6 +3026,195 @@
       },
       "required": [
         "code"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "runNotCompleted"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "detail"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "blockedByModel"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "detail"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "stoppedByUser"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "runtimeRestarted"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "runStartFailed"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "awaitingInput"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "terminalOutcomeMissing"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "runBudgetReached"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "costBudgetReached"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "stepBudgetReached"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "pricingUnavailable"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": false
+            }
+          }
+        }
       ]
     },
     "GoalReasonCode": {
@@ -9067,6 +9399,45 @@
       "required": [
         "objective",
         "sessionId"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "required": [
+              "model"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "model"
+            ]
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reasoningEffort"
+            ]
+          },
+          "then": {
+            "required": [
+              "model",
+              "provider"
+            ]
+          }
+        }
       ]
     },
     "StartRunRequest": {
@@ -9132,6 +9503,19 @@
           },
           "then": {
             "required": [
+              "provider"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reasoningEffort"
+            ]
+          },
+          "then": {
+            "required": [
+              "model",
               "provider"
             ]
           }
@@ -9609,7 +9993,8 @@
       "type": "object",
       "properties": {
         "objective": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "sessionId": {
           "type": "string",
@@ -9824,6 +10209,30 @@
         "id"
       ],
       "allOf": [
+        {
+          "if": {
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "required": [
+              "model"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "model"
+            ]
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {
