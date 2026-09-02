@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/strictjson"
 )
 
 // EncodePrompt converts one validated product interrupt to its strict executor
@@ -83,19 +83,11 @@ func decode(raw []byte, target any) error {
 	if err := decoder.Decode(target); err != nil {
 		return err
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("trailing JSON")
-		}
-		return err
-	}
 	return nil
 }
 
 func validateExactJSONFieldNames(raw []byte, targetType reflect.Type) error {
-	tokenDecoder := json.NewDecoder(bytes.NewReader(raw))
-	tokenDecoder.UseNumber()
-	if err := validateUniqueJSONNames(tokenDecoder, "$"); err != nil {
+	if err := strictjson.ValidateUniqueMembers(raw); err != nil {
 		return err
 	}
 	var value any
@@ -105,62 +97,6 @@ func validateExactJSONFieldNames(raw []byte, targetType reflect.Type) error {
 		return err
 	}
 	return validateJSONFieldNames(value, targetType, "$")
-}
-
-func validateUniqueJSONNames(decoder *json.Decoder, path string) error {
-	token, err := decoder.Token()
-	if err != nil {
-		return err
-	}
-	delimiter, structured := token.(json.Delim)
-	if !structured {
-		return nil
-	}
-	var contentErr error
-	switch delimiter {
-	case '{':
-		contentErr = validateUniqueJSONObjectNames(decoder, path)
-	case '[':
-		contentErr = validateUniqueJSONArrayNames(decoder, path)
-	default:
-		return fmt.Errorf("unexpected JSON delimiter %q at %s", delimiter, path)
-	}
-	if contentErr != nil {
-		return contentErr
-	}
-	_, err = decoder.Token()
-	return err
-}
-
-func validateUniqueJSONObjectNames(decoder *json.Decoder, path string) error {
-	seen := make(map[string]struct{})
-	for decoder.More() {
-		nameToken, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		name, ok := nameToken.(string)
-		if !ok {
-			return fmt.Errorf("object member at %s has a non-string name", path)
-		}
-		if _, duplicate := seen[name]; duplicate {
-			return fmt.Errorf("duplicate field %q at %s", name, path)
-		}
-		seen[name] = struct{}{}
-		if err := validateUniqueJSONNames(decoder, path+"."+name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateUniqueJSONArrayNames(decoder *json.Decoder, path string) error {
-	for index := 0; decoder.More(); index++ {
-		if err := validateUniqueJSONNames(decoder, fmt.Sprintf("%s[%d]", path, index)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func validateJSONFieldNames(value any, targetType reflect.Type, path string) error {

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/strictjson"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -247,18 +247,14 @@ func interactionCallCounts(
 }
 
 func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointState, error) {
+	if err := strictjson.ValidateUniqueMembers(payload); err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
+	}
 	var wire interactionCheckpointPayloadWire
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&wire); err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return interactionCheckpointState{}, errors.New("agentexec: Interaction checkpoint contains multiple JSON values")
-		}
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint trailing value: %w", err)
 	}
 	if wire.SchemaVersion != interactionCheckpointSchemaVersion {
 		return interactionCheckpointState{}, fmt.Errorf(

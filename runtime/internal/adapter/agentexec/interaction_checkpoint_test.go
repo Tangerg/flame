@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -90,6 +91,34 @@ func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 func TestDecodeInteractionCheckpointRejectsPreviousSchema(t *testing.T) {
 	if _, err := decodeInteractionCheckpointPayload([]byte(`{"schema_version":4}`)); err == nil {
 		t.Fatal("decode accepted previous checkpoint schema")
+	}
+}
+
+func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name    string
+		payload string
+		want    string
+	}{
+		{
+			name:    "root",
+			payload: `{"schema_version":5,"schema_version":5}`,
+			want:    `duplicate JSON member "schema_version" at $`,
+		},
+		{
+			name:    "nested tree",
+			payload: `{"schema_version":5,"tree":{"state":"first","state":"second"}}`,
+			want:    `duplicate JSON member "state" at $.tree`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := decodeInteractionCheckpointPayload([]byte(test.payload))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("decode error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 

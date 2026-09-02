@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 
+	"github.com/Tangerg/flame/runtime/internal/strictjson"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
@@ -53,7 +53,10 @@ func EncodeMessage(message Message) ([]byte, error) { return jsonrpc.EncodeMessa
 // two different requests by intermediaries that choose first-wins versus
 // last-wins decoding.
 func DecodeMessage(encoded []byte) (Message, error) {
-	if err := validateUniqueJSONMembers(encoded); err != nil {
+	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
+		return nil, err
+	}
+	if err := validateJSONRPCEnvelope(encoded); err != nil {
 		return nil, err
 	}
 	message, err := jsonrpc.DecodeMessage(encoded)
@@ -66,17 +69,11 @@ func DecodeMessage(encoded []byte) (Message, error) {
 	return message, nil
 }
 
-func validateUniqueJSONMembers(encoded []byte) error {
+func validateJSONRPCEnvelope(encoded []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()
-	parser := uniqueJSONParser{decoder: decoder}
+	parser := jsonEnvelopeParser{decoder: decoder}
 	if _, err := parser.value(true); err != nil {
-		return err
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("JSON message contains more than one value")
-		}
 		return err
 	}
 	return nil
@@ -93,11 +90,11 @@ const (
 	jsonArray
 )
 
-type uniqueJSONParser struct {
+type jsonEnvelopeParser struct {
 	decoder *json.Decoder
 }
 
-func (parser uniqueJSONParser) value(envelope bool) (jsonValueKind, error) {
+func (parser jsonEnvelopeParser) value(envelope bool) (jsonValueKind, error) {
 	token, err := parser.decoder.Token()
 	if err != nil {
 		return jsonNull, err
@@ -132,16 +129,14 @@ func jsonScalarKind(token json.Token) (jsonValueKind, error) {
 	}
 }
 
-func (parser uniqueJSONParser) object(envelope bool) (jsonValueKind, error) {
+func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 	members := make(jsonObjectMembers)
 	for parser.decoder.More() {
 		member, err := parser.memberName()
 		if err != nil {
 			return jsonObject, err
 		}
-		if err := members.add(member); err != nil {
-			return jsonObject, err
-		}
+		members.add(member)
 		valueKind, err := parser.value(false)
 		if err != nil {
 			return jsonObject, err
@@ -163,7 +158,7 @@ func (parser uniqueJSONParser) object(envelope bool) (jsonValueKind, error) {
 	return jsonObject, nil
 }
 
-func (parser uniqueJSONParser) memberName() (string, error) {
+func (parser jsonEnvelopeParser) memberName() (string, error) {
 	token, err := parser.decoder.Token()
 	if err != nil {
 		return "", err
@@ -175,7 +170,7 @@ func (parser uniqueJSONParser) memberName() (string, error) {
 	return member, nil
 }
 
-func (parser uniqueJSONParser) array() (jsonValueKind, error) {
+func (parser jsonEnvelopeParser) array() (jsonValueKind, error) {
 	for parser.decoder.More() {
 		if _, err := parser.value(false); err != nil {
 			return jsonArray, err
@@ -187,7 +182,7 @@ func (parser uniqueJSONParser) array() (jsonValueKind, error) {
 	return jsonArray, nil
 }
 
-func (parser uniqueJSONParser) close(expected json.Delim, message string) error {
+func (parser jsonEnvelopeParser) close(expected json.Delim, message string) error {
 	closing, err := parser.decoder.Token()
 	if err != nil {
 		return err
@@ -209,12 +204,8 @@ const (
 
 type jsonObjectMembers map[string]struct{}
 
-func (members jsonObjectMembers) add(member string) error {
-	if _, exists := members[member]; exists {
-		return fmt.Errorf("duplicate JSON member %q", member)
-	}
+func (members jsonObjectMembers) add(member string) {
 	members[member] = struct{}{}
-	return nil
 }
 
 func (members jsonObjectMembers) has(member string) bool {
