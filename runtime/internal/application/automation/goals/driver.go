@@ -177,12 +177,24 @@ func NewDriver(
 	mutations *SessionMutations,
 	ownership DriveOwnership,
 	instructions RunInstructionBuilder,
-) *Driver {
+) (*Driver, error) {
+	if missingDependency(store) {
+		return nil, errors.New("goals: store is required")
+	}
+	if missingDependency(autonomousRuns) {
+		return nil, errors.New("goals: autonomous runs are required")
+	}
+	if missingDependency(sessions) {
+		return nil, errors.New("goals: session policy reader is required")
+	}
 	if mutations == nil {
-		mutations = NewSessionMutations()
+		return nil, errors.New("goals: shared session mutations are required")
+	}
+	if ownership != nil && missingDependency(ownership) {
+		return nil, errors.New("goals: drive ownership is nil")
 	}
 	if instructions == nil {
-		panic("goals: run instruction builder is required")
+		return nil, errors.New("goals: run instruction builder is required")
 	}
 	return &Driver{
 		goals:          store,
@@ -194,7 +206,7 @@ func NewDriver(
 		instructions:   instructions,
 		mutations:      mutations,
 		ownership:      ownership,
-	}
+	}, nil
 }
 
 // Start opens a new goal for the session and begins driving it. It replaces a

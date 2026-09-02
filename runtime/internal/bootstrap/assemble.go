@@ -379,7 +379,7 @@ func buildAssemblyCore(
 	// nil store → nil driver → goals.* report capability_not_negotiated.
 	var goalDriver *goals.Driver
 	if cfg.GoalStore != nil {
-		goalDriver = goals.NewDriver(
+		goalDriver, err = goals.NewDriver(
 			policy.goals,
 			runCoordinator,
 			cfg.SessionStore,
@@ -387,6 +387,9 @@ func buildAssemblyCore(
 			cfg.GoalDriveOwnership,
 			builtin.RunInstructions,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("runtime: construct Goal driver: %w", err)
+		}
 		lifetime.goalDriver = goalDriver
 		// create_goal is the only Goal tool that needs the Driver. Inject the
 		// generic tool after Runs and the Driver exist. This must precede Run
