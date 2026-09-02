@@ -1348,6 +1348,43 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 	}
 }
 
+func TestUniqueItemsComparesJSONValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("dynamic objects", func(t *testing.T) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("uniqueItems panicked for JSON objects: %v", recovered)
+			}
+		}()
+		violation := uniqueItems("items", []any{
+			map[string]any{"type": "feature", "name": "tool"},
+			map[string]any{"name": "tool", "type": "feature"},
+		})
+		if violation.Field != "items" {
+			t.Fatalf("uniqueItems violation = %+v, want repeated JSON object", violation)
+		}
+	})
+
+	t.Run("distinct pointers to equal values", func(t *testing.T) {
+		left, right := "same", "same"
+		violation := uniqueItems("items", []*string{&left, &right})
+		if violation.Field != "items" {
+			t.Fatalf("uniqueItems violation = %+v, want repeated pointed-to value", violation)
+		}
+	})
+
+	t.Run("distinct nested values", func(t *testing.T) {
+		violation := uniqueItems("items", []any{
+			map[string]any{"name": "one", "values": []any{1.0, true}},
+			map[string]any{"name": "two", "values": []any{1.0, true}},
+		})
+		if violation.Field != "" {
+			t.Fatalf("uniqueItems violation = %+v, want none", violation)
+		}
+	})
+}
+
 func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 

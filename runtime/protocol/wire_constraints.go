@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -499,21 +500,26 @@ func nonEmptyProperties[Value any](field string, values map[string]Value) FieldE
 	return FieldError{}
 }
 
-// uniqueItems rejects a repeated element, so a filter that is a set is checked as
-// one. Comparing values directly keeps the rule independent of order: the caller
-// may list them however it likes.
-func uniqueItems[T comparable](field string, values []T) FieldError {
-	seen := make(map[T]bool, len(values))
+// uniqueItems rejects a repeated JSON value, so objects compare by content rather
+// than Go comparability or pointer identity. encoding/json sorts map keys, giving
+// every representable value a deterministic key without a second equality model.
+func uniqueItems[T any](field string, values []T) FieldError {
+	seen := make(map[string]bool, len(values))
 	for _, value := range values {
-		if seen[value] {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return FieldError{Field: field, Detail: "must contain only JSON values"}
+		}
+		key := string(encoded)
+		if seen[key] {
 			return FieldError{Field: field, Detail: "must not repeat a value"}
 		}
-		seen[value] = true
+		seen[key] = true
 	}
 	return FieldError{}
 }
 
-func optionalUniqueItems[T comparable](field string, values *[]T) FieldError {
+func optionalUniqueItems[T any](field string, values *[]T) FieldError {
 	if values == nil {
 		return FieldError{}
 	}

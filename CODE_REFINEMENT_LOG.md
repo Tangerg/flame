@@ -703,3 +703,59 @@ Registration validates the leaf's JSON kind but does not validate that the compl
 
 - `uniqueItems` now rejects element types that are statically non-comparable, but Go permits interface and pointer elements that either panic for dynamic non-comparable values or compare identity while JSON Schema compares values. No first-party unique set uses either shape.
 - Round 14 will close that semantic equality gap, then audit optional non-pointer scalar constraints whose zero value conflates omission with presence and may still disagree with Schema/TypeScript omission semantics.
+
+## Round 14 — complete
+
+### Audit scope and evidence
+
+- JSON Schema `uniqueItems` compares JSON values. The generated TypeScript helper documents that rule but keys elements with raw `JSON.stringify`, so equal objects with different member order are treated as distinct; a direct Node probe returned zero violations for that case.
+- Go uses `map[T]bool`: an interface element containing a decoded object panics as an unhashable dynamic value, while two different pointers to equal JSON values compare as distinct identities.
+- `ProblemData.requiredCapabilities` is a current first-party `uniqueItems` object array. Its Go struct happens to be comparable and generated in stable field order, but the TypeScript validator consumes arbitrary member order from JSON and therefore already exposes the projection drift.
+- Canonical JSON encoding naturally handles strings/enums and object values with one equality rule. The current comparable-only registration check is an implementation leak and should disappear with the map-key implementation.
+- Baseline: `GOWORK=off go test -count=1 ./protocol ./internal/delivery/dispatch ./cmd/contractgen` passed in 4.85s. The direct TypeScript probe demonstrated the object-order miss before changes.
+
+### Root cause
+
+Both validators encode set membership with host-language shortcuts: Go hash equality and JavaScript insertion-order serialization. Neither shortcut owns JSON value equality, which is the published schema contract.
+
+### Impact and acceptance criteria
+
+- Compare Go items by deterministic JSON encoding so maps, interface-backed values, and pointers use value rather than identity semantics without panics.
+- Canonicalize TypeScript objects recursively by sorted keys while preserving array order and primitive JSON semantics.
+- Remove the metadata `comparable` restriction and accept non-comparable JSON item types again.
+- Prove duplicate dynamic objects, equal pointed-to values, object member reordering, and distinct nested values.
+- Preserve all first-party generated artifacts and diagnostics, then pass focused, drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** added failing Go value-equality regressions, implemented canonical equality in both Runtime contract validators, and removed the obsolete registration restriction.
+- **Completed:** verified TypeScript behavior directly, regenerated/checked artifacts, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, Go panicked on an interface-backed object and missed two distinct pointers to equal values. The TypeScript probe reported zero violations for equal objects with reversed member order. After the fix, all Go value-equality regressions pass; TypeScript reports one duplicate and zero violations for distinct nested values.
+- Protocol, dispatch, and contractgen focused tests passed. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 3.30s; `go generate ./...` changed no generated artifact.
+- Protocol, dispatch, and contractgen passed with `-race` in 17.16s. Focused `go vet` and `staticcheck` passed in 1.31s.
+- The Runtime contract TypeScript file passed standalone typechecking and linting. The existing Desktop wire-validator consumer suite passed all 29 tests in 0.96s without changing Desktop source.
+- Production-only complexity scanning remains unchanged: `constraintCheck` is the sole cognitive finding at 38, and neither canonicalization implementation adds a threshold finding.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 7.26s, and uncached `GOWORK=off go test -count=1 ./...` passed in 47.87s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 7.83s, and uncached `go test -count=1 ./...` passed in 41.33s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND14_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 621ms total model duration. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Go `uniqueItems` now serializes each element with deterministic `encoding/json` output and hashes that canonical representation. It accepts every JSON-representable element, compares pointers by their values, and returns a normal field violation instead of panicking if a direct Go caller supplies a non-JSON value.
+- TypeScript recursively sorts object keys before serialization while preserving array order and primitive JSON semantics. Equal decoded objects now have one key independent of source member order.
+- The metadata owner no longer exposes Go's former `comparable` implementation constraint. Non-comparable item types are valid again, while named-slice pointer assignability remains a separate generator constraint.
+- Breaking behavior: duplicate object values with different property order are now correctly rejected by the TypeScript validator. Schema, first-party Go behavior, diagnostics, generated artifacts, wire shapes, persistence, and public Runtime/CLI bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round14.*` directory containing its isolated Runtime home, Go build cache, and CLI binary. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- Canonical equality now matches representable JSON values in both validators. Cyclic or otherwise non-JSON direct host values remain outside the wire contract; Go reports them as a field violation and actual TypeScript inputs arrive from JSON decoding.
+- Round 15 will audit every optional non-pointer scalar constraint against encoder omission, Go zero values, Schema keywords, and TypeScript property absence, starting with `nonEmpty`, `nonNegative`, `minimum`, `maximum`, and string identity/length rules.

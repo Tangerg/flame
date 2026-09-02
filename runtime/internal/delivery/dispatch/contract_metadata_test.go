@@ -141,13 +141,6 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 			},
 			want: "pointer target",
 		},
-		{
-			name: "non-comparable unique items",
-			constraint: FieldConstraint{
-				Field: "mapItems", Kind: ConstraintUniqueItems,
-			},
-			want: "comparable items",
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -173,6 +166,7 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 		{Field: "pointerItems", Kind: ConstraintMaxItems, Limit: 4},
 		{Field: "pointerItems", Kind: ConstraintUniqueItems},
 		{Field: "comparableItems", Kind: ConstraintUniqueItems},
+		{Field: "mapItems", Kind: ConstraintUniqueItems},
 	} {
 		err := (FieldConstraintSpec{
 			GoType:      reflect.TypeFor[constraintProjectionFixture](),

@@ -238,7 +238,7 @@ export function uniqueItems(): WireCheck {
     if (!Array.isArray(value)) return;
     const seen = new Set<string>();
     for (const element of value) {
-      const key = JSON.stringify(element) ?? "undefined";
+      const key = JSON.stringify(canonicalJSONValue(element)) ?? "undefined";
       if (seen.has(key)) {
         out.push({ path, detail: "expected no repeated items" });
         return;
@@ -246,6 +246,17 @@ export function uniqueItems(): WireCheck {
       seen.add(key);
     }
   };
+}
+
+function canonicalJSONValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJSONValue);
+  if (typeof value !== "object" || value === null) return value;
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.keys(record)
+      .sort()
+      .map((key) => [key, canonicalJSONValue(record[key])]),
+  );
 }
 
 export function flag(): WireCheck {

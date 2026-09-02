@@ -900,9 +900,6 @@ func validateConstraintProjection(owner string, field contractshape.Field, const
 			owner, constraint.Field, constraint.Kind,
 		)
 	}
-	if constraint.Kind == ConstraintUniqueItems {
-		return validateUniqueItemsProjection(owner, field, constraint)
-	}
 	return validateTextualConstraintProjection(owner, field, constraint)
 }
 
@@ -965,20 +962,6 @@ func validatePointerConstraintProjection(owner string, field contractshape.Field
 	default:
 		return nil
 	}
-}
-
-func validateUniqueItemsProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
-	valueType := field.Type
-	if valueType.Kind() == reflect.Pointer {
-		valueType = valueType.Elem()
-	}
-	if !valueType.Elem().Comparable() {
-		return fmt.Errorf(
-			"%s.%s constraint %s requires comparable items",
-			owner, constraint.Field, constraint.Kind,
-		)
-	}
-	return nil
 }
 
 func validateTextualConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
