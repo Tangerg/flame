@@ -110,3 +110,56 @@ The reducer publication split introduced attachment-specific helpers but left ba
 
 - The pointer-valued constructor preserves the former escaping local pointer semantics and is covered by focused race tests, full persistence/projection tests, CLI consumption, and a real model Run.
 - Round 3 will audit the remaining reducer streaming clone and adjacent open-item lifecycle before deciding whether text and reasoning share a real owner or merely a symmetric event shape.
+
+## Round 3 — complete
+
+### Audit scope and evidence
+
+- Audited the remaining text/reasoning streaming clone together with open-item identity, authoritative completion, delta types, and reducer tests.
+- Text and reasoning deliberately use distinct closed `ItemDelta` variants, completion constructors, mutable slots, and transcript kinds. A shared append helper would accept independently variable kind, delta, and state-slot parameters, making mismatched states constructable. The symmetric concrete paths are retained.
+- Measured production cognitive and cyclomatic complexity with `golangci-lint` (`gocognit` and `gocyclo`, tests excluded). Runtime reported six functions above the default cognitive threshold; CLI reported one. No cyclomatic threshold violation was reported.
+- `InterruptAnswer.validateResolution` measured 38 because it contains the complete Approval and Question validation bodies under one kind switch. These are already a closed two-variant family with concrete `transcript.Approval` and `transcript.Question` payloads, so each branch can own its invariant without a new abstraction or dynamic parameterization.
+- The remaining measured functions coordinate sequential rollback, bootstrap, reflection-boundary, generated-contract, or UI settlement lifecycles; this round will not split those until evidence identifies a coherent owner rather than merely a long function.
+- Baseline: `GOWORK=off go test -count=1 ./internal/application/agent/runs` passed in 1.81s.
+
+### Root cause
+
+Kind-specific answer rules were centralized into one validation entry point, but the implementation stopped at the dispatch switch. Approval and Question rules continued to contribute nested branches to one function even though their payload types and invariants are independent after dispatch.
+
+### Impact and acceptance criteria
+
+- Preserve every existing validation rule, error string, wrapping category, answer index, and resolution call path.
+- Keep `validateResolution` as the single kind dispatcher while moving each variant's rules to a payload-typed private method.
+- Eliminate the measured cognitive-complexity finding without adding interfaces, configuration values, or package boundaries.
+- Pass focused answer/reducer tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** extracted Approval and Question resolution validation into private methods accepting their concrete prompt types; left the unknown-kind branch at the dispatcher.
+- **Completed:** formatted, remeasured complexity, ran focused and full verification, exercised the authorized DeepSeek path, cleaned resources, inspected the diff, and recorded compatibility.
+
+### Validation
+
+- The post-change `gocognit`/`gocyclo` scan no longer reports `validateResolution`; Runtime findings fell from six to five, with no new finding and no cyclomatic threshold violation.
+- Focused Approval/Question tests passed in 4.11s; the full runs package passed in 4.57s and with `-race` in 8.50s. Focused `go vet` and `staticcheck` passed.
+- Runtime `GOWORK=off go vet ./...` passed in 4.83s, `GOWORK=off go build ./...` passed in 11.51s, and uncached `GOWORK=off go test -count=1 ./...` passed in 52.10s.
+- Current-workspace CLI `go vet ./...` passed in 3.72s, `go build ./...` passed in 6.02s, and uncached `go test -count=1 ./...` passed in 41.06s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND3_OK`, status `completed`, one step, 9,185 input tokens, 8 output tokens, 9,088 cache-read tokens, and 568ms model duration; the complete command took 4.19s. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `validateResolution` now performs only closed-kind dispatch and keeps the unknown-kind error at the common boundary.
+- `validateApprovalResolution` accepts only an Approval prompt and owns approval-only fields, remember policy, edited arguments, and denial-reason rules.
+- `validateQuestionResolution` accepts only a Question prompt and owns acknowledgement, field exclusion, answer cardinality, and indexed field validation.
+- Breaking changes: none. All methods are package-private; validation order inside each variant, errors, wrapping, answer indices, protocol values, and persistence are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round3.*` directory and moved it to the system Trash on exit.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The remaining risk is limited to accidental rule movement during extraction; existing kind-shape tables, ordered answer tests, claim revalidation, race coverage, and full lifecycle tests passed.
+- Round 4 will audit the measured Session rollback orchestration and its boot-recovery counterpart for duplicated workspace-transition ownership. It will preserve the explicit temporal sequence unless a coherent shared phase can be proven.

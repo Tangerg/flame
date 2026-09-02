@@ -129,71 +129,78 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 // gives its fields meaning. Resolution is shared executor vocabulary, so its
 // kind-specific invariant cannot live on that transport-shaped value alone.
 func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error {
-	resolution := a.Resolution
 	switch request.Kind {
 	case interrupt.Approval:
-		if request.Approval == nil {
-			return errors.New("approval request has no prompt")
-		}
-		if resolution.Answers != nil {
-			return errors.New("approval resolution cannot carry question answers")
-		}
-		if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
-			return fmt.Errorf("unknown remember scope %q", resolution.RememberScope)
-		}
-		if resolution.RememberScope != "" && !request.Approval.Rememberable {
-			return errors.New("approval cannot be remembered")
-		}
-		if resolution.Arguments != "" {
-			if !resolution.Approved {
-				return errors.New("denial cannot edit arguments")
-			}
-			if err := validateArguments(resolution.Arguments); err != nil {
-				return fmt.Errorf("edited arguments: %w", err)
-			}
-		}
-		if resolution.Reason != strings.TrimSpace(resolution.Reason) {
-			return errors.New("denial reason has surrounding whitespace")
-		}
-		if resolution.Approved && resolution.Reason != "" {
-			return errors.New("approval cannot carry a denial reason")
-		}
-		return nil
-
+		return a.validateApprovalResolution(request.Approval)
 	case interrupt.Question:
-		if request.Question == nil {
-			return errors.New("question request has no prompt")
-		}
-		if !resolution.Approved {
-			return errors.New("question resolution must acknowledge the answer")
-		}
-		if resolution.Arguments != "" || resolution.Reason != "" || resolution.RememberScope != "" {
-			return errors.New("question resolution cannot carry approval fields")
-		}
-		if len(resolution.Answers) != len(request.Question.Fields) {
-			return &QuestionAnswerError{
-				ItemID: a.InterruptItemID,
-				Index:  -1,
-				Detail: fmt.Sprintf(
-					"must contain %d entries, got %d",
-					len(request.Question.Fields), len(resolution.Answers),
-				),
-			}
-		}
-		for index, field := range request.Question.Fields {
-			if err := field.ValidateAnswer(resolution.Answers[index]); err != nil {
-				return &QuestionAnswerError{
-					ItemID: a.InterruptItemID,
-					Index:  index,
-					Detail: err.Error(),
-				}
-			}
-		}
-		return nil
-
+		return a.validateQuestionResolution(request.Question)
 	default:
 		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
 	}
+}
+
+func (a InterruptAnswer) validateApprovalResolution(request *transcript.Approval) error {
+	if request == nil {
+		return errors.New("approval request has no prompt")
+	}
+	resolution := a.Resolution
+	if resolution.Answers != nil {
+		return errors.New("approval resolution cannot carry question answers")
+	}
+	if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
+		return fmt.Errorf("unknown remember scope %q", resolution.RememberScope)
+	}
+	if resolution.RememberScope != "" && !request.Rememberable {
+		return errors.New("approval cannot be remembered")
+	}
+	if resolution.Arguments != "" {
+		if !resolution.Approved {
+			return errors.New("denial cannot edit arguments")
+		}
+		if err := validateArguments(resolution.Arguments); err != nil {
+			return fmt.Errorf("edited arguments: %w", err)
+		}
+	}
+	if resolution.Reason != strings.TrimSpace(resolution.Reason) {
+		return errors.New("denial reason has surrounding whitespace")
+	}
+	if resolution.Approved && resolution.Reason != "" {
+		return errors.New("approval cannot carry a denial reason")
+	}
+	return nil
+}
+
+func (a InterruptAnswer) validateQuestionResolution(request *transcript.Question) error {
+	if request == nil {
+		return errors.New("question request has no prompt")
+	}
+	resolution := a.Resolution
+	if !resolution.Approved {
+		return errors.New("question resolution must acknowledge the answer")
+	}
+	if resolution.Arguments != "" || resolution.Reason != "" || resolution.RememberScope != "" {
+		return errors.New("question resolution cannot carry approval fields")
+	}
+	if len(resolution.Answers) != len(request.Fields) {
+		return &QuestionAnswerError{
+			ItemID: a.InterruptItemID,
+			Index:  -1,
+			Detail: fmt.Sprintf(
+				"must contain %d entries, got %d",
+				len(request.Fields), len(resolution.Answers),
+			),
+		}
+	}
+	for index, field := range request.Fields {
+		if err := field.ValidateAnswer(resolution.Answers[index]); err != nil {
+			return &QuestionAnswerError{
+				ItemID: a.InterruptItemID,
+				Index:  index,
+				Detail: err.Error(),
+			}
+		}
+	}
+	return nil
 }
 
 func cloneAnswers(answers [][]string) [][]string {
