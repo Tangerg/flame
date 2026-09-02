@@ -18,10 +18,10 @@ import { VISUAL_WORK_INDEX_STATES, type VisualWorkIndexState } from "./shellFixt
 import { isVisualWorkspaceState, type VisualWorkspaceState } from "./workspaceFixtureStates";
 import "../src/styles/globals.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { VISUAL_NOW } from "./agentFixtureFacts";
 
 type FixtureTheme = "light" | "dark";
 
-const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
 const VISUAL_CLOCK_STARTED_AT = performance.now();
 // Keep time-based labels deterministic without freezing the browser clock.
 // Disclosure/scroll libraries use Date.now() to advance their frame loops; a
