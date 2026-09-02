@@ -127,8 +127,11 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 	if err != nil {
 		return agentmemory.State{}, fmt.Errorf("sqlite: load agent memory state: %w", err)
 	}
-	if updatedAt != 0 {
+	if st.Watermark != 0 || updatedAt != 0 {
 		st.UpdatedAt = time.Unix(0, updatedAt).UTC()
+	}
+	if err := st.Validate(); err != nil {
+		return agentmemory.State{}, fmt.Errorf("sqlite: decode invalid agent memory state: %w", err)
 	}
 	return st, nil
 }

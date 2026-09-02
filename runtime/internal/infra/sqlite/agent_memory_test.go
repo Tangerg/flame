@@ -82,7 +82,9 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two")
 	through := facts[len(facts)-1].Sequence
-	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
+	// Epoch is a valid update instant even though its Unix-nanosecond encoding is
+	// zero. The watermark, not a numeric timestamp sentinel, owns presence.
+	now := time.Unix(0, 0).UTC()
 	published, err := store.Reconcile(t.Context(), "/repo", 0, through, []string{"one", "two"}, now)
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%v, %v)", published, err)

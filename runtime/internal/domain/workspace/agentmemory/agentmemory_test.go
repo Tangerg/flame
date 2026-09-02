@@ -159,6 +159,27 @@ func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.
 	}
 }
 
+func TestCurationStateOwnsWatermarkTimestampCoherence(t *testing.T) {
+	epoch := time.Unix(0, 0).UTC()
+	for _, test := range []struct {
+		name    string
+		state   State
+		wantErr bool
+	}{
+		{name: "never curated"},
+		{name: "negative watermark", state: State{Watermark: -1}, wantErr: true},
+		{name: "empty with timestamp", state: State{UpdatedAt: epoch}, wantErr: true},
+		{name: "advanced without timestamp", state: State{Watermark: 1}, wantErr: true},
+		{name: "advanced at epoch", state: State{Watermark: 1, UpdatedAt: epoch}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.state.Validate(); (err != nil) != test.wantErr {
+				t.Fatalf("Validate() error = %v, want error %t", err, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 	now := time.Now()
 	if _, err := NewUserItem(

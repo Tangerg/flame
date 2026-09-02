@@ -512,6 +512,22 @@ type State struct {
 	UpdatedAt time.Time
 }
 
+// Validate reports whether the curation position and its transition time form
+// one coherent state. A zero watermark is the never-curated state; every
+// advanced watermark owns a timestamp, including the Unix epoch.
+func (s State) Validate() error {
+	if s.Watermark < 0 {
+		return errors.New("agentmemory: curation watermark must not be negative")
+	}
+	if s.Watermark == 0 && !s.UpdatedAt.IsZero() {
+		return errors.New("agentmemory: empty curation state carries an update time")
+	}
+	if s.Watermark > 0 && s.UpdatedAt.IsZero() {
+		return errors.New("agentmemory: advanced curation state has no update time")
+	}
+	return nil
+}
+
 func normalizeFactList(input []string, maximum int, collection string) ([]string, error) {
 	if len(input) > maximum {
 		return nil, fmt.Errorf("agentmemory: %s exceeds %d items", collection, maximum)
