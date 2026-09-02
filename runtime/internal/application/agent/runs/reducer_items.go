@@ -175,7 +175,7 @@ func (r *reducer) completeAssistantMessage(
 	content := make([]transcript.ContentBlock, 0, len(message.Parts))
 	for index, part := range message.Parts {
 		switch part.Kind {
-		case corechat.PartText:
+		case corechat.PartText, corechat.PartRefusal:
 			content = append(content, transcript.ContentBlock{Kind: transcript.TextContent, Text: part.Text})
 		case corechat.PartReasoning:
 			reasoning.WriteString(part.Text)

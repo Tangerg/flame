@@ -222,7 +222,7 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta
 	for _, part := range response.Parts {
 		var payload runs.ExecutionFact
 		switch part.Kind {
-		case corechat.PartDeltaText:
+		case corechat.PartDeltaText, corechat.PartDeltaRefusal:
 			payload = runs.MessageDelta{Text: part.Text}
 		case corechat.PartDeltaReasoning:
 			payload = runs.ReasoningDelta{Text: part.Text}

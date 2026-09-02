@@ -608,6 +608,23 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	}
 }
 
+func TestInteractionExecutorStreamsProviderRefusalAsVisibleText(t *testing.T) {
+	executor := newObservedTestInteractionExecutor(t, refusalObservationModel{}, InteractionExecutorConfig{
+		StreamModelResponses: true,
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+
+	deltas := payloadsOf[runs.MessageDelta](events)
+	if len(deltas) != 1 || deltas[0].Text != "I cannot help with that request." {
+		t.Fatalf("refusal deltas = %#v", deltas)
+	}
+	completed := payloadsOf[runs.ModelCallCompleted](events)
+	if len(completed) != 1 || len(completed[0].Message.Parts) != 1 ||
+		completed[0].Message.Parts[0].Kind != chat.PartRefusal {
+		t.Fatalf("refusal completion = %#v", completed)
+	}
+}
+
 func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t *testing.T) {
 	hidden, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "hidden_lookup", Description: "Read a hidden value.",
@@ -1368,6 +1385,21 @@ type observationScriptModel struct {
 type streamingObservationModel struct {
 	chunks   int
 	streamed chan struct{}
+}
+
+type refusalObservationModel struct{}
+
+func (refusalObservationModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected synchronous model call")
+}
+
+func (refusalObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		yield(&chat.ResponseDelta{
+			Parts:        []chat.PartDelta{chat.NewRefusalDelta("I cannot help with that request.")},
+			FinishReason: chat.FinishReasonRefusal,
+		}, nil)
+	}
 }
 
 func (streamingObservationModel) Call(context.Context, *chat.Request) (*chat.Response, error) {

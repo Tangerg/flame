@@ -124,6 +124,25 @@ func TestReducerEarlyExecutorFinalWaitsForAuthoritativeModelResponse(t *testing.
 	}
 }
 
+func TestReducerProjectsProviderRefusalWithoutChangingConversationSemantics(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	message := corechat.NewAssistantMessage(corechat.NewRefusalPart("I cannot help with that request."))
+	reduced := mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_1", Message: message, Steps: 1,
+	})
+
+	items := completedItems(reduced)
+	if len(items) != 1 || items[0].Kind() != transcript.AgentMessage ||
+		len(items[0].Content()) != 1 || items[0].Content()[0].Text != "I cannot help with that request." {
+		t.Fatalf("refusal transcript projection = %#v", items)
+	}
+	messages := committedConversationMessages(reduced)
+	if len(messages) != 1 || len(messages[0].Parts) != 1 || messages[0].Parts[0].Kind != corechat.PartRefusal {
+		t.Fatalf("refusal conversation projection = %#v", messages)
+	}
+}
+
 func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	call := corechat.ToolCall{ID: "provider_call_1", Name: "inspect", Arguments: `{}`}
