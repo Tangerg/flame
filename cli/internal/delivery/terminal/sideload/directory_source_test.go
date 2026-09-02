@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -176,6 +177,14 @@ func TestSideloadedCommandTimeoutDistinguishesAbsenceFromExplicitZero(t *testing
 	for _, seconds := range []int{0, -1, int(maxCommandTimeout.Seconds()) + 1} {
 		if _, err := (commandTimeoutDeclaration{present: true, seconds: seconds}).Resolve("hello"); err == nil {
 			t.Fatalf("timeout %d was accepted", seconds)
+		}
+	}
+	if strconv.IntSize == 64 {
+		// This value wraps to a positive 512ns if it is multiplied by one
+		// second before its declared unit is bounded.
+		const wrappingSeconds int64 = 20_211_507_185_753_197
+		if _, err := (commandTimeoutDeclaration{present: true, seconds: int(wrappingSeconds)}).Resolve("hello"); err == nil {
+			t.Fatalf("overflowing timeout %d was accepted", wrappingSeconds)
 		}
 	}
 	if _, err := (commandTimeoutDeclaration{seconds: 1}).Resolve("hello"); err == nil {

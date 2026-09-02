@@ -207,11 +207,10 @@ func (d commandTimeoutDeclaration) Resolve(name string) (time.Duration, error) {
 		}
 		return defaultCommandTimeout, nil
 	}
-	timeout := time.Duration(d.seconds) * time.Second
-	if timeout <= 0 || timeout > maxCommandTimeout {
+	if d.seconds <= 0 || d.seconds > int(maxCommandTimeout/time.Second) {
 		return 0, fmt.Errorf("command %q timeout must be between 1 and %.0f seconds", name, maxCommandTimeout.Seconds())
 	}
-	return timeout, nil
+	return time.Duration(d.seconds) * time.Second, nil
 }
 
 func readPlugin(directory string) (extensions.Plugin, bool, error) {
