@@ -236,59 +236,69 @@ func (a *app) refreshInvalidatedSession(settlementFence bool) {
 		return a.readInvalidatedSession(ctx, sessionID)
 	}
 	apply := func(snapshot agent.SessionSnapshot, err error) {
-		if a.session.current.ID != sessionID {
+		a.applyInvalidatedSessionRefresh(sessionID, settlementFence, snapshot, err)
+	}
+	// Every authoritative refresh fences queued Run admission. Settlement
+	// refreshes additionally replace an ordinary read already in flight so a
+	// weaker coalesced request cannot discard that obligation.
+	started := a.runSessionAdmissionFence(sessionInvalidationOperation, settlementFence, read, apply)
+	if !started {
+		a.session.invalidated = true
+	}
+}
+
+// applyInvalidatedSessionRefresh reconciles one authoritative read on the UI
+// loop after its operation lease has been released. Successful ordinary reads
+// explicitly reopen queued admission; failed reads leave invalidation asserted.
+func (a *app) applyInvalidatedSessionRefresh(
+	sessionID string,
+	settlementFence bool,
+	snapshot agent.SessionSnapshot,
+	err error,
+) {
+	if a.session.current.ID != sessionID {
+		return
+	}
+	if a.session.invalidated {
+		a.refreshInvalidatedSession(settlementFence)
+		return
+	}
+	if err != nil {
+		a.session.invalidated = true
+		if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
+			a.message("the active session was deleted; creating a replacement")
+			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
 			return
 		}
-		if a.session.invalidated {
-			a.refreshInvalidatedSession(settlementFence)
-			return
+		a.message("refresh session after runtime change failed: " + err.Error())
+		return
+	}
+	if !settlementFence && (a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following) {
+		a.session.invalidated = true
+		return
+	}
+	conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
+	sessionMatches := a.session.current.Equal(snapshot.Session)
+	if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
+		if !sessionMatches {
+			a.installSessionMetadata(snapshot.Session)
 		}
-		if err != nil {
+	} else {
+		if err := a.installSnapshot(snapshot); err != nil {
 			a.session.invalidated = true
-			if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
-				a.message("the active session was deleted; creating a replacement")
-				a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
-				return
-			}
 			a.message("refresh session after runtime change failed: " + err.Error())
 			return
 		}
-		if !settlementFence && (a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following) {
-			a.session.invalidated = true
-			return
-		}
-		conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
-		sessionMatches := a.session.current.Equal(snapshot.Session)
-		if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
-			if !sessionMatches {
-				a.installSessionMetadata(snapshot.Session)
-			}
-		} else {
-			if err := a.installSnapshot(snapshot); err != nil {
-				a.session.invalidated = true
-				a.message("refresh session after runtime change failed: " + err.Error())
-				return
-			}
-		}
-		if settlementFence && a.execution.conversation.Phase() == agent.ConversationIdle {
-			a.finishFollowing()
-			return
-		}
-		if !conversationMatches || !sessionMatches {
-			a.message("session refreshed after runtime change")
-		}
 	}
-	// Settlement refreshes are an ordering fence before queued Run admission.
-	// They replace an ordinary metadata refresh already in flight so a weaker
-	// coalesced request cannot discard that obligation.
-	var started bool
-	if settlementFence {
-		started = a.runSessionAdmissionFence(sessionInvalidationOperation, true, read, apply)
-	} else {
-		started = a.runOperation(sessionInvalidationOperation, false, read, apply)
+	if settlementFence && a.execution.conversation.Phase() == agent.ConversationIdle {
+		a.finishFollowing()
+		return
 	}
-	if !started {
-		a.session.invalidated = true
+	if !conversationMatches || !sessionMatches {
+		a.message("session refreshed after runtime change")
+	}
+	if !settlementFence {
+		a.drainQueue()
 	}
 }
 

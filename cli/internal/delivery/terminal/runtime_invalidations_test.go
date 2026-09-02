@@ -1162,6 +1162,66 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	stop()
 }
 
+func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) {
+	base := runtimefixture.New()
+	runStarted := make(chan string, 1)
+	base.Script = func(prompt string) runtimefixture.Script {
+		runStarted <- prompt
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
+			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+		}}}
+	}
+	backend := &blockingSnapshotRuntime{
+		Runtime: base, readStarted: make(chan struct{}, 1), release: make(chan struct{}),
+	}
+	source := &runtimeChangeSourceStub{
+		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
+		applied: make(chan changefeed.Event, 1),
+	}
+	host, stop := runUIWithRuntimeChanges(t, backend, source, "ses_demo_1")
+	host.Shows(t, "Ask flame")
+	awaitSignal(t, source.subscription, "runtime invalidation subscription")
+	snapshot, err := base.GetSession(t.Context(), "ses_demo_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	title := "Synchronized before blocked refresh"
+	if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
+		SessionIDs: []string{"ses_demo_1"},
+	}
+	awaitSignal(t, source.applied, "synchronizing invalidation")
+	host.Shows(t, title)
+
+	backend.blockNext.Store(true)
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeRunsChanged, Sequence: 2,
+		SessionIDs: []string{"ses_demo_1"},
+	}
+	awaitSignal(t, source.applied, "run invalidation")
+	awaitSignal(t, backend.readStarted, "authoritative session read")
+	host.Type("wait for the authoritative refresh")
+	host.Press(input.Enter)
+	host.Shows(t, "queued behind runtime change")
+	select {
+	case prompt := <-runStarted:
+		t.Fatalf("Run started before invalidation refresh applied with prompt %q", prompt)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	close(backend.release)
+	if prompt := awaitSignalValue(t, runStarted, "queued Run admission"); prompt != "wait for the authoritative refresh" {
+		t.Fatalf("started prompt = %q", prompt)
+	}
+	host.Shows(t, "complete")
+	stop()
+}
+
 func TestSessionChangeSettlementReconcilesItsDeferredInvalidation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -1232,6 +1292,28 @@ type snapshotCountingRuntime struct {
 	failures   atomic.Int32
 	failure    error
 	readSignal chan struct{}
+}
+
+type blockingSnapshotRuntime struct {
+	Runtime
+	blockNext   atomic.Bool
+	readStarted chan struct{}
+	release     chan struct{}
+}
+
+func (b *blockingSnapshotRuntime) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
+	if b.blockNext.CompareAndSwap(true, false) {
+		select {
+		case b.readStarted <- struct{}{}:
+		default:
+		}
+		select {
+		case <-b.release:
+		case <-ctx.Done():
+			return agent.SessionSnapshot{}, context.Cause(ctx)
+		}
+	}
+	return b.Runtime.GetSession(ctx, id)
 }
 
 type blockedResumeRuntime struct {

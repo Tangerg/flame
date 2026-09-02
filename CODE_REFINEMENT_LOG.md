@@ -378,3 +378,57 @@ Default model selection was treated as a local constructor argument at two downs
 
 - The selection is immutable construction data and is still revalidated by the Session coordinator at its application boundary; the change removes only duplicate composition parsing and moves rejection before effects.
 - Round 8 will audit CLI terminal invalidation refresh, the remaining measured consumer complexity, for stale-projection or duplicate retry ownership before deciding whether its branches should move.
+
+## Round 8 — complete
+
+### Audit scope and evidence
+
+- Traced Runtime session/run/plan/goal/interrupt invalidations through changefeed delivery, cold Session reads, operation-slot ownership, queue admission, snapshot installation, and settlement refreshes.
+- `refreshInvalidatedSession` clears the coalescing flag before its asynchronous read, as required to detect a newer notification during that read. Ordinary refreshes, however, run under the unrestricted operation policy; the cleared flag means neither admission guard remains active.
+- A prompt submitted in that window can start a Run against the stale terminal projection. This is especially material for run, plan, goal, and interrupt changes, and contradicts the existing queue message and `runtimeChangeBlocksRunAdmission` policy intended to place prompts behind Runtime changes.
+- Settlement refresh already uses the correct session admission fence. That fence releases before applying its result and deliberately requires the caller to drain only after a successful authoritative install.
+- Baseline: `go test -count=1 ./internal/delivery/terminal -run 'TestRuntimeInvalidation|TestInvalidatedSessionRead|TestSessionChangeSettlement'` passed in 4.92s.
+
+### Root cause
+
+The refresh function encoded one semantic distinction twice: `settlementFence` selected both whether an in-flight read could be replaced and whether the read blocked Run admission. Replacement strength differs between ordinary and settlement refreshes; authoritative-read ordering does not.
+
+### Impact and acceptance criteria
+
+- Every in-flight authoritative Session refresh must block new Run admission while preserving ordinary coalescing and settlement replacement.
+- A prompt entered during the read remains durably queued and starts only after the successful snapshot application.
+- Failed, superseded, deleted-session, live-stream, following, cancellation, and session-change paths retain their existing fail-closed behavior.
+- Remove the duplicated operation-policy branch and remeasure the CLI complexity finding without introducing a new state flag or abstraction.
+- Pass focused invalidation/queue tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added a blocked-read integration regression, routed both refresh modes through the admission fence, and explicitly drained an ordinary refresh only after success.
+- **Completed:** separated UI-loop reconciliation from asynchronous scheduling, formatted, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- The new integration regression first failed while the authoritative read was blocked: instead of showing `queued behind runtime change`, the last frame already showed the submitted Run as `complete`. After the fence and success-drain fix, it passed in 5.28s.
+- The final focused invalidation/session-change set passed in 6.75s. The complete terminal package passed in 22.43s and with `-race` in 48.11s. Focused `go vet` and `staticcheck` passed.
+- Production-only `gocognit`/`gocyclo` now reports zero CLI terminal findings; `refreshInvalidatedSession` no longer exceeds the threshold. The extracted apply phase owns result reconciliation rather than adding a generic helper or mutable state.
+- Runtime `GOWORK=off go vet ./...` passed in 0.75s, `GOWORK=off go build ./...` passed in 3.51s, and uncached `GOWORK=off go test -count=1 ./...` passed in 43.97s.
+- Current-workspace CLI `go vet ./...` passed in 0.60s, `go build ./...` passed in 2.31s, and uncached `go test -count=1 ./...` passed in 40.00s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND8_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 1,270ms model duration; the Run command took 5.18s. No credential value was printed or copied.
+- `git diff --check` passed. Protocol generation was not applicable because no wire type, schema, or public binding changed.
+
+### Changes and compatibility
+
+- Ordinary and settlement Session refreshes now share the session admission-fence policy. `settlementFence` controls only whether a stronger settlement read replaces the current read.
+- A successful ordinary refresh explicitly drains the queue after applying the authoritative snapshot. Errors and superseding invalidations leave the invalidated flag asserted, so admission remains fail-closed.
+- UI-loop snapshot reconciliation now lives in `applyInvalidatedSessionRefresh`; `refreshInvalidatedSession` owns only read construction, operation policy, and coalescing admission.
+- Breaking behavior: a Run submitted during an ordinary Runtime invalidation read is intentionally queued until the read succeeds instead of racing the stale local projection. Queue persistence, Runtime requests, protocol values, errors, and public APIs are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round8.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The new fence cannot deadlock queued work: the operation lease is released before apply, success drains explicitly, a newer invalidation immediately starts its successor, and every failure path leaves a visible blocked state. Integration and race tests cover the blocked-read handoff.
+- Round 9 will return to Runtime contract generation and inspect the high-complexity field-constraint compiler for unsupported metadata combinations that currently panic after registration rather than being rejected by the metadata owner.
