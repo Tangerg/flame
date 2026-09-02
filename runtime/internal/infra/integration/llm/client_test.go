@@ -305,6 +305,49 @@ func TestProviderEndpointPolicyResolvesCatalogDefaultOnce(t *testing.T) {
 	}
 }
 
+func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
+	var countRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if !strings.HasSuffix(request.URL.Path, "/messages/count_tokens") {
+			t.Errorf("unexpected path %q", request.URL.Path)
+			http.Error(writer, "unexpected path", http.StatusNotFound)
+			return
+		}
+		countRequests.Add(1)
+		var body struct {
+			Model    string            `json:"model"`
+			Messages []json.RawMessage `json:"messages"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Errorf("decode count request: %v", err)
+			http.Error(writer, "invalid request", http.StatusBadRequest)
+			return
+		}
+		if body.Model != "claude-test" || len(body.Messages) != 1 {
+			t.Errorf("count request = %#v", body)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"input_tokens":61}`))
+	}))
+	t.Cleanup(server.Close)
+
+	_, counter, err := BuildChat(mustClientSpec(t, ProviderAnthropic, "claude-test", "test-key", server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counter == nil {
+		t.Fatal("direct Anthropic client did not expose native input token counting")
+	}
+	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("measure me")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count, err := counter.CountInputTokens(t.Context(), request)
+	if err != nil || count != 61 || countRequests.Load() != 1 {
+		t.Fatalf("direct CountInputTokens = %d, %v; requests=%d", count, err, countRequests.Load())
+	}
+}
+
 func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(t *testing.T) {
 	var countRequests atomic.Int32
 	var responseRequests atomic.Int32
