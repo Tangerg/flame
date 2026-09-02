@@ -513,6 +513,10 @@ for (const theme of ["light", "dark"] as const) {
     const before = await body.boundingBox();
 
     await rail.last().click();
+    // Focus stays where it was used. The caret goes to the search on OPEN; re-running that on
+    // every group change took it away from the rail, so a keyboard reader could never stay
+    // there to try a second group.
+    await expect(rail.last()).toBeFocused();
     await expectStableBox(body);
     expect((await body.boundingBox())!.height).toBe(before!.height);
 
@@ -520,7 +524,14 @@ for (const theme of ["light", "dark"] as const) {
     // the rail would be lying about what is listed.
     await page.getByPlaceholder("Search models…").fill("gpt");
     await expect(surface.locator("button[aria-pressed]")).toHaveCount(0);
-    await page.getByPlaceholder("Search models…").fill("");
+
+    // Escape gives the query back before it gives up the surface. Proved here and not only in
+    // the unit suite: keeping the popover open depends on stopping the key before Base UI's
+    // dismiss layer sees it, and that layer is a real one only in a real browser.
+    await page.keyboard.press("Escape");
+    await expect(surface).toBeVisible();
+    await expect(page.getByPlaceholder("Search models…")).toHaveValue("");
+    await expect(rail.first()).toBeVisible();
 
     await rail.first().click();
 

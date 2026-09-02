@@ -244,17 +244,24 @@ export function RailCatalogPicker({
     ? [...new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item])).values()]
     : (active?.items ?? []);
 
-  // Opening onto the group in force is only half of it — the entry itself can sit below the
-  // fold of a long group, and a picker that opens without showing what it is picking from
-  // makes the reader scroll to find out what they already have. The caret goes to the search
-  // in the same frame: a catalogue this deep is reached by typing at least as often as by
-  // pointing, and a field that has to be clicked into first is a field that costs a gesture.
+  // The caret goes to the search ON OPEN, and only on open: a catalogue this deep is reached
+  // by typing at least as often as by pointing, and a field that has to be clicked into first
+  // costs a gesture. Re-running this when the GROUP changes would take focus away from the
+  // rail the reader just used — a keyboard user could never stay on it to try a second group.
   useEffect(() => {
     if (!open) return;
-    const frame = requestAnimationFrame(() => {
-      searchRef.current?.focus();
-      listRef.current?.querySelector("[data-current]")?.scrollIntoView({ block: "center" });
-    });
+    const frame = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+
+  // Opening onto the group in force is only half of it — the entry itself can sit below the
+  // fold of a long group, and a picker that opens without showing what it is picking from
+  // makes the reader scroll to find out what they already have.
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() =>
+      listRef.current?.querySelector("[data-current]")?.scrollIntoView({ block: "center" }),
+    );
     return () => cancelAnimationFrame(frame);
   }, [open, groupId]);
 
