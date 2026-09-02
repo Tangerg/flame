@@ -43,6 +43,43 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	}
 }
 
+func TestRuntimeSkillSourceRejectsDocumentGrowthAfterOpen(t *testing.T) {
+	root := t.TempDir()
+	name := "growing"
+	document := "---\nname: growing\ndescription: A valid Runtime skill used by the bounded-source counterexample.\n---\n"
+	document += strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes-len(document))
+	path := filepath.Join(root, name, sdk.SkillFile)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(document), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	source, err := newRuntimeSkillSource(root, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := source.openSkillDocument(name)
+	if err != nil {
+		t.Fatalf("open document at exact limit: %v", err)
+	}
+	if appendFile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	} else if _, err := appendFile.WriteString("x"); err != nil {
+		_ = appendFile.Close()
+		_ = file.Close()
+		t.Fatal(err)
+	} else if err := appendFile.Close(); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if _, err := readSkillDocument(t.Context(), name, file); !errors.Is(err, domainskills.ErrDocumentTooLarge) {
+		t.Fatalf("grown document error = %v, want ErrDocumentTooLarge", err)
+	}
+}
+
 func TestRuntimeSkillSourceRejectsOverCapacityDirectory(t *testing.T) {
 	workspace := t.TempDir()
 	root := ProjectSkillDir(workspace)
