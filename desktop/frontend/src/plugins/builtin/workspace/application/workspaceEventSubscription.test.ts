@@ -11,14 +11,6 @@ import {
   type WorkspaceEventSubscriptionPorts,
 } from "./workspaceEventSubscription";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-  return { promise, resolve };
-}
-
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const RUNTIME_ONE = RuntimeConnectionGeneration.forProcess("runtime_1");
 
@@ -233,9 +225,13 @@ describe("startWorkspaceEventSubscription", () => {
 
   it("retargets to the latest resolved cwd and ignores stale resolutions", async () => {
     const first =
-      deferred<Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>>();
+      Promise.withResolvers<
+        Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>
+      >();
     const second =
-      deferred<Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>>();
+      Promise.withResolvers<
+        Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>
+      >();
     let onCwdChange: ((change: WorkspaceCwdInputChange) => void) | undefined;
     const resolveWorkspaceCwd = vi
       .fn<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>()
@@ -421,7 +417,9 @@ describe("startWorkspaceEventSubscription", () => {
   it("drops the previous file watch before resolving a newly selected session", async () => {
     let onCwdChange: ((change: WorkspaceCwdInputChange) => void) | undefined;
     const second =
-      deferred<Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>>();
+      Promise.withResolvers<
+        Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>
+      >();
     const ports = subscriptionPorts({
       resolveWorkspaceCwd: vi
         .fn<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>()
@@ -500,7 +498,9 @@ describe("startWorkspaceEventSubscription", () => {
     const unsubscribeConnection = vi.fn();
     const unsubscribeCwdInputs = vi.fn();
     const cwd =
-      deferred<Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>>();
+      Promise.withResolvers<
+        Awaited<ReturnType<WorkspaceEventSubscriptionPorts["resolveWorkspaceCwd"]>>
+      >();
     let loopSignal: AbortSignal | undefined;
     const loop: WorkspaceEventLoop = {
       start: vi.fn(async (signal) => {

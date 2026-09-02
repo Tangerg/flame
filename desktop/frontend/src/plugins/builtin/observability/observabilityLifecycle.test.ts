@@ -1,14 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { startObservability, type ObservabilityTeardown } from "./observabilityLifecycle";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-  return { promise, resolve };
-}
-
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("startObservability", () => {
@@ -34,7 +26,7 @@ describe("startObservability", () => {
 
   it("tears down an initializer that resolves after disposal", async () => {
     const teardown = vi.fn<ObservabilityTeardown>();
-    const initialization = deferred<ObservabilityTeardown>();
+    const initialization = Promise.withResolvers<ObservabilityTeardown>();
     const dispose = startObservability(() => initialization.promise, vi.fn());
 
     dispose();

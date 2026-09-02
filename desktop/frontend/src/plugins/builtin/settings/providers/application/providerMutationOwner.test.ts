@@ -4,6 +4,7 @@ import { ProviderMutationOwner } from "./providerMutationOwner";
 import type { ProviderGateway } from "./ports/providerGateway";
 import { MODELS_KEY, PROVIDERS_KEY } from "./providerQueries";
 import { ProviderConfiguration, type ProviderConfigurationSnapshot } from "./providerModels";
+import { rejected } from "@/test/rejected";
 
 let owner: ProviderMutationOwner | undefined;
 
@@ -30,7 +31,7 @@ describe("ProviderMutationOwner", () => {
   });
 
   it("retires one Runtime generation without settling its commands into the successor", async () => {
-    const retired = deferred<ProviderConfiguration>();
+    const retired = Promise.withResolvers<ProviderConfiguration>();
     const updateProvider = vi
       .fn()
       .mockReturnValueOnce(retired.promise)
@@ -73,7 +74,7 @@ describe("ProviderMutationOwner", () => {
   });
 
   it("does not globally serialize unrelated provider resources", async () => {
-    const first = deferred<ProviderConfiguration>();
+    const first = Promise.withResolvers<ProviderConfiguration>();
     const updateProvider = vi.fn((input: { provider: string }) =>
       input.provider === "openai"
         ? first.promise
@@ -114,7 +115,7 @@ describe("ProviderMutationOwner", () => {
   });
 
   it("retires a live provider probe without publishing its late result", async () => {
-    const probe = deferred<{ ok: boolean }>();
+    const probe = Promise.withResolvers<{ ok: boolean }>();
     owner = ProviderMutationOwner.install({
       testProvider: vi.fn(() => probe.promise),
     } as unknown as ProviderGateway);
@@ -138,21 +139,4 @@ function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): Provi
     defaultEmbeddingModel: "embed-1",
     ...overrides,
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

@@ -20,23 +20,13 @@ vi.mock("../application/approvalConfig", async (importOriginal) => ({
 
 import { ModeRow } from "./ModeRow";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
-
 beforeEach(() => {
   model.setApprovalMode.mockReset();
 });
 
 describe("ModeRow", () => {
   it("owns the visible selection and duplicate admission while a save is pending", async () => {
-    const saving = deferred<ApprovalMode>();
+    const saving = Promise.withResolvers<ApprovalMode>();
     model.setApprovalMode.mockReturnValue(saving.promise);
     const view = render(<ModeRow mode="balanced" />);
 
@@ -83,7 +73,7 @@ describe("ModeRow", () => {
   });
 
   it("retires a rejected intent and admits a corrected choice", async () => {
-    const rejected = deferred<ApprovalMode>();
+    const rejected = Promise.withResolvers<ApprovalMode>();
     model.setApprovalMode.mockReturnValueOnce(rejected.promise).mockResolvedValueOnce("safe");
     render(<ModeRow mode="balanced" />);
 

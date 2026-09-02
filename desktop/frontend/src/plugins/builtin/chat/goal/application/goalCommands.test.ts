@@ -12,14 +12,6 @@ import {
   updateGoal,
 } from "./goalCommands";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((onResolve) => {
-    resolve = onResolve;
-  });
-  return { promise, resolve };
-}
-
 let restoreGateway: (() => void) | undefined;
 
 function installGoalCommandOwnerForTest(
@@ -137,7 +129,7 @@ describe("Goal lifecycle commands", () => {
   });
 
   it("serializes lifecycle commands for one Session while leaving intent order intact", async () => {
-    const stopping = deferred<GoalCommandReceipt>();
+    const stopping = Promise.withResolvers<GoalCommandReceipt>();
     const stop = vi.fn(() => stopping.promise);
     const resume = vi.fn().mockResolvedValue(receipt);
     restoreGateway = installGoalCommandOwnerForTest({
@@ -158,7 +150,7 @@ describe("Goal lifecycle commands", () => {
   });
 
   it("keeps the next lifecycle command behind authoritative revalidation", async () => {
-    const revalidated = deferred<void>();
+    const revalidated = Promise.withResolvers<void>();
     const repairProjection = vi.fn(() => revalidated.promise);
     const stop = vi.fn().mockResolvedValue(receipt);
     const resume = vi.fn().mockResolvedValue(receipt);
@@ -183,7 +175,7 @@ describe("Goal lifecycle commands", () => {
   });
 
   it("retires in-flight and queued Goal commands when their owner is replaced", async () => {
-    const stopping = deferred<GoalCommandReceipt>();
+    const stopping = Promise.withResolvers<GoalCommandReceipt>();
     const retiredStop = vi.fn(() => stopping.promise);
     const retiredResume = vi.fn().mockResolvedValue(receipt);
     const disposePredecessor = installGoalCommandOwnerForTest({
@@ -238,7 +230,7 @@ describe("Goal lifecycle commands", () => {
   });
 
   it("gives a Runtime successor a new gateway without lending it queued predecessor intents", async () => {
-    const stopping = deferred<GoalCommandReceipt>();
+    const stopping = Promise.withResolvers<GoalCommandReceipt>();
     const retiredStop = vi.fn(() => stopping.promise);
     const retiredResume = vi.fn().mockResolvedValue(receipt);
     const owner = GoalCommandOwner.install(

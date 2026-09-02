@@ -13,6 +13,7 @@ import { validateWire, type WireTypeName } from "@flame/runtime-contract/validat
 import { installScheduleGateway, registerScheduleDataProvider } from "./runtimeScheduleGateway";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 import { lookupDataProvider } from "@/plugins/sdk/selectors";
+import { rejected } from "@/test/rejected";
 
 const { selectAgentSession, runtimeCapability } = vi.hoisted(() => ({
   selectAgentSession: vi.fn(),
@@ -155,7 +156,7 @@ describe("runtimeScheduleGateway", () => {
   });
 
   it("does not navigate when a retired run-now response arrives after replacement", async () => {
-    const retiredRun = deferred<{ sessionId: string; runId: string }>();
+    const retiredRun = Promise.withResolvers<{ sessionId: string; runId: string }>();
     const runNowRetired = vi.fn(() => retiredRun.promise);
     const runNowSuccessor = vi.fn().mockResolvedValue({
       sessionId: "ses_successor",
@@ -188,23 +189,6 @@ describe("runtimeScheduleGateway", () => {
     expect(selectAgentSession).not.toHaveBeenCalled();
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
-}
 
 describe("the schedules read", () => {
   // This translation had two authors — this provider and a second one in the defaults

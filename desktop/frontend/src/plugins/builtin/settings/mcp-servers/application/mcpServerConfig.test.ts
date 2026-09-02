@@ -5,16 +5,6 @@ import { createMCPServer, deleteMCPServer, setMCPServerEnabled } from "./mcpServ
 import type { MCPServerGateway } from "./ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
-
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: "cloud",
@@ -75,8 +65,8 @@ describe("MCP server configuration", () => {
 
   it("serializes changes to one server and commits the last response", async () => {
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
-    const first = deferred<MCPServerSettings>();
-    const second = deferred<MCPServerSettings>();
+    const first = Promise.withResolvers<MCPServerSettings>();
+    const second = Promise.withResolvers<MCPServerSettings>();
     const setEnabled = vi
       .fn<(name: string, enabled: boolean) => Promise<MCPServerSettings>>()
       .mockReturnValueOnce(first.promise)
@@ -102,7 +92,7 @@ describe("MCP server configuration", () => {
 
   it("orders deletion after an in-flight update to the same server", async () => {
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
-    const first = deferred<MCPServerSettings>();
+    const first = Promise.withResolvers<MCPServerSettings>();
     const setEnabled = vi.fn().mockReturnValue(first.promise);
     const remove = vi.fn().mockResolvedValue(undefined);
     installGateway({
@@ -123,7 +113,7 @@ describe("MCP server configuration", () => {
   });
 
   it("continues with a later server change after a rejected command", async () => {
-    const first = deferred<MCPServerSettings>();
+    const first = Promise.withResolvers<MCPServerSettings>();
     const setEnabled = vi
       .fn<(name: string, enabled: boolean) => Promise<MCPServerSettings>>()
       .mockReturnValueOnce(first.promise)

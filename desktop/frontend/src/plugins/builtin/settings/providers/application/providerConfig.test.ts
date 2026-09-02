@@ -6,16 +6,6 @@ import type { ProviderGateway } from "./ports/providerGateway";
 import { ProviderConfiguration, type ProviderRole } from "./providerModels";
 import { ProviderMutationOwner } from "./providerMutationOwner";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
-
 let uninstall: (() => void) | undefined;
 
 function installGateway(gateway: ProviderGateway): void {
@@ -99,8 +89,8 @@ describe("provider configuration", () => {
   });
 
   it("serializes changes to one role and continues after a rejected change", async () => {
-    const first = deferred<ProviderRole>();
-    const second = deferred<ProviderRole>();
+    const first = Promise.withResolvers<ProviderRole>();
+    const second = Promise.withResolvers<ProviderRole>();
     const setUtilityRoleGateway = vi
       .fn<(role: ProviderRole) => Promise<ProviderRole>>()
       .mockReturnValueOnce(first.promise)
@@ -132,8 +122,8 @@ describe("provider configuration", () => {
   });
 
   it("keeps utility and embedding role resources independent", async () => {
-    const utility = deferred<ProviderRole>();
-    const embedding = deferred<ProviderRole>();
+    const utility = Promise.withResolvers<ProviderRole>();
+    const embedding = Promise.withResolvers<ProviderRole>();
     const setUtilityRoleGateway = vi.fn().mockReturnValue(utility.promise);
     const setEmbeddingRoleGateway = vi.fn().mockReturnValue(embedding.promise);
     installGateway({
@@ -155,7 +145,7 @@ describe("provider configuration", () => {
   });
 
   it("continues provider changes after a rejected command", async () => {
-    const first = deferred<ProviderConfiguration>();
+    const first = Promise.withResolvers<ProviderConfiguration>();
     const saved = ProviderConfiguration.restore({
       id: "deepseek",
       baseUrl: "https://api.deepseek.test",

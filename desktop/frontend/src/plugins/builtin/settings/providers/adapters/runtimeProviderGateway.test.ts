@@ -17,6 +17,7 @@ import {
   type ProviderConfigurationSnapshot,
 } from "../application/providerModels";
 import { installProviderGateway } from "./runtimeProviderGateway";
+import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
 
@@ -91,7 +92,7 @@ describe("runtimeProviderGateway", () => {
   });
 
   it("retires in-flight and queued provider commands before installing a successor", async () => {
-    const retiredUpdate = deferred<ProviderConfiguration>();
+    const retiredUpdate = Promise.withResolvers<ProviderConfiguration>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
     const updateSuccessor = vi.fn().mockResolvedValue({
       id: "openai-compatible",
@@ -181,21 +182,4 @@ function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): Provi
     defaultEmbeddingModel: "embed-1",
     ...overrides,
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

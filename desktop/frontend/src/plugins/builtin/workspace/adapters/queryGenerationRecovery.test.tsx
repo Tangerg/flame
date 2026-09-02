@@ -38,14 +38,6 @@ function goal(objective: string): NonNullable<FixtureState["goal"]> {
   return { objective };
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}
-
 beforeEach(async () => {
   queryClient.clear();
   synchronizeMountedAgentSessions.mockClear();
@@ -57,7 +49,7 @@ afterEach(() => {
 
 describe("workspace Runtime-generation query recovery", () => {
   it("revokes an old query before the successor event tail starts its replacement", async () => {
-    const retired = deferred<FixtureState>();
+    const retired = Promise.withResolvers<FixtureState>();
     let firstSignal: AbortSignal | undefined;
     let calls = 0;
     const fetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {
@@ -103,7 +95,7 @@ describe("workspace Runtime-generation query recovery", () => {
   });
 
   it("replaces an initial parameterized read before the old Runtime settles", async () => {
-    const retired = deferred<FixtureState>();
+    const retired = Promise.withResolvers<FixtureState>();
     let firstSignal: AbortSignal | undefined;
     let calls = 0;
     const fetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {

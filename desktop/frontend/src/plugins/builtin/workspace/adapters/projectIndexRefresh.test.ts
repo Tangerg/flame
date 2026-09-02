@@ -24,14 +24,6 @@ function wrapper({ children }: { children: ReactNode }) {
   return createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}
-
 function session(
   patch: Omit<Partial<AgentSessionSummary>, "workspace"> & { cwd?: string } = {},
 ): AgentSessionSummary {
@@ -81,7 +73,8 @@ describe("workspaceProjectRevision", () => {
   });
 
   it("replaces an initial project read after its Session projection commits", async () => {
-    const retired = deferred<Array<{ id: string; name: string; sessionCount: number }>>();
+    const retired =
+      Promise.withResolvers<Array<{ id: string; name: string; sessionCount: number }>>();
     let retiredSignal: AbortSignal | undefined;
     let calls = 0;
     const fetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {

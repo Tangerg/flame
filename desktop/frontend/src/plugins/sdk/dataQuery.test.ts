@@ -58,14 +58,6 @@ function productQueryWrapper({ children }: { children: ReactNode }) {
   return createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve };
-}
-
 async function registerProvider(fetcher: (params: unknown) => Promise<string>): Promise<void> {
   await loadPluginsForTest(
     definePlugin({
@@ -118,7 +110,7 @@ describe("createParameterizedDataQuery", () => {
   });
 
   it("hands a mounted cache writer to the successor Plugin Host", async () => {
-    const retired = deferred<string>();
+    const retired = Promise.withResolvers<string>();
     let retiredSignal: AbortSignal | undefined;
     const retiredFetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {
       retiredSignal = signal;
@@ -176,7 +168,7 @@ describe("createParameterizedDataQuery", () => {
         }),
       ]),
     );
-    const successor = deferred<string>();
+    const successor = Promise.withResolvers<string>();
     const successorFetcher = vi.fn(() => successor.promise);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
     const hook = renderHook(() => useResource({ id: "same" }), {
@@ -202,7 +194,7 @@ describe("createParameterizedDataQuery", () => {
   });
 
   it("removes the retired writer after the renderer and current Host finally close", async () => {
-    const retired = deferred<string>();
+    const retired = Promise.withResolvers<string>();
     let retiredSignal: AbortSignal | undefined;
     const retiredFetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {
       retiredSignal = signal;
@@ -257,7 +249,7 @@ describe("createParameterizedDataQuery", () => {
   // queries whose key was affected. Without the lifetime signal an untouched key's fetch keeps
   // its request open for a result `#assertCurrent` will throw away.
   it("aborts an untouched key's in-flight fetch when its generation retires", async () => {
-    const stable = deferred<string>();
+    const stable = Promise.withResolvers<string>();
     let stableSignal: AbortSignal | undefined;
     const host = await startKernel([
       definePlugin({
@@ -296,7 +288,7 @@ describe("createParameterizedDataQuery", () => {
   });
 
   it("replaces one provider overridden inside the active Host", async () => {
-    const retired = deferred<string>();
+    const retired = Promise.withResolvers<string>();
     let retiredSignal: AbortSignal | undefined;
     const retiredFetcher = vi.fn((_params?: unknown, signal?: AbortSignal) => {
       retiredSignal = signal;

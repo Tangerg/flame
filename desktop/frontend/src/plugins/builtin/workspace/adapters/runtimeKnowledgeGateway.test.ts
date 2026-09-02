@@ -6,6 +6,7 @@ import { RpcError } from "@/rpc";
 import { loadWorkspaceKnowledge, saveWorkspaceKnowledge } from "../application/knowledge";
 import { WorkspaceKnowledgeRevisionConflictError } from "../application/ports/knowledgeGateway";
 import { installWorkspaceKnowledgeGateway } from "./runtimeKnowledgeGateway";
+import { rejected } from "@/test/rejected";
 
 const installations: Array<ReturnType<typeof installWorkspaceKnowledgeGateway>> = [];
 
@@ -90,7 +91,7 @@ describe("runtimeKnowledgeGateway", () => {
   });
 
   it("retires an old Host read before its response can settle into the successor", async () => {
-    const response = deferred<{
+    const response = Promise.withResolvers<{
       scope: "cwd";
       content: string;
       revision: string;
@@ -118,7 +119,7 @@ describe("runtimeKnowledgeGateway", () => {
   });
 
   it("retires an old Host save without repairing successor queries", async () => {
-    const response = deferred<{
+    const response = Promise.withResolvers<{
       scope: "cwd";
       content: string;
       revision: string;
@@ -155,7 +156,7 @@ describe("runtimeKnowledgeGateway", () => {
   });
 
   it("retires an admitted read when the same Host observes a new Runtime generation", async () => {
-    const response = deferred<{
+    const response = Promise.withResolvers<{
       scope: "projectRoot";
       content: string;
       revision: string;
@@ -190,20 +191,3 @@ describe("runtimeKnowledgeGateway", () => {
     });
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
-}

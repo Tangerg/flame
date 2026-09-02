@@ -11,6 +11,7 @@ import {
 import { MCP_SERVERS_KEY, type MCPServerSettings } from "../application/mcpServerQueries";
 import { validateWire } from "@flame/runtime-contract/validate";
 import { installMCPServerGateway } from "./runtimeMcpServerGateway";
+import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
 
@@ -124,7 +125,7 @@ describe("runtimeMcpServerGateway", () => {
   });
 
   it("retires in-flight and queued server commands before installing a successor", async () => {
-    const retiredUpdate = deferred<ReturnType<typeof runtimeServer>>();
+    const retiredUpdate = Promise.withResolvers<ReturnType<typeof runtimeServer>>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
     const updateSuccessor = vi
       .fn()
@@ -220,7 +221,7 @@ describe("runtimeMcpServerGateway", () => {
   });
 
   it("retires an admitted reconnect when a successor Host takes ownership", async () => {
-    const retired = deferred<void>();
+    const retired = Promise.withResolvers<void>();
     const reconnectRetired = vi.fn(() => retired.promise);
     setContainer({
       client: () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient,
@@ -271,21 +272,4 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     url: "https://example.test/mcp",
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

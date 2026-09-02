@@ -41,20 +41,6 @@ function scope(namespace = "idp_runtime_store"): MutationJournalScope {
   };
 }
 
-function deferred<T>(): {
-  promise: Promise<T>;
-  resolve(value: T): void;
-  reject(error: unknown): void;
-} {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, resolve, reject };
-}
-
 function deliver<T>(
   reservation: MutationReservation,
   execute: () => Promise<T> | T,
@@ -125,14 +111,14 @@ describe("mutation journal", () => {
     const storage = new MemoryStorage();
     const predecessor = journal(storage);
     const firstReservation = predecessor.reserve("runs.start", { prompt: "hello" })!;
-    const firstResult = deferred<string>();
+    const firstResult = Promise.withResolvers<string>();
     const first = deliver(firstReservation, () => firstResult.promise);
     await vi.waitFor(() => expect(storage.keys()).toHaveLength(1));
 
     const successor = journal(storage);
     const replayReservation = successor.reserve("runs.start", { prompt: "hello" })!;
     expect(replayReservation.idempotencyKey).toBe(firstReservation.idempotencyKey);
-    const replayResult = deferred<string>();
+    const replayResult = Promise.withResolvers<string>();
     const replay = deliver(replayReservation, () => replayResult.promise);
 
     firstResult.resolve("late predecessor result");

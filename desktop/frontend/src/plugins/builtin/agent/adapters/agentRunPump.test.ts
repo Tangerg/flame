@@ -220,7 +220,7 @@ describe("agent run pump reattach", () => {
   });
 
   it("does not fold an older exact read after a newer pump takes ownership", async () => {
-    const exactRead = deferred<RunRef>();
+    const exactRead = Promise.withResolvers<RunRef>();
     const applyRunSnapshot = vi.fn();
     const readRunSnapshot = vi.fn(() => exactRead.promise);
     const pump = createAgentRunPump({
@@ -250,7 +250,7 @@ describe("agent run pump reattach", () => {
   });
 
   it("releases live ownership and ignores a late exact read after abort", async () => {
-    const exactRead = deferred<RunRef>();
+    const exactRead = Promise.withResolvers<RunRef>();
     const applyRunSnapshot = vi.fn();
     const onIdle = vi.fn();
     const readRunSnapshot = vi.fn(() => exactRead.promise);
@@ -357,7 +357,7 @@ describe("agent run pump reattach", () => {
   });
 
   it("does not let a retired pump reattach after its iterator settles late", async () => {
-    const lateNext = deferred<IteratorResult<RunEvent>>();
+    const lateNext = Promise.withResolvers<IteratorResult<RunEvent>>();
     const reattach = vi.fn(() => Promise.resolve(null));
     const pump = createAgentRunPump({
       sessionId: "ses_1",
@@ -439,12 +439,4 @@ function parkedStream(segmentId: ReturnType<typeof asSegmentId>, signal: AbortSi
       },
     },
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
 }

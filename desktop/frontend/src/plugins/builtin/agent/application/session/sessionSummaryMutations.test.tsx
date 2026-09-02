@@ -63,8 +63,8 @@ describe("optimistic Session summary mutations", () => {
   it("serializes local conditional writes and carries the committed revision", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const rename = deferred<{ revision: number }>();
-    const favorite = deferred<{ revision: number }>();
+    const rename = Promise.withResolvers<{ revision: number }>();
+    const favorite = Promise.withResolvers<{ revision: number }>();
     const updateSession = vi
       .fn()
       .mockImplementationOnce(() => rename.promise)
@@ -107,7 +107,7 @@ describe("optimistic Session summary mutations", () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const rename = deferred<{ revision: number }>();
+    const rename = Promise.withResolvers<{ revision: number }>();
     const updateSession = vi
       .fn()
       .mockImplementationOnce(() => rename.promise)
@@ -131,7 +131,7 @@ describe("optimistic Session summary mutations", () => {
   it("retires old optimistic effects and starts the successor queue independently", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const retiredUpdate = deferred<{ revision: number }>();
+    const retiredUpdate = Promise.withResolvers<{ revision: number }>();
     const retiredUpdateCall = vi.fn(() => retiredUpdate.promise);
     restoreRuntime = configureAgentRuntimeGateway({
       updateSession: retiredUpdateCall,
@@ -170,11 +170,3 @@ describe("optimistic Session summary mutations", () => {
     }
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}

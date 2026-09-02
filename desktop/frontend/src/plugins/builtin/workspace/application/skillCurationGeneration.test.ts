@@ -12,6 +12,7 @@ import {
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
 } from "./workspaceQueries";
+import { rejected } from "@/test/rejected";
 
 let owner: SkillCurationOwner | undefined;
 
@@ -26,7 +27,7 @@ afterEach(() => {
 
 describe("skill curation generation", () => {
   it("serializes library and proposal decisions that write the same user Skill", async () => {
-    const restored = deferred<void>();
+    const restored = Promise.withResolvers<void>();
     const restore = vi.fn(() => restored.promise);
     const approveProposal = vi.fn().mockResolvedValue(undefined);
     owner = SkillCurationOwner.install({
@@ -52,7 +53,7 @@ describe("skill curation generation", () => {
   });
 
   it("does not let an old Host archive repair the successor projections", async () => {
-    const archived = deferred<void>();
+    const archived = Promise.withResolvers<void>();
     const archive = vi.fn(() => archived.promise);
     owner = SkillCurationOwner.install({ archive } as unknown as SkillCurationGateway);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
@@ -70,7 +71,7 @@ describe("skill curation generation", () => {
   });
 
   it("retires in-flight curation on an in-place Runtime generation change", async () => {
-    const archived = deferred<void>();
+    const archived = Promise.withResolvers<void>();
     const archive = vi.fn().mockReturnValueOnce(archived.promise).mockResolvedValueOnce(undefined);
     owner = SkillCurationOwner.install({ archive } as unknown as SkillCurationGateway);
 
@@ -188,20 +189,3 @@ describe("skill curation generation", () => {
     ]);
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
-}

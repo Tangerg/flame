@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe("run opening controller", () => {
   it("retires an opening that ignores cancellation and disposes its late stream", async () => {
-    const opening = deferred<{
+    const opening = Promise.withResolvers<{
       result: { runId: ReturnType<typeof asRunId>; segmentId: ReturnType<typeof asSegmentId> };
       events: AsyncIterable<RunEvent>;
     }>();
@@ -138,11 +138,3 @@ describe("run opening controller", () => {
 });
 
 async function* emptyEvents(): AsyncIterable<RunEvent> {}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}

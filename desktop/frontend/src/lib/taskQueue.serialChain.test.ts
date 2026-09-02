@@ -5,20 +5,10 @@ import { SerialTaskChain } from "./taskQueue";
 // fails work that has not run, an unconditional delete breaks the ordering, and never deleting
 // grows a map for the life of the process.
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 describe("serialising work per identity", () => {
   it("holds a second call until the first for the same identity settles", async () => {
     const chain = new SerialTaskChain();
-    const first = deferred<string>();
+    const first = Promise.withResolvers<string>();
     const order: string[] = [];
 
     const a = chain.chain("same", (tail) =>
@@ -34,7 +24,7 @@ describe("serialising work per identity", () => {
 
   it("lets different identities run without waiting for each other", async () => {
     const chain = new SerialTaskChain();
-    const blocked = deferred<void>();
+    const blocked = Promise.withResolvers<void>();
     const order: string[] = [];
 
     const held = chain.chain("a", (tail) => tail.then(() => blocked.promise));
@@ -59,7 +49,7 @@ describe("serialising work per identity", () => {
 
   it("keeps ordering when a call is queued behind one that then fails", async () => {
     const chain = new SerialTaskChain();
-    const first = deferred<void>();
+    const first = Promise.withResolvers<void>();
     const order: string[] = [];
 
     const failing = chain.chain("same", (tail) =>
@@ -80,8 +70,8 @@ describe("serialising work per identity", () => {
   // microtask has run, or the wrong implementation looks right.
   it("does not let a later call start because an earlier one finished", async () => {
     const chain = new SerialTaskChain();
-    const first = deferred<void>();
-    const second = deferred<void>();
+    const first = Promise.withResolvers<void>();
+    const second = Promise.withResolvers<void>();
     const order: string[] = [];
 
     const a = chain.chain("same", (tail) =>
@@ -120,7 +110,7 @@ describe("serialising work per identity", () => {
 
   it("drops every tail when cleared, so a retired owner queues nothing behind old work", async () => {
     const chain = new SerialTaskChain();
-    const stuck = deferred<void>();
+    const stuck = Promise.withResolvers<void>();
     const held = chain.chain("same", (tail) => tail.then(() => stuck.promise));
 
     chain.clear();

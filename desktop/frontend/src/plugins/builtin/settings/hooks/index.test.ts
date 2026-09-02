@@ -9,6 +9,7 @@ import {
 } from "@/plugins/builtin/runtime/public/services";
 import { setHookTrust } from "./application/hookTrust";
 import hooksPlugin from "./index";
+import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
@@ -61,13 +62,4 @@ function deferred() {
     resolve = settle;
   });
   return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

@@ -3,6 +3,7 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import { invokeDiagnosticTool } from "../application/diagnosticTool";
 import { installDiagnosticToolGateway } from "./runtimeDiagnosticToolGateway";
+import { rejected } from "@/test/rejected";
 
 const installations: Array<ReturnType<typeof installDiagnosticToolGateway>> = [];
 
@@ -37,7 +38,7 @@ describe("runtimeDiagnosticToolGateway", () => {
   });
 
   it("cannot settle an old Host diagnostic invocation into its successor", async () => {
-    const retired = deferred<unknown>();
+    const retired = Promise.withResolvers<unknown>();
     const invokeRetired = vi.fn(() => retired.promise);
     setContainer({
       client: () => ({ tools: { invoke: invokeRetired } }) as unknown as FlameClient,
@@ -63,7 +64,7 @@ describe("runtimeDiagnosticToolGateway", () => {
   });
 
   it("retires in-flight and queued invocations at a Runtime generation boundary", async () => {
-    const retired = deferred<unknown>();
+    const retired = Promise.withResolvers<unknown>();
     const invoke = vi
       .fn()
       .mockReturnValueOnce(retired.promise)
@@ -96,20 +97,3 @@ describe("runtimeDiagnosticToolGateway", () => {
     expect(invoke).toHaveBeenCalledTimes(2);
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
-}

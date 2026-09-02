@@ -11,16 +11,7 @@ import {
   type ApprovalRuleSummary,
 } from "./approvalPolicyQueries";
 import type { ApprovalMode } from "../domain/hitl";
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
+import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
 
@@ -35,8 +26,8 @@ afterEach(() => {
 
 describe("approval policy", () => {
   it("serializes mode changes and commits each authoritative response", async () => {
-    const first = deferred<ApprovalMode>();
-    const second = deferred<ApprovalMode>();
+    const first = Promise.withResolvers<ApprovalMode>();
+    const second = Promise.withResolvers<ApprovalMode>();
     const setMode = vi
       .fn<(mode: ApprovalMode) => Promise<ApprovalMode>>()
       .mockReturnValueOnce(first.promise)
@@ -62,7 +53,7 @@ describe("approval policy", () => {
   });
 
   it("continues with the next mode after a rejected change", async () => {
-    const first = deferred<ApprovalMode>();
+    const first = Promise.withResolvers<ApprovalMode>();
     const setMode = vi
       .fn<(mode: ApprovalMode) => Promise<ApprovalMode>>()
       .mockReturnValueOnce(first.promise)
@@ -81,7 +72,7 @@ describe("approval policy", () => {
   });
 
   it("does not serialize the successor behind an old Plugin Host mode change", async () => {
-    const retiredMode = deferred<ApprovalMode>();
+    const retiredMode = Promise.withResolvers<ApprovalMode>();
     uninstall = configureAgentRuntimeGateway({
       setApprovalMode: vi.fn(() => retiredMode.promise),
     } as unknown as AgentRuntimeGateway);
@@ -137,7 +128,7 @@ describe("approval policy", () => {
   });
 
   it("does not continue a rule batch through a successor Plugin Host", async () => {
-    const retiredWrite = deferred<void>();
+    const retiredWrite = Promise.withResolvers<void>();
     const forgetRetired = vi.fn(() => retiredWrite.promise);
     const forgetSuccessor = vi.fn().mockResolvedValue(undefined);
     setContainer({
@@ -169,13 +160,4 @@ function rule(id: string): ApprovalRuleSummary {
     tool: "shell",
     decision: "allow",
   };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

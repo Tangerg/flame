@@ -1,14 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DesktopRenderer, type DesktopRendererDependencies } from "./renderer";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve };
-}
-
 function rendererDependencies(overrides: Partial<DesktopRendererDependencies> = {}) {
   return {
     initializeDesktopHost: vi.fn(async () => undefined),
@@ -23,7 +15,7 @@ function rendererDependencies(overrides: Partial<DesktopRendererDependencies> = 
 
 describe("DesktopRenderer", () => {
   it("cannot mount after final close wins an in-flight bootstrap", async () => {
-    const bootstrap = deferred<void>();
+    const bootstrap = Promise.withResolvers<void>();
     const deps = rendererDependencies({
       initializeDesktopHost: vi.fn(() => bootstrap.promise),
     });
@@ -41,7 +33,7 @@ describe("DesktopRenderer", () => {
   });
 
   it("cannot install window owners after close wins chrome preparation", async () => {
-    const chrome = deferred<void>();
+    const chrome = Promise.withResolvers<void>();
     const deps = rendererDependencies({
       prepareWindowChrome: vi.fn(() => chrome.promise),
     });
@@ -60,7 +52,7 @@ describe("DesktopRenderer", () => {
   it("retires the mounted root and watcher synchronously with one close settlement", async () => {
     const unmount = vi.fn();
     const stopWatching = vi.fn();
-    const runtimeClose = deferred<void>();
+    const runtimeClose = Promise.withResolvers<void>();
     const deps = rendererDependencies({
       watchWindowChrome: vi.fn(() => stopWatching),
       mount: vi.fn(() => ({ unmount })),

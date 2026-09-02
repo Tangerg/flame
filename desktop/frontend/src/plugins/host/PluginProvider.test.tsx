@@ -15,14 +15,6 @@ vi.mock("../sdk", () => ({
 
 import { PluginProvider } from "./PluginProvider";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve };
-}
-
 function host(): Host {
   return {} as Host;
 }
@@ -51,7 +43,7 @@ describe("PluginProvider kernel ownership", () => {
   });
 
   it("stops a kernel whose startup settles after its provider was retired", async () => {
-    const startup = deferred<Host>();
+    const startup = Promise.withResolvers<Host>();
     const owned = host();
     mocks.startKernel.mockReturnValue(startup.promise);
     const view = render(

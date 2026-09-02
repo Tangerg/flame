@@ -3,6 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 import type { MCPServerGateway } from "./ports/mcpServerGateway";
 import { MCP_SERVERS_KEY, MCP_TOOLS_KEY, type MCPServerSettings } from "./mcpServerQueries";
+import { rejected } from "@/test/rejected";
 
 let owner: MCPServerMutationOwner | undefined;
 
@@ -30,7 +31,7 @@ describe("MCPServerMutationOwner", () => {
   });
 
   it("retires one Runtime generation without draining commands through its successor", async () => {
-    const retired = deferred<MCPServerSettings>();
+    const retired = Promise.withResolvers<MCPServerSettings>();
     const setEnabled = vi
       .fn()
       .mockReturnValueOnce(retired.promise)
@@ -64,7 +65,7 @@ describe("MCPServerMutationOwner", () => {
   });
 
   it("does not globally serialize unrelated MCP server resources", async () => {
-    const first = deferred<MCPServerSettings>();
+    const first = Promise.withResolvers<MCPServerSettings>();
     const setEnabled = vi.fn((name: string) =>
       name === "cloud" ? first.promise : Promise.resolve(server({ id: name, name })),
     );
@@ -91,7 +92,7 @@ describe("MCPServerMutationOwner", () => {
   });
 
   it("coalesces overlapping reconnect admissions and orders settings behind the same server", async () => {
-    const admitted = deferred<void>();
+    const admitted = Promise.withResolvers<void>();
     const reconnect = vi.fn(() => admitted.promise);
     const setEnabled = vi.fn().mockResolvedValue(server({ status: "disabled", enabled: false }));
     owner = MCPServerMutationOwner.install({
@@ -146,21 +147,4 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     url: "https://example.test/mcp",
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

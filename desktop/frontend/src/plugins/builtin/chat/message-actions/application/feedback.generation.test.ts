@@ -7,6 +7,7 @@ import {
   type MessageFeedbackGateway,
   type MessageFeedbackTarget,
 } from "./feedback";
+import { rejected } from "@/test/rejected";
 
 let owner: MessageFeedbackOwner | undefined;
 
@@ -17,7 +18,7 @@ afterEach(() => {
 
 describe("message feedback generation", () => {
   it("serializes re-rating and keeps a newer accepted rating after an older failure", async () => {
-    const positive = deferred<void>();
+    const positive = Promise.withResolvers<void>();
     const createMessageFeedback = vi.fn(({ rating }: { rating: string }) =>
       rating === "positive" ? positive.promise : Promise.resolve(),
     );
@@ -40,7 +41,7 @@ describe("message feedback generation", () => {
   });
 
   it("rolls the latest failed intent back to the last accepted rating", async () => {
-    const negative = deferred<void>();
+    const negative = Promise.withResolvers<void>();
     owner = MessageFeedbackOwner.install({
       createMessageFeedback: vi.fn(({ rating }) =>
         rating === "negative" ? negative.promise : Promise.resolve(),
@@ -58,7 +59,7 @@ describe("message feedback generation", () => {
   });
 
   it("retires in-flight and queued commands before a Runtime replacement can publish material", async () => {
-    const retired = deferred<void>();
+    const retired = Promise.withResolvers<void>();
     const createMessageFeedback = vi.fn(() => retired.promise);
     owner = MessageFeedbackOwner.install({ createMessageFeedback });
     const target = feedbackTarget("runtime_replacement");
@@ -88,7 +89,7 @@ describe("message feedback generation", () => {
   });
 
   it("retires an admitted command immediately on final disposal", async () => {
-    const pending = deferred<void>();
+    const pending = Promise.withResolvers<void>();
     owner = MessageFeedbackOwner.install({
       createMessageFeedback: vi.fn(() => pending.promise),
     });
@@ -104,7 +105,7 @@ describe("message feedback generation", () => {
   });
 
   it("replaces a Plugin Host owner without lending queued work to its successor", async () => {
-    const retired = deferred<void>();
+    const retired = Promise.withResolvers<void>();
     const retiredGateway: MessageFeedbackGateway = {
       createMessageFeedback: vi.fn(() => retired.promise),
     };
@@ -151,23 +152,4 @@ function feedbackTarget(suffix: string, sessionId = "ses_feedback"): MessageFeed
     messageId: `item_${suffix}`,
     runId: "run_feedback",
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

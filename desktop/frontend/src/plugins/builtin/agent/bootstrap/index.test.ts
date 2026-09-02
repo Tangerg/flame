@@ -11,6 +11,7 @@ import {
 import { forgetRules } from "../application/approvalPolicy";
 import { APPROVAL_RULES_KEY } from "../application/approvalPolicyQueries";
 import agentBootstrap from "./index";
+import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
@@ -62,13 +63,4 @@ function deferred() {
     resolve = settle;
   });
   return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

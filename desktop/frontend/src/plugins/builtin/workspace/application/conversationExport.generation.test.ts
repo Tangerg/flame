@@ -71,7 +71,7 @@ afterEach(() => {
 
 describe("conversation archive generation", () => {
   it("retires a picker before its continuation can borrow the successor gateway", async () => {
-    const picker = deferred<string | null>();
+    const picker = Promise.withResolvers<string | null>();
     const successorImport = vi.fn().mockResolvedValue({ id: "successor-session" });
     installFiles({ download, pickText: () => picker.promise });
     installGateway({ importConversation: vi.fn() });
@@ -94,7 +94,7 @@ describe("conversation archive generation", () => {
   });
 
   it("settles an in-flight import at replacement and rejects every late product effect", async () => {
-    const response = deferred<{ id: string; title?: string }>();
+    const response = Promise.withResolvers<{ id: string; title?: string }>();
     const retiredImport = vi.fn(() => response.promise);
     installFiles({ download, pickText: () => Promise.resolve(validArtifact("old-session")) });
     installGateway({ importConversation: retiredImport });
@@ -117,7 +117,7 @@ describe("conversation archive generation", () => {
   });
 
   it("does not turn a retired export failure into a successor local download", async () => {
-    const response = deferred<never>();
+    const response = Promise.withResolvers<never>();
     const retiredExport = vi.fn(() => response.promise);
     installFiles({ download, pickText: vi.fn() });
     installGateway({ exportConversation: retiredExport });
@@ -140,7 +140,7 @@ describe("conversation archive generation", () => {
   });
 
   it("retires the import while rehydrate is pending before query repair or navigation", async () => {
-    const hydration = deferred<void>();
+    const hydration = Promise.withResolvers<void>();
     mocks.rehydrateSessionView.mockReturnValueOnce(hydration.promise);
     installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
     const owner = installGateway({
@@ -164,7 +164,7 @@ describe("conversation archive generation", () => {
   });
 
   it("retires query repair before it can publish old import navigation", async () => {
-    const repair = deferred<void>();
+    const repair = Promise.withResolvers<void>();
     mocks.invalidateAgentSessions.mockReturnValueOnce(repair.promise);
     installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
     const owner = installGateway({
@@ -202,7 +202,7 @@ describe("conversation archive generation", () => {
   });
 
   it("owns repeated import intent as one picker and one mutation", async () => {
-    const picker = deferred<string | null>();
+    const picker = Promise.withResolvers<string | null>();
     const importConversation = vi.fn().mockResolvedValue({ id: "imported" });
     const pickText = vi.fn(() => picker.promise);
     installFiles({ download, pickText });
@@ -241,16 +241,6 @@ function validArtifact(id: string): string {
     runs: [],
     items: [],
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
 }
 
 function observedSettlement(operation: Promise<unknown>): () => boolean {

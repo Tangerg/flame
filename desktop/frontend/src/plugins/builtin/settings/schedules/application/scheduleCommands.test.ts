@@ -69,7 +69,7 @@ describe("schedule commands", () => {
       revision: 7,
     };
     const disabled = { ...current, enabled: false, revision: 8 };
-    const first = deferred<typeof disabled>();
+    const first = Promise.withResolvers<typeof disabled>();
     const setEnabled = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
@@ -104,7 +104,7 @@ describe("schedule commands", () => {
       revision: 7,
     };
     const disabled = { ...current, enabled: false, revision: 8 };
-    const first = deferred<typeof disabled>();
+    const first = Promise.withResolvers<typeof disabled>();
     const setEnabled = vi.fn(() => first.promise);
     const update = vi.fn((input) => Promise.resolve({ ...input, revision: input.revision + 1 }));
     owner = ScheduleMutationOwner.install({ setEnabled, update } as unknown as ScheduleGateway);
@@ -152,7 +152,7 @@ describe("schedule commands", () => {
     const updated = { ...current, enabled: false, revision: 8 };
     const setEnabled = vi.fn().mockResolvedValue(updated);
     owner = ScheduleMutationOwner.install({ setEnabled } as unknown as ScheduleGateway);
-    const repair = deferred<void>();
+    const repair = Promise.withResolvers<void>();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(repair.promise);
     queryClient.setQueryData([SCHEDULES_KEY], [current]);
 
@@ -176,7 +176,7 @@ describe("schedule commands", () => {
       enabled: true,
       revision: 7,
     };
-    const slow = deferred<typeof current>();
+    const slow = Promise.withResolvers<typeof current>();
     const run = { sessionId: "ses_other", runId: "run_other" };
     owner = ScheduleMutationOwner.install({
       setEnabled: vi.fn(() => slow.promise),
@@ -202,11 +202,3 @@ describe("schedule commands", () => {
     expect(selectAgentSession).toHaveBeenCalledWith("ses_scheduled");
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}

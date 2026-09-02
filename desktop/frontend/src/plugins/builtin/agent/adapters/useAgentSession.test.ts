@@ -232,7 +232,7 @@ describe("useAgentSession run timing guards", () => {
   });
 
   it("keeps a run live until cancellation is committed by the runtime", async () => {
-    const cancellation = deferred<CancelRunResponse>();
+    const cancellation = Promise.withResolvers<CancelRunResponse>();
     const canceledRun = runRef({
       id: "run_resume",
       status: "finished",
@@ -312,7 +312,7 @@ describe("useAgentSession run timing guards", () => {
   });
 
   it("does not fold a cancellation response after its Runtime generation retires", async () => {
-    const cancellation = deferred<CancelRunResponse>();
+    const cancellation = Promise.withResolvers<CancelRunResponse>();
     const cancel = vi.fn(() => cancellation.promise);
     setContainer({
       client: () => ({ runs: { cancel } }) as unknown as FlameClient,
@@ -355,8 +355,8 @@ describe("useAgentSession run timing guards", () => {
   });
 
   it("admits successor cancellation only through the replacement Runtime client", async () => {
-    const predecessorCancellation = deferred<CancelRunResponse>();
-    const successorCancellation = deferred<CancelRunResponse>();
+    const predecessorCancellation = Promise.withResolvers<CancelRunResponse>();
+    const successorCancellation = Promise.withResolvers<CancelRunResponse>();
     const predecessorCancel = vi.fn(() => predecessorCancellation.promise);
     let successorAccepted = false;
     const successorCancel = vi.fn(async () => {
@@ -1372,14 +1372,6 @@ function startedRunEvent(runId: string, segmentId: string): RunEvent {
       run: runRef({ id: runId, activeSegmentId: segmentId }),
     },
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((onResolve) => {
-    resolve = onResolve;
-  });
-  return { promise, resolve };
 }
 
 function abortRejectingEvents(signal: AbortSignal): AsyncIterable<RunEvent> {

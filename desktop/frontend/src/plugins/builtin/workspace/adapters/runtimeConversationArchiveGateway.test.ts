@@ -67,7 +67,7 @@ describe("runtimeConversationArchiveGateway", () => {
   });
 
   it("retires an admitted export when the same Host observes a Runtime generation", async () => {
-    const response = deferred<{ format: "md"; markdown: string }>();
+    const response = Promise.withResolvers<{ format: "md"; markdown: string }>();
     const exportConversation = vi
       .fn()
       .mockReturnValueOnce(response.promise)
@@ -101,14 +101,6 @@ function clientWithExport(exportConversation: ReturnType<typeof vi.fn>): FlameCl
   return {
     sessions: { export: exportConversation },
   } as unknown as FlameClient;
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
 }
 
 function observedSettlement(operation: Promise<unknown>): () => boolean {

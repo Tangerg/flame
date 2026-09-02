@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("McpRow", () => {
   it("admits only one reconnect while the exact server command is unsettled", async () => {
-    const admitted = deferred<void>();
+    const admitted = Promise.withResolvers<void>();
     mcp.reconnect.mockImplementation(() => admitted.promise);
     render(<McpRow server={server()} />);
 
@@ -47,7 +47,7 @@ describe("McpRow", () => {
   });
 
   it("treats Runtime generation retirement as neutral settlement", async () => {
-    const admitted = deferred<void>();
+    const admitted = Promise.withResolvers<void>();
     mcp.reconnect.mockImplementation(() => admitted.promise);
     render(<McpRow server={server()} />);
 
@@ -75,14 +75,4 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     handshakeTimeout: { type: "unbounded" },
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
 }

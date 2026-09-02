@@ -103,7 +103,7 @@ describe("rollbackSessionToBeforeRun", () => {
   });
 
   it("does not attach an old snapshot inspection to the successor rollback writer", async () => {
-    const read = deferred<AgentSessionMaterialRead>();
+    const read = Promise.withResolvers<AgentSessionMaterialRead>();
     restoreRuntime = configureAgentRuntimeGateway({
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
@@ -158,7 +158,7 @@ describe("rollbackSessionToBeforeRun", () => {
 
 describe("forkAgentSessionAtRun", () => {
   it("does not join an old fork or let its response navigate the successor", async () => {
-    const retiredFork = deferred<{ id: string }>();
+    const retiredFork = Promise.withResolvers<{ id: string }>();
     restoreRuntime = configureAgentRuntimeGateway({
       forkSession: vi.fn(() => retiredFork.promise),
     } as unknown as AgentRuntimeGateway);
@@ -200,14 +200,6 @@ function snapshot(): AgentSessionSnapshot {
 
 function material(value: AgentSessionSnapshot): AgentSessionMaterialRead {
   return { snapshot: value, projectAssociatedSharedMaterial: (shared) => shared };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
 }
 
 async function flushMicrotasks(): Promise<void> {

@@ -11,6 +11,7 @@ import {
 import { runScheduleNow } from "./application/scheduleCommands";
 import { SCHEDULES_KEY } from "./application/scheduleQueries";
 import schedulesPlugin from "./index";
+import { rejected } from "@/test/rejected";
 
 const { selectAgentSession } = vi.hoisted(() => ({ selectAgentSession: vi.fn() }));
 
@@ -25,7 +26,7 @@ afterEach(async () => {
 
 describe("schedules plugin Runtime generation wiring", () => {
   it("retires run-now navigation when the Runtime process generation changes", async () => {
-    const retired = deferred<{ sessionId: string; runId: string }>();
+    const retired = Promise.withResolvers<{ sessionId: string; runId: string }>();
     const runNow = vi.fn(() => retired.promise);
     setContainer({
       client: () => ({ schedules: { runNow } }) as unknown as FlameClient,
@@ -63,20 +64,3 @@ describe("schedules plugin Runtime generation wiring", () => {
     retired.resolve({ sessionId: "ses_retired", runId: "run_retired" });
   });
 });
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
-}

@@ -10,6 +10,7 @@ import {
 } from "../application/agentMemoryConfig";
 import { WORKSPACE_AGENT_MEMORY_KEY, type AgentMemoryEntry } from "../application/workspaceQueries";
 import { installAgentMemoryGateway } from "./runtimeAgentMemoryGateway";
+import { rejected } from "@/test/rejected";
 
 const MEMORY_ID = "mem_0123456789abcdef0123456789abcdef";
 
@@ -64,7 +65,7 @@ describe("runtimeAgentMemoryGateway", () => {
 
   it("retires in-flight and queued commands before a successor gateway is installed", async () => {
     const query = agentMemoryQuery("user");
-    const retiredUpdate = deferred<ReturnType<typeof memoryItem>>();
+    const retiredUpdate = Promise.withResolvers<ReturnType<typeof memoryItem>>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
     const updateSuccessor = vi
       .fn()
@@ -139,21 +140,4 @@ function memoryEntry(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntr
     day: "",
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

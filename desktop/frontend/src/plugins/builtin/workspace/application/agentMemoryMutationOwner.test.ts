@@ -3,6 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { AgentMemoryMutationOwner } from "./agentMemoryMutationOwner";
 import type { AgentMemoryGateway } from "./ports/agentMemoryGateway";
 import { WORKSPACE_AGENT_MEMORY_KEY, type AgentMemoryEntry } from "./workspaceQueries";
+import { rejected } from "@/test/rejected";
 
 const MEMORY_ID = "mem_0123456789abcdef0123456789abcdef";
 const QUERY = { scope: "user" } as const;
@@ -17,7 +18,7 @@ afterEach(() => {
 
 describe("AgentMemoryMutationOwner", () => {
   it("retires one Runtime command generation without draining it through the successor", async () => {
-    const retired = deferred<AgentMemoryEntry>();
+    const retired = Promise.withResolvers<AgentMemoryEntry>();
     const setPinned = vi
       .fn()
       .mockReturnValueOnce(retired.promise)
@@ -64,7 +65,7 @@ describe("AgentMemoryMutationOwner", () => {
   });
 
   it("serializes one memory identity without blocking an unrelated item", async () => {
-    const first = deferred<AgentMemoryEntry>();
+    const first = Promise.withResolvers<AgentMemoryEntry>();
     const setPinned = vi.fn((id: string, pinned: boolean) =>
       id === MEMORY_ID
         ? first.promise
@@ -100,21 +101,4 @@ function memory(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
     updatedAt: "2026-08-17T12:00:00Z",
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

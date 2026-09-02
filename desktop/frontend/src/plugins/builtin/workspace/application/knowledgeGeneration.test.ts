@@ -7,6 +7,7 @@ import type {
   WorkspaceKnowledgeUpdateInput,
 } from "./ports/knowledgeGateway";
 import { WORKSPACE_KNOWLEDGE_KEY } from "./workspaceQueries";
+import { rejected } from "@/test/rejected";
 
 let owner: KnowledgeOwner | undefined;
 
@@ -19,7 +20,7 @@ afterEach(() => {
 
 describe("Knowledge generation", () => {
   it("serializes saves for one exact document without blocking another scope", async () => {
-    const first = deferred<WorkspaceKnowledgeDocument>();
+    const first = Promise.withResolvers<WorkspaceKnowledgeDocument>();
     const save = vi.fn((input: WorkspaceKnowledgeUpdateInput) => {
       if (input.content === "first") return first.promise;
       if (input.content === "second") {
@@ -43,8 +44,8 @@ describe("Knowledge generation", () => {
   });
 
   it("retires direct reads and queued saves on an in-place Runtime generation", async () => {
-    const readResponse = deferred<WorkspaceKnowledgeDocument>();
-    const saveResponse = deferred<WorkspaceKnowledgeDocument>();
+    const readResponse = Promise.withResolvers<WorkspaceKnowledgeDocument>();
+    const saveResponse = Promise.withResolvers<WorkspaceKnowledgeDocument>();
     const read = vi
       .fn()
       .mockReturnValueOnce(readResponse.promise)
@@ -79,7 +80,7 @@ describe("Knowledge generation", () => {
   });
 
   it("treats the home document as one resource across workspace bindings", async () => {
-    const first = deferred<WorkspaceKnowledgeDocument>();
+    const first = Promise.withResolvers<WorkspaceKnowledgeDocument>();
     const save = vi
       .fn()
       .mockReturnValueOnce(first.promise)
@@ -162,21 +163,4 @@ function update(
   content: string,
 ): WorkspaceKnowledgeUpdateInput {
   return { scope, cwd: "/repo", content, expectedRevision: "rev-1" };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

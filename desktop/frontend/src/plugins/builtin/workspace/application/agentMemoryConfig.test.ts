@@ -28,14 +28,6 @@ function memory(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
   };
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
 let uninstall: (() => void) | undefined;
 
 function installGateway(gateway: AgentMemoryGateway): void {
@@ -76,8 +68,8 @@ describe("agent memory configuration", () => {
   it("serializes updates to one item and commits the last returned fact", async () => {
     const query = agentMemoryQuery("user");
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, query], [memory()]);
-    const first = deferred<AgentMemoryEntry>();
-    const second = deferred<AgentMemoryEntry>();
+    const first = Promise.withResolvers<AgentMemoryEntry>();
+    const second = Promise.withResolvers<AgentMemoryEntry>();
     const setPinned = vi
       .fn()
       .mockReturnValueOnce(first.promise)
@@ -103,7 +95,7 @@ describe("agent memory configuration", () => {
   it("orders deletion after an in-flight update to the same item", async () => {
     const query = agentMemoryQuery("user");
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, query], [memory()]);
-    const first = deferred<AgentMemoryEntry>();
+    const first = Promise.withResolvers<AgentMemoryEntry>();
     const setPinned = vi.fn().mockReturnValue(first.promise);
     const remove = vi.fn().mockResolvedValue(undefined);
     installGateway({

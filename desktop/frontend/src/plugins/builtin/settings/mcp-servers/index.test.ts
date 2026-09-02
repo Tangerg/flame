@@ -11,6 +11,7 @@ import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel
 import { setMCPServerEnabled } from "./application/mcpServerConfig";
 import { MCP_SERVERS_KEY, type MCPServerSettings } from "./application/mcpServerQueries";
 import mcpServersPlugin from "./index";
+import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
@@ -20,7 +21,7 @@ afterEach(async () => {
 
 describe("MCP servers plugin Runtime generation wiring", () => {
   it("retires an admitted command when the Runtime process generation changes", async () => {
-    const retired = deferred<ReturnType<typeof runtimeServer>>();
+    const retired = Promise.withResolvers<ReturnType<typeof runtimeServer>>();
     const update = vi.fn(() => retired.promise);
     setContainer({ client: () => ({ mcp: { update } }) as unknown as FlameClient });
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
@@ -83,21 +84,4 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
     url: "https://example.test/mcp",
     ...overrides,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

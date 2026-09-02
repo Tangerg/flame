@@ -6,14 +6,6 @@ const copyText = vi.hoisted(() => vi.fn<(text: string) => Promise<boolean>>());
 
 vi.mock("./clipboard", () => ({ copyText }));
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve };
-}
-
 function CopyHarness({ material }: { material: string }) {
   const feedback = useCopyFeedback(material);
   return (
@@ -32,8 +24,8 @@ afterEach(() => {
 
 describe("useCopyFeedback", () => {
   it("lets only the latest intent publish feedback for the same material", async () => {
-    const older = deferred<boolean>();
-    const latest = deferred<boolean>();
+    const older = Promise.withResolvers<boolean>();
+    const latest = Promise.withResolvers<boolean>();
     copyText.mockReturnValueOnce(older.promise).mockReturnValueOnce(latest.promise);
     render(<CopyHarness material="same" />);
 

@@ -15,6 +15,7 @@ import {
   type ProviderConfigurationSnapshot,
 } from "./application/providerModels";
 import providersPlugin from "./index";
+import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
@@ -24,7 +25,7 @@ afterEach(async () => {
 
 describe("providers plugin Runtime generation wiring", () => {
   it("retires an admitted command when the Runtime process generation changes", async () => {
-    const retired = deferred<ProviderConfiguration>();
+    const retired = Promise.withResolvers<ProviderConfiguration>();
     const update = vi.fn(() => retired.promise);
     setContainer({
       client: () => ({ providers: { update } }) as unknown as FlameClient,
@@ -80,21 +81,4 @@ function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): Provi
     defaultEmbeddingModel: "embed-1",
     ...overrides,
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

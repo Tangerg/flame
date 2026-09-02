@@ -2,12 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useAsyncFeedback } from "./useAsyncFeedback";
 
-function deferred<T>() {
-  let resolve!: (v: T) => void;
-  const promise = new Promise<T>((r) => (resolve = r));
-  return { promise, resolve };
-}
-
 describe("useAsyncFeedback", () => {
   it("run -> ok reflects success", async () => {
     const { result } = renderHook(() => useAsyncFeedback());
@@ -56,7 +50,7 @@ describe("useAsyncFeedback", () => {
 
   it("drops a superseded run's result", async () => {
     const { result } = renderHook(() => useAsyncFeedback());
-    const slow = deferred<{ ok: boolean; error?: string }>();
+    const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
     let firstDone!: Promise<void>;
     act(() => {
       firstDone = result.current.run(() => slow.promise, "fallback");
@@ -75,7 +69,7 @@ describe("useAsyncFeedback", () => {
 
   it("reset invalidates an in-flight run and returns to idle", async () => {
     const { result } = renderHook(() => useAsyncFeedback());
-    const slow = deferred<{ ok: boolean; error?: string }>();
+    const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
     let done!: Promise<void>;
     act(() => {
       done = result.current.run(() => slow.promise, "fallback");
@@ -90,7 +84,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("retires completed and in-flight feedback when its material generation changes", async () => {
-    const slow = deferred<{ ok: boolean; error?: string }>();
+    const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
     const { result, rerender } = renderHook(({ generation }) => useAsyncFeedback(generation), {
       initialProps: { generation: 1 },
     });

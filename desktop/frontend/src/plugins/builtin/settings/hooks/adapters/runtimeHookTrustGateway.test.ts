@@ -5,6 +5,7 @@ import type { FlameClient } from "@/rpc";
 import { setHookTrust } from "../application/hookTrust";
 import { HOOKS_KEY } from "../application/hookQueries";
 import { installHookTrustGateway } from "./runtimeHookTrustGateway";
+import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
 
@@ -55,13 +56,4 @@ function deferred() {
     resolve = settle;
   });
   return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }

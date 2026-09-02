@@ -6,14 +6,6 @@ const copyText = vi.hoisted(() => vi.fn<(text: string) => Promise<boolean>>());
 
 vi.mock("@/lib/clipboard", () => ({ copyText }));
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve };
-}
-
 afterEach(() => {
   cleanup();
   copyText.mockReset();
@@ -21,7 +13,7 @@ afterEach(() => {
 
 describe("ToolOutputPanel copy material ownership", () => {
   it("does not lend a retired streaming-output copy response to the replacement output", async () => {
-    const retiredCopy = deferred<boolean>();
+    const retiredCopy = Promise.withResolvers<boolean>();
     copyText.mockReturnValueOnce(retiredCopy.promise);
     const view = render(<ToolOutputPanel output="old output" status="running" />);
 

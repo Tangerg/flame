@@ -10,6 +10,7 @@ import {
 } from "@/plugins/builtin/runtime/public/services";
 import { goalCommandWasRetired, resumeGoal, stopGoal } from "./application/goalCommands";
 import goalPlugin from "./index";
+import { rejected } from "@/test/rejected";
 
 const { synchronizeMountedAgentSession } = vi.hoisted(() => ({
   synchronizeMountedAgentSession: vi.fn().mockResolvedValue(true),
@@ -29,7 +30,7 @@ afterEach(async () => {
 
 describe("Goal plugin Runtime generation wiring", () => {
   it("retires predecessor commands and binds successor commands to the successor client", async () => {
-    const retired = deferred<Goal>();
+    const retired = Promise.withResolvers<Goal>();
     const retiredStop = vi.fn(() => mutation(retired.promise, "retired-stop"));
     setContainer({
       client: () => ({ goals: { stop: retiredStop } }) as unknown as FlameClient,
@@ -146,21 +147,4 @@ function runtimeGoal(sessionId: string): Goal {
     createdAt: "2026-08-18T00:00:00Z",
     updatedAt: "2026-08-18T00:00:00Z",
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
-function rejected(operation: Promise<unknown>): Promise<Error> {
-  return operation.then(
-    () => {
-      throw new Error("operation unexpectedly resolved");
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
-  );
 }
