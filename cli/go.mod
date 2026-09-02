@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20260902105015-362c97c29394
+	github.com/Tangerg/flame/runtime v0.0.0-20260902111706-d7c3b08cde1e
 	github.com/Tangerg/oolong/components v0.16.0
 	github.com/Tangerg/oolong/core v0.16.0
 	github.com/Tangerg/oolong/highlight v0.16.0
@@ -22,7 +22,7 @@ require (
 	cloud.google.com/go/auth v0.23.2 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260902105015-362c97c29394 // indirect
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260902111706-d7c3b08cde1e // indirect
 	github.com/Tangerg/scope/a2a v0.14.0 // indirect
 	github.com/Tangerg/scope/agent v0.14.0 // indirect
 	github.com/Tangerg/scope/core v0.14.0 // indirect
@@ -128,8 +128,8 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.75.6 // indirect
+	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.57.0 // indirect
+	modernc.org/sqlite v1.58.0 // indirect
 )
