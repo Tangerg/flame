@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { matchKeybindingPress, parseKeybinding } from "tinykeys";
 
-import { dispatchBinding } from "./combo";
+import { comboGlyph, dispatchBinding, normalizeCombo } from "./combo";
 
 // A keydown as the browser reports it. `key` is what the active layout prints
 // at that position; `code` is the position itself.
@@ -17,6 +17,51 @@ function matches(combo: string, event: KeyboardEvent): boolean {
   const [press] = parseKeybinding(dispatchBinding(combo));
   return matchKeybindingPress(event, press!);
 }
+
+describe("normalizeCombo", () => {
+  it("folds every accepted spelling to one canonical form", () => {
+    for (const combo of ["Cmd+K", "cmd+k", "Meta+K", "Mod+k"]) {
+      expect(normalizeCombo(combo)).toBe("mod+k");
+    }
+    expect(normalizeCombo("Control+K")).toBe("ctrl+k");
+    expect(normalizeCombo("Option+K")).toBe("alt+k");
+  });
+
+  it("orders modifiers so a registration and a keydown spell the same string", () => {
+    expect(normalizeCombo("Shift+Alt+Ctrl+Mod+K")).toBe("mod+ctrl+alt+shift+k");
+    expect(normalizeCombo("Mod+Ctrl+Alt+Shift+K")).toBe("mod+ctrl+alt+shift+k");
+  });
+
+  it("keeps ctrl+k distinct from mod+k", () => {
+    expect(normalizeCombo("ctrl+k")).not.toBe(normalizeCombo("mod+k"));
+  });
+
+  // These strings are the dedup key of a single-keyed extension point, so a dropped
+  // modifier is not a cosmetic loss: "shft+k" became "k" and shadowed the bare-key
+  // shortcut already registered there.
+  it("keeps a segment it does not recognise rather than resolving to the bare key", () => {
+    expect(normalizeCombo("hyper+k")).toBe("hyper+k");
+    expect(normalizeCombo("shft+k")).not.toBe(normalizeCombo("k"));
+    expect(normalizeCombo("Mod+hyper+K")).toBe("mod+hyper+k");
+  });
+});
+
+describe("the modifier vocabulary", () => {
+  // One table, so the label and the handler cannot disagree about what a spelling means.
+  // Both of these used to: `control` printed as the word, and `meta` said "Win" on a
+  // platform where the dispatcher fired it on Control.
+  it("gives every spelling of one modifier the same dispatch and the same glyph", () => {
+    for (const [a, b] of [
+      ["cmd+k", "mod+k"],
+      ["meta+k", "mod+k"],
+      ["control+k", "ctrl+k"],
+      ["option+k", "alt+k"],
+    ]) {
+      expect(dispatchBinding(a!)).toBe(dispatchBinding(b!));
+      expect(comboGlyph(a!)).toBe(comboGlyph(b!));
+    }
+  });
+});
 
 describe("dispatchBinding", () => {
   it("names the physical key for letters and digits", () => {

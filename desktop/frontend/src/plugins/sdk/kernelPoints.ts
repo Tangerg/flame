@@ -27,7 +27,7 @@ import type {
   WorkspaceViewSpec,
 } from "./types";
 import { defineExtensionPoint } from "./contracts";
-import { normalizeCombo } from "./combo";
+import { normalizeCombo } from "@/lib/combo";
 
 export const COLOR_THEME = defineExtensionPoint<ColorThemeSpec>({
   id: "flame.colorTheme",
