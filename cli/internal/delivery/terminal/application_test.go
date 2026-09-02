@@ -2292,7 +2292,7 @@ func TestInteractiveRunRejectsConflictingReplay(t *testing.T) {
 	host.Shows(t, "Ask flame")
 	host.Type("detect a conflict")
 	host.Press(input.Enter)
-	host.Shows(t, "failed:")
+	host.Shows(t, "client failed:")
 	host.Shows(t, "event identity conflict")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()

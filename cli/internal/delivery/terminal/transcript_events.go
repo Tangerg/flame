@@ -209,14 +209,18 @@ func (t *transcriptView) completeLiveTool(block agent.Block) bool {
 }
 
 func (t *transcriptView) settleLive(outcome agent.Outcome) {
+	toolStatus := agent.ToolError
+	if outcome.Status == agent.OutcomeCanceled {
+		toolStatus = agent.ToolCanceled
+	}
+	t.settleLivePresentation(toolStatus)
+}
+
+func (t *transcriptView) settleLivePresentation(toolStatus agent.ToolStatus) {
 	for id, live := range t.textStreams {
 		t.content.Finish(live.id)
 		live.stream.Reset()
 		delete(t.textStreams, id)
-	}
-	toolStatus := agent.ToolError
-	if outcome.Status == agent.OutcomeCanceled {
-		toolStatus = agent.ToolCanceled
 	}
 	selectedCollapsed := false
 	for id, live := range t.tools {
@@ -239,6 +243,13 @@ func (t *transcriptView) settleLive(outcome agent.Outcome) {
 	t.sealToolGroup()
 	t.refreshSearch()
 	t.announceSelection()
+}
+
+// rejectLivePresentation closes provisional terminal blocks after the client
+// can no longer trust its event projection. It does not invent a Runtime Run
+// outcome; an authoritative cold snapshot will replace this presentation.
+func (t *transcriptView) rejectLivePresentation() {
+	t.settleLivePresentation(agent.ToolError)
 }
 
 func (t *transcriptView) settleRun(runID string, outcome agent.Outcome) {

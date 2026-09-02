@@ -294,6 +294,7 @@ type statusView struct {
 	outcome            agent.Outcome
 	status             kit.Status
 	busy               bool
+	danger             bool
 	runningDescendants int
 }
 
@@ -335,12 +336,15 @@ func (s *statusView) Draw(view grid.View) {
 	}
 	right := joinStatusLabels(contextLabel(s.contextTokens), usageLabel(s.usage))
 	style := s.theme.Muted
-	switch s.outcome.Status {
-	case agent.OutcomeCompleted:
+	switch {
+	case s.danger:
+		style = s.theme.Danger
+	case s.outcome.Status == agent.OutcomeCompleted:
 		style = s.theme.Success
-	case agent.OutcomeCanceled, agent.OutcomeTimedOut, agent.OutcomeMaxSteps, agent.OutcomeMaxBudget:
+	case s.outcome.Status == agent.OutcomeCanceled || s.outcome.Status == agent.OutcomeTimedOut ||
+		s.outcome.Status == agent.OutcomeMaxSteps || s.outcome.Status == agent.OutcomeMaxBudget:
 		style = s.theme.Warning
-	case agent.OutcomeFailed, agent.OutcomeLost:
+	case s.outcome.Status == agent.OutcomeFailed || s.outcome.Status == agent.OutcomeLost:
 		style = s.theme.Danger
 	}
 	left := statusLineText(s.doing)
@@ -450,6 +454,7 @@ func (s *statusView) settled(run agent.Run) {
 	s.observeRun(run)
 	s.outcome, s.elapsed = run.Outcome.Clone(), ""
 	s.busy = false
+	s.danger = false
 	s.runningDescendants = 0
 	switch run.Outcome.Status {
 	case agent.OutcomeCompleted:
@@ -487,6 +492,7 @@ func (s *statusView) active(label string) {
 	s.outcome = agent.Outcome{}
 	s.elapsed = ""
 	s.busy = true
+	s.danger = false
 }
 
 func (s *statusView) progress(progress agent.RunProgress) {
@@ -511,6 +517,15 @@ func (s *statusView) note(label string) {
 	s.doing = label
 	s.outcome = agent.Outcome{}
 	s.busy = false
+	s.danger = false
+}
+
+func (s *statusView) fail(detail string, busy bool) {
+	s.doing = "client failed: " + detail
+	s.outcome = agent.Outcome{}
+	s.elapsed = ""
+	s.busy = busy
+	s.danger = true
 }
 
 func usageLabel(usage agent.Usage) string {

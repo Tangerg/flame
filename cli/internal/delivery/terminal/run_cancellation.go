@@ -163,6 +163,9 @@ func (a *app) retireCanceledStart(pending workbench.PendingRun) error {
 }
 
 func (a *app) activeCancellation() (agent.CancelRun, bool) {
+	if a.execution.projectionFailed {
+		return agent.CancelRun{}, false
+	}
 	if runID := a.execution.conversation.RunID(); runID != "" && a.execution.conversation.Busy() {
 		return agent.CancelRun{RunID: runID, Reason: "terminal closed"}, true
 	}
@@ -324,6 +327,7 @@ func (a *app) handleRuntimeCancellation(
 		a.fail(err)
 		return
 	}
+	a.execution.projectionFailed = false
 	a.transcript.settleLive(settled.Outcome)
 	a.settleCurrentRunStatus()
 	a.header.SetUsage(settled.Usage)

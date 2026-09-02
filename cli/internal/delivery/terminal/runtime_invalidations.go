@@ -225,7 +225,11 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 	}
 }
 
-func (a *app) refreshInvalidatedSession(settleAfter bool) {
+// refreshInvalidatedSession normally defers replacement while a trusted live
+// stream owns the projection. A settlement fence means Runtime has already
+// returned a terminal fact, so the cold read must replace even a locally stale
+// running phase before queued work can be admitted.
+func (a *app) refreshInvalidatedSession(settlementFence bool) {
 	sessionID := a.session.current.ID
 	a.session.invalidated = false
 	read := func(ctx context.Context) (agent.SessionSnapshot, error) {
@@ -236,7 +240,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 			return
 		}
 		if a.session.invalidated {
-			a.refreshInvalidatedSession(settleAfter)
+			a.refreshInvalidatedSession(settlementFence)
 			return
 		}
 		if err != nil {
@@ -249,7 +253,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 			a.message("refresh session after runtime change failed: " + err.Error())
 			return
 		}
-		if a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following {
+		if !settlementFence && (a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following) {
 			a.session.invalidated = true
 			return
 		}
@@ -266,7 +270,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 				return
 			}
 		}
-		if settleAfter && a.execution.conversation.Phase() == agent.ConversationIdle {
+		if settlementFence && a.execution.conversation.Phase() == agent.ConversationIdle {
 			a.finishFollowing()
 			return
 		}
@@ -278,7 +282,7 @@ func (a *app) refreshInvalidatedSession(settleAfter bool) {
 	// They replace an ordinary metadata refresh already in flight so a weaker
 	// coalesced request cannot discard that obligation.
 	var started bool
-	if settleAfter {
+	if settlementFence {
 		started = a.runSessionAdmissionFence(sessionInvalidationOperation, true, read, apply)
 	} else {
 		started = a.runOperation(sessionInvalidationOperation, false, read, apply)

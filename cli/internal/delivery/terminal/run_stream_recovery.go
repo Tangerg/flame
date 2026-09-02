@@ -40,7 +40,7 @@ func (a *app) followRecoveredSession() {
 			reconcileErr = a.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 		})
 		if postErr != nil || reconcileErr != nil {
-			follower.postFailure("", errors.Join(postErr, reconcileErr))
+			follower.postFailure(a.execution.conversation.RunID(), errors.Join(postErr, reconcileErr))
 			return
 		}
 		if !active || recovered.Run.Status != protocol.RunStatusRunning {

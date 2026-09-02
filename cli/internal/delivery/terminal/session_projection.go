@@ -100,6 +100,7 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	previousTranscript := a.transcript
 	a.setActiveSession(snapshot.Session)
 	a.execution.conversation = projection.conversation
+	a.execution.projectionFailed = false
 	a.transcript = projection.transcript
 	a.wireTranscript(projection.transcript)
 	a.shell.SetTranscript(projection.transcript)

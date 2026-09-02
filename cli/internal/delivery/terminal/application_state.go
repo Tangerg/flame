@@ -21,12 +21,13 @@ type sessionState struct {
 // Durable Run facts remain owned by Runtime; these fields only track the local
 // stream, cancellation, and elapsed-time presentation lifecycle.
 type executionState struct {
-	conversation  *agent.Conversation
-	openingRunID  string
-	pendingCancel *pendingCancellation
-	following     bool
-	stopClock     func()
-	clock         activeDurationClock
+	conversation     *agent.Conversation
+	openingRunID     string
+	pendingCancel    *pendingCancellation
+	following        bool
+	projectionFailed bool
+	stopClock        func()
+	clock            activeDurationClock
 }
 
 func (e executionState) observing() bool {

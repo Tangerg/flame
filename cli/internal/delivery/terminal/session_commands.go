@@ -563,6 +563,7 @@ func (s sessionInstallation) apply(a *app) {
 	a.queue.ReleaseDispatch(previousSessionID)
 	a.execution.openingRunID = ""
 	a.execution.conversation = s.projection.conversation
+	a.execution.projectionFailed = false
 	a.attachments = s.attachments
 	a.transcript = s.projection.transcript
 	a.wireTranscript(s.projection.transcript)

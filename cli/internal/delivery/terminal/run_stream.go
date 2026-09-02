@@ -130,6 +130,7 @@ func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) 
 }
 
 func (a *app) presentRunStart(status string) {
+	a.execution.projectionFailed = false
 	a.transcript.Follow()
 	a.activity.Reset()
 	a.header.SetUsage(agent.Usage{})
@@ -346,6 +347,7 @@ func (a *app) noteRunFinished() {
 
 func (a *app) finishFollowing() {
 	a.execution.following = false
+	a.execution.projectionFailed = false
 	a.refreshOpenTimeline()
 	if a.session.invalidated {
 		a.refreshInvalidatedSession(true)
@@ -391,12 +393,17 @@ func (a *app) fail(err error) {
 	}
 	a.execution.following = false
 	a.dismissInteractionProjection()
-	a.execution.conversation.Failed(err)
-	a.transcript.settleLive(a.execution.conversation.Outcome())
+	if a.execution.conversation.Phase() == agent.ConversationRunning &&
+		a.execution.conversation.RunID() == "" && a.execution.openingRunID == "" {
+		err = errors.Join(err, a.execution.conversation.CancelStarting())
+	}
+	a.transcript.rejectLivePresentation()
 	a.transcript.Append(presentError(a.transcript.theme, err.Error()))
-	a.settleCurrentRunStatus()
 	a.header.SetUsage(a.execution.conversation.Usage())
-	a.prompt.SetBusy(false)
+	blocked := a.runAdmissionBlocked()
+	a.execution.projectionFailed = a.execution.conversation.Busy()
+	a.prompt.SetBusy(blocked)
+	a.status.fail(err.Error(), blocked)
 	a.syncAnimation()
 	a.raiseAttention(failureAttention())
 }
@@ -417,7 +424,7 @@ func (a *app) startFollowing(work func(context.Context, operationLease)) {
 }
 
 func (a *app) syncAnimation() {
-	running := a.execution.conversation.Phase() == agent.ConversationRunning
+	running := a.execution.conversation.Phase() == agent.ConversationRunning && a.execution.following
 	switch {
 	case running && a.execution.stopClock == nil:
 		a.execution.stopClock = a.loop.Every(animationInterval, func() {

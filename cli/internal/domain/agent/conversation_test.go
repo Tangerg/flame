@@ -8,22 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestConversationFailureRemainsVisibleWhenDerivedIdentityCollides(t *testing.T) {
-	conversation := NewConversation()
-	if err := conversation.put(Block{
-		ID: "failure:2", Kind: BlockError, Status: BlockStatusIncomplete, Text: "earlier failure",
-	}, true); err != nil {
-		t.Fatal(err)
-	}
-
-	conversation.Failed(errors.New("latest failure"))
-
-	blocks := conversation.Blocks()
-	if len(blocks) != 2 || blocks[1].Text != "latest failure" || blocks[1].ID == blocks[0].ID {
-		t.Fatalf("failure blocks = %+v, want a distinct visible latest failure", blocks)
-	}
-}
-
 func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	conversation := NewConversation()
 	started := RunEvent{EventID: "opaque:start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: runningRun("seg_1")}}

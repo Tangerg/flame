@@ -118,7 +118,7 @@ func (a *app) enqueueDeferredPrompt(commandID agent.CommandID, message agent.Mes
 	a.completion.Dismiss()
 	snapshot := a.syncQueue()
 	label := "queued follow-up"
-	if !a.execution.blocksAdmission() && a.runtimeChangeBlocksRunAdmission() {
+	if a.runtimeChangeBlocksRunAdmission() {
 		label = "queued behind runtime change"
 	}
 	a.message(fmt.Sprintf("%s · %d waiting", label, len(snapshot.Entries)))

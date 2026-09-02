@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -232,41 +231,6 @@ func (c *Conversation) SettleRun(run Run) error {
 	c.outcome = run.Outcome.Clone()
 	c.usage = run.Usage.Clone()
 	return nil
-}
-
-func (c *Conversation) Failed(err error) {
-	if err == nil {
-		return
-	}
-	c.phase = ConversationIdle
-	c.interactions = nil
-	c.reconciling = false
-	c.coldTail = false
-	c.outcome = Outcome{Status: OutcomeFailed, Problem: &failure.Problem{Type: "conversation_failed", Detail: err.Error()}}
-	c.settleOpenBlocks(ToolError)
-	c.appendFailureBlock(err.Error())
-}
-
-const conversationFailureBlockIDPrefix = "failure:"
-
-func (c *Conversation) appendFailureBlock(detail string) {
-	c.ensureStorage()
-	ordinal := uint64(len(c.blocks)) + 1
-	var id string
-	for {
-		id = fmt.Sprintf("%s%d", conversationFailureBlockIDPrefix, ordinal)
-		if _, exists := c.index[blockIdentity(c.runID, id)]; !exists {
-			break
-		}
-		ordinal++
-	}
-	block := Block{
-		ID: id, RunID: c.runID, Status: BlockStatusIncomplete, Kind: BlockError, Text: detail,
-	}
-	key := blockIdentity(block.RunID, block.ID)
-	c.index[key] = len(c.blocks)
-	c.blocks = append(c.blocks, block)
-	c.open[key] = false
 }
 
 func (c *Conversation) ClearPresentation() {

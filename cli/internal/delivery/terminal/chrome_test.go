@@ -127,6 +127,19 @@ func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	}
 }
 
+func TestClientFailureDoesNotInventARunOutcome(t *testing.T) {
+	status := newStatusView(kit.Dark(), kit.Unicode())
+	status.fail("event projection rejected", true)
+	if !status.busy || !status.danger || status.outcome.Status != "" ||
+		status.doing != "client failed: event projection rejected" {
+		t.Fatalf("client failure status = %+v", status)
+	}
+	status.active("reconnected")
+	if status.danger || !status.busy {
+		t.Fatalf("active status retained local failure: %+v", status)
+	}
+}
+
 func TestBusyStatusExposesLiveDelegatedWorkWithoutHidingProgress(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	status.active("inspecting architecture")
