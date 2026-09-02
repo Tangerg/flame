@@ -8,12 +8,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+)
+
+const (
+	portableFilenameByteLimit = 255
+	// fileflow tries conflict suffixes through -100. Reserve the largest one
+	// so every name it derives remains portable as well as the first choice.
+	maximumConflictSuffixBytes = len("-100")
 )
 
 // Store owns the filesystem boundary for session documents. Its zero value is
@@ -152,27 +160,53 @@ func resolveInputPath(workspace, selected string) (string, error) {
 
 func documentName(title, requested, desiredExtension string) (string, error) {
 	requested = strings.TrimSpace(requested)
+	var stem, extension string
 	if requested == "" {
-		stem := pathologize.Clean(strings.TrimSpace(title))
-		if stem == "" || stem == "." || stem == "_" {
+		stem = strings.TrimSpace(title)
+		if stem == "" {
 			stem = "flame-session"
 		}
-		requested = stem + desiredExtension
+		extension = desiredExtension
+	} else {
+		if strings.ContainsAny(requested, `/\`) || filepath.Base(requested) != requested || requested == "." || requested == ".." {
+			return "", errors.New("export name must be a filename, not a path")
+		}
+		extension = filepath.Ext(requested)
+		if extension == "" {
+			extension = desiredExtension
+			stem = requested
+		} else {
+			if !strings.EqualFold(extension, desiredExtension) {
+				return "", fmt.Errorf("export filename must end in %s", desiredExtension)
+			}
+			stem = strings.TrimSuffix(requested, extension)
+		}
 	}
-	if strings.ContainsAny(requested, `/\`) || filepath.Base(requested) != requested || requested == "." || requested == ".." {
-		return "", errors.New("export name must be a filename, not a path")
+	maximumStemBytes := portableFilenameByteLimit - maximumConflictSuffixBytes - len(extension)
+	if maximumStemBytes <= 0 {
+		return "", errors.New("export filename extension leaves no room for a name")
 	}
-	actualExtension := filepath.Ext(requested)
-	if actualExtension == "" {
-		requested += desiredExtension
-	} else if !strings.EqualFold(actualExtension, desiredExtension) {
-		return "", fmt.Errorf("export filename must end in %s", desiredExtension)
+	stem = pathologize.Clean(stem)
+	if stem == "_" {
+		stem = "flame-session"
 	}
-	cleaned := pathologize.Clean(requested)
-	if cleaned == "" || cleaned == "." || cleaned == "_" {
-		return "", errors.New("export filename is empty after portable normalization")
+	stem = truncateUTF8(stem, maximumStemBytes)
+	cleaned := stem + extension
+	if !pathologize.IsClean(cleaned) {
+		return "", errors.New("export filename is not portable after normalization")
 	}
 	return cleaned, nil
+}
+
+func truncateUTF8(value string, maximumBytes int) string {
+	if len(value) <= maximumBytes {
+		return value
+	}
+	end := maximumBytes
+	for end > 0 && !utf8.RuneStart(value[end]) {
+		end--
+	}
+	return value[:end]
 }
 
 func stage(root string, body []byte) (path string, err error) {

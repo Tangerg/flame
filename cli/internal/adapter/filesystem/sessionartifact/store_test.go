@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -62,6 +64,56 @@ func TestStoreRejectsPathsAsExportNames(t *testing.T) {
 	}
 	if _, err := (Store{}).Publish(t.TempDir(), "Session", "../escape.md", document); err == nil {
 		t.Fatal("path-shaped export name was accepted")
+	}
+}
+
+func TestStorePreservesPortableExtensionAndConflictSpaceForLongNames(t *testing.T) {
+	workspace := t.TempDir()
+	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(`{"version":17}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := Store{}
+	longStem := strings.Repeat("界", portableFilenameByteLimit)
+	automatic, err := store.Publish(t.TempDir(), longStem, "", document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	automaticName := filepath.Base(automatic)
+	if !utf8.ValidString(automaticName) || filepath.Ext(automaticName) != ".json" ||
+		len(automaticName)+maximumConflictSuffixBytes > portableFilenameByteLimit {
+		t.Fatalf("automatic portable name = %q (%d bytes)", automaticName, len(automaticName))
+	}
+	first, err := store.Publish(
+		workspace,
+		"ignored",
+		longStem+".json",
+		document,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstName := filepath.Base(first)
+	if !utf8.ValidString(firstName) || filepath.Ext(firstName) != ".json" ||
+		len(firstName)+maximumConflictSuffixBytes > portableFilenameByteLimit {
+		t.Fatalf("first portable name = %q (%d bytes)", firstName, len(firstName))
+	}
+	if err := os.WriteFile(first, []byte("different"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.Publish(
+		workspace,
+		"ignored",
+		longStem+".json",
+		document,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondName := filepath.Base(second)
+	if second == first || !utf8.ValidString(secondName) || filepath.Ext(secondName) != ".json" ||
+		len(secondName) > portableFilenameByteLimit {
+		t.Fatalf("conflict portable name = %q (%d bytes)", secondName, len(secondName))
 	}
 }
 
