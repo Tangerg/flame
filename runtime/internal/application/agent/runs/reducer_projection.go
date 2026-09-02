@@ -44,6 +44,20 @@ type factReduction struct {
 	progress             *ProgressCommit
 }
 
+func (r *reducer) newEventCommit() *EventCommit {
+	return &EventCommit{
+		RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID,
+	}
+}
+
+func (r *reducer) ensureLastEventCommit(batch *reductionBatch) *EventCommit {
+	last := &batch.events[len(batch.events)-1]
+	if last.Commit == nil {
+		last.Commit = r.newEventCommit()
+	}
+	return last.Commit
+}
+
 func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 	batch, err := r.project(reduced.events)
 	if err != nil {
@@ -91,11 +105,7 @@ func (r *reducer) attachDurableObservation(
 	if batch.parkCommit != nil {
 		commit = batch.parkCommit
 	} else {
-		last := &batch.events[len(batch.events)-1]
-		if last.Commit == nil {
-			last.Commit = &EventCommit{RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID}
-		}
-		commit = last.Commit
+		commit = r.ensureLastEventCommit(batch)
 	}
 	commit.ModelInvocations = append(commit.ModelInvocations, modelInvocations...)
 	commit.ToolInvocations = append(commit.ToolInvocations, toolInvocations...)
@@ -114,11 +124,8 @@ func (r *reducer) attachDurableItems(batch *reductionBatch, items []transcript.I
 	if batch == nil || len(batch.events) == 0 || batch.parkCommit != nil {
 		return fmt.Errorf("%w: durable Items have no ordinary reduction", errReducerInvariant)
 	}
-	last := &batch.events[len(batch.events)-1]
-	if last.Commit == nil {
-		last.Commit = &EventCommit{RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID}
-	}
-	last.Commit.Items = append(last.Commit.Items, items...)
+	commit := r.ensureLastEventCommit(batch)
+	commit.Items = append(commit.Items, items...)
 	return validateReductionBatch(*batch)
 }
 
@@ -129,11 +136,8 @@ func (r *reducer) attachConversationMessages(batch *reductionBatch, messages []c
 	if batch == nil || len(batch.events) == 0 || batch.parkCommit != nil {
 		return fmt.Errorf("%w: conversation projection has no ordinary reduction", errReducerInvariant)
 	}
-	last := &batch.events[len(batch.events)-1]
-	if last.Commit == nil {
-		last.Commit = &EventCommit{RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID}
-	}
-	last.Commit.ConversationMessages = appendClonedMessages(last.Commit.ConversationMessages, messages...)
+	commit := r.ensureLastEventCommit(batch)
+	commit.ConversationMessages = appendClonedMessages(commit.ConversationMessages, messages...)
 	return validateReductionBatch(*batch)
 }
 
@@ -241,7 +245,7 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	if err := event.validate(); err != nil {
 		return reduction{}, fmt.Errorf("%w: %T: %v", errReducerInvariant, event, err)
 	}
-	commit := EventCommit{RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID}
+	commit := r.newEventCommit()
 	var nudge *Nudge
 	switch e := event.(type) {
 	case ItemCompleted:
@@ -253,7 +257,7 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		commit.Run = &e.Run
 		if e.Run.State() == run.Waiting {
 			commit.State = StateSuspend
-			return reduction{Event: event, Commit: &commit}, nil
+			return reduction{Event: event, Commit: commit}, nil
 		}
 		commit.State = StateTerminalize
 		commit.CommitID = newRunCommitID()
@@ -276,7 +280,7 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	}
 	var eventCommit *EventCommit
 	if !commit.isEmpty() {
-		eventCommit = &commit
+		eventCommit = commit
 	}
 	return reduction{Event: event, Commit: eventCommit, Nudge: nudge}, nil
 }

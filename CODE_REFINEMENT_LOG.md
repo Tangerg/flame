@@ -56,3 +56,57 @@ Two observation modes were added as separate concrete watchers even though their
 
 - Existing tests exercise the shared lifecycle through both observer modes, including a focused race run. The residual risk is limited to platform-specific fsnotify behavior already behind the same tested abstraction.
 - Round 2 will audit other production duplicate groups from the scanner, starting with MCP server mutation flows and strict decode paths. Small symmetric boundary adapters will be kept unless consumer and ownership evidence proves a real duplicate fact or lifecycle.
+
+## Round 2 — complete
+
+### Audit scope and evidence
+
+- Audited the production clone groups in MCP connection mutation, Run projection, memory curation, CLI Runtime ports, and artifact/storage usage decoding.
+- The MCP headers and stdio environment resolvers intentionally preserve different transport vocabulary and target-change errors. A shared resolver would require a parameter bag or primitive error-message switches for only two boundary values, so this parallel adapter shape is retained.
+- Memory curation's adapter-side `agentMemory` port and application-side `CurationStore` port reverse different dependencies; CLI's command and terminal Runtime ports similarly belong to separate consumers. Their matching method sets are contracts, not duplicate state owners.
+- Artifact import and SQLite restoration decode distinct representations at separate trust boundaries. Their usage projections remain local so neither adapter depends on the other.
+- The Run reducer has four independent literals for the same base `EventCommit` identity: three lazy durable-attachment paths and ordinary event projection. That identity is one persisted fact owned by the reducer and can drift if the commit shape evolves.
+- Baseline: `GOWORK=off go test -count=1 ./internal/application/agent/runs` passed in 1.46s.
+
+### Root cause
+
+The reducer publication split introduced attachment-specific helpers but left base commit construction copied into each path. The different payload append operations are real variability; the Run, Session, and Segment identity construction is not.
+
+### Impact and acceptance criteria
+
+- Keep projection order, park boundaries, cloning behavior, validation errors, and public contracts unchanged.
+- Give base `EventCommit` identity exactly one constructor in the reducer.
+- Migrate ordinary event projection and every lazy attachment path to that constructor; remove all repeated identity literals in the package.
+- Pass focused reducer tests normally and under the race detector, then Runtime and current-workspace CLI build/vet/test gates plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added one package-private base commit constructor and migrated all four reducer-owned construction sites.
+- **Completed:** added one lazy last-event commit path and migrated every durable attachment to it.
+- **Completed:** formatted, ran focused and full gates, exercised the production binding with the authorized DeepSeek configuration, cleaned resources, inspected the final diff, and recorded risk/compatibility.
+
+### Validation
+
+- Final focused reducer tests passed normally in 2.63s and with `-race` in 5.57s; focused `go vet` and `staticcheck` also passed.
+- Final Runtime `GOWORK=off go vet ./...` passed in 2.93s, `GOWORK=off go build ./...` passed in 6.04s, and uncached `GOWORK=off go test -count=1 ./...` passed in 33.98s.
+- Final current-workspace CLI `go vet ./...` passed in 2.27s, `go build ./...` passed in 4.45s, and uncached `go test -count=1 ./...` passed in 41.01s.
+- An earlier Runtime test run launched concurrently with build and vet observed `TestInteractionExecutorProjectsConcurrentDelegateSiblingsExactlyOnce` settle one sibling as `lost`. The exact test then passed ten consecutive isolated runs in 4.83s, a serial full Runtime rerun passed, and the final full Runtime run passed. No reducer failure reproduced.
+- The final current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND2_FINAL_OK`, status `completed`, one step, 9,187 input tokens, 10 output tokens, 9,088 cache-read tokens, and 879ms model duration; the complete command took 4.37s. No credential value was printed or copied.
+- `git diff --check` passed. A focused `dupl -t 120` scan no longer reports `reducer_projection.go`; only the separately audited text/reasoning streaming pair remains in the reducer package.
+
+### Changes and compatibility
+
+- `newEventCommit` is now the sole reducer-owned constructor for the base Run, Session, and Segment commit identity.
+- `ensureLastEventCommit` is now the sole lazy attachment path for the last ordinary reduction.
+- The distinct item, conversation, invocation, progress, and park payload policies remain explicit at their owning call sites.
+- Breaking changes: none. Exported APIs, persisted schemas, protocol values, event order, validation categories, and projection payloads are unchanged.
+
+### Resource cleanup
+
+- Both bounded live Runs used validated `/tmp/flame-live-round2.*` directories and moved them to the system Trash on exit.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The pointer-valued constructor preserves the former escaping local pointer semantics and is covered by focused race tests, full persistence/projection tests, CLI consumption, and a real model Run.
+- Round 3 will audit the remaining reducer streaming clone and adjacent open-item lifecycle before deciding whether text and reasoning share a real owner or merely a symmetric event shape.
