@@ -162,7 +162,7 @@ func (a AuthoredWatcher) skillFileTargets(
 	for _, scope := range scopes {
 		targets = append(targets, fileobservation.ChildFileTarget{
 			Key:  authoredSkillsKey,
-			Path: promptsource.ProjectSkillDir(scope.ProjectRoot), Boundary: scope.ProjectRoot,
+			Path: promptsource.ProjectSkillDir(scope.Workspace), Boundary: scope.Workspace,
 			FileName: skillspec.SkillFile, MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
 		})
