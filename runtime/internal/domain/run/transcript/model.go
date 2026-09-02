@@ -287,7 +287,7 @@ func (a Approval) Validate() error {
 func (c ContentBlock) Validate() error {
 	switch c.Kind {
 	case TextContent:
-		if c.Text == "" {
+		if strings.TrimSpace(c.Text) == "" {
 			return errors.New("text content requires text")
 		}
 		if c.MediaType != "" || len(c.Bytes) != 0 {

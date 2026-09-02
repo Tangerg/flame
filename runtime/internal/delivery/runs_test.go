@@ -155,6 +155,11 @@ func TestStartCommandMaterializeInput(t *testing.T) {
 	}}).MaterializeInput(); !errors.Is(err, runs.ErrUnsupportedMedia) {
 		t.Fatalf("empty data: err = %v, want ErrUnsupportedMedia", err)
 	}
+	if _, _, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+		{Kind: transcript.TextContent, Text: " \n\t"},
+	}}).MaterializeInput(); !errors.Is(err, runs.ErrInputRequired) {
+		t.Fatalf("blank text: err = %v, want ErrInputRequired", err)
+	}
 }
 
 // TestStartRunCarriesOneLimitsValueToTheDurableRun closes the delivery-to-

@@ -1028,6 +1028,7 @@ func (i ItemListScope) ValidateWire() error {
 
 func (c ContentBlock) ValidateWire() error {
 	return collectWireViolations("ContentBlock",
+		optionalTextPattern("text", c.Text, "\\S"),
 		closedEnum("type", string(c.Type), []string{"text", "image"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "text"), "text", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "mime", c),

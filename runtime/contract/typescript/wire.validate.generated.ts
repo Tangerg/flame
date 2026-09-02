@@ -898,7 +898,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       data: text(),
       mime: text(),
-      text: text(),
+      text: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.ContentBlockType),
     }, []),
     oneOf([

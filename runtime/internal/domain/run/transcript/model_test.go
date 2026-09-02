@@ -43,6 +43,17 @@ func TestCloneContentOwnsImageBytes(t *testing.T) {
 	}
 }
 
+func TestTextContentRequiresNonWhitespaceText(t *testing.T) {
+	for _, text := range []string{"", " \n\t"} {
+		if err := (transcript.ContentBlock{Kind: transcript.TextContent, Text: text}).Validate(); err == nil {
+			t.Fatalf("Validate accepted text %q", text)
+		}
+	}
+	if err := (transcript.ContentBlock{Kind: transcript.TextContent, Text: " continue "}).Validate(); err != nil {
+		t.Fatalf("Validate rejected meaningful text: %v", err)
+	}
+}
+
 func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 	identity := transcript.ItemIdentity{
 		SessionID: "session-1", RunID: "run-1", ItemID: "item-1",

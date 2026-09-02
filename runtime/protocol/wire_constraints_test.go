@@ -885,6 +885,26 @@ func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {
 	)
 }
 
+func TestTextContentMustContainNonWhitespace(t *testing.T) {
+	t.Parallel()
+
+	blank := ContentBlock{
+		Type: ContentBlockText,
+		Text: " \n\t",
+	}
+	assertConstraintField(t, blank.ValidateWire(), "ContentBlock", "text")
+	assertConstraintField(t, ValidateWireTree(StartRunRequest{
+		SessionID: "ses_1",
+		Input:     []ContentBlock{blank},
+	}), "StartRunRequest", "input[0].text")
+	if err := (ContentBlock{Type: ContentBlockText, Text: " continue "}).ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected meaningful text: %v", err)
+	}
+	if err := (ContentBlock{Type: ContentBlockImage, Mime: "image/png", Data: "AA=="}).ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected image-only content: %v", err)
+	}
+}
+
 func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	t.Parallel()
 

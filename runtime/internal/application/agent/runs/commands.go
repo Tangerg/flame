@@ -179,8 +179,8 @@ func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, 
 	for index, block := range input {
 		switch block.Kind {
 		case transcript.TextContent:
-			if block.Text == "" {
-				return corechat.Message{}, invalidInputBlock(index, "text", "must not be empty", ErrInputRequired)
+			if strings.TrimSpace(block.Text) == "" {
+				return corechat.Message{}, invalidInputBlock(index, "text", "must contain non-whitespace text", ErrInputRequired)
 			}
 			if block.MediaType != "" || len(block.Bytes) != 0 {
 				return corechat.Message{}, invalidInputBlock(index, "type", "text content cannot carry media", ErrUnsupportedMedia)
@@ -404,7 +404,7 @@ type StartResult struct {
 // created or mutated. The Coordinator performs selected-model input admission
 // separately because external capability policy belongs behind its own port.
 func (r RootExecutionStart) Validate() error {
-	if len(r.WorkingContext) == 0 && r.Message == "" && len(r.Media) == 0 {
+	if len(r.WorkingContext) == 0 && strings.TrimSpace(r.Message) == "" && len(r.Media) == 0 {
 		return ErrInputRequired
 	}
 	for index, message := range r.WorkingContext {

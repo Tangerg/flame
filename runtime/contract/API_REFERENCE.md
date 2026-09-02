@@ -564,6 +564,7 @@ TypeScript validator from this single registry projection.
 | `ArtifactModelUsage` | `costUsd` | `nonNegative` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
+| `ContentBlock` | `text` | `pattern("\\S")` |
 | `RunSummary` | `id` | `nonEmpty` |
 | `RunSummary` | `id` | `identity` |
 | `RunSummary` | `id` | `maxLength(256)` |

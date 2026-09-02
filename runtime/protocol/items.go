@@ -204,7 +204,7 @@ type Item struct {
 
 // ContentBlock is one block of message content.
 //
-//	text  → Text
+//	text  → Text containing at least one non-whitespace character
 //	image → Mime + Data (inline base64)
 //
 // Images are carried inline: Data is the raw base64 of the image bytes

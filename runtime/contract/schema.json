@@ -1821,7 +1821,8 @@
           "type": "string"
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "type": {
           "$ref": "#/$defs/ContentBlockType"

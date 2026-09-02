@@ -260,6 +260,10 @@ func registerArtifactValues(s *Shapes) {
 
 func registerRunValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.ContentBlock](),
+		Constraints: []FieldConstraint{{Field: "text", Kind: ConstraintPattern, Value: `\S`}},
+	})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Constraints: append(append(append(append(append(requiredResourceIdentity("id"),
 			requiredResourceIdentity("sessionId")...), resourceIdentity("spawnedByItemId")...),

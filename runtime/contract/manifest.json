@@ -5845,6 +5845,15 @@
       ]
     },
     {
+      "type": "ContentBlock",
+      "rules": [
+        {
+          "field": "text",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
       "type": "RunSummary",
       "rules": [
         {

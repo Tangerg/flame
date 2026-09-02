@@ -62,6 +62,14 @@ func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	}
 }
 
+func TestStartExecutionValidateRejectsWhitespaceOnlyMessage(t *testing.T) {
+	t.Parallel()
+
+	if err := (RootExecutionStart{Message: " \n\t"}).Validate(); !errors.Is(err, ErrInputRequired) {
+		t.Fatalf("Validate() error = %v, want ErrInputRequired", err)
+	}
+}
+
 func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) {
 	t.Parallel()
 
