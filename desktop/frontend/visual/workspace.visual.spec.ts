@@ -520,6 +520,18 @@ test("dock close control reveals its contextual glyph on hover and focus", async
 // presses walked the whole dock without landing on one. It has to stay out of the tab order
 // — a focusable sibling inside a `tablist` is an unallowed child, which axe rates critical —
 // so the key belongs on the tab.
+// The middle button is the browser-tab gesture a reader brings with them, and it is the one
+// closing affordance that leaves no mark on the strip to notice it is gone.
+test("a dock tab closes on a middle click", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-light" });
+
+  const plan = page.getByRole("tab", { name: "Plan" });
+  await expect(plan).toBeVisible();
+  await plan.click({ button: "middle" });
+
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("plan");
+});
+
 test("a dock tab closes from the keyboard", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
