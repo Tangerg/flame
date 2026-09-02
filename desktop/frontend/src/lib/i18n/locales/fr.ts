@@ -316,6 +316,11 @@ export const fr: Record<string, string> = {
   "plugins.copyError": "Copier l'erreur",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> n'a pas pu s'afficher.",
   "plugins.mainView": "vue principale",
+  "plugins.errorSource.setup": "initialisation",
+  "plugins.errorSource.render": "rendu",
+  "plugins.errorSource.events": "gestionnaire d'événements",
+  "plugins.errorSource.command": "commande",
+  "plugins.errorSource.other": "autre",
 
   "connection.error.invalidUrl": "URL invalide",
   "shape.radius.aria": "Rayon des coins",
@@ -420,6 +425,15 @@ export const fr: Record<string, string> = {
   "iconGallery.filterPlaceholder": "Filtrer par nom…",
   "iconGallery.empty": 'Aucune icône ne correspond à "{{q}}".',
   "iconGallery.subtitle": "{{count}} icônes · marques de modèles LLM, fournisseurs et applications",
+  "iconGallery.group.model": "Modèles",
+  "iconGallery.group.provider": "Fournisseurs",
+  "iconGallery.group.application": "Applications",
+  "iconGallery.section.frontierLabs": "Laboratoires de pointe",
+  "iconGallery.section.cloudEnterprise": "Cloud et entreprise",
+  "iconGallery.section.chineseEcosystem": "Écosystème chinois",
+  "iconGallery.section.localRuntimes": "Runtimes et passerelles en local",
+  "iconGallery.section.mediaGeneration": "Génération de médias",
+  "iconGallery.section.devTools": "Outils de développement",
   "iconGallery.showcase":
     "Une sélection de {{count}} glyphes de marques issus de <code>{{pkg}}</code>. Catalogue complet : <em>{{combo}} → View: Icon Gallery</em>.",
 

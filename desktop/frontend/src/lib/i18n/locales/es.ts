@@ -313,6 +313,11 @@ export const es: Record<string, string> = {
   "plugins.copyError": "Copiar error",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> no se pudo renderizar.",
   "plugins.mainView": "vista principal",
+  "plugins.errorSource.setup": "configuración",
+  "plugins.errorSource.render": "renderizado",
+  "plugins.errorSource.events": "controlador de eventos",
+  "plugins.errorSource.command": "comando",
+  "plugins.errorSource.other": "otro",
 
   "connection.error.invalidUrl": "URL no válida",
   "shape.radius.aria": "Radio de esquina",
@@ -417,6 +422,15 @@ export const es: Record<string, string> = {
   "iconGallery.filterPlaceholder": "Filtrar por nombre…",
   "iconGallery.empty": 'Ningún icono coincide con "{{q}}".',
   "iconGallery.subtitle": "{{count}} iconos · marcas de modelos LLM, proveedores y apps",
+  "iconGallery.group.model": "Modelos",
+  "iconGallery.group.provider": "Proveedores",
+  "iconGallery.group.application": "Apps",
+  "iconGallery.section.frontierLabs": "Laboratorios punteros",
+  "iconGallery.section.cloudEnterprise": "Nube y empresa",
+  "iconGallery.section.chineseEcosystem": "Ecosistema chino",
+  "iconGallery.section.localRuntimes": "Runtimes y pasarelas locales",
+  "iconGallery.section.mediaGeneration": "Generación de medios",
+  "iconGallery.section.devTools": "Herramientas de desarrollo",
   "iconGallery.showcase":
     "Una selección de {{count}} glifos de marca de <code>{{pkg}}</code>. Catálogo completo: <em>{{combo}} → View: Icon Gallery</em>.",
 

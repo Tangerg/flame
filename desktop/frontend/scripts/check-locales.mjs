@@ -61,6 +61,13 @@
 //      sentence. Single tokens are NOT caught: a regex can't tell the `esc` on a
 //      keycap or a `json` badge from a word, and pretending otherwise would make
 //      the rule noisy enough to be turned off.
+//  14. Nor is a table of labels the component indexes into. Rule 11 reads what sits
+//      beside JSX, so copy moved one hop away — `GROUP_TITLES[g]`, `SOURCE_LABEL[err]`,
+//      `sec.title` — was invisible to every rule here. Nine strings were: an icon
+//      gallery's three group headings, a showcase's six section headings, and the
+//      badge naming which of a plugin's contracts threw. Each of those panes had a
+//      translated title and intro and English everything under it, in all eight
+//      locales. Only view rings are read, and a Tailwind class list is not a phrase.
 //
 // And one on WHEN copy is resolved:
 //
@@ -157,6 +164,16 @@ const JSX_PROP = /\s([a-zA-Z][\w-]*)=["]([^"]*[ ][^"]*)["]/g;
 // one copy, which is a false positive that reads as "this needs translating".
 const MECHANISM_PROP =
   /^(?:[a-z][\w]*ClassName|className|class|style|d|viewBox|accept|srcSet|sizes|content|rel)$/;
+// The product's own view rings. Rule 14 reads a component's tables, and the dev-only
+// wiring at the tree root hands panel names to somebody else's devtools.
+const VIEW_RING = /^(?:plugins|pages|ui)\//;
+// A `key: "value"` entry in an object or array literal. The key may be an identifier or
+// quoted; a `Record<Status, string>` uses whichever the union member allows.
+const TABLE_ENTRY = /(?:^|[,{[\s])(?:([A-Za-z_$][\w$]*)|"([^"\n]+)")\s*:\s*"([^"\n]{3,})"/g;
+// A Tailwind class list is the one table shape that reads like a phrase: `bg-surface-2
+// text-fg-muted` is two "words". Every utility in this codebase carries a hyphen or a
+// variant colon, and no sentence a catalog would hold does.
+const CLASS_LIST = /[-:]/;
 
 /**
  * Does this read as a sentence rather than as data?
@@ -419,6 +436,19 @@ for (const path of sourceFiles(SRC_DIR)) {
       if (MECHANISM_PROP.test(prop)) continue;
       if (looksLikeSentence(value)) {
         failures.push(`${relative}: ${prop}="${value}" is copy — pass a catalog key or a t() call`);
+      }
+    }
+
+    // Rule 14 — a table of labels is still copy, wherever the component keeps it.
+    if (VIEW_RING.test(relative)) {
+      for (const match of code.matchAll(TABLE_ENTRY)) {
+        const value = match[3];
+        if (CLASS_LIST.test(value)) continue;
+        if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
+          failures.push(
+            `${relative}: ${match[1] ?? match[2]}: "${value}" is copy in a lookup table — hold the catalog key`,
+          );
+        }
       }
     }
   }

@@ -447,6 +447,11 @@ export const zh: Record<string, string> = {
   "plugins.copyError": "复制错误",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 渲染失败。",
   "plugins.mainView": "主视图",
+  "plugins.errorSource.setup": "初始化",
+  "plugins.errorSource.render": "渲染",
+  "plugins.errorSource.events": "事件处理",
+  "plugins.errorSource.command": "命令",
+  "plugins.errorSource.other": "其他",
 
   "connection.error.invalidUrl": "无效的 URL",
   "shape.radius.aria": "圆角",
@@ -549,6 +554,15 @@ export const zh: Record<string, string> = {
   "iconGallery.filterPlaceholder": "按名称筛选…",
   "iconGallery.empty": '没有匹配 "{{q}}" 的图标。',
   "iconGallery.subtitle": "{{count}} 个图标 · 覆盖 LLM 模型、服务商与应用品牌",
+  "iconGallery.group.model": "模型",
+  "iconGallery.group.provider": "服务商",
+  "iconGallery.group.application": "应用",
+  "iconGallery.section.frontierLabs": "前沿实验室",
+  "iconGallery.section.cloudEnterprise": "云与企业",
+  "iconGallery.section.chineseEcosystem": "中文生态",
+  "iconGallery.section.localRuntimes": "本地运行时与网关",
+  "iconGallery.section.mediaGeneration": "媒体生成",
+  "iconGallery.section.devTools": "开发工具",
   "iconGallery.showcase":
     "精选 {{count}} 个品牌图标，来自 <code>{{pkg}}</code>。完整目录：<em>{{combo}} → View: Icon Gallery</em>。",
 

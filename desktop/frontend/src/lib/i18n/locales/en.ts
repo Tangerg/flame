@@ -459,6 +459,11 @@ export const en: Record<string, string> = {
   "plugins.copyError": "Copy error",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> failed to render.",
   "plugins.mainView": "main view",
+  "plugins.errorSource.setup": "setup",
+  "plugins.errorSource.render": "render",
+  "plugins.errorSource.events": "event handler",
+  "plugins.errorSource.command": "command",
+  "plugins.errorSource.other": "other",
 
   "connection.error.invalidUrl": "Invalid URL",
   "shape.radius.aria": "Corner radius",
@@ -565,6 +570,15 @@ export const en: Record<string, string> = {
   "iconGallery.filterPlaceholder": "Filter by name…",
   "iconGallery.empty": 'No icons match "{{q}}".',
   "iconGallery.subtitle": "{{count}} icons · brands across LLM models, providers, and apps",
+  "iconGallery.group.model": "Models",
+  "iconGallery.group.provider": "Providers",
+  "iconGallery.group.application": "Applications",
+  "iconGallery.section.frontierLabs": "Frontier labs",
+  "iconGallery.section.cloudEnterprise": "Cloud & enterprise",
+  "iconGallery.section.chineseEcosystem": "Chinese ecosystem",
+  "iconGallery.section.localRuntimes": "Local runtimes & gateways",
+  "iconGallery.section.mediaGeneration": "Media generation",
+  "iconGallery.section.devTools": "Dev tools",
   "iconGallery.showcase":
     "A curated set of {{count}} brand glyphs from <code>{{pkg}}</code>. Full catalogue: <em>{{combo}} → View: Icon Gallery</em>.",
 

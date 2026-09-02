@@ -312,6 +312,11 @@ export const ja: Record<string, string> = {
   "plugins.copyError": "エラーをコピー",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> の描画に失敗しました。",
   "plugins.mainView": "メインビュー",
+  "plugins.errorSource.setup": "セットアップ",
+  "plugins.errorSource.render": "レンダリング",
+  "plugins.errorSource.events": "イベントハンドラー",
+  "plugins.errorSource.command": "コマンド",
+  "plugins.errorSource.other": "その他",
 
   "connection.error.invalidUrl": "無効な URL",
   "shape.radius.aria": "角丸",
@@ -412,6 +417,15 @@ export const ja: Record<string, string> = {
   "iconGallery.filterPlaceholder": "名前で絞り込み…",
   "iconGallery.empty": '"{{q}}" に一致するアイコンはありません。',
   "iconGallery.subtitle": "{{count}} 個のアイコン · LLM モデル・プロバイダー・アプリのブランド",
+  "iconGallery.group.model": "モデル",
+  "iconGallery.group.provider": "プロバイダー",
+  "iconGallery.group.application": "アプリ",
+  "iconGallery.section.frontierLabs": "フロンティアラボ",
+  "iconGallery.section.cloudEnterprise": "クラウド・エンタープライズ",
+  "iconGallery.section.chineseEcosystem": "中国エコシステム",
+  "iconGallery.section.localRuntimes": "ローカルランタイム・ゲートウェイ",
+  "iconGallery.section.mediaGeneration": "メディア生成",
+  "iconGallery.section.devTools": "開発ツール",
   "iconGallery.showcase":
     "<code>{{pkg}}</code> から厳選した {{count}} 個のブランドアイコン。全カタログ: <em>{{combo}} → View: Icon Gallery</em>。",
 

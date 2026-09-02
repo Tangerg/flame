@@ -311,6 +311,11 @@ export const zhTW: Record<string, string> = {
   "plugins.copyError": "複製錯誤",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 算繪失敗。",
   "plugins.mainView": "主檢視",
+  "plugins.errorSource.setup": "初始化",
+  "plugins.errorSource.render": "算繪",
+  "plugins.errorSource.events": "事件處理",
+  "plugins.errorSource.command": "命令",
+  "plugins.errorSource.other": "其他",
 
   "connection.error.invalidUrl": "無效的 URL",
   "shape.radius.aria": "圓角",
@@ -411,6 +416,15 @@ export const zhTW: Record<string, string> = {
   "iconGallery.filterPlaceholder": "依名稱篩選…",
   "iconGallery.empty": '沒有符合 "{{q}}" 的圖示。',
   "iconGallery.subtitle": "{{count}} 個圖示 · 涵蓋 LLM 模型、供應商與應用品牌",
+  "iconGallery.group.model": "模型",
+  "iconGallery.group.provider": "供應商",
+  "iconGallery.group.application": "應用",
+  "iconGallery.section.frontierLabs": "前沿實驗室",
+  "iconGallery.section.cloudEnterprise": "雲端與企業",
+  "iconGallery.section.chineseEcosystem": "中文生態",
+  "iconGallery.section.localRuntimes": "本機執行環境與閘道",
+  "iconGallery.section.mediaGeneration": "媒體生成",
+  "iconGallery.section.devTools": "開發工具",
   "iconGallery.showcase":
     "精選 {{count}} 個品牌圖示，來自 <code>{{pkg}}</code>。完整目錄：<em>{{combo}} → View: Icon Gallery</em>。",
 

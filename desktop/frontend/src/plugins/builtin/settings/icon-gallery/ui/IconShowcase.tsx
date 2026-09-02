@@ -1,15 +1,15 @@
 import { comboGlyph } from "@/lib/combo";
-import { Trans } from "@/lib/i18n";
+import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
 
 interface Section {
-  title: string;
+  titleKey: string;
   ids: string[];
 }
 
 const SECTIONS: Section[] = [
   {
-    title: "Frontier labs",
+    titleKey: "iconGallery.section.frontierLabs",
     ids: [
       "OpenAI",
       "Anthropic",
@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Cloud & enterprise",
+    titleKey: "iconGallery.section.cloudEnterprise",
     ids: [
       "Microsoft",
       "Azure",
@@ -40,7 +40,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Chinese ecosystem",
+    titleKey: "iconGallery.section.chineseEcosystem",
     ids: [
       "Qwen",
       "Doubao",
@@ -55,7 +55,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Local runtimes & gateways",
+    titleKey: "iconGallery.section.localRuntimes",
     ids: [
       "Ollama",
       "LmStudio",
@@ -70,7 +70,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Media generation",
+    titleKey: "iconGallery.section.mediaGeneration",
     ids: [
       "Midjourney",
       "Stability",
@@ -84,7 +84,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Dev tools",
+    titleKey: "iconGallery.section.devTools",
     ids: [
       "Cursor",
       "Windsurf",
@@ -100,6 +100,7 @@ const SECTIONS: Section[] = [
 ];
 
 export function IconShowcase() {
+  const t = useT();
   const total = SECTIONS.reduce((n, s) => n + s.ids.length, 0);
 
   return (
@@ -118,9 +119,9 @@ export function IconShowcase() {
       </p>
 
       {SECTIONS.map((sec) => (
-        <section key={sec.title} className="flex flex-col gap-2">
+        <section key={sec.titleKey} className="flex flex-col gap-2">
           <header className="flex items-baseline justify-between font-mono text-ui-sm font-medium tracking-normal text-fg-muted">
-            <span>{sec.title}</span>
+            <span>{t(sec.titleKey)}</span>
             <span className="font-mono text-fg-faint">{sec.ids.length}</span>
           </header>
           <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(96px,1fr))]">

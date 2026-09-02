@@ -89,26 +89,27 @@ export function PluginsPane() {
   );
 }
 
-const SOURCE_LABEL: Record<PluginErrorSource, string> = {
-  setup: "setup",
-  render: "render",
-  events: "event handler",
-  command: "command",
-  other: "other",
+// The badge names WHICH of a plugin's contracts broke, so it is read by a person and
+// belongs in the catalogue: four of these matched their wire value only by coincidence.
+const SOURCE_LABEL_KEYS: Record<PluginErrorSource, string> = {
+  setup: "plugins.errorSource.setup",
+  render: "plugins.errorSource.render",
+  events: "plugins.errorSource.events",
+  command: "plugins.errorSource.command",
+  other: "plugins.errorSource.other",
 };
 
 function ErrorEntry({ err }: { err: PluginError }) {
   const t = useT();
   const time = formatClock(err.timestamp);
+  const source = t(SOURCE_LABEL_KEYS[err.source]);
   const copy = () =>
-    void copyText(
-      `[${SOURCE_LABEL[err.source]}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`,
-    );
+    void copyText(`[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`);
   return (
     <div className="rounded-md bg-sunken px-2.5 py-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <span className="rounded-full bg-negative-badge px-1.5 py-px font-mono text-ui-xs font-semibold text-negative">
-          {SOURCE_LABEL[err.source]}
+          {source}
         </span>
         <span className="truncate font-medium text-ui-md text-fg" title={err.message}>
           {err.message}

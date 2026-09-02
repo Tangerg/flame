@@ -315,6 +315,11 @@ export const de: Record<string, string> = {
   "plugins.copyError": "Fehler kopieren",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> konnte nicht gerendert werden.",
   "plugins.mainView": "Hauptansicht",
+  "plugins.errorSource.setup": "Setup",
+  "plugins.errorSource.render": "Rendering",
+  "plugins.errorSource.events": "Event-Handler",
+  "plugins.errorSource.command": "Befehl",
+  "plugins.errorSource.other": "Sonstiges",
 
   "connection.error.invalidUrl": "Ungültige URL",
   "shape.radius.aria": "Eckenradius",
@@ -420,6 +425,15 @@ export const de: Record<string, string> = {
   "iconGallery.filterPlaceholder": "Nach Name filtern…",
   "iconGallery.empty": 'Keine Symbole passen zu "{{q}}".',
   "iconGallery.subtitle": "{{count}} Symbole · Marken von LLM-Modellen, Anbietern und Apps",
+  "iconGallery.group.model": "Modelle",
+  "iconGallery.group.provider": "Anbieter",
+  "iconGallery.group.application": "Apps",
+  "iconGallery.section.frontierLabs": "Führende Labore",
+  "iconGallery.section.cloudEnterprise": "Cloud & Unternehmen",
+  "iconGallery.section.chineseEcosystem": "Chinesisches Ökosystem",
+  "iconGallery.section.localRuntimes": "Lokale Runtimes & Gateways",
+  "iconGallery.section.mediaGeneration": "Mediengenerierung",
+  "iconGallery.section.devTools": "Entwicklerwerkzeuge",
   "iconGallery.showcase":
     "Eine kuratierte Auswahl von {{count}} Markenglyphen aus <code>{{pkg}}</code>. Vollständiger Katalog: <em>{{combo}} → View: Icon Gallery</em>.",
 

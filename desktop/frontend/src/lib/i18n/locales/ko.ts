@@ -311,6 +311,11 @@ export const ko: Record<string, string> = {
   "plugins.copyError": "오류 복사",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 렌더링에 실패했습니다.",
   "plugins.mainView": "메인 뷰",
+  "plugins.errorSource.setup": "설정",
+  "plugins.errorSource.render": "렌더링",
+  "plugins.errorSource.events": "이벤트 핸들러",
+  "plugins.errorSource.command": "명령",
+  "plugins.errorSource.other": "기타",
 
   "connection.error.invalidUrl": "잘못된 URL",
   "shape.radius.aria": "모서리 반경",
@@ -411,6 +416,15 @@ export const ko: Record<string, string> = {
   "iconGallery.filterPlaceholder": "이름으로 필터…",
   "iconGallery.empty": '"{{q}}" 에 일치하는 아이콘이 없습니다.',
   "iconGallery.subtitle": "아이콘 {{count}}개 · LLM 모델·제공자·앱 브랜드",
+  "iconGallery.group.model": "모델",
+  "iconGallery.group.provider": "제공자",
+  "iconGallery.group.application": "앱",
+  "iconGallery.section.frontierLabs": "프런티어 랩",
+  "iconGallery.section.cloudEnterprise": "클라우드 및 엔터프라이즈",
+  "iconGallery.section.chineseEcosystem": "중국 생태계",
+  "iconGallery.section.localRuntimes": "로컬 런타임 및 게이트웨이",
+  "iconGallery.section.mediaGeneration": "미디어 생성",
+  "iconGallery.section.devTools": "개발 도구",
   "iconGallery.showcase":
     "<code>{{pkg}}</code>에서 고른 브랜드 글리프 {{count}}개. 전체 목록: <em>{{combo}} → View: Icon Gallery</em>.",
 

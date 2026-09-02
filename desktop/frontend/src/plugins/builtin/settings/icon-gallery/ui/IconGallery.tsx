@@ -3,12 +3,13 @@ import { ScrollArea, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
 
+// The three groups `@lobehub/icons` sorts its catalogue into.
 type GroupKey = "model" | "provider" | "application";
 
-const GROUP_TITLES: Record<GroupKey, string> = {
-  model: "Models",
-  provider: "Providers",
-  application: "Applications",
+const GROUP_TITLE_KEYS: Record<GroupKey, string> = {
+  model: "iconGallery.group.model",
+  provider: "iconGallery.group.provider",
+  application: "iconGallery.group.application",
 };
 
 export function IconGallery() {
@@ -65,7 +66,7 @@ export function IconGallery() {
           return (
             <section key={g} className="px-5 pt-4.5 pb-3">
               <header className="flex items-baseline justify-between pb-2.5 font-mono text-ui-sm font-medium tracking-normal text-fg-muted">
-                <span>{GROUP_TITLES[g]}</span>
+                <span>{t(GROUP_TITLE_KEYS[g])}</span>
                 <span className="font-mono text-fg-faint">{list.length}</span>
               </header>
               <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]">
