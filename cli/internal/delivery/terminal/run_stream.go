@@ -240,9 +240,10 @@ func (a *app) followOpening(
 	open func(context.Context) (agent.SegmentStream, error),
 	observer streamOpeningObserver,
 ) {
+	sessionID := a.session.current.ID
 	a.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			app: a, ctx: ctx, dispatcher: a.loop.Dispatcher(), lease: lease,
+			app: a, ctx: ctx, dispatcher: a.loop.Dispatcher(), lease: lease, sessionID: sessionID,
 			open: open, applyEvent: a.apply,
 			policy: a.reconnectPolicy,
 		}

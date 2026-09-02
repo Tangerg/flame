@@ -54,6 +54,28 @@ type sessionReadFailureRuntime struct {
 	failureAt int32
 }
 
+type sessionReadRecordingRuntime struct {
+	*runtimefixture.Runtime
+	mu         sync.Mutex
+	sessionIDs []string
+}
+
+func (s *sessionReadRecordingRuntime) GetSession(
+	ctx context.Context,
+	sessionID string,
+) (agent.SessionSnapshot, error) {
+	s.mu.Lock()
+	s.sessionIDs = append(s.sessionIDs, sessionID)
+	s.mu.Unlock()
+	return s.Runtime.GetSession(ctx, sessionID)
+}
+
+func (s *sessionReadRecordingRuntime) requestedSessionIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.sessionIDs)
+}
+
 type replayingStartRuntime struct {
 	*runtimefixture.Runtime
 
@@ -293,6 +315,23 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	})
 	host.Shows(t, "recover attach")
 	stop()
+}
+
+func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
+	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
+	application := &app{
+		runtime: runtime,
+		session: sessionState{current: agent.Session{ID: "ses_demo_2"}},
+	}
+	follower := streamFollower{
+		app: application, ctx: t.Context(), sessionID: "ses_demo_1",
+	}
+
+	follower.recover("run_missing", agent.ErrDisconnected)
+
+	if got := runtime.requestedSessionIDs(); !slices.Equal(got, []string{"ses_demo_1"}) {
+		t.Fatalf("recovery Session reads = %v, want frozen follower Session", got)
+	}
 }
 
 func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {

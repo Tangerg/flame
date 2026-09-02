@@ -20,12 +20,13 @@ import (
 // only then starts consuming the attached tail.
 func (a *app) followRecoveredSession() {
 	dispatcher := a.loop.Dispatcher()
+	sessionID := a.session.current.ID
 	a.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease,
+			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
 			applyEvent: a.apply, policy: a.reconnectPolicy,
 		}
-		recovered, ok := follower.restoreAttachedSession(a.session.current.ID)
+		recovered, ok := follower.restoreAttachedSession(sessionID)
 		if !ok {
 			return
 		}
@@ -55,6 +56,7 @@ type streamFollower struct {
 	ctx        context.Context
 	dispatcher program.Dispatcher
 	lease      operationLease
+	sessionID  string
 	open       func(context.Context) (agent.SegmentStream, error)
 	applyEvent func(agent.RunEvent) error
 	policy     retry.ReconnectPolicy
@@ -312,7 +314,7 @@ func (s *streamFollower) acceptRebound(runID, segmentID string, rebound agent.Se
 }
 
 func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
-	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.app.session.current.ID, runID)
+	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.sessionID, runID)
 	if err != nil {
 		if runworkflow.RecoveryRequired(err) {
 			return recoveryAttempt{disposition: recoveryRetry, cause: cause}
