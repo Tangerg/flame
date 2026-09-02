@@ -129,6 +129,23 @@ func TestListRecipesRejectsNonDirectorySource(t *testing.T) {
 	}
 }
 
+func TestListRecipesRejectsBrokenHigherPrecedenceSource(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "project", "recipes")
+	if err := os.MkdirAll(filepath.Dir(project), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "missing"), project); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	global := filepath.Join(root, "global")
+	write(t, global, "fallback.md", "must not load")
+
+	if _, err := listRecipes(t.Context(), project, global); !errors.Is(err, workspaceapp.ErrInvalidPromptSource) {
+		t.Fatalf("listRecipes error = %v, want ErrInvalidPromptSource", err)
+	}
+}
+
 // TestListRecipesDegradesToBody: a malformed or unterminated frontmatter fence
 // keeps the recipe (whole document becomes the body) rather than dropping it.
 func TestListRecipesDegradesToBody(t *testing.T) {
@@ -176,6 +193,27 @@ func TestListRecipesRejectsOverfullScope(t *testing.T) {
 
 	if _, err := listRecipes(t.Context(), dir, ""); !errors.Is(err, workspaceapp.ErrPromptSourceTooLarge) {
 		t.Fatalf("listRecipes error = %v, want ErrPromptSourceTooLarge", err)
+	}
+}
+
+func TestListRecipesCountsOnlyVisibleRecipesPerScope(t *testing.T) {
+	project := t.TempDir()
+	global := t.TempDir()
+	write(t, project, "recipe-000.md", "project prompt")
+	for index := range workspaceapp.MaxRecipesPerScope + 1 {
+		write(t, global, fmt.Sprintf("recipe-%03d.md", index), "global prompt")
+	}
+
+	recipes, err := listRecipes(t.Context(), project, global)
+	if err != nil {
+		t.Fatalf("listRecipes rejected a shadowed lower-precedence recipe: %v", err)
+	}
+	if len(recipes) != workspaceapp.MaxRecipesPerScope+1 {
+		t.Fatalf("listRecipes returned %d visible recipes, want %d", len(recipes), workspaceapp.MaxRecipesPerScope+1)
+	}
+	shadowed, ok := findRecipe(recipes, "recipe-000")
+	if !ok || shadowed.Scope != workspaceapp.RecipeScopeProject {
+		t.Fatalf("recipe-000 = %+v, %v; want project recipe", shadowed, ok)
 	}
 }
 

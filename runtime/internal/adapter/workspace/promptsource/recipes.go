@@ -71,6 +71,9 @@ func (cascade *recipeCascade) addDirectory(dir string, scope workspaceapp.Recipe
 		if !recipe {
 			continue
 		}
+		if _, duplicate := cascade.seen[name]; duplicate {
+			continue // a higher-precedence (project) source already provided it
+		}
 		scopeCount++
 		if scopeCount > workspaceapp.MaxRecipesPerScope {
 			return fmt.Errorf(
@@ -79,9 +82,6 @@ func (cascade *recipeCascade) addDirectory(dir string, scope workspaceapp.Recipe
 				scope,
 				workspaceapp.MaxRecipesPerScope,
 			)
-		}
-		if _, duplicate := cascade.seen[name]; duplicate {
-			continue // a higher-precedence (project) source already provided it
 		}
 		if err := cascade.addFile(dir, entry.Name(), name, scope); err != nil {
 			return err
@@ -122,33 +122,24 @@ func (cascade *recipeCascade) addFile(
 }
 
 func readRecipeDirectory(ctx context.Context, directory string) ([]os.DirEntry, error) {
-	if directory == "" {
-		return nil, nil
-	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	source, err := os.Stat(directory)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+	dir, found, err := openRecipeDirectory(directory)
+	if err != nil || !found {
+		return nil, err
 	}
-	if err != nil {
-		return nil, fmt.Errorf("promptsource: inspect recipe directory %q: %w", directory, err)
+	entries, readErr := dir.ReadDir(maxRecipeDirectoryEntries + 1)
+	if errors.Is(readErr, io.EOF) {
+		readErr = nil
 	}
-	if !source.IsDir() {
-		return nil, fmt.Errorf("%w: recipe source %q is not a directory", workspaceapp.ErrInvalidPromptSource, directory)
-	}
-	dir, _, err := fileinput.OpenDirectoryExpected(directory, source)
-	if err != nil {
-		if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
-			return nil, fmt.Errorf("%w: recipe source %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, directory)
-		}
-		return nil, fmt.Errorf("promptsource: open recipe directory %q: %w", directory, err)
-	}
-	defer func() { _ = dir.Close() }()
-	entries, err := dir.ReadDir(maxRecipeDirectoryEntries + 1)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("promptsource: read recipe directory %q: %w", directory, err)
+	closeErr := dir.Close()
+	if readErr != nil || closeErr != nil {
+		return nil, fmt.Errorf(
+			"promptsource: read recipe directory %q: %w",
+			directory,
+			errors.Join(readErr, closeErr),
+		)
 	}
 	if len(entries) > maxRecipeDirectoryEntries {
 		return nil, fmt.Errorf(
@@ -158,7 +149,41 @@ func readRecipeDirectory(ctx context.Context, directory string) ([]os.DirEntry, 
 			maxRecipeDirectoryEntries,
 		)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return entries, nil
+}
+
+func openRecipeDirectory(directory string) (*os.File, bool, error) {
+	if directory == "" {
+		return nil, false, nil
+	}
+	if _, err := os.Lstat(directory); errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	} else if err != nil {
+		return nil, false, fmt.Errorf("promptsource: inspect recipe directory %q: %w", directory, err)
+	}
+	source, err := os.Stat(directory)
+	if err != nil {
+		return nil, false, fmt.Errorf(
+			"%w: resolve recipe source %q: %w",
+			workspaceapp.ErrInvalidPromptSource,
+			directory,
+			err,
+		)
+	}
+	if !source.IsDir() {
+		return nil, false, fmt.Errorf("%w: recipe source %q is not a directory", workspaceapp.ErrInvalidPromptSource, directory)
+	}
+	dir, _, err := fileinput.OpenDirectoryExpected(directory, source)
+	if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) || errors.Is(err, os.ErrNotExist) {
+		return nil, false, fmt.Errorf("%w: recipe source %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, directory)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("promptsource: open recipe directory %q: %w", directory, err)
+	}
+	return dir, true, nil
 }
 
 func recipeDir(cwd string) string {
