@@ -351,6 +351,8 @@ func reasonText(reason goalstate.Reason) string {
 		return "reached the cost budget"
 	case goalstate.ReasonStepBudgetReached:
 		return "reached the step budget"
+	case goalstate.ReasonPricingUnavailable:
+		return "cost accounting is unavailable for at least one completed Run"
 	case goalstate.ReasonBlockedByModel:
 		if reason.Detail() != "" {
 			return reason.Detail()

@@ -232,6 +232,24 @@ func TestGetGoalReturnsActionableViewWithoutOwnershipInternals(t *testing.T) {
 	}
 }
 
+func TestGetGoalExplainsUnavailableCostAccounting(t *testing.T) {
+	store := newMemStore()
+	g := testSessionActiveGoal()
+	g, err := g.Block(goalstate.ReasonPricingUnavailable, "", g.UpdatedAt())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.put(g)
+
+	result, err := newGetter(t, store).get(testSessionContext(), getArgs{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Goal == nil || result.Goal.Reason != "cost accounting is unavailable for at least one completed Run" {
+		t.Fatalf("goal view = %+v", result.Goal)
+	}
+}
+
 func TestGetGoalReturnsNullWhenAbsent(t *testing.T) {
 	result, err := newGetter(t, newMemStore()).get(testSessionContext(), getArgs{})
 	if err != nil {
