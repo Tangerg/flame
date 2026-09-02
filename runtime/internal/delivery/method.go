@@ -523,6 +523,7 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 	if err := contractshape.HasPath(shape, condition.Field); err != nil {
 		return fmt.Errorf("%s condition field %q: %w", owner, condition.Field, err)
 	}
+	_, leaf, _ := contractshape.GoPath(shape, condition.Field)
 	switch condition.Operator {
 	case OperatorPresent:
 		if condition.Value != "" {
@@ -536,6 +537,12 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 			return fmt.Errorf(
 				"%s condition field %q: operator %s requires a non-empty value",
 				owner, condition.Field, condition.Operator,
+			)
+		}
+		if leaf.Type.Kind() != reflect.String {
+			return fmt.Errorf(
+				"%s condition field %q: operator %s requires a string field, got %s",
+				owner, condition.Field, condition.Operator, leaf.Type,
 			)
 		}
 	default:

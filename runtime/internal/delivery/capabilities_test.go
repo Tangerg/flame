@@ -2,13 +2,15 @@ package delivery
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
 type conditionalParameters struct {
-	Enabled bool   `json:"enabled,omitempty"`
-	Mode    string `json:"mode,omitempty"`
-	Nested  *struct {
+	Enabled      bool    `json:"enabled,omitempty"`
+	Mode         string  `json:"mode,omitempty"`
+	OptionalMode *string `json:"optionalMode,omitempty"`
+	Nested       *struct {
 		Name string `json:"name,omitempty"`
 	} `json:"nested,omitempty"`
 }
@@ -40,5 +42,18 @@ func TestFieldConditionMatchesTypedParameters(t *testing.T) {
 				t.Fatalf("matches = %v, want %v", got, test.want)
 			}
 		})
+	}
+}
+
+func TestFieldConditionEqualsRequiresAStringTarget(t *testing.T) {
+	t.Parallel()
+
+	for _, field := range []string{"enabled", "optionalMode"} {
+		err := ValidateFieldCondition("fixture", reflect.TypeFor[conditionalParameters](), FieldCondition{
+			Field: field, Operator: OperatorEquals, Value: "value",
+		})
+		if err == nil || !strings.Contains(err.Error(), "requires a string field") {
+			t.Fatalf("ValidateFieldCondition(%q) error = %v, want string-target requirement", field, err)
+		}
 	}
 }

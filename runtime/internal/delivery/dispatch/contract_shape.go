@@ -614,77 +614,78 @@ func (o ObjectConstraintSpec) validate() error {
 		return fmt.Errorf("%s: a constraint spec with no rules constrains nothing", name)
 	}
 	for index, rule := range o.Rules {
-		if len(rule.Required) == 0 && len(rule.RequiredAny) == 0 && len(rule.Forbidden) == 0 && len(rule.AllowedValues) == 0 {
-			return fmt.Errorf("%s rule %d: states no field constraint", name, index)
-		}
-		for conditionIndex, condition := range rule.When {
-			if slices.Contains(rule.When[:conditionIndex], condition) {
-				return fmt.Errorf(
-					"%s rule %d: condition for field %q with operator %s is declared twice",
-					name, index, condition.Field, condition.Operator,
-				)
-			}
-			if err := delivery.ValidateFieldCondition(
-				fmt.Sprintf("%s rule %d", name, index),
-				o.GoType,
-				condition,
-			); err != nil {
-				return err
-			}
-		}
-		for fieldIndex, field := range rule.Required {
-			if slices.Contains(rule.Required[:fieldIndex], field) {
-				return fmt.Errorf(
-					"%s rule %d: required field %q is declared twice",
-					name, index, field,
-				)
-			}
-		}
-		for fieldIndex, field := range rule.RequiredAny {
-			switch {
-			case slices.Contains(rule.RequiredAny[:fieldIndex], field):
-				return fmt.Errorf(
-					"%s rule %d: required-any field %q is declared twice",
-					name, index, field,
-				)
-			case slices.Contains(rule.Required, field):
-				return fmt.Errorf(
-					"%s rule %d: field %q cannot be both required and required-any",
-					name, index, field,
-				)
-			}
-		}
-		for fieldIndex, field := range rule.Forbidden {
-			switch {
-			case slices.Contains(rule.Forbidden[:fieldIndex], field):
-				return fmt.Errorf(
-					"%s rule %d: forbidden field %q is declared twice",
-					name, index, field,
-				)
-			case slices.Contains(rule.Required, field):
-				return fmt.Errorf(
-					"%s rule %d: field %q cannot be both required and forbidden",
-					name, index, field,
-				)
-			case slices.Contains(rule.RequiredAny, field):
-				return fmt.Errorf(
-					"%s rule %d: field %q cannot be both required-any and forbidden",
-					name, index, field,
-				)
-			}
-		}
-		for _, field := range slices.Concat(rule.Required, rule.RequiredAny, rule.Forbidden) {
-			if err := contractshape.HasPath(o.GoType, field); err != nil {
-				return fmt.Errorf("%s rule %d: %w", name, index, err)
-			}
-		}
-		if err := validateAllowedValueSets(
-			fmt.Sprintf("%s rule %d", name, index),
-			o.GoType,
-			rule.AllowedValues,
-			rule.Forbidden,
-		); err != nil {
+		owner := fmt.Sprintf("%s rule %d", name, index)
+		if err := validateRuleConditions(owner, o.GoType, rule.When); err != nil {
 			return err
+		}
+		if err := validateRuleFields(owner, o.GoType, rule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateRuleFields(owner string, shape reflect.Type, rule ConditionalRule) error {
+	if len(rule.Required) == 0 && len(rule.RequiredAny) == 0 && len(rule.Forbidden) == 0 && len(rule.AllowedValues) == 0 {
+		return fmt.Errorf("%s: states no field constraint", owner)
+	}
+	for fieldIndex, field := range rule.Required {
+		if slices.Contains(rule.Required[:fieldIndex], field) {
+			return fmt.Errorf("%s: required field %q is declared twice", owner, field)
+		}
+	}
+	for fieldIndex, field := range rule.RequiredAny {
+		switch {
+		case slices.Contains(rule.RequiredAny[:fieldIndex], field):
+			return fmt.Errorf("%s: required-any field %q is declared twice", owner, field)
+		case slices.Contains(rule.Required, field):
+			return fmt.Errorf("%s: field %q cannot be both required and required-any", owner, field)
+		}
+	}
+	for fieldIndex, field := range rule.Forbidden {
+		switch {
+		case slices.Contains(rule.Forbidden[:fieldIndex], field):
+			return fmt.Errorf("%s: forbidden field %q is declared twice", owner, field)
+		case slices.Contains(rule.Required, field):
+			return fmt.Errorf("%s: field %q cannot be both required and forbidden", owner, field)
+		case slices.Contains(rule.RequiredAny, field):
+			return fmt.Errorf("%s: field %q cannot be both required-any and forbidden", owner, field)
+		}
+	}
+	for _, field := range slices.Concat(rule.Required, rule.RequiredAny, rule.Forbidden) {
+		if err := contractshape.HasPath(shape, field); err != nil {
+			return fmt.Errorf("%s: %w", owner, err)
+		}
+	}
+	return validateAllowedValueSets(owner, shape, rule.AllowedValues, rule.Forbidden)
+}
+
+func validateRuleConditions(owner string, shape reflect.Type, conditions []delivery.FieldCondition) error {
+	for index, condition := range conditions {
+		previousConditions := conditions[:index]
+		if slices.Contains(previousConditions, condition) {
+			return fmt.Errorf(
+				"%s: condition for field %q with operator %s is declared twice",
+				owner, condition.Field, condition.Operator,
+			)
+		}
+		if err := delivery.ValidateFieldCondition(owner, shape, condition); err != nil {
+			return err
+		}
+		for _, previous := range previousConditions {
+			if previous.Field != condition.Field {
+				continue
+			}
+			if previous.Operator == delivery.OperatorEquals && condition.Operator == delivery.OperatorEquals {
+				return fmt.Errorf(
+					"%s: field %q has conflicting equals conditions %q and %q",
+					owner, condition.Field, previous.Value, condition.Value,
+				)
+			}
+			return fmt.Errorf(
+				"%s: field %q combines present and equals conditions",
+				owner, condition.Field,
+			)
 		}
 	}
 	return nil

@@ -96,6 +96,54 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 	}
 }
 
+func TestObjectConstraintRejectsImpossibleConditionSets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		when []delivery.FieldCondition
+		want string
+	}{
+		{
+			name: "equals non-string",
+			when: []delivery.FieldCondition{{
+				Field: "retryAfterSeconds", Operator: delivery.OperatorEquals, Value: "1",
+			}},
+			want: "requires a string field",
+		},
+		{
+			name: "conflicting equals",
+			when: []delivery.FieldCondition{
+				{Field: "type", Operator: delivery.OperatorEquals, Value: "one"},
+				{Field: "type", Operator: delivery.OperatorEquals, Value: "two"},
+			},
+			want: "conflicting equals conditions",
+		},
+		{
+			name: "redundant present and equals",
+			when: []delivery.FieldCondition{
+				{Field: "type", Operator: delivery.OperatorPresent},
+				{Field: "type", Operator: delivery.OperatorEquals, Value: "one"},
+			},
+			want: "combines present and equals",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := (ObjectConstraintSpec{
+				GoType: reflect.TypeFor[protocol.ProblemData](),
+				Rules: []ConditionalRule{{
+					When: test.when, Required: []string{"detail"},
+				}},
+			}).validate()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validate error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 	t.Parallel()
 

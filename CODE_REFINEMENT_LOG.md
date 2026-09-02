@@ -486,3 +486,57 @@ The metadata owner reduced a field to its value type before checking it, while G
 
 - Generator helpers remain intentionally narrow, but their supported target matrix is now registered and regression-tested at the metadata authority. Direct compiler calls in tests still receive trusted validated metadata.
 - Round 10 will audit `ObjectConstraintSpec.validate` for contradictory condition sets and duplicate logical rules that exact-struct duplicate checks do not detect.
+
+## Round 10 — complete
+
+### Audit scope and evidence
+
+- Traced `FieldCondition` through capability gating, object-constraint registration, runtime reflection matching, Go validator generation, and conditional JSON Schema.
+- `OperatorEquals` validates only that its value is non-empty. It accepts numeric, boolean, collection, and object targets, but both runtime matchers require the reflected field to be a string; generated Schema instead applies a string `const` to the non-string node. Such a condition can never hold in any projection.
+- `ObjectConstraintSpec.validate` rejects an exact duplicate condition but accepts two different equals values for the same field, producing `field == A && field == B`. It also accepts `present && equals` for one field even though equals already implies presence in all three projections.
+- All current first-party equals conditions target strings and no current rule repeats a condition field, so rejecting these malformed declarations changes no published artifact.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery ./internal/delivery/dispatch` passed in 11.70s.
+
+### Root cause
+
+Shared condition validation checked path existence and operator arguments but discarded the leaf type. Object-rule validation then compared only whole condition structs, not the one-field predicate they collectively represent.
+
+### Impact and acceptance criteria
+
+- Make shared `OperatorEquals` validation accept only declared scalar strings, including named string types; final pointer fields are unsupported by both runtime matchers and must also fail registration.
+- Reject conflicting equals values and redundant present-plus-equals predicates on one field inside an object rule.
+- Preserve condition order, valid capability gates, all first-party object rules, error wrapping, and generated artifacts.
+- Move condition-set validation into one named phase so `ObjectConstraintSpec.validate` becomes shallower instead of accumulating more branches.
+- Pass focused delivery/dispatch/generator/drift tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added regressions at the shared condition boundary and object-rule boundary, retained the resolved leaf type, and extracted condition-set validation.
+- **Completed:** separated field-declaration validation from condition validation, formatted, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, equals-on-boolean, equals-on-pointer, conflicting equals, and present-plus-equals regressions all returned no error. After the fix, shared and object-owner focused tests passed in 6.28s.
+- The final delivery, dispatch, and contractgen set passed in 13.16s. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 4.04s; no generated artifact changed.
+- Delivery, dispatch, and contractgen passed with `-race` in 27.82s. Focused `go vet` and `staticcheck` passed.
+- Production-only complexity scanning no longer reports `ObjectConstraintSpec.validate`; it fell from 37 to below the threshold. Runtime delivery now has only the strict-null traversal finding, with no cyclomatic violation.
+- Runtime `GOWORK=off go vet ./...` passed in 1.28s, `GOWORK=off go build ./...` passed in 4.61s, and uncached `GOWORK=off go test -count=1 ./...` passed in 47.60s.
+- Current-workspace CLI `go vet ./...` passed in 0.80s, `go build ./...` passed in 5.23s, and uncached `go test -count=1 ./...` passed in 42.71s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND10_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 1,485ms model duration; the Run command took 5.83s. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `ValidateFieldCondition` now resolves the leaf and admits equals only when that declared field is a scalar string. Named strings remain supported; pointers and non-string kinds fail at the shared capability/object boundary.
+- Object rules now validate each condition set for exact duplicates, conflicting equals, and redundant present-plus-equals predicates, then independently validate required/alternative/forbidden/value-restricted fields.
+- Breaking changes: malformed private condition metadata is now rejected rather than compiling an unreachable rule. All first-party capability and object rules, generated artifacts, request behavior, wire values, persistence, and public bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round10.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- Both runtime reflection matchers already required a final scalar string, so registration now states their existing contract rather than changing evaluation. Cross-artifact drift tests cover every accepted first-party rule.
+- Round 11 will revisit strict explicit-null traversal, now the sole measured Runtime complexity finding, and separate type normalization from container recursion only if the existing acceptance rules prove a coherent split.
