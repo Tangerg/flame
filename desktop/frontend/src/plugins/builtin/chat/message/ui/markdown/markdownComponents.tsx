@@ -98,11 +98,7 @@ const sharedMarkdownComponents: Components = {
       const image = images[0]!;
       const wideImage = cloneElement(image, { key: image.props.src ?? 0, allowWide: true });
       return (
-        <p
-          className="md-media-paragraph md-media-wide-block"
-          data-wide-markdown-block="true"
-          data-wide-markdown-block-kind="image"
-        >
+        <p className="md-media-paragraph md-media-wide-block" data-wide-markdown-block="true">
           {wideImage}
         </p>
       );

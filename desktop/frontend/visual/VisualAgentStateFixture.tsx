@@ -1,10 +1,5 @@
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
-import {
-  selectCurrentRootAttention,
-  selectRootNarrativeMessages,
-  selectRunTree,
-  selectVisibleProblem,
-} from "@/plugins/builtin/agent/application/view/runTree";
+import { selectCurrentRootAttention } from "@/plugins/builtin/agent/application/view/runTree";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { useSendComposerInput } from "@/plugins/builtin/chat/composer/public/sendToAgent";
 import { ChatPanel } from "@/plugins/builtin/shell/kernel/panel/ChatPanel";
@@ -63,9 +58,6 @@ export function VisualAgentStateFixture({
   view: AgentSessionView;
 }) {
   const attention = selectCurrentRootAttention(view);
-  const messages = selectRootNarrativeMessages(view);
-  const runTree = selectRunTree(view);
-  const problem = selectVisibleProblem(view);
   // Exercise the same Composer → agent input bridge as the production kernel;
   // the visual agent port records the payload for interaction assertions.
   const send = useSendComposerInput();
@@ -87,9 +79,6 @@ export function VisualAgentStateFixture({
           data-testid="agent-state"
           data-state={state}
           data-attention={attention.status}
-          data-root-count={runTree.length}
-          data-message-count={messages.length}
-          data-problem={problem?.code}
         >
           <ChatPanel onSend={send} />
         </div>

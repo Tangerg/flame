@@ -22,7 +22,6 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
     <div>
       <Pressable
         data-tool={tool.name}
-        data-status={tool.status}
         type="button"
         aria-expanded={expanded}
         onClick={onToggleExpand}

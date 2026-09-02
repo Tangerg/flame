@@ -68,7 +68,6 @@ export function AgentDrawerToggle({
     <IconButton
       icon="panel-l"
       size="sm"
-      data-drawer-toggle=""
       aria-expanded={!collapsed}
       aria-label={collapsed ? expandLabel : collapseLabel}
       onClick={onToggle}

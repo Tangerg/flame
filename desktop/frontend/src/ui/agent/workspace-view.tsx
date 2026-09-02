@@ -24,7 +24,7 @@ export function AgentViewSplit({
   children: ReactNode;
 }) {
   return (
-    <div className="agent-view-split" data-navigator={navigator ? "" : undefined}>
+    <div className="agent-view-split">
       <div className="agent-view-body">{children}</div>
       {navigator}
     </div>
