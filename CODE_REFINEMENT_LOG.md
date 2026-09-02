@@ -432,3 +432,57 @@ The refresh function encoded one semantic distinction twice: `settlementFence` s
 
 - The new fence cannot deadlock queued work: the operation lease is released before apply, success drains explicitly, a newer invalidation immediately starts its successor, and every failure path leaves a visible blocked state. Integration and race tests cover the blocked-read handoff.
 - Round 9 will return to Runtime contract generation and inspect the high-complexity field-constraint compiler for unsupported metadata combinations that currently panic after registration rather than being rejected by the metadata owner.
+
+## Round 9 — complete
+
+### Audit scope and evidence
+
+- Compared `FieldConstraintSpec.validate` with every `constraintCheck` branch in the generated Go validator and the corresponding JSON Schema compiler.
+- Registration validates the underlying value kind but discards the field's JSON optionality before checking generator support. It therefore accepts required `*string` prefix/pattern constraints and an `omitempty` non-pointer prefix even though the Go generator explicitly panics for each.
+- Registration also unwraps one pointer before validating string-item constraints, accepting pointer-to-string-slice identity/prefix constraints that the Go generator explicitly panics on. Pattern items intentionally support that shape and must remain accepted.
+- Schema generation has no equivalent panic, so malformed metadata can succeed in one projection and abort another. No first-party registration uses these unsupported shapes; adding validator machinery would create speculative surface rather than satisfy a product contract.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery/dispatch ./cmd/contractgen` passed in 3.35s.
+
+### Root cause
+
+The metadata owner reduced a field to its value type before checking it, while Go validator generation depends on both declared pointer shape and JSON optionality. That lost representation allowed the generator's private limitations to become delayed panics instead of registration invariants.
+
+### Impact and acceptance criteria
+
+- Reject all five metadata shapes currently guarded by explicit generator panics, with errors naming owner, field, and constraint.
+- Keep supported optional pointer pattern/prefix, optional pointer pattern-items, scalar constraints, and non-pointer string-item constraints unchanged.
+- Do not add validator functions, schema keywords, aliases, or compatibility paths for unused shapes.
+- Remove the now-unreachable generator panic branches after registration and generation tests prove the support matrix.
+- Pass focused metadata/generator/drift tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added a table-driven registration regression for the five unsupported shapes, preserved the full field descriptor during target validation, then deleted redundant generator panics.
+- **Completed:** added positive support-matrix coverage, formatted, remeasured constraint compiler complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, all five unsupported target cases returned no registration error. After the fix, each fails at metadata validation; positive coverage proves optional pointer prefix/pattern and pointer pattern-items remain accepted.
+- Dispatch plus contractgen tests passed in 2.84s. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 4.88s; no generated artifact changed.
+- Dispatch and contractgen passed with `-race` in 9.77s. Focused `go vet` and `staticcheck` passed.
+- Production-only complexity scanning reduced `constraintCheck` from cognitive complexity 49 to 38 by deleting the unreachable guards; no new finding or cyclomatic violation appeared.
+- Runtime `GOWORK=off go vet ./...` passed in 0.73s, `GOWORK=off go build ./...` passed in 3.67s, and uncached `GOWORK=off go test -count=1 ./...` passed in 43.11s.
+- Current-workspace CLI `go vet ./...` passed in 0.55s, `go build ./...` passed in 3.15s, and uncached `go test -count=1 ./...` passed in 42.95s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND9_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 1,450ms model duration; the Run command took 5.18s. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Field target validation now retains `contractshape.Field`, so it can decide from declared pointer shape and JSON optionality after confirming the underlying text or string-array type.
+- The five unsupported shapes now fail in `FieldConstraintSpec.validate`, before any artifact compiler runs. Their five matching panic branches were removed from the Go validator compiler.
+- Breaking changes: malformed private metadata using those unsupported shapes is now rejected earlier. All first-party metadata, generated validators/schema/OpenRPC/manifest output, wire values, persistence, and public Runtime/CLI bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round9.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- Generator helpers remain intentionally narrow, but their supported target matrix is now registered and regression-tested at the metadata authority. Direct compiler calls in tests still receive trusted validated metadata.
+- Round 10 will audit `ObjectConstraintSpec.validate` for contradictory condition sets and duplicate logical rules that exact-struct duplicate checks do not detect.

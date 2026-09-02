@@ -262,9 +262,6 @@ func constraintCheck(
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
 	case dispatch.ConstraintIdentityItems:
-		if leaf.Type.Kind() == reflect.Pointer {
-			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer identity items", shape, selector))
-		}
 		return fmt.Sprintf("identityItems(%s, %s)", field, ref)
 	case dispatch.ConstraintMaxPropertyNameLength:
 		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
@@ -273,12 +270,7 @@ func constraintCheck(
 	case dispatch.ConstraintPrefix:
 		validatorName := "requiredTextPrefix"
 		if leaf.Type.Kind() == reflect.Pointer {
-			if !leaf.Optional {
-				panic(fmt.Sprintf("contractgen: %s.%s uses unsupported required pointer prefix", shape, selector))
-			}
 			validatorName = "optionalTextPointerPrefix"
-		} else if leaf.Optional {
-			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported optional value prefix", shape, selector))
 		}
 		return fmt.Sprintf(
 			"%s(%s, %s, %s)",
@@ -288,9 +280,6 @@ func constraintCheck(
 			strconv.Quote(constraint.Value),
 		)
 	case dispatch.ConstraintPrefixItems:
-		if leaf.Type.Kind() == reflect.Pointer {
-			panic(fmt.Sprintf("contractgen: %s.%s uses unsupported pointer prefix items", shape, selector))
-		}
 		return fmt.Sprintf(
 			"textPrefixItems(%s, %s, %s)",
 			field,
@@ -312,9 +301,6 @@ func constraintCheck(
 	case dispatch.ConstraintPattern:
 		validatorName := "requiredTextPattern"
 		if leaf.Type.Kind() == reflect.Pointer {
-			if !leaf.Optional {
-				panic(fmt.Sprintf("contractgen: %s.%s uses unsupported required pointer pattern", shape, selector))
-			}
 			validatorName = "optionalTextPointerPattern"
 		} else if leaf.Optional {
 			validatorName = "optionalTextPattern"

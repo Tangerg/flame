@@ -758,7 +758,7 @@ func validateFieldConstraint(owner string, shape reflect.Type, constraint FieldC
 	if err := validateConstraintArguments(owner, constraint); err != nil {
 		return err
 	}
-	return validateConstraintTarget(owner, leaf.Type, constraint)
+	return validateConstraintTarget(owner, leaf, constraint)
 }
 
 func validateConstraintArguments(owner string, constraint FieldConstraint) error {
@@ -817,14 +817,18 @@ func validateConstraintArguments(owner string, constraint FieldConstraint) error
 	return nil
 }
 
-func validateConstraintTarget(owner string, declaredType reflect.Type, constraint FieldConstraint) error {
+func validateConstraintTarget(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	declaredType := field.Type
 	valueType := declaredType
 	if valueType.Kind() == reflect.Pointer {
 		valueType = valueType.Elem()
 	}
 	kind := valueType.Kind()
 	if err, handled := validateTextualConstraintTarget(owner, valueType, constraint); handled {
-		return err
+		if err != nil {
+			return err
+		}
+		return validateTextualConstraintProjection(owner, field, constraint)
 	}
 	switch constraint.Kind {
 	case ConstraintPositive:
@@ -857,6 +861,31 @@ func validateConstraintTarget(owner string, declaredType reflect.Type, constrain
 			owner,
 			constraint.Field,
 			constraint.Kind,
+		)
+	}
+	return nil
+}
+
+func validateTextualConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	declaredKind := field.Type.Kind()
+	if (constraint.Kind == ConstraintPrefix || constraint.Kind == ConstraintPattern) &&
+		declaredKind == reflect.Pointer && !field.Optional {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support a required pointer field",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
+	if constraint.Kind == ConstraintPrefix && declaredKind != reflect.Pointer && field.Optional {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support an optional value field",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
+	if (constraint.Kind == ConstraintIdentityItems || constraint.Kind == ConstraintPrefixItems) &&
+		declaredKind == reflect.Pointer {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support a pointer string array",
+			owner, constraint.Field, constraint.Kind,
 		)
 	}
 	return nil

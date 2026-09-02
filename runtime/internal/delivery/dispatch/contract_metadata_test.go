@@ -13,6 +13,89 @@ type allowedValuesListFixture struct {
 	Values []string `json:"values,omitempty"`
 }
 
+type constraintProjectionFixture struct {
+	RequiredPointer *string   `json:"requiredPointer"`
+	OptionalPointer *string   `json:"optionalPointer,omitempty"`
+	OptionalValue   string    `json:"optionalValue,omitempty"`
+	PointerItems    *[]string `json:"pointerItems,omitempty"`
+}
+
+func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		constraint FieldConstraint
+		want       string
+	}{
+		{
+			name: "required pointer prefix",
+			constraint: FieldConstraint{
+				Field: "requiredPointer", Kind: ConstraintPrefix, Value: "id_",
+			},
+			want: "required pointer",
+		},
+		{
+			name: "required pointer pattern",
+			constraint: FieldConstraint{
+				Field: "requiredPointer", Kind: ConstraintPattern, Value: `\S`,
+			},
+			want: "required pointer",
+		},
+		{
+			name: "optional value prefix",
+			constraint: FieldConstraint{
+				Field: "optionalValue", Kind: ConstraintPrefix, Value: "id_",
+			},
+			want: "optional value",
+		},
+		{
+			name: "pointer identity items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintIdentityItems,
+			},
+			want: "pointer string array",
+		},
+		{
+			name: "pointer prefix items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintPrefixItems, Value: "id_",
+			},
+			want: "pointer string array",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := (FieldConstraintSpec{
+				GoType:      reflect.TypeFor[constraintProjectionFixture](),
+				Constraints: []FieldConstraint{test.constraint},
+			}).validate()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validate error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
+	t.Parallel()
+
+	for _, constraint := range []FieldConstraint{
+		{Field: "optionalPointer", Kind: ConstraintPrefix, Value: "id_"},
+		{Field: "optionalPointer", Kind: ConstraintPattern, Value: `\S`},
+		{Field: "pointerItems", Kind: ConstraintPatternItems, Value: `\S`},
+	} {
+		err := (FieldConstraintSpec{
+			GoType:      reflect.TypeFor[constraintProjectionFixture](),
+			Constraints: []FieldConstraint{constraint},
+		}).validate()
+		if err != nil {
+			t.Fatalf("validate %+v: %v", constraint, err)
+		}
+	}
+}
+
 func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 	t.Parallel()
 
