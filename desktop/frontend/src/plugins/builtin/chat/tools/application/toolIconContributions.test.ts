@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ICON_NAMES, type IconName } from "@/ui/icons";
-import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
+import { TOOL_ICON_BY_NAME, toolVerbId } from "@/lib/toolFamilies";
+import { en } from "@/lib/i18n/locales/en";
 import { defaultToolIconContributions, defaultToolIconFor } from "./toolIconContributions";
 
 const entries = (items: { key: string; icon: string }[]) =>
@@ -25,6 +26,30 @@ describe("tool icon contributions", () => {
     expect(Object.keys(TOOL_ICON_BY_NAME)).toHaveLength(30);
     expect(TOOL_ICON_BY_NAME).not.toHaveProperty("edit");
     expect(TOOL_ICON_BY_NAME).not.toHaveProperty("write");
+  });
+
+  // The verb and the glyph are two halves of one row, and they were held by two lists.
+  // The second had drifted to `edit` and `write` — the exact pair the assertion above
+  // guards this one against — so a transcript could never have rendered either, while
+  // eight catalogs carried both tenses of both. `check-locales` cannot see this: it
+  // credits every `tool.*` key to the template these are built from, and its own
+  // completeness rules then carry `en` to the other seven.
+  it("gives every built-in tool a verb in both tenses", () => {
+    const ids = Object.keys(TOOL_ICON_BY_NAME).map((name) => toolVerbId(name));
+    expect(ids.filter((id) => id === undefined)).toEqual([]);
+
+    const missing = ids.flatMap((id) =>
+      (["doing", "done"] as const)
+        .map((tense) => `tool.${tense}.${id}`)
+        .filter((key) => !(key in en)),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("has no verb for a name the Runtime does not publish", () => {
+    expect(toolVerbId("edit")).toBeUndefined();
+    expect(toolVerbId("write")).toBeUndefined();
+    expect(toolVerbId("apply_patch")).toBe("applyPatch");
   });
 
   // A glyph the vocabulary does not have renders as nothing at all, and the table

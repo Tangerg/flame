@@ -1,6 +1,7 @@
 import type { Translate } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { fmtDuration } from "@/lib/format";
+import { toolVerbId } from "@/lib/toolFamilies";
 
 // Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
 // the renderer guessing — every path then loses its filename to an ellipsis.
@@ -22,49 +23,14 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-// Every built-in tool's VERB, in the two tenses a transcript needs. A row states the act
-// before the thing acted on, so the verb is the label and the identifying argument is the
-// detail — one glance answers "doing what, to what" without decoding a glyph. The tense is
-// what separates a call in flight from one that finished: without it a row reads the same
-// while it is deciding, working and done, and only a dot ever says which.
+// A row states the act before the thing acted on, so the verb is the label and the
+// identifying argument is the detail — one glance answers "doing what, to what" without
+// decoding a glyph. The tense is what separates a call in flight from one that finished:
+// without it a row reads the same while it is deciding, working and done, and only a dot
+// ever says which.
 //
 // A tool this build has never heard of takes the generic entry; its own wire name is then
 // the thing being acted on.
-const TOOL_VERB_IDS = new Map([
-  ["shell", "shell"],
-  ["read_shell_output", "readShellOutput"],
-  ["stop_shell", "stopShell"],
-  ["read", "read"],
-  ["edit", "edit"],
-  ["write", "write"],
-  ["apply_patch", "applyPatch"],
-  ["grep", "grep"],
-  ["glob", "glob"],
-  ["lsp", "lsp"],
-  ["web_search", "webSearch"],
-  ["web_fetch", "webFetch"],
-  ["http_request", "httpRequest"],
-  ["list_skills", "listSkills"],
-  ["load_skill", "loadSkill"],
-  ["read_skill_resource", "readSkillResource"],
-  ["propose_skill", "proposeSkill"],
-  ["delegate_task", "delegateTask"],
-  ["ask_user", "askUser"],
-  ["enter_plan_mode", "enterPlanMode"],
-  ["set_plan", "setPlan"],
-  ["exit_plan_mode", "exitPlanMode"],
-  ["search_memory", "searchMemory"],
-  ["search_conversations", "searchConversations"],
-  ["search_tools", "searchTools"],
-  ["read_tool_result", "readToolResult"],
-  ["list_schedules", "listSchedules"],
-  ["create_schedule", "createSchedule"],
-  ["delete_schedule", "deleteSchedule"],
-  ["create_goal", "createGoal"],
-  ["get_goal", "getGoal"],
-  ["report_goal_outcome", "reportGoalOutcome"],
-]);
-
 const GENERIC_VERB_ID = "generic";
 
 // `path` is the runtime's own spelling, which ApprovalSubject reads too, so a rename cannot
@@ -77,7 +43,7 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 ];
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
-  const labelKey = TOOL_VERB_IDS.get(tool.name);
+  const labelKey = toolVerbId(tool.name);
   // Only a call still in flight is being done; a refusal and a failure are both over, and
   // wording either as ongoing would keep the row claiming work that has stopped.
   const tense = tool.status === "running" ? "doing" : "done";

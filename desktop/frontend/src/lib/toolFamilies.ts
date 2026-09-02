@@ -102,6 +102,20 @@ export function toolFamilyId(name: string): string | undefined {
   return FAMILY_BY_TOOL.get(name);
 }
 
+/**
+ * The catalog suffix for a built-in tool's verb: `tool.doing.<id>` / `tool.done.<id>`.
+ * `undefined` for a tool this table has never heard of, which then takes the generic verb.
+ *
+ * DERIVED from the Runtime's own name rather than listed a second time. The hand-written
+ * list had drifted to two verbs — `edit` and `write` — for tools the Runtime has a test
+ * asserting it never exposes, which is the same pair the icon table above is guarded
+ * against. One list cannot disagree with itself.
+ */
+export function toolVerbId(name: string): string | undefined {
+  if (!FAMILY_BY_TOOL.has(name)) return undefined;
+  return name.replace(/_([a-z])/g, (_, initial: string) => initial.toUpperCase());
+}
+
 const FAMILY_BY_TOOL = new Map<string, string>(
   TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => [tool.name, family.id] as const)),
 );
