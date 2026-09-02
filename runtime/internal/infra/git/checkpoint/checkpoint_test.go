@@ -66,6 +66,50 @@ func TestStore_SnapshotRestore(t *testing.T) {
 	}
 }
 
+func TestStore_BindsSessionCheckpointsToTheirWorkspace(t *testing.T) {
+	s, first := newTestStore(t)
+	second := t.TempDir()
+	ctx := t.Context()
+
+	write(t, first, "identity.txt", "first-v1")
+	if err := s.Snapshot(ctx, "ses1", first, "run-first"); err != nil {
+		t.Fatalf("snapshot first workspace: %v", err)
+	}
+	write(t, second, "identity.txt", "second-v1")
+	if err := s.Snapshot(ctx, "ses1", second, "run-second"); err != nil {
+		t.Fatalf("snapshot second workspace: %v", err)
+	}
+
+	write(t, first, "identity.txt", "first-v2")
+	write(t, second, "identity.txt", "second-v2")
+	if err := s.Restore(ctx, "ses1", second, "run-first"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("restore first-workspace Run into second workspace = %v, want ErrUnavailable", err)
+	}
+	if got := read(t, second, "identity.txt"); got != "second-v2" {
+		t.Fatalf("cross-workspace restore changed second workspace to %q", got)
+	}
+
+	if err := s.Restore(ctx, "ses1", first, "run-first"); err != nil {
+		t.Fatalf("restore first workspace: %v", err)
+	}
+	if got := read(t, first, "identity.txt"); got != "first-v1" {
+		t.Fatalf("first workspace restored %q, want first-v1", got)
+	}
+	if err := s.Restore(ctx, "ses1", second, "run-second"); err != nil {
+		t.Fatalf("restore second workspace: %v", err)
+	}
+	if got := read(t, second, "identity.txt"); got != "second-v1" {
+		t.Fatalf("second workspace restored %q, want second-v1", got)
+	}
+
+	if err := s.DropSession("ses1"); err != nil {
+		t.Fatalf("drop Session checkpoints: %v", err)
+	}
+	if _, err := os.Stat(s.sessionDir("ses1")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("dropped Session checkpoint directory still exists: %v", err)
+	}
+}
+
 func TestStore_SnapshotPreservesLeadingWhitespacePath(t *testing.T) {
 	s, cwd := newTestStore(t)
 	const name = " leading-space.txt"
@@ -194,7 +238,7 @@ func TestStore_StopsTrackingFileThatGrowsPastLimit(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run2"); err != nil {
 		t.Fatalf("snapshot run2: %v", err)
 	}
-	if _, err := s.git(ctx, s.gitDir("ses1"), cwd, "cat-file", "-e", tagFor("run2")+":changing.bin"); err == nil {
+	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run2")+":changing.bin"); err == nil {
 		t.Fatal("run2 still owns file after it crossed the size cap")
 	}
 
@@ -228,7 +272,7 @@ func gitCmd(t *testing.T, dir string, args ...string) {
 func TestStore_NoChangeRunReusesHeadCommit(t *testing.T) {
 	s, cwd := newTestStore(t)
 	ctx := context.Background()
-	gitDir := s.gitDir("ses1")
+	gitDir := s.gitDir("ses1", cwd)
 
 	write(t, cwd, "a.txt", "v1")
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
@@ -272,7 +316,7 @@ func TestStore_MaterializesSourceRepoSeed(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
 		t.Fatalf("snapshot run1: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(s.gitDir("ses1"), "objects", "info", "alternates")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(s.gitDir("ses1", cwd), "objects", "info", "alternates")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("completed checkpoint still depends on source alternates: %v", err)
 	}
 
@@ -352,7 +396,7 @@ func TestStore_IgnoresAmbientSourceIndexOverride(t *testing.T) {
 	if got := read(t, filepath.Dir(foreignIndex), filepath.Base(foreignIndex)); got != sentinel {
 		t.Fatalf("foreign index changed to %q, want untouched parent-process sentinel", got)
 	}
-	if _, err := s.git(ctx, s.gitDir("ses1"), cwd, "cat-file", "-e", tagFor("run1")+":tracked.txt"); err != nil {
+	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run1")+":tracked.txt"); err != nil {
 		t.Fatalf("checkpoint lost the session source tree: %v", err)
 	}
 }
@@ -370,10 +414,10 @@ func TestStore_AppliesSizeLimitToSourceIndex(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
-	if _, err := s.git(ctx, s.gitDir("ses1"), cwd, "cat-file", "-e", tagFor("run1")+":tracked-large.bin"); err == nil {
+	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run1")+":tracked-large.bin"); err == nil {
 		t.Fatal("baseline snapshot retained oversized file copied from source index")
 	}
-	if _, err := s.git(ctx, s.gitDir("ses1"), cwd, "cat-file", "-e", tagFor("run1")+":small.txt"); err != nil {
+	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run1")+":small.txt"); err != nil {
 		t.Fatalf("baseline snapshot lost small source-index file: %v", err)
 	}
 
@@ -403,7 +447,7 @@ func TestStore_FailedSeedDoesNotPublishRepository(t *testing.T) {
 	if _, err := s.ensureRepo(ctx, "ses1", cwd); err == nil || !strings.Contains(err.Error(), "source index") {
 		t.Fatalf("ensure repo error = %v, want source-index error", err)
 	}
-	if _, err := os.Stat(s.gitDir("ses1")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(s.gitDir("ses1", cwd)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("failed initialization published repository: %v", err)
 	}
 	entries, err := os.ReadDir(s.root)
@@ -421,7 +465,7 @@ func TestStore_FailedSeedDoesNotPublishRepository(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
 		t.Fatalf("snapshot after repairing source repo: %v", err)
 	}
-	if !repoExists(s.gitDir("ses1")) {
+	if !repoExists(s.gitDir("ses1", cwd)) {
 		t.Fatal("successful retry did not publish repository")
 	}
 }
@@ -483,7 +527,7 @@ func TestStore_DoesNotReplaceRepositoryOnInspectionFailure(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
-	gitDir := s.gitDir("ses1")
+	gitDir := s.gitDir("ses1", cwd)
 	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("invalid ref\n"), 0o644); err != nil {
 		t.Fatalf("corrupt HEAD: %v", err)
 	}

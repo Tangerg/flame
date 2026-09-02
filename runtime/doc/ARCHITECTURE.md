@@ -81,6 +81,8 @@ Detached shells remain Runtime-owned after the Tool call and Run that launched t
 
 Process-local authority follows the facts that justify it. Replacing, rolling back, or compacting effective model context clears that Session's read-before-write evidence. Restoring a working tree clears such evidence for every Session that observed paths below the shared workspace.
 
+Working-tree checkpoints are scoped by both Session and canonical workspace identity. A Session relocation may retain independent history for each workspace, but a Run checkpoint can only restore the exact workspace that produced it; the storage adapter verifies the complete persisted identity before any Git mutation.
+
 Process-local notifications carry no product truth. They wake consumers, which reread durable projections.
 
 ## Package shape

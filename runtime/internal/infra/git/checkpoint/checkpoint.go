@@ -1,11 +1,12 @@
-// Package checkpoint snapshots a session's working tree at run boundaries via
-// a per-session SHADOW git repository, so a rollback or fork can restore files
-// (not just chat history) to a chosen run.
+// Package checkpoint snapshots a Session's working tree at Run boundaries via
+// a per-Session/workspace SHADOW git repository, so a rollback can restore files
+// (not just chat history) to a chosen Run without applying one project's tree
+// to another project after Session relocation.
 //
-// The shadow repo's GIT_DIR lives under the flame home, with the session's cwd
+// The shadow repo's GIT_DIR lives under the Flame home, with the Session's cwd
 // as its work tree — the user's own .git is never touched (git addresses the
-// two independently, the classic dotfiles-repo pattern). Each run boundary is
-// anchored by a lightweight tag named for the run id, so a restore is a reset
+// two independently, the classic dotfiles-repo pattern). Each Run boundary is
+// anchored by a lightweight tag named for the Run id, so a restore is a reset
 // to that tag. The only OS dependency is the git binary, which flame already
 // requires for workspace diffs — so this is platform-agnostic.
 //

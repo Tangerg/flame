@@ -21,8 +21,15 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	repoMu := s.repoLockFor(sessionID)
 	repoMu.Lock()
 	defer repoMu.Unlock()
-	gitDir := s.gitDir(sessionID)
+	gitDir := s.gitDir(sessionID, cwd)
 	if !repoExists(gitDir) {
+		return ErrUnavailable
+	}
+	matches, err := repositoryMatchesWorkspace(gitDir, cwd)
+	if err != nil {
+		return err
+	}
+	if !matches {
 		return ErrUnavailable
 	}
 	if _, err := s.git(ctx, gitDir, cwd, "rev-parse", "-q", "--verify", "refs/tags/"+tagFor(runID)); err != nil {

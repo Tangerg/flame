@@ -1,19 +1,22 @@
 package checkpoint
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
 )
 
-// Store manages every session's shadow repository. It has two explicit
+// Store manages every Session/workspace shadow repository. It has two explicit
 // synchronization domains: treeLocks serialize Git commands that inspect or
 // mutate one shared working tree, while repoLocks serialize the lifecycle of one
-// session's GIT_DIR (including DropSession). Snapshot and Restore always acquire
-// tree then repository; DropSession touches only the repository, so the order is
-// deadlock-free. Run lifecycle separately keeps same-session admission held
-// until a terminal Snapshot returns, preventing the next run from crossing its
-// own checkpoint boundary.
+// Session's checkpoint set (including DropSession). Snapshot and Restore always
+// acquire tree then Session; DropSession touches only the Session, so the order
+// is deadlock-free. Run lifecycle separately keeps same-Session admission held
+// until a terminal Snapshot returns, preventing the next Run from crossing its
+// own checkpoint boundary. A workspace digest is only a filesystem-safe index;
+// each repository also persists and verifies the complete workspace identity.
 type Store struct {
 	root      string   // base dir holding one shadow GIT_DIR per session
 	treeLocks sync.Map // canonical cwd → *sync.Mutex, serializing that working tree
@@ -41,12 +44,18 @@ func storedMutex(value any, owner string) *sync.Mutex {
 	return mu
 }
 
-// DropSession removes a session's shadow repo (on session delete).
+// DropSession removes every workspace-specific shadow repository owned by one
+// Session (on Session delete).
 func (s *Store) DropSession(sessionID string) error {
 	mu := s.repoLockFor(sessionID)
 	mu.Lock()
 	defer mu.Unlock()
-	return os.RemoveAll(s.gitDir(sessionID))
+	return os.RemoveAll(s.sessionDir(sessionID))
 }
 
-func (s *Store) gitDir(sessionID string) string { return filepath.Join(s.root, sessionID) }
+func (s *Store) sessionDir(sessionID string) string { return filepath.Join(s.root, sessionID) }
+
+func (s *Store) gitDir(sessionID, cwd string) string {
+	digest := sha256.Sum256([]byte(cwd))
+	return filepath.Join(s.sessionDir(sessionID), "workspace-"+hex.EncodeToString(digest[:]))
+}

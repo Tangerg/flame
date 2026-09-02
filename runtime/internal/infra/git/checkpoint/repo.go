@@ -24,11 +24,12 @@ const (
 	maxSourceAlternatesBytes = 64 << 10
 	maxSourceAlternates      = 256
 	maxSourceIndexBytes      = 64 << 20
+	workspaceIdentityFile    = "flame-workspace"
 )
 
 // ensureRepo lazily initializes the session's shadow repo (idempotent).
 func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, error) {
-	gitDir := s.gitDir(sessionID)
+	gitDir := s.gitDir(sessionID, cwd)
 	if repoExists(gitDir) {
 		// A repository with a commit has completed at least one snapshot. An
 		// initialized repository without one may be residue from an interrupted
@@ -39,10 +40,27 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 			return "", err
 		}
 		if hasHead {
+			matches, matchErr := repositoryMatchesWorkspace(gitDir, cwd)
+			if matchErr != nil {
+				return "", matchErr
+			}
+			if !matches {
+				return "", errors.New("checkpoint: workspace digest collision")
+			}
 			return gitDir, nil
 		}
 	}
 
+	sessionDir := s.sessionDir(sessionID)
+	// Repositories created before workspace-scoped checkpoint storage put HEAD
+	// directly in the Session directory. They carry no workspace identity and
+	// therefore cannot be restored safely. Retire that legacy representation
+	// before publishing the first scoped repository.
+	if repoExists(sessionDir) {
+		if err := os.RemoveAll(sessionDir); err != nil {
+			return "", fmt.Errorf("checkpoint: remove unscoped Session repository: %w", err)
+		}
+	}
 	parent := filepath.Dir(gitDir)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", fmt.Errorf("checkpoint: create repository parent: %w", err)
@@ -55,6 +73,10 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 	defer func() {
 		if !published {
 			_ = os.RemoveAll(stagingDir)
+			// Leave no empty Session namespace after a failed first snapshot. An
+			// existing namespace may own another workspace repository; os.Remove
+			// safely refuses that non-empty case.
+			_ = os.Remove(parent)
 		}
 	}()
 
@@ -67,11 +89,29 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 	if err := os.WriteFile(filepath.Join(stagingDir, "info", "exclude"), []byte(commonExcludes), 0o644); err != nil {
 		return "", fmt.Errorf("checkpoint: write excludes: %w", err)
 	}
+	if err := os.WriteFile(filepath.Join(stagingDir, workspaceIdentityFile), []byte(cwd), 0o600); err != nil {
+		return "", fmt.Errorf("checkpoint: write workspace identity: %w", err)
+	}
 	if err := publishRepo(stagingDir, gitDir); err != nil {
 		return "", err
 	}
 	published = true
 	return gitDir, nil
+}
+
+func repositoryMatchesWorkspace(gitDir, cwd string) (bool, error) {
+	const maximumWorkspaceIdentityBytes = 64 << 10
+	path := filepath.Join(gitDir, workspaceIdentityFile)
+	file, _, err := fileinput.Open(path, maximumWorkspaceIdentityBytes)
+	if err != nil {
+		return false, fmt.Errorf("checkpoint: open workspace identity: %w", err)
+	}
+	data, readErr := io.ReadAll(file)
+	closeErr := file.Close()
+	if err := errors.Join(readErr, closeErr); err != nil {
+		return false, fmt.Errorf("checkpoint: read workspace identity: %w", err)
+	}
+	return string(data) == cwd, nil
 }
 
 // publishRepo makes a fully initialized repository visible in one rename. The
