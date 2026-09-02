@@ -2771,8 +2771,8 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		draft, found, readErr := store.Draft(originalSession)
-		return readErr == nil && found && draft.Text == "do not orphan this prompt"
+		draft, found := store.Draft(originalSession)
+		return found && draft.Text == "do not orphan this prompt"
 	})
 	store, err := openSessionWorkbench(stateDirectory)
 	if err != nil {
@@ -3364,12 +3364,12 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	draft, found, err := store.Draft("ses_demo_1")
-	if err != nil || !found || draft.Text != "draft stays with the source session" {
-		t.Fatalf("source draft = %+v, found %t, error %v", draft, found, err)
+	draft, found := store.Draft("ses_demo_1")
+	if !found || draft.Text != "draft stays with the source session" {
+		t.Fatalf("source draft = %+v, found %t", draft, found)
 	}
-	if draft, found, err := store.Draft(replacementID); err != nil || found {
-		t.Fatalf("new session draft = %+v, found %t, error %v", draft, found, err)
+	if draft, found := store.Draft(replacementID); found {
+		t.Fatalf("new session draft = %+v, found %t", draft, found)
 	}
 }
 
@@ -3508,8 +3508,8 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	if history := reopened.History(); len(history) != 1 || history[0].Text != "history must commit first" {
 		t.Fatalf("history after runtime acknowledgement = %+v", history)
 	}
-	if draft, found, err := reopened.Draft("ses_demo_1"); err != nil || found {
-		t.Fatalf("draft after runtime acknowledgement = %+v, found %t, error %v", draft, found, err)
+	if draft, found := reopened.Draft("ses_demo_1"); found {
+		t.Fatalf("draft after runtime acknowledgement = %+v, found %t", draft, found)
 	}
 	stop()
 }
@@ -3585,8 +3585,8 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	if stashes := store.Stashes(); len(stashes) != 1 || stashes[0].Message.Text != "draft remains visible" {
 		t.Fatalf("stashes after retry = %+v", stashes)
 	}
-	if draft, found, err := store.Draft("ses_demo_1"); err != nil || found {
-		t.Fatalf("draft after successful retry = %+v, %t, %v", draft, found, err)
+	if draft, found := store.Draft("ses_demo_1"); found {
+		t.Fatalf("draft after successful retry = %+v, %t", draft, found)
 	}
 	stop()
 }

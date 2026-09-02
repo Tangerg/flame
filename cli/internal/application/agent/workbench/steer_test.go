@@ -27,8 +27,8 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	if stagePendingSteerErr := store.StagePendingSteer(pending, source); stagePendingSteerErr != nil {
 		t.Fatal(stagePendingSteerErr)
 	}
-	if draft, found, draftErr := store.Draft(sessionID); draftErr != nil || found {
-		t.Fatalf("draft after staging = %+v, found %t, error %v", draft, found, draftErr)
+	if draft, found := store.Draft(sessionID); found {
+		t.Fatalf("draft after staging = %+v, found %t", draft, found)
 	}
 
 	reopened, err := OpenDirectory(directory, Config{})
@@ -59,8 +59,8 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	if _, found := settled.PendingSteer(sessionID); found {
 		t.Fatal("rejected pending steer survived restart")
 	}
-	if draft, found, err := settled.Draft(sessionID); err != nil || !found || !draft.Equal(want) {
-		t.Fatalf("settled draft = %+v, found %t, error %v", draft, found, err)
+	if draft, found := settled.Draft(sessionID); !found || !draft.Equal(want) {
+		t.Fatalf("settled draft = %+v, found %t", draft, found)
 	}
 }
 
@@ -95,8 +95,8 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	if _, found := reopened.PendingSteer(sessionID); found {
 		t.Fatal("acknowledged pending steer survived restart")
 	}
-	if draft, found, err := reopened.Draft(sessionID); err != nil || !found || !draft.Equal(newer) {
-		t.Fatalf("newer draft = %+v, found %t, error %v", draft, found, err)
+	if draft, found := reopened.Draft(sessionID); !found || !draft.Equal(newer) {
+		t.Fatalf("newer draft = %+v, found %t", draft, found)
 	}
 	history := reopened.History()
 	if len(history) != 1 || !history[0].Equal(pending.Message()) {

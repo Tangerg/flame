@@ -493,10 +493,7 @@ func (a *app) prepareDestinationDraft(
 	if activateSessionStateErr := a.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
 	}
-	draft, _, err := a.workbench.Draft(session.ID)
-	if err != nil {
-		return agent.Message{}, nil, fmt.Errorf("load session draft: %w", err)
-	}
+	draft, _ := a.workbench.Draft(session.ID)
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}

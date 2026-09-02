@@ -33,8 +33,8 @@ func TestStoreRejectsInvalidAuthoringMessagesBeforePersistence(t *testing.T) {
 	if history := store.History(); len(history) != 0 {
 		t.Fatalf("invalid message entered history: %+v", history)
 	}
-	if _, found, err := store.Draft("session"); err != nil || found {
-		t.Fatalf("invalid message entered drafts: found=%t error=%v", found, err)
+	if _, found := store.Draft("session"); found {
+		t.Fatal("invalid message entered drafts")
 	}
 }
 
@@ -103,9 +103,9 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 	if len(history) != 2 || history[0].Text != "two" || history[1].Text != "three" {
 		t.Fatalf("history = %+v", history)
 	}
-	restored, ok, err := reopened.Draft("../../session")
-	if err != nil || !ok || restored.Text != draft.Text || restored.Attachments[0].ID != "attachment" {
-		t.Fatalf("draft = %+v, %v, %v", restored, ok, err)
+	restored, ok := reopened.Draft("../../session")
+	if !ok || restored.Text != draft.Text || restored.Attachments[0].ID != "attachment" {
+		t.Fatalf("draft = %+v, %v", restored, ok)
 	}
 	if stashes := reopened.Stashes(); len(stashes) != 1 || stashes[0].Message.Text != "saved prompt" {
 		t.Fatalf("stashes = %+v", stashes)
@@ -162,10 +162,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 	if discardDraftErr := store.DiscardDraft(sessionID); discardDraftErr == nil {
 		t.Fatal("durable draft deletion unexpectedly succeeded")
 	}
-	got, ok, err := store.Draft(sessionID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	got, ok := store.Draft(sessionID)
 	if !ok || got.Text != want.Text {
 		t.Fatalf("cached draft after failed deletion = %+v, %v; want %+v, true", got, ok, want)
 	}
@@ -204,8 +201,8 @@ func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 	if stashes := store.Stashes(); len(stashes) != 1 || stashes[0].Message.Text != "older stash" {
 		t.Fatalf("stashes after rollback = %+v, want the pre-transaction collection", stashes)
 	}
-	if got, found, err := store.Draft(sessionID); err != nil || !found || !got.Equal(draft) {
-		t.Fatalf("draft after failed stash = %+v, %t, %v", got, found, err)
+	if got, found := store.Draft(sessionID); !found || !got.Equal(draft) {
+		t.Fatalf("draft after failed stash = %+v, %t", got, found)
 	}
 }
 
@@ -254,8 +251,8 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, found, err := reopened.Draft(sessionID); err != nil || found {
-		t.Fatalf("draft after stash = found %t, error %v", found, err)
+	if _, found := reopened.Draft(sessionID); found {
+		t.Fatal("draft survived stash")
 	}
 	if stashes := reopened.Stashes(); len(stashes) != 1 || !stashes[0].Message.Equal(draft) {
 		t.Fatalf("stashes = %+v", stashes)
@@ -310,8 +307,8 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, found, draftErr := reopened.Draft(sessionID); draftErr != nil || found {
-				t.Fatalf("draft after recovery = found %t, error %v", found, draftErr)
+			if _, found := reopened.Draft(sessionID); found {
+				t.Fatal("draft survived recovery")
 			}
 			stashes := reopened.Stashes()
 			if len(stashes) != 2 || stashes[0].ID != transfer.Stash.ID || !stashes[0].Message.Equal(draft) {
@@ -351,8 +348,8 @@ func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testi
 	if err := store.SaveDraft(sessionID, draft); err == nil || !strings.Contains(err.Error(), "requires reopen") {
 		t.Fatalf("new identical draft was not fenced: %v", err)
 	}
-	if _, found, err := store.Draft(sessionID); err != nil || found {
-		t.Fatalf("committed source draft = found %t, error %v", found, err)
+	if _, found := store.Draft(sessionID); found {
+		t.Fatal("committed source draft remains")
 	}
 	if _, err := Open(failing, Config{}); err == nil {
 		t.Fatal("reopen accepted a stash journal it could not retire")
@@ -398,8 +395,8 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, err := reopened.Draft(sessionID); err != nil || !found || !draft.Equal(newer) {
-		t.Fatalf("newer draft after recovery = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(sessionID); !found || !draft.Equal(newer) {
+		t.Fatalf("newer draft after recovery = %+v, %t", draft, found)
 	}
 	if stashes := reopened.Stashes(); len(stashes) != 0 {
 		t.Fatalf("superseded transfer created stashes = %+v", stashes)
@@ -480,8 +477,8 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if retireSessionStateErr := store.RetireSessionState(sessionID); retireSessionStateErr != nil {
 		t.Fatal(retireSessionStateErr)
 	}
-	if got, found, draftErr := store.Draft(sessionID); draftErr != nil || found {
-		t.Fatalf("retired draft = %+v, %v, %v", got, found, draftErr)
+	if got, found := store.Draft(sessionID); found {
+		t.Fatalf("retired draft = %+v, %v", got, found)
 	}
 	if got := store.PendingRuns(sessionID); len(got) != 0 {
 		t.Fatalf("retired runs remain = %+v", got)
@@ -497,8 +494,8 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, found, draftErr := reopened.Draft(sessionID); draftErr != nil || found || len(reopened.PendingRuns(sessionID)) != 0 {
-		t.Fatalf("reopened retired state has draft=%+v found=%v runs=%+v error=%v", got, found, reopened.PendingRuns(sessionID), draftErr)
+	if got, found := reopened.Draft(sessionID); found || len(reopened.PendingRuns(sessionID)) != 0 {
+		t.Fatalf("reopened retired state has draft=%+v found=%v runs=%+v", got, found, reopened.PendingRuns(sessionID))
 	}
 	if pending, found := reopened.PendingResume(sessionID); found {
 		t.Fatalf("reopened retired resume = %+v", pending)
@@ -520,8 +517,8 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, found, err := reopened.Draft(sessionID); err != nil || found || len(reopened.PendingRuns(sessionID)) != 0 {
-		t.Fatalf("reopened retired state has draft=%v runs=%+v error=%v", found, reopened.PendingRuns(sessionID), err)
+	if _, found := reopened.Draft(sessionID); found || len(reopened.PendingRuns(sessionID)) != 0 {
+		t.Fatalf("reopened retired state has draft=%v runs=%+v", found, reopened.PendingRuns(sessionID))
 	}
 	if pending, found := reopened.PendingResume(sessionID); found {
 		t.Fatalf("reopened retired resume = %+v", pending)
@@ -556,14 +553,14 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	if len(deletions) != 1 || deletions[0].Phase != SessionDeletionPrepared || deletions[0].Request() != request {
 		t.Fatalf("prepared deletion = %+v", deletions)
 	}
-	if draft, found, err := reopened.Draft(sessionID); err != nil || !found || draft.Text != "owned until runtime confirmation" {
-		t.Fatalf("prepared deletion draft = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(sessionID); !found || draft.Text != "owned until runtime confirmation" {
+		t.Fatalf("prepared deletion draft = %+v, %t", draft, found)
 	}
 	if err := reopened.ConfirmSessionDeletion(sessionID, request.CommandID); err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, err := reopened.Draft(sessionID); err != nil || found {
-		t.Fatalf("confirmed deletion draft = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(sessionID); found {
+		t.Fatalf("confirmed deletion draft = %+v, %t", draft, found)
 	}
 	if deletions := reopened.PendingSessionDeletions(); len(deletions) != 0 {
 		t.Fatalf("settled deletions = %+v", deletions)
@@ -690,8 +687,8 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 	if pending := reopened.PendingSessionRollbacks(); len(pending) != 0 {
 		t.Fatalf("consumed rollback journals = %+v", pending)
 	}
-	if draft, found, err := reopened.Draft(sessionID); err != nil || !found || !draft.Equal(recovery.Draft) {
-		t.Fatalf("recovered draft = %+v, present %t, err %v", draft, found, err)
+	if draft, found := reopened.Draft(sessionID); !found || !draft.Equal(recovery.Draft) {
+		t.Fatalf("recovered draft = %+v, present %t", draft, found)
 	}
 }
 
@@ -900,8 +897,8 @@ func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 	if err := store.SaveDraft("session", agent.Message{Text: strings.Repeat("x", maximumStateBytes)}); err == nil {
 		t.Fatal("oversized workbench snapshot was written")
 	}
-	if draft, found, err := store.Draft("session"); err != nil || found {
-		t.Fatalf("failed oversized save mutated memory: draft=%+v found=%t err=%v", draft, found, err)
+	if draft, found := store.Draft("session"); found {
+		t.Fatalf("failed oversized save mutated memory: draft=%+v found=%t", draft, found)
 	}
 }
 

@@ -124,5 +124,6 @@ func storedDraft(stateDirectory, sessionID string) (agent.Message, bool, error) 
 	if err != nil {
 		return agent.Message{}, false, err
 	}
-	return store.Draft(sessionID)
+	message, found := store.Draft(sessionID)
+	return message, found, nil
 }

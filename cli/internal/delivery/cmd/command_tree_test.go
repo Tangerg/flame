@@ -878,8 +878,8 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, err := reopened.Draft(target); err != nil || found {
-		t.Fatalf("deleted session draft = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(target); found {
+		t.Fatalf("deleted session draft = %+v, %t", draft, found)
 	}
 	if pending := reopened.PendingSessionDeletions(); len(pending) != 0 {
 		t.Fatalf("settled deletions = %+v", pending)

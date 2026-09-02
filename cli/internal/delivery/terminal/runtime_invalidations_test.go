@@ -1555,12 +1555,12 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, draftErr := store.Draft("ses_demo_1"); draftErr != nil || found {
-		t.Fatalf("deleted session draft = %+v, found %t, error %v", draft, found, draftErr)
+	if draft, found := store.Draft("ses_demo_1"); found {
+		t.Fatalf("deleted session draft = %+v, found %t", draft, found)
 	}
-	draft, found, err := store.Draft(replacementID)
-	if err != nil || !found || draft.Text != "unsent draft survives forced replacement" {
-		t.Fatalf("replacement draft = %+v, found %t, error %v", draft, found, err)
+	draft, found := store.Draft(replacementID)
+	if !found || draft.Text != "unsent draft survives forced replacement" {
+		t.Fatalf("replacement draft = %+v, found %t", draft, found)
 	}
 }
 

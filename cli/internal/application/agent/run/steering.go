@@ -127,10 +127,7 @@ func RecoverSteers(
 				return errors.Join(err, acknowledgeErr)
 			}
 		case mutation.Rejected:
-			draft, _, draftErr := authoring.Draft(pending.SessionID())
-			if draftErr != nil {
-				return errors.Join(err, draftErr)
-			}
+			draft, _ := authoring.Draft(pending.SessionID())
 			if _, rejectErr := authoring.RejectPendingSteer(
 				pending.SessionID(), pending.CommandID(), draft,
 			); rejectErr != nil {

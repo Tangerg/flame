@@ -62,10 +62,10 @@ func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	if _, found := store.PendingSteer(pending.SessionID()); found {
 		t.Fatal("rejected steer remains pending")
 	}
-	draft, found, err := store.Draft(pending.SessionID())
-	if err != nil || !found || len(draft.Attachments) != 1 ||
+	draft, found := store.Draft(pending.SessionID())
+	if !found || len(draft.Attachments) != 1 ||
 		draft.Attachments[0] != pending.Message().Attachments[0] {
-		t.Fatalf("recovered draft = %+v, found %t, error %v", draft, found, err)
+		t.Fatalf("recovered draft = %+v, found %t", draft, found)
 	}
 }
 

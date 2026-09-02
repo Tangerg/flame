@@ -113,7 +113,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 	if prepared.rollbackRecovery == nil || !prepared.rollbackRecovery.Draft.Equal(want) {
 		t.Fatalf("rollback recovery = %+v, want merged draft", prepared.rollbackRecovery)
 	}
-	if durable, found, err := prepared.workbench.Draft(created.ID); err != nil || !found || !durable.Equal(want) {
-		t.Fatalf("durable draft = %+v, found %t, err %v", durable, found, err)
+	if durable, found := prepared.workbench.Draft(created.ID); !found || !durable.Equal(want) {
+		t.Fatalf("durable draft = %+v, found %t", durable, found)
 	}
 }

@@ -83,9 +83,9 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 		!strings.Contains(saveDraftErr.Error(), "draft transfer") {
 		t.Fatalf("source mutation while transfer is pending = %v", saveDraftErr)
 	}
-	if destination, found, draftErr := store.Draft(transfer.DestinationSessionID); draftErr != nil || !found ||
+	if destination, found := store.Draft(transfer.DestinationSessionID); !found ||
 		!destination.Equal(transfer.DestinationAfter) {
-		t.Fatalf("partially committed destination = %+v, found %t, error %v", destination, found, draftErr)
+		t.Fatalf("partially committed destination = %+v, found %t", destination, found)
 	}
 
 	if removeErr := os.Remove(filepath.Join(sourcePath, "blocker")); removeErr != nil {
@@ -191,8 +191,8 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 
 func assertDraft(t *testing.T, store *Store, sessionID string, want agent.Message) {
 	t.Helper()
-	got, found, err := store.Draft(sessionID)
-	if err != nil || found != !messageEmpty(want) || !got.Equal(want) {
-		t.Fatalf("draft %s = %+v, found %t, error %v; want %+v", sessionID, got, found, err, want)
+	got, found := store.Draft(sessionID)
+	if found != !messageEmpty(want) || !got.Equal(want) {
+		t.Fatalf("draft %s = %+v, found %t; want %+v", sessionID, got, found, want)
 	}
 }

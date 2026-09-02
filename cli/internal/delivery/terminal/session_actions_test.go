@@ -96,8 +96,8 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	if discarded != 1 {
 		t.Fatalf("discarded queue entries = %d, want 1", discarded)
 	}
-	if draft, found, err := store.Draft("retired"); err != nil || found {
-		t.Fatalf("retired draft = %+v, found %t, error %v", draft, found, err)
+	if draft, found := store.Draft("retired"); found {
+		t.Fatalf("retired draft = %+v, found %t", draft, found)
 	}
 	if entries := queue.Snapshot("retired").Entries; len(entries) != 0 {
 		t.Fatalf("retired queue = %+v", entries)
@@ -105,8 +105,8 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	if _, found := store.PendingResume("retired"); found {
 		t.Fatal("retired pending resume remains")
 	}
-	if draft, found, err := store.Draft("active"); err != nil || !found || draft.Text != "active draft" {
-		t.Fatalf("active draft = %+v, found %t, error %v", draft, found, err)
+	if draft, found := store.Draft("active"); !found || draft.Text != "active draft" {
+		t.Fatalf("active draft = %+v, found %t", draft, found)
 	}
 	if entries := queue.Snapshot("active").Entries; len(entries) != 1 || entries[0].Message.Text != "active queued" {
 		t.Fatalf("active queue = %+v", entries)
@@ -142,11 +142,11 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 	if !resolved.Equal(wantDestination) {
 		t.Fatalf("resolved draft = %+v, want %+v", resolved, wantDestination)
 	}
-	if source, found, err := store.Draft("source"); err != nil || !found || !source.Equal(baseline) {
-		t.Fatalf("source draft = %+v, found=%t, err=%v; want baseline", source, found, err)
+	if source, found := store.Draft("source"); !found || !source.Equal(baseline) {
+		t.Fatalf("source draft = %+v, found=%t; want baseline", source, found)
 	}
-	if got, found, err := store.Draft("destination"); err != nil || !found || !got.Equal(wantDestination) {
-		t.Fatalf("destination draft = %+v, found=%t, err=%v", got, found, err)
+	if got, found := store.Draft("destination"); !found || !got.Equal(wantDestination) {
+		t.Fatalf("destination draft = %+v, found=%t", got, found)
 	}
 }
 
@@ -191,8 +191,8 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	if got := queue.Snapshot(sessionID).Entries; len(got) != 0 {
 		t.Fatalf("retirement left queue = %+v", got)
 	}
-	if draft, found, draftErr := store.Draft(sessionID); draftErr != nil || found {
-		t.Fatalf("retirement left draft = %+v, %v, %v", draft, found, draftErr)
+	if draft, found := store.Draft(sessionID); found {
+		t.Fatalf("retirement left draft = %+v, %v", draft, found)
 	}
 	if deletions := store.PendingSessionDeletions(); len(deletions) != 1 ||
 		deletions[0].SessionID != sessionID || deletions[0].Phase != workbench.SessionDeletionConfirmed {
@@ -243,8 +243,8 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, err := reopened.Draft(target.ID); err != nil || found {
-		t.Fatalf("deleted session draft = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(target.ID); found {
+		t.Fatalf("deleted session draft = %+v, %t", draft, found)
 	}
 	if pending := reopened.PendingSessionDeletions(); len(pending) != 0 {
 		t.Fatalf("settled session deletions = %+v", pending)
@@ -283,8 +283,8 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if draft, found, err := reopened.Draft(target.ID); err != nil || found {
-		t.Fatalf("recovered deletion draft = %+v, %t, %v", draft, found, err)
+	if draft, found := reopened.Draft(target.ID); found {
+		t.Fatalf("recovered deletion draft = %+v, %t", draft, found)
 	}
 	if pending := reopened.PendingSessionDeletions(); len(pending) != 0 {
 		t.Fatalf("recovered deletion journals = %+v", pending)

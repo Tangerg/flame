@@ -227,12 +227,13 @@ func (s *Store) Remember(message agent.Message) error {
 	return nil
 }
 
-// Draft loads a session-specific prompt without consuming it.
-func (s *Store) Draft(sessionID string) (agent.Message, bool, error) {
+// Draft returns a detached session-specific prompt without consuming it.
+// Open owns durable decoding, so reads from an opened Store cannot fail.
+func (s *Store) Draft(sessionID string) (agent.Message, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	draft := s.drafts[sessionID]
-	return draft.Clone(), !messageEmpty(draft), nil
+	return draft.Clone(), !messageEmpty(draft)
 }
 
 // SaveDraft atomically replaces a session draft, or removes it when empty.
