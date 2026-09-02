@@ -1,46 +1,23 @@
-import { disposeAsyncIterable } from "@/lib/asyncOwnership";
+import {
+  ASYNC_OWNERSHIP_RETIRED,
+  disposeAsyncIterable,
+  settleBeforeAbort,
+} from "@/lib/asyncOwnership";
 import type { FlameClient } from "@/rpc";
 
 type RuntimeRunStream = Awaited<ReturnType<FlameClient["runs"]["subscribe"]>>;
 
 /**
- * Give an aborting generation immediate ownership release even when the
- * transport opening ignores its signal. A stream which arrives after that
- * release is still an acquired foreign resource and must be retired.
+ * Give an aborting generation immediate ownership release even when the transport opening
+ * ignores its signal. A stream which arrives after that release is still an acquired foreign
+ * resource, so it is retired rather than dropped.
  */
-export function settleRunStreamOpening(
+export async function settleRunStreamOpening(
   opening: Promise<RuntimeRunStream>,
   signal: AbortSignal,
 ): Promise<RuntimeRunStream | null> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const onAbort = () => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener("abort", onAbort);
-      resolve(null);
-    };
-    if (signal.aborted) onAbort();
-    else signal.addEventListener("abort", onAbort, { once: true });
-
-    void opening.then(
-      (stream) => {
-        if (settled) {
-          retireRunStream(stream);
-          return;
-        }
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        resolve(stream);
-      },
-      (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
+  const opened = await settleBeforeAbort(opening, signal, retireRunStream);
+  return opened === ASYNC_OWNERSHIP_RETIRED ? null : opened;
 }
 
 /** The generation is already fenced when this runs, so the retirement is not awaited — abort
