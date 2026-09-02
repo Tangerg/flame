@@ -15,7 +15,6 @@ const HOVER_ACTION =
 interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size" | "press"> {
   active?: boolean;
   icon?: IconName;
-  iconClassName?: string;
   detail?: ReactNode;
   trailing?: ReactNode;
   action?: ReactNode;
@@ -27,7 +26,6 @@ interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size
 export function AgentRow({
   active,
   icon,
-  iconClassName,
   detail,
   trailing,
   action,
@@ -63,13 +61,7 @@ export function AgentRow({
         className,
       )}
     >
-      {icon && (
-        <Icon
-          name={icon}
-          size="sm"
-          className={cn("shrink-0 text-fg", detail && "mt-px", iconClassName)}
-        />
-      )}
+      {icon && <Icon name={icon} size="sm" className={cn("shrink-0 text-fg", detail && "mt-px")} />}
       <span className="flex min-w-0 flex-1 flex-col gap-px">
         <span
           className={cn(

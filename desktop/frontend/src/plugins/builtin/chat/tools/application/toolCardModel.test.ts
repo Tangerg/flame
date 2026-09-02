@@ -31,16 +31,13 @@ describe("toolCardModel", () => {
           args: '{"cmd":"rm"}',
         }),
       ),
-    ).toMatchObject({
-      isError: true,
-      detail: { kind: "text", value: "permission denied" },
-    });
+    ).toMatchObject({ detail: { kind: "text", value: "permission denied" } });
   });
 
   it("projects lifecycle flags and presentation data", () => {
     const model = toolCardModel(t, tool({ status: "requires-action" }));
 
-    expect(model).toMatchObject({ running: false, isError: false });
+    expect(model).toMatchObject({ running: false, denied: false });
     expect(model.intent.label).toBeTruthy();
     expect(Array.isArray(model.metaItems)).toBe(true);
   });

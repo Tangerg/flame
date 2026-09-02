@@ -12,7 +12,6 @@ import type { ToolActionSpec, ToolViewOpenerSpec } from "@/plugins/sdk";
 
 export interface ToolCardModel {
   running: boolean;
-  isError: boolean;
   denied: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
@@ -27,7 +26,6 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   const diffStat = toolDiffStat(tool);
   return {
     running: tool.status === "running",
-    isError,
     denied: tool.status === "denied",
     intent,
     // Always `text`: a failure is prose, never a path, so it must not be left-truncated.
