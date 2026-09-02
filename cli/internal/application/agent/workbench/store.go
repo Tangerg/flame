@@ -144,7 +144,7 @@ func OpenMemory(config Config) (*Store, error) {
 
 // Open loads an explicitly durable Store through its filesystem-neutral port.
 func Open(storage Persistence, config Config) (*Store, error) {
-	if storage == nil {
+	if missingPersistence(storage) {
 		return nil, errors.New("workbench persistence is not configured")
 	}
 	store, err := newStore(storage, config)
@@ -209,6 +209,9 @@ func (s *Store) Remember(message agent.Message) error {
 	message = message.Clone()
 	if messageEmpty(message) {
 		return nil
+	}
+	if err := message.Validate(); err != nil {
+		return fmt.Errorf("remember prompt: %w", err)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

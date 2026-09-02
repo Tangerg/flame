@@ -35,6 +35,16 @@ type sessionState struct {
 	PendingSteer    *pendingSteerRecord     `json:"pendingSteer,omitempty"`
 }
 
+func validateSessionDraft(draft agent.Message) error {
+	if messageEmpty(draft) {
+		return nil
+	}
+	if err := draft.Validate(); err != nil {
+		return fmt.Errorf("session draft: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) loadState() error {
 	if err := s.loadOptional("history.json", &s.history); err != nil {
 		return fmt.Errorf("load prompt history: %w", err)
@@ -174,6 +184,9 @@ func (s *Store) loadSessionState(name string) (sessionState, error) {
 }
 
 func (s *Store) restoreSessionState(name string, state sessionState) error {
+	if err := validateSessionDraft(state.Draft); err != nil {
+		return fmt.Errorf("state %s: %w", name, err)
+	}
 	if err := validatePendingRunSequence(state.SessionID, state.PendingRuns); err != nil {
 		return fmt.Errorf("state %s: %w", name, err)
 	}
@@ -262,6 +275,9 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	steer *PendingSteer,
 ) error {
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+		return err
+	}
+	if err := validateSessionDraft(draft); err != nil {
 		return err
 	}
 	if pending, exists := s.sessionDeletions[sessionID]; exists && pending.Phase == SessionDeletionConfirmed {

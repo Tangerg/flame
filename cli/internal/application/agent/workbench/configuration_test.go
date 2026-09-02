@@ -50,6 +50,10 @@ func TestDirectoryPersistenceRequiresAnAbsoluteOwnedRoot(t *testing.T) {
 	if _, err := Open(nil, Config{}); err == nil {
 		t.Fatal("zero persistence unexpectedly constructed a Store")
 	}
+	var typedNil *removeFailurePersistence
+	if _, err := Open(typedNil, Config{}); err == nil {
+		t.Fatal("typed-nil persistence unexpectedly constructed a Store")
+	}
 }
 
 func TestMemoryPersistenceNeverCreatesWorkbenchFiles(t *testing.T) {

@@ -2,6 +2,7 @@ package workbench
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,53 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestStoreRejectsInvalidAuthoringMessagesBeforePersistence(t *testing.T) {
+	store, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := agent.Message{Attachments: []agent.Attachment{{ID: "invalid"}}}
+	if err := store.Remember(invalid); err == nil || !strings.Contains(err.Error(), "remember prompt") {
+		t.Fatalf("Remember invalid message error = %v", err)
+	}
+	if err := store.SaveDraft("session", invalid); err == nil || !strings.Contains(err.Error(), "session draft") {
+		t.Fatalf("SaveDraft invalid message error = %v", err)
+	}
+	if history := store.History(); len(history) != 0 {
+		t.Fatalf("invalid message entered history: %+v", history)
+	}
+	if _, found, err := store.Draft("session"); err != nil || found {
+		t.Fatalf("invalid message entered drafts: found=%t error=%v", found, err)
+	}
+}
+
+func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
+	directory := t.TempDir()
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	memory, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := agent.Message{Attachments: []agent.Attachment{{ID: "invalid"}}}
+	encoded, err := json.Marshal(envelope[sessionState]{
+		Version: formatVersion,
+		Value:   sessionState{SessionID: sessionID, Draft: invalid},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.Replace(memory.sessionStateName(sessionID), encoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(persistence, Config{}); err == nil || !strings.Contains(err.Error(), "session draft") {
+		t.Fatalf("Open invalid persisted draft error = %v", err)
+	}
+}
 
 func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 	directory := t.TempDir()
