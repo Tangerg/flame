@@ -1140,3 +1140,58 @@ The top-level document renderer accumulated every section body. Its nested loops
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - The two remaining contractgen cyclomatic findings are flat closed-vocabulary switches with no nesting or duplicated ownership; splitting them solely to clear a metric would make translation harder to audit. Round 22 will rebaseline the full permitted Runtime/CLI production surface and rank the next change by correctness, lifecycle ownership, duplication, and deletion value rather than continue mechanically through contractgen.
+
+## Round 22 — complete
+
+### Audit scope and evidence
+
+- A fresh production-only complexity scan covers the full permitted Runtime and CLI surfaces rather than continuing through one package. Runtime has 76 threshold findings (71 cognitive and 5 cyclomatic); the CLI has its own distributed set. File-size, TODO, legacy, fallback, compatibility, and deprecated-vocabulary scans found no standalone deletion candidate.
+- Runtime's highest cognitive findings include bootstrap composition, interaction observation, mutation guarding, recursive glob matching, transcript validation, filesystem tree scanning, and MCP connection projection. The explicit bootstrap assembly and recursive glob matcher each retain one coherent responsibility; splitting either merely to lower a score would hide wiring or algorithmic control flow.
+- `withMutationGuard` scores 30 and owns two independently failing lifecycle phases around one delegated mutation: existing-target admission before the call and tracker reconciliation after success. The surrounding `withPathLock` already makes the full interval atomic for the same canonical paths, and focused tests cover refusal, stale reads, creation, deletion/recreation, formatting, consecutive patches, recording, and read/mutation concurrency.
+- Baseline focused mutation-guard tests passed uncached in 1.47s. A package-only strict scan confirms the current score of 30 before extraction.
+
+### Root cause
+
+The decorator's call closure performs path discovery, pre-mutation policy, delegation, and post-mutation observation inline. Admission and reconciliation repeat canonicalization and tracker identity plumbing, but differ deliberately in missing-file behavior and error context.
+
+### Impact and acceptance criteria
+
+- Keep path discovery and inner-call ordering explicit in `withMutationGuard`, while naming the pre-call admission and post-call reconciliation phases directly.
+- Preserve canonicalization, fingerprint limits, refusal text, output/error propagation, missing-target behavior, tracker forget/refresh ordering, and the enclosing path-lock atomicity exactly.
+- Derive the execution session once for the lifecycle and pass concrete values; add no interface, phase registry, generic middleware framework, or mutable guard object.
+- Remove the score-30 function without moving complexity into a new helper above the selected threshold.
+- Pass focused, race, static, full Runtime/CLI, generated-drift, and bounded live verification.
+
+### Plan
+
+- **Completed:** extracted the two proven lifecycle phases, formatted them, ran focused behavioral tests, and remeasured the production package.
+- **Completed:** ran full generated/static/test/live gates, inspected compatibility, cleaned resources, and recorded results.
+
+### Validation
+
+- The post-change mutation-guard regression set passed uncached in 0.81s against the 1.47s green baseline. The complete toolset package then passed uncached in 2.47s.
+- The package-only production complexity scan no longer reports `withMutationGuard`; neither `admitMutationPaths` nor `refreshMutationPaths` reaches the selected threshold. The package scan fell from 12 to 11 total findings including tests, leaving the pre-existing fingerprint-observation finding in this file unchanged.
+- The complete toolset package passed with `-race` in 5.58s; focused `go vet` and `staticcheck` also passed.
+- `go generate ./...` changed no generated artifact. Contractgen plus generated-drift architecture tests passed in 6.61s.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 10.87s, and uncached `GOWORK=off go test -count=1 ./...` passed in 59.02s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 10.80s, and uncached `go test -count=1 ./...` passed in 43.40s.
+- The current-source CLI completed a production-bootstrap Run using the authorized DeepSeek configuration and returned exactly `FLAME_LIVE_ROUND22_OK`, status `completed`, one step, 9,262 input tokens, 31 output tokens, 22 reasoning tokens, 512 cache-read tokens, and 1,093ms total model duration. No credential value was printed or copied.
+- A second isolated current-source Run overrode the provider credential with an intentionally invalid temporary value. It failed closed as `invalid_api_key`, projected the provider's 401 failure, consumed zero model tokens, and terminated in 91ms. The configured credential was neither read nor changed.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `withMutationGuard` now owns only path discovery, one session identity, inner-call ordering, and output/error propagation. `admitMutationPaths` owns the existing-file read/staleness check; `refreshMutationPaths` owns post-success forget/refresh reconciliation.
+- Both phases still run inside the same outer canonical path lock. Path order, canonicalization, full-file fingerprints, new/deleted-file treatment, refusal text, tracker mutations, inner output preservation, and diagnostic error strings are unchanged.
+- No public API, wire shape, generated artifact, persistence representation, dependency, compatibility shim, or consumer changed.
+
+### Resource cleanup
+
+- The temporary strict complexity configuration was deleted after the final scan.
+- Both bounded live paths used one validated `/tmp/flame-live-round22.*` directory containing the isolated Runtime homes and current-source CLI binary. It was moved intact to the system Trash after verification, so it is recoverable and no matching temporary path remains.
+- No shared cache, global dependency, user Runtime data, or authorized configuration was removed or modified.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 23 will audit `observedInteractionTool.Call`, another score-30 Runtime hotspot, against delegated-tool observation ownership, cancellation, notification, and output preservation. A split will proceed only if those are distinct proven lifecycle phases rather than unavoidable branching in one policy.

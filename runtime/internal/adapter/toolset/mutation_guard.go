@@ -72,44 +72,63 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) too
 		if err != nil {
 			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
 		}
-		for _, path := range paths {
-			abs, canonicalErr := pathidentity.Canonical(cwd, path)
-			if canonicalErr != nil {
-				return chat.ToolOutput{}, fmt.Errorf("resolve mutation path: %w", canonicalErr)
-			}
-			fingerprint, exists, canonicalErr := fingerprintExistingFile(ctx, abs, 0)
-			if canonicalErr != nil {
-				return chat.ToolOutput{}, fmt.Errorf("fingerprint mutation path %s: %w", path, canonicalErr)
-			}
-			if !exists {
-				continue
-			}
-			if verdict := tr.check(executionctx.SessionID(ctx), abs, fingerprint); !verdict.allowed() {
-				return chat.NewTextToolOutput(mutationGuardMessage(verdict, path)), nil
-			}
+		sessionID := executionctx.SessionID(ctx)
+		blocked, err := admitMutationPaths(ctx, tr, cwd, sessionID, paths)
+		if err != nil {
+			return chat.ToolOutput{}, err
+		}
+		if blocked != "" {
+			return chat.NewTextToolOutput(blocked), nil
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
-		for _, path := range paths {
-			abs, err := pathidentity.Canonical(cwd, path)
-			if err != nil {
-				return out, fmt.Errorf("refresh mutation path: %w", err)
-			}
-			fingerprint, exists, fingerprintErr := fingerprintExistingFile(ctx, abs, 0)
-			if fingerprintErr != nil {
-				tr.forget(executionctx.SessionID(ctx), abs)
-				return out, fmt.Errorf("refresh mutation path %s: %w", path, fingerprintErr)
-			}
-			if !exists {
-				tr.forget(executionctx.SessionID(ctx), abs)
-				continue
-			}
-			tr.refresh(executionctx.SessionID(ctx), abs, fingerprint)
+		if err := refreshMutationPaths(ctx, tr, cwd, sessionID, paths); err != nil {
+			return out, err
 		}
 		return out, nil
 	})
+}
+
+func admitMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID string, paths []string) (string, error) {
+	for _, path := range paths {
+		abs, err := pathidentity.Canonical(cwd, path)
+		if err != nil {
+			return "", fmt.Errorf("resolve mutation path: %w", err)
+		}
+		fingerprint, exists, err := fingerprintExistingFile(ctx, abs, 0)
+		if err != nil {
+			return "", fmt.Errorf("fingerprint mutation path %s: %w", path, err)
+		}
+		if !exists {
+			continue
+		}
+		if verdict := tr.check(sessionID, abs, fingerprint); !verdict.allowed() {
+			return mutationGuardMessage(verdict, path), nil
+		}
+	}
+	return "", nil
+}
+
+func refreshMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID string, paths []string) error {
+	for _, path := range paths {
+		abs, err := pathidentity.Canonical(cwd, path)
+		if err != nil {
+			return fmt.Errorf("refresh mutation path: %w", err)
+		}
+		fingerprint, exists, err := fingerprintExistingFile(ctx, abs, 0)
+		if err != nil {
+			tr.forget(sessionID, abs)
+			return fmt.Errorf("refresh mutation path %s: %w", path, err)
+		}
+		if !exists {
+			tr.forget(sessionID, abs)
+			continue
+		}
+		tr.refresh(sessionID, abs, fingerprint)
+	}
+	return nil
 }
 
 func mutationGuardMessage(verdict guardVerdict, path string) string {
