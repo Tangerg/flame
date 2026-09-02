@@ -8,6 +8,7 @@ describe("AgentActivityDisclosure", () => {
     const { rerender } = render(
       <AgentActivityDisclosure
         icon="search"
+        shell="card"
         label="Search source"
         detail="runtime"
         open={false}
@@ -27,6 +28,7 @@ describe("AgentActivityDisclosure", () => {
     rerender(
       <AgentActivityDisclosure
         icon="search"
+        shell="card"
         label="Search source"
         detail="runtime"
         open
@@ -47,6 +49,7 @@ describe("AgentActivityDisclosure", () => {
     render(
       <AgentActivityDisclosure
         leading={<span>•</span>}
+        shell="card"
         label="Delegated run"
         open={false}
         onToggle={onToggle}
@@ -65,17 +68,15 @@ describe("AgentActivityDisclosure", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  // The three shells are the whole of the differentiation between a glance, a
-  // product and trouble. Asserted on the material rather than on a class name: what
-  // matters is that a line has no card under it and a flagged row has the tone's
-  // edge, because both were true of nothing before and every row looked the same.
+  // The two shells are the whole of the differentiation between a glance and a product.
+  // Asserted on the material rather than on a class name: what matters is that a line has
+  // no card under it, because that was true of nothing before and every row looked the same.
   it("gives each shell its own material", () => {
-    const shells = (["line", "card", "flagged"] as const).map((shell) => {
+    const shells = (["line", "card"] as const).map((shell) => {
       const { unmount } = render(
         <AgentActivityDisclosure
           icon="search"
           shell={shell}
-          tone={shell === "flagged" ? "negative" : "neutral"}
           label={shell}
           open={false}
           onToggle={() => {}}
@@ -84,20 +85,17 @@ describe("AgentActivityDisclosure", () => {
         </AgentActivityDisclosure>,
       );
       const row = screen.getByRole("button", { name: shell }).closest("[data-shell]");
-      const classes = row?.className ?? "";
       const result = {
         shell: row?.getAttribute("data-shell"),
-        filled: classes.includes("bg-card"),
-        edged: classes.includes("border-negative-edge"),
+        filled: (row?.className ?? "").includes("bg-card"),
       };
       unmount();
       return result;
     });
 
     expect(shells).toEqual([
-      { shell: "line", filled: false, edged: false },
-      { shell: "card", filled: true, edged: false },
-      { shell: "flagged", filled: true, edged: true },
+      { shell: "line", filled: false },
+      { shell: "card", filled: true },
     ]);
   });
 
@@ -105,7 +103,13 @@ describe("AgentActivityDisclosure", () => {
   // mark inside the glyph tray would be a mark inside a mark.
   it("frames its own glyph on a card, and never a caller's mark", () => {
     const { unmount } = render(
-      <AgentActivityDisclosure icon="search" label="framed" open={false} onToggle={() => {}}>
+      <AgentActivityDisclosure
+        icon="search"
+        shell="card"
+        label="framed"
+        open={false}
+        onToggle={() => {}}
+      >
         body
       </AgentActivityDisclosure>,
     );
@@ -118,6 +122,7 @@ describe("AgentActivityDisclosure", () => {
     render(
       <AgentActivityDisclosure
         leading={<span>•</span>}
+        shell="card"
         label="own"
         open={false}
         onToggle={() => {}}

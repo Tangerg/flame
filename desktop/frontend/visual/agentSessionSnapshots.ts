@@ -221,10 +221,10 @@ const PENDING_APPROVAL_TOOL: Item = {
   },
 };
 
-// One turn holding all three activity shells, because the shells are the whole of
-// the differentiation between a glance, a product and trouble. A read is a
-// line, a command is a card, a failure and a refusal are flagged, and the two flags
-// carry different tones on purpose: a refusal is a decision, not a fault.
+// One turn holding a read, a command, a patch, a failure and a refusal — every lifecycle a
+// tool row has to survive on the SAME narrative line. That sameness is the thing under test:
+// the differentiation lives in the verb, the diffstat and the inline lifecycle text, so a
+// golden that only held successful reads would not notice a failure growing card chrome.
 const SHELL_READ: Item = {
   type: "toolCall",
   safetyClass: "safe",

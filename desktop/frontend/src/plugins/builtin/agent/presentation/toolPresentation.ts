@@ -1,6 +1,5 @@
 import type { Translate } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import type { ActivityShell } from "@/lib/activityShell";
 import { fmtDuration } from "@/lib/format";
 
 // Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
@@ -159,12 +158,6 @@ export function toolDiffStat(tool: ToolCall): { added: number; removed: number }
 // the gate's decision cannot disagree.
 export function isReadOnlyTool(tool: ToolCall): boolean {
   return tool.safetyClass === "safe";
-}
-
-// Constant on purpose: an invocation stays on the work-narrative plane whatever its safety
-// class or outcome.
-export function toolActivityShell(_tool: ToolCall): ActivityShell {
-  return "line";
 }
 
 export function toolGroupNeedsAttention(tools: readonly ToolCall[]): boolean {

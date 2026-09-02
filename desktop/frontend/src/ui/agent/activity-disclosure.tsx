@@ -1,6 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Children, useId } from "react";
-import type { ActivityShell } from "@/lib/activityShell";
 import { cn } from "@/lib/classNames";
 import { Collapsible } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
@@ -8,6 +7,15 @@ import { ProgressBar } from "@/ui/atoms/progress-bar";
 import { Icon, type IconName } from "@/ui/icons";
 
 type ActivityTone = "neutral" | "warning" | "negative";
+
+/**
+ *   line  Work-narrative activity; disclosed material owns any terminal/diff surface.
+ *   card  A composite product with a narrative of its own, such as a delegated Run.
+ *
+ * Stated by every caller rather than defaulted: which of the two a row is, is the whole of
+ * the difference between a glance and a product, and the atom cannot infer it.
+ */
+type ActivityShell = "line" | "card";
 
 type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; leading: ReactNode };
 
@@ -25,7 +33,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     progress?: { value: number; label: string };
     toggleLabel?: string;
     tone?: ActivityTone;
-    shell?: ActivityShell;
+    shell: ActivityShell;
     children: ReactNode;
     contentClassName?: string;
   };
@@ -34,12 +42,6 @@ const TONE_CLASS: Record<ActivityTone, string> = {
   neutral: "text-fg-muted",
   warning: "text-warning",
   negative: "text-negative",
-};
-
-const FLAG_EDGE_CLASS: Record<ActivityTone, string> = {
-  neutral: "border-field",
-  warning: "border-warning-edge",
-  negative: "border-negative-edge",
 };
 
 const TRAY_CLASS: Record<ActivityTone, string> = {
@@ -61,7 +63,7 @@ export function AgentActivityDisclosure({
   progress,
   toggleLabel,
   tone = "neutral",
-  shell = "card",
+  shell,
   children,
   className,
   contentClassName,
@@ -82,7 +84,6 @@ export function AgentActivityDisclosure({
         shell === "line"
           ? "rounded-[var(--shape-sm)]"
           : "rounded-[var(--surface-card-radius)] bg-card",
-        shell === "flagged" && `border ${FLAG_EDGE_CLASS[tone]}`,
         className,
       )}
     >

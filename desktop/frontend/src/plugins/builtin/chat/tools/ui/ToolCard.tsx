@@ -45,8 +45,11 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       data-tool={tool.name}
       data-status={tool.status}
       icon={toolCallIconFor(tool)}
-      tone={model.tone}
-      shell={model.shell}
+      // Every invocation stays on the work-narrative line and takes the neutral tone,
+      // whatever its safety class or outcome: the material result earns a surface only once
+      // the row is opened, and colouring the identity glyph turns a failure or a refusal
+      // back into a status card.
+      shell="line"
       label={<ToolText value={model.intent.label} className="w-full" />}
       detail={
         model.detail ? <ToolText value={model.detail} className="w-full font-mono" /> : undefined
