@@ -7,8 +7,13 @@ import { AgentOverflowLabel } from "./overflow-label";
 const ROW_GROUP = "group/row";
 
 const RESTING_GLYPH =
-  "transition-opacity group-hover/row:pointer-events-none group-hover/row:opacity-0 group-focus-within/row:pointer-events-none group-focus-within/row:opacity-0";
+  "transition-opacity group-hover/row:pointer-events-none group-hover/row:opacity-0 group-focus-visible/row-trigger:pointer-events-none group-focus-visible/row-trigger:opacity-0";
 
+// The action is the caller's node in a sibling span, so only the SPAN can react to it
+// having focus — and `:has(:focus-visible)` is not a working way to say that (Chromium
+// matches it but does not invalidate on the focus change). `:focus-within` therefore
+// stays here: it reveals the action a moment longer than it should after a click, which
+// is the lesser of the two, because the alternative hides it from the keyboard.
 const HOVER_ACTION =
   "opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100";
 
@@ -46,7 +51,7 @@ export function AgentRow({
       press={false}
       data-active={active ? "" : undefined}
       className={cn(
-        "agent-row w-full justify-start rounded-[var(--row-radius)] text-left text-ui-md font-normal",
+        "group/row-trigger agent-row w-full justify-start rounded-[var(--row-radius)] text-left text-ui-md font-normal",
         "gap-[var(--density-row-gap)]",
         "text-fg transition-[background-color,color] duration-[var(--dur-color)]",
         "hover:bg-hover hover:text-fg focus-visible:bg-hover",

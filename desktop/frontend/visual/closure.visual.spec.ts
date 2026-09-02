@@ -603,6 +603,39 @@ test("a sticky header has a scrollport that can scroll", async ({ page }) => {
   expect(stranded).toEqual([]);
 });
 
+// A hidden-until-hover affordance revealed by `:focus-within` never goes away again:
+// clicking a row focuses it, and DOM focus outlives the pointer. One row in a column of
+// identical rows then stays lit with nothing on screen saying why. Codex reveals these on
+// `:focus-visible`, so a mouse click leaves no residue while Tab still reaches them.
+test("a hover affordance does not stay lit after the pointer leaves", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "waves", theme: "light" });
+
+  const header = page
+    .locator("[data-slot='agent-activity-disclosure'] button[aria-expanded]")
+    .first();
+  await header.click();
+  await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "false");
+  // Park the pointer somewhere with no row under it, then let the transition finish.
+  await page.mouse.move(4, 4);
+
+  const chevron = header.locator("[data-slot='agent-activity-chevron']");
+  await expect.poll(() => chevron.evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
+
+  // …and Tab must still bring it back, or the fix has traded a stuck affordance for a
+  // keyboard-invisible one. Walked with real key presses: `focus()` inherits whatever
+  // modality came last, so it cannot tell the two apart.
+  // Drop the focus the click left behind first: without this the row is ALREADY the active
+  // element, the loop presses nothing, and the assertion passes on mouse focus.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  const focused = () => header.evaluate((node) => node === document.activeElement);
+  for (let step = 0; step < 60 && !(await focused()); step += 1) {
+    await page.keyboard.press("Tab");
+  }
+  expect(await focused()).toBe(true);
+  await expect.poll(() => chevron.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+});
+
 test("IME composition keeps Enter inside the composer until text is committed", async ({
   page,
 }) => {

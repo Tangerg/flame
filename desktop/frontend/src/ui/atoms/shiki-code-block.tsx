@@ -126,7 +126,7 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           className={cn(
             copied ? "text-success" : "text-fg-faint hover:bg-hover hover:text-fg",
             isPreview &&
-              "opacity-0 transition-opacity group-hover/code-snippet:opacity-100 group-focus-within/code-snippet:opacity-100",
+              "opacity-0 transition-opacity group-hover/code-snippet:opacity-100 focus-visible:opacity-100",
           )}
         />
       </div>

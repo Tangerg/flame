@@ -77,10 +77,22 @@ const RULES = [
     // composer's remove-attachment button was one. Four other reveals in the tree pair
     // the hover with a focus variant; this makes the pair the rule, and it has to be on
     // the same line so a reader can see both at once.
-    pattern: /\b(?:group-)?hover(?:\/[a-z]+)?:opacity-100\b/g,
+    pattern: /\b(?:group-)?hover(?:\/[a-z-]+)?:opacity-100\b/g,
     message: "hover-only reveal — pair it with `focus-within:` / `focus-visible:opacity-100`",
     appliesTo: (line) =>
-      !/(?:group-)?focus(?:-within|-visible)?(?:\/[a-z]+)?:opacity-100/.test(line),
+      !/(?:group-)?focus(?:-within|-visible)?(?:\/[a-z-]+)?:opacity-100/.test(line),
+  },
+  {
+    // `:has(:focus-visible)` says the right thing and does not do it. Chromium matches the
+    // selector — `element.matches()` agrees, the rule is in the sheet, it outranks the
+    // `opacity-0` beside it — but it never invalidates the subtree when focus-visible
+    // changes inside `:has()`, so the reveal only lands when some unrelated recalculation
+    // happens to follow. Measured: reattaching the node flipped it from 0 to 1 with nothing
+    // else changed. An affordance that appears at random is worse than one that lingers.
+    pattern: /\b(?:group-)?has-\[:focus-visible\]/g,
+    message:
+      "`:has(:focus-visible)` matches but never invalidates in Chromium — key the reveal on the focusable element's own `focus-visible:`, or keep `focus-within:`",
+    appliesTo: () => true,
   },
   {
     pattern: /\btransition-all\b/g,

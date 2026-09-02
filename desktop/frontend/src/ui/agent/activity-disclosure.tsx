@@ -101,7 +101,7 @@ export function AgentActivityDisclosure({
           aria-label={toggleLabel}
           onClick={onToggle}
           className={cn(
-            "flex min-w-0 flex-1 items-center text-left",
+            "group/activity-trigger flex min-w-0 flex-1 items-center text-left",
             shell === "line" ? "gap-1.5 py-0.5 pr-0" : "gap-3 py-1.5 pr-3",
             shell === "line" ? "pl-0" : "pl-3",
             shell !== "line" && "transition-colors duration-[var(--dur-color)] hover:bg-hover",
@@ -142,7 +142,15 @@ export function AgentActivityDisclosure({
             aria-hidden
             data-slot="agent-activity-chevron"
             className={cn(
-              "flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)] group-focus-within/activity-header:opacity-100 group-hover/activity-header:opacity-100",
+              "flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)]",
+              // Keyed on the TRIGGER's own `:focus-visible`, not on the header's
+              // `:focus-within`: DOM focus outlives the pointer, so a row clicked shut
+              // kept its chevron lit while every identical row beside it stayed blank.
+              // `:has(:focus-visible)` would say the same thing and does not work —
+              // Chromium matches the selector but never invalidates the subtree when
+              // focus-visible changes inside `:has()`, so the reveal only lands if some
+              // unrelated recalculation happens to follow.
+              "group-focus-visible/activity-trigger:opacity-100 group-hover/activity-header:opacity-100",
               open ? "opacity-100" : "-rotate-90 opacity-0",
             )}
           >
