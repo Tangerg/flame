@@ -252,6 +252,79 @@ func collectSegment(stream agent.SegmentStream) ([]agent.RunEvent, error) {
 	return events, nil
 }
 
+func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
+	runtime := New()
+	startText := "\n  preserve start indentation  \t"
+	resumeText := "  preserve resume indentation\n"
+	steerText := "\tpreserve steer indentation  "
+	var scriptInput string
+	runtime.Script = func(input string) Script {
+		scriptInput = input
+		return Script{
+			Interactions: []agent.Interaction{approvalFixture("approval", "Continue")},
+			Continue: func([]agent.InterruptAnswer) []Step {
+				return []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+			},
+		}
+	}
+
+	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", startText))
+	if err != nil {
+		t.Fatal(err)
+	}
+	openingEvents, err := collectSegment(opened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scriptInput != startText || !slices.Contains(authoredUserTexts(openingEvents), startText) {
+		t.Fatalf("start text = script %q, events %q", scriptInput, authoredUserTexts(openingEvents))
+	}
+	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
+	if err != nil || len(snapshot.Interactions) != 1 {
+		t.Fatalf("waiting snapshot = %+v, %v", snapshot, err)
+	}
+
+	continued, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
+		RunID: opened.RunID,
+		Answers: []agent.InterruptAnswer{{
+			ItemID: agent.InteractionItemID(snapshot.Interactions[0]),
+			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+		}},
+		Message: &agent.Message{Text: resumeText},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.SteerRun(t.Context(), agent.SteerRun{
+		RunID: opened.RunID, SegmentID: continued.SegmentID,
+		Message: agent.Message{Text: steerText},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID}); err != nil {
+		t.Fatal(err)
+	}
+	continuedEvents, err := collectSegment(continued)
+	if err != nil {
+		t.Fatal(err)
+	}
+	texts := authoredUserTexts(continuedEvents)
+	if !slices.Contains(texts, resumeText) || !slices.Contains(texts, steerText) {
+		t.Fatalf("continued user text = %q", texts)
+	}
+}
+
+func authoredUserTexts(events []agent.RunEvent) []string {
+	var texts []string
+	for _, event := range events {
+		completed, ok := event.Event.(agent.BlockCompleted)
+		if ok && completed.Block.Kind == agent.BlockUser {
+			texts = append(texts, completed.Block.Text)
+		}
+	}
+	return texts
+}
+
 func TestRuntimeStartResumeAndColdRestore(t *testing.T) {
 	runtime := New()
 	runtime.Instant = true

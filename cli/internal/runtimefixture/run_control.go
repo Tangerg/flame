@@ -22,7 +22,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	if build == nil {
 		build = DefaultScript
 	}
-	script, err := buildScriptSafely(build, strings.TrimSpace(in.Message.Text))
+	script, err := buildScriptSafely(build, in.Message.Text)
 	if err != nil {
 		return agent.SegmentStream{}, fmt.Errorf("mock: build script: %w", err)
 	}
@@ -74,7 +74,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	}
 	userItemID := r.identities.next(itemIdentity)
 	if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
-		ID: userItemID, Kind: agent.BlockUser, Text: strings.TrimSpace(in.Message.Text), Attachments: slices.Clone(in.Message.Attachments),
+		ID: userItemID, Kind: agent.BlockUser, Text: in.Message.Text, Attachments: slices.Clone(in.Message.Attachments),
 	}}); err != nil {
 		r.mu.Unlock()
 		return agent.SegmentStream{}, err
@@ -250,7 +250,7 @@ func (r *Runtime) emitResumeMessageLocked(run *runState, message *agent.Message)
 	}
 	itemID := r.identities.next(itemIdentity)
 	if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
-		ID: itemID, Kind: agent.BlockUser, Text: strings.TrimSpace(message.Text), Attachments: slices.Clone(message.Attachments),
+		ID: itemID, Kind: agent.BlockUser, Text: message.Text, Attachments: slices.Clone(message.Attachments),
 	}}); err != nil {
 		return "", err
 	}
@@ -371,6 +371,6 @@ func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
 	itemID := r.identities.next(itemIdentity)
 	return r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
 		ID: itemID, Kind: agent.BlockUser,
-		Text: strings.TrimSpace(in.Message.Text), Attachments: slices.Clone(in.Message.Attachments),
+		Text: in.Message.Text, Attachments: slices.Clone(in.Message.Attachments),
 	}})
 }
